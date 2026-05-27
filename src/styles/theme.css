@@ -1,0 +1,69 @@
+/* Runtime theme tokens — Tailwind utilities read these via @theme inline */
+
+html,
+html[data-theme="dark"] {
+  --tf-bg: #080a12;
+  --tf-surface: #0b0e17;
+  --tf-elevated: #121520;
+  --tf-border: #1a1f2e;
+  --tf-border-soft: #24324b;
+  --tf-text: #f1f5f9;
+  --tf-text-secondary: #cbd5e1;
+  --tf-text-muted: #94a3b8;
+  --tf-glass: rgba(11, 14, 23, 0.88);
+  --tf-overlay: rgba(0, 0, 0, 0.55);
+  --tf-input-bg: #121520;
+  --tf-chart-bg: #0b0e17;
+  --tf-shadow: rgba(0, 0, 0, 0.35);
+
+  /* Legacy aliases used in custom CSS */
+  --color-dark-bg: var(--tf-bg);
+  --color-dark-surface: var(--tf-surface);
+  --color-dark-elevated: var(--tf-elevated);
+  --color-dark-border: var(--tf-border);
+  --app-text: var(--tf-text);
+  --app-text-secondary: var(--tf-text-secondary);
+  --app-text-muted: var(--tf-text-muted);
+  --glass-bg: var(--tf-glass);
+  --overlay-bg: var(--tf-overlay);
+}
+
+html[data-theme="light"] {
+  --tf-bg: #e9eef5;
+  --tf-surface: #ffffff;
+  --tf-elevated: #f4f7fb;
+  --tf-border: #c8d4e3;
+  --tf-border-soft: #dce4ef;
+  --tf-text: #0f172a;
+  --tf-text-secondary: #334155;
+  --tf-text-muted: #64748b;
+  --tf-glass: rgba(255, 255, 255, 0.94);
+  --tf-overlay: rgba(15, 23, 42, 0.35);
+  --tf-input-bg: #ffffff;
+  --tf-chart-bg: #ffffff;
+  --tf-shadow: rgba(15, 23, 42, 0.08);
+  color-scheme: light;
+}
+
+/* Tailwind color utilities → runtime tokens (fixes bg-dark-surface etc.) */
+@theme inline {
+  --color-gold: #d4af37;
+  --color-gold-light: #e8c04a;
+  --color-gold-dark: #b8941f;
+  --color-dark-bg: var(--tf-bg);
+  --color-dark-surface: var(--tf-surface);
+  --color-dark-elevated: var(--tf-elevated);
+  --color-dark-border: var(--tf-border);
+  --color-dark-muted: var(--tf-text-muted);
+}
+
+/* Shared field style for forms */
+.tf-field {
+  background-color: var(--tf-input-bg) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+}
+
+.tf-field::placeholder {
+  color: var(--tf-text-muted) !important;
+}

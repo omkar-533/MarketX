@@ -1,0 +1,49 @@
+{
+  "name": "react-vite-tailwind",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:all": "node scripts/dev-all.mjs",
+    "dev:clean": "node scripts/dev-all.mjs",
+    "free-port": "node scripts/free-port.mjs 5000",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server.mjs"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.106.2",
+    "clsx": "2.1.1",
+    "cors": "^2.8.6",
+    "date-fns": "^4.2.1",
+    "express": "^5.2.1",
+    "framer-motion": "^12.40.0",
+    "fyers-api-v3": "^1.8.0",
+    "lightweight-charts": "^5.2.0",
+    "lucide-react": "^1.16.0",
+    "openai": "^6.39.0",
+    "prismjs": "^1.30.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-simple-code-editor": "^0.14.1",
+    "recharts": "^3.8.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "3.4.0",
+    "ws": "^8.21.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "^22.19.17",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3",
+    "vite": "7.3.2",
+    "vite-plugin-singlefile": "2.3.0"
+  }
+}

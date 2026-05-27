@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+data/fyers-token.json
+data/fyers-logs/
+*.log
+.DS_Store
+tmptest.txt

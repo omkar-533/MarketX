@@ -1,0 +1,250 @@
+/* Light mode: override hardcoded dark hex utilities used across pages */
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-slate-100 {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .text-slate-300 {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .text-slate-500,
+html[data-theme="light"] .text-slate-600 {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .text-slate-700 {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .hover\:text-white:hover,
+html[data-theme="light"] .hover\:text-slate-200:hover {
+  color: var(--tf-text) !important;
+}
+
+/* Surfaces */
+html[data-theme="light"] .bg-\[\#050608\],
+html[data-theme="light"] .bg-\[\#080a12\],
+html[data-theme="light"] .bg-\[\#0a0c14\],
+html[data-theme="light"] .bg-\[\#0a0f1a\],
+html[data-theme="light"] .bg-\[\#0b0e17\],
+html[data-theme="light"] .bg-\[\#0d1728\],
+html[data-theme="light"] .bg-\[\#141822\],
+html[data-theme="light"] .bg-\[\#06080f\] {
+  background-color: var(--tf-surface) !important;
+}
+
+html[data-theme="light"] .bg-dark-bg {
+  background-color: var(--tf-bg) !important;
+}
+
+html[data-theme="light"] .bg-dark-surface {
+  background-color: var(--tf-surface) !important;
+}
+
+html[data-theme="light"] .bg-dark-elevated {
+  background-color: var(--tf-elevated) !important;
+}
+
+html[data-theme="light"] .border-dark-border,
+html[data-theme="light"] .border-dark-border\/60 {
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .bg-\[\#121520\],
+html[data-theme="light"] .bg-\[\#111827\],
+html[data-theme="light"] .bg-\[\#172033\],
+html[data-theme="light"] .bg-\[\#1e2538\] {
+  background-color: var(--tf-elevated) !important;
+}
+
+html[data-theme="light"] .bg-\[\#0b0e17\]\/80,
+html[data-theme="light"] .bg-\[\#111827\]\/80,
+html[data-theme="light"] .bg-\[\#0a0e14\]\/80 {
+  background-color: color-mix(in srgb, var(--tf-surface) 88%, transparent) !important;
+}
+
+html[data-theme="light"] .hover\:bg-\[\#121520\]:hover,
+html[data-theme="light"] .hover\:bg-\[\#121520\]\/60:hover {
+  background-color: var(--tf-elevated) !important;
+}
+
+/* Borders */
+html[data-theme="light"] .border-\[\#1a1f2e\],
+html[data-theme="light"] .border-\[\#172033\],
+html[data-theme="light"] .border-\[\#1e2538\] {
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .border-\[\#24324b\] {
+  border-color: var(--tf-border-soft) !important;
+}
+
+html[data-theme="light"] .border-t.border-\[\#1a1f2e\],
+html[data-theme="light"] .border-t.border-\[\#1a1f2e\]\/80 {
+  border-color: var(--tf-border) !important;
+}
+
+/* Gradients (hero cards, journal header) */
+html[data-theme="light"] .from-\[\#121520\] {
+  --tw-gradient-from: var(--tf-elevated) !important;
+}
+
+html[data-theme="light"] .via-\[\#0b0e17\] {
+  --tw-gradient-via: var(--tf-surface) !important;
+}
+
+html[data-theme="light"] .to-\[\#080a12\] {
+  --tw-gradient-to: var(--tf-bg) !important;
+}
+
+html[data-theme="light"] .bg-gradient-to-br.from-\[\#121520\] {
+  background-image: linear-gradient(
+    to bottom right,
+    var(--tf-elevated),
+    var(--tf-surface),
+    var(--tf-bg)
+  ) !important;
+}
+
+/* Form controls */
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background-color: var(--tf-input-bg) !important;
+  color: var(--tf-text) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Auth page */
+html[data-theme="light"] .auth-page {
+  background: var(--tf-bg);
+}
+
+html[data-theme="light"] .auth-label {
+  color: var(--tf-text-muted);
+}
+
+html[data-theme="light"] .auth-input-icon {
+  color: #64748b;
+}
+
+html[data-theme="light"] .auth-title {
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .auth-subtitle,
+html[data-theme="light"] .auth-tab:not(.auth-tab--active) {
+  color: var(--tf-text-muted);
+}
+
+html[data-theme="light"] .auth-tabs {
+  background: var(--tf-elevated);
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .auth-field,
+html[data-theme="light"] .auth-social-btn,
+html[data-theme="light"] .auth-otp-digit,
+html[data-theme="light"] .auth-version-badge {
+  background: var(--tf-input-bg);
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .auth-field-input {
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .auth-field-input::placeholder {
+  color: var(--tf-text-muted);
+}
+
+html[data-theme="light"] .auth-field-prefix,
+html[data-theme="light"] .auth-field-icon {
+  color: var(--tf-text-muted);
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .auth-social-btn {
+  color: var(--tf-text-secondary);
+}
+
+html[data-theme="light"] .auth-social-btn:hover:not(:disabled) {
+  background: var(--tf-elevated);
+  border-color: var(--tf-border-soft);
+}
+
+html[data-theme="light"] .auth-divider::before,
+html[data-theme="light"] .auth-divider::after {
+  background: linear-gradient(90deg, transparent, var(--tf-border));
+}
+
+html[data-theme="light"] .auth-divider::after {
+  background: linear-gradient(90deg, var(--tf-border), transparent);
+}
+
+html[data-theme="light"] .auth-stat-card,
+html[data-theme="light"] .auth-dashboard-preview {
+  background: var(--tf-surface);
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .auth-dashboard-preview-header {
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .auth-footer {
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .glass-light {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Scrollbar */
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #b8c5d6;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Recharts default grid lines */
+html[data-theme="light"] .recharts-cartesian-grid line {
+  stroke: #dce4ef !important;
+}
+
+html[data-theme="light"] .recharts-text {
+  fill: #64748b !important;
+}
+
+html[data-theme="light"] .recharts-default-tooltip,
+html[data-theme="light"] .recharts-tooltip-wrapper {
+  background-color: #ffffff !important;
+  border: 1px solid #c8d4e3 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .recharts-tooltip-label,
+html[data-theme="light"] .recharts-tooltip-item {
+  color: #0f172a !important;
+}

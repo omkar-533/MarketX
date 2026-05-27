@@ -1,0 +1,41 @@
+export type TradeType = 'Intraday' | 'Swing' | 'Options' | 'Futures';
+export type TradeSide = 'Buy' | 'Sell';
+export type JournalMarket = 'equity' | 'crypto' | 'forex';
+export type PnlCurrency = 'INR' | 'USD' | 'USDT' | 'EUR';
+
+export type TradeRecord = {
+  id: string;
+  ownerId: string;
+  ownerEmail: string;
+  ownerName: string;
+  instrument: string;
+  entryPrice: number;
+  exitPrice: number;
+  stopLoss: number;
+  target: number;
+  quantity: number;
+  side: TradeSide;
+  type: TradeType;
+  broker: string;
+  strategy: string;
+  notes: string;
+  tags: string[];
+  screenshot?: string;
+  date: string;
+  pnl: number;
+  rr: number;
+  brokerage: number;
+  roi: number;
+  positionSize: number;
+  createdAt: string;
+  updatedAt: string;
+  beforeEmotion?: string;
+  afterEmotion?: string;
+  confidence?: number;
+  discipline?: number;
+  fearGreed?: number;
+  psychologyNote?: string;
+  /** Indian stocks default; crypto / forex for global markets */
+  market?: JournalMarket;
+  pnlCurrency?: PnlCurrency;
+};
