@@ -8,3 +8,4 @@ data/fyers-logs/
 *.log
 .DS_Store
 tmptest.txt
+.vscode/
