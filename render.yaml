@@ -2,30 +2,69 @@ services:
   - type: web
     name: marketx-api
     runtime: node
+    region: singapore
+    plan: free
+    autoDeploy: true
+    
     buildCommand: npm install
     startCommand: node server.mjs
+    
+    healthCheckPath: /api/health
+    healthCheckInterval: 30
+    
     envVars:
+      # === Node Environment ===
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
-      - key: JWT_SECRET
-        generateValue: true
+        value: "10000"
+      
+      # === Fyers API Configuration ===
+      # ⚠️ USER MUST SET THESE in Render Dashboard:
       - key: FYERS_APP_ID
         sync: false
       - key: FYERS_SECRET_KEY
         sync: false
       - key: FYERS_REDIRECT_URI
-        sync: false
+        sync: false  # Example: https://your-vercel-app.vercel.app/fyers-login
+      
+      # === URLs ===
+      # ⚠️ USER MUST SET THESE in Render Dashboard:
       - key: FRONTEND_URL
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
+        sync: false  # Example: https://your-vercel-app.vercel.app
       - key: API_PUBLIC_URL
-        sync: false
+        sync: false  # Render will provide: https://your-service.onrender.com
+      
+      # === CORS & Security ===
+      - key: CORS_ORIGINS
+        sync: false  # Example: https://your-vercel-app.vercel.app,http://localhost:5173
       - key: COOKIE_SECURE
         value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      
+      # === Market Data ===
+      - key: MARKET_PROVIDER
+        value: fyers
+      - key: MARKET_LIVE
+        value: "true"
+      
+      # === Fyers Auto-Connect (Optional) ===
+      # After first login: run `node scripts/extract-fyers-token.mjs` locally
+      # Then paste token here for auto-connect without manual login
+      - key: FYERS_ACCESS_TOKEN
+        sync: false
+      
+      # === Optional: AI Services ===
+      - key: OPENROUTER_API_KEY
+        sync: false
+      
+      # === Logging ===
+      - key: LOG_LEVEL
+        value: info
+    
+    # Persistent storage for token file (optional, can use env var instead)
     disk:
       name: fyers-data
-      mountPath: /opt/render/project/src/data
+      mountPath: /opt/render/project/data
       sizeGB: 1
