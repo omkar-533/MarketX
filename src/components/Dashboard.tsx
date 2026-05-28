@@ -58,15 +58,6 @@ function fmtCr(n: number) {
   return `₹${(n / 100).toFixed(0)}Cr`;
 }
 
-function isMarketOpenIST(): boolean {
-  const now = new Date();
-  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  const day = ist.getDay();
-  if (day === 0 || day === 6) return false;
-  const mins = ist.getHours() * 60 + ist.getMinutes();
-  return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
-}
-
 function sparklinePoints(base: number, current: number, len = 12): number[] {
   return Array.from({ length: len }, (_, i) =>
     Math.round((base + ((current - base) * i) / Math.max(len - 1, 1)) * 100) / 100,
@@ -283,7 +274,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [fiiDii, setFiiDii] = useState(getFiiDiiData().slice(-10));
   const [sectors, setSectors] = useState<SectorHeatmapItem[]>([]);
   const [lastSync, setLastSync] = useState(new Date());
-  const marketOpen = isMarketOpenIST();
 
   const oiSnap = useMemo(() => {
     const nifty = indices.find((i) => i.symbol === 'NIFTY');
@@ -337,15 +327,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">
                 Master TradeX
-              </span>
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                  marketOpen
-                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                    : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
-                }`}
-              >
-                {marketOpen ? '● Market Open' : '○ Market Closed'}
               </span>
               <span className="text-[10px] text-slate-500">
                 Updated {lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}

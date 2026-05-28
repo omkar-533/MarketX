@@ -29,10 +29,10 @@ function ProChartHeader({
         }`}
       >
         {resolvedSource === 'broker'
-          ? 'Broker API'
+          ? 'External feed'
           : quote?.dataSource === 'live'
             ? 'NSE · real OHLC'
-            : 'Loading Fyers OHLC…'}
+            : 'Loading chart…'}
       </span>
       {quote && (
         <>

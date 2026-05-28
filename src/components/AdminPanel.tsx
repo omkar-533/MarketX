@@ -128,7 +128,7 @@ export default function AdminPanel() {
         <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
           <h3 className="text-sm font-bold text-[#d4af37] mb-4">Platform Analytics</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[{ label: 'Page Views', value: '125K', color: 'text-[#d4af37]' }, { label: 'Avg Session', value: '8.5 min', color: 'text-emerald-400' }, { label: 'Bounce Rate', value: '32%', color: 'text-red-400' }, { label: 'New Signups', value: '+245', color: 'text-blue-400' }, { label: 'API Calls', value: '2.1M', color: 'text-purple-400' }, { label: 'Alerts Sent', value: '15.2K', color: 'text-orange-400' }, { label: 'Charts Loaded', value: '89K', value2: 'text-[#d4af37]' }, { label: 'Scans Run', value: '45K', color: 'text-pink-400' }].map(s => (
+            {[{ label: 'Page Views', value: '125K', color: 'text-[#d4af37]' }, { label: 'Avg Session', value: '8.5 min', color: 'text-emerald-400' }, { label: 'Bounce Rate', value: '32%', color: 'text-red-400' }, { label: 'New Signups', value: '+245', color: 'text-blue-400' }, { label: 'Data Requests', value: '2.1M', color: 'text-purple-400' }, { label: 'Alerts Sent', value: '15.2K', color: 'text-orange-400' }, { label: 'Charts Loaded', value: '89K', value2: 'text-[#d4af37]' }, { label: 'Scans Run', value: '45K', color: 'text-pink-400' }].map(s => (
               <div key={s.label} className="p-3 bg-[#121520] rounded-lg text-center">
                 <div className="text-lg font-bold text-slate-200">{s.value}</div>
                 <div className="text-[10px] text-slate-600">{s.label}</div>

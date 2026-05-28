@@ -28,7 +28,7 @@ export async function fetchGlobalIndexQuotes() {
     return {
       indices: [],
       source: 'fyers',
-      error: 'Fyers not connected',
+      error: 'TradeX Live not connected',
       fetchedAt: new Date().toISOString(),
     };
   }

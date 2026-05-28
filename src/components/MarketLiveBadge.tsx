@@ -5,14 +5,21 @@ import {
   getMarketConnectionState,
   isMarketStreamActive,
 } from '../services/marketConnection';
+import {
+  BRAND,
+  CONNECT_LIVE_LABEL,
+  CONNECT_PATH,
+  LIVE_DATA_LABEL,
+  sanitizeDisplayMessage,
+} from '../constants/brandLabels';
 
 const WS_LABEL: Record<string, string> = {
-  connected: 'Fyers WS Live',
-  connecting: 'WS Connecting…',
-  reconnecting: 'WS Reconnecting…',
-  token_invalid: 'Fyers Login Required',
-  degraded: 'WS Degraded',
-  disconnected: 'WS Offline',
+  connected: `${BRAND} Live`,
+  connecting: 'Connecting…',
+  reconnecting: 'Reconnecting…',
+  token_invalid: 'Login required',
+  degraded: 'Reconnecting…',
+  disconnected: 'Offline',
 };
 
 export default function MarketLiveBadge() {
@@ -23,65 +30,56 @@ export default function MarketLiveBadge() {
   const { mode, liveCount, error, provider } = getMarketLiveState();
   const wsStatus = getFyersWsStatus();
   const conn = getMarketConnectionState();
-  const isFyers = provider === 'fyers';
   const stream = isMarketStreamActive();
+  const needsConnect =
+    wsStatus === 'token_invalid' || (provider === 'fyers-offline' && !conn.fyersConnected);
 
-  if (wsStatus === 'token_invalid') {
+  if (needsConnect) {
     return (
-      <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/15 text-amber-300"
-        title="Fyers token expired — reconnect in Profile"
+      <a
+        href={CONNECT_PATH}
+        className="text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+        title={CONNECT_LIVE_LABEL}
       >
-        Fyers Login
-      </span>
+        {CONNECT_LIVE_LABEL}
+      </a>
     );
   }
 
   if (mode === 'live') {
-    const label = stream ? WS_LABEL[wsStatus] ?? 'Socket.IO Live' : isFyers ? 'Fyers REST' : 'NSE Live';
+    const label = stream ? WS_LABEL[wsStatus] ?? LIVE_DATA_LABEL : LIVE_DATA_LABEL;
     const ok = wsStatus === 'connected' && stream;
     return (
       <span
         className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
           ok
             ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-            : 'border-gold/30 bg-gold/10 text-gold'
+            : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
         }`}
-        title={`${liveCount} symbols · ${label} · ${conn.provider}`}
+        title={sanitizeDisplayMessage(error || conn.wsLastError || `${liveCount} live symbols`)}
       >
         {label}
       </span>
     );
   }
 
-  if (provider === 'fyers-offline') {
+  if (provider === 'fyers-offline' || !conn.serverOk) {
     return (
       <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300"
-        title="Connect Fyers in Profile"
+        className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-500/30 bg-slate-500/10 text-slate-400"
+        title={CONNECT_LIVE_LABEL}
       >
-        Fyers required
-      </span>
-    );
-  }
-
-  if (mode === 'mixed') {
-    return (
-      <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded border border-gold/30 bg-gold/10 text-gold"
-        title={error || 'Partial live feed'}
-      >
-        Live+ ({liveCount})
+        Setup required
       </span>
     );
   }
 
   return (
     <span
-      className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400"
-      title={error || conn.wsLastError || 'API server offline — npm run dev:all'}
+      className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-600/40 bg-slate-800/40 text-slate-500"
+      title={error || 'Waiting for live stream'}
     >
-      {stream ? WS_LABEL[wsStatus] ?? 'WS wait' : 'API offline'}
+      {stream ? WS_LABEL[wsStatus] ?? 'Syncing…' : 'Offline'}
     </span>
   );
 }

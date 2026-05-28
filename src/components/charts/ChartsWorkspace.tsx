@@ -276,7 +276,7 @@ export default function ChartsWorkspace() {
             <h2 className="text-lg font-bold text-gold">Pro Charts</h2>
             <p className="text-[11px] text-dark-muted flex items-center gap-1">
               <Database className="w-3 h-3" />
-              Real NSE prices when API server runs · your charts, your journal
+              Real NSE prices on TradeX Live · your charts, your journal
             </p>
           </div>
         </div>
@@ -287,7 +287,7 @@ export default function ChartsWorkspace() {
       </div>
       {dataSource === 'broker' && (
         <p className="text-[10px] text-center text-amber-400/90 px-4">
-          Broker API: set <code className="text-gold">VITE_BROKER_CHART_API</code> in .env (e.g. https://your-api.com) — until then platform live feed is used.
+          External chart feed: optional env config — until then TradeX live feed is used.
         </p>
       )}
     </div>

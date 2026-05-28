@@ -304,8 +304,8 @@ export default function MasterAI() {
 
       let responseText = hasImage
         ? hindi
-          ? 'Chart load ho gaya. Server connect karo (npm run server) taaki main trend, support, resistance detail mein bata sakun.'
-          : 'Chart loaded. Connect the API server (npm run server) so I can read trend, support, and resistance from your screenshot.'
+          ? 'Chart load ho gaya. TradeX server connect karo taaki main trend, support, resistance detail mein bata sakun.'
+          : 'Chart loaded. Connect TradeX server so I can read trend, support, and resistance from your screenshot.'
         : generateLocalTradingReply(userText, context, selectedLang.code);
 
       if (aiStatus.configured) {
@@ -328,7 +328,7 @@ export default function MasterAI() {
           responseText = hasImage
             ? hindi
               ? `Chart analysis abhi nahi ho payi: ${msg}. Server restart karke dubara try karo.`
-              : `Could not analyze the chart: ${msg}. Restart npm run server and try again.`
+              : `Could not analyze the chart: ${msg}. Restart npm run dev and try again.`
             : `${generateLocalTradingReply(userText, context, selectedLang.code)}\n\n(${msg})`;
         }
       }
@@ -492,7 +492,7 @@ export default function MasterAI() {
                   : 'Live data + platform — answers like a senior trader'
                 : hindi
                   ? 'सीमित मोड — पूरा AI के लिए server चालू करें'
-                  : 'Limited mode — start API server for full intelligence'}
+                  : 'Limited mode — start TradeX server for full intelligence'}
             </span>
           </div>
           <ShieldCheck className="w-4 h-4 text-[#d4af37] mb-1" />

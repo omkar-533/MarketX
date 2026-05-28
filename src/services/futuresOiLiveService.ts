@@ -95,7 +95,7 @@ export async function loadFuturesAnalyticsSeries(
         oiSource: 'none',
         volumeSource: 'none',
         live: false,
-        message: 'Connect Fyers and run npm run dev:all',
+        message: 'Connect TradeX Live — npm run dev',
       },
     };
   }
@@ -129,7 +129,7 @@ export async function loadFuturesAnalyticsSeries(
           oiSource: 'chain',
           volumeSource: 'none',
           live: false,
-          message: 'Offline OI model — connect Fyers for live candles',
+          message: 'Offline OI model — connect TradeX Live for live candles',
         },
       };
     }
@@ -140,7 +140,7 @@ export async function loadFuturesAnalyticsSeries(
         oiSource,
         volumeSource: 'none',
         live: false,
-        message: 'No data — connect Fyers in Profile',
+        message: 'No data — connect TradeX Live in Profile',
       },
     };
   }
@@ -195,8 +195,8 @@ export async function loadFuturesAnalyticsSeries(
 
   const msg =
     oiSource === 'fyers'
-      ? `Fyers ${period} candles + OI snapshot`
-      : `Fyers ${period} candles · OI from option chain model`;
+      ? `TradeX ${period} candles + OI snapshot`
+      : `TradeX ${period} candles · OI from option chain model`;
 
   return {
     bars: enriched,

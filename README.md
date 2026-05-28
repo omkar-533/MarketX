@@ -8,12 +8,16 @@ Professional options trading platform — live Fyers market data, option chain, 
 npm install
 cp .env.example .env.local
 # Fill FYERS_APP_ID, FYERS_SECRET_KEY, VITE_SUPABASE_* in .env.local
-npm run dev:all
+npm run dev
 ```
 
+`npm run dev` starts **Vite + API server automatically**. The site retries `/api/health` until connected.
+
 - **App:** http://localhost:5173  
-- **API:** http://localhost:5000  
-- **Fyers:** Profile → Connect after server start
+- **API:** http://localhost:5000 (auto-started in dev)  
+- **Fyers:** connect via `.env.local` token or OAuth (server reads `data/fyers-token.json`)
+
+Alternative (explicit both processes): `npm run dev:all`
 
 ## Stack
 

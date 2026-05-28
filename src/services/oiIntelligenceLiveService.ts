@@ -22,7 +22,7 @@ export type OiIntelFeedStatus = {
 };
 
 let futuresCache: FuturesOIData[] = [];
-let feedStatus: OiIntelFeedStatus = { mode: 'offline', message: 'Start npm run dev:all', fyersHistorySymbols: 0 };
+let feedStatus: OiIntelFeedStatus = { mode: 'offline', message: 'Start npm run dev', fyersHistorySymbols: 0 };
 let refreshInFlight: Promise<void> | null = null;
 
 function getBuildupSignal(priceChange: number, oiChange: number): BuildupSignal {
@@ -244,7 +244,7 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
   refreshInFlight = (async () => {
     const conn = getMarketConnectionState();
     if (!conn.serverOk) {
-      feedStatus = { mode: 'offline', message: 'API offline — npm run dev:all', fyersHistorySymbols: 0 };
+      feedStatus = { mode: 'offline', message: 'Offline — npm run dev', fyersHistorySymbols: 0 };
       futuresCache = [];
       return;
     }
@@ -300,12 +300,12 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
       mode: liveQuotes > 0 && histSource ? 'live' : liveQuotes > 0 ? 'mixed' : 'offline',
       message:
         liveQuotes > 0 && histSource
-          ? `${session} · Fyers LTP + history (${histCount})${closedNote}`
+          ? `${session} · TradeX LTP + history (${histCount})${closedNote}`
           : liveQuotes > 0
-            ? `${session} · Fyers live (LTP + option chain OI)${closedNote}`
+            ? `${session} · TradeX Live (LTP + option chain OI)${closedNote}`
             : conn.serverOk
-              ? `${session} — connect Fyers for LTP`
-              : 'Start npm run dev:all',
+              ? `${session} — connect TradeX Live for LTP`
+              : 'Start npm run dev',
       fyersHistorySymbols: histCount,
     };
   })().finally(() => {

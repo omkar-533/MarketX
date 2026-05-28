@@ -1,5 +1,6 @@
 import { fetchMarketHealth, isMarketLiveEnabled } from './marketApiService';
 import type { FyersWsConnectionStatus } from '../types/fyersMarket';
+import { sanitizeDisplayMessage } from '../constants/brandLabels';
 
 type ConnectionState = {
   provider: string;
@@ -46,7 +47,7 @@ export function isMarketStreamActive(): boolean {
 
 export function setFyersWsStatus(status: FyersWsConnectionStatus, lastError?: string) {
   state.wsStatus = status;
-  if (lastError !== undefined) state.wsLastError = lastError;
+  if (lastError !== undefined) state.wsLastError = sanitizeDisplayMessage(lastError);
   state.streamActive = status === 'connected';
 }
 
@@ -56,6 +57,10 @@ export function getFyersWsStatus(): FyersWsConnectionStatus {
 
 let lastHealthAt = 0;
 const HEALTH_TTL_MS = 15_000;
+
+export function resetMarketConnectionCache(): void {
+  lastHealthAt = 0;
+}
 
 export async function refreshMarketConnection(): Promise<ConnectionState> {
   if (!isMarketLiveEnabled()) {

@@ -1,46 +1,51 @@
-import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import http from 'http';
 import { getOpenRouterApiKey, loadServerEnv } from './server/loadEnv.mjs';
+import { getServerConfig } from './server/config/env.mjs';
+import { createCorsMiddleware } from './server/middleware/cors.mjs';
 import marketRoutes from './server/market/routes.mjs';
 import { initMarketProvider } from './server/market/provider.mjs';
+import { bootFyersAutoConnect, startFyersAutoConnectWatch } from './server/market/fyersAutoConnect.mjs';
 import { attachMarketWebSocket } from './server/market/liveWebSocket.mjs';
 import { attachSocketIo } from './server/market/socketIoServer.mjs';
 import fyersRoutes from './server/fyers/routes.mjs';
+import fyersAuthRoutes from './server/auth/fyersAuthRoutes.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS } from './server/masterAi.mjs';
 
 loadServerEnv();
+const config = getServerConfig();
 const marketProvider = initMarketProvider();
 
 const app = express();
-const port = 5000;
+if (config.isProd) {
+  app.set('trust proxy', 1);
+}
 
-app.use(cors());
+app.use(createCorsMiddleware());
+app.use(cookieParser());
 app.use(express.json({ limit: '12mb' }));
 app.use('/api/market', marketRoutes);
 app.use('/api/fyers', fyersRoutes);
+app.use('/api/auth', fyersAuthRoutes);
 
 const apiKey = getOpenRouterApiKey();
 const masterAi = createMasterAiRouter(apiKey);
 
 if (!apiKey) {
-  console.warn(
-    '[Master AI] OPENROUTER_API_KEY missing — add to .env.local: OPENROUTER_API_KEY=sk-or-... then restart npm run server',
-  );
+  console.warn('[Master AI] OPENROUTER_API_KEY missing');
 } else {
   console.log('[Master AI] OpenRouter API key loaded ✓');
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', env: config.nodeEnv });
 });
 
 app.get('/api/chat/status', (_req, res) => {
   res.json({
     configured: masterAi.isConfigured,
-    message: masterAi.isConfigured
-      ? 'Master AI ready'
-      : 'Add OPENROUTER_API_KEY to .env.local and restart npm run server',
+    message: masterAi.isConfigured ? 'Master AI ready' : 'Add OPENROUTER_API_KEY',
     models: MASTER_AI_MODELS.length,
   });
 });
@@ -65,19 +70,21 @@ const httpServer = http.createServer(app);
 
 httpServer.on('error', (err) => {
   if (err?.code === 'EADDRINUSE') {
-    console.error(`\n[Server] Port ${port} is already in use.`);
-    console.error('  Fix: stop other terminals, then run: npm run dev:all\n');
+    console.error(`\n[Server] Port ${config.port} is already in use.\n`);
   } else {
     console.error('[Server]', err);
   }
   process.exit(1);
 });
 
-httpServer.listen(port, () => {
+httpServer.listen(config.port, () => {
   attachMarketWebSocket(httpServer);
   attachSocketIo(httpServer);
-  console.log(`Master TradeX API running on http://localhost:${port}`);
-  console.log(`  Market (${marketProvider}): Socket.IO /socket.io · WS /api/market/ws`);
-  console.log(`  Fyers: GET /api/fyers/status · /api/fyers/login-url`);
-  console.log(`  Master AI: POST /api/chat (OpenRouter — ${MASTER_AI_MODELS.length} models)`);
+  startFyersAutoConnectWatch();
+  void bootFyersAutoConnect();
+  console.log(`Master TradeX API on port ${config.port} (${config.nodeEnv})`);
+  console.log(`  Frontend: ${config.frontendUrl}`);
+  console.log(`  Fyers redirect: ${config.fyersRedirect}`);
+  console.log(`  Auth: GET /api/auth/fyers/login · GET /api/auth/session`);
+  console.log(`  Market: Socket.IO /socket.io (${marketProvider})`);
 });

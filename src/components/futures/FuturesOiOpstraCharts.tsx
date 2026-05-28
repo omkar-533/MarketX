@@ -328,8 +328,7 @@ function FuturesOiOpstraChartsInner({ bars, symbol }: FuturesOiOpstraChartsProps
       >
         <p>No data for {symbol}.</p>
         <p className="text-xs text-center max-w-md">
-          Run <code className="text-gold">npm run server</code> in another terminal, then refresh. Vite proxies{' '}
-          <code className="text-gold">/api</code> → port 5000.
+          Run <code className="text-gold">npm run dev</code> to start TradeX server, then refresh this page.
         </p>
       </div>
     );

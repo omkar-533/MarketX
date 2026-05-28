@@ -4,6 +4,12 @@ import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import { startApiAutoConnect } from './services/apiAutoConnect';
+import FyersConnectBanner from './components/FyersConnectBanner';
+import FyersLoginPage from './components/FyersLoginPage';
+import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
+import { connectFyersAuthCode } from './services/fyersApiService';
+import { useBrokerSession } from './hooks/useBrokerSession';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
@@ -43,12 +49,25 @@ function PageLoader() {
 }
 
 export default function App() {
+  if (window.location.pathname === '/fyers-login') {
+    return <FyersLoginPage />;
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const auth = useAuth();
+  useBrokerSession(auth.isLoggedIn);
+
+  useEffect(() => startApiAutoConnect(), []);
+
+  useEffect(() => {
+    const code = normalizeFyersAuthInput(window.location.href);
+    if (!code) return;
+    void connectFyersAuthCode(code).then(() => clearFyersAuthFromUrl());
+  }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -57,18 +76,21 @@ export default function App() {
   useEffect(() => {
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
-    if (path !== '/' && path !== '') {
-      window.history.replaceState({}, '', '/');
+    if (normalizeFyersAuthInput(window.location.href)) return;
+    if (path !== '/' && path !== '' && !path.includes('fyers')) {
+      const next = `/${window.location.search}${window.location.hash}`;
+      window.history.replaceState({}, '', next);
     }
     if (params.get('fyers') === 'reconnect') {
-      if (auth.isLoggedIn) setShowProfile(true);
       window.history.replaceState({}, '', '/');
     }
   }, [auth.isLoggedIn]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
-    const onTokenInvalid = () => setShowProfile(true);
+    const onTokenInvalid = () => {
+      window.dispatchEvent(new CustomEvent('fyers:token-invalid'));
+    };
     window.addEventListener(FYERS_TOKEN_INVALID_EVENT, onTokenInvalid);
     return () => window.removeEventListener(FYERS_TOKEN_INVALID_EVENT, onTokenInvalid);
   }, [auth.isLoggedIn]);
@@ -248,6 +270,7 @@ export default function App() {
           </Suspense>
         )}
       </div>
+      {auth.isLoggedIn ? <FyersConnectBanner /> : null}
     </AutoRefreshProvider>
   );
 }

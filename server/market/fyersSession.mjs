@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { fyersModel } from 'fyers-api-v3';
+import { sanitizeEnvValue, maskAppId, computeFyersAppIdHash } from '../utils/fyersHash.mjs';
+import { exchangeAuthCodeWithFyers } from '../utils/fyersTokenExchange.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const tokenPath = resolve(root, 'data', 'fyers-token.json');
@@ -36,9 +38,18 @@ function saveTokenToFile(token) {
 }
 
 export function getFyersConfig() {
-  const appId = process.env.FYERS_APP_ID?.trim() || '';
-  const secret = process.env.FYERS_SECRET_KEY?.trim() || '';
-  const redirect = process.env.FYERS_REDIRECT_URI?.trim() || 'http://127.0.0.1:5000/api/fyers/callback';
+  const appId =
+    sanitizeEnvValue(process.env.FYERS_APP_ID) ||
+    sanitizeEnvValue(process.env.FYERS_CLIENT_ID) ||
+    '';
+  const secret = sanitizeEnvValue(process.env.FYERS_SECRET_KEY) || '';
+  const frontend =
+    process.env.FRONTEND_URL?.trim() ||
+    process.env.VITE_DEV_URL?.trim() ||
+    'http://localhost:5173';
+  const redirect =
+    process.env.FYERS_REDIRECT_URI?.trim() ||
+    `${frontend.replace(/\/$/, '')}/fyers-login`;
   return { appId, secret, redirect };
 }
 
@@ -94,7 +105,7 @@ export function getFyersClient() {
   const { appId, redirect } = getFyersConfig();
   const token = getFyersAccessToken();
   if (!appId || !token) {
-    throw new Error('Fyers not configured — set FYERS_APP_ID and connect via /api/fyers/login-url');
+    throw new Error('TradeX Live not configured — connect in Profile');
   }
 
   if (!client) {
@@ -107,31 +118,64 @@ export function getFyersClient() {
   return client;
 }
 
-export function generateFyersAuthUrl() {
+export function generateFyersAuthUrl(options = {}) {
   const { appId, redirect } = getFyersConfig();
-  if (!appId) throw new Error('FYERS_APP_ID missing in .env.local');
+  if (!appId) throw new Error('Live data configuration missing');
   ensureDirs();
   const tmp = new fyersModel({ path: logPath, enableLogging: false });
   tmp.setAppId(appId);
   tmp.setRedirectUrl(redirect);
-  return tmp.generateAuthCode();
+  let url = tmp.generateAuthCode();
+  const forceLogin = options.forceLogin !== false;
+  if (forceLogin) {
+    const sep = url.includes('?') ? '&' : '?';
+    url = `${url}${sep}force_login=true`;
+  }
+  return url;
+}
+
+function assertValidAuthCodeInput(authCode) {
+  const c = String(authCode || '').trim();
+  if (!c) throw new Error('auth_code required');
+  if (/^https?:\/\//i.test(c) && !/auth_code=/i.test(c)) {
+    throw new Error(
+      'Redirect URL mat paste karein. Login ke baad address bar ki URL jisme auth_code=eyJ... ho, woh copy karein.',
+    );
+  }
+  let code = c;
+  const m = c.match(/[?&#]auth_code=([^&#]+)/i);
+  if (m) code = decodeURIComponent(m[1]).trim();
+  const stateIdx = code.indexOf('&state=');
+  if (stateIdx > 0 && /^eyJ/i.test(code)) code = code.slice(0, stateIdx);
+  if (code.includes('/api/fyers/callback') && !/^eyJ/i.test(code)) {
+    throw new Error('Yeh callback URL hai, login code nahi. TradeX login dubara karein.');
+  }
+  if (code.length < 40) {
+    throw new Error('Login code bahut chhota hai — naya code login se lein (ek baar use hota hai).');
+  }
+  return code;
 }
 
 export async function exchangeFyersAuthCode(authCode) {
   const { appId, secret } = getFyersConfig();
   if (!appId || !secret) throw new Error('FYERS_APP_ID and FYERS_SECRET_KEY required');
-  const tmp = new fyersModel({ path: logPath, enableLogging: false });
-  tmp.setAppId(appId);
-  const res = await tmp.generate_access_token({
-    client_id: appId,
-    secret_key: secret,
-    auth_code: String(authCode || '').trim(),
-  });
-  if (res?.s !== 'ok' || !res?.access_token) {
-    throw new Error(res?.message || 'Fyers token exchange failed');
-  }
+  const code = assertValidAuthCodeInput(authCode);
+  const res = await exchangeAuthCodeWithFyers({ appId, secret, authCode: code });
   setFyersAccessToken(res.access_token);
   return res;
+}
+
+/** Safe config check — never exposes secret */
+export function getFyersConfigDiagnostics() {
+  const { appId, secret, redirect } = getFyersConfig();
+  return {
+    appId: maskAppId(appId),
+    appIdFormatOk: Boolean(appId && appId.endsWith('-100')),
+    secretConfigured: secret.length > 0,
+    secretLength: secret.length,
+    redirectUri: redirect,
+    hashPrefix: appId && secret ? computeFyersAppIdHash(appId, secret).slice(0, 12) : '',
+  };
 }
 
 export function getFyersSocketAuth() {

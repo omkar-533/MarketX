@@ -132,7 +132,7 @@ Master TradeX platform (answer using this when user asks about the app):
 - Trading Journal: trades, analytics, calendar, Supabase sync
 - Backtesting, Signals panel, Watchlist, Portfolio, Alerts, News
 - Master AI (this assistant): trading-only copilot
-Live data requires npm run dev:all. Connect Fyers in Profile — platform uses Fyers API only (no Yahoo/external feeds).
+Live data requires npm run dev. Connect TradeX Live in Profile — platform uses TradeX live feed only (no Yahoo/external feeds).
 `;
 
 const NON_TRADING_TERMS = [
@@ -186,7 +186,7 @@ export function buildMasterMarketContext(): MasterMarketContext {
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return {
-    summary: 'Live feed: Fyers/NSE (npm run dev:all)',
+    summary: 'Live feed: TradeX/NSE (npm run dev)',
     nifty: `${fmt(nifty.price)} (${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%)`,
     bankNifty: `${fmt(bank.price)} (${bank.changePercent >= 0 ? '+' : ''}${bank.changePercent.toFixed(2)}%)`,
     pcr,
@@ -239,14 +239,14 @@ export interface MasterChatResponse {
 export async function fetchMasterAiStatus(): Promise<{ configured: boolean; message: string }> {
   try {
     const res = await fetch('/api/chat/status');
-    if (!res.ok) return { configured: false, message: 'Offline — start npm run server' };
+    if (!res.ok) return { configured: false, message: 'Offline — start npm run dev' };
     const data = await res.json();
     return {
       configured: Boolean(data?.configured),
       message: data?.configured ? 'Live intelligence ready' : 'Server running — AI key needed',
     };
   } catch {
-    return { configured: false, message: 'Cannot reach AI server (npm run server)' };
+    return { configured: false, message: 'Cannot reach TradeX server (npm run dev)' };
   }
 }
 

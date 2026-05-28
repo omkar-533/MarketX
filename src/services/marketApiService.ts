@@ -1,3 +1,5 @@
+import { apiFetch } from '../config/api';
+
 export type MarketQuoteDto = {
   symbol: string;
   price: number;
@@ -29,7 +31,7 @@ export type MarketOhlcResponse = {
 
 /** Live market data is always required — no demo/simulated quotes */
 export function isMarketLiveEnabled(): boolean {
-  return true;
+  return import.meta.env.VITE_MARKET_LIVE !== 'false';
 }
 
 export type MarketTickDto = {
@@ -56,7 +58,7 @@ export async function fetchMarketHealth(): Promise<{
   wsReconnectAttempt?: number;
 } | null> {
   try {
-    const res = await fetch('/api/market/health');
+    const res = await apiFetch('/api/market/health');
     if (!res.ok) return null;
     return res.json();
   } catch {

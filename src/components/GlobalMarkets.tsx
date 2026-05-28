@@ -108,7 +108,7 @@ export default function GlobalMarkets() {
             Global Markets
           </h2>
           <p className="text-sm text-slate-500">
-            Fyers API only — India indices · {time.toLocaleTimeString('en-IN')}
+            TradeX Live — India indices · {time.toLocaleTimeString('en-IN')}
           </p>
         </div>
       </div>

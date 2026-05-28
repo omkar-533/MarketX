@@ -14,15 +14,24 @@ import {
   stopFyersSocketClient,
   subscribeFyersMarketSymbols,
   isFyersSocketConnected,
+  forceFyersReconnect,
 } from './fyersSocketClient';
 import type { FyersMarketQuote } from '../types/fyersMarket';
 import { applyStreamQuotes } from './symbolLiveService';
+import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from './apiAutoConnect';
 import { FYERS_TOKEN_INVALID_EVENT } from '../constants/fyersEvents';
 
 export { FYERS_TOKEN_INVALID_EVENT };
 
 let started = false;
 let cleanupFns: (() => void)[] = [];
+let reconnectTimer: ReturnType<typeof setInterval> | null = null;
+
+const RECONNECT_POLL_MS = 10_000;
+
+function subscribeAllFno() {
+  subscribeFyersMarketSymbols(FNO_UNIVERSE.map((i) => i.symbol));
+}
 
 function mapQuoteToStream(q: FyersMarketQuote) {
   return {
@@ -66,12 +75,13 @@ export function startMarketTickStream(): () => void {
 
   const tryConnect = () => {
     void refreshMarketConnection().then((conn) => {
-      if (!conn.serverOk) {
-        setTimeout(tryConnect, 5000);
-        return;
-      }
+      if (!conn.serverOk) return;
       startFyersSocketClient();
-      subscribeFyersMarketSymbols(FNO_UNIVERSE.map((i) => i.symbol));
+      subscribeAllFno();
+      if (!isFyersSocketConnected() && conn.fyersConnected) {
+        forceFyersReconnect();
+        subscribeAllFno();
+      }
     });
   };
 
@@ -79,12 +89,40 @@ export function startMarketTickStream(): () => void {
     onFyersConnectionStatus((s) => {
       setFyersWsStatus(s.status);
       setMarketStreamActive(s.connected);
+      if (s.connected) subscribeAllFno();
+      if (s.status === 'disconnected' && !s.connected) {
+        forceFyersReconnect();
+      }
     }),
     onFyersMarketTicks(onTickPayload),
     onFyersTokenInvalid(handleTokenInvalid),
   );
 
   tryConnect();
+
+  const onApiReady = () => tryConnect();
+  window.addEventListener(API_SERVER_READY_EVENT, onApiReady);
+  window.addEventListener(FYERS_MARKET_LIVE_EVENT, onApiReady);
+  cleanupFns.push(() => {
+    window.removeEventListener(API_SERVER_READY_EVENT, onApiReady);
+    window.removeEventListener(FYERS_MARKET_LIVE_EVENT, onApiReady);
+  });
+
+  reconnectTimer = setInterval(() => {
+    if (!started) return;
+    void refreshMarketConnection().then((conn) => {
+      if (!conn.serverOk) return;
+      if (!isFyersSocketConnected()) {
+        startFyersSocketClient();
+        subscribeAllFno();
+        if (conn.fyersConnected) forceFyersReconnect();
+      }
+    });
+  }, RECONNECT_POLL_MS);
+  cleanupFns.push(() => {
+    if (reconnectTimer) clearInterval(reconnectTimer);
+    reconnectTimer = null;
+  });
 
   return stopMarketTickStream;
 }

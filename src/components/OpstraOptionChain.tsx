@@ -156,7 +156,7 @@ export default function OpstraOptionChain() {
           if (!snap?.rows.length || snap?.source === 'error') {
             setChainError(
               snap?.error ||
-                'Fyers se data nahi mila — Profile mein Connect Fyers karein, phir Refresh.',
+                'Live data nahi mila — Profile se connect karein, phir Refresh.',
             );
             setStrikes([]);
             setChainSource('');
@@ -164,16 +164,16 @@ export default function OpstraOptionChain() {
           }
           setChainSource(
             snap.source?.startsWith('fyers')
-              ? `Fyers${snap.error || snap.source.includes('cached') ? ' (cache)' : ''}`
+              ? `TradeX${snap.error || snap.source.includes('cached') ? ' (cache)' : ''}`
               : snap.source,
           );
           setStrikes(snap.rows);
           if (!snap.rows.length) {
-            setChainError('Fyers option chain khali — 30s wait karke Refresh dabayein.');
+            setChainError('Option chain khali — 30s wait karke Refresh dabayein.');
           }
         })
         .catch(() => {
-          setChainError('Load failed — API server check karein (npm run dev:all).');
+          setChainError('Load failed — TradeX server check karein (npm run dev).');
           setStrikes([]);
         })
         .finally(() => setChainLoading(false));
@@ -321,7 +321,7 @@ export default function OpstraOptionChain() {
                 </option>
               ))
             ) : (
-              <option value="">Fyers expiry load…</option>
+              <option value="">Loading expiries…</option>
             )}
           </select>
 
@@ -484,7 +484,7 @@ export default function OpstraOptionChain() {
                         Refresh
                       </button>
                       <p className="text-[10px] text-dark-muted">
-                        Sirf Fyers API — Profile → Connect Fyers. Rate limit par 30s wait.
+                        TradeX live data — Profile se connect karein. Rate limit par 30s wait.
                       </p>
                     </>
                   ) : (

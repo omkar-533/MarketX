@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: marketx-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FYERS_APP_ID
+        sync: false
+      - key: FYERS_SECRET_KEY
+        sync: false
+      - key: FYERS_REDIRECT_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+    disk:
+      name: fyers-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

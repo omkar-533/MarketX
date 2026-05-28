@@ -11,7 +11,7 @@ export function getActiveMarketProvider() {
 
 export function initMarketProvider() {
   if (!isFyersConfigured()) {
-    console.warn('[Market] Fyers not connected — connect via Profile (no Yahoo fallback)');
+    console.warn('[Market] Fyers offline — save token (one-time OAuth) then restart API');
     return 'fyers-offline';
   }
   const symbols = getFnoSymbolList();
@@ -47,7 +47,7 @@ export function getMarketHealth() {
       provider: 'fyers',
       configured: false,
       websocket: false,
-      message: 'Connect Fyers in Profile — only Fyers API is used',
+      message: 'Connect TradeX Live in Profile',
     };
   }
   return { status: 'ok', ...fyersProvider.getMarketHealth() };
@@ -55,6 +55,6 @@ export function getMarketHealth() {
 
 function requireFyers() {
   if (!isFyersConfigured()) {
-    throw new Error('Fyers API not connected — Profile → Connect Fyers');
+    throw new Error('TradeX Live not connected — Profile → Connect');
   }
 }

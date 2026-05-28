@@ -3,6 +3,7 @@
  * Prevents duplicate connections; exponential-friendly reconnect via socket.io-client.
  */
 import { io, type Socket } from 'socket.io-client';
+import { getWsBaseUrl } from '../config/api';
 import type {
   FyersConnectionPayload,
   FyersMarketQuote,
@@ -38,7 +39,7 @@ let tickBatchTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingTickPayload: FyersTickPayload | null = null;
 
 function socketUrl(): string {
-  return window.location.origin;
+  return getWsBaseUrl() || window.location.origin;
 }
 
 function emitStatus(extra?: Partial<FyersConnectionPayload>) {

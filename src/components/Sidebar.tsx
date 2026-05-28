@@ -216,21 +216,6 @@ export default function Sidebar({
             )}
           </AnimatePresence>
         </button>
-        <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : ''} px-3 py-1`}>
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-[10px] text-emerald-400 font-medium tracking-wider uppercase"
-              >
-                Market Open
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
     </motion.aside>
   );

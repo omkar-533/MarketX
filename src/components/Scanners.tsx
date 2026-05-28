@@ -827,7 +827,7 @@ export default function Scanners({ user }: ScannersProps) {
     setIsScanning(true);
     void refreshUniverse().finally(() => {
       setIsScanning(false);
-      setToast(getScreenerFeedStatus().mode === 'live' ? 'Live scan complete' : 'Scan complete — connect market API for live data');
+      setToast(getScreenerFeedStatus().mode === 'live' ? 'Live scan complete' : 'Scan complete — connect TradeX live for real-time data');
       setActiveTab('scan');
     });
   };

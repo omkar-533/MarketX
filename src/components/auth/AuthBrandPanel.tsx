@@ -155,7 +155,7 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
             Improve with <span className="text-gold">data.</span>
           </h2>
           <p className="text-sm text-slate-500 leading-relaxed mt-3 max-w-sm">
-            Same workspace you use after login — live OI, screeners, journal, and Fyers-connected market data.
+            Same workspace you use after login — live OI, screeners, journal, and TradeX live market data.
           </p>
         </motion.div>
 
@@ -194,7 +194,7 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
           <Shield className="w-3 h-3 text-emerald-500" />
           256-bit TLS
         </span>
-        <span className="auth-trust-badge">Fyers live feed</span>
+        <span className="auth-trust-badge">TradeX live feed</span>
         <span className="auth-trust-badge">NSE · BSE</span>
       </div>
     </div>

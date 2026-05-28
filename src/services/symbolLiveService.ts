@@ -280,7 +280,7 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
       await refreshMarketConnection();
       const health = await fetchMarketHealth();
       if (!health?.status) {
-        setMarketLiveError('Start API: npm run dev:all');
+        setMarketLiveError('Start TradeX server: npm run dev');
         return liveCache;
       }
       setMarketProvider(health.provider || 'fyers');
@@ -291,7 +291,7 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
       }
       return await refreshFromLiveApi();
     } catch {
-      setMarketLiveError('Market API unavailable — npm run dev:all');
+      setMarketLiveError('TradeX offline — npm run dev');
       return liveCache;
     } finally {
       refreshInFlight = null;

@@ -234,7 +234,7 @@ export async function refreshScreenerFeedAsync(opts?: { forceOhlc?: boolean }): 
         liveCount: Math.max(liveCount, apiLive),
         totalCount: stocks.length,
         oiLoaded,
-        message: `Live · ${liveCount} quotes · OI ${oiLoaded}/${stocks.length} (Fyers) · ${feedLabel}`,
+        message: `Live · ${liveCount} quotes · OI ${oiLoaded}/${stocks.length} (TradeX) · ${feedLabel}`,
         ohlcLoaded: ohlcCache.size,
       });
       return feedStatus;
@@ -256,7 +256,7 @@ export async function refreshScreenerFeedAsync(opts?: { forceOhlc?: boolean }): 
         liveCount: 0,
         totalCount: symbols.length,
         serverOk: false,
-        message: 'API offline — npm run dev:all',
+        message: 'Offline — npm run dev',
         ohlcLoaded: 0,
         oiLoaded: 0,
       });
@@ -282,7 +282,7 @@ export async function refreshScreenerFeedAsync(opts?: { forceOhlc?: boolean }): 
       serverOk: true,
       message:
         mode === 'live'
-          ? `Live · ${liveCount} quotes · OI ${oiLoaded}/${stocks.length} (Fyers) · ${feedLabel}`
+          ? `Live · ${liveCount} quotes · OI ${oiLoaded}/${stocks.length} (TradeX) · ${feedLabel}`
           : `Mixed · ${liveCount}/${stocks.length} quotes · OI ${oiLoaded} · ${feedLabel}`,
       ohlcLoaded: ohlcCache.size,
       oiLoaded,

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { fromFyersSymbol, toFyersSymbol } from './fyersSymbolMap.mjs';
 import {
   clearFyersAccessToken,
+  getFyersAccessToken,
   getFyersSocketAuth,
   isFyersConfigured,
   validateFyersToken,
@@ -349,6 +350,13 @@ function wireSocket() {
 async function connectFyersUpstream() {
   if (connecting || socket || intentionalClose) return;
   if (!isFyersConfigured()) {
+    connectionStatus = 'disconnected';
+    emitStatus();
+    return;
+  }
+
+  const token = getFyersAccessToken();
+  if (!token) {
     connectionStatus = 'disconnected';
     emitStatus();
     return;

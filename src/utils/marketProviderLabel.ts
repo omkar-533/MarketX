@@ -1,5 +1,5 @@
 export function getMarketProviderLabel(_provider?: string | null): string {
-  return 'Fyers API';
+  return 'TradeX Live';
 }
 
 export function priceSourceFromMarket(provider?: string | null): 'fyers' | 'none' {

@@ -38,7 +38,7 @@ console.log('  Fyers: Profile → Connect (if not connected)');
 console.log('  Press Ctrl+C to stop both.\n');
 
 run('server', 'server');
-setTimeout(() => run('vite', 'dev'), 1500);
+setTimeout(() => run('vite', 'dev:vite'), 1500);
 
 function shutdown() {
   for (const c of children) {

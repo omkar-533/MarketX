@@ -1,4 +1,5 @@
 import type { OptionData } from '../data/marketData';
+import { sanitizeDisplayMessage } from '../constants/brandLabels';
 import { calculateGreeks } from './optionPricing';
 import type { EnhancedOptionRow } from './optionChainEngine';
 
@@ -161,7 +162,7 @@ export async function fetchOptionChainLive(
         rows: [],
         source: 'error',
         fetchedAt: new Date().toISOString(),
-        error: data?.error ?? `HTTP ${res.status}`,
+        error: sanitizeDisplayMessage(data?.error ?? `HTTP ${res.status}`),
       };
     }
     if (data.source && data.source !== 'fyers' && data.source !== 'fyers-cached') {
@@ -173,7 +174,7 @@ export async function fetchOptionChainLive(
         rows: [],
         source: data.source,
         fetchedAt: new Date().toISOString(),
-        error: 'Option chain sirf Fyers API se available hai.',
+        error: 'Option chain sirf TradeX Live se available hai.',
       };
     }
     const spot =
@@ -205,7 +206,13 @@ export async function fetchOptionChainLive(
       expiryIso: data.expiryIso,
       expiryTimestamp: data.expiryTimestamp,
       fetchedAt: data.fetchedAt ?? new Date().toISOString(),
-      error: data.error ?? (allRows.length ? undefined : data?.error),
+      error: data.error
+        ? sanitizeDisplayMessage(data.error)
+        : allRows.length
+          ? undefined
+          : data?.error
+            ? sanitizeDisplayMessage(data.error)
+            : undefined,
     };
     if (allRows.length) {
       const full: OptionChainSnapshot = { ...snap, rows: allRows };

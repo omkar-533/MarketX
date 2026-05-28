@@ -1,4 +1,5 @@
 import type { IndexData, StockData } from '../data/marketData';
+import { sanitizeDisplayMessage } from '../constants/brandLabels';
 
 export type MarketDataMode = 'live' | 'offline' | 'mixed';
 
@@ -51,7 +52,7 @@ export function setMarketLiveSnapshot(opts: {
   state.stocks = opts.stocks;
   state.liveCount = opts.liveCount;
   state.fetchedAt = new Date().toISOString();
-  state.error = opts.error || '';
+  state.error = opts.error ? sanitizeDisplayMessage(opts.error) : '';
 
   if (opts.liveCount === 0) {
     state.mode = 'offline';
@@ -64,7 +65,7 @@ export function setMarketLiveSnapshot(opts: {
 }
 
 export function setMarketLiveError(message: string) {
-  state.error = message;
+  state.error = sanitizeDisplayMessage(message);
   if (!state.liveCount) state.mode = 'offline';
   notify();
 }

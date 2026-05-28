@@ -108,7 +108,7 @@ export async function refreshPaperTradingLiveQuotes(
       mode: 'offline',
       liveSymbolCount: 0,
       serverOk: false,
-      message: 'API offline — npm run dev:all',
+      message: 'Offline — npm run dev',
       updatedAt: new Date().toISOString(),
     };
   }

@@ -188,7 +188,7 @@ export default function AuthForm({
 
   const subtitles = {
     login: 'Sign in to access your trading workspace.',
-    signup: 'Join traders using live Fyers data on Master TradeX.',
+    signup: 'Join traders using live TradeX market data.',
     otp: otpSent ? `Enter OTP sent to +91 ${phone}` : 'Sign in with your mobile number.',
     forgot: 'We\'ll send a reset link to your email.',
   };

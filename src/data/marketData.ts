@@ -314,7 +314,7 @@ export function getNews(): NewsItem[] {
     return {
       id: String(i + 1),
       title: `${name} ${dir} ${Math.abs(s.changePercent).toFixed(2)}% · ₹${s.price.toLocaleString('en-IN')}`,
-      source: 'Fyers live',
+      source: 'TradeX Live',
       time: 'Live',
       category: 'Markets',
       impact,
@@ -580,7 +580,7 @@ export const STRATEGY_TEMPLATES = [
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   { id: 'free', name: 'Free', price: 0, period: 'month', features: ['Basic Dashboard', '5 Watchlist Items', 'Limited Scanners', 'Basic Charts'], popular: false },
   { id: 'pro', name: 'Pro', price: 499, period: 'month', features: ['All Dashboard Features', 'Unlimited Watchlist', 'All Scanners', 'Advanced Charts', 'Option Chain', 'Strategy Builder', 'Alerts (10/day)', 'Priority Support'], popular: true },
-  { id: 'premium', name: 'Premium', price: 1499, period: 'month', features: ['Everything in Pro', 'Unlimited Alerts', 'API Access', 'Custom Indicators', 'Portfolio Analytics', 'News Feed', 'Earnings Calendar', 'FII/DII Data', 'Dedicated Support', 'Team Collaboration'], popular: false },
+  { id: 'premium', name: 'Premium', price: 1499, period: 'month', features: ['Everything in Pro', 'Unlimited Alerts', 'Data Access', 'Custom Indicators', 'Portfolio Analytics', 'News Feed', 'Earnings Calendar', 'FII/DII Data', 'Dedicated Support', 'Team Collaboration'], popular: false },
 ];
 
 // ============================================================
@@ -843,7 +843,7 @@ function buildFuturesOIRow(symbol: string): FuturesOIData {
     futuresOiChange: 0,
     futuresVolume: getLiveQuote(sym)?.volume ?? 0,
     rolloverPercent: 0,
-    expiryShift: 'Connect API for NSE futures OI',
+    expiryShift: 'Connect TradeX Live for NSE futures OI',
     priceChange,
     signal: 'Neutral',
     trendStrength: 'Weak',
@@ -913,7 +913,7 @@ export function getOIIntelligence(symbol: string = 'NIFTY'): OIIntelligenceData 
   const sidewaysWithRisingOi = Math.abs(changePercent) < 0.25 && totalCeOiChange + totalPeOiChange > 250000;
   const marketOpen = isNseFnoMarketOpen();
   const smartMoneySignal = !chain.length
-    ? 'Load Fyers option chain — npm run dev:all + connect Fyers'
+    ? 'Load option chain — npm run dev + connect TradeX Live'
     : !marketOpen
       ? 'Market closed — OI from last session (no intraday OI change)'
       : oiSpike

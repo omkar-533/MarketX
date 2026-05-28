@@ -3,11 +3,11 @@
  * This module is kept empty to avoid broken imports during migration.
  */
 export async function fetchQuotes() {
-  throw new Error('Yahoo Finance disabled — connect Fyers API');
+  throw new Error('External feeds disabled — connect TradeX Live');
 }
 
 export async function fetchOhlc() {
-  throw new Error('Yahoo Finance disabled — connect Fyers API');
+  throw new Error('External feeds disabled — connect TradeX Live');
 }
 
 export function getMarketHealth() {

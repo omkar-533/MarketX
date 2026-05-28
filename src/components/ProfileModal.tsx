@@ -2,8 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Crown, Shield, LogOut } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import ThemeToggle from './ThemeToggle';
-import FyersConnect from './FyersConnect';
 import { useTheme } from '../context/ThemeContext';
+import { useBrokerSession } from '../hooks/useBrokerSession';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface ProfileModalProps {
 
 export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrade }: ProfileModalProps) {
   const { theme } = useTheme();
+  const { session, startBrokerLogin } = useBrokerSession(Boolean(user));
   if (!user) return null;
 
   const planLabel = user.plan === 'premium' ? 'Premium' : user.plan === 'pro' ? 'Pro' : 'Free';
@@ -63,7 +64,29 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
             </p>
 
             <div className="space-y-3 mb-6">
-              <FyersConnect />
+              <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border gap-3">
+                <div>
+                  <span className="text-sm text-slate-400 block">TradeX live data</span>
+                  <span className="text-[10px] text-slate-500">
+                    {session.brokerConnected
+                      ? session.wsConnected
+                        ? 'Connected · auto-reconnect on'
+                        : 'Token ok · connecting WS…'
+                      : 'Not connected'}
+                  </span>
+                </div>
+                {session.brokerConnected ? (
+                  <span className="text-xs font-bold text-emerald-400">Live</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startBrokerLogin}
+                    className="text-xs font-bold text-gold hover:underline"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
               <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border gap-3">
                 <div>
                   <span className="text-sm text-slate-400 block">Appearance</span>

@@ -30,7 +30,7 @@ export const CHART_INDICATORS: { id: ChartIndicator; label: string }[] = [
 
 export const CHART_DATA_SOURCES = [
   { id: 'platform' as const, label: 'Platform Live', description: 'Master TradeX live quotes + history' },
-  { id: 'broker' as const, label: 'Broker / API', description: 'Your broker feed (configure API)' },
+  { id: 'broker' as const, label: 'External feed', description: 'Optional external chart feed' },
 ];
 
 export function timeframeSeconds(tf: ChartTimeframe): number {

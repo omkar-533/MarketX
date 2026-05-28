@@ -7,7 +7,7 @@ export async function fetchFyersFiiDii(_days = 30) {
     rows: [],
     source: 'fyers',
     available: false,
-    message: 'FII/DII data is not provided by Fyers API',
+    message: 'FII/DII data is not available on TradeX Live',
     fetchedAt: new Date().toISOString(),
   };
 }
