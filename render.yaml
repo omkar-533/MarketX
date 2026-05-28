@@ -62,9 +62,6 @@ services:
       # === Logging ===
       - key: LOG_LEVEL
         value: info
-    
-    # Persistent storage for token file (optional, can use env var instead)
-    disk:
-      name: fyers-data
-      mountPath: /opt/render/project/data
-      sizeGB: 1
+
+    # Token persistence on free plan: set FYERS_ACCESS_TOKEN after first OAuth login.
+    # Paid plan: add a disk mounted at /opt/render/project/src/data in the dashboard.
