@@ -7,7 +7,7 @@ import {
   generateFyersAuthUrl,
   getFyersAccessToken,
   isFyersConfigured,
-  setFyersAccessToken,
+  clearFyersAccessToken,
 } from '../market/fyersSession.mjs';
 import { initMarketProvider, restartFyersMarketStream } from '../market/provider.mjs';
 import { bootFyersAutoConnect } from '../market/fyersAutoConnect.mjs';
@@ -134,7 +134,7 @@ router.get('/session', (req, res) => {
 /** POST /api/auth/logout — disconnect broker */
 router.post('/logout', (_req, res) => {
   shutdownFyersSocket();
-  setFyersAccessToken('');
+  clearFyersAccessToken();
   clearBrokerSessionCookie(res);
   return res.json({ ok: true, brokerConnected: false });
 });

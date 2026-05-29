@@ -20,7 +20,7 @@ export async function exchangeAuthCodeWithFyers({ appId, secret, authCode }) {
     );
   }
   if (secretKey.length < 6) {
-    throw new Error('FYERS_SECRET_KEY too short — copy full App Secret from Fyers dashboard');
+    throw new Error('FYERS_SECRET_KEY too short — copy Secret ID from Fyers dashboard');
   }
 
   const appIdHash = computeFyersAppIdHash(clientId, secretKey);
@@ -45,7 +45,7 @@ export async function exchangeAuthCodeWithFyers({ appId, secret, authCode }) {
 
   if (/invalid app id hash/i.test(msg)) {
     throw new Error(
-      'invalid app id hash — FYERS_SECRET_KEY is wrong. Open https://myapi.fyers.in/dashboard → your app → copy App Secret exactly into .env.local (no quotes/spaces). Regenerate secret if needed. Then restart server and get a NEW auth_code.',
+      'invalid app id hash — FYERS_SECRET_KEY is wrong. Open https://myapi.fyers.in/dashboard → copy App ID + Secret ID exactly into .env.local (no quotes/spaces). App ID and Secret ID must be from the same app. Then get a NEW auth_code.',
     );
   }
   if (/invalid auth/i.test(msg)) {
@@ -105,7 +105,7 @@ export async function refreshAccessTokenWithFyers({ appId, secret, refreshToken,
   }
   if (/invalid app id hash/i.test(msg)) {
     throw new Error(
-      'invalid app id hash — FYERS_SECRET_KEY is wrong. Copy App Secret exactly from Fyers dashboard.',
+      'invalid app id hash — FYERS_SECRET_KEY is wrong. Copy Secret ID from the same app in Fyers dashboard.',
     );
   }
 

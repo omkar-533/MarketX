@@ -1,8 +1,10 @@
 import type { MarketItem } from './paperTradingEngine';
+import { tickGlobalPaperQuote } from './paperTradingGlobalQuotes';
 import { getJournalSymbolSelection } from './equitySymbolService';
 import { fetchMarketHealth, fetchMarketQuotes, type MarketQuoteDto } from './marketApiService';
 import { subscribeLiveSymbols } from './marketTickStream';
 import { getMarketConnectionState } from './marketConnection';
+import { serverOfflineMessage } from '../constants/brandLabels';
 import { getLiveQuote } from './symbolLiveService';
 
 export type PaperFeedMode = 'live' | 'offline' | 'loading';
@@ -56,6 +58,10 @@ function selectionToMarketItem(
 }
 
 export function applyLiveQuoteToMarketItem(item: MarketItem): MarketItem {
+  if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
+    return tickGlobalPaperQuote(item);
+  }
+
   const fno = getLiveQuote(item.symbol);
   if (fno) {
     return {
@@ -108,7 +114,7 @@ export async function refreshPaperTradingLiveQuotes(
       mode: 'offline',
       liveSymbolCount: 0,
       serverOk: false,
-      message: 'Offline — npm run dev',
+      message: serverOfflineMessage(),
       updatedAt: new Date().toISOString(),
     };
   }

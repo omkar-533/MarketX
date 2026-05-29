@@ -148,6 +148,12 @@ async function setEnvVar(serviceId, key, value) {
   });
 }
 
+async function deleteEnvVar(serviceId, key) {
+  await request(`/services/${serviceId}/env-vars/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+  });
+}
+
 async function triggerDeploy(serviceId) {
   await request(`/services/${serviceId}/deploys`, {
     method: 'POST',
@@ -219,18 +225,38 @@ async function main() {
     FYERS_PIN: trim(process.env.FYERS_PIN || existing('FYERS_PIN')),
   };
 
+  const clearTokens =
+    trim(process.env.RENDER_CLEAR_FYERS_TOKENS) === '1' ||
+    trim(process.env.RENDER_CLEAR_FYERS_TOKENS) === 'true';
+
   if (!vars.FYERS_APP_ID) fail('FYERS_APP_ID missing');
   if (!vars.FYERS_SECRET_KEY) fail('FYERS_SECRET_KEY missing');
-  if (!vars.FYERS_ACCESS_TOKEN) fail('FYERS_ACCESS_TOKEN missing (run local connect first)');
-  if (vars.FYERS_SECRET_KEY.length < 16) {
-    console.warn(
-      '[render-sync] WARNING: FYERS_SECRET_KEY looks short. Use full App Secret (not Secret ID).',
-    );
+  if (clearTokens) {
+    delete vars.FYERS_ACCESS_TOKEN;
+    delete vars.FYERS_REFRESH_TOKEN;
+    console.log('[render-sync] Will remove old FYERS tokens on Render (new app — re-login required)');
+  } else if (!vars.FYERS_ACCESS_TOKEN) {
+    fail('FYERS_ACCESS_TOKEN missing (run local connect first, or set RENDER_CLEAR_FYERS_TOKENS=1)');
+  }
+  if (vars.FYERS_SECRET_KEY.length < 6) {
+    console.warn('[render-sync] WARNING: FYERS_SECRET_KEY looks invalid.');
   }
 
   const entries = Object.entries(vars).filter(([, v]) => Boolean(v));
 
   console.log('\n[render-sync] Updating env vars on Render…');
+  if (clearTokens) {
+    for (const k of ['FYERS_ACCESS_TOKEN', 'FYERS_REFRESH_TOKEN']) {
+      try {
+        await deleteEnvVar(serviceId, k);
+        console.log(`[render-sync] deleted ${k}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/404/.test(msg)) console.log(`[render-sync] ${k} already absent`);
+        else throw err;
+      }
+    }
+  }
   for (const [k, v] of entries) {
     await setEnvVar(serviceId, k, v);
     console.log(`[render-sync] set ${k} = ${mask(v)}`);

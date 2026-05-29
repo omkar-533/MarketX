@@ -114,6 +114,15 @@ export const FNO_STOCKS_ALL: FnoInstrument[] = [...FNO_STOCKS, ...FNO_STOCKS_EXT
 
 export const FNO_UNIVERSE: FnoInstrument[] = [...FNO_INDICES, ...FNO_STOCKS_ALL];
 
+/** Fast boot — indices + liquid F&O (full universe loads on demand) */
+export const CORE_LIVE_SYMBOLS: string[] = [
+  ...new Set([
+    ...FNO_INDICES.map((i) => i.symbol),
+    ...FNO_STOCKS.slice(0, 32).map((i) => i.symbol),
+    'VIX',
+  ]),
+];
+
 const bySymbol = new Map(FNO_UNIVERSE.map((i) => [i.symbol, i]));
 
 export function getFnoInstrument(symbol: string): FnoInstrument | undefined {

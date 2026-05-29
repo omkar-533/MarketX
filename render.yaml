@@ -6,7 +6,7 @@ services:
     plan: free
     autoDeploy: true
     
-    buildCommand: npm install
+    buildCommand: npm ci && npm run build
     startCommand: node server.mjs
     
     healthCheckPath: /api/health
@@ -26,18 +26,15 @@ services:
       - key: FYERS_SECRET_KEY
         sync: false
       - key: FYERS_REDIRECT_URI
-        sync: false  # Example: https://your-vercel-app.vercel.app/fyers-login
+        sync: false  # https://YOUR-SERVICE.onrender.com/api/auth/fyers/callback
       
-      # === URLs ===
-      # ⚠️ USER MUST SET THESE in Render Dashboard:
+      # === URLs (single Render deploy: use same URL for all three) ===
       - key: FRONTEND_URL
-        sync: false  # Example: https://your-vercel-app.vercel.app
+        sync: false  # https://YOUR-SERVICE.onrender.com
       - key: API_PUBLIC_URL
-        sync: false  # Render will provide: https://your-service.onrender.com
-      
-      # === CORS & Security ===
+        sync: false  # https://YOUR-SERVICE.onrender.com
       - key: CORS_ORIGINS
-        sync: false  # Example: https://your-vercel-app.vercel.app,http://localhost:5173
+        sync: false  # https://YOUR-SERVICE.onrender.com,http://localhost:5173
       - key: COOKIE_SECURE
         value: "true"
       - key: JWT_SECRET

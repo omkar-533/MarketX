@@ -33,6 +33,8 @@ import {
   effectiveOrderPrice,
   groupUnrealizedPnl,
   instrumentFromDraft,
+  formatPaperPrice,
+  globalToMarketItem,
   journalToMarketItem,
   legsToPositions,
   marginForLeg,
@@ -46,6 +48,7 @@ import {
   totalEntryCostForOrder,
   watchlistKey,
   type MarketItem,
+  type PaperAssetMarket,
   type PaperOrder,
   type PaperOrderDraft,
   type PaperState,
@@ -65,8 +68,16 @@ import {
   refreshPaperTradingLiveQuotes,
   type PaperQuoteFeedStatus,
 } from '../services/paperTradingLiveService';
+import type { GlobalInstrumentSelection } from '../services/globalInstrumentService';
+import GlobalInstrumentPicker from './journal/GlobalInstrumentPicker';
 import JournalSymbolPicker from './journal/JournalSymbolPicker';
 import PaperOrderModal from './paper/PaperOrderModal';
+
+const PAPER_INSTRUMENT_MARKETS: { id: PaperAssetMarket; label: string; hint: string }[] = [
+  { id: 'equity', label: 'Indian F&O', hint: 'NSE · BSE · indices' },
+  { id: 'crypto', label: 'Crypto', hint: 'BTC, ETH, …' },
+  { id: 'forex', label: 'Forex', hint: 'FX · Gold' },
+];
 
 interface PaperTradingProps {
   user?: User | null;
@@ -166,7 +177,10 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     message: 'Connecting to market feed…',
     updatedAt: new Date().toISOString(),
   });
-  const [addWatchDraft, setAddWatchDraft] = useState<JournalSymbolSelection | null>(null);
+  const [instrumentMarket, setInstrumentMarket] = useState<PaperAssetMarket>('equity');
+  const [addWatchMarket, setAddWatchMarket] = useState<PaperAssetMarket>('equity');
+  const [addWatchEquity, setAddWatchEquity] = useState<JournalSymbolSelection | null>(null);
+  const [addWatchGlobal, setAddWatchGlobal] = useState<GlobalInstrumentSelection | null>(null);
   const [orderSide, setOrderSide] = useState<Side>('BUY');
   const [orderDraft, setOrderDraft] = useState<PaperOrderDraft>(() =>
     defaultOrderDraft(
@@ -518,8 +532,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     setStatusMessage('Order cancelled. Blocked margin released.');
   };
 
-  const addToWatchlist = (sel: JournalSymbolSelection): boolean => {
-    const item = journalToMarketItem(sel);
+  const addMarketItemToWatchlist = (item: MarketItem): boolean => {
     let added = false;
     setPaperState((prev) => {
       if (prev.watchlist.some((w) => watchlistKey(w) === watchlistKey(item))) {
@@ -529,9 +542,11 @@ export default function PaperTrading({ user }: PaperTradingProps) {
       return { ...prev, watchlist: [item, ...prev.watchlist], lastSync: new Date().toISOString() };
     });
     setSelectedSymbol(item);
-    setPickerSymbol(sel.symbol);
+    setPickerSymbol(item.symbol);
+    const tag =
+      item.assetMarket === 'crypto' ? 'Crypto' : item.assetMarket === 'forex' ? 'Forex' : item.exchange;
     setStatusMessage(
-      added ? `${item.symbol} (${item.exchange}) added to watchlist.` : `${item.symbol} is already in watchlist.`,
+      added ? `${item.symbol} (${tag}) added to watchlist.` : `${item.symbol} is already in watchlist.`,
     );
     return added;
   };
@@ -552,14 +567,44 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   };
 
   const confirmAddWatchlist = () => {
-    if (!addWatchDraft) {
+    const item =
+      addWatchMarket === 'equity'
+        ? addWatchEquity
+          ? journalToMarketItem(addWatchEquity)
+          : null
+        : addWatchGlobal
+          ? globalToMarketItem(addWatchGlobal)
+          : null;
+    if (!item) {
       setStatusMessage('Search and select a symbol first.');
       return;
     }
-    addToWatchlist(addWatchDraft);
+    addMarketItemToWatchlist(item);
     setShowAddWatchlist(false);
-    setAddWatchDraft(null);
+    setAddWatchEquity(null);
+    setAddWatchGlobal(null);
   };
+
+  const renderInstrumentMarketTabs = (
+    value: PaperAssetMarket,
+    onChange: (m: PaperAssetMarket) => void,
+  ) => (
+    <div className="flex flex-wrap gap-1 p-1 bg-[#121520] rounded-lg border border-[#1a1f2e] mb-2">
+      {PAPER_INSTRUMENT_MARKETS.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          onClick={() => onChange(m.id)}
+          className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all ${
+            value === m.id ? 'bg-[#d4af37] text-[#0a0f1a]' : 'text-slate-500 hover:text-slate-200'
+          }`}
+          title={m.hint}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const executeHedgeStrategy = (group: PaperStrategyGroup): { ok: boolean; message: string } => {
     const marginRequired = group.legs.reduce((s, leg) => s + marginForLeg(leg), 0);
@@ -798,7 +843,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
-                    <div className="font-mono text-sm font-bold text-slate-200">₹{item.price.toFixed(2)}</div>
+                    <div className="font-mono text-sm font-bold text-slate-200">
+                      {formatPaperPrice(item, item.price)}
+                    </div>
                     <div className={`text-[10px] font-bold flex items-center justify-end gap-1 ${item.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {item.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                       {Math.abs(item.changePercent).toFixed(2)}%
@@ -817,24 +864,48 @@ export default function PaperTrading({ user }: PaperTradingProps) {
         <div className="flex-1 flex flex-col bg-[#080a12]">
           <div className="p-4 border-b border-[#1a1f2e] flex flex-wrap items-center justify-between gap-3 bg-[#0b0e17]">
             <div className="flex flex-wrap items-center gap-4 flex-1 min-w-0">
-              <div className="min-w-[220px] max-w-[320px]">
-                <JournalSymbolPicker
-                  selectedSymbol={pickerSymbol}
-                  onSelect={(sel) => {
-                    const item = journalToMarketItem(sel);
-                    setPickerSymbol(sel.symbol);
-                    setSelectedSymbol(item);
-                  }}
-                />
+              <div className="min-w-[220px] max-w-[360px]">
+                {renderInstrumentMarketTabs(instrumentMarket, setInstrumentMarket)}
+                {instrumentMarket === 'equity' ? (
+                  <JournalSymbolPicker
+                    selectedSymbol={pickerSymbol}
+                    onSelect={(sel) => {
+                      const item = journalToMarketItem(sel);
+                      setPickerSymbol(sel.symbol);
+                      setSelectedSymbol(item);
+                    }}
+                  />
+                ) : (
+                  <GlobalInstrumentPicker
+                    market={instrumentMarket}
+                    selectedSymbol={pickerSymbol}
+                    onSelect={(sel) => {
+                      const item = globalToMarketItem(sel);
+                      setPickerSymbol(sel.symbol);
+                      setSelectedSymbol(item);
+                    }}
+                  />
+                )}
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2 flex-wrap">
                   {currentSymbol?.symbol ?? 'Select Instrument'}
-                  <span className="text-xs font-normal text-slate-500 bg-[#1a1f2e] px-2 py-0.5 rounded">{currentSymbol?.exchange ?? currentSymbol?.type ?? 'MARKET'}</span>
+                  <span className="text-xs font-normal text-slate-500 bg-[#1a1f2e] px-2 py-0.5 rounded">
+                    {currentSymbol?.assetMarket === 'crypto'
+                      ? 'Crypto'
+                      : currentSymbol?.assetMarket === 'forex'
+                        ? 'Forex'
+                        : currentSymbol?.exchange ?? currentSymbol?.type ?? 'MARKET'}
+                  </span>
                   {currentSymbol?.isFno && <span className="text-[10px] text-blue-300">F&O lot {currentSymbol.lotSize}</span>}
+                  {(currentSymbol?.assetMarket === 'crypto' || currentSymbol?.assetMarket === 'forex') && (
+                    <span className="text-[10px] text-amber-300/90">Simulated quotes</span>
+                  )}
                 </h3>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-2xl font-mono font-bold text-white">₹{currentPriceForSelection.toFixed(2)}</span>
+                  <span className="text-2xl font-mono font-bold text-white">
+                    {formatPaperPrice(currentSymbol, currentPriceForSelection)}
+                  </span>
                   {currentSymbol && (
                     <span className={`text-sm font-bold flex items-center gap-1 ${currentSymbol.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {currentSymbol.change >= 0 ? '+' : ''}{currentSymbol.change.toFixed(2)} ({currentSymbol.changePercent.toFixed(2)}%)
@@ -846,15 +917,21 @@ export default function PaperTrading({ user }: PaperTradingProps) {
               <div className="grid grid-cols-3 gap-6 text-xs">
                 <div>
                   <span className="text-slate-500 block">Open</span>
-                  <span className="font-mono text-slate-300">₹{(currentSymbol?.open ?? currentPriceForSelection).toFixed(2)}</span>
+                  <span className="font-mono text-slate-300">
+                    {formatPaperPrice(currentSymbol, currentSymbol?.open ?? currentPriceForSelection)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">High</span>
-                  <span className="font-mono text-slate-300">₹{(currentSymbol?.high ?? currentPriceForSelection).toFixed(2)}</span>
+                  <span className="font-mono text-slate-300">
+                    {formatPaperPrice(currentSymbol, currentSymbol?.high ?? currentPriceForSelection)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Low</span>
-                  <span className="font-mono text-slate-300">₹{(currentSymbol?.low ?? currentPriceForSelection).toFixed(2)}</span>
+                  <span className="font-mono text-slate-300">
+                    {formatPaperPrice(currentSymbol, currentSymbol?.low ?? currentPriceForSelection)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1179,14 +1256,37 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-slate-500">Search NSE, BSE, Indices, or F&O — then add.</p>
-              <JournalSymbolPicker
-                selectedSymbol={addWatchDraft?.symbol ?? ''}
-                onSelect={(sel) => setAddWatchDraft(sel)}
-              />
-              {addWatchDraft && (
+              <p className="text-xs text-slate-500">Indian F&O, crypto, or forex — search and add.</p>
+              {renderInstrumentMarketTabs(addWatchMarket, (m) => {
+                setAddWatchMarket(m);
+                setAddWatchEquity(null);
+                setAddWatchGlobal(null);
+              })}
+              {addWatchMarket === 'equity' ? (
+                <JournalSymbolPicker
+                  selectedSymbol={addWatchEquity?.symbol ?? ''}
+                  onSelect={(sel) => {
+                    setAddWatchEquity(sel);
+                    setAddWatchGlobal(null);
+                  }}
+                />
+              ) : (
+                <GlobalInstrumentPicker
+                  market={addWatchMarket}
+                  selectedSymbol={addWatchGlobal?.symbol ?? ''}
+                  onSelect={(sel) => {
+                    setAddWatchGlobal(sel);
+                    setAddWatchEquity(null);
+                  }}
+                />
+              )}
+              {(addWatchEquity || addWatchGlobal) && (
                 <div className="text-xs text-slate-400 bg-[#121520] rounded-lg px-3 py-2 border border-[#1a1f2e]">
-                  {addWatchDraft.symbol} · {addWatchDraft.exchange} · ₹{addWatchDraft.price.toLocaleString('en-IN')}
+                  {addWatchMarket === 'equity' && addWatchEquity
+                    ? `${addWatchEquity.symbol} · ${addWatchEquity.exchange} · ${formatPaperPrice(journalToMarketItem(addWatchEquity), addWatchEquity.price)}`
+                    : addWatchGlobal
+                      ? `${addWatchGlobal.symbol} · ${addWatchGlobal.market} · ${formatPaperPrice(globalToMarketItem(addWatchGlobal), globalToMarketItem(addWatchGlobal).price)}`
+                      : ''}
                 </div>
               )}
               <div className="flex gap-2">
@@ -1200,7 +1300,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                 <button
                   type="button"
                   onClick={confirmAddWatchlist}
-                  disabled={!addWatchDraft}
+                  disabled={addWatchMarket === 'equity' ? !addWatchEquity : !addWatchGlobal}
                   className="flex-1 py-2.5 rounded-lg bg-[#d4af37] text-[#0a0f1a] font-bold text-sm disabled:opacity-40"
                 >
                   Add

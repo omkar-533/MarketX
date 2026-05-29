@@ -109,9 +109,6 @@ export function startMarketTickStream(): () => void {
       setFyersWsStatus(s.status);
       setMarketStreamActive(s.connected);
       if (s.connected) subscribeAllFnoDeferred();
-      if (s.status === 'disconnected' && !s.connected) {
-        forceFyersReconnect();
-      }
     }),
     onFyersMarketTicks(onTickPayload),
     onFyersTokenInvalid(handleTokenInvalid),

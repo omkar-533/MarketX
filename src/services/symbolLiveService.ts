@@ -3,6 +3,7 @@ import {
   FNO_INDICES,
   FNO_STOCKS,
   FNO_UNIVERSE,
+  CORE_LIVE_SYMBOLS,
   getDefaultIv,
   getFnoInstrument,
   getStrikeIntervalForSpot,
@@ -19,7 +20,10 @@ import {
   getMarketConnectionState,
   isMarketStreamActive,
   refreshMarketConnection,
+  resetMarketConnectionCache,
 } from './marketConnection';
+import { serverOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
+import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from './apiAutoConnect';
 import { setMarketLiveError, setMarketLiveSnapshot, setMarketProvider } from './marketLiveStore';
 
 function isLiveFeedActive(): boolean {
@@ -54,7 +58,7 @@ let liveCache: LiveSymbolQuote[] = [];
 const extraLiveCache = new Map<string, LiveSymbolQuote>();
 let refreshInFlight: Promise<LiveSymbolQuote[]> | null = null;
 
-const PRIORITY_SYMBOLS = [...new Set(FNO_UNIVERSE.map((i) => i.symbol))];
+const PRIORITY_SYMBOLS = CORE_LIVE_SYMBOLS;
 
 function normalizeQuoteChange(q: {
   price: number;
@@ -280,7 +284,7 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
       await refreshMarketConnection();
       const health = await fetchMarketHealth();
       if (!health?.status) {
-        setMarketLiveError('Start TradeX server: npm run dev');
+        setMarketLiveError(serverOfflineMessage());
         return liveCache;
       }
       setMarketProvider(health.provider || 'fyers');
@@ -291,7 +295,7 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
       }
       return await refreshFromLiveApi();
     } catch {
-      setMarketLiveError('TradeX offline — npm run dev');
+      setMarketLiveError(serverUnreachableMessage());
       return liveCache;
     } finally {
       refreshInFlight = null;
@@ -343,5 +347,20 @@ export function getSymbolMetaFromQuote(quote: LiveSymbolQuote) {
     sector: quote.sector,
   };
 }
+
+let serverListenersBound = false;
+
+export function bindLiveServerListeners(): void {
+  if (serverListenersBound || typeof window === 'undefined') return;
+  serverListenersBound = true;
+  const onServerReady = () => {
+    resetMarketConnectionCache();
+    void refreshFnoLiveQuotesAsync();
+  };
+  window.addEventListener(API_SERVER_READY_EVENT, onServerReady);
+  window.addEventListener(FYERS_MARKET_LIVE_EVENT, onServerReady);
+}
+
+bindLiveServerListeners();
 
 export { FNO_INDICES, FNO_STOCKS, FNO_UNIVERSE };

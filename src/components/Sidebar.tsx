@@ -22,7 +22,7 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'ltpcalc', label: 'LTP Calculator', icon: Gauge },
+  { id: 'ltpcalc', label: 'LPT Master', icon: Gauge },
   { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
   { id: 'chart', label: 'Pro Charts', icon: CandlestickChart },
   { id: 'optionchain', label: 'Option Chain', icon: Layers },

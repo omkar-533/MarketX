@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ExternalLink, Link2 } from 'lucide-react';
+import { apiFetch } from '../config/api';
 import {
   connectFyersAuthCode,
   fetchFyersLoginUrl,
@@ -31,7 +32,7 @@ export default function FyersLoginPage() {
 
   useEffect(() => {
     void refresh();
-    void fetch('/api/health')
+    void apiFetch('/api/health')
       .then((r) => {
         setApiOffline(!r.ok);
         if (!r.ok) setMsg(SERVER_OFFLINE_MSG);

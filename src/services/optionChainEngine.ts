@@ -68,7 +68,7 @@ export function buildOptionChain(
   strikeWindow = 21,
 ): EnhancedOptionRow[] {
   const sym = symbol.trim().toUpperCase();
-  void fetchOptionChainLive(sym, expiry);
+  void fetchOptionChainLive(sym, expiry, { strikeWindow: strikeWindow || 0 });
   return getCachedOptionChain(sym, expiry, strikeWindow);
 }
 

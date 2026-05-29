@@ -50,10 +50,10 @@ You'll see variables already from `render.yaml`. Now fill in the **manual ones**
 ### Required Variables:
 
 1. **FYERS_APP_ID**
-   - Value: `XCHF9SYUDJ-100`
+   - Value: `UYCSJH0UIQ-100`
 
 2. **FYERS_SECRET_KEY**
-   - Value: `XS7Z684B89`
+   - Value: `O2KU1I29DR`
    - **Type**: Change to **"Secret"** (click the lock icon)
 
 3. **FYERS_REDIRECT_URI**

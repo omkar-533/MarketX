@@ -9,3 +9,5 @@ data/fyers-logs/
 .DS_Store
 tmptest.txt
 .vscode/
+
+.vercel

@@ -1,9 +1,16 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { warmupApiServer } from "./services/apiAutoConnect";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./context/ThemeContext";
+
+try {
+  warmupApiServer();
+} catch (err) {
+  console.warn("[main] API warmup skipped:", err);
+}
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

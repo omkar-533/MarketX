@@ -1,3 +1,4 @@
+import { serverOfflineMessage } from '../constants/brandLabels';
 import { buildOptionChain } from './optionChainEngine';
 import { fetchFnoHistory, fetchMarketOhlc, isMarketLiveEnabled } from './marketApiService';
 import { priceSourceFromMarket } from '../utils/marketProviderLabel';
@@ -95,7 +96,7 @@ export async function loadFuturesAnalyticsSeries(
         oiSource: 'none',
         volumeSource: 'none',
         live: false,
-        message: 'Connect TradeX Live — npm run dev',
+        message: serverOfflineMessage(),
       },
     };
   }

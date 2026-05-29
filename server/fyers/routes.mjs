@@ -34,8 +34,8 @@ router.get('/check-config', (_req, res) => {
   const issues = [];
   if (!d.appIdFormatOk) issues.push('FYERS_APP_ID must end with -100');
   if (!d.secretConfigured) issues.push('FYERS_SECRET_KEY missing in .env.local');
-  if (d.secretConfigured && d.secretLength < 16) {
-    issues.push('FYERS_SECRET_KEY looks too short — use full App Secret (not Secret ID)');
+  if (d.secretConfigured && d.secretLength < 6) {
+    issues.push('FYERS_SECRET_KEY missing or invalid — copy Secret ID from Fyers dashboard');
   }
   if (process.env.NODE_ENV === 'production' && /localhost|127\.0\.0\.1/i.test(d.redirectUri || '')) {
     issues.push(

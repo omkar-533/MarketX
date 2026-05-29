@@ -49,9 +49,8 @@ export async function connectFyersAccessToken(
   accessToken: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch('/api/fyers/access-token', {
+    const res = await apiFetch('/api/fyers/access-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ access_token: accessToken.trim() }),
     });
     const data = await res.json().catch(() => ({}));

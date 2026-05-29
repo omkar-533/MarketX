@@ -146,7 +146,14 @@ export default function AuthForm({
         setStatusMessage('OTP sent successfully.');
       } else await onOtpLogin(phone, otp);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      const msg =
+        error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      if (msg.includes('confirmation link') || msg.includes('Check your email')) {
+        setStatusMessage(msg);
+        setErrorMessage('');
+      } else {
+        setErrorMessage(msg);
+      }
     } finally {
       setIsLoading(false);
     }

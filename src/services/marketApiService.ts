@@ -58,9 +58,24 @@ export async function fetchMarketHealth(): Promise<{
   wsReconnectAttempt?: number;
 } | null> {
   try {
-    const res = await apiFetch('/api/market/health');
+    const res = await apiFetch('/api/market/health', undefined, { retries: 1, timeoutMs: 20_000 });
+    if (res.ok) return res.json();
+  } catch {
+    /* fall through to lightweight /api/health */
+  }
+
+  try {
+    const res = await apiFetch('/api/health', undefined, { retries: 1, timeoutMs: 15_000 });
     if (!res.ok) return null;
-    return res.json();
+    const data = await res.json();
+    const live = data?.live ?? {};
+    return {
+      status: data?.status === 'ok' ? 'ok' : 'degraded',
+      provider: live.fyersConfigured ? 'fyers' : 'fyers-offline',
+      configured: Boolean(live.fyersConfigured),
+      websocket: Boolean(live.wsConnected),
+      wsStatus: live.wsStatus,
+    };
   } catch {
     return null;
   }
@@ -69,7 +84,7 @@ export async function fetchMarketHealth(): Promise<{
 export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDto[] | null> {
   try {
     const q = symbols?.length ? `?symbols=${encodeURIComponent(symbols.join(','))}` : '';
-    const res = await fetch(`/api/market/ticks${q}`);
+    const res = await apiFetch(`/api/market/ticks${q}`);
     if (!res.ok) return null;
     const data = await res.json();
     return data?.quotes ?? null;
@@ -81,7 +96,7 @@ export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDt
 export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotesResponse | null> {
   if (!symbols.length) return null;
   try {
-    const res = await fetch(`/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`);
+    const res = await apiFetch(`/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`);
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -97,7 +112,7 @@ export async function fetchMarketOhlc(
   try {
     const q = new URLSearchParams({ symbol, interval });
     if (range) q.set('range', range);
-    const res = await fetch(`/api/market/ohlc?${q}`);
+    const res = await apiFetch(`/api/market/ohlc?${q}`);
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -153,7 +168,7 @@ export type FnoOiBatchResponse = {
 export async function fetchFnoOiBatch(symbols: string[]): Promise<FnoOiBatchResponse | null> {
   if (!symbols.length) return null;
   try {
-    const res = await fetch(
+    const res = await apiFetch(
       `/api/market/fno-oi?symbols=${encodeURIComponent(symbols.join(','))}`,
     );
     if (!res.ok) return null;
@@ -195,7 +210,7 @@ export type GlobalIndexQuote = {
 
 export async function fetchFiiDii(days = 30): Promise<{ rows: FiiDiiApiRow[]; source: string } | null> {
   try {
-    const res = await fetch(`/api/market/fii-dii?days=${days}`);
+    const res = await apiFetch(`/api/market/fii-dii?days=${days}`);
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -208,7 +223,7 @@ export async function fetchGlobalQuotes(): Promise<{
   source: string;
 } | null> {
   try {
-    const res = await fetch('/api/market/global-quotes');
+    const res = await apiFetch('/api/market/global-quotes');
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -223,7 +238,7 @@ export async function fetchFnoHistory(
 ): Promise<FnoHistoryResponse | null> {
   try {
     const q = new URLSearchParams({ symbol, from, to });
-    const res = await fetch(`/api/market/fno-history?${q}`);
+    const res = await apiFetch(`/api/market/fno-history?${q}`);
     if (!res.ok) return null;
     return res.json();
   } catch {

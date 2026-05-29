@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react';
+import { useBrokerSession } from '../hooks/useBrokerSession';
 import { getMarketLiveState, subscribeMarketLive } from '../services/marketLiveStore';
+import {
+  API_SERVER_READY_EVENT,
+  API_CONNECT_STATUS_EVENT,
+  isApiServerReady,
+} from '../services/apiAutoConnect';
 import {
   getFyersWsStatus,
   getMarketConnectionState,
   isMarketStreamActive,
+  subscribeMarketConnection,
+  MARKET_CONNECTION_EVENT,
 } from '../services/marketConnection';
 import {
   BRAND,
   CONNECT_LIVE_LABEL,
   CONNECT_PATH,
   LIVE_DATA_LABEL,
+  hasRemoteApi,
   sanitizeDisplayMessage,
 } from '../constants/brandLabels';
 
@@ -24,15 +33,39 @@ const WS_LABEL: Record<string, string> = {
 
 export default function MarketLiveBadge() {
   const [, bump] = useState(0);
+  const [wakeAttempt, setWakeAttempt] = useState(0);
 
   useEffect(() => subscribeMarketLive(() => bump((n) => n + 1)), []);
 
+  useEffect(() => {
+    const onStatus = (e: Event) => {
+      const d = (e as CustomEvent<{ attempt?: number }>).detail;
+      if (d?.attempt) setWakeAttempt(d.attempt);
+      bump((n) => n + 1);
+    };
+    const onConn = () => bump((n) => n + 1);
+    window.addEventListener(API_CONNECT_STATUS_EVENT, onStatus);
+    window.addEventListener(API_SERVER_READY_EVENT, onConn);
+    window.addEventListener(MARKET_CONNECTION_EVENT, onConn);
+    const unsub = subscribeMarketConnection(onConn);
+    return () => {
+      window.removeEventListener(API_CONNECT_STATUS_EVENT, onStatus);
+      window.removeEventListener(API_SERVER_READY_EVENT, onConn);
+      window.removeEventListener(MARKET_CONNECTION_EVENT, onConn);
+      unsub();
+    };
+  }, []);
+
+  const { session } = useBrokerSession(true);
   const { mode, liveCount, error, provider } = getMarketLiveState();
   const wsStatus = getFyersWsStatus();
   const conn = getMarketConnectionState();
   const stream = isMarketStreamActive();
+  const wsBusy = wsStatus === 'connecting' || wsStatus === 'reconnecting';
   const needsConnect =
-    wsStatus === 'token_invalid' || (provider === 'fyers-offline' && !conn.fyersConnected);
+    session.needsLogin ||
+    wsStatus === 'token_invalid' ||
+    (conn.serverOk && !conn.fyersConnected && !wsBusy);
 
   if (needsConnect) {
     return (
@@ -63,13 +96,31 @@ export default function MarketLiveBadge() {
     );
   }
 
-  if (provider === 'fyers-offline' || !conn.serverOk) {
+  if (!conn.serverOk) {
+    const waking = hasRemoteApi && !isApiServerReady();
     return (
       <span
-        className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-500/30 bg-slate-500/10 text-slate-400"
-        title={CONNECT_LIVE_LABEL}
+        className="text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-300 animate-pulse"
+        title={
+          waking
+            ? `Waking live server (attempt ${wakeAttempt}) — wait ~30–60s`
+            : CONNECT_LIVE_LABEL
+        }
       >
-        Setup required
+        {waking
+          ? `Waking server…${wakeAttempt ? ` (${wakeAttempt})` : ''}`
+          : 'Setup required'}
+      </span>
+    );
+  }
+
+  if (wsBusy) {
+    return (
+      <span
+        className="text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-300 animate-pulse"
+        title="Linking live market stream…"
+      >
+        {WS_LABEL[wsStatus] ?? 'Connecting live…'}
       </span>
     );
   }

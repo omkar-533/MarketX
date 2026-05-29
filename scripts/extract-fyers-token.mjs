@@ -21,6 +21,7 @@ try {
 
   const raw = JSON.parse(readFileSync(tokenPath, 'utf8'));
   const token = raw.access_token || raw.accessToken;
+  const refresh = raw.refresh_token || raw.refreshToken || '';
 
   if (!token) {
     console.log('❌ Token file empty or invalid');
@@ -33,7 +34,14 @@ try {
   console.log('   1. Go to Render Dashboard → Settings → Environment');
   console.log('   2. Add variable: FYERS_ACCESS_TOKEN');
   console.log('   3. Paste the token above');
-  console.log('   4. Save & redeploy\n');
+  if (refresh) {
+    console.log('   4. Also add FYERS_REFRESH_TOKEN for auto-renew');
+    console.log(`      ${refresh}`);
+    console.log('   5. Add FYERS_PIN (your 4-digit TPIN)');
+    console.log('   6. Save & redeploy\n');
+  } else {
+    console.log('   4. Save & redeploy\n');
+  }
 
   // Copy to clipboard if possible (optional)
   try {

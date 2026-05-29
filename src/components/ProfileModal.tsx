@@ -1,9 +1,18 @@
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Crown, Shield, LogOut } from 'lucide-react';
+import { X, Mail, Crown, Shield, LogOut, KeyRound } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
 import { useBrokerSession } from '../hooks/useBrokerSession';
+import { fetchMasterAiStatus } from '../services/masterAiService';
+import {
+  loadOpenRouterApiKey,
+  saveOpenRouterApiKey,
+  maskOpenRouterApiKey,
+  clearOpenRouterApiKey,
+} from '../services/openRouterKey';
+
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -16,9 +25,40 @@ interface ProfileModalProps {
 export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrade }: ProfileModalProps) {
   const { theme } = useTheme();
   const { session, startBrokerLogin } = useBrokerSession(Boolean(user));
+  const [openRouterInput, setOpenRouterInput] = useState('');
+  const [openRouterSaved, setOpenRouterSaved] = useState(() => loadOpenRouterApiKey());
+  const [openRouterMsg, setOpenRouterMsg] = useState('');
+  const [serverAiReady, setServerAiReady] = useState(false);
+  const [showKeyOverride, setShowKeyOverride] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setOpenRouterSaved(loadOpenRouterApiKey());
+    void fetchMasterAiStatus().then((s) => {
+      setServerAiReady(s.configured && s.keySource === 'server');
+      if (!s.configured && !loadOpenRouterApiKey()) setShowKeyOverride(true);
+    });
+  }, [isOpen]);
+
   if (!user) return null;
 
+  const hasLocalKey = Boolean(openRouterSaved);
+  const showPasteUi = showKeyOverride || (!serverAiReady && !hasLocalKey);
+  const showOpenRouterCard = !serverAiReady || hasLocalKey || showPasteUi;
+
   const planLabel = user.plan === 'premium' ? 'Premium' : user.plan === 'pro' ? 'Pro' : 'Free';
+
+  const handleSaveOpenRouterKey = () => {
+    const key = openRouterInput.trim();
+    if (!key.startsWith('sk-or-')) {
+      setOpenRouterMsg('Valid OpenRouter key starts with sk-or-');
+      return;
+    }
+    saveOpenRouterApiKey(key);
+    setOpenRouterSaved(key);
+    setOpenRouterInput('');
+    setOpenRouterMsg('OpenRouter key saved — Master AI will use it.');
+  };
 
   return (
     <AnimatePresence>
@@ -87,6 +127,72 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   </button>
                 )}
               </div>
+              {showOpenRouterCard ? (
+                <div className="py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-gold" />
+                      <span className="text-sm text-slate-400">Master AI (OpenRouter)</span>
+                    </div>
+                    {(serverAiReady || hasLocalKey) && (
+                      <span className="text-[10px] font-bold text-emerald-400">Active</span>
+                    )}
+                  </div>
+                  {hasLocalKey ? (
+                    <p className="text-[10px] text-emerald-400 font-mono">
+                      Is browser me saved: {maskOpenRouterApiKey(openRouterSaved)}
+                    </p>
+                  ) : null}
+                  {!serverAiReady && !hasLocalKey ? (
+                    <p className="text-[10px] text-slate-500">
+                      Server pe key nahi — openrouter.ai se key paste karo ya Render env me
+                      OPENROUTER_API_KEY set karo.
+                    </p>
+                  ) : null}
+                  {showPasteUi ? (
+                    <>
+                      <input
+                        type="password"
+                        value={openRouterInput}
+                        onChange={(e) => {
+                          setOpenRouterInput(e.target.value);
+                          setOpenRouterMsg('');
+                        }}
+                        placeholder="sk-or-… (optional override)"
+                        className="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-slate-200 placeholder:text-slate-600 focus:border-gold/50 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveOpenRouterKey}
+                          className="flex-1 py-2 rounded-lg bg-gold/15 border border-gold/30 text-gold text-xs font-bold hover:bg-gold/25 transition-colors"
+                        >
+                          Save on this device
+                        </button>
+                        {hasLocalKey ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              clearOpenRouterApiKey();
+                              setOpenRouterSaved('');
+                              setOpenRouterInput('');
+                              setOpenRouterMsg('Local key removed — server key use hogi.');
+                              if (serverAiReady) setShowKeyOverride(false);
+                            }}
+                            className="px-3 py-2 rounded-lg border border-dark-border text-slate-400 text-xs hover:text-slate-200"
+                          >
+                            Clear
+                          </button>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                  {openRouterMsg ? (
+                    <p className="text-[10px] text-slate-400">{openRouterMsg}</p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border gap-3">
                 <div>
                   <span className="text-sm text-slate-400 block">Appearance</span>

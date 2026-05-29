@@ -1,4 +1,4 @@
-/** LTP Calculator — risk, targets, PnL, signals (pure functions) */
+/** LPT Master — risk, targets, PnL, signals (pure functions) */
 
 export type TradeDirection = 'BUY' | 'SELL';
 export type AssetMode = 'equity' | 'futures' | 'options';
@@ -387,7 +387,7 @@ export function exportTradeReport(payload: Record<string, unknown>): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `tradex-ltp-plan-${Date.now()}.json`;
+  a.download = `tradex-lpt-master-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -1,7 +1,10 @@
 import { EXPIRY_DATES, STRATEGY_TEMPLATES } from '../data/marketData';
 import { getFnoInstrument } from '../data/fnoUniverse';
+import type { GlobalInstrumentSelection } from './globalInstrumentService';
+import { getGlobalInstrument } from './globalInstrumentService';
 import type { JournalSymbolSelection } from './equitySymbolService';
 import { getJournalSymbolSelection } from './equitySymbolService';
+import { getGlobalPaperBasePrice, tickGlobalPaperQuote } from './paperTradingGlobalQuotes';
 import { applyLiveQuoteToMarketItem } from './paperTradingLiveService';
 import {
   applyStrategyTemplate,
@@ -18,6 +21,7 @@ export type Product = 'MIS' | 'CNC';
 export type OrderType = 'MARKET' | 'LIMIT' | 'SL' | 'SL-M' | 'TARGET';
 export type PaperLegInstrument = 'EQUITY' | 'FUT' | 'CE' | 'PE';
 export type PaperSegment = 'EQUITY' | 'FUTURES' | 'OPTIONS';
+export type PaperAssetMarket = 'equity' | 'crypto' | 'forex';
 
 export interface PaperOrderDraft {
   segment: PaperSegment;
@@ -47,6 +51,8 @@ export interface MarketItem {
   exchange: JournalSymbolSelection['exchange'];
   isFno: boolean;
   lotSize: number;
+  assetMarket?: PaperAssetMarket;
+  quoteCurrency?: string;
 }
 
 export interface PaperLeg {
@@ -285,7 +291,44 @@ export function journalToMarketItem(sel: JournalSymbolSelection): MarketItem {
     exchange: sel.exchange,
     isFno: sel.isFno,
     lotSize: sel.lotSize,
+    assetMarket: 'equity',
+    quoteCurrency: 'INR',
   };
+}
+
+export function globalToMarketItem(sel: GlobalInstrumentSelection, existingPrice?: number): MarketItem {
+  const price =
+    existingPrice && existingPrice > 0
+      ? existingPrice
+      : getGlobalPaperBasePrice(sel.symbol, sel.market);
+  const prev = price * 0.999;
+  return {
+    symbol: sel.symbol,
+    name: sel.name,
+    price,
+    change: price - prev,
+    changePercent: ((price - prev) / prev) * 100,
+    open: prev,
+    high: price * 1.002,
+    low: price * 0.998,
+    volume: 0,
+    type: 'STOCK',
+    exchange: 'NSE',
+    isFno: false,
+    lotSize: sel.lotSize,
+    assetMarket: sel.market,
+    quoteCurrency: sel.quoteCurrency,
+  };
+}
+
+export function formatPaperPrice(item: MarketItem | null | undefined, value: number): string {
+  if (!item || item.assetMarket === 'equity' || !item.assetMarket) {
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  }
+  const cur = item.quoteCurrency ?? (item.assetMarket === 'crypto' ? 'USDT' : 'USD');
+  const digits = item.assetMarket === 'forex' ? 5 : 2;
+  const n = value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: digits });
+  return cur === 'USDT' ? `${n} USDT` : `${n} ${cur}`;
 }
 
 export function defaultWatchlist(): MarketItem[] {
@@ -301,17 +344,26 @@ export function defaultWatchlist(): MarketItem[] {
 /** Backfill exchange/lotSize for watchlists saved before full universe support */
 export function normalizeWatchlist(items: MarketItem[]): MarketItem[] {
   return items.map((item) => {
+    if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
+      const g = getGlobalInstrument(item.assetMarket, item.symbol);
+      if (g) return globalToMarketItem(g, item.price);
+      return item;
+    }
     const sel = getJournalSymbolSelection(item.symbol, item.exchange);
     if (!sel) return item;
     return journalToMarketItem(sel);
   });
 }
 
-export function watchlistKey(item: Pick<MarketItem, 'symbol' | 'exchange'>) {
+export function watchlistKey(item: Pick<MarketItem, 'symbol' | 'exchange' | 'assetMarket'>) {
+  if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
+    return `${item.assetMarket}:${item.symbol}`;
+  }
   return `${item.exchange}:${item.symbol}`;
 }
 
 export function canTradeFno(item: MarketItem): boolean {
+  if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') return false;
   return item.isFno || item.type === 'INDEX' || getFnoInstrument(item.symbol) != null;
 }
 
@@ -608,7 +660,12 @@ export function buildPositionFromOrder(
 
 export function refreshWatchlistQuotes(watchlist: MarketItem[]): MarketItem[] {
   const base = watchlist.length ? normalizeWatchlist(watchlist) : defaultWatchlist();
-  return base.map((item) => applyLiveQuoteToMarketItem(item));
+  return base.map((item) => {
+    if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
+      return tickGlobalPaperQuote(item);
+    }
+    return applyLiveQuoteToMarketItem(item);
+  });
 }
 
 export function computePnL(

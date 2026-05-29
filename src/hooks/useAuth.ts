@@ -210,10 +210,14 @@ export function useAuth() {
       const supabase = getSupabase();
       if (!supabase) throw new Error('Sign-up is unavailable (Supabase not configured).');
 
-      const { error } = await supabase.auth.signUp({
+      const redirectTo =
+        typeof window !== 'undefined' ? `${window.location.origin}/` : undefined;
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: redirectTo,
           data: {
             full_name: name,
             phone,
@@ -223,8 +227,15 @@ export function useAuth() {
 
       if (error) throw error;
 
-      await hydrateSession();
-      setShowAuth(false);
+      if (data.session) {
+        await hydrateSession();
+        setShowAuth(false);
+        return;
+      }
+
+      throw new Error(
+        'Account created. Open the confirmation link in your email (check spam), then sign in.',
+      );
     },
     [hydrateSession]
   );
@@ -247,7 +258,7 @@ export function useAuth() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/`,
       },
     });
 
@@ -294,7 +305,7 @@ export function useAuth() {
     if (!supabase) throw new Error('Password reset is unavailable (Supabase not configured).');
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/`,
     });
 
     if (error) throw error;

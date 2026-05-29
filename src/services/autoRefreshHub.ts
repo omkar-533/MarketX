@@ -5,13 +5,13 @@ import { getMarketConnectionState, refreshMarketConnection } from './marketConne
 import { refreshScreenerFeedAsync } from './screenerLiveService';
 import { invalidateChartCache } from './chart/chartDataService';
 import { subscribeLiveSymbols } from './marketTickStream';
-import { FNO_UNIVERSE } from '../data/fnoUniverse';
+import { CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
 import { getFnoLiveQuotes, refreshFnoLiveQuotesAsync } from './symbolLiveService';
 
 export const AUTO_REFRESH_EVENT = 'tradeflow:auto-refresh';
 export const DEFAULT_AUTO_REFRESH_MS = 15_000;
 const OI_REFRESH_EVERY = 8;
-const CHAIN_SYMBOLS = ['NIFTY'];
+const CHAIN_SYMBOLS = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
 const SECTIONS_REFRESH_EVERY = 4;
 
 let tick = 0;
@@ -71,7 +71,7 @@ export function getAutoRefreshTick(): number {
 export function startAutoRefreshHub(ms = DEFAULT_AUTO_REFRESH_MS): () => void {
   if (started) return stopAutoRefreshHub;
   started = true;
-  subscribeLiveSymbols(FNO_UNIVERSE.map((i) => i.symbol));
+  subscribeLiveSymbols(CORE_LIVE_SYMBOLS);
   runGlobalRefresh();
   intervalId = setInterval(runGlobalRefresh, ms);
 

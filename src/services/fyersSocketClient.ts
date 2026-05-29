@@ -159,7 +159,9 @@ function connectSocket() {
 
   socket = io(socketUrl(), {
     path: '/socket.io',
-    transports: ['websocket', 'polling'],
+    // Polling first — Render free tier WebSocket upgrade can fail on cold start
+    transports: ['polling', 'websocket'],
+    withCredentials: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: getReconnectDelay(),

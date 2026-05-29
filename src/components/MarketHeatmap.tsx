@@ -1,30 +1,72 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Zap,
-  Layers,
-  PieChart,
-  Activity,
-  Wifi,
-} from 'lucide-react';
+import { Layers, PieChart, Activity, Wifi, Zap } from 'lucide-react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useAutoRefreshMeta } from '../context/AutoRefreshContext';
-import { SECTORS } from '../data/marketData';
 import type { StockHeatmapItem, SectorHeatmapItem, OIHeatmapStrike } from '../data/marketData';
-import { fetchLiveHeatmap, type LiveHeatmapBundle } from '../services/heatmapLive';
+import { SECTORS } from '../data/marketData';
+import { LIVE_DATA_LABEL } from '../constants/brandLabels';
+import {
+  buildHeatmapSnapshot,
+  fetchLiveHeatmap,
+  refreshHeatmapOi,
+  refreshHeatmapSectors,
+  refreshHeatmapTabLive,
+  type LiveHeatmapBundle,
+} from '../services/heatmapLive';
+import { subscribeMarketLive } from '../services/marketLiveStore';
+import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from '../services/apiAutoConnect';
 
 type HeatmapTab = 'stocks' | 'sectors' | 'oi';
 
 const OI_SYMBOLS = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'] as const;
-function changeColor(value: number, strong = 3): string {
-  if (value >= strong) return '#00c853';
-  if (value >= strong / 2) return '#00e676';
-  if (value >= strong / 6) return '#69f0ae';
-  if (value > 0) return '#b9f6ca';
-  if (value <= -strong) return '#d50000';
-  if (value <= -strong / 2) return '#ff1744';
-  if (value <= -strong / 6) return '#ff5252';
-  return '#ff8a80';
+
+const POS_RGB = '16, 185, 129';
+const NEG_RGB = '239, 68, 68';
+
+const HEATMAP_PRESETS = [
+  { id: 'top50' as const, label: 'Nifty 50' },
+  { id: 'all' as const, label: 'All Stocks' },
+  { id: 'banking' as const, label: 'Nifty Bank' },
+  { id: 'it' as const, label: 'Nifty IT' },
+  { id: 'pharma' as const, label: 'Pharma' },
+  { id: 'auto' as const, label: 'Auto' },
+];
+
+type HeatmapPreset = (typeof HEATMAP_PRESETS)[number]['id'];
+
+/** Tile fill — stronger tint as |% move| grows (dark theme) */
+function flatHeatColor(value: number, maxAbsMove: number): string {
+  const max = Math.max(maxAbsMove, 0.01);
+  const t = Math.min(1, Math.abs(value) / max);
+  const alpha = 0.18 + t * 0.72;
+  if (value > 0.02) return `rgba(${POS_RGB}, ${alpha})`;
+  if (value < -0.02) return `rgba(${NEG_RGB}, ${alpha})`;
+  return 'rgba(51, 65, 85, 0.55)';
+}
+
+function cellTextColor(value: number, maxAbsMove: number): string {
+  const t = Math.abs(value) / Math.max(maxAbsMove, 0.01);
+  if (t > 0.45) return '#f8fafc';
+  if (t > 0.2) return '#e2e8f0';
+  return '#94a3b8';
+}
+
+function shortStockName(name: string): string {
+  return name
+    .replace(/\s+(Limited|Ltd\.?|Industries|India|Corp\.?|Corporation)\s*$/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function formatHeatPct(value: number): string {
+  const abs = Math.abs(value);
+  const digits = abs >= 10 ? 1 : 2;
+  return `${value > 0 ? '' : value < 0 ? '-' : ''}${abs.toFixed(digits)}%`;
+}
+
+function textOnBg(change: number, maxAbs = 4): string {
+  return Math.abs(change) >= maxAbs * 0.5 ? '#f8fafc' : '#0a0e1a';
 }
 
 function oiChangeColor(value: number): string {
@@ -38,56 +80,42 @@ function oiChangeColor(value: number): string {
   return '#fde68a';
 }
 
-function textOnBg(change: number, strong = 1.5): string {
-  return Math.abs(change) >= strong ? '#ffffff' : '#0a0e1a';
-}
-
-function TreemapCell({
-  label,
-  sublabel,
+function GridHeatmapCell({
+  title,
   changePercent,
-  sizeWeight,
-  maxWeight,
+  maxAbsMove,
   onHover,
   onLeave,
 }: {
-  label: string;
-  sublabel?: string;
+  title: string;
   changePercent: number;
-  sizeWeight: number;
-  maxWeight: number;
+  maxAbsMove: number;
   onHover?: () => void;
   onLeave?: () => void;
 }) {
-  const width = Math.max(72, (sizeWeight / maxWeight) * 280);
-  const height = Math.max(56, width * 0.65);
+  const bg = flatHeatColor(changePercent, maxAbsMove);
+  const fg = cellTextColor(changePercent, maxAbsMove);
+  const pct = formatHeatPct(changePercent);
 
   return (
-    <motion.div
-      layout
+    <button
+      type="button"
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
-      className="relative rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer overflow-hidden group shadow-md shrink-0"
-      style={{
-        backgroundColor: changeColor(changePercent),
-        flex: `1 1 ${width}px`,
-        minHeight: height,
-      }}
+      title={`${title} · ${pct}`}
+      className="flex flex-col items-center justify-center min-h-[72px] px-2 py-3 text-center bg-dark-elevated border border-dark-border/60 transition-all hover:border-gold/40 hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+      style={{ backgroundColor: bg }}
     >
-      <span className="text-xs font-black tracking-tight" style={{ color: textOnBg(changePercent) }}>
-        {label}
+      <span
+        className="text-[12px] font-bold leading-tight line-clamp-2 w-full"
+        style={{ color: fg }}
+      >
+        {title}
       </span>
-      {sublabel && (
-        <span className="text-[9px] font-medium opacity-80 mt-0.5" style={{ color: textOnBg(changePercent) }}>
-          {sublabel}
-        </span>
-      )}
-      <span className="text-[10px] font-bold mt-0.5" style={{ color: textOnBg(changePercent) }}>
-        {changePercent > 0 ? '+' : ''}
-        {changePercent}%
+      <span className="text-[12px] font-black tabular-nums mt-1" style={{ color: fg }}>
+        {pct}
       </span>
-      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </motion.div>
+    </button>
   );
 }
 
@@ -146,6 +174,7 @@ function OiStrikeRow({
 
 export default function MarketHeatmap() {
   const [tab, setTab] = useState<HeatmapTab>('stocks');
+  const [preset, setPreset] = useState<HeatmapPreset>('top50');
   const [sectorFilter, setSectorFilter] = useState('All');
   const [oiSymbol, setOiSymbol] = useState<(typeof OI_SYMBOLS)[number]>('NIFTY');
   const [bundle, setBundle] = useState<LiveHeatmapBundle | null>(null);
@@ -153,35 +182,124 @@ export default function MarketHeatmap() {
   const [hovered, setHovered] = useState<StockHeatmapItem | SectorHeatmapItem | OIHeatmapStrike | null>(null);
   const { lastAt } = useAutoRefreshMeta();
 
-  const refresh = useCallback(async () => {
-    const data = await fetchLiveHeatmap(oiSymbol);
-    setBundle(data);
-    setLoading(false);
-  }, [oiSymbol]);
+  const applySnapshot = useCallback(
+    (snap: LiveHeatmapBundle) => {
+      setBundle(snap);
+      setLoading(false);
+    },
+    [],
+  );
+
+  const refreshFull = useCallback(async () => {
+    try {
+      const data = await fetchLiveHeatmap(oiSymbol, { forceOi: true });
+      applySnapshot(data);
+    } catch {
+      applySnapshot(buildHeatmapSnapshot(oiSymbol));
+    }
+  }, [oiSymbol, applySnapshot]);
+
+  const refreshFast = useCallback(() => {
+    applySnapshot(buildHeatmapSnapshot(oiSymbol));
+  }, [oiSymbol, applySnapshot]);
+
+  const applyLiveSnapshot = useCallback(() => {
+    applySnapshot(buildHeatmapSnapshot(oiSymbol));
+  }, [oiSymbol, applySnapshot]);
+
+  const refreshTabLive = useCallback(async () => {
+    if (tab === 'stocks') return;
+    try {
+      await refreshHeatmapTabLive(tab, oiSymbol);
+      applyLiveSnapshot();
+    } catch {
+      refreshFast();
+    }
+  }, [tab, oiSymbol, applyLiveSnapshot, refreshFast]);
 
   useEffect(() => {
     setLoading(true);
-    void refresh();
-  }, [oiSymbol, refresh]);
+    void refreshFull();
+  }, [oiSymbol, refreshFull]);
+
+  useEffect(() => {
+    void refreshTabLive();
+  }, [tab, oiSymbol, refreshTabLive]);
 
   useAutoRefresh(() => {
-    void refresh();
+    if (tab === 'stocks') {
+      void refreshFull();
+      return;
+    }
+    if (tab === 'sectors') {
+      void refreshHeatmapSectors().then(applyLiveSnapshot).catch(refreshFast);
+      return;
+    }
+    void refreshHeatmapOi(oiSymbol).then(applyLiveSnapshot).catch(refreshFast);
   });
+
+  useEffect(() => subscribeMarketLive(refreshFast), [refreshFast]);
+
+  useEffect(() => {
+    const onConnected = () => void refreshFull();
+    window.addEventListener(FYERS_MARKET_LIVE_EVENT, onConnected);
+    window.addEventListener(API_SERVER_READY_EVENT, onConnected);
+    return () => {
+      window.removeEventListener(FYERS_MARKET_LIVE_EVENT, onConnected);
+      window.removeEventListener(API_SERVER_READY_EVENT, onConnected);
+    };
+  }, [refreshFull]);
+
+  useEffect(() => {
+    if (tab !== 'oi') return;
+    const id = window.setInterval(() => {
+      void refreshHeatmapOi(oiSymbol).then(applyLiveSnapshot);
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [tab, oiSymbol, applyLiveSnapshot]);
 
   const stocks = bundle?.stocks ?? [];
   const sectors = bundle?.sectors ?? [];
   const oi = bundle?.oi;
 
-  const filteredStocks = useMemo(
-    () => (sectorFilter === 'All' ? stocks : stocks.filter((s) => s.sector === sectorFilter)),
-    [stocks, sectorFilter],
+  const presetStocks = useMemo(() => {
+    let list = [...stocks];
+    if (preset === 'top50') {
+      list = [...list].sort((a, b) => b.marketCap - a.marketCap).slice(0, 50);
+    } else if (preset === 'banking') {
+      list = list.filter((s) => s.sector === 'Banking' || s.sector === 'NBFC');
+    } else if (preset === 'it') {
+      list = list.filter((s) => s.sector === 'IT');
+    } else if (preset === 'pharma') {
+      list = list.filter((s) => s.sector === 'Pharma');
+    } else if (preset === 'auto') {
+      list = list.filter((s) => s.sector === 'Auto');
+    }
+    if (sectorFilter !== 'All') {
+      list = list.filter((s) => s.sector === sectorFilter);
+    }
+    return list;
+  }, [stocks, preset, sectorFilter]);
+
+  const sortedStocks = useMemo(
+    () => [...presetStocks].sort((a, b) => b.changePercent - a.changePercent),
+    [presetStocks],
   );
 
-  const maxStockCap = useMemo(
-    () => Math.max(...filteredStocks.map((s) => s.marketCap), 1),
-    [filteredStocks],
+  const sortedSectors = useMemo(
+    () => [...sectors].sort((a, b) => b.changePercent - a.changePercent),
+    [sectors],
   );
-  const maxSectorCap = useMemo(() => Math.max(...sectors.map((s) => s.marketCap), 1), [sectors]);
+
+  const maxStockAbsMove = useMemo(
+    () => Math.max(...sortedStocks.map((s) => Math.abs(s.changePercent)), 0.01),
+    [sortedStocks],
+  );
+
+  const maxSectorAbsMove = useMemo(
+    () => Math.max(...sortedSectors.map((s) => Math.abs(s.changePercent)), 0.01),
+    [sortedSectors],
+  );
 
   const stockStats = useMemo(() => {
     const adv = stocks.filter((s) => s.changePercent > 0).length;
@@ -206,6 +324,9 @@ export default function MarketHeatmap() {
     second: '2-digit',
   }) ?? '—';
   const livePulse = lastAt > 0;
+  const isLive = Boolean(bundle?.live);
+  const quoteCount = bundle?.quoteCount ?? 0;
+  const oiStrikeCount = bundle?.oiStrikeCount ?? oi?.strikes.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -216,12 +337,43 @@ export default function MarketHeatmap() {
             <Zap className="w-5 h-5" />
             Market Heatmap
           </h2>
-          <p className="text-sm text-slate-500 flex items-center gap-2 mt-0.5">
-            <Wifi className={`w-3.5 h-3.5 ${livePulse ? 'text-emerald-500' : 'text-slate-500'}`} />
-            Last sync {lastSync}
-            {loading && <span className="text-amber-400/80"> · updating…</span>}
+          <p className="text-sm text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
+            <Wifi className={`w-3.5 h-3.5 ${isLive && livePulse ? 'text-emerald-500' : 'text-slate-500'}`} />
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                isLive
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+              }`}
+            >
+              {isLive ? LIVE_DATA_LABEL : 'Waiting for live feed'}
+            </span>
+            <span>
+              {quoteCount} F&amp;O LTP
+              {tab === 'sectors' ? ` · ${sectors.length} sectors` : ''}
+              {tab === 'oi' ? ` · ${oiStrikeCount} OI strikes` : ''}
+              {' · '}
+              {lastSync}
+              {loading && <span className="text-amber-400/80"> · updating…</span>}
+            </span>
           </p>
         </div>
+        {tab === 'stocks' && (
+          <div className="flex flex-wrap gap-1 p-1 app-card max-w-fit">
+            {HEATMAP_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPreset(p.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  preset === p.id ? 'bg-gold text-dark-surface' : 'text-slate-500 hover:text-slate-200'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tab switcher */}
@@ -373,20 +525,27 @@ export default function MarketHeatmap() {
             ))}
           </div>
         ) : (
-          <div className="flex-1 flex h-1.5 rounded-full overflow-hidden min-w-[120px]">
-            {['#d50000', '#ff1744', '#ff5252', '#ff8a80', '#b9f6ca', '#69f0ae', '#00e676', '#00c853'].map((c) => (
-              <div key={c} className="flex-1" style={{ background: c }} />
-            ))}
-          </div>
+          <div
+            className="flex-1 flex h-1.5 rounded-full overflow-hidden min-w-[120px]"
+            style={{
+              background: `linear-gradient(90deg, rgba(${NEG_RGB},0.9), rgba(${NEG_RGB},0.25), rgba(51,65,85,0.5), rgba(${POS_RGB},0.25), rgba(${POS_RGB},0.9))`,
+            }}
+          />
         )}
         <div className="flex gap-3 text-[9px] text-slate-500 font-bold">
-          <span className="text-red-400">Bearish</span>
-          <span className="text-emerald-400">Bullish</span>
+          <span className="text-red-400">Losers</span>
+          <span className="text-slate-600">F&amp;O · sorted by %</span>
+          <span className="text-emerald-400">Gainers</span>
         </div>
       </div>
 
-      {/* Heatmap body */}
-      <div className="app-card p-2 sm:p-3 min-h-[420px]">
+      {/* Heatmap body — 3-column grid */}
+      <div className="app-card p-1 min-h-[420px] overflow-hidden">
+        {!isLive && !loading && (
+          <p className="text-xs text-amber-300/90 px-3 py-2 border-b border-dark-border">
+            Connect TradeX Live in Profile — showing last cached quotes until feed connects.
+          </p>
+        )}
         <AnimatePresence mode="wait">
           {tab === 'stocks' && (
             <motion.div
@@ -394,22 +553,18 @@ export default function MarketHeatmap() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-wrap gap-1 w-full content-start"
+              className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-dark-border"
             >
-              {filteredStocks
-                .sort((a, b) => b.marketCap - a.marketCap)
-                .map((item) => (
-                  <TreemapCell
-                    key={item.symbol}
-                    label={item.symbol}
-                    sublabel={item.sector}
-                    changePercent={item.changePercent}
-                    sizeWeight={item.marketCap}
-                    maxWeight={maxStockCap}
-                    onHover={() => setHovered(item)}
-                    onLeave={() => setHovered(null)}
-                  />
-                ))}
+              {sortedStocks.map((item) => (
+                <GridHeatmapCell
+                  key={item.symbol}
+                  title={shortStockName(item.name)}
+                  changePercent={item.changePercent}
+                  maxAbsMove={maxStockAbsMove}
+                  onHover={() => setHovered(item)}
+                  onLeave={() => setHovered(null)}
+                />
+              ))}
             </motion.div>
           )}
 
@@ -419,16 +574,14 @@ export default function MarketHeatmap() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-wrap gap-1 w-full content-start"
+              className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-dark-border"
             >
-              {sectors.map((item) => (
-                <TreemapCell
+              {sortedSectors.map((item) => (
+                <GridHeatmapCell
                   key={item.sector}
-                  label={item.sector}
-                  sublabel={`${item.stockCount} stocks`}
+                  title={item.sector}
                   changePercent={item.changePercent}
-                  sizeWeight={item.marketCap}
-                  maxWeight={maxSectorCap}
+                  maxAbsMove={maxSectorAbsMove}
                   onHover={() => setHovered(item)}
                   onLeave={() => setHovered(null)}
                 />

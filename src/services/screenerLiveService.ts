@@ -1,3 +1,4 @@
+import { serverOfflineMessage } from '../constants/brandLabels';
 import type { StockData } from '../data/marketData';
 import { FNO_STOCKS_ALL, type FnoInstrument } from '../data/fnoUniverse';
 import {
@@ -256,7 +257,7 @@ export async function refreshScreenerFeedAsync(opts?: { forceOhlc?: boolean }): 
         liveCount: 0,
         totalCount: symbols.length,
         serverOk: false,
-        message: 'Offline — npm run dev',
+        message: serverOfflineMessage(),
         ohlcLoaded: 0,
         oiLoaded: 0,
       });

@@ -13,6 +13,8 @@ import {
   CONNECT_LIVE_LABEL,
   LIVE_DATA_LABEL,
   sanitizeDisplayMessage,
+  serverOfflineMessage,
+  hasRemoteApi,
 } from '../constants/brandLabels';
 
 export default function FyersConnect() {
@@ -38,7 +40,7 @@ export default function FyersConnect() {
     const url = await fetchFyersLoginUrl();
     setBusy(false);
     if (!url) {
-      setMsg(sanitizeDisplayMessage('Server not configured — restart npm run dev'));
+      setMsg(sanitizeDisplayMessage(`Server not configured — ${serverOfflineMessage()}`));
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -83,7 +85,9 @@ export default function FyersConnect() {
             {active
               ? `${BRAND} Live — NSE/BSE`
               : connected
-                ? 'Session saved · restart npm run dev if needed'
+                ? hasRemoteApi
+                  ? 'Session saved · refresh if live data stops'
+                  : 'Session saved · restart npm run dev if needed'
                 : 'Not connected — required for live data'}
           </span>
         </div>
@@ -141,7 +145,7 @@ export default function FyersConnect() {
       {msg ? <p className="text-[10px] text-slate-500 leading-snug">{msg}</p> : null}
       {!status?.configured ? (
         <p className="text-[10px] text-amber-500/90">
-          Live data setup incomplete — contact admin or restart npm run dev
+          Live data setup incomplete — reconnect in Profile or wait for server
         </p>
       ) : null}
     </div>

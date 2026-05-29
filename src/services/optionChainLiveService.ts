@@ -1,3 +1,4 @@
+import { apiFetch } from '../config/api';
 import type { OptionData } from '../data/marketData';
 import { sanitizeDisplayMessage } from '../constants/brandLabels';
 import { calculateGreeks } from './optionPricing';
@@ -147,7 +148,7 @@ export async function fetchOptionChainLive(
     try {
     const q = new URLSearchParams({ symbol: sym });
     if (expiry) q.set('expiry', expiry);
-    const res = await fetch(`/api/market/option-chain?${q}`);
+    const res = await apiFetch(`/api/market/option-chain?${q}`);
     const data = await res.json().catch(() => ({}));
     lastFetchAt.set(fetchKey, Date.now());
 
@@ -260,6 +261,8 @@ export function getCachedOptionChain(
   snap.rows[Math.floor(snap.rows.length / 2)]);
 
   const sorted = [...snap.rows].sort((a, b) => a.strike - b.strike);
+  if (!strikeWindow || strikeWindow >= sorted.length) return sorted;
+
   const atmIdx = sorted.findIndex((r) => r.strike === atm.strike);
   const center = atmIdx >= 0 ? atmIdx : Math.floor(sorted.length / 2);
   const from = Math.max(0, center - half);
@@ -296,9 +299,9 @@ export async function refreshOptionChainsLive(symbols: string[]): Promise<void> 
   if (refreshInFlight) return refreshInFlight;
   const unique = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
   refreshInFlight = (async () => {
-    for (const sym of unique.slice(0, 2)) {
-      await fetchOptionChainLive(sym);
-      await new Promise((r) => setTimeout(r, 800));
+    for (let i = 0; i < unique.length; i++) {
+      await fetchOptionChainLive(unique[i], undefined, { force: false, strikeWindow: 0 });
+      if (i < unique.length - 1) await new Promise((r) => setTimeout(r, 600));
     }
   })().finally(() => {
     refreshInFlight = null;

@@ -5,6 +5,8 @@ import {
   subscribeAutoRefresh,
   type AutoRefreshDetail,
 } from '../services/autoRefreshHub';
+import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
+import { refreshMarketConnection } from '../services/marketConnection';
 import { startMarketTickStream } from '../services/marketTickStream';
 
 type AutoRefreshMeta = {
@@ -21,10 +23,24 @@ export function AutoRefreshProvider({
   children: ReactNode;
 }) {
   useEffect(() => {
-    if (!enabled) return;
+    const onApiReady = () => {
+      void refreshMarketConnection(true);
+      if (enabled) {
+        startMarketTickStream();
+      }
+    };
+    window.addEventListener(API_SERVER_READY_EVENT, onApiReady);
+
+    if (!enabled) {
+      return () => window.removeEventListener(API_SERVER_READY_EVENT, onApiReady);
+    }
+
     const stopHub = startAutoRefreshHub();
     const stopStream = startMarketTickStream();
+    void refreshMarketConnection(true);
+
     return () => {
+      window.removeEventListener(API_SERVER_READY_EVENT, onApiReady);
       stopHub();
       stopStream();
     };

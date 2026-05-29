@@ -1,5 +1,6 @@
-import { FNO_INDICES, getFnoInstrument, getStrikeIntervalForSpot } from './fnoUniverse';
+import { FNO_INDICES, FNO_STOCKS, getFnoInstrument, getStrikeIntervalForSpot } from './fnoUniverse';
 import { buildOptionChain, buildOptionExpiries } from '../services/optionChainEngine';
+import { getCachedOptionChain } from '../services/optionChainLiveService';
 import { getFnoLiveQuotes, getLiveQuote } from '../services/symbolLiveService';
 import { isMarketLiveEnabled } from '../services/marketApiService';
 import { getMarketConnectionState } from '../services/marketConnection';
@@ -212,8 +213,40 @@ export function getHeatmapData(): HeatmapData[] {
   return getStockHeatmapData();
 }
 
+const FNO_STOCK_SYMBOLS = new Set(FNO_STOCKS.map((i) => i.symbol));
+
 export function getStockHeatmapData(): StockHeatmapItem[] {
-  return getStocks().map((s) => ({
+  const live = getFnoLiveQuotes().filter((q) => q.type === 'stock' && FNO_STOCK_SYMBOLS.has(q.symbol));
+  const rows =
+    live.length > 0
+      ? live.map((q) => ({
+          symbol: q.symbol,
+          name: q.name,
+          sector: q.sector,
+          changePercent: q.changePercent,
+          marketCap: q.marketCap ?? 0,
+          price: q.price,
+          change: q.change,
+          volume: q.volume,
+        }))
+      : getStocks()
+          .filter((s) => FNO_STOCK_SYMBOLS.has(s.symbol))
+          .map((s) => ({
+            symbol: s.symbol,
+            name: s.name,
+            sector: s.sector,
+            changePercent: s.changePercent,
+            marketCap: s.marketCap,
+            price: s.price,
+            change: s.change,
+            volume: s.volume,
+          }));
+
+  return rows;
+}
+
+export function getSectorHeatmapData(): SectorHeatmapItem[] {
+  const stocks = getStockHeatmapData().map((s) => ({
     symbol: s.symbol,
     name: s.name,
     sector: s.sector,
@@ -222,11 +255,15 @@ export function getStockHeatmapData(): StockHeatmapItem[] {
     price: s.price,
     change: s.change,
     volume: s.volume,
-  }));
-}
-
-export function getSectorHeatmapData(): SectorHeatmapItem[] {
-  const stocks = getStocks();
+    pe: 0,
+    high: s.price,
+    low: s.price,
+    open: s.price,
+    prevClose: s.price,
+    delivery: 0,
+    vwap: s.price,
+    rsi: 50,
+  })) as StockData[];
   const bySector = new Map<string, StockData[]>();
 
   stocks.forEach((s) => {
@@ -259,9 +296,12 @@ export function getSectorHeatmapData(): SectorHeatmapItem[] {
 
 export function getOIHeatmapData(symbol: string = 'NIFTY'): OIHeatmapSnapshot {
   const index = getIndices().find((i) => i.symbol === symbol) ?? getIndices()[0];
-  const chain = getOptionChain(symbol, index.price);
+  const liveQ = getLiveQuote(symbol);
+  const spotPrice = liveQ?.price && liveQ.price > 0 ? liveQ.price : index.price;
+  const cached = getCachedOptionChain(symbol, undefined, 0);
+  const chain = cached.length ? cached : buildOptionChain(symbol, spotPrice, undefined, 0);
   const interval = symbol === 'BANKNIFTY' ? 100 : 50;
-  const atmStrike = Math.round(index.price / interval) * interval;
+  const atmStrike = Math.round(spotPrice / interval) * interval;
 
   const strikes: OIHeatmapStrike[] = chain.map((row) => {
     const ceOiChgPct = row.ceOi > 0 ? Math.round((row.ceOiChg / row.ceOi) * 10000) / 100 : 0;
@@ -284,7 +324,7 @@ export function getOIHeatmapData(symbol: string = 'NIFTY'): OIHeatmapSnapshot {
 
   return {
     symbol,
-    spotPrice: index.price,
+    spotPrice,
     atmStrike,
     totalCeOi,
     totalPeOi,
@@ -913,7 +953,7 @@ export function getOIIntelligence(symbol: string = 'NIFTY'): OIIntelligenceData 
   const sidewaysWithRisingOi = Math.abs(changePercent) < 0.25 && totalCeOiChange + totalPeOiChange > 250000;
   const marketOpen = isNseFnoMarketOpen();
   const smartMoneySignal = !chain.length
-    ? 'Load option chain — npm run dev + connect TradeX Live'
+    ? 'Load option chain — connect TradeX Live in Profile'
     : !marketOpen
       ? 'Market closed — OI from last session (no intraday OI change)'
       : oiSpike

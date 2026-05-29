@@ -1,49 +1,49 @@
-# Render deploy — MarketX API
+# Render deploy — MarketX (full site + live API)
+
+Hindi step-by-step: **[RENDER_DEPLOY_HINDI.md](./RENDER_DEPLOY_HINDI.md)**
 
 Repo: https://github.com/omkar-533/MarketX
+
+Build runs `npm ci && npm run build` — Node serves **API + `dist/` frontend** on one URL.
 
 ## 1. Blueprint (one click)
 
 1. Open: https://dashboard.render.com/blueprint/new?repo=https://github.com/omkar-533/MarketX
-2. Connect GitHub if asked → select repo **MarketX** → branch **main**
-3. Click **Deploy Blueprint** → service `marketx-api` will be created
+2. Connect GitHub → repo **MarketX** → branch **main**
+3. **Deploy Blueprint** → service `marketx-api`
 
-## 2. Environment variables (Render Dashboard → marketx-api → Environment)
+## 2. Environment variables
 
-After first deploy, copy your Render URL (e.g. `https://marketx-api-xxxx.onrender.com`).
+Use the **same Render URL** for `FRONTEND_URL`, `API_PUBLIC_URL`, and CORS (single-host deploy).
 
 | Variable | Value |
 |----------|--------|
-| `FYERS_APP_ID` | from Fyers dashboard (e.g. `XCHF9SYUDJ-100`) |
-| `FYERS_SECRET_KEY` | from Fyers dashboard |
+| `FYERS_APP_ID` | Fyers MyAPI dashboard |
+| `FYERS_SECRET_KEY` | Fyers MyAPI dashboard |
 | `FYERS_REDIRECT_URI` | `https://YOUR-SERVICE.onrender.com/api/auth/fyers/callback` |
 | `API_PUBLIC_URL` | `https://YOUR-SERVICE.onrender.com` |
-| `FRONTEND_URL` | your Vercel URL or `http://localhost:5173` for testing |
-| `CORS_ORIGINS` | same as `FRONTEND_URL` (comma-separated if multiple) |
-| `JWT_SECRET` | long random string (auto-generated if using Blueprint) |
-
-Optional after first login:
-
-| Variable | Value |
-|----------|--------|
-| `FYERS_ACCESS_TOKEN` | paste access token so restarts auto-connect (free plan has no disk) |
+| `FRONTEND_URL` | `https://YOUR-SERVICE.onrender.com` |
+| `CORS_ORIGINS` | `https://YOUR-SERVICE.onrender.com,http://localhost:5173` |
+| `JWT_SECRET` | long random string |
+| `FYERS_ACCESS_TOKEN` | from `node scripts/extract-fyers-token.mjs` (auto live on boot) |
 
 ## 3. Fyers dashboard
 
-Add **Redirect URI** = exact `FYERS_REDIRECT_URI` from step 2.
+Redirect URI = exact `FYERS_REDIRECT_URI` above.
 
 ## 4. Verify
 
 ```text
 GET https://YOUR-SERVICE.onrender.com/api/health
-→ {"status":"ok",...}
+→ status ok, live.hasToken, live.wsConnected when stream up
 ```
 
-## 5. Frontend (Vercel)
+Open `https://YOUR-SERVICE.onrender.com` — full app, no separate Vercel required.
 
-Set:
+## 5. Optional: Vercel frontend only
 
-- `VITE_API_URL` = `https://YOUR-SERVICE.onrender.com`
-- `VITE_WS_URL` = `https://YOUR-SERVICE.onrender.com`
+If frontend stays on Vercel, set `VITE_API_URL` and `VITE_WS_URL` to your Render URL. See `VERCEL_RENDER_DEPLOYMENT.md`.
 
-Redeploy Vercel after changing env vars.
+## Always-on note
+
+Render **free** tier sleeps after ~15 min idle. Use **Starter** plan for 24/7, or ping `/api/health` every 10–14 min (UptimeRobot).

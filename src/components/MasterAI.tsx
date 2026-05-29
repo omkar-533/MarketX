@@ -43,6 +43,9 @@ import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
 } from '../services/masterAiImage';
+import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
+import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
+import { hasRemoteApi } from '../constants/brandLabels';
 
 interface Message {
   id: string;
@@ -110,7 +113,14 @@ export default function MasterAI() {
   const context = useMemo(() => buildMasterMarketContext(), [contextTick]);
 
   useEffect(() => {
-    void fetchMasterAiStatus().then(setAiStatus);
+    const refresh = () => void fetchMasterAiStatus().then(setAiStatus);
+    refresh();
+    window.addEventListener(OPENROUTER_KEY_UPDATED_EVENT, refresh);
+    window.addEventListener(API_SERVER_READY_EVENT, refresh);
+    return () => {
+      window.removeEventListener(OPENROUTER_KEY_UPDATED_EVENT, refresh);
+      window.removeEventListener(API_SERVER_READY_EVENT, refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -328,7 +338,7 @@ export default function MasterAI() {
           responseText = hasImage
             ? hindi
               ? `Chart analysis abhi nahi ho payi: ${msg}. Server restart karke dubara try karo.`
-              : `Could not analyze the chart: ${msg}. Restart npm run dev and try again.`
+              : `Could not analyze the chart: ${msg}. ${hasRemoteApi ? 'Wait for live server or refresh.' : 'Restart npm run dev and try again.'}`
             : `${generateLocalTradingReply(userText, context, selectedLang.code)}\n\n(${msg})`;
         }
       }
@@ -491,8 +501,8 @@ export default function MasterAI() {
                   ? 'लाइव डेटा + प्लेटफ़ॉर्म — जैसे सीनियर ट्रेडर समझाता है'
                   : 'Live data + platform — answers like a senior trader'
                 : hindi
-                  ? 'सीमित मोड — पूरा AI के लिए server चालू करें'
-                  : 'Limited mode — start TradeX server for full intelligence'}
+                  ? 'Profile में OpenRouter key डालें'
+                  : 'Add OpenRouter API key in Profile'}
             </span>
           </div>
           <ShieldCheck className="w-4 h-4 text-[#d4af37] mb-1" />

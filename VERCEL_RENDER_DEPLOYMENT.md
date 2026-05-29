@@ -58,8 +58,8 @@ After creating the service, go to **Settings** → **Environment** → Add these
 ```env
 NODE_ENV=production
 PORT=10000
-FYERS_APP_ID=XCHF9SYUDJ-100
-FYERS_SECRET_KEY=XS7Z684B89
+FYERS_APP_ID=UYCSJH0UIQ-100
+FYERS_SECRET_KEY=O2KU1I29DR
 FYERS_REDIRECT_URI=https://your-frontend-vercel-url.vercel.app/fyers-login
 FRONTEND_URL=https://your-frontend-vercel-url.vercel.app
 API_PUBLIC_URL=https://your-backend-render-url.onrender.com

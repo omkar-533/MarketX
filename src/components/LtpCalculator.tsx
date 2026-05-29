@@ -207,7 +207,7 @@ export default function LtpCalculator({ onNavigate }: LtpCalculatorProps) {
         <div>
           <div className="flex items-center gap-2">
             <Gauge className="w-6 h-6 text-gold" />
-            <h1 className="text-xl font-bold text-slate-100">LTP Calculator</h1>
+            <h1 className="text-xl font-bold text-slate-100">LPT Master</h1>
             <SignalBadge signal={signal.signal} />
           </div>
           <p className="text-xs text-slate-500 mt-1">

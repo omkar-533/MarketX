@@ -13,6 +13,7 @@ import { fetchFnoHistory, fetchFnoOiBatch } from './marketApiService';
 import { getMarketConnectionState } from './marketConnection';
 import { isNseFnoMarketOpen, marketSessionLabel } from '../utils/marketHours';
 import { subscribeLiveSymbols } from './marketTickStream';
+import { serverOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
 import { getFnoLiveQuotes, getLiveQuote } from './symbolLiveService';
 
 export type OiIntelFeedStatus = {
@@ -22,7 +23,7 @@ export type OiIntelFeedStatus = {
 };
 
 let futuresCache: FuturesOIData[] = [];
-let feedStatus: OiIntelFeedStatus = { mode: 'offline', message: 'Start npm run dev', fyersHistorySymbols: 0 };
+let feedStatus: OiIntelFeedStatus = { mode: 'offline', message: serverOfflineMessage(), fyersHistorySymbols: 0 };
 let refreshInFlight: Promise<void> | null = null;
 
 function getBuildupSignal(priceChange: number, oiChange: number): BuildupSignal {
@@ -244,7 +245,7 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
   refreshInFlight = (async () => {
     const conn = getMarketConnectionState();
     if (!conn.serverOk) {
-      feedStatus = { mode: 'offline', message: 'Offline — npm run dev', fyersHistorySymbols: 0 };
+      feedStatus = { mode: 'offline', message: serverUnreachableMessage(), fyersHistorySymbols: 0 };
       futuresCache = [];
       return;
     }
@@ -305,7 +306,7 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
             ? `${session} · TradeX Live (LTP + option chain OI)${closedNote}`
             : conn.serverOk
               ? `${session} — connect TradeX Live for LTP`
-              : 'Start npm run dev',
+              : serverOfflineMessage(),
       fyersHistorySymbols: histCount,
     };
   })().finally(() => {
