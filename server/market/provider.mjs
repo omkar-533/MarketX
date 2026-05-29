@@ -3,6 +3,12 @@ import { isFyersConfigured } from './fyersSession.mjs';
 import { ensureFyersSocket, resetFyersSocket } from './fyersSocket.mjs';
 import { getFnoSymbolList } from './fyersUniverse.mjs';
 
+const BOOT_SYMBOLS_MAX = Math.max(8, Number(process.env.FYERS_BOOT_SYMBOLS_MAX || 24));
+
+function getBootSymbols() {
+  return getFnoSymbolList().slice(0, BOOT_SYMBOLS_MAX);
+}
+
 /** Platform market data — Fyers API only */
 export function getActiveMarketProvider() {
   if (!isFyersConfigured()) return 'fyers-offline';
@@ -15,15 +21,16 @@ export function initMarketProvider() {
     return 'fyers-offline';
   }
   const symbols = getFnoSymbolList();
-  ensureFyersSocket(symbols);
-  console.log(`[Market] Provider: Fyers API only (${symbols.length} symbols)`);
+  const bootSymbols = getBootSymbols();
+  ensureFyersSocket(bootSymbols);
+  console.log(`[Market] Provider: Fyers API (${bootSymbols.length} boot symbols, ${symbols.length} total)`);
   return 'fyers';
 }
 
 export function restartFyersMarketStream() {
   if (!isFyersConfigured()) return;
   resetFyersSocket();
-  ensureFyersSocket(getFnoSymbolList());
+  ensureFyersSocket(getBootSymbols());
 }
 
 export async function fetchQuotes(symbols) {

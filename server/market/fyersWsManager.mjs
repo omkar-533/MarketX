@@ -10,6 +10,7 @@ import {
   getFyersAccessToken,
   getFyersSocketAuth,
   isFyersConfigured,
+  refreshFyersAccessToken,
   validateFyersToken,
 } from './fyersSession.mjs';
 import {
@@ -26,6 +27,7 @@ const logPath = resolve(root, 'data', 'fyers-logs');
 const CHUNK_SIZE = 50;
 const HEARTBEAT_MS = 25_000;
 const STALE_TICK_MS = 120_000;
+const MAX_SYMBOLS = Math.max(8, Number(process.env.FYERS_MAX_SYMBOLS || 40));
 
 const pendingSymbols = new Set();
 const subscribedFyers = new Set();
@@ -42,6 +44,7 @@ let lastMessageAt = 0;
 let heartbeatTimer = null;
 let staleCheckTimer = null;
 let connectTimeoutTimer = null;
+let tokenRecoveryInFlight = null;
 
 const CONNECT_TIMEOUT_MS = 15_000;
 
@@ -49,6 +52,7 @@ const CONNECT_TIMEOUT_MS = 15_000;
 let connectionStatus = 'disconnected';
 let lastError = '';
 let reconnectAttempt = 0;
+let symbolCapWarned = false;
 
 const reconnectBackoff = createBackoffScheduler((attempt) => {
   reconnectAttempt = attempt;
@@ -115,12 +119,27 @@ export function getFyersWsStatus() {
     lastError,
     subscribedCount: subscribedFyers.size,
     pendingCount: pendingSymbols.size,
+    symbolCap: MAX_SYMBOLS,
+    activeSymbols: symbolRefCount.size,
   };
 }
 
 function isAuthError(err) {
-  const msg = err instanceof Error ? err.message : String(err ?? '');
+  const msg = toErrorMessage(err);
   return /invalid.?token|unauthorized|401|403|auth|session|expired/i.test(msg);
+}
+
+function toErrorMessage(err) {
+  if (!err) return '';
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message || String(err);
+  if (typeof err === 'object') {
+    return (
+      String(err.message || err.error || err.reason || err.code || '').trim() ||
+      JSON.stringify(err)
+    );
+  }
+  return String(err);
 }
 
 function ingestMessage(msg) {
@@ -167,6 +186,15 @@ function addSymbolRefs(symbols) {
   for (const s of symbols || []) {
     const sym = String(s || '').trim().toUpperCase();
     if (!sym) continue;
+    if (!symbolRefCount.has(sym) && symbolRefCount.size >= MAX_SYMBOLS) {
+      if (!symbolCapWarned) {
+        symbolCapWarned = true;
+        console.warn(
+          `[FyersWsManager] Symbol cap reached (${MAX_SYMBOLS}). Extra symbols are skipped to keep server stable.`,
+        );
+      }
+      continue;
+    }
     pendingSymbols.add(sym);
     symbolRefCount.set(sym, (symbolRefCount.get(sym) || 0) + 1);
   }
@@ -191,6 +219,7 @@ function startHealthMonitors() {
   heartbeatTimer = setInterval(() => {
     if (!socket || connectionStatus !== 'connected') return;
     if (!isNseFnoMarketOpen()) return;
+    if (!hasTicks) return;
     if (lastMessageAt && Date.now() - lastMessageAt > STALE_TICK_MS) {
       if (connectionStatus === 'reconnecting') return;
       console.warn('[FyersWsManager] Stale socket (market open) — reconnecting');
@@ -227,7 +256,45 @@ function scheduleReconnect() {
   reconnectBackoff.schedule();
 }
 
+async function tryRecoverToken(reason) {
+  if (tokenRecoveryInFlight) return tokenRecoveryInFlight;
+  tokenRecoveryInFlight = (async () => {
+    reconnectBackoff.cancel();
+    destroySocket();
+    const refreshed = await refreshFyersAccessToken('ws_auth_error');
+    if (refreshed) {
+      intentionalClose = false;
+      connectionStatus = 'reconnecting';
+      lastError = 'Token refreshed — reconnecting';
+      emitStatus({ tokenRefreshed: true });
+      reconnectBackoff.reset();
+      reconnectBackoff.schedule();
+      return true;
+    }
+    return false;
+  })()
+    .catch(() => false)
+    .finally(() => {
+      tokenRecoveryInFlight = null;
+    });
+  return tokenRecoveryInFlight;
+}
+
 function handleTokenInvalid(reason) {
+  void tryRecoverToken(reason).then((ok) => {
+    if (ok) return;
+    intentionalClose = true;
+    connectionStatus = 'token_invalid';
+    lastError = reason || 'Fyers token invalid or expired';
+    reconnectBackoff.cancel();
+    destroySocket();
+    clearFyersAccessToken();
+    emitStatus({ tokenInvalid: true });
+    console.warn('[FyersWsManager] Token invalid — reconnect stopped until login');
+  });
+}
+
+function handleTokenInvalidImmediate(reason) {
   intentionalClose = true;
   connectionStatus = 'token_invalid';
   lastError = reason || 'Fyers token invalid or expired';
@@ -291,7 +358,7 @@ function wireSocket() {
   socket.on('message', ingestMessage);
 
   socket.on('error', (err) => {
-    const msg = err instanceof Error ? err.message : String(err ?? '');
+    const msg = toErrorMessage(err);
     console.warn('[FyersWsManager] Error:', msg);
     lastError = msg;
     if (isAuthError(err)) {
@@ -303,37 +370,12 @@ function wireSocket() {
     }
   });
 
-  socket.on('disconnect', (reason) => {
-    const msg = reason ? String(reason) : 'Socket disconnected';
-    console.warn('[FyersWsManager] Disconnect event:', msg);
+  // NOTE: fyersDataSocket does not support generic 'disconnect'/'connect_error' listeners.
+  // Using 'close' + 'error' avoids SDK "invalid parameter" warnings.
+  socket.on('close', (reason) => {
+    const msg = reason ? toErrorMessage(reason) : 'Socket closed';
+    console.warn('[FyersWsManager] Disconnected:', msg);
     lastError = msg;
-    stopHealthMonitors();
-    connecting = false;
-    if (intentionalClose) {
-      connectionStatus = 'disconnected';
-      emitStatus();
-      return;
-    }
-    connectionStatus = 'reconnecting';
-    emitStatus();
-    scheduleReconnect();
-  });
-
-  socket.on('connect_error', (err) => {
-    const msg = err instanceof Error ? err.message : String(err ?? '');
-    console.warn('[FyersWsManager] Connect error:', msg);
-    lastError = msg;
-    if (isAuthError(err)) {
-      handleTokenInvalid(msg);
-    } else {
-      connectionStatus = 'degraded';
-      emitStatus();
-      scheduleReconnect();
-    }
-  });
-
-  socket.on('close', () => {
-    console.warn('[FyersWsManager] Disconnected');
     stopHealthMonitors();
     connecting = false;
     if (intentionalClose) {
@@ -364,7 +406,7 @@ async function connectFyersUpstream() {
 
   const valid = await validateFyersToken();
   if (!valid) {
-    handleTokenInvalid('Fyers access token expired or invalid');
+    handleTokenInvalidImmediate('Fyers access token expired or invalid');
     return;
   }
 

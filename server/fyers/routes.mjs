@@ -6,6 +6,7 @@ import {
   getFyersAccessToken,
   getFyersConfigDiagnostics,
   isFyersConfigured,
+  clearFyersAccessToken,
   setFyersAccessToken,
   validateFyersToken,
 } from '../market/fyersSession.mjs';
@@ -33,17 +34,30 @@ router.get('/check-config', (_req, res) => {
   const issues = [];
   if (!d.appIdFormatOk) issues.push('FYERS_APP_ID must end with -100');
   if (!d.secretConfigured) issues.push('FYERS_SECRET_KEY missing in .env.local');
-  if (d.secretConfigured && d.secretLength < 8) {
-    issues.push('FYERS_SECRET_KEY looks too short — copy full secret from dashboard');
+  if (d.secretConfigured && d.secretLength < 16) {
+    issues.push('FYERS_SECRET_KEY looks too short — use full App Secret (not Secret ID)');
+  }
+  if (process.env.NODE_ENV === 'production' && /localhost|127\.0\.0\.1/i.test(d.redirectUri || '')) {
+    issues.push(
+      'FYERS_REDIRECT_URI points to localhost — set it to your Render callback URL',
+    );
+  }
+  const notes = [];
+  if (!d.refreshTokenConfigured) {
+    notes.push('FYERS_REFRESH_TOKEN missing — auto-renew disabled (manual login after expiry)');
+  }
+  if (!d.pinConfigured) {
+    notes.push('FYERS_PIN missing — auto-renew disabled (set 4-digit TPIN in env)');
   }
   res.json({
     ok: issues.length === 0,
     ...d,
     issues,
+    notes,
     fix:
       issues.length > 0
         ? 'https://myapi.fyers.in/dashboard → App → copy App ID + App Secret → .env.local → restart npm run dev'
-        : 'Config OK — use /fyers-login for fresh auth_code',
+        : 'Config OK — use /fyers-login for fresh auth_code. Add FYERS_REFRESH_TOKEN + FYERS_PIN for zero-manual renew.',
   });
 });
 
@@ -134,7 +148,7 @@ router.post('/access-token', async (req, res) => {
     setFyersAccessToken(token);
     const valid = await validateFyersToken();
     if (!valid) {
-      setFyersAccessToken('');
+      clearFyersAccessToken();
       return res.status(400).json({ error: 'Token invalid — check App ID matches token' });
     }
     initMarketProvider();
@@ -150,7 +164,7 @@ router.post('/access-token', async (req, res) => {
 
 router.post('/disconnect', (_req, res) => {
   shutdownFyersSocket();
-  setFyersAccessToken('');
+  clearFyersAccessToken();
   clearBrokerSessionCookie(res);
   return res.json({ ok: true });
 });

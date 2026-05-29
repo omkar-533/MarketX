@@ -7,7 +7,12 @@ import { ensureFyersSocket, getFyersWsStatus } from './fyersWsManager.mjs';
 import { getFnoSymbolList } from './fyersUniverse.mjs';
 
 const WATCH_MS = 25_000;
+const BOOT_SYMBOLS_MAX = Math.max(8, Number(process.env.FYERS_BOOT_SYMBOLS_MAX || 24));
 let watchTimer = null;
+
+function getBootSymbols() {
+  return getFnoSymbolList().slice(0, BOOT_SYMBOLS_MAX);
+}
 
 export async function bootFyersAutoConnect() {
   const { appId } = getFyersConfig();
@@ -29,7 +34,7 @@ export async function bootFyersAutoConnect() {
     return { ok: false, reason: 'invalid_token' };
   }
 
-  const symbols = getFnoSymbolList();
+  const symbols = getBootSymbols();
   ensureFyersSocket(symbols);
   const ws = getFyersWsStatus();
   console.log(
@@ -57,7 +62,7 @@ async function tickFyersAutoConnect() {
   if (ws.status === 'token_invalid') return;
 
   if (!ws.connected && ws.status !== 'connecting' && ws.status !== 'reconnecting') {
-    ensureFyersSocket(getFnoSymbolList());
+    ensureFyersSocket(getBootSymbols());
   }
 }
 
