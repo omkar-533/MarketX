@@ -10,6 +10,7 @@ interface CommandPaletteProps {
 
 const commands = [
   { id: 'dashboard', label: 'Go to Dashboard', shortcut: 'D' },
+  { id: 'ltpcalc', label: 'LTP Calculator', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },

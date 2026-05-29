@@ -37,6 +37,7 @@ const FuturesAnalytics = lazy(() => import('./components/FuturesAnalytics'));
 const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
+const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 
 function PageLoader() {
   return (
@@ -108,6 +109,8 @@ function AppWorkspace() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} />;
+      case 'ltpcalc':
+        return <LtpCalculator onNavigate={setActiveTab} />;
       case 'tradingjournal':
         return <TradingJournal user={auth.user} isAdmin={auth.user?.role === 'admin'} />;
       case 'optionchain':
