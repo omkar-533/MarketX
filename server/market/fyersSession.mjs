@@ -3,7 +3,10 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { fyersModel } from 'fyers-api-v3';
 import { sanitizeEnvValue, maskAppId, computeFyersAppIdHash } from '../utils/fyersHash.mjs';
-import { exchangeAuthCodeWithFyers } from '../utils/fyersTokenExchange.mjs';
+import {
+  exchangeAuthCodeWithFyers,
+  refreshAccessTokenWithFyers,
+} from '../utils/fyersTokenExchange.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const tokenPath = resolve(root, 'data', 'fyers-token.json');
@@ -11,6 +14,8 @@ const logPath = resolve(root, 'data', 'fyers-logs');
 
 let client = null;
 let accessToken = '';
+let refreshToken = '';
+let refreshInFlight = null;
 
 function ensureDirs() {
   const dir = dirname(tokenPath);
@@ -18,21 +23,33 @@ function ensureDirs() {
   if (!existsSync(logPath)) mkdirSync(logPath, { recursive: true });
 }
 
-function loadTokenFromFile() {
+function loadTokenRecordFromFile() {
   try {
-    if (!existsSync(tokenPath)) return '';
+    if (!existsSync(tokenPath)) return {};
     const raw = JSON.parse(readFileSync(tokenPath, 'utf8'));
-    return String(raw.access_token || raw.accessToken || '').trim();
+    return {
+      accessToken: String(raw.access_token || raw.accessToken || '').trim(),
+      refreshToken: String(raw.refresh_token || raw.refreshToken || '').trim(),
+      updatedAt: String(raw.updatedAt || '').trim(),
+    };
   } catch {
-    return '';
+    return {};
   }
 }
 
-function saveTokenToFile(token) {
+function saveTokenToFile({ accessToken: at, refreshToken: rt }) {
   ensureDirs();
   writeFileSync(
     tokenPath,
-    JSON.stringify({ access_token: token, updatedAt: new Date().toISOString() }, null, 2),
+    JSON.stringify(
+      {
+        access_token: String(at || '').trim(),
+        refresh_token: String(rt || '').trim(),
+        updatedAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
     'utf8',
   );
 }
@@ -59,21 +76,38 @@ export function isFyersConfigured() {
 }
 
 export function getFyersAccessToken() {
+  const file = loadTokenRecordFromFile();
   return (
     process.env.FYERS_ACCESS_TOKEN?.trim() ||
     accessToken ||
-    loadTokenFromFile() ||
+    file.accessToken ||
     ''
   );
 }
 
-export function setFyersAccessToken(token) {
-  accessToken = String(token || '').trim();
-  if (accessToken) {
-    process.env.FYERS_ACCESS_TOKEN = accessToken;
-    saveTokenToFile(accessToken);
+export function getFyersRefreshToken() {
+  const file = loadTokenRecordFromFile();
+  return (
+    sanitizeEnvValue(process.env.FYERS_REFRESH_TOKEN) ||
+    refreshToken ||
+    file.refreshToken ||
+    ''
+  );
+}
+
+export function setFyersTokens({ accessToken: at, refreshToken: rt }) {
+  accessToken = String(at || '').trim();
+  refreshToken = String(rt || '').trim();
+
+  if (accessToken) process.env.FYERS_ACCESS_TOKEN = accessToken;
+  else delete process.env.FYERS_ACCESS_TOKEN;
+
+  if (refreshToken) process.env.FYERS_REFRESH_TOKEN = refreshToken;
+
+  if (accessToken || refreshToken) {
+    saveTokenToFile({ accessToken, refreshToken });
   } else {
-    delete process.env.FYERS_ACCESS_TOKEN;
+    delete process.env.FYERS_REFRESH_TOKEN;
     try {
       if (existsSync(tokenPath)) writeFileSync(tokenPath, '{}', 'utf8');
     } catch {
@@ -83,8 +117,16 @@ export function setFyersAccessToken(token) {
   client = null;
 }
 
+export function setFyersAccessToken(token) {
+  const currentRefresh = getFyersRefreshToken();
+  setFyersTokens({
+    accessToken: String(token || '').trim(),
+    refreshToken: currentRefresh,
+  });
+}
+
 export function clearFyersAccessToken() {
-  setFyersAccessToken('');
+  setFyersTokens({ accessToken: '', refreshToken: '' });
 }
 
 /** Validate token before opening WebSocket */
@@ -96,7 +138,17 @@ export async function validateFyersToken() {
     return res?.s === 'ok';
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err ?? '');
-    if (/invalid|unauthorized|401|403|expired|token/i.test(msg)) return false;
+    if (/invalid|unauthorized|401|403|expired|token/i.test(msg)) {
+      const refreshed = await refreshFyersAccessToken('validate_profile');
+      if (!refreshed) return false;
+      try {
+        const api = getFyersClient();
+        const res = await api.get_profile();
+        return res?.s === 'ok';
+      } catch {
+        return false;
+      }
+    }
     return true;
   }
 }
@@ -161,18 +213,59 @@ export async function exchangeFyersAuthCode(authCode) {
   if (!appId || !secret) throw new Error('FYERS_APP_ID and FYERS_SECRET_KEY required');
   const code = assertValidAuthCodeInput(authCode);
   const res = await exchangeAuthCodeWithFyers({ appId, secret, authCode: code });
-  setFyersAccessToken(res.access_token);
+  setFyersTokens({
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token || getFyersRefreshToken(),
+  });
   return res;
+}
+
+export async function refreshFyersAccessToken(reason = 'manual') {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const { appId, secret } = getFyersConfig();
+      const rt = getFyersRefreshToken();
+      const pin = sanitizeEnvValue(process.env.FYERS_PIN);
+      if (!appId || !secret || !rt || !pin) return false;
+      const res = await refreshAccessTokenWithFyers({
+        appId,
+        secret,
+        refreshToken: rt,
+        pin,
+      });
+      setFyersTokens({
+        accessToken: res.access_token,
+        refreshToken: res.refresh_token || rt,
+      });
+      console.log(`[FyersAuth] Access token refreshed (${reason})`);
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err ?? '');
+      console.warn(`[FyersAuth] Auto-refresh failed (${reason}):`, msg);
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
 }
 
 /** Safe config check — never exposes secret */
 export function getFyersConfigDiagnostics() {
   const { appId, secret, redirect } = getFyersConfig();
+  const rt = getFyersRefreshToken();
+  const pin = sanitizeEnvValue(process.env.FYERS_PIN);
+  const tok = loadTokenRecordFromFile();
   return {
     appId: maskAppId(appId),
     appIdFormatOk: Boolean(appId && appId.endsWith('-100')),
     secretConfigured: secret.length > 0,
     secretLength: secret.length,
+    refreshTokenConfigured: rt.length > 0,
+    refreshTokenLength: rt.length,
+    pinConfigured: pin.length > 0,
+    tokenUpdatedAt: tok.updatedAt || '',
     redirectUri: redirect,
     hashPrefix: appId && secret ? computeFyersAppIdHash(appId, secret).slice(0, 12) : '',
   };
