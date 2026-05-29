@@ -4,7 +4,6 @@ import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import { startApiAutoConnect } from './services/apiAutoConnect';
 import FyersConnectBanner from './components/FyersConnectBanner';
 import FyersLoginPage from './components/FyersLoginPage';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
@@ -19,13 +18,12 @@ const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const TradingJournal = lazy(() => import('./components/TradingJournal'));
 const ChartsWorkspace = lazy(() => import('./components/charts/ChartsWorkspace'));
-const OpstraOptionChain = lazy(() => import('./components/OpstraOptionChain'));
+const TradeXOptionChain = lazy(() => import('./components/TradeXOptionChain'));
 const OptionSimulator = lazy(() => import('./components/OptionSimulator'));
 const StrategyBuilder = lazy(() => import('./components/StrategyBuilder'));
 const Scanners = lazy(() => import('./components/Scanners'));
 const MasterTX = lazy(() => import('./components/MasterTX'));
 const Watchlist = lazy(() => import('./components/Watchlist'));
-const Portfolio = lazy(() => import('./components/Portfolio'));
 const Alerts = lazy(() => import('./components/Alerts'));
 const News = lazy(() => import('./components/News'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
@@ -48,11 +46,7 @@ function PageLoader() {
   );
 }
 
-export default function App() {
-  if (window.location.pathname === '/fyers-login') {
-    return <FyersLoginPage />;
-  }
-
+function AppWorkspace() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,8 +54,6 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const auth = useAuth();
   useBrokerSession(auth.isLoggedIn);
-
-  useEffect(() => startApiAutoConnect(), []);
 
   useEffect(() => {
     const code = normalizeFyersAuthInput(window.location.href);
@@ -119,7 +111,7 @@ export default function App() {
       case 'tradingjournal':
         return <TradingJournal user={auth.user} isAdmin={auth.user?.role === 'admin'} />;
       case 'optionchain':
-        return <OpstraOptionChain />;
+        return <TradeXOptionChain />;
       case 'optionsimulator':
         return <OptionSimulator />;
       case 'strategy':
@@ -148,8 +140,6 @@ export default function App() {
         return <MasterTX />;
       case 'watchlist':
         return <Watchlist />;
-      case 'portfolio':
-        return <Portfolio />;
       case 'alerts':
         return <Alerts />;
       case 'news':
@@ -273,4 +263,11 @@ export default function App() {
       {auth.isLoggedIn ? <FyersConnectBanner /> : null}
     </AutoRefreshProvider>
   );
+}
+
+export default function App() {
+  if (window.location.pathname === '/fyers-login') {
+    return <FyersLoginPage />;
+  }
+  return <AppWorkspace />;
 }

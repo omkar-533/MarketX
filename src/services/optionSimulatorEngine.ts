@@ -109,7 +109,7 @@ export function buildT0PayoffCurve(
   });
 }
 
-export interface OpstraChartPoint {
+export interface TradeXChartPoint {
   spot: number;
   expiry: number;
   t0: number;
@@ -117,7 +117,7 @@ export interface OpstraChartPoint {
   loss: number;
 }
 
-export function buildOpstraChartData(
+export function buildTradeXChartData(
   legs: SimLeg[],
   spot: number,
   interval: number,
@@ -125,7 +125,7 @@ export function buildOpstraChartData(
   iv: number,
   lotMultiplier: number,
   steps = 61,
-): OpstraChartPoint[] {
+): TradeXChartPoint[] {
   const expiry = buildPayoffCurve(legs, spot, interval, steps, lotMultiplier);
   const t0 = buildT0PayoffCurve(legs, spot, interval, daysToExpiry, iv, steps, lotMultiplier);
   return expiry.map((e, i) => ({

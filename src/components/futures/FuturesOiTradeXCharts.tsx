@@ -8,6 +8,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
+import { hasRemoteApi } from '../../constants/brandLabels';
 import { useTheme } from '../../context/ThemeContext';
 import type { FuturesChartBar } from '../../services/futuresOiChart';
 import { barToChartTime, formatOiAxis, formatVolAxis } from '../../services/futuresOiChart';
@@ -19,12 +20,12 @@ function t(time: string): Time {
 const CHART_HEIGHT = 720;
 const MIN_CHART_WIDTH = 320;
 
-interface FuturesOiOpstraChartsProps {
+interface FuturesOiTradeXChartsProps {
   bars: FuturesChartBar[];
   symbol: string;
 }
 
-function FuturesOiOpstraChartsInner({ bars, symbol }: FuturesOiOpstraChartsProps) {
+function FuturesOiTradeXChartsInner({ bars, symbol }: FuturesOiTradeXChartsProps) {
   const { isDark } = useTheme();
   const wrapRef = useRef<HTMLDivElement>(null);
   const priceRef = useRef<HTMLDivElement>(null);
@@ -328,7 +329,9 @@ function FuturesOiOpstraChartsInner({ bars, symbol }: FuturesOiOpstraChartsProps
       >
         <p>No data for {symbol}.</p>
         <p className="text-xs text-center max-w-md">
-          Run <code className="text-gold">npm run dev</code> to start TradeX server, then refresh this page.
+          {hasRemoteApi
+            ? 'Live server waking up — wait ~1 min or refresh.'
+            : 'Run npm run dev to start TradeX server, then refresh.'}
         </p>
       </div>
     );
@@ -385,5 +388,5 @@ function FuturesOiOpstraChartsInner({ bars, symbol }: FuturesOiOpstraChartsProps
   );
 }
 
-const FuturesOiOpstraCharts = memo(FuturesOiOpstraChartsInner);
-export default FuturesOiOpstraCharts;
+const FuturesOiTradeXCharts = memo(FuturesOiTradeXChartsInner);
+export default FuturesOiTradeXCharts;

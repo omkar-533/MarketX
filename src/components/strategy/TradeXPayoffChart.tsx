@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  buildOpstraChartData,
+  buildTradeXChartData,
   getVolatilityBands,
   type SimLeg,
 } from '../../services/optionSimulatorEngine';
@@ -27,7 +27,7 @@ function fmtK(v: number) {
   return String(Math.round(v));
 }
 
-interface OpstraPayoffChartProps {
+interface TradeXPayoffChartProps {
   legs: SimLeg[];
   spot: number;
   interval: number;
@@ -39,7 +39,7 @@ interface OpstraPayoffChartProps {
   compact?: boolean;
 }
 
-export default function OpstraPayoffChart({
+export default function TradeXPayoffChart({
   legs,
   spot,
   interval,
@@ -49,9 +49,9 @@ export default function OpstraPayoffChart({
   breakevens = [],
   height = 380,
   compact = false,
-}: OpstraPayoffChartProps) {
+}: TradeXPayoffChartProps) {
   const chartData = useMemo(
-    () => (legs.length ? buildOpstraChartData(legs, spot, interval, daysToExpiry, iv, contractSize, compact ? 41 : 61) : []),
+    () => (legs.length ? buildTradeXChartData(legs, spot, interval, daysToExpiry, iv, contractSize, compact ? 41 : 61) : []),
     [legs, spot, interval, daysToExpiry, iv, contractSize, compact],
   );
 
@@ -79,11 +79,11 @@ export default function OpstraPayoffChart({
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 12, right: 16, left: 8, bottom: compact ? 4 : 8 }}>
           <defs>
-            <linearGradient id="opstraProfitFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="tradexProfitFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#4ade80" stopOpacity={0.65} />
               <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
             </linearGradient>
-            <linearGradient id="opstraLossFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="tradexLossFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#fdba74" stopOpacity={0.2} />
               <stop offset="100%" stopColor="#f97316" stopOpacity={0.65} />
             </linearGradient>
@@ -91,7 +91,7 @@ export default function OpstraPayoffChart({
 
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
 
-          {/* SD bands — Opstra style grey zones */}
+          {/* SD bands — TradeX style grey zones */}
           <ReferenceArea x1={bands.sd2Low} x2={bands.sd1Low} fill="#475569" fillOpacity={0.12} />
           <ReferenceArea x1={bands.sd1Low} x2={bands.sd1High} fill="#64748b" fillOpacity={0.08} />
           <ReferenceArea x1={bands.sd1High} x2={bands.sd2High} fill="#475569" fillOpacity={0.12} />
@@ -163,18 +163,18 @@ export default function OpstraPayoffChart({
             type="monotone"
             dataKey="profit"
             stroke="none"
-            fill="url(#opstraProfitFill)"
+            fill="url(#tradexProfitFill)"
             fillOpacity={1}
             baseLine={0}
             isAnimationActive={false}
           />
 
-          {/* Orange loss area (below zero) — Opstra uses orange */}
+          {/* Orange loss area (below zero) */}
           <Area
             type="monotone"
             dataKey="loss"
             stroke="none"
-            fill="url(#opstraLossFill)"
+            fill="url(#tradexLossFill)"
             fillOpacity={1}
             baseLine={0}
             isAnimationActive={false}

@@ -66,7 +66,7 @@ import {
   type OiTimeframeId,
 } from '../services/optionOiBacktest';
 import StrategyTemplateGallery from './strategy/StrategyTemplateGallery';
-import OpstraPayoffChart from './strategy/OpstraPayoffChart';
+import TradeXPayoffChart from './strategy/TradeXPayoffChart';
 import { getStrategyVisual } from './strategy/strategyVisuals';
 
 type TabId = 'builder' | 'payoff' | 'chain' | 'historical' | 'analytics' | 'backtest';
@@ -460,7 +460,7 @@ export default function OptionSimulator() {
               {legs.length > 0 && (
                 <div className="app-card p-4 border border-[#24324b] bg-white/5">
                   <h3 className="text-sm font-bold text-white mb-2">Live Payoff Preview</h3>
-                  <OpstraPayoffChart
+                  <TradeXPayoffChart
                     legs={legs}
                     spot={spot}
                     interval={meta.interval}
@@ -474,13 +474,13 @@ export default function OptionSimulator() {
                 </div>
               )}
 
-              {/* Manual leg — Opstra style */}
+              {/* Manual leg — TradeX style */}
               <div className="app-card p-4 border border-[#d4af37]/30 bg-[#0d1728]/60">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Plus className="h-4 w-4 text-[#d4af37]" /> Add Manual Leg
                   </h3>
-                  <span className="text-[10px] text-slate-500">Opstra-style custom entry</span>
+                  <span className="text-[10px] text-slate-500">TradeX-style custom entry</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -841,9 +841,9 @@ export default function OptionSimulator() {
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <CandlestickChart className="h-4 w-4 text-[#d4af37]" /> Payoff Chart
                   </h3>
-                  <span className="text-[10px] text-slate-500">Like Opstra · Blue expiry · Purple T+0</span>
+                  <span className="text-[10px] text-slate-500">TradeX · Blue expiry · Purple T+0</span>
                 </div>
-                <OpstraPayoffChart
+                <TradeXPayoffChart
                   legs={legs}
                   spot={scenarioSpot || spot}
                   interval={meta.interval}

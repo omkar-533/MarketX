@@ -1,4 +1,7 @@
+import { apiFetch } from '../config/api';
+import { hasRemoteApi, masterAiOfflineMessage, serverOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
 import { getGainers, getIndices, getLosers, getNews, getOptionChain, getSignals, getStocks } from '../data/marketData';
+import { openRouterRequestHeaders } from './openRouterKey';
 
 export interface MasterAiModel {
   id: string;
@@ -126,13 +129,13 @@ export const PLATFORM_KNOWLEDGE = `
 Master TradeX platform (answer using this when user asks about the app):
 - Paper Trading: virtual ₹10L, cash/futures/options, live LTP, limit/SL/target orders, brokerage, strategy import
 - Strategy Builder: multi-leg templates, payoff, Greeks, paper trade bridge
-- Option Chain / Opstra-style chain with OI, PCR, max pain
+- Option Chain / TradeX-style chain with OI, PCR, max pain
 - Futures Analytics: OI vs price, delivery, daily/weekly
 - OI Intelligence, Footprint, Scanners (volume, OI, gaps, momentum)
 - Trading Journal: trades, analytics, calendar, Supabase sync
 - Backtesting, Signals panel, Watchlist, Portfolio, Alerts, News
 - Master AI (this assistant): trading-only copilot
-Live data requires npm run dev. Connect TradeX Live in Profile — platform uses TradeX live feed only (no Yahoo/external feeds).
+Live data requires TradeX server. Connect TradeX Live in Profile — platform uses TradeX live feed only (no Yahoo/external feeds).
 `;
 
 const NON_TRADING_TERMS = [
@@ -186,7 +189,7 @@ export function buildMasterMarketContext(): MasterMarketContext {
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return {
-    summary: 'Live feed: TradeX/NSE (npm run dev)',
+    summary: hasRemoteApi ? 'Live feed: TradeX/NSE (cloud)' : 'Live feed: TradeX/NSE (local dev)',
     nifty: `${fmt(nifty.price)} (${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%)`,
     bankNifty: `${fmt(bank.price)} (${bank.changePercent >= 0 ? '+' : ''}${bank.changePercent.toFixed(2)}%)`,
     pcr,
@@ -236,24 +239,47 @@ export interface MasterChatResponse {
   source?: 'openrouter' | 'local';
 }
 
-export async function fetchMasterAiStatus(): Promise<{ configured: boolean; message: string }> {
+export type MasterAiKeySource = 'server' | 'profile' | 'none';
+
+export async function fetchMasterAiStatus(): Promise<{
+  configured: boolean;
+  message: string;
+  keySource: MasterAiKeySource;
+}> {
   try {
-    const res = await fetch('/api/chat/status');
-    if (!res.ok) return { configured: false, message: 'Offline — start npm run dev' };
+    const keyHeaders = openRouterRequestHeaders();
+    const res = await apiFetch('/api/chat/status', {
+      headers: { ...keyHeaders },
+    });
+    if (!res.ok) {
+      return { configured: false, message: masterAiOfflineMessage(), keySource: 'none' };
+    }
     const data = await res.json();
+    const keySource =
+      (data?.keySource as MasterAiKeySource) ||
+      (data?.configured ? (keyHeaders['X-OpenRouter-Key'] ? 'profile' : 'server') : 'none');
     return {
       configured: Boolean(data?.configured),
-      message: data?.configured ? 'Live intelligence ready' : 'Server running — AI key needed',
+      keySource,
+      message: data?.configured
+        ? keySource === 'server'
+          ? 'Master AI ready (server key)'
+          : 'Live intelligence ready'
+        : 'Add OpenRouter API key in Profile',
     };
   } catch {
-    return { configured: false, message: 'Cannot reach TradeX server (npm run dev)' };
+    return {
+      configured: false,
+      message: serverUnreachableMessage(),
+      keySource: 'none',
+    };
   }
 }
 
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
-  const res = await fetch('/api/chat', {
+  const res = await apiFetch('/api/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...openRouterRequestHeaders() },
     body: JSON.stringify({
       message: req.message,
       model: req.model,

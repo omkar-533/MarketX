@@ -9,7 +9,7 @@ import {
 } from '../services/futuresOiLiveService';
 import type { LiveSymbolQuote } from '../services/symbolLiveService';
 import SymbolMarketPicker from './strategy/SymbolMarketPicker';
-import FuturesOiOpstraCharts from './futures/FuturesOiOpstraCharts';
+import FuturesOiTradeXCharts from './futures/FuturesOiTradeXCharts';
 
 const RANGES: FuturesRangeId[] = ['1m', '3m', '6m', 'YTD', '1y', 'All'];
 const PERIODS: { id: FuturesPeriod; label: string }[] = [
@@ -101,7 +101,7 @@ export default function FuturesAnalytics() {
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-gold">Futures Analytics</h2>
               <p className="text-[11px] text-dark-muted truncate">
-                Real OHLC · volume · OI buildup — Opstra-style view
+                Real OHLC · volume · OI buildup — TradeX-style view
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function FuturesAnalytics() {
               <Loader2 className="w-7 h-7 text-gold animate-spin" />
             </div>
           )}
-          <FuturesOiOpstraCharts bars={chartBars} symbol={symbol} />
+          <FuturesOiTradeXCharts bars={chartBars} symbol={symbol} />
         </div>
 
         <p className="text-center text-[10px] text-dark-muted py-2 border-t border-dark-border shrink-0">

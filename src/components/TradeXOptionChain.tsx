@@ -97,7 +97,7 @@ function OiBar({ value, max, color }: { value: number; max: number; color: strin
   );
 }
 
-export default function OpstraOptionChain() {
+export default function TradeXOptionChain() {
   const [apiExpiries, setApiExpiries] = useState<string[]>([]);
   const expiries = apiExpiries;
   const [symbol, setSymbol] = useState('NIFTY');
@@ -173,7 +173,7 @@ export default function OpstraOptionChain() {
           }
         })
         .catch(() => {
-          setChainError('Load failed — TradeX server check karein (npm run dev).');
+          setChainError('Load failed — live server slow ho sakta hai, 30s wait karke Refresh dabayein.');
           setStrikes([]);
         })
         .finally(() => setChainLoading(false));
