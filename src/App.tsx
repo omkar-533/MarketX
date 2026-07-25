@@ -17,7 +17,6 @@ const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const TradingJournal = lazy(() => import('./components/TradingJournal'));
-const ChartsWorkspace = lazy(() => import('./components/charts/ChartsWorkspace'));
 const TradeXOptionChain = lazy(() => import('./components/TradeXOptionChain'));
 const OptionSimulator = lazy(() => import('./components/OptionSimulator'));
 const StrategyBuilder = lazy(() => import('./components/StrategyBuilder'));
@@ -127,8 +126,6 @@ function AppWorkspace() {
         return <FootprintChart />;
       case 'trafi':
         return <MasterAI />;
-      case 'chart':
-        return <ChartsWorkspace />;
       case 'papertrading':
         return <PaperTrading user={auth.user} onNavigate={setActiveTab} />;
       case 'backtesting':
@@ -206,11 +203,9 @@ function AppWorkspace() {
           <div
             className={
               auth.isLoggedIn
-                ? activeTab === 'chart'
-                  ? 'charts-page'
-                  : activeTab === 'scanner' || activeTab === 'master-tx'
-                    ? 'page-content page-content--screener'
-                    : 'page-content'
+                ? activeTab === 'scanner' || activeTab === 'master-tx'
+                  ? 'page-content page-content--screener'
+                  : 'page-content'
                 : ''
             }
           >

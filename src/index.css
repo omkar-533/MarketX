@@ -58,14 +58,6 @@ body {
   }
 }
 
-.charts-page {
-  padding: 0.5rem 0.75rem;
-  max-width: none;
-  width: 100%;
-  margin: 0;
-  min-height: calc(100vh - 3.5rem);
-}
-
 @media (min-width: 640px) {
   .page-content {
     padding: 1rem 1.25rem;

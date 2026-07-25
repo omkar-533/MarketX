@@ -3,7 +3,6 @@ import { refreshOptionChainsLive } from './optionChainEngine';
 import { refreshLiveSectionsCache } from './liveSectionsCache';
 import { getMarketConnectionState, refreshMarketConnection } from './marketConnection';
 import { refreshScreenerFeedAsync } from './screenerLiveService';
-import { invalidateChartCache } from './chart/chartDataService';
 import { subscribeLiveSymbols } from './marketTickStream';
 import { CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
 import { getFnoLiveQuotes, refreshFnoLiveQuotesAsync } from './symbolLiveService';
@@ -44,14 +43,6 @@ export function runGlobalRefresh(): AutoRefreshDetail {
     })
     .then(() => {
       if (tick % 3 === 0) return refreshScreenerFeedAsync();
-    })
-    .then(() => {
-      if (tick % 10 === 0) {
-        invalidateChartCache();
-        void import('./chart/chartDataService').then((m) =>
-          m.prewarmChartCache(['NIFTY', 'BANKNIFTY'], '15m'),
-        );
-      }
     })
     .finally(() => {
     try {

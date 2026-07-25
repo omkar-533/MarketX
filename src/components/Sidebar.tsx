@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, CandlestickChart, Layers, PieChart, Zap, ScanLine,
+  LayoutDashboard, Layers, PieChart, Zap, ScanLine,
   Globe, Bell, Bookmark, Wallet, Newspaper,
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot, BarChart3,
   NotebookPen, Calculator, Gauge,
@@ -24,7 +24,6 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'ltpcalc', label: 'LPT Master', icon: Gauge },
   { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
-  { id: 'chart', label: 'Pro Charts', icon: CandlestickChart },
   { id: 'optionchain', label: 'Option Chain', icon: Layers },
   { id: 'optionsimulator', label: 'Option Simulator', icon: Calculator },
   { id: 'oiintelligence', label: 'OI Intelligence', icon: Activity },
