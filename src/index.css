@@ -1273,6 +1273,282 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 280px;
 }
 
+/* ─── Fullscreen battlefield + drones ─── */
+.auth-page--fullscreen-mech {
+  min-height: 100dvh;
+}
+
+.auth-fullscreen-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.auth-fullscreen-stage .auth-robot-stage--fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+  border: none;
+}
+
+.auth-fullscreen-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, transparent 35%, rgba(6, 8, 15, 0.55) 70%, rgba(6, 8, 15, 0.88) 100%),
+    linear-gradient(180deg, rgba(6, 8, 15, 0.35) 0%, transparent 25%, transparent 55%, rgba(6, 8, 15, 0.75) 100%);
+}
+
+@media (max-width: 639px) {
+  .auth-fullscreen-shade {
+    background:
+      linear-gradient(180deg, rgba(6, 8, 15, 0.25) 0%, transparent 30%, rgba(6, 8, 15, 0.55) 60%, rgba(6, 8, 15, 0.92) 100%);
+  }
+}
+
+.auth-form-card--overlay {
+  backdrop-filter: blur(16px);
+  background: linear-gradient(165deg, rgba(10, 14, 24, 0.92), rgba(6, 8, 15, 0.95));
+}
+
+.auth-walker--xl {
+  transform: scale(1.85);
+  transform-origin: center bottom;
+}
+
+@media (min-width: 1024px) {
+  .auth-walker--xl {
+    transform: scale(2.35);
+  }
+  .auth-walker-track--mech {
+    height: 280px;
+    bottom: 22%;
+  }
+}
+
+@media (min-width: 1400px) {
+  .auth-walker--xl {
+    transform: scale(2.8);
+  }
+}
+
+.auth-mech-ring--c {
+  width: 280px;
+  height: 90px;
+  border-color: rgba(212, 175, 55, 0.12);
+  animation: auth-orbit-spin-flat 14s linear infinite;
+}
+
+.auth-mech-radar-blip--2 {
+  top: 55%;
+  left: 30%;
+  animation-delay: 0.4s;
+}
+
+.auth-mech-radar-blip--3 {
+  top: 40%;
+  left: 45%;
+  width: 3px;
+  height: 3px;
+  animation-delay: 0.8s;
+}
+
+/* Drone swarm */
+.auth-drone-swarm {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-drone {
+  position: absolute;
+  animation: auth-drone-float 6s ease-in-out infinite;
+}
+
+.auth-drone--sm { width: 28px; height: 28px; }
+.auth-drone--md { width: 40px; height: 40px; }
+.auth-drone--lg { width: 52px; height: 52px; }
+
+.auth-drone-body {
+  position: relative;
+  width: 55%;
+  height: 40%;
+  margin: 30% auto 0;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #3a455c, #121722);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+}
+
+.auth-drone-eye {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 35%;
+  height: 35%;
+  margin: -17% 0 0 -17%;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px #22d3ee;
+  animation: auth-eye-pulse 1.1s ease-in-out infinite;
+}
+
+.auth-drone-arm {
+  position: absolute;
+  width: 45%;
+  height: 2px;
+  background: #64748b;
+  top: 40%;
+}
+
+.auth-drone-arm--tl { left: -40%; transform: rotate(-28deg); }
+.auth-drone-arm--tr { right: -40%; transform: rotate(28deg); }
+.auth-drone-arm--bl { left: -35%; top: 70%; transform: rotate(22deg); }
+.auth-drone-arm--br { right: -35%; top: 70%; transform: rotate(-22deg); }
+
+.auth-drone-rotor {
+  position: absolute;
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.12);
+  animation: auth-rotor-spin 0.12s linear infinite;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.auth-drone-rotor--tl { left: -70%; top: -30%; }
+.auth-drone-rotor--tr { right: -70%; top: -30%; }
+.auth-drone-rotor--bl { left: -65%; bottom: -40%; }
+.auth-drone-rotor--br { right: -65%; bottom: -40%; }
+
+@keyframes auth-rotor-spin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-drone-beam {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 28px;
+  margin-left: -1px;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.8), transparent);
+  opacity: 0.6;
+  animation: auth-drone-beam 1.6s ease-in-out infinite;
+}
+
+@keyframes auth-drone-beam {
+  0%, 100% { height: 16px; opacity: 0.3; }
+  50% { height: 36px; opacity: 0.85; }
+}
+
+.auth-drone-shadow {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: -8px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  filter: blur(2px);
+}
+
+@keyframes auth-drone-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-14px) rotate(2deg); }
+}
+
+/* Flight paths across full screen */
+.auth-drone-path--1 {
+  top: 12%;
+  left: 8%;
+  animation: auth-fly-1 14s linear infinite, auth-drone-float 5s ease-in-out infinite;
+}
+.auth-drone-path--2 {
+  top: 22%;
+  left: 55%;
+  animation: auth-fly-2 11s linear infinite, auth-drone-float 4.5s ease-in-out infinite;
+}
+.auth-drone-path--3 {
+  top: 35%;
+  left: 18%;
+  animation: auth-fly-3 16s linear infinite, auth-drone-float 6s ease-in-out infinite;
+}
+.auth-drone-path--4 {
+  top: 8%;
+  left: 70%;
+  animation: auth-fly-4 12s linear infinite, auth-drone-float 5.2s ease-in-out infinite;
+}
+.auth-drone-path--5 {
+  top: 48%;
+  left: 75%;
+  animation: auth-fly-5 13s linear infinite, auth-drone-float 4.8s ease-in-out infinite;
+}
+.auth-drone-path--6 {
+  top: 18%;
+  left: 35%;
+  animation: auth-fly-6 10s linear infinite, auth-drone-float 5.5s ease-in-out infinite;
+}
+.auth-drone-path--7 {
+  top: 58%;
+  left: 10%;
+  animation: auth-fly-7 15s linear infinite, auth-drone-float 4.2s ease-in-out infinite;
+}
+.auth-drone-path--8 {
+  top: 42%;
+  left: 42%;
+  animation: auth-fly-8 12.5s linear infinite, auth-drone-float 5.8s ease-in-out infinite;
+}
+
+@keyframes auth-fly-1 {
+  0% { left: -5%; top: 14%; }
+  50% { left: 60%; top: 8%; }
+  100% { left: 105%; top: 18%; }
+}
+@keyframes auth-fly-2 {
+  0% { left: 105%; top: 25%; }
+  50% { left: 40%; top: 15%; }
+  100% { left: -8%; top: 28%; }
+}
+@keyframes auth-fly-3 {
+  0% { left: -8%; top: 40%; }
+  40% { left: 45%; top: 28%; }
+  100% { left: 108%; top: 45%; }
+}
+@keyframes auth-fly-4 {
+  0% { left: 80%; top: 5%; }
+  50% { left: 20%; top: 12%; }
+  100% { left: -10%; top: 6%; }
+}
+@keyframes auth-fly-5 {
+  0% { left: 108%; top: 50%; }
+  50% { left: 55%; top: 38%; }
+  100% { left: -5%; top: 55%; }
+}
+@keyframes auth-fly-6 {
+  0% { left: 30%; top: 10%; }
+  50% { left: 70%; top: 22%; }
+  100% { left: 110%; top: 12%; }
+}
+@keyframes auth-fly-7 {
+  0% { left: -5%; top: 62%; }
+  50% { left: 50%; top: 48%; }
+  100% { left: 105%; top: 58%; }
+}
+@keyframes auth-fly-8 {
+  0% { left: 50%; top: 45%; }
+  33% { left: 15%; top: 30%; }
+  66% { left: 75%; top: 35%; }
+  100% { left: 50%; top: 45%; }
+}
+
 .auth-logo {
   width: 3rem;
   height: 3rem;

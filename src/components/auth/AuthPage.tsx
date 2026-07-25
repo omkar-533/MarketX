@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
-import AuthBrandPanel from './AuthBrandPanel';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthRobotScene from './AuthRobotScene';
 import ThemeToggle from '../ThemeToggle';
@@ -22,13 +21,19 @@ export default function AuthPage(props: AuthPageProps) {
   const ticker = AUTH_TICKER;
 
   return (
-    <div className="auth-page auth-page--robot min-h-screen flex flex-col">
+    <div className="auth-page auth-page--robot auth-page--fullscreen-mech min-h-screen flex flex-col relative overflow-hidden">
       <div className="auth-aurora auth-aurora--robot" aria-hidden="true" />
       <div className="auth-noise" aria-hidden="true" />
       <div className="auth-scan-grid" aria-hidden="true" />
       <div className="auth-scanbeam" aria-hidden="true" />
 
-      <header className="relative z-10 border-b border-gold/15 shrink-0 bg-[#06080f]/90 backdrop-blur-xl">
+      {/* Full-screen mech + drone battlefield */}
+      <div className="auth-fullscreen-stage" aria-hidden="true">
+        <AuthRobotScene fullscreen />
+      </div>
+      <div className="auth-fullscreen-shade" aria-hidden="true" />
+
+      <header className="relative z-20 border-b border-gold/15 shrink-0 bg-[#06080f]/55 backdrop-blur-md">
         <div className="flex items-center justify-between gap-2 px-4 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="auth-ai-logo auth-ai-logo--sm">
@@ -43,7 +48,9 @@ export default function AuthPage(props: AuthPageProps) {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="auth-version-badge auth-version-badge--ai hidden sm:inline-flex">AI CORE v3</span>
+            <span className="auth-version-badge auth-version-badge--ai hidden sm:inline-flex">
+              SWARM · ONLINE
+            </span>
             <ThemeToggle />
           </div>
         </div>
@@ -60,38 +67,26 @@ export default function AuthPage(props: AuthPageProps) {
         </div>
       </header>
 
-      <div className="relative z-10 flex-1 grid lg:grid-cols-2 min-h-0">
-        {/* Desktop left panel */}
-        <AuthBrandPanel variant="page" />
-
+      <div className="relative z-20 flex-1 flex items-end sm:items-center justify-center sm:justify-end px-4 sm:px-8 lg:px-16 py-6 lg:py-10">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col justify-center px-4 sm:px-8 lg:px-12 xl:px-16 py-6 lg:py-10 overflow-y-auto"
+          transition={{ duration: 0.45 }}
+          className="w-full max-w-md"
         >
-          {/* Mobile / tablet: robot ALWAYS visible */}
-          <div className="lg:hidden mb-4">
-            <p className="auth-ai-headline text-center text-xl mb-1">
-              <span>TX·MECH</span> combat unit
+          <div className="mb-4 hidden sm:block">
+            <p className="auth-ai-headline text-2xl lg:text-3xl">
+              <span>TX·MECH</span> + drone swarm
             </p>
-            <p className="text-center text-[11px] text-slate-500 mb-2">
-              Thrusters · scan laser · patrol boost
-            </p>
-            <div className="auth-robot-wrap auth-robot-wrap--mobile mx-auto">
-              <AuthRobotScene />
-            </div>
+            <p className="text-sm text-slate-500 mt-1">Full battlefield neural gateway</p>
           </div>
-
-          <div className="w-full max-w-md mx-auto lg:mx-0">
-            <div className="auth-form-card auth-form-card--robot p-5 sm:p-8 relative z-[1]">
-              <div className="auth-form-robot-edge" aria-hidden="true" />
-              <AuthForm {...props} />
-            </div>
-            <p className="mt-4 text-center text-[10px] text-slate-600 tracking-wide">
-              Secure neural gateway · TradeX Live
-            </p>
+          <div className="auth-form-card auth-form-card--robot auth-form-card--overlay p-5 sm:p-8">
+            <div className="auth-form-robot-edge" aria-hidden="true" />
+            <AuthForm {...props} />
           </div>
+          <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
+            8 drones active · Secure TradeX Live
+          </p>
         </motion.div>
       </div>
     </div>
