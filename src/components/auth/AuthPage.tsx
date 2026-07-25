@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Bot } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthRobotScene from './AuthRobotScene';
+import AuthTradingOverlay from './AuthTradingOverlay';
 import ThemeToggle from '../ThemeToggle';
 
 const AUTH_TICKER = [
@@ -32,6 +33,7 @@ export default function AuthPage(props: AuthPageProps) {
         <AuthRobotScene fullscreen />
       </div>
       <div className="auth-fullscreen-shade" aria-hidden="true" />
+      <AuthTradingOverlay />
 
       <header className="relative z-20 border-b border-gold/15 shrink-0 bg-[#06080f]/55 backdrop-blur-md">
         <div className="flex items-center justify-between gap-2 px-4 py-2.5">
@@ -76,9 +78,11 @@ export default function AuthPage(props: AuthPageProps) {
         >
           <div className="mb-4 hidden sm:block">
             <p className="auth-ai-headline text-2xl lg:text-3xl">
-              <span>TX·MECH</span> + drone swarm
+              <span>TradeX</span> neural terminal
             </p>
-            <p className="text-sm text-slate-500 mt-1">Full battlefield neural gateway</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Live LTP · Option Chain · OI · Signals · LPT Master
+            </p>
           </div>
           <div className="auth-form-card auth-form-card--robot auth-form-card--overlay p-5 sm:p-8">
             <div className="auth-form-robot-edge" aria-hidden="true" />
