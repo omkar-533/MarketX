@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Layers, PieChart, Zap, ScanLine,
+  LayoutDashboard, PieChart, Zap, ScanLine,
   Globe, Bell, Bookmark, Wallet, Newspaper,
-  Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot, BarChart3,
+  Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot,
   NotebookPen, Calculator, Gauge,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
@@ -24,11 +24,8 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'ltpcalc', label: 'LPT Master', icon: Gauge },
   { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
-  { id: 'optionchain', label: 'Option Chain', icon: Layers },
   { id: 'optionsimulator', label: 'Option Simulator', icon: Calculator },
   { id: 'oiintelligence', label: 'OI Intelligence', icon: Activity },
-  { id: 'footprint', label: 'Footprint Chart', icon: BarChart3 },
-  { id: 'futures', label: 'Futures Analytics', icon: Activity },
   { id: 'strategy', label: 'Strategy Builder', icon: Zap },
   { id: 'papertrading', label: 'Paper Trading', icon: Wallet },
   { id: 'heatmap', label: 'Heatmap', icon: PieChart },

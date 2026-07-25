@@ -12,6 +12,12 @@ try {
   console.warn("[main] API warmup skipped:", err);
 }
 
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  });
+}
+
 const rootEl = document.getElementById("root");
 if (!rootEl) {
   document.body.innerHTML =
