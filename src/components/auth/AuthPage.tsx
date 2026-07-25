@@ -51,7 +51,7 @@ export default function AuthPage(props: AuthPageProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="auth-version-badge auth-version-badge--ai hidden sm:inline-flex">
-              THINKING · ONLINE
+              3D AI · LIVE
             </span>
             <ThemeToggle />
           </div>
@@ -89,7 +89,7 @@ export default function AuthPage(props: AuthPageProps) {
             <AuthForm {...props} />
           </div>
           <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            Neural AI online · Secure TradeX Live
+            3D neural AI · Secure TradeX Live
           </p>
         </motion.div>
       </div>

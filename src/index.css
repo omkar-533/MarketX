@@ -1417,6 +1417,24 @@ input[type="number"] { -moz-appearance: textfield; }
   50% { transform: translateY(-14px); opacity: 0.95; }
 }
 
+.auth-thinker-3d-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.auth-robot-3d {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-robot-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
 .auth-thinker-portrait {
   position: absolute;
   inset: 0;
@@ -1424,6 +1442,10 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
   justify-content: flex-start;
   padding-left: 2%;
+}
+
+.auth-thinker-portrait--fallback {
+  z-index: 0;
 }
 
 .auth-thinker-img {

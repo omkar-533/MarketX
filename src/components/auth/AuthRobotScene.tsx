@@ -1,7 +1,27 @@
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-/** Full-screen AI Thinker robot — sleek blue neural aesthetic */
+const AuthRobot3D = lazy(() => import('./AuthRobot3D'));
+
+function ThinkerFallback() {
+  return (
+    <div className="auth-thinker-portrait auth-thinker-portrait--fallback">
+      <img src="/auth/ai-thinker.png" alt="" className="auth-thinker-img" draggable={false} />
+      <div className="auth-thinker-vignette" />
+    </div>
+  );
+}
+
+/** Full-screen moving 3D AI Thinker robot */
 export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: boolean }) {
+  const [prefer3d, setPrefer3d] = useState(true);
+
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (reduce || saveData) setPrefer3d(false);
+  }, []);
+
   return (
     <div
       className={`auth-robot-stage auth-robot-stage--thinker ${fullscreen ? 'auth-robot-stage--fullscreen' : ''}`}
@@ -13,26 +33,16 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
         <div className="auth-thinker-grid" />
         <div className="auth-thinker-orbit auth-thinker-orbit--a" />
         <div className="auth-thinker-orbit auth-thinker-orbit--b" />
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span
-            key={i}
-            className="auth-thinker-particle"
-            style={{
-              left: `${6 + ((i * 17) % 88)}%`,
-              top: `${10 + ((i * 23) % 75)}%`,
-              animationDelay: `${i * 0.35}s`,
-            }}
-          />
-        ))}
       </div>
 
-      <div className="auth-thinker-portrait">
-        <img
-          src="/auth/ai-thinker.png"
-          alt=""
-          className="auth-thinker-img"
-          draggable={false}
-        />
+      <div className="auth-thinker-3d-wrap">
+        {prefer3d ? (
+          <Suspense fallback={<ThinkerFallback />}>
+            <AuthRobot3D compact={!fullscreen} />
+          </Suspense>
+        ) : (
+          <ThinkerFallback />
+        )}
         <div className="auth-thinker-vignette" />
         <div className="auth-thinker-scan" />
       </div>
@@ -44,7 +54,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           transition={{ duration: 2.4, repeat: Infinity }}
         >
           NEURAL CORE
-          <span>ANALYZING</span>
+          <span>3D LIVE</span>
         </motion.div>
         <motion.div
           className="auth-thinker-chip auth-thinker-chip--tr"
@@ -52,7 +62,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
         >
           MARKET AI
-          <span>ONLINE</span>
+          <span>MOVING</span>
         </motion.div>
         <div className="auth-thinker-chip auth-thinker-chip--bl">
           DEPTH
