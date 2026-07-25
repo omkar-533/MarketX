@@ -73,9 +73,11 @@ export default function AuthPage(props: AuthPageProps) {
           {/* Mobile / tablet: robot ALWAYS visible */}
           <div className="lg:hidden mb-4">
             <p className="auth-ai-headline text-center text-xl mb-1">
-              <span>Walking</span> AI unit
+              <span>TX·MECH</span> combat unit
             </p>
-            <p className="text-center text-[11px] text-slate-500 mb-2">Live patrol · neural market core</p>
+            <p className="text-center text-[11px] text-slate-500 mb-2">
+              Thrusters · scan laser · patrol boost
+            </p>
             <div className="auth-robot-wrap auth-robot-wrap--mobile mx-auto">
               <AuthRobotScene />
             </div>

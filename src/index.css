@@ -836,10 +836,442 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 700;
 }
 
-.auth-hud-chip--tl { top: 8%; left: 0; }
-.auth-hud-chip--tr { top: 12%; right: 0; }
-.auth-hud-chip--bl { bottom: 10%; left: 2%; }
-.auth-hud-chip--br { bottom: 14%; right: 2%; }
+.auth-hud-chip--tl { top: 6%; left: 0; }
+.auth-hud-chip--tr { top: 10%; right: 0; }
+.auth-hud-chip--bl { bottom: 8%; left: 2%; }
+.auth-hud-chip--br { bottom: 12%; right: 2%; }
+
+/* ─── Advanced mech upgrades ─── */
+.auth-robot-stage--mech {
+  width: min(100%, 380px);
+  height: 310px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(212, 175, 55, 0.14), transparent 65%),
+    radial-gradient(ellipse 40% 30% at 50% 20%, rgba(34, 211, 238, 0.06), transparent 60%);
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.auth-mech-arena {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  perspective: 600px;
+}
+
+.auth-mech-grid {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 8%;
+  height: 55%;
+  background-image:
+    linear-gradient(rgba(212, 175, 55, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.1) 1px, transparent 1px);
+  background-size: 28px 28px;
+  transform: rotateX(62deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+  opacity: 0.55;
+}
+
+.auth-mech-horizon {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 16%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.5), rgba(212, 175, 55, 0.6), rgba(34, 211, 238, 0.5), transparent);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.3);
+}
+
+.auth-mech-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  transform: translateX(-50%) rotateX(72deg);
+}
+
+.auth-mech-ring--a {
+  width: 200px;
+  height: 70px;
+  animation: auth-orbit-spin-flat 10s linear infinite;
+}
+
+.auth-mech-ring--b {
+  width: 140px;
+  height: 48px;
+  border-color: rgba(34, 211, 238, 0.25);
+  border-style: dashed;
+  animation: auth-orbit-spin-flat 6s linear infinite reverse;
+}
+
+@keyframes auth-orbit-spin-flat {
+  to { transform: translateX(-50%) rotateX(72deg) rotateZ(360deg); }
+}
+
+.auth-walker-track--mech {
+  bottom: 18%;
+  height: 175px;
+  animation: auth-patrol-boost 9s ease-in-out infinite;
+}
+
+@keyframes auth-patrol-boost {
+  0% { transform: translateX(-30%) scaleX(1) translateY(0); }
+  20% { transform: translateX(-5%) scaleX(1) translateY(0); }
+  28% { transform: translateX(0%) scaleX(1) translateY(-18px); }
+  34% { transform: translateX(8%) scaleX(1) translateY(0); }
+  48% { transform: translateX(30%) scaleX(1) translateY(0); }
+  50% { transform: translateX(30%) scaleX(-1) translateY(0); }
+  70% { transform: translateX(5%) scaleX(-1) translateY(0); }
+  78% { transform: translateX(0%) scaleX(-1) translateY(-18px); }
+  84% { transform: translateX(-8%) scaleX(-1) translateY(0); }
+  98% { transform: translateX(-30%) scaleX(-1) translateY(0); }
+  100% { transform: translateX(-30%) scaleX(1) translateY(0); }
+}
+
+.auth-walker--mech {
+  width: 84px;
+  height: 168px;
+  margin-left: -42px;
+  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.25));
+}
+
+.auth-walker-head--mech {
+  width: 40px;
+  height: 38px;
+  margin-left: -20px;
+  border-radius: 12px 12px 14px 14px;
+  background: linear-gradient(155deg, #4a5568 0%, #1a2030 40%, #0a0e17 100%);
+  box-shadow:
+    inset 0 4px 10px rgba(255, 255, 255, 0.08),
+    0 0 20px rgba(212, 175, 55, 0.25);
+}
+
+.auth-mech-helmet-ridge {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  right: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  opacity: 0.7;
+}
+
+.auth-walker-visor--mech {
+  height: 14px;
+  top: 11px;
+  background: linear-gradient(180deg, #031018, #0a1a28);
+  box-shadow: inset 0 0 12px rgba(34, 211, 238, 0.35);
+}
+
+.auth-mech-laser {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 90px;
+  height: 2px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.9), transparent);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+  transform-origin: left center;
+  animation: auth-laser-sweep 2.4s ease-in-out infinite;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+@keyframes auth-laser-sweep {
+  0%, 100% { transform: rotate(-18deg) scaleX(0.4); opacity: 0.3; }
+  40% { transform: rotate(8deg) scaleX(1); opacity: 1; }
+  70% { transform: rotate(22deg) scaleX(0.7); opacity: 0.6; }
+}
+
+.auth-walker-torso--mech {
+  width: 48px;
+  height: 54px;
+  margin-left: -24px;
+  top: 38px;
+  background: linear-gradient(165deg, #2c3548, #0c101a 55%, #151c2a);
+  box-shadow: inset 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+.auth-mech-plate {
+  position: absolute;
+  top: 8px;
+  width: 10px;
+  height: 28px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.35), rgba(212, 175, 55, 0.05));
+  border: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.auth-mech-plate--l { left: 3px; }
+.auth-mech-plate--r { right: 3px; }
+
+.auth-walker-core--mech {
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+
+.auth-mech-core-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  animation: auth-core-spin 2s linear infinite;
+}
+
+@keyframes auth-core-spin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-mech-vent {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  margin-left: -10px;
+  background: repeating-linear-gradient(90deg, #d4af37 0 2px, transparent 2px 4px);
+  opacity: 0.5;
+}
+
+.auth-mech-shoulder {
+  position: absolute;
+  top: 36px;
+  width: 18px;
+  height: 14px;
+  border-radius: 6px 6px 4px 4px;
+  background: linear-gradient(160deg, #3d465c, #151a26);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  z-index: 6;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+}
+
+.auth-mech-shoulder--l { left: 2px; }
+.auth-mech-shoulder--r { right: 2px; }
+
+.auth-walker-arm--mech {
+  width: 13px;
+  height: 30px;
+  top: 44px;
+}
+
+.auth-mech-blade {
+  position: absolute;
+  bottom: -2px;
+  left: 3px;
+  width: 3px;
+  height: 16px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #22d3ee, transparent);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+  animation: auth-blade-flicker 0.8s ease-in-out infinite;
+}
+
+@keyframes auth-blade-flicker {
+  0%, 100% { opacity: 0.5; height: 12px; }
+  50% { opacity: 1; height: 18px; }
+}
+
+.auth-walker-leg--mech {
+  top: 88px;
+  width: 15px;
+  height: 34px;
+}
+
+.auth-mech-joint {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #d4af37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+  z-index: 2;
+}
+
+.auth-walker-foot--mech {
+  width: 20px;
+  height: 9px;
+  background: linear-gradient(90deg, #b8941f, #f0d78c);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
+}
+
+.auth-mech-step-ring {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 24px;
+  height: 8px;
+  margin-left: -12px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  animation: auth-step-ring 0.55s ease-out infinite;
+  opacity: 0;
+}
+
+.auth-mech-step-ring--delay {
+  animation-delay: 0.275s;
+}
+
+@keyframes auth-step-ring {
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.auth-mech-thruster {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  width: 20px;
+  height: 40px;
+  margin-left: -10px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.auth-mech-flame {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  width: 10px;
+  height: 28px;
+  margin-left: -5px;
+  border-radius: 40% 40% 50% 50%;
+  background: linear-gradient(180deg, #fff7d6, #d4af37 40%, rgba(34, 211, 238, 0) 100%);
+  filter: blur(1px);
+  animation: auth-flame 0.25s ease-in-out infinite alternate;
+  opacity: 0.85;
+}
+
+.auth-mech-flame--mid {
+  width: 6px;
+  height: 22px;
+  margin-left: -3px;
+  animation-delay: 0.08s;
+  opacity: 0.7;
+}
+
+.auth-mech-flame--side {
+  width: 14px;
+  height: 18px;
+  margin-left: -7px;
+  top: 28px;
+  filter: blur(3px);
+  opacity: 0.4;
+}
+
+@keyframes auth-flame {
+  from { transform: scaleY(0.85) translateY(0); }
+  to { transform: scaleY(1.15) translateY(4px); }
+}
+
+.auth-mech-trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-mech-spark {
+  position: absolute;
+  bottom: 22%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #d4af37;
+  box-shadow: 0 0 8px #d4af37;
+  animation: auth-spark-follow 9s linear infinite;
+  opacity: 0;
+}
+
+.auth-mech-spark:nth-child(odd) { background: #22d3ee; box-shadow: 0 0 8px #22d3ee; }
+
+@keyframes auth-spark-follow {
+  0% { left: 18%; opacity: 0; transform: translateY(0); }
+  10% { opacity: 0.8; }
+  45% { left: 78%; opacity: 0.5; transform: translateY(-8px); }
+  50% { left: 78%; opacity: 0; }
+  55% { left: 78%; opacity: 0.8; }
+  90% { left: 18%; opacity: 0.4; transform: translateY(-6px); }
+  100% { left: 18%; opacity: 0; }
+}
+
+.auth-mech-bar {
+  margin-top: 3px;
+  width: 56px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.auth-mech-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #d4af37, #f0d78c);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+  animation: auth-bar-pulse 2s ease-in-out infinite;
+}
+
+.auth-mech-bar--cyan i {
+  background: linear-gradient(90deg, #0891b2, #22d3ee);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+@keyframes auth-bar-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+}
+
+.auth-mech-radar {
+  position: absolute;
+  right: 10px;
+  bottom: 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(6, 8, 15, 0.7);
+  overflow: hidden;
+  box-shadow: inset 0 0 12px rgba(212, 175, 55, 0.1);
+}
+
+.auth-mech-radar-sweep {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(212, 175, 55, 0.45) 40deg, transparent 70deg);
+  animation: auth-radar 2.5s linear infinite;
+}
+
+.auth-mech-radar-blip {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22d3ee;
+  top: 28%;
+  left: 62%;
+  box-shadow: 0 0 6px #22d3ee;
+  animation: auth-eye-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes auth-radar {
+  to { transform: rotate(360deg); }
+}
+
+.auth-robot-wrap--mobile .auth-robot-stage--mech {
+  height: 280px;
+}
 
 .auth-logo {
   width: 3rem;

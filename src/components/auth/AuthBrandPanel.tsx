@@ -65,13 +65,13 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
             AI trading terminal
           </div>
           <h2 className="auth-ai-headline">
-            Your <span>robotic</span>
+            Meet <span>TX·MECH</span>
             <br />
-            market <span>copilot</span>
+            your <span>combat</span> AI
           </h2>
           <p className="auth-ai-lead">
-            3D neural interface for live NSE data, signals, and institutional-grade execution
-            workspace.
+            Advanced patrol unit with thrusters, scan laser, and live neural market sync —
+            before you even sign in.
           </p>
         </motion.div>
 
