@@ -194,8 +194,8 @@ export default function AuthForm({
   };
 
   const subtitles = {
-    login: 'Sign in to access your trading workspace.',
-    signup: 'Join traders using live TradeX market data.',
+    login: 'Authenticate to enter the neural trading core.',
+    signup: 'Initialize your TradeX AI workspace.',
     otp: otpSent ? `Enter OTP sent to +91 ${phone}` : 'Sign in with your mobile number.',
     forgot: 'We\'ll send a reset link to your email.',
   };
@@ -251,7 +251,7 @@ export default function AuthForm({
           <h1 className="auth-title auth-title-gold">
             {mode === 'login' ? (
               <>
-                Welcome <span>back</span>
+                Access <span>neural core</span>
               </>
             ) : mode === 'signup' ? (
               <>
