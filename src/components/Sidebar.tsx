@@ -4,7 +4,7 @@ import {
   LayoutDashboard, PieChart, ScanLine,
   Wallet,
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot,
-  NotebookPen, Calculator,
+  NotebookPen,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 
@@ -23,7 +23,6 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
-  { id: 'optionsimulator', label: 'Option Simulator', icon: Calculator },
   { id: 'oiintelligence', label: 'OI Intelligence', icon: Activity },
   { id: 'papertrading', label: 'Paper Trading', icon: Wallet },
   { id: 'heatmap', label: 'Heatmap', icon: PieChart },
