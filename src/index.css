@@ -1273,8 +1273,9 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 280px;
 }
 
-/* ─── Fullscreen battlefield + drones ─── */
-.auth-page--fullscreen-mech {
+/* ─── Fullscreen AI Thinker ─── */
+.auth-page--fullscreen-mech,
+.auth-page--fullscreen-thinker {
   min-height: 100dvh;
 }
 
@@ -1303,11 +1304,241 @@ input[type="number"] { -moz-appearance: textfield; }
     linear-gradient(180deg, rgba(6, 8, 15, 0.35) 0%, transparent 25%, transparent 55%, rgba(6, 8, 15, 0.75) 100%);
 }
 
+.auth-fullscreen-shade--thinker {
+  background:
+    linear-gradient(90deg, rgba(2, 12, 22, 0.15) 0%, transparent 28%, rgba(2, 12, 22, 0.45) 62%, rgba(2, 12, 22, 0.9) 100%),
+    linear-gradient(180deg, rgba(2, 12, 22, 0.4) 0%, transparent 28%, transparent 58%, rgba(2, 12, 22, 0.78) 100%);
+}
+
 @media (max-width: 639px) {
-  .auth-fullscreen-shade {
+  .auth-fullscreen-shade,
+  .auth-fullscreen-shade--thinker {
     background:
-      linear-gradient(180deg, rgba(6, 8, 15, 0.25) 0%, transparent 30%, rgba(6, 8, 15, 0.55) 60%, rgba(6, 8, 15, 0.92) 100%);
+      linear-gradient(180deg, rgba(2, 12, 22, 0.3) 0%, transparent 28%, rgba(2, 12, 22, 0.55) 58%, rgba(2, 12, 22, 0.94) 100%);
   }
+}
+
+/* AI Thinker stage */
+.auth-robot-stage--thinker {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 38% 48%, rgba(14, 116, 144, 0.28), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 70% 30%, rgba(30, 64, 175, 0.22), transparent 55%),
+    linear-gradient(160deg, #020b14 0%, #041824 45%, #06101c 100%);
+}
+
+.auth-thinker-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.auth-thinker-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.auth-thinker-glow--a {
+  width: 42%;
+  height: 50%;
+  left: 18%;
+  top: 22%;
+  background: rgba(34, 211, 238, 0.18);
+  animation: auth-thinker-pulse 6s ease-in-out infinite;
+}
+
+.auth-thinker-glow--b {
+  width: 30%;
+  height: 35%;
+  right: 18%;
+  bottom: 18%;
+  background: rgba(59, 130, 246, 0.16);
+  animation: auth-thinker-pulse 7.5s ease-in-out infinite 1s;
+}
+
+@keyframes auth-thinker-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.auth-thinker-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 40% 50%, #000 20%, transparent 75%);
+}
+
+.auth-thinker-orbit {
+  position: absolute;
+  left: 32%;
+  top: 42%;
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.auth-thinker-orbit--a {
+  width: min(58vw, 520px);
+  height: min(58vw, 520px);
+  animation: auth-thinker-spin 28s linear infinite;
+}
+
+.auth-thinker-orbit--b {
+  width: min(42vw, 380px);
+  height: min(42vw, 380px);
+  border-color: rgba(34, 211, 238, 0.22);
+  border-style: dashed;
+  animation: auth-thinker-spin 18s linear infinite reverse;
+}
+
+@keyframes auth-thinker-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.auth-thinker-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #67e8f9;
+  box-shadow: 0 0 8px #22d3ee;
+  animation: auth-thinker-float 5s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+@keyframes auth-thinker-float {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50% { transform: translateY(-14px); opacity: 0.95; }
+}
+
+.auth-thinker-portrait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 2%;
+}
+
+.auth-thinker-img {
+  width: min(78vw, 920px);
+  height: auto;
+  max-height: 92%;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 0 40px rgba(34, 211, 238, 0.25));
+  animation: auth-thinker-breathe 5.5s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes auth-thinker-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.015); }
+}
+
+.auth-thinker-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 60% at 35% 50%, transparent 35%, rgba(2, 12, 22, 0.45) 100%);
+  pointer-events: none;
+}
+
+.auth-thinker-scan {
+  position: absolute;
+  left: 5%;
+  width: min(70vw, 780px);
+  height: 28%;
+  top: -10%;
+  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.08), transparent);
+  animation: auth-thinker-scan 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes auth-thinker-scan {
+  0% { top: -15%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
+.auth-thinker-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.auth-thinker-chip {
+  position: absolute;
+  font-family: Orbitron, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  color: rgba(148, 163, 184, 0.85);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  background: rgba(4, 16, 28, 0.72);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.auth-thinker-chip span {
+  color: #67e8f9;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.auth-thinker-chip--tl { top: 12%; left: 4%; }
+.auth-thinker-chip--tr { top: 14%; left: 42%; }
+.auth-thinker-chip--bl { bottom: 16%; left: 5%; min-width: 120px; }
+.auth-thinker-chip--br { bottom: 18%; left: 38%; min-width: 120px; }
+
+.auth-thinker-bar {
+  margin-top: 0.25rem;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+
+.auth-thinker-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0284c7, #22d3ee);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+
+.auth-thinker-bar--cyan i {
+  background: linear-gradient(90deg, #0e7490, #67e8f9);
+}
+
+@media (max-width: 899px) {
+  .auth-thinker-chip--tr,
+  .auth-thinker-chip--br {
+    display: none;
+  }
+  .auth-thinker-img {
+    width: min(110vw, 720px);
+    opacity: 0.85;
+  }
+}
+
+@media (min-width: 1280px) {
+  .auth-thinker-img {
+    width: min(70vw, 980px);
+  }
+  .auth-thinker-chip--tr { left: 48%; }
+  .auth-thinker-chip--br { left: 44%; }
 }
 
 .auth-form-card--overlay {

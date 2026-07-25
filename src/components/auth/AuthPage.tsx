@@ -22,20 +22,20 @@ export default function AuthPage(props: AuthPageProps) {
   const ticker = AUTH_TICKER;
 
   return (
-    <div className="auth-page auth-page--robot auth-page--fullscreen-mech min-h-screen flex flex-col relative overflow-hidden">
+    <div className="auth-page auth-page--robot auth-page--fullscreen-thinker min-h-screen flex flex-col relative overflow-hidden">
       <div className="auth-aurora auth-aurora--robot" aria-hidden="true" />
       <div className="auth-noise" aria-hidden="true" />
       <div className="auth-scan-grid" aria-hidden="true" />
       <div className="auth-scanbeam" aria-hidden="true" />
 
-      {/* Full-screen mech + drone battlefield */}
+      {/* Full-screen AI Thinker portrait */}
       <div className="auth-fullscreen-stage" aria-hidden="true">
         <AuthRobotScene fullscreen />
       </div>
-      <div className="auth-fullscreen-shade" aria-hidden="true" />
+      <div className="auth-fullscreen-shade auth-fullscreen-shade--thinker" aria-hidden="true" />
       <AuthTradingOverlay />
 
-      <header className="relative z-20 border-b border-gold/15 shrink-0 bg-[#06080f]/55 backdrop-blur-md">
+      <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/50 backdrop-blur-md">
         <div className="flex items-center justify-between gap-2 px-4 py-2.5">
           <div className="flex items-center gap-2.5">
             <div className="auth-ai-logo auth-ai-logo--sm">
@@ -44,14 +44,14 @@ export default function AuthPage(props: AuthPageProps) {
             <div>
               <p className="auth-ai-brand text-[11px] leading-none">Master TradeX</p>
               <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-0.5">
-                AI Neural Login
+                AI Neural Core
               </p>
             </div>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
           </div>
           <div className="flex items-center gap-2">
             <span className="auth-version-badge auth-version-badge--ai hidden sm:inline-flex">
-              SWARM · ONLINE
+              THINKING · ONLINE
             </span>
             <ThemeToggle />
           </div>
@@ -78,7 +78,7 @@ export default function AuthPage(props: AuthPageProps) {
         >
           <div className="mb-4 hidden sm:block">
             <p className="auth-ai-headline text-2xl lg:text-3xl">
-              <span>TradeX</span> neural terminal
+              <span>TradeX</span> AI assistant
             </p>
             <p className="text-sm text-slate-500 mt-1">
               Live LTP · Option Chain · OI · Signals · LPT Master
@@ -89,7 +89,7 @@ export default function AuthPage(props: AuthPageProps) {
             <AuthForm {...props} />
           </div>
           <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            8 drones active · Secure TradeX Live
+            Neural AI online · Secure TradeX Live
           </p>
         </motion.div>
       </div>
