@@ -1921,7 +1921,7 @@ input[type="number"] { -moz-appearance: textfield; }
 /* ─── LuxAlgo-inspired premium landing (Wolf Trade AI) ─── */
 @font-face {
   font-family: 'Modern Era';
-  src: url('../assets/fonts/lux-sans.woff2') format('woff2');
+  src: url('./assets/fonts/lux-sans.woff2') format('woff2');
   font-weight: 400 500;
   font-style: normal;
   font-display: swap;
@@ -1929,7 +1929,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 @font-face {
   font-family: 'Modern Era';
-  src: url('../assets/fonts/lux-sans-bold.woff2') format('woff2');
+  src: url('./assets/fonts/lux-sans-bold.woff2') format('woff2');
   font-weight: 600 800;
   font-style: normal;
   font-display: swap;
