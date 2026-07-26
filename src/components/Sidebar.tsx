@@ -7,7 +7,7 @@ import {
   NotebookPen,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
-import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../constants/brandLabels';
+import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT, PAGE_NAMES } from '../constants/brandLabels';
 
 interface SidebarProps {
   activeTab: string;
@@ -22,13 +22,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
-  { id: 'oiintelligence', label: 'AI Intelligence', icon: Activity },
-  { id: 'papertrading', label: 'Paper Trading', icon: Wallet },
-  { id: 'heatmap', label: 'Heatmap', icon: PieChart },
-  { id: 'scanner', label: 'Scanners', icon: ScanLine },
-  { id: 'trafi', label: 'Master AI', icon: Bot },
+  { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
+  { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
+  { id: 'oiintelligence', label: PAGE_NAMES.oiintelligence, icon: Activity },
+  { id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet },
+  { id: 'heatmap', label: PAGE_NAMES.heatmap, icon: PieChart },
+  { id: 'scanner', label: PAGE_NAMES.scanner, icon: ScanLine },
+  { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
 ];
 
 export default function Sidebar({

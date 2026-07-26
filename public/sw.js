@@ -1,5 +1,5 @@
-/** Master TradeX — minimal service worker (network-first for API) */
-const CACHE = 'tradex-shell-v1';
+/** APMI — shell cache; bump CACHE name when UI labels/assets must refresh */
+const CACHE = 'apmi-shell-v3';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -24,9 +24,21 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
-  if (event.request.mode === 'navigate') {
+  // Always prefer network for HTML + JS/CSS so sidebar/label updates show up
+  if (
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.html')
+  ) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html')),
+      fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => undefined);
+          return res;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match('/index.html'))),
     );
     return;
   }
