@@ -44,41 +44,42 @@ export function pageDocumentTitle(tabId?: string | null): string {
 /** True when UI talks to remote API (Vercel + Render), not local Vite proxy only */
 export const hasRemoteApi = Boolean(import.meta.env.VITE_API_URL?.trim());
 
-/** User-facing message when API is down — no "npm run dev" on production */
+/** User-facing message when API is down — never expose CLI / npm commands */
 export function serverOfflineMessage(): string {
   return hasRemoteApi
-    ? 'Live server waking up — reconnecting…'
-    : `Start ${BRAND_SHORT} server: npm run dev`;
+    ? 'Live market feed reconnecting…'
+    : 'Market feed unavailable — please refresh shortly';
 }
 
 export function serverUnreachableMessage(): string {
   return hasRemoteApi
-    ? 'Cannot reach live server — wait ~1 min (free tier) or refresh'
-    : `Cannot reach ${BRAND_SHORT} server — run npm run dev`;
+    ? 'Unable to reach live market feed — retrying…'
+    : 'Market feed temporarily unavailable — please try again';
 }
 
 export function masterAiOfflineMessage(): string {
   return hasRemoteApi
-    ? 'Master AI offline — live server unreachable'
-    : 'Offline — start npm run dev';
+    ? 'Master AI temporarily offline — reconnecting…'
+    : 'Master AI temporarily unavailable — please try again';
 }
 
-/** Strip vendor names from messages shown in UI */
+/** Strip vendor names and developer commands from messages shown in UI */
 export function sanitizeDisplayMessage(msg: string): string {
-  const devHint = hasRemoteApi ? 'reconnect live server' : 'npm run dev';
   return String(msg || '')
     .replace(/opstra/gi, BRAND_SHORT)
     .replace(/fyers/gi, BRAND_SHORT)
     .replace(/Master TradeX/gi, BRAND)
     .replace(/\bTradeX\b/gi, BRAND_SHORT)
-    .replace(/\bAPI server\b/gi, `${BRAND_SHORT} server`)
-    .replace(/\bMarket API\b/gi, BRAND_SHORT)
+    .replace(/\bAPI server\b/gi, 'live server')
+    .replace(/\bMarket API\b/gi, 'market feed')
     .replace(/\bAPI offline\b/gi, 'Offline')
     .replace(/\bAPI Access\b/gi, 'Data Access')
     .replace(/Connect Fyers/gi, CONNECT_LIVE_LABEL)
-    .replace(/npm run dev:all/gi, devHint)
-    .replace(/npm run server/gi, devHint)
-    .replace(/npm run dev/gi, devHint)
+    .replace(/Start\s+\w+\s+server:\s*/gi, '')
+    .replace(/npm run dev:all/gi, 'refresh')
+    .replace(/npm run server/gi, 'refresh')
+    .replace(/npm run dev/gi, 'refresh')
+    .replace(/run npm run\s+\S+/gi, 'refresh')
     .replace(/FYERS_[A-Z_]+/g, 'configuration')
     .replace(/myapi\.fyers\.in/gi, 'developer portal')
     .replace(/auth_code/gi, 'login code')
@@ -88,5 +89,7 @@ export function sanitizeDisplayMessage(msg: string): string {
     .replace(/Connect API/gi, CONNECT_LIVE_LABEL)
     .replace(/io server disconnect/gi, 'Live stream paused')
     .replace(/transport close/gi, 'Connection closed')
-    .replace(/\bdisconnect(ed)?\b/gi, 'reconnect needed');
+    .replace(/\bdisconnect(ed)?\b/gi, 'reconnect needed')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }

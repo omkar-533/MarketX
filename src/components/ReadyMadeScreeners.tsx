@@ -7,6 +7,7 @@ import {
   type ReadyMadeBias,
   type ReadyMadeHit,
 } from '../services/readyMadeScreeners';
+import { sanitizeDisplayMessage } from '../constants/brandLabels';
 
 interface ReadyMadeScreenersProps {
   rows: ScreenerMarketRow[];
@@ -26,6 +27,18 @@ function BiasIcon({ bias }: { bias: ReadyMadeBias }) {
   if (bias === 'bullish') return <TrendingUp className="w-3.5 h-3.5" />;
   if (bias === 'bearish') return <TrendingDown className="w-3.5 h-3.5" />;
   return <Minus className="w-3.5 h-3.5" />;
+}
+
+function professionalFeedLabel(mode?: string, label?: string, loading?: boolean): string {
+  if (loading) return 'Updating market feed…';
+  if (mode === 'live') return 'Live market feed';
+  if (mode === 'mixed') return 'Partial live feed';
+  if (mode === 'loading') return 'Connecting to market feed…';
+  const cleaned = sanitizeDisplayMessage(label || '');
+  if (!cleaned || /npm|APMI server|run dev/i.test(cleaned)) {
+    return 'Market feed unavailable — reconnecting…';
+  }
+  return cleaned;
 }
 
 function StockRow({ stock }: { stock: ReadyMadeHit }) {
@@ -73,18 +86,15 @@ export default function ReadyMadeScreeners({
     return groupReadyMadeByCategory(filtered);
   }, [rows, query]);
 
-  const totalHits = grouped.reduce(
-    (sum, g) => sum + g.screeners.reduce((s, sc) => s + sc.stocks.length, 0),
-    0,
-  );
+  const statusLabel = professionalFeedLabel(feedMode, feedLabel, loading);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#d4af37]">Ready-made Stock Screeners</h1>
+          <h1 className="text-2xl font-bold text-[#d4af37]">Stock Screeners</h1>
           <p className="text-sm text-slate-500 mt-1">
-            15 categories · 100+ live screeners — each shows top 5 matched stocks with name &amp; score.
+            Live market scans across momentum, breakout, intraday, F&amp;O, and more — top matches per scan.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span
@@ -97,10 +107,9 @@ export default function ReadyMadeScreeners({
               }`}
             >
               <Activity className="w-3 h-3" />
-              {loading ? 'Updating live feed…' : feedLabel || 'Live feed'}
+              {statusLabel}
             </span>
-            <span>· {rows.length} symbols</span>
-            <span>· {totalHits} matches shown</span>
+            {rows.length > 0 && <span>· {rows.length.toLocaleString('en-IN')} symbols</span>}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -109,7 +118,7 @@ export default function ReadyMadeScreeners({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search screener or stock…"
+              placeholder="Search scan or stock…"
               className="pl-8 pr-3 py-2 rounded-lg bg-[#0b0e17] border border-[#1a1f2e] text-sm text-slate-200 w-[220px] focus:outline-none focus:border-[#d4af37]/40"
             />
           </div>
@@ -128,8 +137,11 @@ export default function ReadyMadeScreeners({
       </div>
 
       {rows.length === 0 && !loading ? (
-        <div className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-10 text-center text-slate-500 text-sm">
-          No live stock rows yet. Connect live data in Profile, then hit Refresh.
+        <div className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-10 text-center">
+          <p className="text-sm text-slate-300 font-medium">Market data is reconnecting</p>
+          <p className="text-[12px] text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+            Scans will populate automatically once the live feed is available. You can also tap Refresh.
+          </p>
         </div>
       ) : (
         <>
@@ -146,54 +158,52 @@ export default function ReadyMadeScreeners({
           </div>
 
           {grouped.map((section) => (
-          <section key={section.category} id={`rm-${section.category}`} className="space-y-3 scroll-mt-28">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-white tracking-wide">{section.categoryLabel}</h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-[#d4af37]/40 to-transparent" />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-bold">
-                {section.screeners.length} screeners
-              </span>
-            </div>
+            <section key={section.category} id={`rm-${section.category}`} className="space-y-3 scroll-mt-28">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-white tracking-wide">{section.categoryLabel}</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-[#d4af37]/40 to-transparent" />
+                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-bold">
+                  {section.screeners.length} scans
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {section.screeners.map(({ def, stocks }) => (
-                <article
-                  key={def.id}
-                  className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 hover:border-[#d4af37]/25 transition-colors flex flex-col min-h-[280px]"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="text-sm font-bold text-slate-100 leading-snug">{def.title}</h3>
-                    <span
-                      className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${biasTone(def.bias)}`}
-                    >
-                      <BiasIcon bias={def.bias} />
-                      {def.bias}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed mb-3">{def.description}</p>
-
-                  <div className="flex-1">
-                    {stocks.length === 0 ? (
-                      <div className="h-full min-h-[120px] flex items-center justify-center text-center px-2">
-                        <p className="text-[11px] text-slate-600">
-                          No match on current live tape. Market may be quiet for this filter.
-                        </p>
-                      </div>
-                    ) : (
-                      stocks.map((stock) => <StockRow key={stock.symbol} stock={stock} />)
-                    )}
-                  </div>
-
-                  {stocks.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[#1a1f2e] text-[10px] text-slate-600 flex justify-between">
-                      <span>Top {stocks.length} by live score</span>
-                      <span>Vol× {(stocks[0]?.volumeRatio ?? 0).toFixed(2)}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {section.screeners.map(({ def, stocks }) => (
+                  <article
+                    key={def.id}
+                    className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 hover:border-[#d4af37]/25 transition-colors flex flex-col min-h-[280px]"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-slate-100 leading-snug">{def.title}</h3>
+                      <span
+                        className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${biasTone(def.bias)}`}
+                      >
+                        <BiasIcon bias={def.bias} />
+                        {def.bias}
+                      </span>
                     </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
+                    <p className="text-[11px] text-slate-500 leading-relaxed mb-3">{def.description}</p>
+
+                    <div className="flex-1">
+                      {stocks.length === 0 ? (
+                        <div className="h-full min-h-[120px] flex items-center justify-center text-center px-2">
+                          <p className="text-[11px] text-slate-600">No matches on the current market tape.</p>
+                        </div>
+                      ) : (
+                        stocks.map((stock) => <StockRow key={stock.symbol} stock={stock} />)
+                      )}
+                    </div>
+
+                    {stocks.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-[#1a1f2e] text-[10px] text-slate-600 flex justify-between">
+                        <span>Top {stocks.length}</span>
+                        <span>Vol× {(stocks[0]?.volumeRatio ?? 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
           ))}
         </>
       )}
