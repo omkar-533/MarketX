@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Quote, Star, X } from 'lucide-react';
-import brandLogoUrl from '../../assets/brand/brand-logo.png';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import BrandMark from '../BrandMark';
@@ -18,6 +17,7 @@ const STORY_BANDS = [
     title: 'Build your own edge with AI',
     body: 'Use advanced algorithms and a live market copilot to read bias, OI, and structure in real time — then act with clarity when the tape moves.',
     cta: 'Get started now',
+    image: `${import.meta.env.BASE_URL}landing/band-quant.svg`,
   },
   {
     id: 'workspace',
@@ -25,6 +25,7 @@ const STORY_BANDS = [
     title: 'An AI desk for winning sessions',
     body: 'Ask the platform to surface setups, track your journal, and keep heatmaps, scanners, and option intelligence synced in one invite-only terminal.',
     cta: 'Get access now',
+    image: `${import.meta.env.BASE_URL}landing/band-ai.png`,
   },
   {
     id: 'alerts',
@@ -32,6 +33,7 @@ const STORY_BANDS = [
     title: 'Your edge, now on autopilot',
     body: 'Turn live scanners and structure into a disciplined workflow — alerts, journals, and Master AI context so you never trade blind.',
     cta: 'Start now',
+    image: `${import.meta.env.BASE_URL}landing/band-tools.png`,
   },
 ] as const;
 
@@ -91,9 +93,10 @@ export default function AuthPage(props: AuthPageProps) {
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
       <div className="auth-lux__bg" aria-hidden="true">
+        <img className="auth-lux__fx auth-lux__fx--stroke" src={`${import.meta.env.BASE_URL}landing/stroke-tl.png`} alt="" />
+        <img className="auth-lux__fx auth-lux__fx--glow" src={`${import.meta.env.BASE_URL}landing/glow-br.png`} alt="" />
         <div className="auth-lux__aurora auth-lux__aurora--1" />
         <div className="auth-lux__aurora auth-lux__aurora--2" />
-        <div className="auth-lux__aurora auth-lux__aurora--3" />
         <div className="auth-lux__noise" />
         <div className="auth-lux__vignette" />
       </div>
@@ -124,20 +127,27 @@ export default function AuthPage(props: AuthPageProps) {
         {/* LuxAlgo-style centered hero */}
         <section className="auth-lux__hero">
           <motion.div
-            className="auth-lux__hero-orb"
+            className="auth-lux__hero-product"
             aria-hidden="true"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.1, ease }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.15, ease }}
           >
-            <img src={brandLogoUrl} alt="" className="auth-lux__hero-orb-img" width={640} height={640} />
+            <img
+              src={`${import.meta.env.BASE_URL}landing/hero-product.png`}
+              alt=""
+              width={1200}
+              height={800}
+              decoding="async"
+              fetchPriority="high"
+            />
           </motion.div>
 
           <motion.div
             className="auth-lux__hero-center"
-            initial={{ opacity: 0, y: 32 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease }}
+            transition={{ duration: 0.75, ease }}
           >
             <p className="auth-lux__pill">
               <span className="auth-lux__pill-dot" />
@@ -192,19 +202,9 @@ export default function AuthPage(props: AuthPageProps) {
                   <ArrowRight className="w-4 h-4" aria-hidden />
                 </button>
               </div>
-              <div className="auth-lux__band-visual" aria-hidden="true">
-                <div className="auth-lux__glass">
-                  <div className="auth-lux__glass-shine" />
-                  <p className="auth-lux__glass-label">{band.kicker}</p>
-                  <div className="auth-lux__glass-chart">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+              <div className="auth-lux__band-visual">
+                <div className="auth-lux__product-frame">
+                  <img src={band.image} alt="" className="auth-lux__product-img" loading="lazy" decoding="async" />
                 </div>
               </div>
             </motion.article>
