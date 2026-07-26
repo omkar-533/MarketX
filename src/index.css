@@ -1432,10 +1432,11 @@ input[type="number"] { -moz-appearance: textfield; }
   object-fit: cover;
   object-position: center center;
   display: block;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   will-change: transform;
-  filter: contrast(1.06) saturate(1.1) brightness(1.03);
+  image-rendering: -webkit-optimize-contrast;
+  filter: contrast(1.08) saturate(1.12) brightness(1.04);
 }
 
 .auth-robot-3d {

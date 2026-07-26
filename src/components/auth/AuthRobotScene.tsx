@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-const LOGIN_VIDEO = '/auth/215500_medium.mp4?v=hd3';
-const LOGIN_POSTER = '/auth/ai-thinker-poster.jpg?v=hd3';
+const LOGIN_VIDEO = '/auth/215500_medium.mp4?v=4k1';
+const LOGIN_POSTER = '/auth/ai-thinker-poster.jpg?v=4k1';
 
 /** Full-screen looping login video — exact user-provided clip */
 export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: boolean }) {

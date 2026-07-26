@@ -22,3 +22,9 @@ ios/App/Pods/
 *.apk
 *.ipa
 electron/dist/
+
+# Local AI upscale tooling / temp frames
+tools/
+public/auth/_frames_in/
+public/auth/_frames_out/
+
