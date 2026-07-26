@@ -75,6 +75,38 @@ export function Words({ text, mode = 'view', delay = 0, stagger = 0.055 }: Words
   );
 }
 
+/**
+ * Reveal for gradient-clipped <em> lines. These cannot use word masking: an
+ * inline-block child breaks `background-clip: text` on the parent and the text
+ * renders fully transparent.
+ */
+export function GradientLine({
+  text,
+  mode = 'view',
+  delay = 0,
+}: {
+  text: string;
+  mode?: 'mount' | 'view';
+  delay?: number;
+}) {
+  const reduced = useReducedMotion();
+  if (reduced) return <em>{text}</em>;
+
+  const shown = { opacity: 1, y: 0, filter: 'blur(0px)' };
+
+  return (
+    <motion.em
+      initial={{ opacity: 0, y: 34, filter: 'blur(9px)' }}
+      {...(mode === 'mount'
+        ? { animate: shown }
+        : { whileInView: shown, viewport: { once: true, margin: '-8% 0px -8% 0px' } })}
+      transition={{ duration: 0.9, delay, ease: EASE }}
+    >
+      {text}
+    </motion.em>
+  );
+}
+
 type CounterProps = {
   to: number;
   suffix?: string;

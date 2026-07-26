@@ -13,7 +13,7 @@ import AuthFeatureGrid from './AuthFeatureGrid';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
-import { Counter, EASE, Marquee, Reveal, Words } from './scrollFx';
+import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
@@ -268,9 +268,7 @@ export default function AuthPage(props: AuthPageProps) {
             <h1 className="auth-lux__headline">
               <Words text="Start trading like" mode="mount" delay={0.1} />
               <br />
-              <em>
-                <Words text="smart money" mode="mount" delay={0.32} />
-              </em>
+              <GradientLine text="smart money" mode="mount" delay={0.38} />
             </h1>
             <motion.p
               className="auth-lux__sub"
@@ -372,9 +370,7 @@ export default function AuthPage(props: AuthPageProps) {
             <h2 className="auth-lux__section-title">
               <Words text="Real traders," />
               <br />
-              <em>
-                <Words text="real stories" delay={0.14} />
-              </em>
+              <GradientLine text="real stories" delay={0.2} />
             </h2>
             <Reveal delay={0.24} y={22}>
               <p className="auth-lux__section-sub">
@@ -405,9 +401,7 @@ export default function AuthPage(props: AuthPageProps) {
               <h2 className="auth-lux__section-title">
                 <Words text="Everything you need to" />
                 <br />
-                <em>
-                  <Words text="upgrade your desk" delay={0.16} />
-                </em>
+                <GradientLine text="upgrade your desk" delay={0.22} />
               </h2>
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
@@ -428,9 +422,7 @@ export default function AuthPage(props: AuthPageProps) {
             <h2 className="auth-lux__section-title">
               <Words text="Plans for every style" />
               <br />
-              <em>
-                <Words text="of trading" delay={0.16} />
-              </em>
+              <GradientLine text="of trading" delay={0.22} />
             </h2>
             <Reveal delay={0.26} y={22}>
               <p className="auth-lux__section-sub">
