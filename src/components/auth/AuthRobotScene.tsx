@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-/** Full-screen looping video of the user's AI Thinker image */
+/** Full-screen looping login video (user-provided robot clip) */
 export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -9,7 +9,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    el.playbackRate = 0.85;
+    el.playbackRate = 1;
     el.defaultMuted = true;
     el.muted = true;
 
@@ -17,7 +17,6 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
       void el.play().catch(() => setFailed(true));
     };
 
-    // Keep playback stable if tab resumes or loop hiccups
     const onVisibility = () => {
       if (document.visibilityState === 'visible' && el.paused) play();
     };
@@ -55,15 +54,15 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
             playsInline
             disablePictureInPicture
             preload="auto"
-            poster="/auth/ai-thinker.png"
+            poster="/auth/ai-thinker-poster.jpg"
             onError={() => setFailed(true)}
           >
-            <source src="/auth/ai-thinker.webm" type="video/webm" />
             <source src="/auth/ai-thinker.mp4" type="video/mp4" />
+            <source src="/auth/ai-thinker.webm" type="video/webm" />
           </video>
         ) : (
           <div className="auth-thinker-portrait auth-thinker-portrait--fallback">
-            <img src="/auth/ai-thinker.png" alt="" className="auth-thinker-img" draggable={false} />
+            <img src="/auth/ai-thinker-poster.jpg" alt="" className="auth-thinker-img" draggable={false} />
           </div>
         )}
         <div className="auth-thinker-vignette" />
