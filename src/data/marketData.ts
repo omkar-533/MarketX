@@ -1,4 +1,4 @@
-import { FNO_INDICES, FNO_STOCKS, getFnoInstrument, getStrikeIntervalForSpot } from './fnoUniverse';
+import { FNO_INDICES, FNO_STOCKS_ALL, getFnoInstrument, getStrikeIntervalForSpot } from './fnoUniverse';
 import { buildOptionChain, buildOptionExpiries } from '../services/optionChainEngine';
 import { getCachedOptionChain } from '../services/optionChainLiveService';
 import { getFnoLiveQuotes, getLiveQuote } from '../services/symbolLiveService';
@@ -213,30 +213,50 @@ export function getHeatmapData(): HeatmapData[] {
   return getStockHeatmapData();
 }
 
-const FNO_STOCK_SYMBOLS = new Set(FNO_STOCKS.map((i) => i.symbol));
+const FNO_STOCK_SYMBOLS = new Set(FNO_STOCKS_ALL.filter((i) => i.type === 'stock').map((i) => i.symbol));
+const FNO_SECTOR_BY_SYMBOL = new Map(
+  FNO_STOCKS_ALL.filter((i) => i.type === 'stock').map((i) => [i.symbol, i.sector] as const),
+);
+
+/** Weight for sector averages when broker quotes have no market-cap */
+function heatmapWeight(item: { marketCap: number; volume: number; price: number; symbol: string }): number {
+  if (item.marketCap > 0) return item.marketCap;
+  const traded = item.volume * item.price;
+  if (traded > 0) return traded;
+  const inst = getFnoInstrument(item.symbol);
+  if (inst?.basePrice) return inst.basePrice * 1_000_000;
+  return 1;
+}
 
 export function getStockHeatmapData(): StockHeatmapItem[] {
   const live = getFnoLiveQuotes().filter((q) => q.type === 'stock' && FNO_STOCK_SYMBOLS.has(q.symbol));
   const rows =
     live.length > 0
-      ? live.map((q) => ({
-          symbol: q.symbol,
-          name: q.name,
-          sector: q.sector,
-          changePercent: q.changePercent,
-          marketCap: q.marketCap ?? 0,
-          price: q.price,
-          change: q.change,
-          volume: q.volume,
-        }))
+      ? live.map((q) => {
+          const sector = FNO_SECTOR_BY_SYMBOL.get(q.symbol) || q.sector || 'Other';
+          const marketCap =
+            q.marketCap && q.marketCap > 0
+              ? q.marketCap
+              : Math.round(Math.max(q.volume, 1) * Math.max(q.price, 1) * 0.02);
+          return {
+            symbol: q.symbol,
+            name: q.name,
+            sector,
+            changePercent: Number(q.changePercent.toFixed(2)),
+            marketCap,
+            price: q.price,
+            change: q.change,
+            volume: q.volume,
+          };
+        })
       : getStocks()
           .filter((s) => FNO_STOCK_SYMBOLS.has(s.symbol))
           .map((s) => ({
             symbol: s.symbol,
             name: s.name,
-            sector: s.sector,
-            changePercent: s.changePercent,
-            marketCap: s.marketCap,
+            sector: FNO_SECTOR_BY_SYMBOL.get(s.symbol) || s.sector || 'Other',
+            changePercent: Number(s.changePercent.toFixed(2)),
+            marketCap: s.marketCap > 0 ? s.marketCap : heatmapWeight(s),
             price: s.price,
             change: s.change,
             volume: s.volume,
@@ -246,52 +266,41 @@ export function getStockHeatmapData(): StockHeatmapItem[] {
 }
 
 export function getSectorHeatmapData(): SectorHeatmapItem[] {
-  const stocks = getStockHeatmapData().map((s) => ({
-    symbol: s.symbol,
-    name: s.name,
-    sector: s.sector,
-    changePercent: s.changePercent,
-    marketCap: s.marketCap,
-    price: s.price,
-    change: s.change,
-    volume: s.volume,
-    pe: 0,
-    high: s.price,
-    low: s.price,
-    open: s.price,
-    prevClose: s.price,
-    delivery: 0,
-    vwap: s.price,
-    rsi: 50,
-  })) as StockData[];
-  const bySector = new Map<string, StockData[]>();
+  const stocks = getStockHeatmapData();
+  const bySector = new Map<string, StockHeatmapItem[]>();
 
-  stocks.forEach((s) => {
-    const list = bySector.get(s.sector) ?? [];
+  for (const s of stocks) {
+    const sector = (s.sector || 'Other').trim() || 'Other';
+    if (sector === 'Index') continue;
+    const list = bySector.get(sector) ?? [];
     list.push(s);
-    bySector.set(s.sector, list);
-  });
+    bySector.set(sector, list);
+  }
 
   return Array.from(bySector.entries())
     .map(([sector, list]) => {
-      const totalCap = list.reduce((sum, s) => sum + s.marketCap, 0);
+      const totalW = list.reduce((sum, s) => sum + heatmapWeight(s), 0);
       const weightedChange =
-        totalCap > 0
-          ? list.reduce((sum, s) => sum + s.changePercent * s.marketCap, 0) / totalCap
-          : 0;
+        totalW > 0
+          ? list.reduce((sum, s) => sum + s.changePercent * heatmapWeight(s), 0) / totalW
+          : list.reduce((sum, s) => sum + s.changePercent, 0) / Math.max(list.length, 1);
+      const equalAvg = list.reduce((sum, s) => sum + s.changePercent, 0) / Math.max(list.length, 1);
+      // Prefer traded-value weight; blend with equal avg so single heavy name cannot dominate empty caps
+      const changePercent = Math.round(((weightedChange * 0.7 + equalAvg * 0.3) * 100)) / 100;
       const sorted = [...list].sort((a, b) => b.changePercent - a.changePercent);
       return {
         sector,
-        changePercent: Math.round(weightedChange * 100) / 100,
-        marketCap: totalCap,
+        changePercent,
+        marketCap: list.reduce((sum, s) => sum + Math.max(s.marketCap, 0), 0),
         stockCount: list.length,
-        advancers: list.filter((s) => s.changePercent > 0).length,
-        decliners: list.filter((s) => s.changePercent < 0).length,
+        advancers: list.filter((s) => s.changePercent > 0.05).length,
+        decliners: list.filter((s) => s.changePercent < -0.05).length,
         topGainer: sorted[0]?.symbol ?? '—',
         topLoser: sorted[sorted.length - 1]?.symbol ?? '—',
       };
     })
-    .sort((a, b) => b.marketCap - a.marketCap);
+    .filter((s) => s.stockCount > 0)
+    .sort((a, b) => b.changePercent - a.changePercent);
 }
 
 export function getOIHeatmapData(symbol: string = 'NIFTY'): OIHeatmapSnapshot {
@@ -600,7 +609,28 @@ export function getVolatilitySkew(symbol = 'NIFTY'): { strike: number; ceIv: num
 }
 
 export const EXPIRY_DATES = buildOptionExpiries(8);
-export const SECTORS = ['All', 'Banking', 'IT', 'Auto', 'FMCG', 'Energy', 'Pharma', 'Infra', 'Power', 'Consumer', 'NBFC', 'Cement', 'Telecom', 'Conglomerate'];
+export const SECTORS = [
+  'All',
+  'Banking',
+  'IT',
+  'Auto',
+  'FMCG',
+  'Energy',
+  'Pharma',
+  'Infra',
+  'Power',
+  'Consumer',
+  'NBFC',
+  'Cement',
+  'Telecom',
+  'Metal',
+  'Defence',
+  'Insurance',
+  'Realty',
+  'Retail',
+  'Services',
+  'Conglomerate',
+];
 
 export const STRATEGY_TEMPLATES = [
   { name: 'Long Call', legs: [{ type: 'CE' as const, action: 'BUY' as const, strikeOffset: 0 }] },

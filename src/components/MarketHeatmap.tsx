@@ -35,21 +35,31 @@ const HEATMAP_PRESETS = [
 
 type HeatmapPreset = (typeof HEATMAP_PRESETS)[number]['id'];
 
-/** Tile fill — stronger tint as |% move| grows (dark theme) */
-function flatHeatColor(value: number, maxAbsMove: number): string {
-  const max = Math.max(maxAbsMove, 0.01);
-  const t = Math.min(1, Math.abs(value) / max);
-  const alpha = 0.18 + t * 0.72;
-  if (value > 0.02) return `rgba(${POS_RGB}, ${alpha})`;
-  if (value < -0.02) return `rgba(${NEG_RGB}, ${alpha})`;
-  return 'rgba(51, 65, 85, 0.55)';
+/**
+ * Performance heat color — absolute % bands so green/red stay vivid
+ * even when the day is quiet (not just relative to the day's max).
+ */
+function performanceHeatColor(value: number): string {
+  const v = value;
+  if (v >= 3) return `rgba(${POS_RGB}, 0.95)`;
+  if (v >= 2) return `rgba(${POS_RGB}, 0.82)`;
+  if (v >= 1.2) return `rgba(${POS_RGB}, 0.68)`;
+  if (v >= 0.6) return `rgba(${POS_RGB}, 0.52)`;
+  if (v >= 0.2) return `rgba(${POS_RGB}, 0.36)`;
+  if (v > 0.02) return `rgba(${POS_RGB}, 0.22)`;
+  if (v <= -3) return `rgba(${NEG_RGB}, 0.95)`;
+  if (v <= -2) return `rgba(${NEG_RGB}, 0.82)`;
+  if (v <= -1.2) return `rgba(${NEG_RGB}, 0.68)`;
+  if (v <= -0.6) return `rgba(${NEG_RGB}, 0.52)`;
+  if (v <= -0.2) return `rgba(${NEG_RGB}, 0.36)`;
+  if (v < -0.02) return `rgba(${NEG_RGB}, 0.22)`;
+  return 'rgba(51, 65, 85, 0.65)';
 }
 
-function cellTextColor(value: number, maxAbsMove: number): string {
-  const t = Math.abs(value) / Math.max(maxAbsMove, 0.01);
-  if (t > 0.45) return '#f8fafc';
-  if (t > 0.2) return '#e2e8f0';
-  return '#94a3b8';
+function cellTextColor(value: number): string {
+  if (Math.abs(value) >= 0.6) return '#f8fafc';
+  if (Math.abs(value) >= 0.2) return '#e2e8f0';
+  return '#cbd5e1';
 }
 
 function shortStockName(name: string): string {
@@ -62,7 +72,7 @@ function shortStockName(name: string): string {
 function formatHeatPct(value: number): string {
   const abs = Math.abs(value);
   const digits = abs >= 10 ? 1 : 2;
-  return `${value > 0 ? '' : value < 0 ? '-' : ''}${abs.toFixed(digits)}%`;
+  return `${value > 0 ? '+' : value < 0 ? '-' : ''}${abs.toFixed(digits)}%`;
 }
 
 function textOnBg(change: number, maxAbs = 4): string {
@@ -83,18 +93,18 @@ function oiChangeColor(value: number): string {
 function GridHeatmapCell({
   title,
   changePercent,
-  maxAbsMove,
+  subtitle,
   onHover,
   onLeave,
 }: {
   title: string;
   changePercent: number;
-  maxAbsMove: number;
+  subtitle?: string;
   onHover?: () => void;
   onLeave?: () => void;
 }) {
-  const bg = flatHeatColor(changePercent, maxAbsMove);
-  const fg = cellTextColor(changePercent, maxAbsMove);
+  const bg = performanceHeatColor(changePercent);
+  const fg = cellTextColor(changePercent);
   const pct = formatHeatPct(changePercent);
 
   return (
@@ -103,18 +113,72 @@ function GridHeatmapCell({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       title={`${title} · ${pct}`}
-      className="flex flex-col items-center justify-center min-h-[72px] px-2 py-3 text-center bg-dark-elevated border border-dark-border/60 transition-all hover:border-gold/40 hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+      className="flex flex-col items-center justify-center min-h-[80px] px-2 py-3 text-center border border-black/20 transition-all hover:brightness-110 hover:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
       style={{ backgroundColor: bg }}
     >
-      <span
-        className="text-[12px] font-bold leading-tight line-clamp-2 w-full"
-        style={{ color: fg }}
-      >
+      <span className="text-[12px] font-bold leading-tight line-clamp-2 w-full" style={{ color: fg }}>
         {title}
       </span>
-      <span className="text-[12px] font-black tabular-nums mt-1" style={{ color: fg }}>
+      <span className="text-[13px] font-black tabular-nums mt-1" style={{ color: fg }}>
         {pct}
       </span>
+      {subtitle && (
+        <span className="text-[9px] mt-0.5 opacity-80" style={{ color: fg }}>
+          {subtitle}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function SectorHeatCell({
+  item,
+  onHover,
+  onLeave,
+}: {
+  item: SectorHeatmapItem;
+  onHover?: () => void;
+  onLeave?: () => void;
+}) {
+  const bg = performanceHeatColor(item.changePercent);
+  const fg = cellTextColor(item.changePercent);
+  const pct = formatHeatPct(item.changePercent);
+  // Bigger tiles for sectors with more names / stronger moves
+  const span =
+    item.stockCount >= 10 || Math.abs(item.changePercent) >= 1.5
+      ? 'sm:col-span-2 sm:row-span-2 min-h-[140px]'
+      : Math.abs(item.changePercent) >= 0.8 || item.stockCount >= 6
+        ? 'min-h-[110px]'
+        : 'min-h-[96px]';
+
+  return (
+    <button
+      type="button"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      title={`${item.sector} · ${pct} · ${item.stockCount} stocks`}
+      className={`flex flex-col items-stretch justify-between p-3 text-left border border-black/25 transition-all hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 ${span}`}
+      style={{ backgroundColor: bg }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm sm:text-base font-extrabold leading-tight" style={{ color: fg }}>
+          {item.sector}
+        </span>
+        <span className="text-sm sm:text-lg font-black tabular-nums shrink-0" style={{ color: fg }}>
+          {pct}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold" style={{ color: fg }}>
+        <span>{item.stockCount} stocks</span>
+        <span className="opacity-90">
+          <span className="text-emerald-100">{item.advancers}↑</span>
+          {' / '}
+          <span className="text-red-100">{item.decliners}↓</span>
+        </span>
+      </div>
+      <div className="mt-1 text-[10px] opacity-85 truncate" style={{ color: fg }}>
+        Top {item.topGainer} · Weak {item.topLoser}
+      </div>
     </button>
   );
 }
@@ -291,16 +355,6 @@ export default function MarketHeatmap() {
     [sectors],
   );
 
-  const maxStockAbsMove = useMemo(
-    () => Math.max(...sortedStocks.map((s) => Math.abs(s.changePercent)), 0.01),
-    [sortedStocks],
-  );
-
-  const maxSectorAbsMove = useMemo(
-    () => Math.max(...sortedSectors.map((s) => Math.abs(s.changePercent)), 0.01),
-    [sortedSectors],
-  );
-
   const stockStats = useMemo(() => {
     const adv = stocks.filter((s) => s.changePercent > 0).length;
     const dec = stocks.filter((s) => s.changePercent < 0).length;
@@ -434,13 +488,17 @@ export default function MarketHeatmap() {
             <div className="app-card p-3">
               <span className="text-[10px] text-slate-600 block font-bold uppercase">Best sector</span>
               <span className="text-sm font-bold text-emerald-400">
-                {[...sectors].sort((a, b) => b.changePercent - a.changePercent)[0]?.sector ?? '—'}
+                {sortedSectors[0]
+                  ? `${sortedSectors[0].sector} (${formatHeatPct(sortedSectors[0].changePercent)})`
+                  : '—'}
               </span>
             </div>
             <div className="app-card p-3">
               <span className="text-[10px] text-slate-600 block font-bold uppercase">Weakest sector</span>
               <span className="text-sm font-bold text-red-400">
-                {[...sectors].sort((a, b) => a.changePercent - b.changePercent)[0]?.sector ?? '—'}
+                {sortedSectors[sortedSectors.length - 1]
+                  ? `${sortedSectors[sortedSectors.length - 1].sector} (${formatHeatPct(sortedSectors[sortedSectors.length - 1].changePercent)})`
+                  : '—'}
               </span>
             </div>
             <div className="app-card p-3">
@@ -516,7 +574,7 @@ export default function MarketHeatmap() {
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 app-card p-2">
         <span className="text-[9px] text-slate-600 font-bold uppercase">
-          {tab === 'oi' ? 'OI change %' : 'Price change %'}
+          {tab === 'oi' ? 'OI change %' : 'Performance (green ↑ / red ↓)'}
         </span>
         {tab === 'oi' ? (
           <div className="flex-1 flex h-1.5 rounded-full overflow-hidden min-w-[120px]">
@@ -526,24 +584,24 @@ export default function MarketHeatmap() {
           </div>
         ) : (
           <div
-            className="flex-1 flex h-1.5 rounded-full overflow-hidden min-w-[120px]"
+            className="flex-1 flex h-2 rounded-full overflow-hidden min-w-[140px]"
             style={{
-              background: `linear-gradient(90deg, rgba(${NEG_RGB},0.9), rgba(${NEG_RGB},0.25), rgba(51,65,85,0.5), rgba(${POS_RGB},0.25), rgba(${POS_RGB},0.9))`,
+              background: `linear-gradient(90deg, rgba(${NEG_RGB},0.95), rgba(${NEG_RGB},0.35), rgba(51,65,85,0.6), rgba(${POS_RGB},0.35), rgba(${POS_RGB},0.95))`,
             }}
           />
         )}
         <div className="flex gap-3 text-[9px] text-slate-500 font-bold">
-          <span className="text-red-400">Losers</span>
-          <span className="text-slate-600">F&amp;O · sorted by %</span>
-          <span className="text-emerald-400">Gainers</span>
+          <span className="text-red-400">−3%+ weak</span>
+          <span className="text-slate-500">flat</span>
+          <span className="text-emerald-400">+3%+ strong</span>
         </div>
       </div>
 
-      {/* Heatmap body — 3-column grid */}
+      {/* Heatmap body */}
       <div className="app-card p-1 min-h-[420px] overflow-hidden">
         {!isLive && !loading && (
           <p className="text-xs text-amber-300/90 px-3 py-2 border-b border-dark-border">
-            Connect TradeX Live in Profile — showing last cached quotes until feed connects.
+            Waiting for live feed — showing last quotes until market data connects.
           </p>
         )}
         <AnimatePresence mode="wait">
@@ -553,18 +611,21 @@ export default function MarketHeatmap() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-dark-border"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-px bg-dark-border"
             >
               {sortedStocks.map((item) => (
                 <GridHeatmapCell
                   key={item.symbol}
                   title={shortStockName(item.name)}
                   changePercent={item.changePercent}
-                  maxAbsMove={maxStockAbsMove}
+                  subtitle={item.sector}
                   onHover={() => setHovered(item)}
                   onLeave={() => setHovered(null)}
                 />
               ))}
+              {sortedStocks.length === 0 && (
+                <p className="col-span-full text-center text-sm text-slate-500 py-16">No stocks in this filter.</p>
+              )}
             </motion.div>
           )}
 
@@ -574,18 +635,21 @@ export default function MarketHeatmap() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-dark-border"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 p-1 auto-rows-fr"
             >
               {sortedSectors.map((item) => (
-                <GridHeatmapCell
+                <SectorHeatCell
                   key={item.sector}
-                  title={item.sector}
-                  changePercent={item.changePercent}
-                  maxAbsMove={maxSectorAbsMove}
+                  item={item}
                   onHover={() => setHovered(item)}
                   onLeave={() => setHovered(null)}
                 />
               ))}
+              {sortedSectors.length === 0 && (
+                <p className="col-span-full text-center text-sm text-slate-500 py-16">
+                  No sector data yet — waiting for live quotes.
+                </p>
+              )}
             </motion.div>
           )}
 
