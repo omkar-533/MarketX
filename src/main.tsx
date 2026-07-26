@@ -19,7 +19,7 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
       Promise.all(regs.map((r) => r.unregister())),
     ).then(() =>
       caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
-    ).then(() => navigator.serviceWorker.register("/sw.js?v=5")).catch(() => undefined);
+    ).then(() => navigator.serviceWorker.register("/sw.js?v=6")).catch(() => undefined);
   });
 }
 

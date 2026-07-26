@@ -67,6 +67,10 @@ function AppWorkspace() {
   }, [activeTab]);
 
   useEffect(() => {
+    if (activeTab === 'papertrading') setActiveTab('dashboard');
+  }, [activeTab]);
+
+  useEffect(() => {
     document.title = auth.isLoggedIn ? pageDocumentTitle(activeTab) : BRAND;
   }, [auth.isLoggedIn, activeTab]);
 

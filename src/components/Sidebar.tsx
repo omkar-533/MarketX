@@ -89,7 +89,7 @@ export default function Sidebar({
 
       <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
         <div className="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.35em] text-slate-600">
-          Core Features
+          Menu
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;

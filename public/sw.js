@@ -1,5 +1,5 @@
 /** APMI service worker — bump CACHE on every UI-critical release */
-const CACHE = 'apmi-shell-v5';
+const CACHE = 'apmi-shell-v6';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -13,6 +13,5 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network only — never serve stale JS/HTML for the shell
   event.respondWith(fetch(event.request));
 });
