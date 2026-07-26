@@ -439,6 +439,14 @@ input[type="number"] { -moz-appearance: textfield; }
   text-shadow: 0 0 28px rgba(212, 175, 55, 0.35);
 }
 
+.auth-ai-tagline {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #c9a227;
+}
+
 .auth-ai-lead {
   margin-top: 0.75rem;
   font-size: 0.8125rem;
@@ -2354,7 +2362,10 @@ input[type="number"] { -moz-appearance: textfield; }
 .auth-lux__pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 0.4rem 0.55rem;
   margin: 0 0 1.5rem;
   padding: 0.4rem 0.9rem;
   border-radius: 999px;
@@ -2365,6 +2376,15 @@ input[type="number"] { -moz-appearance: textfield; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lux-muted);
+}
+
+.auth-lux__pill-brand {
+  color: var(--lux-ink);
+  font-weight: 800;
+}
+
+.auth-lux__pill-sep {
+  color: rgba(255, 255, 255, 0.28);
 }
 
 .auth-lux__pill-dot {
@@ -3662,6 +3682,15 @@ input[type="number"] { -moz-appearance: textfield; }
   display: block;
   font-size: 0.92rem;
   font-weight: 750;
+}
+
+.auth-lux__footer-brand em {
+  display: block;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--lux-gold-soft, #e8d48b);
 }
 
 .auth-lux__footer-brand span {

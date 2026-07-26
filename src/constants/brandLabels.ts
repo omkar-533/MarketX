@@ -3,6 +3,9 @@ export const BRAND = 'Wolf Trade AI';
 export const BRAND_SHORT = 'Wolf Trade';
 export const BRAND_LINE1 = 'Wolf Trade';
 export const BRAND_LINE2 = 'AI';
+/** Official tagline — no trailing period so it can sit inline after the name. */
+export const BRAND_TAGLINE = 'The Future of Intelligent Trading';
+export const BRAND_TAGLINE_FULL = `${BRAND_TAGLINE}.`;
 export const LIVE_DATA_LABEL = 'Live Data';
 export const CONNECT_LIVE_LABEL = 'Connect Live Data';
 export const LIVE_FEED_LABEL = 'AI live market feed';

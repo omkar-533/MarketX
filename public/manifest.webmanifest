@@ -1,7 +1,7 @@
 {
   "name": "Wolf Trade AI",
   "short_name": "Wolf Trade",
-  "description": "Wolf Trade AI — live NSE options, OI, signals & AI trading workspace",
+  "description": "Wolf Trade AI — The Future of Intelligent Trading. Live NSE options, OI, signals and an AI trading workspace.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

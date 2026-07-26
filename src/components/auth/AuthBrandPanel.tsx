@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Cpu, Shield, Sparkles, Zap } from 'lucide-react';
 import AuthRobotScene from './AuthRobotScene';
-import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
+import {
+  BRAND,
+  BRAND_LINE1,
+  BRAND_LINE2,
+  BRAND_SHORT,
+  BRAND_TAGLINE_FULL,
+} from '../../constants/brandLabels';
 
 const capabilities = [
   { icon: Bot, text: 'Neural market scan' },
@@ -68,6 +74,7 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
           <h2 className="auth-ai-headline">
             <span>{BRAND}</span>
           </h2>
+          <p className="auth-ai-tagline">{BRAND_TAGLINE_FULL}</p>
           <p className="auth-ai-lead">
             AI-powered market intelligence with live LTP, option chain, OI, and signals —
             before you even sign in.

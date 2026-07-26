@@ -12,7 +12,7 @@ import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
-import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
+import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
 import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
@@ -322,7 +322,9 @@ export default function AuthPage(props: AuthPageProps) {
               transition={{ duration: 0.6, ease }}
             >
               <span className="auth-lux__pill-dot" />
-              {BRAND_SHORT} · Live NSE intelligence
+              <span className="auth-lux__pill-brand">{BRAND}</span>
+              <span className="auth-lux__pill-sep">·</span>
+              <span>{BRAND_TAGLINE}</span>
             </motion.p>
             <h1 className="auth-lux__headline">
               <Words text="Start trading like" mode="mount" delay={0.1} />
@@ -506,6 +508,7 @@ export default function AuthPage(props: AuthPageProps) {
               <BrandMark size="sm" />
               <div>
                 <strong>{BRAND}</strong>
+                <em>{BRAND_TAGLINE_FULL}</em>
                 <span>wolftradeai.in</span>
               </div>
             </div>
