@@ -1,8 +1,7 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { Crown } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
-import AuthRobotScene from './AuthRobotScene';
 import ThemeToggle from '../ThemeToggle';
 import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
 
@@ -12,14 +11,15 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
 
 /**
  * LuxAlgo-inspired landing login — bold hero, clean CTA, feature modules below.
- * Brand + invite sign-in only (no public signup).
+ * Brand + invite sign-in only (no public signup). No login video.
  */
 export default function AuthPage(props: AuthPageProps) {
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
       <div className="auth-lux__bg" aria-hidden="true">
-        <AuthRobotScene fullscreen />
-        <div className="auth-lux__shade" />
+        <div className="auth-lux__glow auth-lux__glow--a" />
+        <div className="auth-lux__glow auth-lux__glow--b" />
+        <div className="auth-lux__grid" />
       </div>
 
       <header className="auth-lux__nav relative z-30">
@@ -42,7 +42,6 @@ export default function AuthPage(props: AuthPageProps) {
         </div>
       </header>
 
-      {/* Hero — brand, one headline, one line, sign-in CTA */}
       <section className="auth-lux__hero relative z-20">
         <motion.div
           className="auth-lux__hero-copy"
@@ -73,7 +72,6 @@ export default function AuthPage(props: AuthPageProps) {
         </motion.div>
       </section>
 
-      {/* Features — LuxAlgo-style module showcase */}
       <section className="auth-lux__features relative z-20" id="features">
         <div className="auth-lux__features-inner">
           <motion.div
