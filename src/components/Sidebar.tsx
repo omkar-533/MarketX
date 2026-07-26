@@ -6,7 +6,7 @@ import {
   NotebookPen,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
-import { BRAND, BRAND_SHORT, PAGE_NAMES } from '../constants/brandLabels';
+import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
 import BrandMark from './BrandMark';
 
 interface SidebarProps {
