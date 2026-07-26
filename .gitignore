@@ -29,3 +29,6 @@ tools/
 public/auth/_frames_in/
 public/auth/_frames_out/
 
+
+# generated icon previews
+preview/

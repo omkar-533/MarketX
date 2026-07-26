@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Wolf Trade AI">
+  <defs>
+    <linearGradient id="wtLit" x1="8" y1="4" x2="34" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6da" />
+      <stop offset=".42" stop-color="#f0d894" />
+      <stop offset="1" stop-color="#cba52a" />
+    </linearGradient>
+    <linearGradient id="wtShade" x1="56" y1="4" x2="34" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#eacf7e" />
+      <stop offset=".5" stop-color="#bf9525" />
+      <stop offset="1" stop-color="#94701a" />
+    </linearGradient>
+    <linearGradient id="wtSnout" x1="32" y1="46" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a8811c" />
+      <stop offset="1" stop-color="#7a5b10" />
+    </linearGradient>
+  </defs>
+
+  <!-- lit half: left ear + left face -->
+  <path
+    fill="url(#wtLit)"
+    fill-rule="evenodd"
+    d="M10 5 23 25 32 21 32 59 19 45 12 31Z M20 32 28 35.5 26 40 19 36.5Z"
+  />
+  <!-- shade half: right ear + right face -->
+  <path
+    fill="url(#wtShade)"
+    fill-rule="evenodd"
+    d="M54 5 41 25 32 21 32 59 45 45 52 31Z M44 32 36 35.5 38 40 45 36.5Z"
+  />
+  <!-- snout facet -->
+  <path fill="url(#wtSnout)" d="M27 47 37 47 32 59Z" />
+</svg>
