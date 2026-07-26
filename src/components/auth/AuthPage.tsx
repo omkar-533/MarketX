@@ -126,9 +126,9 @@ export default function AuthPage(props: AuthPageProps) {
             <img
               className="auth-lux__hero-mark-img"
               src={brandLogoUrl}
-              alt="AI Powered Market Intelligence"
+              alt="Wolf Trade AI"
               width={1024}
-              height={558}
+              height={1024}
               decoding="async"
               fetchPriority="high"
             />

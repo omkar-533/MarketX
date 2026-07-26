@@ -39,7 +39,7 @@ function feedLabel(mode?: string, label?: string, loading?: boolean): string {
   if (mode === 'mixed') return 'Partial live feed';
   if (mode === 'loading') return 'Connecting to market feed…';
   const cleaned = sanitizeDisplayMessage(label || '');
-  if (!cleaned || /npm|APMI server|run dev/i.test(cleaned)) {
+  if (!cleaned || /npm|Wolf Trade|APMI server|run dev/i.test(cleaned)) {
     return 'Market feed unavailable — reconnecting…';
   }
   return cleaned;

@@ -15,7 +15,7 @@ function run(cmd) {
   execSync(cmd, { cwd: root, stdio: 'inherit', shell: true });
 }
 
-console.log('Master TradeX — app setup (clean, official build only)\n');
+console.log('Wolf Trade AI — app setup (clean, official build only)\n');
 
 if (!existsSync(resolve(root, 'node_modules'))) {
   run('npm install');

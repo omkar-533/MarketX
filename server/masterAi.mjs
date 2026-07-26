@@ -16,7 +16,7 @@ export const MASTER_AI_MODELS = [
   { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 (free)', provider: 'Meta', free: true },
 ];
 
-const SYSTEM_PROMPT = `You are Master AI — a senior NSE/BSE trading mentor inside AI Powered Market Intelligent (APMI).
+const SYSTEM_PROMPT = `You are Master AI — a senior NSE/BSE trading mentor inside Wolf Trade AI.
 
 IDENTITY
 - Think like a desk mentor who has traded F&O for years in India.
@@ -138,7 +138,7 @@ function createClient(apiKey) {
       apiKey,
       defaultHeaders: {
         'HTTP-Referer': 'https://wolftradeai.in',
-        'X-Title': 'APMI Master AI',
+        'X-Title': 'Wolf Trade AI Master AI',
       },
     }),
     provider: 'openrouter',

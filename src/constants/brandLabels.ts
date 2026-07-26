@@ -1,8 +1,8 @@
 /** User-facing brand — never show broker/API vendor names on screen */
-export const BRAND = 'AI Powered Market Intelligent';
-export const BRAND_SHORT = 'APMI';
-export const BRAND_LINE1 = 'AI Powered';
-export const BRAND_LINE2 = 'Market Intelligent';
+export const BRAND = 'Wolf Trade AI';
+export const BRAND_SHORT = 'Wolf Trade';
+export const BRAND_LINE1 = 'Wolf Trade';
+export const BRAND_LINE2 = 'AI';
 export const LIVE_DATA_LABEL = 'Live Data';
 export const CONNECT_LIVE_LABEL = 'Connect Live Data';
 export const LIVE_FEED_LABEL = 'AI live market feed';
@@ -66,6 +66,8 @@ export function masterAiOfflineMessage(): string {
 /** Strip vendor names and developer commands from messages shown in UI */
 export function sanitizeDisplayMessage(msg: string): string {
   return String(msg || '')
+    .replace(/AI Powered Market Intelligent/gi, BRAND)
+    .replace(/\bAPMI\b/gi, BRAND_SHORT)
     .replace(/opstra/gi, BRAND_SHORT)
     .replace(/fyers/gi, BRAND_SHORT)
     .replace(/Master TradeX/gi, BRAND)

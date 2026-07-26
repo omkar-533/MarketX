@@ -127,7 +127,7 @@ httpServer.listen(config.port, () => {
   attachSocketIo(httpServer);
   startFyersAutoConnectWatch();
   void bootFyersAutoConnect();
-  console.log(`Master TradeX API on port ${config.port} (${config.nodeEnv})`);
+  console.log(`Wolf Trade AI API on port ${config.port} (${config.nodeEnv})`);
   console.log(`  Frontend: ${config.frontendUrl}`);
   console.log(`  Fyers redirect: ${config.fyersRedirect}`);
   console.log(`  Auth: GET /api/auth/fyers/login · GET /api/auth/session`);

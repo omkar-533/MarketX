@@ -5,7 +5,7 @@ const LIVE_APP_URL = process.env.CAPACITOR_SERVER_URL || 'https://wolftradeai.in
 
 const config: CapacitorConfig = {
   appId: 'com.mastertradex.app',
-  appName: 'AI Powered Market Intelligent',
+  appName: 'Wolf Trade AI',
   webDir: 'dist',
   server: {
     url: LIVE_APP_URL,

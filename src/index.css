@@ -2109,7 +2109,7 @@ input[type="number"] { -moz-appearance: textfield; }
   order: 1;
   position: relative;
   justify-self: center;
-  width: min(100%, 24rem);
+  width: min(100%, 20rem);
   max-width: 100%;
   line-height: 0;
 }
@@ -2127,7 +2127,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
   .auth-lux__hero-mark {
     order: 0;
-    width: min(100%, 36rem);
+    width: min(100%, 28rem);
     justify-self: end;
   }
 }
@@ -2154,37 +2154,37 @@ input[type="number"] { -moz-appearance: textfield; }
   user-select: none;
   border-radius: 0;
   background: transparent;
+  /* Black logo plate melts into dark UI; gold/silver stay */
   mix-blend-mode: lighten;
   -webkit-mask-image: radial-gradient(
-    ellipse 88% 82% at 50% 48%,
-    #000 52%,
-    rgba(0, 0, 0, 0.9) 70%,
-    transparent 88%
+    circle at 50% 50%,
+    #000 62%,
+    rgba(0, 0, 0, 0.92) 74%,
+    transparent 86%
   );
   mask-image: radial-gradient(
-    ellipse 88% 82% at 50% 48%,
-    #000 52%,
-    rgba(0, 0, 0, 0.9) 70%,
-    transparent 88%
+    circle at 50% 50%,
+    #000 62%,
+    rgba(0, 0, 0, 0.92) 74%,
+    transparent 86%
   );
-  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
 }
 
-.brand-logo-blend--nav {
-  width: auto;
-  height: 100%;
-  max-width: 100%;
-  -webkit-mask-image: none;
-  mask-image: none;
-  filter: none;
+.brand-mark {
+  line-height: 0;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
+.brand-logo-blend--round,
+.brand-logo-blend--nav,
 .brand-logo-blend--icon {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 58%, transparent 78%);
-  mask-image: radial-gradient(circle at 50% 48%, #000 58%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 86%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 86%);
   filter: none;
 }
 

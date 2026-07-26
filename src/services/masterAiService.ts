@@ -186,7 +186,7 @@ export const MASTER_AI_MODELS: MasterAiModel[] = [
 ];
 
 export const PLATFORM_KNOWLEDGE = `
-APMI platform (answer using this when user asks about the app):
+Wolf Trade AI platform (answer using this when user asks about the app):
 - AI Intelligence: OI/smart-money style views, writing zones, scanner, alerts
 - Stock Screeners: categorized live scans (momentum, breakout, intraday, F&O, etc.)
 - Strategy Builder: multi-leg templates, payoff, Greeks

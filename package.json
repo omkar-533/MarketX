@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.mastertradex.app",
-    "productName": "AI Powered Market Intelligent",
+    "productName": "Wolf Trade AI",
     "directories": {
       "output": "release"
     },
