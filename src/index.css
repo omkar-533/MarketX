@@ -1345,8 +1345,8 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 50%;
   left: 18%;
   top: 22%;
-  background: rgba(34, 211, 238, 0.18);
-  animation: auth-thinker-pulse 6s ease-in-out infinite;
+  background: rgba(34, 211, 238, 0.14);
+  animation: auth-thinker-pulse 10s ease-in-out infinite;
 }
 
 .auth-thinker-glow--b {
@@ -1354,13 +1354,13 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 35%;
   right: 18%;
   bottom: 18%;
-  background: rgba(59, 130, 246, 0.16);
-  animation: auth-thinker-pulse 7.5s ease-in-out infinite 1s;
+  background: rgba(59, 130, 246, 0.12);
+  animation: auth-thinker-pulse 12s ease-in-out infinite 1.5s;
 }
 
 @keyframes auth-thinker-pulse {
   0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
+  50% { opacity: 0.85; transform: scale(1.04); }
 }
 
 .auth-thinker-grid {
@@ -1422,6 +1422,8 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   inset: 0;
   z-index: 1;
+  overflow: hidden;
+  contain: layout paint;
 }
 
 .auth-thinker-video {
@@ -1430,7 +1432,9 @@ input[type="number"] { -moz-appearance: textfield; }
   object-fit: cover;
   object-position: left center;
   display: block;
-  filter: saturate(1.05) contrast(1.04);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .auth-robot-3d {
@@ -1486,18 +1490,19 @@ input[type="number"] { -moz-appearance: textfield; }
   position: absolute;
   left: 5%;
   width: min(70vw, 780px);
-  height: 28%;
+  height: 22%;
   top: -10%;
-  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.08), transparent);
-  animation: auth-thinker-scan 7s ease-in-out infinite;
+  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.045), transparent);
+  animation: auth-thinker-scan 14s ease-in-out infinite;
   pointer-events: none;
+  opacity: 0.55;
 }
 
 @keyframes auth-thinker-scan {
-  0% { top: -15%; opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { top: 90%; opacity: 0; }
+  0% { top: -12%; opacity: 0; }
+  15% { opacity: 0.5; }
+  85% { opacity: 0.5; }
+  100% { top: 88%; opacity: 0; }
 }
 
 .auth-thinker-hud {

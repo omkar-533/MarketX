@@ -9,11 +9,28 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    el.playbackRate = 1;
+    el.playbackRate = 0.85;
+    el.defaultMuted = true;
+    el.muted = true;
+
     const play = () => {
       void el.play().catch(() => setFailed(true));
     };
+
+    // Keep playback stable if tab resumes or loop hiccups
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && el.paused) play();
+    };
+    const onStalled = () => play();
+
+    el.addEventListener('stalled', onStalled);
+    document.addEventListener('visibilitychange', onVisibility);
     play();
+
+    return () => {
+      el.removeEventListener('stalled', onStalled);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   return (
@@ -36,6 +53,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
             muted
             loop
             playsInline
+            disablePictureInPicture
             preload="auto"
             poster="/auth/ai-thinker.png"
             onError={() => setFailed(true)}
