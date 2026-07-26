@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, PieChart, ScanLine,
-  Wallet,
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot,
   NotebookPen,
 } from 'lucide-react';
@@ -25,7 +24,6 @@ const navItems = [
   { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
   { id: 'oiintelligence', label: PAGE_NAMES.oiintelligence, icon: Activity },
-  { id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet },
   { id: 'heatmap', label: PAGE_NAMES.heatmap, icon: PieChart },
   { id: 'scanner', label: PAGE_NAMES.scanner, icon: ScanLine },
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
