@@ -1,1 +1,0 @@
-import{c4 as u}from"./vendor-DKJtfbdU.js";import{aP as f,Q as c}from"./index-V1NuU3ng.js";function i(r,e=!0){const t=u.useRef(r);t.current=r,u.useEffect(()=>{if(!e)return;const s=o=>t.current(o);return s({tick:c(),at:Date.now()}),f(s)},[e])}export{i as u};
