@@ -28,11 +28,55 @@ export function clearAppSession() {
   localStorage.removeItem(APP_SESSION_KEY);
 }
 
+export type AccessStatus = 'trial' | 'granted' | 'locked' | 'blocked';
+
+export type AccessRequestSummary = {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'superseded';
+  createdAt: string;
+  adminNote: string | null;
+};
+
+export type AccessState = {
+  status: AccessStatus;
+  unlocked: boolean;
+  isTrial: boolean;
+  expiresAt: string | null;
+  daysLeft: number | null;
+  hoursLeft: number | null;
+  reason: string | null;
+  trialDays: number;
+  request: AccessRequestSummary | null;
+};
+
+export type AccessPopup = {
+  enabled: boolean;
+  title: string;
+  message: string;
+  url: string;
+  buttonLabel: string;
+  whatsapp: string;
+};
+
+export type AccessSnapshot = {
+  access: AccessState;
+  popup: AccessPopup;
+};
+
+export type OtpChallenge = {
+  phone: string;
+  expiresInSec: number;
+  devMode: boolean;
+  /** Only present when no SMS provider is configured, so testing still works. */
+  devCode: string | null;
+};
+
 function toSession(data: {
   token?: unknown;
   user?: Record<string, unknown>;
 }): AppSession {
-  const raw = (data.user ?? {}) as Record<string, string | null | undefined>;
+  const raw = (data.user ?? {}) as Record<string, unknown>;
+  const str = (value: unknown) => (value == null ? null : String(value));
   return {
     token: String(data.token),
     user: {
@@ -42,45 +86,131 @@ function toSession(data: {
       role: raw.role === 'admin' ? 'admin' : 'user',
       plan: raw.plan === 'premium' || raw.plan === 'pro' ? raw.plan : 'free',
       verified: true,
-      createdAt: raw.createdAt || new Date().toISOString(),
-      trialEndsAt: raw.trialEndsAt ?? null,
+      createdAt: str(raw.createdAt) || new Date().toISOString(),
+      trialEndsAt: str(raw.trialEndsAt),
+      phone: str(raw.phone) ?? undefined,
+      phoneVerified: raw.phoneVerified === true,
+      accessStatus: (str(raw.accessStatus) as AccessStatus | null) ?? 'trial',
+      accessExpiresAt: str(raw.accessExpiresAt),
     },
   };
 }
 
-export async function loginWithInvite(email: string, password: string): Promise<AppSession> {
+function snapshotOf(data: Record<string, unknown>): AccessSnapshot | null {
+  if (!data?.access) return null;
+  return { access: data.access as AccessState, popup: data.popup as AccessPopup };
+}
+
+async function readJson(res: Response, fallbackError: string) {
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : fallbackError);
+  }
+  return data;
+}
+
+export async function loginWithInvite(
+  identifier: string,
+  password: string,
+): Promise<AppSession & { snapshot: AccessSnapshot | null }> {
   const res = await apiFetch('/api/app-auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, email: identifier, password }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(typeof data?.error === 'string' ? data.error : 'Invalid email or password');
-  }
+  const data = await readJson(res, 'Invalid credentials');
   const session = toSession(data);
   saveAppSession(session);
-  return session;
+  return { ...session, snapshot: snapshotOf(data) };
 }
 
-/** Public sign-up — creates a free-trial login and returns an active session. */
-export async function signupWithTrial(
-  name: string,
-  email: string,
-  password: string,
-): Promise<AppSession> {
-  const res = await apiFetch('/api/app-auth/signup', {
+/** Step 1 of sign-up: nothing is created yet, an OTP goes to the mobile number. */
+export async function startSignup(input: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+}): Promise<OtpChallenge> {
+  const res = await apiFetch('/api/app-auth/signup/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify(input),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(typeof data?.error === 'string' ? data.error : 'Could not create your account');
-  }
+  const data = await readJson(res, 'Could not send the OTP');
+  return {
+    phone: String(data.phone),
+    expiresInSec: Number(data.expiresInSec) || 600,
+    devMode: data.devMode === true,
+    devCode: data.devCode ? String(data.devCode) : null,
+  };
+}
+
+export async function resendSignupOtp(phone: string): Promise<OtpChallenge> {
+  const res = await apiFetch('/api/app-auth/signup/resend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  });
+  const data = await readJson(res, 'Could not resend the OTP');
+  return {
+    phone: String(data.phone),
+    expiresInSec: Number(data.expiresInSec) || 600,
+    devMode: data.devMode === true,
+    devCode: data.devCode ? String(data.devCode) : null,
+  };
+}
+
+/** Step 2: OTP proves the number, the account is created with the free trial live. */
+export async function verifySignupOtp(
+  phone: string,
+  code: string,
+): Promise<AppSession & { snapshot: AccessSnapshot | null }> {
+  const res = await apiFetch('/api/app-auth/signup/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, code }),
+  });
+  const data = await readJson(res, 'Could not verify the OTP');
   const session = toSession(data);
   saveAppSession(session);
-  return session;
+  return { ...session, snapshot: snapshotOf(data) };
+}
+
+function sessionHeaders(): HeadersInit {
+  const session = loadAppSession();
+  return {
+    'Content-Type': 'application/json',
+    ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+  };
+}
+
+/** Live gate state — the stored token is never trusted for access decisions. */
+export async function fetchAccessState(): Promise<AccessSnapshot | null> {
+  const session = loadAppSession();
+  if (!session?.token) return null;
+
+  const res = await apiFetch('/api/app-auth/access', { headers: sessionHeaders() });
+  if (res.status === 401) {
+    clearAppSession();
+    return null;
+  }
+  const data = await readJson(res, 'Could not load your access status');
+
+  const stored = loadAppSession();
+  if (stored && data.user) {
+    saveAppSession({ ...stored, user: toSession({ token: stored.token, user: data.user as Record<string, unknown> }).user });
+  }
+  return snapshotOf(data);
+}
+
+export async function submitAccessProof(screenshot: string, note?: string) {
+  const res = await apiFetch('/api/app-auth/access/request', {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ screenshot, note }),
+  });
+  const data = await readJson(res, 'Could not upload the screenshot');
+  return snapshotOf(data);
 }
 
 function authHeaders(adminEmail?: string | null, adminPassword?: string | null): HeadersInit {
@@ -105,6 +235,7 @@ export type InviteUserInput = {
   name: string;
   email: string;
   password: string;
+  phone?: string;
   plan?: 'free' | 'pro' | 'premium';
 };
 
@@ -116,6 +247,16 @@ export type InviteUserRow = {
   plan: string;
   active: boolean;
   createdAt: string;
+  phone?: string | null;
+  phoneVerified?: boolean;
+  accessStatus?: AccessStatus;
+  accessExpiresAt?: string | null;
+  firstLoginAt?: string | null;
+  lastLoginAt?: string | null;
+  loginCount?: number;
+  adminSeenAt?: string | null;
+  createdBy?: string | null;
+  access?: Omit<AccessState, 'trialDays' | 'request'>;
 };
 
 export async function adminListUsers(adminEmail?: string | null, adminPassword?: string | null) {
@@ -170,4 +311,139 @@ export async function adminDeleteUser(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Could not delete user');
   return true;
+}
+
+/* ────────────────────────── admin: access control ────────────────────────── */
+
+export type AdminAccessRequest = {
+  id: string;
+  userId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  note: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'superseded';
+  adminNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  screenshotUrl: string | null;
+};
+
+export type AccessPopupSettings = AccessPopup & { defaultGrantDays: number };
+
+/** `days` of 0 means lifetime access. */
+export async function adminSetUserAccess(
+  id: string,
+  input: { status: AccessStatus; days?: number | null },
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(`/api/app-auth/admin/users/${encodeURIComponent(id)}/access`, {
+    method: 'POST',
+    headers: authHeaders(adminEmail, adminPassword),
+    body: JSON.stringify(input),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not update access');
+  return data.user as InviteUserRow;
+}
+
+export async function adminVerifyUserPhone(
+  id: string,
+  phone: string | null,
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(`/api/app-auth/admin/users/${encodeURIComponent(id)}/verify-phone`, {
+    method: 'POST',
+    headers: authHeaders(adminEmail, adminPassword),
+    body: JSON.stringify(phone ? { phone } : { verified: true }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not update mobile number');
+  return data.user as InviteUserRow;
+}
+
+export async function adminMarkUsersSeen(
+  ids: string[] | null,
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch('/api/app-auth/admin/users/seen', {
+    method: 'POST',
+    headers: authHeaders(adminEmail, adminPassword),
+    body: JSON.stringify({ ids }),
+  });
+  return res.ok;
+}
+
+export async function adminListAccessRequests(
+  status: 'pending' | 'approved' | 'rejected' | 'all' = 'pending',
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(`/api/app-auth/admin/access-requests?status=${status}`, {
+    headers: authHeaders(adminEmail, adminPassword),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not load access requests');
+  return {
+    requests: (data.requests || []) as AdminAccessRequest[],
+    pendingCount: Number(data.pendingCount || 0),
+  };
+}
+
+export async function adminReviewAccessRequest(
+  id: string,
+  input: { approve: boolean; days?: number; adminNote?: string },
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const action = input.approve ? 'approve' : 'reject';
+  const res = await apiFetch(
+    `/api/app-auth/admin/access-requests/${encodeURIComponent(id)}/${action}`,
+    {
+      method: 'POST',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify({ days: input.days, adminNote: input.adminNote }),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `Could not ${action} the request`);
+  return true;
+}
+
+export async function adminGetSettings(
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch('/api/app-auth/admin/settings', {
+    headers: authHeaders(adminEmail, adminPassword),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not load settings');
+  return {
+    popup: data.popup as AccessPopupSettings,
+    sms: (data.sms || { provider: 'dev', devMode: true }) as {
+      provider: string;
+      devMode: boolean;
+    },
+    trialDays: Number(data.trialDays || 3),
+  };
+}
+
+export async function adminSaveSettings(
+  popup: Partial<AccessPopupSettings>,
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch('/api/app-auth/admin/settings', {
+    method: 'PUT',
+    headers: authHeaders(adminEmail, adminPassword),
+    body: JSON.stringify({ popup }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not save settings');
+  return data.popup as AccessPopupSettings;
 }

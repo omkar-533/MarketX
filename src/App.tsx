@@ -14,6 +14,8 @@ import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
+const AccessGate = lazy(() => import('./components/access/AccessGate'));
+const TrialReminderPopup = lazy(() => import('./components/access/TrialReminderPopup'));
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -113,7 +115,13 @@ function AppWorkspace() {
     setMobileMenuOpen(false);
   };
 
+  /** Locked accounts may still read the pricing page, nothing else. */
+  const locked = Boolean(auth.access && !auth.access.unlocked);
+  const planPeek = locked && activeTab === 'subscription';
+
   const renderLoggedInContent = () => {
+    if (locked && !planPeek) return null;
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} />;
@@ -158,7 +166,7 @@ function AppWorkspace() {
       case 'admin':
         return <AdminPanel user={auth.user} adminPassword={auth.adminPassword} />;
       case 'subscription':
-        return <Subscription user={auth.user} />;
+        return <Subscription user={auth.user} access={auth.access} popup={auth.accessPopup} />;
       default:
         return <Dashboard onNavigate={setActiveTab} />;
     }
@@ -225,6 +233,9 @@ function AppWorkspace() {
                 mode={auth.authMode}
                 onLogin={auth.login}
                 onSignup={auth.signup}
+                onSignupStart={auth.signupStart}
+                onSignupVerify={auth.signupVerify}
+                onSignupResend={auth.signupResend}
                 onGoogleLogin={auth.googleLogin}
                 onOtpLogin={auth.otpLogin}
                 onForgotPassword={auth.forgotPassword}
@@ -232,6 +243,14 @@ function AppWorkspace() {
               />
             ) : (
               <AppErrorBoundary onReset={() => handleTabChange('dashboard')}>
+                {planPeek ? (
+                  <div className="access-peek-bar">
+                    <span>Your access is locked — only pricing is visible right now.</span>
+                    <button type="button" onClick={() => handleTabChange('dashboard')}>
+                      Unlock access
+                    </button>
+                  </div>
+                ) : null}
                 <Suspense fallback={<PageLoader />}>{renderLoggedInContent()}</Suspense>
               </AppErrorBoundary>
             )}
@@ -269,6 +288,24 @@ function AppWorkspace() {
           </Suspense>
         )}
       </div>
+      {auth.isLoggedIn ? (
+        <Suspense fallback={null}>
+          <TrialReminderPopup
+            access={auth.access}
+            popup={auth.accessPopup}
+            userId={auth.user?.id}
+            onRefresh={auth.refreshAccess}
+          />
+          <AccessGate
+            access={planPeek ? null : auth.access}
+            popup={auth.accessPopup}
+            userName={auth.user?.name?.split(' ')[0]}
+            onRefresh={auth.refreshAccess}
+            onLogout={() => void auth.logout()}
+            onSeePlans={() => handleTabChange('subscription')}
+          />
+        </Suspense>
+      ) : null}
       {auth.isLoggedIn ? <FyersConnectBanner /> : null}
     </AutoRefreshProvider>
   );

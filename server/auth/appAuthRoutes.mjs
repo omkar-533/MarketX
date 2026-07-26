@@ -4,9 +4,36 @@ import {
   authenticateAppUser,
   createAppUser,
   deleteAppUser,
+  findAppUserByEmail,
+  findAppUserById,
+  findAppUserByPhone,
+  hashPassword,
   listAppUsers,
+  markUsersSeen,
+  normalizePhone,
+  publicUser,
+  recordLogin,
   setAppUserActive,
+  setPhoneVerified,
+  setUserAccess,
+  setUserPhone,
 } from './appUserStore.mjs';
+import { accessStateFor } from './accessState.mjs';
+import { consumeOtp, issueOtp, pendingOtpPayload } from './otpStore.mjs';
+import { isDevSmsMode, sendOtpSms, smsProviderName } from './smsProvider.mjs';
+import {
+  DEFAULT_ACCESS_POPUP,
+  getAccessPopup,
+  publicAccessPopup,
+  setAccessPopup,
+} from './appSettingsStore.mjs';
+import {
+  createAccessRequest,
+  latestRequestForUser,
+  listAccessRequests,
+  pendingAccessRequestCount,
+  reviewAccessRequest,
+} from './accessRequests.mjs';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
@@ -16,6 +43,20 @@ const JWT_SECRET =
   'apmi-invite-auth-change-me-in-production';
 
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 3);
+
+const LOCAL_ADMIN = {
+  id: 'admin_local_omkar',
+  name: 'Omkar Chauhan',
+  email: ADMIN_EMAIL,
+  role: 'admin',
+  plan: 'premium',
+  verified: true,
+  active: true,
+  phone: null,
+  phoneVerified: false,
+  accessStatus: 'granted',
+  accessExpiresAt: null,
+};
 
 function signAppToken(user) {
   return jwt.sign(
@@ -43,6 +84,12 @@ function verifyAppToken(token) {
   }
 }
 
+function bearerPayload(req) {
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  return token ? verifyAppToken(token) : null;
+}
+
 function isAdminPair(email, password) {
   return (
     String(email || '').trim().toLowerCase() === ADMIN_EMAIL &&
@@ -64,9 +111,7 @@ function requireAdmin(req, res, next) {
     return next();
   }
 
-  const auth = String(req.headers.authorization || '');
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  const payload = token ? verifyAppToken(token) : null;
+  const payload = bearerPayload(req);
   if (payload?.role === 'admin') {
     req.adminActor = payload.email;
     return next();
@@ -75,95 +120,308 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ error: 'Admin access required' });
 }
 
-const router = Router();
+/** Signed-in gate that always resolves the live record, never the stale JWT. */
+async function requireUser(req, res, next) {
+  const payload = bearerPayload(req);
+  if (!payload) return res.status(401).json({ error: 'Not authenticated' });
 
-/** POST /api/app-auth/login — invite users + local admin */
-router.post('/login', async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '');
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
-  }
-
-  if (isAdminPair(email, password)) {
-    const user = {
-      id: 'admin_local_omkar',
-      name: 'Omkar Chauhan',
-      email: ADMIN_EMAIL,
-      role: 'admin',
-      plan: 'premium',
-      verified: true,
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    return res.json({ token: signAppToken(user), user, source: 'admin' });
+  if (payload.role === 'admin' && payload.sub === LOCAL_ADMIN.id) {
+    req.appUser = { ...LOCAL_ADMIN, createdAt: new Date().toISOString() };
+    return next();
   }
 
   try {
-    const user = await authenticateAppUser(email, password);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+    const record = await findAppUserById(payload.sub);
+    if (!record) return res.status(401).json({ error: 'Account not found' });
+    req.appUser = publicUser(record);
+    return next();
+  } catch (err) {
+    return failed(res, err, 'Could not load account');
+  }
+}
+
+/* ────────────────────────── validation ────────────────────────── */
+
+function validateSignup({ name, email, phone, password }) {
+  const cleanName = String(name || '').trim();
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const cleanPhone = normalizePhone(phone);
+  const pwd = String(password || '');
+
+  if (cleanName.length < 2) return { error: 'Please enter your full name' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) return { error: 'Enter a valid email' };
+  if (!cleanPhone) return { error: 'Enter a valid 10-digit Indian mobile number' };
+  if (pwd.length < 6) return { error: 'Password must be at least 6 characters' };
+
+  return { value: { name: cleanName, email: cleanEmail, phone: cleanPhone, password: pwd } };
+}
+
+async function accessPayloadFor(user) {
+  const state = accessStateFor(user);
+  const [popup, request] = await Promise.all([
+    getAccessPopup(),
+    user.role === 'admin' ? Promise.resolve(null) : latestRequestForUser(user.id),
+  ]);
+
+  return {
+    access: {
+      ...state,
+      trialDays: TRIAL_DAYS,
+      request: request
+        ? {
+            id: request.id,
+            status: request.status,
+            createdAt: request.createdAt,
+            adminNote: request.adminNote,
+          }
+        : null,
+    },
+    popup: publicAccessPopup(popup),
+  };
+}
+
+const router = Router();
+
+/* ────────────────────────── login ────────────────────────── */
+
+/** POST /api/app-auth/login — email or mobile + password, plus the local admin */
+router.post('/login', async (req, res) => {
+  const identifier = String(req.body?.identifier || req.body?.email || '').trim();
+  const password = String(req.body?.password || '');
+
+  if (!identifier || !password) {
+    return res.status(400).json({ error: 'Email or mobile and password required' });
+  }
+
+  if (isAdminPair(identifier, password)) {
+    const user = { ...LOCAL_ADMIN, createdAt: new Date().toISOString() };
+    return res.json({
+      token: signAppToken(user),
+      user,
+      source: 'admin',
+      ...(await accessPayloadFor(user)),
+    });
+  }
+
+  try {
+    const authed = await authenticateAppUser(identifier, password);
+    if (!authed) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
-    return res.json({ token: signAppToken(user), user, source: 'invite' });
+    const user = (await recordLogin(authed.id)) || authed;
+    return res.json({
+      token: signAppToken(user),
+      user,
+      source: 'invite',
+      ...(await accessPayloadFor(user)),
+    });
   } catch (err) {
     return failed(res, err, 'Login failed');
   }
 });
 
-/** POST /api/app-auth/signup — public 3-day trial; signs the user straight in */
-router.post('/signup', async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
+/* ────────────────────────── OTP signup ────────────────────────── */
 
-  if (email === ADMIN_EMAIL) {
-    return res.status(409).json({ error: 'This email already has an account. Please sign in.' });
+/** POST /api/app-auth/signup/start — validate, then text an OTP. No account yet. */
+router.post('/signup/start', async (req, res) => {
+  const { error, value } = validateSignup(req.body || {});
+  if (error) return res.status(400).json({ error });
+
+  try {
+    if (value.email === ADMIN_EMAIL) {
+      return res.status(409).json({ error: 'This email already has an account. Please sign in.' });
+    }
+    if (await findAppUserByEmail(value.email)) {
+      return res.status(409).json({ error: 'This email is already registered. Please sign in.' });
+    }
+    if (await findAppUserByPhone(value.phone)) {
+      return res
+        .status(409)
+        .json({ error: 'This mobile number is already registered. Please sign in.' });
+    }
+
+    const { code, expiresInSec } = await issueOtp(value.phone, 'signup', {
+      name: value.name,
+      email: value.email,
+      phone: value.phone,
+      passwordHash: hashPassword(value.password),
+    });
+
+    const sent = await sendOtpSms(value.phone, code);
+    return res.json({
+      sent: true,
+      phone: value.phone,
+      expiresInSec,
+      provider: sent.provider,
+      devMode: isDevSmsMode(),
+      devCode: sent.devCode ?? null,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not send OTP');
+  }
+});
+
+/** POST /api/app-auth/signup/resend */
+router.post('/signup/resend', async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  if (!phone) return res.status(400).json({ error: 'Enter a valid mobile number' });
+
+  try {
+    const payload = await pendingOtpPayload(phone, 'signup');
+    if (!payload) {
+      return res.status(400).json({ error: 'Please start the signup again.' });
+    }
+
+    const { code, expiresInSec } = await issueOtp(phone, 'signup', payload);
+    const sent = await sendOtpSms(phone, code);
+    return res.json({
+      sent: true,
+      phone,
+      expiresInSec,
+      provider: sent.provider,
+      devMode: isDevSmsMode(),
+      devCode: sent.devCode ?? null,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not resend OTP');
+  }
+});
+
+/** POST /api/app-auth/signup/verify — creates the account + 3-day full trial */
+router.post('/signup/verify', async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  const code = String(req.body?.code || '').trim();
+
+  if (!phone || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter the 6-digit OTP' });
   }
 
   try {
-    const user = await createAppUser({
-      email,
-      password: req.body?.password,
-      name: req.body?.name,
+    const payload = await consumeOtp(phone, 'signup', code);
+    if (!payload?.email) {
+      return res.status(400).json({ error: 'Signup expired. Please start again.' });
+    }
+
+    const created = await createAppUser({
+      email: payload.email,
+      passwordHash: payload.passwordHash,
+      name: payload.name,
+      phone: payload.phone || phone,
+      phoneVerified: true,
       plan: 'free',
       role: 'user',
       createdBy: 'self-signup',
       trialDays: TRIAL_DAYS,
+      planId: 'trial',
     });
+
+    const user = (await recordLogin(created.id)) || created;
     return res.status(201).json({
       token: signAppToken(user),
       user,
       trialDays: TRIAL_DAYS,
       source: 'trial',
+      ...(await accessPayloadFor(user)),
     });
   } catch (err) {
-    return failed(res, err, 'Signup failed');
+    return failed(res, err, 'Verification failed');
   }
 });
 
+/* ────────────────────────── session + access ────────────────────────── */
+
 /** GET /api/app-auth/me */
-router.get('/me', (req, res) => {
-  const auth = String(req.headers.authorization || '');
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  const payload = token ? verifyAppToken(token) : null;
-  if (!payload) return res.status(401).json({ error: 'Not authenticated' });
-  return res.json({
-    user: {
-      id: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      role: payload.role,
-      plan: payload.plan,
-      trialEndsAt: payload.trialEndsAt ?? null,
-      verified: true,
-      createdAt: new Date().toISOString(),
-    },
-  });
+router.get('/me', requireUser, async (req, res) => {
+  try {
+    return res.json({ user: req.appUser, ...(await accessPayloadFor(req.appUser)) });
+  } catch (err) {
+    return failed(res, err, 'Could not load session');
+  }
 });
+
+/** GET /api/app-auth/access — live gate state; the JWT is never trusted for this */
+router.get('/access', requireUser, async (req, res) => {
+  try {
+    return res.json({ user: req.appUser, ...(await accessPayloadFor(req.appUser)) });
+  } catch (err) {
+    return failed(res, err, 'Could not load access');
+  }
+});
+
+/** POST /api/app-auth/access/request — screenshot proof for admin review */
+router.post('/access/request', requireUser, async (req, res) => {
+  try {
+    const request = await createAccessRequest({
+      user: req.appUser,
+      note: req.body?.note,
+      screenshot: req.body?.screenshot,
+    });
+    return res.status(201).json({
+      request: { id: request.id, status: request.status, createdAt: request.createdAt },
+      ...(await accessPayloadFor(req.appUser)),
+    });
+  } catch (err) {
+    return failed(res, err, 'Upload failed');
+  }
+});
+
+/* ── legacy accounts without a mobile number ── */
+
+/** POST /api/app-auth/phone/start */
+router.post('/phone/start', requireUser, async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  if (!phone) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+
+  try {
+    const clash = await findAppUserByPhone(phone);
+    if (clash && clash.id !== req.appUser.id) {
+      return res.status(409).json({ error: 'This mobile number is already registered' });
+    }
+
+    const { code, expiresInSec } = await issueOtp(phone, 'add-phone', { userId: req.appUser.id });
+    const sent = await sendOtpSms(phone, code);
+    return res.json({
+      sent: true,
+      phone,
+      expiresInSec,
+      devMode: isDevSmsMode(),
+      devCode: sent.devCode ?? null,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not send OTP');
+  }
+});
+
+/** POST /api/app-auth/phone/verify */
+router.post('/phone/verify', requireUser, async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  const code = String(req.body?.code || '').trim();
+  if (!phone || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter the 6-digit OTP' });
+  }
+
+  try {
+    const payload = await consumeOtp(phone, 'add-phone', code);
+    if (payload?.userId && payload.userId !== req.appUser.id) {
+      return res.status(400).json({ error: 'OTP does not belong to this account' });
+    }
+    const user = await setUserPhone(req.appUser.id, phone);
+    return res.json({ user, ...(await accessPayloadFor(user)) });
+  } catch (err) {
+    return failed(res, err, 'Verification failed');
+  }
+});
+
+/* ────────────────────────── admin: users ────────────────────────── */
 
 /** GET /api/app-auth/admin/users */
 router.get('/admin/users', requireAdmin, async (_req, res) => {
   try {
-    return res.json({ users: await listAppUsers() });
+    const users = await listAppUsers();
+    return res.json({
+      users: users.map((user) => ({ ...user, access: accessStateFor(user) })),
+      pendingRequests: await pendingAccessRequestCount(),
+    });
   } catch (err) {
     return failed(res, err, 'Could not load users');
   }
@@ -176,9 +434,13 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
       email: req.body?.email,
       password: req.body?.password,
       name: req.body?.name,
+      phone: req.body?.phone,
+      phoneVerified: Boolean(req.body?.phone),
       plan: req.body?.plan,
       role: req.body?.role === 'admin' ? 'admin' : 'user',
       createdBy: req.adminActor || 'admin',
+      accessStatus: 'granted',
+      accessDays: Number(req.body?.accessDays) || 0,
     });
     return res.status(201).json({
       user,
@@ -193,7 +455,48 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
 router.patch('/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     const user = await setAppUserActive(req.params.id, req.body?.active !== false);
-    return res.json({ user });
+    return res.json({ user: { ...user, access: accessStateFor(user) } });
+  } catch (err) {
+    return failed(res, err, 'Update failed');
+  }
+});
+
+/** POST /api/app-auth/admin/users/:id/access — grant days / lifetime / lock / block */
+router.post('/admin/users/:id/access', requireAdmin, async (req, res) => {
+  const status = String(req.body?.status || 'granted');
+  if (!['trial', 'granted', 'locked', 'blocked'].includes(status)) {
+    return res.status(400).json({ error: 'Unknown access status' });
+  }
+
+  try {
+    const user = await setUserAccess(req.params.id, {
+      status,
+      days: status === 'granted' || status === 'trial' ? Number(req.body?.days) || null : null,
+      planId: req.body?.planId || null,
+    });
+    return res.json({ user: { ...user, access: accessStateFor(user) } });
+  } catch (err) {
+    return failed(res, err, 'Update failed');
+  }
+});
+
+/** POST /api/app-auth/admin/users/:id/verify-phone — manual safety net */
+router.post('/admin/users/:id/verify-phone', requireAdmin, async (req, res) => {
+  try {
+    const user = req.body?.phone
+      ? await setUserPhone(req.params.id, req.body.phone)
+      : await setPhoneVerified(req.params.id, req.body?.verified !== false);
+    return res.json({ user: { ...user, access: accessStateFor(user) } });
+  } catch (err) {
+    return failed(res, err, 'Update failed');
+  }
+});
+
+/** POST /api/app-auth/admin/users/seen — clears the NEW badge */
+router.post('/admin/users/seen', requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : null;
+    return res.json(await markUsersSeen(ids));
   } catch (err) {
     return failed(res, err, 'Update failed');
   }
@@ -206,6 +509,82 @@ router.delete('/admin/users/:id', requireAdmin, async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     return failed(res, err, 'Delete failed');
+  }
+});
+
+/* ────────────────────────── admin: access requests ────────────────────────── */
+
+/** GET /api/app-auth/admin/access-requests?status=pending|approved|rejected|all */
+router.get('/admin/access-requests', requireAdmin, async (req, res) => {
+  try {
+    const requests = await listAccessRequests({
+      status: String(req.query?.status || 'pending'),
+      limit: Math.min(200, Number(req.query?.limit) || 100),
+    });
+    return res.json({ requests, pendingCount: await pendingAccessRequestCount() });
+  } catch (err) {
+    return failed(res, err, 'Could not load requests');
+  }
+});
+
+/** POST /api/app-auth/admin/access-requests/:id/approve — { days } (0 = lifetime) */
+router.post('/admin/access-requests/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const popup = await getAccessPopup();
+    const days =
+      req.body?.days === 0 || req.body?.days === '0'
+        ? 0
+        : Number(req.body?.days) || popup.defaultGrantDays;
+
+    const result = await reviewAccessRequest(req.params.id, {
+      approve: true,
+      days,
+      adminNote: req.body?.adminNote,
+      reviewedBy: req.adminActor || 'admin',
+    });
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Approve failed');
+  }
+});
+
+/** POST /api/app-auth/admin/access-requests/:id/reject */
+router.post('/admin/access-requests/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    const result = await reviewAccessRequest(req.params.id, {
+      approve: false,
+      adminNote: req.body?.adminNote,
+      reviewedBy: req.adminActor || 'admin',
+    });
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Reject failed');
+  }
+});
+
+/* ────────────────────────── admin: settings ────────────────────────── */
+
+/** GET /api/app-auth/admin/settings */
+router.get('/admin/settings', requireAdmin, async (_req, res) => {
+  try {
+    return res.json({
+      popup: await getAccessPopup(),
+      defaults: DEFAULT_ACCESS_POPUP,
+      sms: { provider: smsProviderName(), devMode: isDevSmsMode() },
+      trialDays: TRIAL_DAYS,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not load settings');
+  }
+});
+
+/** PUT /api/app-auth/admin/settings */
+router.put('/admin/settings', requireAdmin, async (req, res) => {
+  try {
+    const popup = await setAccessPopup(req.body?.popup || req.body, req.adminActor || 'admin');
+    return res.json({ popup });
+  } catch (err) {
+    return failed(res, err, 'Save failed');
   }
 });
 

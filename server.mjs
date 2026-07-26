@@ -16,7 +16,11 @@ import { attachSocketIo } from './server/market/socketIoServer.mjs';
 import fyersRoutes from './server/fyers/routes.mjs';
 import fyersAuthRoutes from './server/auth/fyersAuthRoutes.mjs';
 import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
-import { isCloudUserStore, migrateFileUsersToCloud } from './server/auth/appUserStore.mjs';
+import {
+  hasAccessSchema,
+  isCloudUserStore,
+  migrateFileUsersToCloud,
+} from './server/auth/appUserStore.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS } from './server/masterAi.mjs';
 import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
 import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
@@ -145,4 +149,12 @@ httpServer.listen(config.port, () => {
       );
     })
     .catch((err) => console.warn('  Logins: Supabase store error —', err.message));
+
+  hasAccessSchema()
+    .then((ready) => {
+      if (!ready) {
+        console.warn('  Access: run supabase/app_access.sql — trial/OTP columns are missing');
+      }
+    })
+    .catch(() => undefined);
 });

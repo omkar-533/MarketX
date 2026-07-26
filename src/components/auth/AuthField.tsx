@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 
 interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   label: string;
@@ -10,18 +10,10 @@ interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'pr
   prefix?: ReactNode;
 }
 
-export default function AuthField({
-  label,
-  icon,
-  error,
-  hint,
-  valid,
-  prefix,
-  suffix,
-  className = '',
-  id,
-  ...props
-}: AuthFieldProps) {
+const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(function AuthField(
+  { label, icon, error, hint, valid, prefix, suffix, className = '', id, ...props },
+  ref,
+) {
   const fieldId = id ?? label.toLowerCase().replace(/\s/g, '-');
 
   return (
@@ -34,11 +26,18 @@ export default function AuthField({
       >
         {prefix}
         {icon && <span className="auth-field-icon">{icon}</span>}
-        <input id={fieldId} className={`auth-field-input ${suffix ? '!pr-12' : ''} ${className}`} {...props} />
+        <input
+          ref={ref}
+          id={fieldId}
+          className={`auth-field-input ${suffix ? '!pr-12' : ''} ${className}`}
+          {...props}
+        />
         {suffix && <span className="auth-field-suffix">{suffix}</span>}
       </div>
       {error && <p className="auth-field-error">{error}</p>}
       {hint && !error && <p className="auth-field-hint">{hint}</p>}
     </div>
   );
-}
+});
+
+export default AuthField;

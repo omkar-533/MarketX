@@ -106,8 +106,6 @@ export interface EarningsData { symbol: string; name: string; date: string; time
 
 export interface IpoData { name: string; priceRange: string; lotSize: number; openDate: string; closeDate: string; status: string; }
 
-export interface SubscriptionPlan { id: string; name: string; price: number; period: string; features: string[]; popular: boolean; }
-
 function isLiveFeedActive(): boolean {
   return isMarketLiveEnabled() && getMarketConnectionState().serverOk;
 }
@@ -664,12 +662,6 @@ export const STRATEGY_TEMPLATES = [
   { name: 'Calendar Spread', legs: [{ type: 'CE' as const, action: 'SELL' as const, strikeOffset: 0 }, { type: 'CE' as const, action: 'BUY' as const, strikeOffset: 0 }] },
   { name: 'Iron Fly', legs: [{ type: 'PE' as const, action: 'BUY' as const, strikeOffset: -1 }, { type: 'PE' as const, action: 'SELL' as const, strikeOffset: 0 }, { type: 'CE' as const, action: 'SELL' as const, strikeOffset: 0 }, { type: 'CE' as const, action: 'BUY' as const, strikeOffset: 1 }] },
   { name: 'Ratio Spread', legs: [{ type: 'CE' as const, action: 'BUY' as const, strikeOffset: 0 }, { type: 'CE' as const, action: 'SELL' as const, strikeOffset: 1, qty: 2 }] },
-];
-
-export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  { id: 'free', name: 'Free', price: 0, period: 'month', features: ['Basic Dashboard', '5 Watchlist Items', 'Limited Scanners', 'Basic Charts'], popular: false },
-  { id: 'pro', name: 'Pro', price: 499, period: 'month', features: ['All Dashboard Features', 'Unlimited Watchlist', 'All Scanners', 'Advanced Charts', 'Option Chain', 'Strategy Builder', 'Alerts (10/day)', 'Priority Support'], popular: true },
-  { id: 'premium', name: 'Premium', price: 1499, period: 'month', features: ['Everything in Pro', 'Unlimited Alerts', 'Data Access', 'Custom Indicators', 'Portfolio Analytics', 'News Feed', 'Earnings Calendar', 'FII/DII Data', 'Dedicated Support', 'Team Collaboration'], popular: false },
 ];
 
 // ============================================================

@@ -6,6 +6,10 @@ dist
 data/fyers-token.json
 data/fyers-logs/
 data/app-users.json
+data/app-users.migrated.json
+data/app-otp-codes.json
+data/app-access-requests.json
+data/app-settings.json
 *.log
 .DS_Store
 tmptest.txt

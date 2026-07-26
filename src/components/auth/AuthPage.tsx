@@ -11,7 +11,7 @@ import { ArrowRight, Quote, Star, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import AuthPricing from './AuthPricing';
-import AuthSignupForm from './AuthSignupForm';
+import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './AuthSignupForm';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
@@ -20,6 +20,9 @@ import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx'
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
+  onSignupStart: SignupFormProps['onSignupStart'];
+  onSignupVerify: SignupFormProps['onSignupVerify'];
+  onSignupResend: SignupFormProps['onSignupResend'];
 };
 
 const STORY_BANDS = [
@@ -244,6 +247,7 @@ function StoryBand({
 type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId };
 
 export default function AuthPage(props: AuthPageProps) {
+  const { onSignupStart, onSignupVerify, onSignupResend, ...formProps } = props;
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -596,12 +600,14 @@ export default function AuthPage(props: AuthPageProps) {
               </div>
               {authView.kind === 'signup' ? (
                 <AuthSignupForm
-                  onSignup={props.onSignup}
+                  onSignupStart={onSignupStart}
+                  onSignupVerify={onSignupVerify}
+                  onSignupResend={onSignupResend}
                   onSwitchToSignIn={openSignIn}
                   selectedPlan={authView.plan}
                 />
               ) : (
-                <AuthForm {...props} />
+                <AuthForm {...formProps} />
               )}
             </motion.div>
           </motion.div>

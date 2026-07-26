@@ -11,6 +11,10 @@ import {
   Trash2,
   RefreshCw,
   Copy,
+  Ban,
+  Eye,
+  FileImage,
+  Settings,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -27,10 +31,15 @@ import type { User } from '../hooks/useAuth';
 import {
   adminCreateUser,
   adminDeleteUser,
+  adminGetSettings,
   adminListUsers,
+  adminMarkUsersSeen,
+  adminSetUserAccess,
   adminSetUserActive,
   type InviteUserRow,
 } from '../services/appInviteAuth';
+import AccessRequestsTab from './admin/AccessRequestsTab';
+import AccessSettingsTab from './admin/AccessSettingsTab';
 
 const trafficData = Array.from({ length: 14 }, (_, i) => ({
   date: `Day ${i + 1}`,
@@ -56,20 +65,56 @@ function randomPassword(len = 10) {
   return out;
 }
 
+type AdminTab = 'users' | 'requests' | 'settings' | 'overview' | 'analytics' | 'payments';
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function accessLabel(row: InviteUserRow) {
+  const state = row.access;
+  if (!state) return { text: row.accessStatus ?? 'trial', tone: 'muted' as const };
+  if (state.status === 'blocked') return { text: 'Blocked', tone: 'bad' as const };
+  if (!state.unlocked) return { text: 'Locked', tone: 'bad' as const };
+
+  const left =
+    state.daysLeft === null
+      ? 'lifetime'
+      : state.daysLeft <= 1
+        ? `${state.hoursLeft ?? 0}h left`
+        : `${state.daysLeft}d left`;
+  return {
+    text: `${state.isTrial ? 'Trial' : 'Active'} · ${left}`,
+    tone: state.isTrial ? ('warn' as const) : ('good' as const),
+  };
+}
+
+const TONE_CLASS = {
+  good: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  warn: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  bad: 'bg-red-500/10 text-red-400 border-red-500/20',
+  muted: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+};
+
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'analytics' | 'payments'>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [rows, setRows] = useState<InviteUserRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState(() => randomPassword());
   const [plan, setPlan] = useState<'free' | 'pro' | 'premium'>('pro');
   const [creating, setCreating] = useState(false);
   const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
+  const [grantDays, setGrantDays] = useState<Record<string, string>>({});
+  const [defaultGrantDays, setDefaultGrantDays] = useState(30);
 
   const adminEmail = user?.email ?? null;
+  const newUserCount = rows.filter((r) => !r.adminSeenAt && r.role !== 'admin').length;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -85,8 +130,14 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [adminEmail, adminPassword]);
 
   useEffect(() => {
-    if (activeTab === 'users') void refresh();
+    if (activeTab === 'users' || activeTab === 'overview') void refresh();
   }, [activeTab, refresh]);
+
+  useEffect(() => {
+    adminGetSettings(adminEmail, adminPassword)
+      .then((data) => setDefaultGrantDays(data.popup.defaultGrantDays))
+      .catch(() => undefined);
+  }, [adminEmail, adminPassword]);
 
   const handleCreate = async () => {
     setMsg('');
@@ -94,7 +145,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     setCreating(true);
     try {
       await adminCreateUser(
-        { name, email, password, plan },
+        { name, email, password, plan, phone: mobile || undefined },
         adminEmail,
         adminPassword,
       );
@@ -102,6 +153,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       setMsg('Login created. Share email & password with the user privately.');
       setName('');
       setEmail('');
+      setMobile('');
       setPassword(randomPassword());
       await refresh();
     } catch (e) {
@@ -111,6 +163,29 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     }
   };
 
+  const changeAccess = async (row: InviteUserRow, status: 'granted' | 'locked' | 'blocked') => {
+    setErr('');
+    try {
+      await adminSetUserAccess(
+        row.id,
+        {
+          status,
+          days: status === 'granted' ? Number(grantDays[row.id] ?? defaultGrantDays) : null,
+        },
+        adminEmail,
+        adminPassword,
+      );
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not update access');
+    }
+  };
+
+  const markAllSeen = async () => {
+    await adminMarkUsersSeen(null, adminEmail, adminPassword);
+    await refresh();
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -118,16 +193,20 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           <Crown className="w-5 h-5" />
           Admin Panel
         </h2>
-        <p className="text-sm text-slate-400">Create invite logins — users cannot self-register</p>
+        <p className="text-sm text-slate-400">
+          Trial signups, access approvals and invite logins — all in one place
+        </p>
       </div>
 
       <div className="flex overflow-x-auto bg-dark-elevated rounded-lg border border-dark-border">
         {(
           [
-            { id: 'users' as const, label: 'Users', icon: Users },
-            { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
-            { id: 'analytics' as const, label: 'Analytics', icon: Activity },
-            { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+            { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+            { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
+            { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
+            { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
+            { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
+            { id: 'payments' as const, label: 'Payments', icon: DollarSign, badge: 0 },
           ] as const
         ).map((t) => {
           const Icon = t.icon;
@@ -142,10 +221,32 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             >
               <Icon className="w-3.5 h-3.5" />
               {t.label}
+              {t.badge ? (
+                <span className="px-1.5 py-0.5 rounded-full bg-[#d4af37] text-[9px] text-[#0b0e16]">
+                  {t.badge}
+                </span>
+              ) : null}
             </button>
           );
         })}
       </div>
+
+      {activeTab === 'requests' && (
+        <AccessRequestsTab
+          adminEmail={adminEmail}
+          adminPassword={adminPassword}
+          defaultGrantDays={defaultGrantDays}
+          onReviewed={() => void refresh()}
+        />
+      )}
+
+      {activeTab === 'settings' && (
+        <AccessSettingsTab
+          adminEmail={adminEmail}
+          adminPassword={adminPassword}
+          onSaved={(popup) => setDefaultGrantDays(popup.defaultGrantDays)}
+        />
+      )}
 
       {activeTab === 'users' && (
         <div className="space-y-4">
@@ -176,6 +277,13 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 type="email"
+                className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
+              />
+              <input
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="Mobile (optional)"
+                inputMode="numeric"
                 className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
               />
               <input
@@ -229,98 +337,178 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           </div>
 
           <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1f2e]">
-              <h3 className="text-sm font-bold text-white">Invite users ({rows.length})</h3>
-              <button
-                type="button"
-                onClick={() => void refresh()}
-                className="text-[10px] text-slate-400 hover:text-gold flex items-center gap-1"
-              >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#1a1f2e]">
+              <h3 className="text-sm font-bold text-white">
+                Users ({rows.length})
+                {newUserCount ? (
+                  <span className="ml-2 text-[10px] font-bold text-[#d4af37]">
+                    {newUserCount} new
+                  </span>
+                ) : null}
+              </h3>
+              <div className="flex items-center gap-3">
+                {newUserCount ? (
+                  <button
+                    type="button"
+                    onClick={() => void markAllSeen()}
+                    className="text-[10px] text-slate-400 hover:text-gold flex items-center gap-1"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Mark all seen
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  className="text-[10px] text-slate-400 hover:text-gold flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#080a12] text-slate-600 text-[10px] uppercase tracking-wider">
                     <th className="py-3 px-4 text-left">User</th>
-                    <th className="py-3 px-4 text-left">Plan</th>
-                    <th className="py-3 px-4 text-left">Status</th>
-                    <th className="py-3 px-4 text-left">Created</th>
+                    <th className="py-3 px-4 text-left">Mobile</th>
+                    <th className="py-3 px-4 text-left">Access</th>
+                    <th className="py-3 px-4 text-left">First login</th>
+                    <th className="py-3 px-4 text-left">Last login</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
-                        {loading ? 'Loading…' : 'No invite users yet — create one above.'}
+                      <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                        {loading ? 'Loading…' : 'No users yet.'}
                       </td>
                     </tr>
                   ) : (
-                    rows.map((u, idx) => (
-                      <motion.tr
-                        key={u.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: idx * 0.02 }}
-                        className="border-b border-[#1a1f2e]/40 hover:bg-[#121520]"
-                      >
-                        <td className="py-2.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-[#d4af37]/10 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-bold text-[#d4af37]">{u.name?.[0] || '?'}</span>
+                    rows.map((u, idx) => {
+                      const badge = accessLabel(u);
+                      const isNew = !u.adminSeenAt && u.role !== 'admin';
+                      return (
+                        <motion.tr
+                          key={u.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className="border-b border-[#1a1f2e]/40 hover:bg-[#121520]"
+                        >
+                          <td className="py-2.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-[#d4af37]/10 rounded-full flex items-center justify-center shrink-0">
+                                <span className="text-xs font-bold text-[#d4af37]">
+                                  {u.name?.[0] || '?'}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                                  <span className="truncate">{u.name}</span>
+                                  {isNew ? (
+                                    <span className="px-1.5 py-0.5 rounded-full bg-[#d4af37] text-[9px] font-bold text-[#0b0e16]">
+                                      NEW
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="text-[10px] text-slate-600 truncate">{u.email}</div>
+                                <div className="text-[10px] text-slate-700 capitalize">
+                                  {u.plan} · {u.active ? 'active' : 'disabled'}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-sm font-bold text-slate-200">{u.name}</div>
-                              <div className="text-[10px] text-slate-600">{u.email}</div>
+                          </td>
+                          <td className="py-2.5 px-4 text-xs font-mono text-slate-300 whitespace-nowrap">
+                            {u.phone || <span className="text-slate-600">—</span>}
+                            {u.phone && !u.phoneVerified ? (
+                              <span className="ml-1 text-[9px] text-amber-400">unverified</span>
+                            ) : null}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold border whitespace-nowrap ${TONE_CLASS[badge.tone]}`}
+                            >
+                              {badge.text}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                            {formatDateTime(u.firstLoginAt)}
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                            {formatDateTime(u.lastLoginAt)}
+                            {u.loginCount ? (
+                              <span className="block text-[9px] text-slate-700">
+                                {u.loginCount} logins
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <input
+                                type="number"
+                                min={0}
+                                value={grantDays[u.id] ?? String(defaultGrantDays)}
+                                onChange={(e) =>
+                                  setGrantDays((p) => ({ ...p, [u.id]: e.target.value }))
+                                }
+                                title="Days to grant (0 = lifetime)"
+                                className="w-14 px-2 py-1 rounded-md bg-[#121520] border border-[#1a1f2e] text-[11px] text-slate-200"
+                              />
+                              <button
+                                type="button"
+                                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold"
+                                onClick={() => void changeAccess(u, 'granted')}
+                              >
+                                Grant
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[10px] text-amber-400 hover:text-amber-300 font-bold"
+                                onClick={() => void changeAccess(u, 'locked')}
+                              >
+                                Lock
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[10px] text-red-400 hover:text-red-300 font-bold inline-flex items-center gap-0.5"
+                                onClick={() => void changeAccess(u, 'blocked')}
+                              >
+                                <Ban className="w-3 h-3" />
+                                Block
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[10px] text-slate-400 hover:text-gold font-bold"
+                                onClick={() =>
+                                  void adminSetUserActive(
+                                    u.id,
+                                    !u.active,
+                                    adminEmail,
+                                    adminPassword,
+                                  ).then(refresh)
+                                }
+                              >
+                                {u.active ? 'Disable' : 'Enable'}
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[10px] text-red-400 hover:text-red-300 font-bold inline-flex items-center gap-0.5"
+                                onClick={() => {
+                                  if (!window.confirm(`Delete login for ${u.email}?`)) return;
+                                  void adminDeleteUser(u.id, adminEmail, adminPassword).then(refresh);
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
+                              </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20 capitalize">
-                            {u.plan}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                              u.active
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            }`}
-                          >
-                            {u.active ? 'Active' : 'Disabled'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-slate-500 text-xs">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}
-                        </td>
-                        <td className="py-2.5 px-4 text-right space-x-2">
-                          <button
-                            type="button"
-                            className="text-[10px] text-slate-400 hover:text-gold font-bold"
-                            onClick={() =>
-                              void adminSetUserActive(u.id, !u.active, adminEmail, adminPassword).then(refresh)
-                            }
-                          >
-                            {u.active ? 'Disable' : 'Enable'}
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[10px] text-red-400 hover:text-red-300 font-bold inline-flex items-center gap-0.5"
-                            onClick={() => {
-                              if (!window.confirm(`Delete login for ${u.email}?`)) return;
-                              void adminDeleteUser(u.id, adminEmail, adminPassword).then(refresh);
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            Delete
-                          </button>
-                        </td>
-                      </motion.tr>
-                    ))
+                          </td>
+                        </motion.tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

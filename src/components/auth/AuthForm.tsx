@@ -41,15 +41,17 @@ export default function AuthForm({
   const [isLoading, setIsLoading] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
 
-  const emailValid = isValidEmail(email);
-  const showEmailError = emailTouched && email.length > 0 && !emailValid;
+  /** Trial accounts verify a mobile number, so either identifier signs in. */
+  const identifierValid =
+    isValidEmail(email) || /^[6-9]\d{9}$/.test(email.replace(/\D/g, '').slice(-10));
+  const showEmailError = emailTouched && email.length > 0 && !identifierValid;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setStatusMessage('');
-    if (!emailValid) {
-      setErrorMessage('Enter a valid email address.');
+    if (!identifierValid) {
+      setErrorMessage('Enter your email or 10-digit mobile number.');
       return;
     }
     if (!password) {
@@ -75,7 +77,7 @@ export default function AuthForm({
 
       <div className="auth-kicker mb-5">
         <ShieldCheck className="w-3 h-3" />
-        Invite-only access
+        Member sign in
       </div>
 
       <motion.div
@@ -87,22 +89,22 @@ export default function AuthForm({
           Sign <span>in</span>
         </h1>
         <p className="auth-subtitle">
-          Use the email &amp; password provided by your administrator.
+          Sign in with your email or mobile number and password.
         </p>
       </motion.div>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-5">
         <AuthField
-          label="Email"
-          type="email"
-          placeholder="name@company.com"
+          label="Email or mobile"
+          type="text"
+          placeholder="name@company.com or 9876543210"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => setEmailTouched(true)}
           required
-          autoComplete="email"
-          valid={email.length > 0 && emailValid}
-          error={showEmailError ? 'Enter a valid email address' : undefined}
+          autoComplete="username"
+          valid={email.length > 0 && identifierValid}
+          error={showEmailError ? 'Enter a valid email or 10-digit mobile number' : undefined}
           icon={<Mail className="w-4 h-4" />}
         />
 
@@ -161,7 +163,7 @@ export default function AuthForm({
       </form>
 
       <p className="mt-6 text-center text-[11px] text-slate-500 leading-relaxed">
-        Need access? Contact your administrator for an invite login.
+        No account yet? Start the free trial from the pricing section.
       </p>
     </div>
   );

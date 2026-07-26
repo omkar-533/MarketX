@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { getSupabase } from '@/lib/supabase';
 import {
   clearAppSession,
+  fetchAccessState,
   loadAppSession,
   loginWithInvite,
-  signupWithTrial,
+  resendSignupOtp,
+  startSignup,
+  verifySignupOtp,
+  type AccessSnapshot,
+  type AccessStatus,
+  type OtpChallenge,
 } from '../services/appInviteAuth';
 
 export interface User {
@@ -20,7 +26,13 @@ export interface User {
   createdAt: string;
   /** Set for self-signup trial accounts — ISO date when full access ends. */
   trialEndsAt?: string | null;
+  phoneVerified?: boolean;
+  accessStatus?: AccessStatus;
+  accessExpiresAt?: string | null;
 }
+
+/** Access is rechecked on this cadence so an expiry lands without a reload. */
+const ACCESS_POLL_MS = 5 * 60 * 1000;
 
 const ADMIN_EMAIL = 'omkarchauhan533@gmail.com';
 const ADMIN_PASSWORD = 'Omkar@12345';
@@ -114,6 +126,21 @@ export function useAuth() {
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'otp'>('login');
   const [adminPassword, setAdminPassword] = useState<string | null>(null);
+  const [access, setAccess] = useState<AccessSnapshot | null>(null);
+  const loggedInRef = useRef(false);
+
+  loggedInRef.current = isLoggedIn;
+
+  /** Pulls the live gate state; the stored JWT can be days out of date. */
+  const refreshAccess = useCallback(async () => {
+    try {
+      const snapshot = await fetchAccessState();
+      setAccess(snapshot);
+      return snapshot;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const syncSession = useCallback(async () => {
     const supabase = getSupabase();
@@ -142,6 +169,7 @@ export function useAuth() {
       setUser(invite.user);
       setIsLoggedIn(true);
       setShowAuth(false);
+      void refreshAccess();
       return true;
     }
 
@@ -154,7 +182,7 @@ export function useAuth() {
     setIsLoggedIn(true);
     setShowAuth(false);
     return true;
-  }, [syncSession]);
+  }, [refreshAccess, syncSession]);
 
   useEffect(() => {
     void hydrateSession();
@@ -221,6 +249,7 @@ export function useAuth() {
       try {
         const session = await loginWithInvite(normalizedEmail, password);
         setUser(session.user);
+        setAccess(session.snapshot);
         setIsLoggedIn(true);
         setShowAuth(false);
         if (session.user.role === 'admin') setAdminPassword(password);
@@ -239,12 +268,39 @@ export function useAuth() {
     [hydrateSession, setAdminFallbackSession],
   );
 
-  /** Free-trial sign-up — the new account is signed in immediately. */
-  const signup = useCallback(async (name: string, email: string, password: string) => {
-    const session = await signupWithTrial(name.trim(), email.trim().toLowerCase(), password);
+  /** Step 1 of the trial sign-up: sends an OTP, creates nothing yet. */
+  const signupStart = useCallback(
+    async (input: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+    }): Promise<OtpChallenge> =>
+      startSignup({
+        name: input.name.trim(),
+        email: input.email.trim().toLowerCase(),
+        phone: input.phone,
+        password: input.password,
+      }),
+    [],
+  );
+
+  const signupResend = useCallback(
+    async (phone: string): Promise<OtpChallenge> => resendSignupOtp(phone),
+    [],
+  );
+
+  /** Step 2: the verified account is signed in with the free trial already live. */
+  const signupVerify = useCallback(async (phone: string, code: string) => {
+    const session = await verifySignupOtp(phone, code);
     setUser(session.user);
+    setAccess(session.snapshot);
     setIsLoggedIn(true);
     setShowAuth(false);
+  }, []);
+
+  const signup = useCallback(async () => {
+    throw new Error('Sign-up needs mobile verification — use the free trial button.');
   }, []);
 
   const logout = useCallback(async () => {
@@ -255,6 +311,7 @@ export function useAuth() {
       clearAppSession();
       setAdminPassword(null);
       setUser(null);
+      setAccess(null);
       setIsLoggedIn(false);
       setShowAuth(false);
     }
@@ -272,6 +329,27 @@ export function useAuth() {
     throw new Error('Password reset is disabled. Contact admin for a new password.');
   }, []);
 
+  /** An expiry can land mid-session, so recheck on a timer and when the tab wakes. */
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const timer = window.setInterval(() => {
+      if (loggedInRef.current) void refreshAccess();
+    }, ACCESS_POLL_MS);
+
+    const onFocus = () => {
+      if (document.visibilityState === 'visible' && loggedInRef.current) void refreshAccess();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [isLoggedIn, refreshAccess]);
+
   return {
     user,
     isLoggedIn,
@@ -281,11 +359,17 @@ export function useAuth() {
     setShowAuth,
     login,
     signup,
+    signupStart,
+    signupVerify,
+    signupResend,
     logout,
     googleLogin,
     otpLogin,
     forgotPassword,
     adminPassword,
     adminEmail: user?.role === 'admin' ? user.email : null,
+    access: access?.access ?? null,
+    accessPopup: access?.popup ?? null,
+    refreshAccess,
   };
 }
