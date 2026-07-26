@@ -443,25 +443,29 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
           </div>
 
           <div className="app-card p-3.5 h-full min-h-[160px]">
-            <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Live Signals</h3>
+            <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Signal Bias</h3>
             {oiSnap.signals.length > 0 ? (
               <div className="space-y-1">
-                {oiSnap.signals.map((s) => (
-                  <div key={s.symbol} className="py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e]">
-                    <div className="flex justify-between text-xs gap-2">
-                      <span className="font-bold text-slate-200">{s.symbol}</span>
-                      <span className={s.signal === 'BUY' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                        {s.signal}
-                      </span>
+                {oiSnap.signals.map((s) => {
+                  const isBullish = s.signal === 'BUY';
+                  const biasLabel = isBullish ? 'BULLISH' : 'BEARISH';
+                  return (
+                    <div key={s.symbol} className="py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e]">
+                      <div className="flex justify-between text-xs gap-2">
+                        <span className="font-bold text-slate-200">{s.symbol}</span>
+                        <span className={isBullish ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                          {biasLabel}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-600 truncate mt-0.5">{s.reason}</div>
                     </div>
-                    <div className="text-[10px] text-slate-600 truncate mt-0.5">{s.reason}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="h-full min-h-[100px] flex items-center justify-center text-center px-3">
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  No active BUY/SELL signals right now. Market is in wait-and-watch mode.
+                  No active bullish or bearish bias right now. Market is in wait-and-watch mode.
                 </p>
               </div>
             )}
