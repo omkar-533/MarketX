@@ -10,10 +10,13 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
 };
 
 /**
- * LuxAlgo-inspired landing login — bold hero, clean CTA, feature modules below.
- * Brand + invite sign-in only (no public signup). No login video.
+ * LuxAlgo-inspired landing — sticky nav Sign In + sticky hero headline/form.
  */
 export default function AuthPage(props: AuthPageProps) {
+  const scrollToSignIn = () => {
+    document.getElementById('sign-in')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
       <div className="auth-lux__bg" aria-hidden="true">
@@ -22,7 +25,7 @@ export default function AuthPage(props: AuthPageProps) {
         <div className="auth-lux__grid" />
       </div>
 
-      <header className="auth-lux__nav relative z-30">
+      <header className="auth-lux__nav relative z-40">
         <div className="auth-lux__nav-inner">
           <div className="flex items-center gap-3 min-w-0" title={BRAND}>
             <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gold rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-gold/25">
@@ -33,15 +36,16 @@ export default function AuthPage(props: AuthPageProps) {
               <div className="text-sm sm:text-base font-bold text-slate-100 tracking-wide mt-0.5">{BRAND_LINE2}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-              {BRAND_SHORT}
-            </span>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
+            <button type="button" className="auth-lux__signin-btn" onClick={scrollToSignIn}>
+              Sign In
+            </button>
           </div>
         </div>
       </header>
 
+      {/* Sticky hero — headline + login stay fixed like LuxAlgo CTA */}
       <section className="auth-lux__hero relative z-20">
         <motion.div
           className="auth-lux__hero-copy"
@@ -58,9 +62,13 @@ export default function AuthPage(props: AuthPageProps) {
           <p className="auth-lux__sub">
             Live NSE workspace for bias, heatmaps, scanners, journals, and Master AI — built for serious traders.
           </p>
+          <button type="button" className="auth-lux__hero-cta sm:hidden" onClick={scrollToSignIn}>
+            Sign In
+          </button>
         </motion.div>
 
         <motion.div
+          id="sign-in"
           className="auth-lux__cta"
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -72,7 +80,7 @@ export default function AuthPage(props: AuthPageProps) {
         </motion.div>
       </section>
 
-      <section className="auth-lux__features relative z-20" id="features">
+      <section className="auth-lux__features relative z-30" id="features">
         <div className="auth-lux__features-inner">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -95,7 +103,7 @@ export default function AuthPage(props: AuthPageProps) {
         </div>
       </section>
 
-      <footer className="auth-lux__footer relative z-20">
+      <footer className="auth-lux__footer relative z-30">
         <p>
           {BRAND_LINE1} {BRAND_LINE2} · Invite-only access
         </p>
