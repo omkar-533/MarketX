@@ -1,8 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-/** Live app URL — GitHub Pages while Vercel daily deploy limit is exhausted */
-const LIVE_APP_URL =
-  process.env.CAPACITOR_SERVER_URL || 'https://omkar-533.github.io/MarketX/';
+/** Live app URL — custom domain */
+const LIVE_APP_URL = process.env.CAPACITOR_SERVER_URL || 'https://wolftradeai.in';
 
 const config: CapacitorConfig = {
   appId: 'com.mastertradex.app',
@@ -13,6 +12,8 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     iosScheme: 'https',
     allowNavigation: [
+      'wolftradeai.in',
+      'www.wolftradeai.in',
       'omkar-533.github.io',
       'mmtt-flame.vercel.app',
       'market-api-t9co.onrender.com',

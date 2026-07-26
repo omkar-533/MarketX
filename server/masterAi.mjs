@@ -137,7 +137,7 @@ function createClient(apiKey) {
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey,
       defaultHeaders: {
-        'HTTP-Referer': 'https://mmtt-flame.vercel.app',
+        'HTTP-Referer': 'https://wolftradeai.in',
         'X-Title': 'APMI Master AI',
       },
     }),
