@@ -443,7 +443,7 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
           </div>
 
           <div className="app-card p-3.5 h-full min-h-[160px]">
-            <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Signal Bias</h3>
+            <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Live Bias</h3>
             {oiSnap.signals.length > 0 ? (
               <div className="space-y-1">
                 {oiSnap.signals.map((s) => {
