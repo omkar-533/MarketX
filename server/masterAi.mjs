@@ -2,11 +2,11 @@ import OpenAI from 'openai';
 
 export const MASTER_AI_MODELS = [
   { id: 'openrouter/auto', name: 'Auto (best)', provider: 'OpenRouter', web: false },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
   { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google' },
-  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic' },
   { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'Meta' },
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek' },
   { id: 'mistralai/mistral-small-3.1-24b-instruct', name: 'Mistral Small', provider: 'Mistral' },
@@ -16,25 +16,50 @@ export const MASTER_AI_MODELS = [
   { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 (free)', provider: 'Meta', free: true },
 ];
 
-const SYSTEM_PROMPT = `You are Master AI — a warm, experienced Indian markets mentor on AI Powered Market Intelligent.
+const SYSTEM_PROMPT = `You are Master AI — a senior NSE/BSE trading mentor inside AI Powered Market Intelligent (APMI).
 
-STRICT RULES:
-1. ONLY discuss trading, investing, derivatives, macro/market news impact, risk, and this platform. Politely refuse anything else.
-2. Sound human: conversational, direct, like a senior trader talking to a friend. No robotic bullet spam unless user asks for a list.
-3. Answer the EXACT question asked. Do not dump unrelated features.
-4. Use the platform context below for app-specific questions. If something is not in the app, use your general markets knowledge openly — you may cite public concepts, RBI/RBI policy themes, sector logic, etc. Never invent live prices not in context.
-5. For latest events/regulations/news beyond context, say what you know and what to verify on NSE/broker feed.
-6. Educational only — never guarantee profits. Mention risk and position sizing when relevant.
-7. Follow the OUTPUT LANGUAGE block in context exactly — Hindi mode = Hinglish/Devanagari mentor; English mode = Indian English only.
-8. If the user mixes languages, still follow the active UI language unless they clearly switched mid-chat.
-9. Keep answers focused: usually 3–8 short paragraphs or clear bullets for complex setups.`;
+IDENTITY
+- Think like a desk mentor who has traded F&O for years in India.
+- Warm, direct, practical. Prefer clarity over jargon dumps.
+- Educational only — never guarantee profits or “sure-shot” calls.
 
-const CHART_VISION_PROMPT = `CHART / SCREENSHOT MODE:
-The user attached a trading image. Read every visible pixel — candlesticks, levels, indicators, option chain, footprint, DOM, or mobile broker screenshot.
-Give a complete technical breakdown immediately: trend, support & resistance (multiple levels), patterns, volume/OI, indicators, and practical trade planning (entry / SL / target as zones, not guarantees).
-If text or prices are blurry, say what you can see vs what you cannot — never fabricate numbers.`;
+HARD RULES
+1. ONLY trading / investing / derivatives / risk / this platform. Refuse other topics politely.
+2. Answer the EXACT question. Do not pad with unrelated feature lists.
+3. Use LIVE CONTEXT numbers when present. Never invent prices, OI, PCR, or strikes not in context or the image.
+4. If data is missing or stale, say so and give a decision framework instead of fake precision.
+5. Always include risk: stop idea, invalidation, and position-size caution for trade ideas.
+6. Follow OUTPUT LANGUAGE instructions exactly (Hindi/Hinglish vs Indian English).
+7. Prefer actionable structure over essays.
 
-const WEB_HINT = `The user may need information beyond the app snapshot. Use broad trading knowledge and recent market reasoning. If uncertain on a live number, say so clearly.`;
+ANSWER QUALITY FRAMEWORK (use when relevant)
+For market / setup questions, structure as:
+• Bias — bullish / bearish / range + why (1–2 lines)
+• Levels — key support & resistance (from context/chart)
+• Plan — entry zone, stop, targets (zones, not guarantees)
+• Risk — what invalidates the idea; size caution
+• Next check — what to watch next (OI, VWAP, close, news)
+
+For options questions, also cover: spot vs max pain, PCR read, CE/PE writing bias, defined-risk preference.
+
+For chart/screenshot questions, extract visible levels first, then bias, then plan.
+
+STYLE
+- Short paragraphs or tight bullets.
+- Indian market language: Nifty, Bank Nifty, CE/PE, OI, PCR, lot size, SL, target.
+- No hype, no fear-mongering, no broker tips.`;
+
+const CHART_VISION_PROMPT = `CHART / SCREENSHOT MODE (priority):
+Read the image carefully before answering.
+1) Identify instrument, timeframe, and chart type if visible.
+2) Mark trend (bull / bear / range) and strength.
+3) List at least 2–3 supports and 2–3 resistances from visible price action.
+4) Note patterns, VWAP/MA/RSI/MACD/OI if shown.
+5) If option chain: PCR, max pain, heavy CE/PE strikes, bias.
+6) Give a practical trade plan (entry zone / SL / targets) + what would invalidate it.
+7) If blurry/unreadable — say what you cannot see. Never invent numbers.`;
+
+const WEB_HINT = `User asked about latest/news/events beyond the app snapshot. Reason with general market knowledge and clearly separate known facts vs what must be verified on live NSE/broker feed.`;
 
 /** ChatGPT Plus/Premium is NOT an API key. Real OpenAI API keys start with sk- (not sk-or-). */
 export function detectAiProvider(apiKey) {
@@ -50,10 +75,10 @@ function buildMessages({ platformContext, history, userContent, hasImage }) {
     ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}\n\n${platformContext}`
     : `${SYSTEM_PROMPT}\n\n${platformContext}`;
   const msgs = [{ role: 'system', content: system }];
-  const trimmed = (history ?? []).slice(-8);
+  const trimmed = (history ?? []).slice(-12);
   for (const h of trimmed) {
     if (h.role === 'user' || h.role === 'assistant') {
-      msgs.push({ role: h.role, content: String(h.content).slice(0, 4000) });
+      msgs.push({ role: h.role, content: String(h.content).slice(0, 5000) });
     }
   }
   msgs.push({ role: 'user', content: userContent });
@@ -62,16 +87,24 @@ function buildMessages({ platformContext, history, userContent, hasImage }) {
 
 function pickTextModels(requested, needsWeb, langCode, provider) {
   if (provider === 'openai') {
-    return ['gpt-4o-mini', 'gpt-4o'];
+    // Prefer stronger model first for better trading answers
+    return ['gpt-4o', 'gpt-4o-mini'];
   }
   const chain = [];
   const hindi = String(langCode || '').startsWith('hi');
+  // Put quality models first; Sonar only when web is explicitly needed
   if (needsWeb) chain.push('perplexity/sonar');
+  if (requested && requested !== 'openrouter/auto') chain.push(requested);
+  chain.push(
+    'openai/gpt-4o',
+    'anthropic/claude-3.5-sonnet',
+    'openai/gpt-4o-mini',
+    'deepseek/deepseek-chat',
+  );
   if (hindi) {
     chain.push('qwen/qwen-2.5-72b-instruct', 'google/gemini-2.0-flash-001');
   }
-  if (requested && requested !== 'openrouter/auto') chain.push(requested);
-  chain.push('openai/gpt-4o-mini', 'google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.2-3b-instruct:free');
+  chain.push('google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.2-3b-instruct:free');
   return [...new Set(chain)];
 }
 
@@ -82,9 +115,9 @@ function pickVisionModels(langCode, provider) {
   const hindi = String(langCode || '').startsWith('hi');
   const chain = [
     'openai/gpt-4o',
+    'anthropic/claude-3.5-sonnet',
     'google/gemini-2.0-flash-001',
     'openai/gpt-4o-mini',
-    'anthropic/claude-3.5-sonnet',
     'anthropic/claude-3.5-haiku',
   ];
   if (hindi) {
@@ -100,7 +133,14 @@ function createClient(apiKey) {
     return { client: new OpenAI({ apiKey }), provider: 'openai' };
   }
   return {
-    client: new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey }),
+    client: new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://mmtt-flame.vercel.app',
+        'X-Title': 'APMI Master AI',
+      },
+    }),
     provider: 'openrouter',
   };
 }
@@ -144,10 +184,14 @@ export function createMasterAiRouter(apiKey) {
         : 'Analyze this chart screenshot now — trend, support, resistance, patterns, and trade plan.');
 
       const langTag = hindi
-        ? '[Hindi/Hinglish reply — natural Indian trader tone]\n'
-        : '[Indian English reply — warm mentor tone]\n';
+        ? '[OUTPUT LANGUAGE: natural Hinglish or Hindi — senior Indian trader tone]\n'
+        : '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n';
 
-      let textBlock = `${langTag}${userText}`;
+      const qualityTag = hasImage
+        ? '[TASK: full chart read → bias → levels → plan → risk]\n'
+        : '[TASK: answer with bias → levels/context → plan → risk when trade-related]\n';
+
+      let textBlock = `${langTag}${qualityTag}${userText}`;
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 
       const contentParts = [{ type: 'text', text: textBlock }];
@@ -167,8 +211,9 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 2200 : 1200,
-            temperature: hasImage ? 0.35 : 0.45,
+            max_tokens: hasImage ? 2800 : 1800,
+            temperature: hasImage ? 0.25 : 0.35,
+            top_p: 0.9,
             messages,
           });
           const reply = completion.choices[0]?.message?.content?.trim();

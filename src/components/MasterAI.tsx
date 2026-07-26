@@ -24,6 +24,7 @@ import {
   MASTER_AI_LANGUAGES,
   MASTER_AI_MODEL_ID,
   askMasterAi,
+  shouldUseWebSearch,
   buildMasterMarketContext,
   fetchMasterAiStatus,
   generateLocalTradingReply,
@@ -45,7 +46,6 @@ import {
 } from '../services/masterAiImage';
 import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
-import { hasRemoteApi } from '../constants/brandLabels';
 
 interface Message {
   id: string;
@@ -328,7 +328,7 @@ export default function MasterAI() {
               langName: selectedLang.nativeLabel,
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
-              needsWeb: !hasImage,
+              needsWeb: !hasImage && shouldUseWebSearch(userText),
             },
             context,
           );
@@ -337,8 +337,8 @@ export default function MasterAI() {
           const msg = err instanceof Error ? err.message : 'AI unavailable';
           responseText = hasImage
             ? hindi
-              ? `Chart analysis abhi nahi ho payi: ${msg}. Server restart karke dubara try karo.`
-              : `Could not analyze the chart: ${msg}. ${hasRemoteApi ? 'Wait for live server or refresh.' : 'Restart npm run dev and try again.'}`
+              ? `Chart analysis abhi nahi ho payi: ${msg}. Thodi der baad dubara try karo.`
+              : `Could not analyze the chart: ${msg}. Please refresh and try again.`
             : `${generateLocalTradingReply(userText, context, selectedLang.code)}\n\n(${msg})`;
         }
       }

@@ -1,6 +1,18 @@
 import { apiFetch } from '../config/api';
-import { hasRemoteApi, masterAiOfflineMessage, serverOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
-import { getGainers, getIndices, getLosers, getNews, getOptionChain, getSignals, getStocks } from '../data/marketData';
+import { hasRemoteApi, masterAiOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
+import {
+  calculateMaxPain,
+  getFuturesOIData,
+  getGainers,
+  getIndices,
+  getLosers,
+  getMarketBreadth,
+  getMostActive,
+  getNews,
+  getOptionChain,
+  getSignals,
+  getStocks,
+} from '../data/marketData';
 import { openRouterRequestHeaders } from './openRouterKey';
 
 export interface MasterAiModel {
@@ -51,24 +63,52 @@ function buildLanguageDirective(langCode: string): string {
   ].join('\n');
 }
 
-export function getMasterAiWelcome(langCode: string): string {
-  if (isHindiLang(langCode)) {
-    return 'Namaste! Main Master AI hoon — aapka trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataunga. Ya Nifty, options, risk ke baare mein poochho. Speak tabhi jab daboge.';
+function istSessionNote(): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    const hour = Number(get('hour'));
+    const minute = Number(get('minute'));
+    const mins = hour * 60 + minute;
+    const weekday = get('weekday');
+    const isWeekday = !['Sat', 'Sun'].includes(weekday);
+    const open = mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
+    const session = !isWeekday
+      ? 'Weekend — cash market closed'
+      : open
+        ? 'Cash market OPEN (NSE regular session)'
+        : mins < 9 * 60 + 15
+          ? 'Pre-open / before cash open'
+          : 'Cash market CLOSED (after hours)';
+    return `IST now ${get('hour')}:${get('minute')} (${weekday}) · ${session}`;
+  } catch {
+    return 'Session clock unavailable';
   }
-  return "Hi — I'm Master AI, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk. I speak when you tap Speak.";
 }
 
-/** Full chart/screenshot analysis instruction for vision models */
+export function getMasterAiWelcome(langCode: string): string {
+  if (isHindiLang(langCode)) {
+    return 'Namaste! Main Master AI hoon — aapka trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataunga. Ya Nifty, options, risk ke baare mein poochho.';
+  }
+  return "Hi — I'm Master AI, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+}
+
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
   const note = userNote?.trim();
   if (isHindiLang(langCode)) {
     return [
       'User ne trading chart / option chain / footprint screenshot bheja hai. Image dekhte hi turant poori analysis do — wait mat karo.',
+      'Structure: Bias → Levels (S/R) → Patterns/Indicators → Plan (entry/SL/targets) → Risk/invalidation.',
       'Zaroor cover karo (jo image mein dikhe):',
       '• Symbol, timeframe, exchange (NSE/BSE) agar visible ho',
       '• Trend: bullish / bearish / sideways + strength',
       '• Support levels (kam se kam 2–3) + Resistance levels (kam se kam 2–3)',
-      '• Immediate support/resistance / range',
       '• Candlestick / price action pattern (agar dikhe)',
       '• Volume / OI clue (agar chart mein ho)',
       '• Indicators: RSI, MACD, VWAP, MA — jo dikhe unka matlab',
@@ -83,12 +123,12 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
   }
 
   return [
-    'The user sent a trading chart, option chain, or platform screenshot. Analyze it immediately — do not ask them to wait.',
+    'The user sent a trading chart, option chain, or platform screenshot. Analyze it immediately.',
+    'Structure: Bias → Levels (S/R) → Patterns/Indicators → Plan (entry/SL/targets) → Risk/invalidation.',
     'Cover everything visible:',
     '• Symbol, timeframe, exchange (NSE/BSE) if shown',
     '• Trend: bullish / bearish / sideways and strength',
     '• Support levels (at least 2–3) and Resistance levels (at least 2–3)',
-    '• Nearest support/resistance and trading range',
     '• Candlestick / price action patterns if visible',
     '• Volume or OI clues on the chart',
     '• Indicators shown (RSI, MACD, VWAP, MAs) — what they imply',
@@ -109,13 +149,21 @@ export function getTradingBlockMessage(langCode: string): string {
   return 'I only help with trading and investing — markets, options, risk, strategies, platform features, or portfolio ideas. Please rephrase your question in that space.';
 }
 
+/** Prefer web/news models only when the question needs “latest” info */
+export function shouldUseWebSearch(input: string): boolean {
+  const n = input.toLowerCase();
+  return /\b(news|headline|latest|today|rbi|fed|cpi|gdp|budget|result|earnings|sebi|ban|event|why.*(fall|crash|rally)|kya.*(hua|huya))\b/i.test(
+    n,
+  );
+}
+
 export const MASTER_AI_MODELS: MasterAiModel[] = [
   { id: 'openrouter/auto', name: 'Auto (best)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', description: 'Fast, clear trading explanations' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', description: 'Deeper analysis & charts' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', description: 'Fast, clear trading explanations' },
   { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Quick multilingual answers' },
-  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic', description: 'Human-like, concise mentor tone' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', description: 'Strong reasoning for strategies' },
+  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic', description: 'Human-like, concise mentor tone' },
   { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'Meta', description: 'Open-weight, solid generalist' },
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', description: 'Technical & options-friendly' },
   { id: 'mistralai/mistral-small-3.1-24b-instruct', name: 'Mistral Small', provider: 'Mistral', description: 'Efficient European model' },
@@ -126,16 +174,16 @@ export const MASTER_AI_MODELS: MasterAiModel[] = [
 ];
 
 export const PLATFORM_KNOWLEDGE = `
-Master TradeX platform (answer using this when user asks about the app):
-- Paper Trading: virtual ₹10L, cash/futures/options, live LTP, limit/SL/target orders, brokerage, strategy import
-- Strategy Builder: multi-leg templates, payoff, Greeks, paper trade bridge
-- Option Chain / TradeX-style chain with OI, PCR, max pain
-- Futures Analytics: OI vs price, delivery, daily/weekly
-- AI Intelligence, Footprint, Scanners (volume, OI, gaps, momentum)
-- Trading Journal: trades, analytics, calendar, Supabase sync
-- Backtesting, Signals panel, Watchlist, Portfolio, Alerts, News
-- Master AI (this assistant): trading-only copilot
-Live data requires TradeX server. Connect TradeX Live in Profile — platform uses TradeX live feed only (no Yahoo/external feeds).
+APMI platform (answer using this when user asks about the app):
+- AI Intelligence: OI/smart-money style views, writing zones, scanner, alerts
+- Stock Screeners: categorized live scans (momentum, breakout, intraday, F&O, etc.)
+- Strategy Builder: multi-leg templates, payoff, Greeks
+- Option Chain with OI, PCR, max pain
+- Futures Analytics: OI vs price, delivery
+- Trading Journal: trades, analytics, calendar
+- Heatmap, Footprint, Signals, Watchlist, Alerts, News
+- Master AI (this assistant): trading-only copilot with chart screenshot analysis
+Live market data comes from the connected live feed in Profile.
 `;
 
 const NON_TRADING_TERMS = [
@@ -152,6 +200,7 @@ const TRADING_KEYWORDS = [
   'earnings', 'fii', 'dii', 'dividend', 'commodity', 'gold', 'crude', 'usd',
   'invest', 'trade', 'chart', 'candle', 'scalp', 'position', 'margin', 'broker',
   'paper trading', 'backtest', 'scanner', 'max pain', 'gamma', 'theta', 'delta',
+  'screener', 'heatmap', 'journal', 'bias', 'lot',
 ];
 
 export function isTradingRelated(input: string): boolean {
@@ -171,49 +220,74 @@ export interface MasterMarketContext {
   news: string;
   gainers: string;
   losers: string;
+  active: string;
+  breadth: string;
+  futures: string;
+  session: string;
 }
 
 export function buildMasterMarketContext(): MasterMarketContext {
   const indices = getIndices();
   const nifty = indices.find((i) => i.symbol === 'NIFTY') ?? indices[0];
   const bank = indices.find((i) => i.symbol === 'BANKNIFTY') ?? indices[1];
-  const chain = getOptionChain('NIFTY', nifty.price);
-  const atm = chain[Math.floor(chain.length / 2)];
-  const signals = getSignals().slice(0, 5);
-  const news = getNews().slice(0, 4);
-  const gainers = getGainers(4);
-  const losers = getLosers(4);
+  const chain = getOptionChain('NIFTY', nifty?.price ?? 0);
+  const totalCe = chain.reduce((s, r) => s + (r.ceOi || 0), 0);
+  const totalPe = chain.reduce((s, r) => s + (r.peOi || 0), 0);
+  const pcr = Number((totalPe / Math.max(totalCe, 1)).toFixed(2));
+  const maxPain = calculateMaxPain(chain).maxPainStrike;
+  const signals = getSignals().filter((s) => s.signal !== 'HOLD').slice(0, 6);
+  const news = getNews().slice(0, 5);
+  const gainers = getGainers(5);
+  const losers = getLosers(5);
+  const active = getMostActive(5);
+  const breadth = getMarketBreadth();
+  const fut = getFuturesOIData().slice(0, 4);
 
-  const pcr = Number((atm.peOi / Math.max(atm.ceOi, 1)).toFixed(2));
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return {
-    summary: hasRemoteApi ? 'Live feed: TradeX/NSE (cloud)' : 'Live feed: TradeX/NSE (local dev)',
-    nifty: `${fmt(nifty.price)} (${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%)`,
-    bankNifty: `${fmt(bank.price)} (${bank.changePercent >= 0 ? '+' : ''}${bank.changePercent.toFixed(2)}%)`,
+    summary: hasRemoteApi ? 'Live feed connected (cloud)' : 'Live feed (local/session)',
+    nifty: nifty
+      ? `${fmt(nifty.price)} (${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%)`
+      : 'n/a',
+    bankNifty: bank
+      ? `${fmt(bank.price)} (${bank.changePercent >= 0 ? '+' : ''}${bank.changePercent.toFixed(2)}%)`
+      : 'n/a',
     pcr,
-    maxPain: atm.strike,
-    signals: signals.map((s) => `${s.symbol} ${s.signal} (${s.strength}%)`).join('; '),
-    news: news.map((n) => n.title).join(' | '),
-    gainers: gainers.map((g) => `${g.symbol} +${g.changePercent.toFixed(1)}%`).join(', '),
-    losers: losers.map((l) => `${l.symbol} ${l.changePercent.toFixed(1)}%`).join(', '),
+    maxPain,
+    signals: signals.length
+      ? signals.map((s) => `${s.symbol} ${s.signal === 'BUY' ? 'BULLISH' : 'BEARISH'} (${s.strength}%)`).join('; ')
+      : 'No strong bias signals',
+    news: news.length ? news.map((n) => n.title).join(' | ') : 'No headline movers cached',
+    gainers: gainers.map((g) => `${g.symbol} +${g.changePercent.toFixed(1)}%`).join(', ') || 'n/a',
+    losers: losers.map((l) => `${l.symbol} ${l.changePercent.toFixed(1)}%`).join(', ') || 'n/a',
+    active: active.map((a) => a.symbol).join(', ') || 'n/a',
+    breadth: `Adv ${breadth.advances} / Dec ${breadth.declines} · A/D ${breadth.advanceDeclineRatio.toFixed(2)} · Highs ${breadth.newHighs} Lows ${breadth.newLows}`,
+    futures: fut.length
+      ? fut.map((f) => `${f.symbol} ${f.signal} (OI chg ${f.futuresOiChange})`).join('; ')
+      : 'Futures OI n/a',
+    session: istSessionNote(),
   };
 }
 
 export function formatContextBlock(ctx: MasterMarketContext, langCode: string): string {
   return [
     buildLanguageDirective(langCode),
-    `Reply language preference: ${langCode} (match user's language naturally).`,
+    'QUALITY: Prefer specific levels and risk over generic commentary. Cite snapshot numbers when used.',
     PLATFORM_KNOWLEDGE,
-    `Current app market snapshot (${ctx.summary}):`,
+    `Session: ${ctx.session}`,
+    `Market snapshot (${ctx.summary}):`,
     `NIFTY ${ctx.nifty}`,
     `BANKNIFTY ${ctx.bankNifty}`,
-    `Options: PCR ${ctx.pcr}, max pain ${ctx.maxPain}`,
-    `Signals: ${ctx.signals}`,
-    `Gainers: ${ctx.gainers}`,
-    `Losers: ${ctx.losers}`,
-    `News: ${ctx.news}`,
+    `Nifty options: overall PCR ${ctx.pcr}, max pain ${ctx.maxPain}`,
+    `Market breadth: ${ctx.breadth}`,
+    `Futures OI cues: ${ctx.futures}`,
+    `Bias signals: ${ctx.signals}`,
+    `Top gainers: ${ctx.gainers}`,
+    `Top losers: ${ctx.losers}`,
+    `Most active: ${ctx.active}`,
+    `Tape headlines: ${ctx.news}`,
     `Universe size: ${getStocks().length} tracked names.`,
   ].join('\n');
 }
@@ -236,7 +310,7 @@ export interface MasterChatRequest {
 export interface MasterChatResponse {
   reply: string;
   modelUsed?: string;
-  source?: 'openrouter' | 'local';
+  source?: 'openrouter' | 'openai' | 'local';
 }
 
 export type MasterAiKeySource = 'server' | 'profile' | 'none';
@@ -342,19 +416,13 @@ export function generateLocalTradingReply(input: string, ctx: MasterMarketContex
   const lower = input.toLowerCase();
   const hi = lang.startsWith('hi');
 
-  if (lower.includes('paper') || lower.includes('virtual') || lower.includes('पेपर')) {
-    return hi
-      ? 'Dekho — Paper Trading mein ₹10L virtual capital milta hai. Cash, futures, options sab try karo; live price, limit/SL aur brokerage jaise real broker jaisa feel aata hai.'
-      : 'Paper Trading gives you ₹10L virtual capital — cash, futures, and options with live prices, pending orders, and brokerage that feels like a real broker.';
-  }
-
   if (lower.includes('option') || lower.includes('pcr') || lower.includes('oi') || lower.includes('ऑप्शन')) {
     return hi
-      ? `Abhi PCR lagbhag ${ctx.pcr} hai, max pain ${ctx.maxPain} ke paas. Size chhoti rakho — defined-risk setup prefer karo jab tak trend clear na ho.`
-      : `PCR is around ${ctx.pcr} with max pain near ${ctx.maxPain}. Keep size modest and stick to defined-risk until the trend is clear.`;
+      ? `Abhi overall PCR ~${ctx.pcr}, max pain ~${ctx.maxPain}. ${ctx.session}. Size chhoti rakho — defined-risk prefer karo jab tak trend clear na ho.`
+      : `Overall PCR is around ${ctx.pcr} with max pain near ${ctx.maxPain}. ${ctx.session}. Keep size modest and prefer defined-risk until the trend is clear.`;
   }
 
   return hi
-    ? `NIFTY ${ctx.nifty}, BANKNIFTY ${ctx.bankNifty}. Main markets, options, risk aur strategy par help karta hoon — seedha poochho.`
-    : `NIFTY ${ctx.nifty}; BANKNIFTY ${ctx.bankNifty}. Ask me anything on markets, options, risk, or strategy — I'll keep it practical.`;
+    ? `NIFTY ${ctx.nifty}, BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Main markets, options, risk aur strategy par help karta hoon — seedha poochho.`
+    : `NIFTY ${ctx.nifty}; BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Ask me anything on markets, options, risk, or strategy — I'll keep it practical.`;
 }
