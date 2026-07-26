@@ -46,30 +46,72 @@ const STORY_BANDS = [
   },
 ] as const;
 
+const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader-${n}.jpg`;
+
 const REVIEWS = [
   {
-    name: 'Rohan M.',
+    name: 'Rohan Mehta',
     role: 'Options trader · Mumbai',
+    rating: 5,
+    photo: avatar(1),
     quote:
-      'Finally a desk that feels premium. Heatmaps + OI in one place changed how I plan the open.',
+      'I used to keep five tabs open just to check OI and index bias. Now it is one screen. Took me about a week to stop cross-checking the numbers elsewhere — after that I never went back.',
   },
   {
-    name: 'Ananya K.',
+    name: 'Ananya Kulkarni',
     role: 'Prop desk · Bengaluru',
+    rating: 5,
+    photo: avatar(2),
     quote:
-      'Master AI is actually useful — short, sharp answers with live context. Feels like a senior mentor on call.',
+      'The journal is what actually changed things for me. Tagging every entry showed that most of my losses came from the first fifteen minutes. So I stopped trading the open.',
   },
   {
-    name: 'Vikram S.',
+    name: 'Vikram Singh',
     role: 'Intraday F&O · Delhi',
+    rating: 5,
+    photo: avatar(3),
     quote:
-      'Scanners refresh with the tape. I stopped jumping between five tabs. This is the workflow I wanted.',
+      'Scanners refresh with the tape, which is rare at this price. I run the breakout scan around 9:45, shortlist three names, and that is my whole morning routine now.',
   },
   {
-    name: 'Neha P.',
+    name: 'Neha Patil',
     role: 'Swing trader · Pune',
+    rating: 4,
+    photo: avatar(4),
     quote:
-      'The UI alone feels expensive. Invite-only access keeps the community serious — love that.',
+      'Master AI will not tell you what to buy, and honestly that is why I trust it. I ask what changed in OI since yesterday and get a straight answer. Wish the mobile layout was a bit denser.',
+  },
+  {
+    name: 'Karthik Raman',
+    role: 'Positional trader · Chennai',
+    rating: 5,
+    photo: avatar(5),
+    quote:
+      'The sector heatmap is the first thing I open. Working out which sector is holding up on a red day used to take me twenty minutes of scrolling through lists.',
+  },
+  {
+    name: 'Sneha Desai',
+    role: 'Options seller · Hyderabad',
+    rating: 4,
+    photo: avatar(6),
+    quote:
+      'Having max pain and PCR in one view kept me out of two bad expiry positions last month. Still waiting on SMS alerts, but the in-app ones do the job.',
+  },
+  {
+    name: 'Aditya Joshi',
+    role: 'F&O trader · Ahmedabad',
+    rating: 5,
+    photo: avatar(7),
+    quote:
+      'Setup took ten minutes. What sold me was that the quotes matched my broker terminal exactly — I sat and checked it tick by tick for two full sessions before trusting it.',
+  },
+  {
+    name: 'Meera Sharma',
+    role: 'Part-time trader · Kolkata',
+    rating: 5,
+    photo: avatar(8),
+    quote:
+      'I trade after work, so I need the day reviewed fast. Dashboard bias plus a journal pass takes me about fifteen minutes instead of the hour it used to.',
   },
 ] as const;
 
@@ -97,18 +139,35 @@ const STATS = [
 
 const ease = EASE;
 
+function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
+  return (
+    <span className={`auth-lux__stars auth-lux__stars--${size}`} aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={i < rating ? 'is-on' : 'is-off'} />
+      ))}
+    </span>
+  );
+}
+
 function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
   return (
     <blockquote className="auth-lux__review">
-      <Quote className="auth-lux__review-quote" aria-hidden />
-      <div className="auth-lux__stars auth-lux__stars--sm" aria-hidden="true">
-        {Array.from({ length: 5 }).map((_, s) => (
-          <Star key={s} className="w-3 h-3 fill-current" />
-        ))}
+      <div className="auth-lux__review-top">
+        <Stars rating={review.rating} />
+        <span className="auth-lux__review-score">{review.rating.toFixed(1)}</span>
+        <Quote className="auth-lux__review-quote" aria-hidden />
       </div>
       <p className="auth-lux__review-text">“{review.quote}”</p>
       <footer className="auth-lux__review-meta">
-        <span className="auth-lux__review-avatar">{review.name[0]}</span>
+        <img
+          className="auth-lux__review-photo"
+          src={review.photo}
+          alt={review.name}
+          width={44}
+          height={44}
+          loading="lazy"
+          decoding="async"
+        />
         <div>
           <cite>{review.name}</cite>
           <span>{review.role}</span>
@@ -299,11 +358,7 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.7, delay: 0.85, ease }}
             >
-              <div className="auth-lux__stars" aria-hidden="true">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                ))}
-              </div>
+              <Stars rating={5} size="lg" />
               <p>Loved by desks that care about process — invite-only access</p>
             </motion.div>
           </motion.div>
@@ -377,15 +432,22 @@ export default function AuthPage(props: AuthPageProps) {
                 What desks say after switching to a cleaner, smarter NSE workflow.
               </p>
             </Reveal>
+            <Reveal delay={0.34} y={18} blur={false}>
+              <p className="auth-lux__rating">
+                <Stars rating={5} size="lg" />
+                <strong>4.8</strong>
+                <span>average from invited desks</span>
+              </p>
+            </Reveal>
           </div>
 
-          <Marquee duration={52}>
-            {REVIEWS.map((r) => (
+          <Marquee duration={58}>
+            {REVIEWS.slice(0, 4).map((r) => (
               <ReviewCard key={r.name} review={r} />
             ))}
           </Marquee>
-          <Marquee duration={64} reverse>
-            {[...REVIEWS].reverse().map((r) => (
+          <Marquee duration={72} reverse>
+            {REVIEWS.slice(4).map((r) => (
               <ReviewCard key={r.name} review={r} />
             ))}
           </Marquee>

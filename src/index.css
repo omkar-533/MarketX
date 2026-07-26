@@ -2860,12 +2860,52 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .auth-lux__stars {
   display: inline-flex;
-  gap: 0.2rem;
-  color: var(--lux-gold);
+  align-items: center;
+  gap: 0.15rem;
 }
 
-.auth-lux__stars--sm {
-  margin-bottom: 0.75rem;
+.auth-lux__stars svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.auth-lux__stars--lg svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.auth-lux__stars svg.is-on {
+  fill: #f5c945;
+  color: #f5c945;
+  filter: drop-shadow(0 0 5px rgba(245, 201, 69, 0.45));
+}
+
+.auth-lux__stars svg.is-off {
+  fill: transparent;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* Aggregate rating line */
+.auth-lux__rating {
+  margin: 1.35rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 201, 69, 0.25);
+  background: rgba(245, 201, 69, 0.06);
+}
+
+.auth-lux__rating strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--lux-ink);
+}
+
+.auth-lux__rating span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Story bands */
@@ -3058,9 +3098,11 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .auth-lux__review {
   flex: 0 0 auto;
-  width: min(85vw, 25rem);
+  display: flex;
+  flex-direction: column;
+  width: min(85vw, 27rem);
   margin: 0 1rem 0 0;
-  padding: 1.6rem 1.45rem 1.5rem;
+  padding: 1.5rem 1.45rem 1.4rem;
   border-radius: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.025);
@@ -3074,27 +3116,52 @@ input[type="number"] { -moz-appearance: textfield; }
   transform: translateY(-3px);
 }
 
+.auth-lux__review-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.auth-lux__review-score {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
 .auth-lux__review-quote {
   width: 1.35rem;
   height: 1.35rem;
-  color: rgba(201, 162, 39, 0.55);
-  margin-bottom: 0.65rem;
+  margin-left: auto;
+  color: rgba(201, 162, 39, 0.4);
 }
 
 .auth-lux__review-text {
   margin: 0;
-  font-family: var(--lux-display);
-  font-size: 1.28rem;
-  line-height: 1.4;
-  letter-spacing: -0.015em;
-  color: var(--lux-ink);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.62;
+  letter-spacing: 0;
+  color: rgba(232, 232, 238, 0.9);
 }
 
 .auth-lux__review-meta {
-  margin-top: 1.25rem;
+  margin-top: auto;
+  padding-top: 1.25rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.auth-lux__review-photo {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(245, 201, 69, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
 .auth-lux__review-avatar {
