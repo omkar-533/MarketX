@@ -10,7 +10,6 @@ import {
 } from '../data/marketData';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
-  getLiveFuturesOIForSymbol,
   getLiveFuturesOIData,
   getLiveOIAlerts,
   getLiveOIIntelligence,
@@ -20,7 +19,6 @@ import {
 } from '../services/oiIntelligenceLiveService';
 import type { LiveSymbolQuote } from '../services/symbolLiveService';
 import SymbolMarketPicker from './strategy/SymbolMarketPicker';
-import OITradingSidebar from './oi/OITradingSidebar';
 
 type OITab = 'overview' | 'writing' | 'scanner' | 'alerts';
 
@@ -48,7 +46,7 @@ function formatK(value: number) {
   return `${(value / 1000).toFixed(0)}K`;
 }
 
-export default function OIIntelligence({ onNavigate }: OIIntelligenceProps) {
+export default function OIIntelligence(_props: OIIntelligenceProps) {
   const [symbol, setSymbol] = useState('NIFTY');
   const [tab, setTab] = useState<OITab>('overview');
   const [data, setData] = useState<OIIntelligenceData>(() => getLiveOIIntelligence('NIFTY'));
@@ -76,11 +74,6 @@ export default function OIIntelligence({ onNavigate }: OIIntelligenceProps) {
 
   useAutoRefresh(update);
 
-  const selectedFuture = useMemo(
-    () => futures.find((item) => item.symbol === symbol) ?? getLiveFuturesOIForSymbol(symbol),
-    [futures, symbol],
-  );
-
   const oiDistribution = useMemo(() => [
     { name: 'Call OI', value: data.totalCeOi, color: '#ef4444' },
     { name: 'Put OI', value: data.totalPeOi, color: '#10b981' },
@@ -107,20 +100,9 @@ export default function OIIntelligence({ onNavigate }: OIIntelligenceProps) {
     oiChangePct: (row.futuresOiChange / row.futuresOi) * 100,
   })), [futures]);
 
-  const sidebar = (
-    <OITradingSidebar
-      data={data}
-      future={selectedFuture}
-      smartMoneyScore={smartMoneyScore}
-      alerts={alerts}
-      onOpenChain={onNavigate ? () => onNavigate('optionchain') : undefined}
-      onOpenStrategy={onNavigate ? () => onNavigate('strategy') : undefined}
-    />
-  );
-
   return (
-    <div className="flex flex-col xl:flex-row gap-6 animate-in fade-in duration-500">
-      <div className="flex-1 min-w-0 space-y-6">
+    <div className="animate-in fade-in duration-500 space-y-6">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#0b0e17] p-4 rounded-xl border border-[#1a1f2e]">
         <div>
@@ -449,9 +431,6 @@ export default function OIIntelligence({ onNavigate }: OIIntelligenceProps) {
         </div>
       )}
       </div>
-
-      <div className="xl:w-[300px] shrink-0 hidden xl:block">{sidebar}</div>
-      <div className="xl:hidden">{sidebar}</div>
     </div>
   );
 }
