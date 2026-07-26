@@ -1,11 +1,19 @@
-﻿import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+﻿import { useEffect, useRef, useState } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
 import { ArrowRight, Quote, Star, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
+import { Counter, EASE, Marquee, Reveal, Words } from './scrollFx';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
@@ -65,7 +73,107 @@ const REVIEWS = [
   },
 ] as const;
 
-const ease = [0.22, 1, 0.36, 1] as const;
+const TICKER = [
+  ['NIFTY', '+0.62%', true],
+  ['BANKNIFTY', '+0.94%', true],
+  ['FINNIFTY', '-0.18%', false],
+  ['RELIANCE', '+1.24%', true],
+  ['HDFCBANK', '+0.41%', true],
+  ['INFY', '-0.33%', false],
+  ['TCS', '+0.58%', true],
+  ['ICICIBANK', '+1.06%', true],
+  ['SBIN', '+0.72%', true],
+  ['TATAMOTORS', '+1.85%', true],
+  ['AXISBANK', '-0.21%', false],
+  ['LT', '+0.49%', true],
+] as const;
+
+const STATS = [
+  { to: 220, suffix: '+', label: 'F&O symbols tracked' },
+  { to: 24, suffix: '', label: 'ready-made scanners' },
+  { to: 6, suffix: '', label: 'core modules' },
+  { to: 99.9, suffix: '%', decimals: 1, label: 'data uptime' },
+] as const;
+
+const ease = EASE;
+
+function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
+  return (
+    <blockquote className="auth-lux__review">
+      <Quote className="auth-lux__review-quote" aria-hidden />
+      <div className="auth-lux__stars auth-lux__stars--sm" aria-hidden="true">
+        {Array.from({ length: 5 }).map((_, s) => (
+          <Star key={s} className="w-3 h-3 fill-current" />
+        ))}
+      </div>
+      <p className="auth-lux__review-text">“{review.quote}”</p>
+      <footer className="auth-lux__review-meta">
+        <span className="auth-lux__review-avatar">{review.name[0]}</span>
+        <div>
+          <cite>{review.name}</cite>
+          <span>{review.role}</span>
+        </div>
+      </footer>
+    </blockquote>
+  );
+}
+
+/** Story band with scroll-linked parallax on the visual. */
+function StoryBand({
+  band,
+  flip,
+  onCta,
+}: {
+  band: (typeof STORY_BANDS)[number];
+  flip: boolean;
+  onCta: () => void;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start end', 'end start'],
+  });
+  const visualY = useTransform(scrollYProgress, [0, 1], [70, -70]);
+  const visualScale = useTransform(scrollYProgress, [0, 0.5, 1], [0.94, 1, 0.94]);
+  const tilt = useTransform(scrollYProgress, [0, 1], [flip ? -5 : 5, flip ? 4 : -4]);
+
+  return (
+    <article ref={ref} className={`auth-lux__band ${flip ? 'auth-lux__band--flip' : ''}`}>
+      <div className="auth-lux__band-copy">
+        <Reveal y={30} blur={false}>
+          <p className="auth-lux__kicker">{band.kicker}</p>
+        </Reveal>
+        <h2 className="auth-lux__band-title">
+          <Words text={band.title} />
+        </h2>
+        <Reveal delay={0.18} y={26}>
+          <p className="auth-lux__band-body">{band.body}</p>
+        </Reveal>
+        <Reveal delay={0.28} y={20} blur={false}>
+          <button type="button" className="auth-lux__link-arrow" onClick={onCta}>
+            {band.cta}
+            <ArrowRight className="w-4 h-4" aria-hidden />
+          </button>
+        </Reveal>
+      </div>
+      <div className="auth-lux__band-visual">
+        <motion.div
+          className="auth-lux__product-frame"
+          style={{ y: visualY, scale: visualScale, rotateY: tilt }}
+        >
+          <img
+            src={band.image}
+            alt=""
+            className="auth-lux__product-img"
+            loading="lazy"
+            decoding="async"
+          />
+          <span className="auth-lux__product-sheen" aria-hidden="true" />
+        </motion.div>
+      </div>
+    </article>
+  );
+}
 
 /**
  * LuxAlgo-style premium landing — cinematic hero, story bands, reviews.
@@ -73,6 +181,24 @@ const ease = [0.22, 1, 0.36, 1] as const;
  */
 export default function AuthPage(props: AuthPageProps) {
   const [signInOpen, setSignInOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
+
+  const { scrollY, scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28, restDelta: 0.001 });
+
+  useMotionValueEvent(scrollY, 'change', (v) => setScrolled(v > 24));
+
+  const { scrollYProgress: heroP } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  const stageRotate = useTransform(heroP, [0, 0.34], [12, 0]);
+  const stageScale = useTransform(heroP, [0, 0.34, 1], [0.93, 1, 0.94]);
+  const stageY = useTransform(heroP, [0.45, 1], [0, -120]);
+  const stageOpacity = useTransform(heroP, [0, 0.6, 1], [1, 1, 0.12]);
+  const copyY = useTransform(heroP, [0, 1], [0, -140]);
+  const copyOpacity = useTransform(heroP, [0, 0.55], [1, 0]);
 
   useEffect(() => {
     if (!signInOpen) return;
@@ -102,7 +228,9 @@ export default function AuthPage(props: AuthPageProps) {
         <div className="auth-lux__vignette" />
       </div>
 
-      <header className="auth-lux__nav">
+      <motion.div className="auth-lux__progress" style={{ scaleX: progress }} aria-hidden="true" />
+
+      <header className={`auth-lux__nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="auth-lux__nav-inner">
           <a href="#top" className="auth-lux__brand" title={BRAND}>
             <BrandMark size="sm" />
@@ -126,27 +254,39 @@ export default function AuthPage(props: AuthPageProps) {
 
       <main id="top" className="auth-lux__main relative z-20">
         {/* LuxAlgo-style centered hero */}
-        <section className="auth-lux__hero">
-          <motion.div
-            className="auth-lux__hero-center"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75, ease }}
-          >
-            <p className="auth-lux__pill">
+        <section className="auth-lux__hero" ref={heroRef}>
+          <motion.div className="auth-lux__hero-center" style={{ y: copyY, opacity: copyOpacity }}>
+            <motion.p
+              className="auth-lux__pill"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease }}
+            >
               <span className="auth-lux__pill-dot" />
               {BRAND_SHORT} · Live NSE intelligence
-            </p>
+            </motion.p>
             <h1 className="auth-lux__headline">
-              Start trading like
+              <Words text="Start trading like" mode="mount" delay={0.1} />
               <br />
-              <em>smart money</em>
+              <em>
+                <Words text="smart money" mode="mount" delay={0.32} />
+              </em>
             </h1>
-            <p className="auth-lux__sub">
+            <motion.p
+              className="auth-lux__sub"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.55, ease }}
+            >
               The AI platform to build &amp; deploy your own edge — powered by live bias, heatmaps,
               scanners, journals, and Master AI used by serious Indian traders.
-            </p>
-            <div className="auth-lux__hero-actions">
+            </motion.p>
+            <motion.div
+              className="auth-lux__hero-actions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.68, ease }}
+            >
               <button type="button" className="auth-lux__btn-solid auth-lux__btn-solid--xl" onClick={openSignIn}>
                 Get access now
                 <ArrowRight className="w-5 h-5" aria-hidden />
@@ -154,152 +294,156 @@ export default function AuthPage(props: AuthPageProps) {
               <a href="#reviews" className="auth-lux__link-underline">
                 See trader stories
               </a>
-            </div>
-            <div className="auth-lux__trust">
+            </motion.div>
+            <motion.div
+              className="auth-lux__trust"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.7, delay: 0.85, ease }}
+            >
               <div className="auth-lux__stars" aria-hidden="true">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="w-3.5 h-3.5 fill-current" />
                 ))}
               </div>
               <p>Loved by desks that care about process — invite-only access</p>
-            </div>
+            </motion.div>
           </motion.div>
 
           <motion.div
             className="auth-lux__hero-stage"
-            initial={{ opacity: 0, y: 46 }}
+            initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.2, ease }}
+            transition={{ duration: 1.1, delay: 0.3, ease }}
           >
-            <LiveHeroTerminal />
+            <motion.div
+              className="auth-lux__hero-stage-inner"
+              style={{
+                rotateX: stageRotate,
+                scale: stageScale,
+                y: stageY,
+                opacity: stageOpacity,
+              }}
+            >
+              <LiveHeroTerminal />
+            </motion.div>
           </motion.div>
         </section>
+
+        {/* Live ticker strip */}
+        <div className="auth-lux__ticker" aria-hidden="true">
+          <Marquee duration={38}>
+            {TICKER.map(([sym, chg, up]) => (
+              <span className="auth-lux__tick" key={sym}>
+                <b>{sym}</b>
+                <i className={up ? 'is-up' : 'is-down'}>{chg}</i>
+              </span>
+            ))}
+          </Marquee>
+        </div>
 
         {/* Story bands */}
         <section className="auth-lux__stories" id="platform" aria-label="Platform">
           {STORY_BANDS.map((band, i) => (
-            <motion.article
-              key={band.id}
-              className={`auth-lux__band ${i % 2 === 1 ? 'auth-lux__band--flip' : ''}`}
-              initial={{ opacity: 0, y: 48 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-100px' }}
-              transition={{ duration: 0.65, ease }}
-            >
-              <div className="auth-lux__band-copy">
-                <p className="auth-lux__kicker">{band.kicker}</p>
-                <h2 className="auth-lux__band-title">{band.title}</h2>
-                <p className="auth-lux__band-body">{band.body}</p>
-                <button type="button" className="auth-lux__link-arrow" onClick={openSignIn}>
-                  {band.cta}
-                  <ArrowRight className="w-4 h-4" aria-hidden />
-                </button>
-              </div>
-              <div className="auth-lux__band-visual">
-                <div className="auth-lux__product-frame">
-                  <img src={band.image} alt="" className="auth-lux__product-img" loading="lazy" decoding="async" />
-                </div>
-              </div>
-            </motion.article>
+            <StoryBand key={band.id} band={band} flip={i % 2 === 1} onCta={openSignIn} />
           ))}
         </section>
 
-        {/* Reviews — LuxAlgo “real traders” */}
-        <section className="auth-lux__reviews" id="reviews">
-          <motion.div
-            className="auth-lux__reviews-head"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.55, ease }}
-          >
-            <p className="auth-lux__kicker">Social proof</p>
-            <h2 className="auth-lux__section-title">
-              Real traders,
-              <br />
-              <em>real stories</em>
-            </h2>
-            <p className="auth-lux__section-sub">
-              What desks say after switching to a cleaner, smarter NSE workflow.
-            </p>
-          </motion.div>
+        {/* Counters */}
+        <section className="auth-lux__stats" aria-label="Platform coverage">
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={0.08 * i} y={34}>
+              <div className="auth-lux__stat">
+                <strong>
+                  <Counter to={s.to} suffix={s.suffix} decimals={'decimals' in s ? s.decimals : 0} />
+                </strong>
+                <span>{s.label}</span>
+              </div>
+            </Reveal>
+          ))}
+        </section>
 
-          <div className="auth-lux__review-grid">
-            {REVIEWS.map((r, i) => (
-              <motion.blockquote
-                key={r.name}
-                className="auth-lux__review"
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ delay: 0.06 * i, duration: 0.5, ease }}
-              >
-                <Quote className="auth-lux__review-quote" aria-hidden />
-                <div className="auth-lux__stars auth-lux__stars--sm" aria-hidden="true">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <Star key={s} className="w-3 h-3 fill-current" />
-                  ))}
-                </div>
-                <p className="auth-lux__review-text">“{r.quote}”</p>
-                <footer className="auth-lux__review-meta">
-                  <span className="auth-lux__review-avatar">{r.name[0]}</span>
-                  <div>
-                    <cite>{r.name}</cite>
-                    <span>{r.role}</span>
-                  </div>
-                </footer>
-              </motion.blockquote>
-            ))}
+        {/* Reviews — auto-scrolling trader stories */}
+        <section className="auth-lux__reviews" id="reviews">
+          <div className="auth-lux__reviews-head">
+            <Reveal y={26} blur={false}>
+              <p className="auth-lux__kicker">Social proof</p>
+            </Reveal>
+            <h2 className="auth-lux__section-title">
+              <Words text="Real traders," />
+              <br />
+              <em>
+                <Words text="real stories" delay={0.14} />
+              </em>
+            </h2>
+            <Reveal delay={0.24} y={22}>
+              <p className="auth-lux__section-sub">
+                What desks say after switching to a cleaner, smarter NSE workflow.
+              </p>
+            </Reveal>
           </div>
+
+          <Marquee duration={52}>
+            {REVIEWS.map((r) => (
+              <ReviewCard key={r.name} review={r} />
+            ))}
+          </Marquee>
+          <Marquee duration={64} reverse>
+            {[...REVIEWS].reverse().map((r) => (
+              <ReviewCard key={r.name} review={r} />
+            ))}
+          </Marquee>
         </section>
 
         {/* Modules */}
         <section className="auth-lux__features" id="modules">
           <div className="auth-lux__features-inner">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.55, ease }}
-              className="auth-lux__features-head"
-            >
-              <p className="auth-lux__kicker">Explore all features</p>
+            <div className="auth-lux__features-head">
+              <Reveal y={24} blur={false}>
+                <p className="auth-lux__kicker">Explore all features</p>
+              </Reveal>
               <h2 className="auth-lux__section-title">
-                Everything you need to
+                <Words text="Everything you need to" />
                 <br />
-                <em>upgrade your desk</em>
+                <em>
+                  <Words text="upgrade your desk" delay={0.16} />
+                </em>
               </h2>
-              <p className="auth-lux__section-sub">
-                Six core modules — live data, structure, and AI in one luxury workspace.
-              </p>
-            </motion.div>
+              <Reveal delay={0.26} y={22}>
+                <p className="auth-lux__section-sub">
+                  Six core modules — live data, structure, and AI in one luxury workspace.
+                </p>
+              </Reveal>
+            </div>
             <AuthFeatureGrid />
           </div>
         </section>
 
         {/* Bottom CTA */}
         <section className="auth-lux__bottom-cta">
-          <motion.div
-            className="auth-lux__bottom-cta-inner"
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.55, ease }}
-          >
-            <p className="auth-lux__kicker">Invite only</p>
+          <div className="auth-lux__bottom-cta-inner">
+            <Reveal y={24} blur={false}>
+              <p className="auth-lux__kicker">Invite only</p>
+            </Reveal>
             <h2 className="auth-lux__section-title">
-              Plans for every style
+              <Words text="Plans for every style" />
               <br />
-              <em>of trading</em>
+              <em>
+                <Words text="of trading" delay={0.16} />
+              </em>
             </h2>
-            <p className="auth-lux__section-sub">
-              Safe, private access. Sign in with credentials created for your desk — cancel anytime from profile.
-            </p>
-            <button type="button" className="auth-lux__btn-solid auth-lux__btn-solid--xl" onClick={openSignIn}>
-              Sign In to Wolf Trade AI
-              <ArrowRight className="w-5 h-5" aria-hidden />
-            </button>
-          </motion.div>
+            <Reveal delay={0.26} y={22}>
+              <p className="auth-lux__section-sub">
+                Safe, private access. Sign in with credentials created for your desk — cancel anytime from profile.
+              </p>
+            </Reveal>
+            <Reveal delay={0.36} y={20} blur={false}>
+              <button type="button" className="auth-lux__btn-solid auth-lux__btn-solid--xl" onClick={openSignIn}>
+                Sign In to {BRAND}
+                <ArrowRight className="w-5 h-5" aria-hidden />
+              </button>
+            </Reveal>
+          </div>
         </section>
 
         <footer className="auth-lux__footer">

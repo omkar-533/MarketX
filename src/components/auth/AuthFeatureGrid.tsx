@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -63,6 +64,14 @@ const LOGIN_FEATURES: Feature[] = [
   },
 ];
 
+/** Tracks the pointer so each card can light up under the cursor. */
+function trackSpotlight(e: MouseEvent<HTMLElement>) {
+  const el = e.currentTarget;
+  const box = el.getBoundingClientRect();
+  el.style.setProperty('--mx', `${((e.clientX - box.left) / box.width) * 100}%`);
+  el.style.setProperty('--my', `${((e.clientY - box.top) / box.height) * 100}%`);
+}
+
 /** LuxAlgo-style premium module cards */
 export default function AuthFeatureGrid() {
   return (
@@ -73,11 +82,13 @@ export default function AuthFeatureGrid() {
           <motion.article
             key={f.id}
             className="auth-lux-feature"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-24px' }}
-            transition={{ delay: 0.04 * i, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            onMouseMove={trackSpotlight}
+            initial={{ opacity: 0, y: 44, filter: 'blur(6px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: '-8% 0px -8% 0px' }}
+            transition={{ delay: 0.07 * i, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
+            <span className="auth-lux-feature__spot" aria-hidden="true" />
             <div className="auth-lux-feature__icon" aria-hidden="true">
               <Icon className="w-5 h-5" />
             </div>
