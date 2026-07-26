@@ -17,7 +17,7 @@ const STORY_BANDS = [
     title: 'Build your own edge with AI',
     body: 'Use advanced algorithms and a live market copilot to read bias, OI, and structure in real time — then act with clarity when the tape moves.',
     cta: 'Get started now',
-    image: `${import.meta.env.BASE_URL}landing/band-quant.svg`,
+    image: `${import.meta.env.BASE_URL}landing/band-ai-copilot.jpg`,
   },
   {
     id: 'workspace',
@@ -25,7 +25,7 @@ const STORY_BANDS = [
     title: 'An AI desk for winning sessions',
     body: 'Ask the platform to surface setups, track your journal, and keep heatmaps, scanners, and option intelligence synced in one invite-only terminal.',
     cta: 'Get access now',
-    image: `${import.meta.env.BASE_URL}landing/band-ai.png`,
+    image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg`,
   },
   {
     id: 'alerts',
@@ -33,7 +33,7 @@ const STORY_BANDS = [
     title: 'Your edge, now on autopilot',
     body: 'Turn live scanners and structure into a disciplined workflow — alerts, journals, and Master AI context so you never trade blind.',
     cta: 'Start now',
-    image: `${import.meta.env.BASE_URL}landing/band-tools.png`,
+    image: `${import.meta.env.BASE_URL}landing/band-autopilot.jpg`,
   },
 ] as const;
 
@@ -93,8 +93,8 @@ export default function AuthPage(props: AuthPageProps) {
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
       <div className="auth-lux__bg" aria-hidden="true">
-        <img className="auth-lux__fx auth-lux__fx--stroke" src={`${import.meta.env.BASE_URL}landing/stroke-tl.png`} alt="" />
-        <img className="auth-lux__fx auth-lux__fx--glow" src={`${import.meta.env.BASE_URL}landing/glow-br.png`} alt="" />
+        <img className="auth-lux__fx auth-lux__fx--stroke" src={`${import.meta.env.BASE_URL}landing/bg-aurora.jpg`} alt="" />
+        <img className="auth-lux__fx auth-lux__fx--glow" src={`${import.meta.env.BASE_URL}landing/bg-aurora.jpg`} alt="" />
         <div className="auth-lux__aurora auth-lux__aurora--1" />
         <div className="auth-lux__aurora auth-lux__aurora--2" />
         <div className="auth-lux__noise" />
@@ -134,10 +134,10 @@ export default function AuthPage(props: AuthPageProps) {
             transition={{ duration: 1, delay: 0.15, ease }}
           >
             <img
-              src={`${import.meta.env.BASE_URL}landing/hero-product.png`}
+              src={`${import.meta.env.BASE_URL}landing/hero-desk.jpg`}
               alt=""
-              width={1200}
-              height={800}
+              width={1600}
+              height={1067}
               decoding="async"
               fetchPriority="high"
             />
