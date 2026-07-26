@@ -9,6 +9,7 @@ import FyersLoginPage from './components/FyersLoginPage';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
 import { useBrokerSession } from './hooks/useBrokerSession';
+import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
@@ -64,6 +65,10 @@ function AppWorkspace() {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    document.title = auth.isLoggedIn ? pageDocumentTitle(activeTab) : BRAND;
+  }, [auth.isLoggedIn, activeTab]);
 
   useEffect(() => {
     const path = window.location.pathname;

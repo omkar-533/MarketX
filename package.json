@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.mastertradex.app",
-    "productName": "Master TradeX",
+    "productName": "AI Powered Market Intelligent",
     "directories": {
       "output": "release"
     },

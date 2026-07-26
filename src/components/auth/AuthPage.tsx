@@ -4,6 +4,7 @@ import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthRobotScene from './AuthRobotScene';
 import AuthTradingOverlay from './AuthTradingOverlay';
 import ThemeToggle from '../ThemeToggle';
+import { BRAND } from '../../constants/brandLabels';
 
 const AUTH_TICKER = [
   { sym: 'NIFTY', val: '24,580.00', ch: '+0.42%', up: true },
@@ -42,7 +43,7 @@ export default function AuthPage(props: AuthPageProps) {
               <Bot className="w-3.5 h-3.5" />
             </div>
             <div>
-              <p className="auth-ai-brand text-[11px] leading-none">Master TradeX</p>
+              <p className="auth-ai-brand text-[11px] leading-none">{BRAND}</p>
               <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-0.5">
                 AI Neural Core
               </p>
@@ -78,7 +79,7 @@ export default function AuthPage(props: AuthPageProps) {
         >
           <div className="mb-4 hidden sm:block">
             <p className="auth-ai-headline text-2xl lg:text-3xl">
-              <span>TradeX</span> AI assistant
+              <span>AI</span> market intelligence
             </p>
             <p className="text-sm text-slate-500 mt-1">
               Live LTP · Option Chain · OI · Signals · LPT Master
@@ -89,7 +90,7 @@ export default function AuthPage(props: AuthPageProps) {
             <AuthForm {...props} />
           </div>
           <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            AI video login · Secure TradeX Live
+            {BRAND} · Secure AI video login
           </p>
         </motion.div>
       </div>

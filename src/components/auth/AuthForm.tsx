@@ -195,7 +195,7 @@ export default function AuthForm({
 
   const subtitles = {
     login: 'Authenticate to enter the neural trading core.',
-    signup: 'Initialize your TradeX AI workspace.',
+    signup: 'Initialize your AI Powered Market Intelligent workspace.',
     otp: otpSent ? `Enter OTP sent to +91 ${phone}` : 'Sign in with your mobile number.',
     forgot: 'We\'ll send a reset link to your email.',
   };

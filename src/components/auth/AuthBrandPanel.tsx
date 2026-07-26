@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Cpu, Shield, Sparkles, Zap } from 'lucide-react';
 import AuthRobotScene from './AuthRobotScene';
+import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
 
 const capabilities = [
   { icon: Bot, text: 'Neural market scan' },
@@ -46,8 +47,8 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <p className="auth-ai-brand">Master</p>
-            <p className="auth-ai-subbrand">TradeX · Neural Core</p>
+            <p className="auth-ai-brand">{BRAND_LINE1}</p>
+            <p className="auth-ai-subbrand">{BRAND_LINE2} · Neural Core</p>
           </div>
         </div>
         <LiveClock />
@@ -65,12 +66,10 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
             AI trading terminal
           </div>
           <h2 className="auth-ai-headline">
-            Meet <span>TX·MECH</span>
-            <br />
-            your <span>combat</span> AI
+            <span>{BRAND}</span>
           </h2>
           <p className="auth-ai-lead">
-            Advanced patrol unit with thrusters, scan laser, and live neural market sync —
+            AI-powered market intelligence with live LTP, option chain, OI, and signals —
             before you even sign in.
           </p>
         </motion.div>
@@ -100,7 +99,7 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
           <Shield className="w-3 h-3 text-emerald-400" />
           Encrypted session
         </span>
-        <span className="auth-trust-badge">Neural feed · TradeX</span>
+        <span className="auth-trust-badge">Neural feed · {BRAND_SHORT}</span>
         <span className="auth-trust-badge">NSE · F&O</span>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   NotebookPen,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
+import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../constants/brandLabels';
 
 interface SidebarProps {
   activeTab: string;
@@ -54,9 +55,12 @@ export default function Sidebar({
     >
       <div className="h-14 flex items-center px-3 border-b border-dark-border/60 shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 bg-gold rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-gold/20">
+          <div className="w-8 h-8 bg-gold rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-gold/20" title={BRAND}>
             <Crown className="w-4 h-4 text-dark-surface" />
           </div>
+          {collapsed && (
+            <span className="sr-only">{BRAND_SHORT}</span>
+          )}
           <AnimatePresence>
             {!collapsed && (
               <motion.div
@@ -65,8 +69,13 @@ export default function Sidebar({
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <div className="text-sm font-bold text-gold whitespace-nowrap">Master</div>
-                <div className="text-[9px] text-slate-500 -mt-0.5 whitespace-nowrap tracking-wider font-bold">TradeX</div>
+                <div className="text-[11px] font-bold text-gold leading-tight max-w-[150px]">
+                  {BRAND_LINE1}
+                </div>
+                <div className="text-[9px] text-slate-400 -mt-0.5 leading-tight tracking-wide font-bold max-w-[150px]">
+                  {BRAND_LINE2}
+                </div>
+                <div className="sr-only">{BRAND}</div>
               </motion.div>
             )}
           </AnimatePresence>

@@ -1,5 +1,5 @@
 /**
- * Master TradeX — clean desktop shell (Electron)
+ * AI Powered Market Intelligent — clean desktop shell (Electron)
  * Loads your official Vercel app — no third-party code, no bundlers with ads.
  */
 const { app, BrowserWindow, shell } = require('electron');
@@ -14,7 +14,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 640,
-    title: 'Master TradeX',
+    title: 'AI Powered Market Intelligent',
     backgroundColor: '#0a0e17',
     autoHideMenuBar: true,
     webPreferences: {

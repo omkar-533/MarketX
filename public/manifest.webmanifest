@@ -1,7 +1,7 @@
 {
-  "name": "Master TradeX",
-  "short_name": "TradeX",
-  "description": "Professional options trading — LPT Master, live NSE data",
+  "name": "AI Powered Market Intelligent",
+  "short_name": "APMI",
+  "description": "AI Powered Market Intelligent — live NSE options, OI, signals & AI trading workspace",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

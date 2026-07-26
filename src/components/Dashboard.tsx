@@ -326,7 +326,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">
-                Master TradeX
+                AI Powered Market Intelligent
               </span>
               <span className="text-[10px] text-slate-500">
                 Updated {lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}

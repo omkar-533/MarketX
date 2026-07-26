@@ -5,7 +5,7 @@ const LIVE_APP_URL = process.env.CAPACITOR_SERVER_URL || 'https://mmtt-flame.ver
 
 const config: CapacitorConfig = {
   appId: 'com.mastertradex.app',
-  appName: 'Master TradeX',
+  appName: 'AI Powered Market Intelligent',
   webDir: 'dist',
   server: {
     url: LIVE_APP_URL,

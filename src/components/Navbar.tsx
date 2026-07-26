@@ -45,7 +45,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
               <Crown className="w-5 h-5 text-[#0d1220]" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gold tracking-wide">Master TradeX</h1>
+              <h1 className="text-lg font-bold text-gold tracking-wide">AI Powered Market Intelligent</h1>
               <p className="text-[10px] text-slate-500 -mt-0.5 font-medium tracking-wider uppercase">NSE Options Analytics</p>
             </div>
           </div>
