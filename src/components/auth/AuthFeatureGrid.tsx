@@ -14,6 +14,7 @@ type Feature = {
   id: string;
   title: string;
   description: string;
+  detail: string;
   icon: LucideIcon;
 };
 
@@ -21,68 +22,71 @@ const LOGIN_FEATURES: Feature[] = [
   {
     id: 'dashboard',
     title: PAGE_NAMES.dashboard,
-    description: 'Live indices, breadth, sector pulse, and market bias in one view.',
+    detail: 'Market pulse',
+    description: 'Live indices, breadth, sector pulse, and directional bias in one command view.',
     icon: LayoutDashboard,
   },
   {
     id: 'tradingjournal',
     title: PAGE_NAMES.tradingjournal,
-    description: 'Log trades, track P&L, and review discipline with a clean journal.',
+    detail: 'Process & P&L',
+    description: 'Log every trade, review discipline, and track performance with a clean journal.',
     icon: NotebookPen,
   },
   {
     id: 'oiintelligence',
     title: PAGE_NAMES.oiintelligence,
-    description: 'Open interest, PCR, and smart-money flow for clearer directional bias.',
+    detail: 'Smart money',
+    description: 'Open interest, PCR, and flow signals to read institutional positioning.',
     icon: Activity,
   },
   {
     id: 'heatmap',
     title: PAGE_NAMES.heatmap,
-    description: 'Stock and sector heat maps colored by live performance.',
+    detail: 'Performance map',
+    description: 'Stock and sector heatmaps colored by live performance — spot strength instantly.',
     icon: PieChart,
   },
   {
     id: 'scanner',
     title: PAGE_NAMES.scanner,
-    description: 'Ready-made momentum, breakout, volume, and F&O screeners.',
+    detail: 'Ready-made scans',
+    description: 'Momentum, breakout, volume, and F&O screeners that refresh with the live tape.',
     icon: ScanLine,
   },
   {
     id: 'trafi',
     title: PAGE_NAMES.trafi,
-    description: 'Ask market questions and get context-aware AI trading assistance.',
+    detail: 'AI copilot',
+    description: 'Ask market questions and get context-aware answers across your workspace.',
     icon: Bot,
   },
 ];
 
-/** Feature cards on login — icons + short descriptions */
+/** LuxAlgo-style feature modules — icon + title + description */
 export default function AuthFeatureGrid() {
   return (
-    <div className="auth-feature-grid">
-      <p className="auth-feature-grid__label">Platform modules</p>
-      <div className="auth-feature-grid__list">
-        {LOGIN_FEATURES.map((f, i) => {
-          const Icon = f.icon;
-          return (
-            <motion.div
-              key={f.id}
-              className="auth-feature-card"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 * i, duration: 0.35 }}
-            >
-              <div className="auth-feature-card__icon" aria-hidden="true">
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="auth-feature-card__title">{f.title}</h3>
-                <p className="auth-feature-card__desc">{f.description}</p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+    <div className="auth-lux-features">
+      {LOGIN_FEATURES.map((f, i) => {
+        const Icon = f.icon;
+        return (
+          <motion.article
+            key={f.id}
+            className="auth-lux-feature"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-20px' }}
+            transition={{ delay: 0.05 * i, duration: 0.4 }}
+          >
+            <div className="auth-lux-feature__icon" aria-hidden="true">
+              <Icon className="w-5 h-5" />
+            </div>
+            <p className="auth-lux-feature__detail">{f.detail}</p>
+            <h3 className="auth-lux-feature__title">{f.title}</h3>
+            <p className="auth-lux-feature__desc">{f.description}</p>
+          </motion.article>
+        );
+      })}
     </div>
   );
 }

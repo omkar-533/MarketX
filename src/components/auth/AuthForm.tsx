@@ -73,7 +73,7 @@ export default function AuthForm({
     <div className="auth-form-panel relative z-[1]">
       {headerExtra}
 
-      <div className="auth-kicker mb-6">
+      <div className="auth-kicker mb-5">
         <ShieldCheck className="w-3 h-3" />
         Invite-only access
       </div>
@@ -84,10 +84,10 @@ export default function AuthForm({
         transition={{ duration: 0.22 }}
       >
         <h1 className="auth-title auth-title-gold">
-          Access <span>workspace</span>
+          Sign <span>in</span>
         </h1>
         <p className="auth-subtitle">
-          Use the email &amp; password provided by admin. Public registration is closed.
+          Use the email &amp; password provided by your administrator.
         </p>
       </motion.div>
 

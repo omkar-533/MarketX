@@ -3,98 +3,105 @@ import { Crown } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import AuthRobotScene from './AuthRobotScene';
-import AuthTradingOverlay from './AuthTradingOverlay';
 import ThemeToggle from '../ThemeToggle';
 import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
-
-const AUTH_TICKER = [
-  { sym: 'NIFTY', val: '24,580.00', ch: '+0.42%', up: true },
-  { sym: 'BANKNIFTY', val: '52,140.00', ch: '+0.38%', up: true },
-  { sym: 'SENSEX', val: '80,520.00', ch: '+0.31%', up: true },
-  { sym: 'FINNIFTY', val: '23,890.00', ch: '-0.12%', up: false },
-  { sym: 'MIDCPNIFTY', val: '12,456.00', ch: '+0.18%', up: true },
-  { sym: 'BANKEX', val: '58,230.00', ch: '+0.25%', up: true },
-];
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
 };
 
-/** Same brand block as Sidebar / Header — only labels that are visible in-app */
+/**
+ * LuxAlgo-inspired landing login — bold hero, clean CTA, feature modules below.
+ * Brand + invite sign-in only (no public signup).
+ */
 export default function AuthPage(props: AuthPageProps) {
-  const ticker = AUTH_TICKER;
-
   return (
-    <div className="auth-page auth-page--robot auth-page--fullscreen-thinker min-h-screen flex flex-col relative overflow-hidden">
-      <div className="auth-aurora auth-aurora--robot" aria-hidden="true" />
-      <div className="auth-noise" aria-hidden="true" />
-      <div className="auth-scan-grid" aria-hidden="true" />
-      <div className="auth-scanbeam" aria-hidden="true" />
-
-      <div className="auth-fullscreen-stage" aria-hidden="true">
+    <div className="auth-lux min-h-screen flex flex-col relative">
+      <div className="auth-lux__bg" aria-hidden="true">
         <AuthRobotScene fullscreen />
+        <div className="auth-lux__shade" />
       </div>
-      <div className="auth-fullscreen-shade auth-fullscreen-shade--thinker" aria-hidden="true" />
-      <AuthTradingOverlay />
 
-      <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/55 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <header className="auth-lux__nav relative z-30">
+        <div className="auth-lux__nav-inner">
           <div className="flex items-center gap-3 min-w-0" title={BRAND}>
-            <div className="w-11 h-11 sm:w-12 sm:h-12 bg-gold rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-gold/20">
-              <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-dark-surface" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gold rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-gold/25">
+              <Crown className="w-5 h-5 text-dark-surface" />
             </div>
-            <div className="min-w-0">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gold leading-tight tracking-tight">
-                {BRAND_LINE1}
-              </div>
-              <div className="text-base sm:text-xl lg:text-2xl text-slate-100 -mt-0.5 leading-tight tracking-wide font-bold">
-                {BRAND_LINE2}
-              </div>
-              <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-[0.16em] mt-1">
-                {BRAND_SHORT} · Live
-              </p>
+            <div className="min-w-0 leading-none">
+              <div className="text-lg sm:text-xl font-extrabold text-gold tracking-tight">{BRAND_LINE1}</div>
+              <div className="text-sm sm:text-base font-bold text-slate-100 tracking-wide mt-0.5">{BRAND_LINE2}</div>
             </div>
           </div>
-          <ThemeToggle />
-        </div>
-        <div className="flex gap-10 py-1.5 ticker-scroll whitespace-nowrap px-4 overflow-hidden border-t border-gold/10">
-          {[...ticker, ...ticker, ...ticker].map((t, i) => (
-            <span key={`${t.sym}-${i}`} className="inline-flex items-center gap-2 text-xs shrink-0">
-              <span className="font-bold text-slate-500">{t.sym}</span>
-              <span className="font-semibold text-slate-200 tabular-nums">{t.val}</span>
-              <span className={`font-bold tabular-nums ${t.up ? 'text-emerald-400' : 'text-red-400'}`}>
-                {t.ch}
-              </span>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              {BRAND_SHORT}
             </span>
-          ))}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      <div className="relative z-20 flex-1 flex flex-col lg:flex-row items-stretch lg:items-center justify-end gap-5 lg:gap-10 px-4 sm:px-8 lg:px-12 xl:px-16 py-5 lg:py-8 min-h-0 overflow-y-auto">
+      {/* Hero — brand, one headline, one line, sign-in CTA */}
+      <section className="auth-lux__hero relative z-20">
         <motion.div
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full lg:flex-1 lg:max-w-xl xl:max-w-2xl order-2 lg:order-1"
+          className="auth-lux__hero-copy"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <AuthFeatureGrid />
+          <p className="auth-lux__eyebrow">{BRAND_SHORT} · AI Market Platform</p>
+          <h1 className="auth-lux__headline">
+            Trade with
+            <br />
+            <span>smart intelligence</span>
+          </h1>
+          <p className="auth-lux__sub">
+            Live NSE workspace for bias, heatmaps, scanners, journals, and Master AI — built for serious traders.
+          </p>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          className="auth-lux__cta"
+          initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="w-full max-w-md shrink-0 order-1 lg:order-2 mx-auto lg:mx-0"
+          transition={{ duration: 0.5, delay: 0.12 }}
         >
-          <div className="auth-form-card auth-form-card--robot auth-form-card--overlay p-5 sm:p-8">
-            <div className="auth-form-robot-edge" aria-hidden="true" />
+          <div className="auth-lux__cta-card">
             <AuthForm {...props} />
           </div>
-          <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            {BRAND_LINE1} {BRAND_LINE2}
-          </p>
         </motion.div>
-      </div>
+      </section>
+
+      {/* Features — LuxAlgo-style module showcase */}
+      <section className="auth-lux__features relative z-20" id="features">
+        <div className="auth-lux__features-inner">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.4 }}
+            className="auth-lux__features-head"
+          >
+            <p className="auth-lux__eyebrow">Explore the platform</p>
+            <h2 className="auth-lux__features-title">
+              Everything you need to
+              <br />
+              <span>read the market</span>
+            </h2>
+            <p className="auth-lux__features-sub">
+              Six core modules — live data, structure, and AI in one invite-only workspace.
+            </p>
+          </motion.div>
+          <AuthFeatureGrid />
+        </div>
+      </section>
+
+      <footer className="auth-lux__footer relative z-20">
+        <p>
+          {BRAND_LINE1} {BRAND_LINE2} · Invite-only access
+        </p>
+      </footer>
     </div>
   );
 }
