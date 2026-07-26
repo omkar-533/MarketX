@@ -1435,6 +1435,7 @@ input[type="number"] { -moz-appearance: textfield; }
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;
+  filter: contrast(1.06) saturate(1.1) brightness(1.03);
 }
 
 .auth-robot-3d {
