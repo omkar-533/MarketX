@@ -6,7 +6,7 @@ import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import BrandMark from '../BrandMark';
 import ThemeToggle from '../ThemeToggle';
-import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
+import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
@@ -48,10 +48,6 @@ export default function AuthPage(props: AuthPageProps) {
         <div className="auth-lux__nav-inner">
           <div className="flex items-center gap-3 min-w-0" title={BRAND}>
             <BrandMark size="md" />
-            <div className="min-w-0 leading-none">
-              <div className="text-base sm:text-lg font-extrabold text-gold tracking-tight">{BRAND_LINE1}</div>
-              <div className="text-xs sm:text-sm font-bold text-slate-100 tracking-wide mt-0.5">{BRAND_LINE2}</div>
-            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
@@ -86,17 +82,16 @@ export default function AuthPage(props: AuthPageProps) {
 
           <motion.div
             className="auth-lux__hero-mark"
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.65, delay: 0.12 }}
+            transition={{ duration: 0.5, delay: 0.08 }}
           >
-            <div className="auth-lux__hero-mark-glow" aria-hidden="true" />
             <img
               className="auth-lux__hero-mark-img"
               src={brandLogoUrl}
               alt="AI Powered Market Intelligence"
-              width={720}
-              height={720}
+              width={1024}
+              height={558}
               decoding="async"
               fetchPriority="high"
             />
@@ -128,7 +123,7 @@ export default function AuthPage(props: AuthPageProps) {
 
         <footer className="auth-lux__footer">
           <p>
-            {BRAND_LINE1} {BRAND_LINE2} · Invite-only access
+            {BRAND} · Invite-only access
           </p>
         </footer>
       </main>

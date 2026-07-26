@@ -6,7 +6,7 @@ import {
   NotebookPen,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
-import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT, PAGE_NAMES } from '../constants/brandLabels';
+import { BRAND, BRAND_SHORT, PAGE_NAMES } from '../constants/brandLabels';
 import BrandMark from './BrandMark';
 
 interface SidebarProps {
@@ -54,28 +54,8 @@ export default function Sidebar({
     >
       <div className="h-14 flex items-center px-3 border-b border-dark-border/60 shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <BrandMark size="sm" className="rounded-lg" />
-          {collapsed && (
-            <span className="sr-only">{BRAND_SHORT}</span>
-          )}
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <div className="text-[11px] font-bold text-gold leading-tight max-w-[150px]">
-                  {BRAND_LINE1}
-                </div>
-                <div className="text-[9px] text-slate-400 -mt-0.5 leading-tight tracking-wide font-bold max-w-[150px]">
-                  {BRAND_LINE2}
-                </div>
-                <div className="sr-only">{BRAND}</div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {collapsed ? <BrandMark size="sm" iconOnly /> : <BrandMark size="sm" />}
+          <span className="sr-only">{BRAND}</span>
         </div>
         <button
           onClick={onToggle}

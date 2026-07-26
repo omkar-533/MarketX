@@ -14,7 +14,6 @@ import {
   Zap,
 } from 'lucide-react';
 import BrandMark from './BrandMark';
-import { BRAND } from '../constants/brandLabels';
 
 interface NavbarProps {
   activeTab: string;
@@ -43,10 +42,6 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
             <BrandMark size="lg" />
-            <div>
-              <h1 className="text-lg font-bold text-gold tracking-wide">{BRAND}</h1>
-              <p className="text-[10px] text-slate-500 -mt-0.5 font-medium tracking-wider uppercase">NSE Options Analytics</p>
-            </div>
           </div>
           
           <div className="hidden xl:flex items-center gap-1">
