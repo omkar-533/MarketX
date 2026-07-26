@@ -84,7 +84,7 @@ export default function ReadyMadeScreeners({
         <div>
           <h1 className="text-2xl font-bold text-[#d4af37]">Ready-made Stock Screeners</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Live F&amp;O universe — each screener shows top 5 matched stocks with name &amp; analysis score.
+            15 categories · 100+ live screeners — each shows top 5 matched stocks with name &amp; score.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span
@@ -132,8 +132,21 @@ export default function ReadyMadeScreeners({
           No live stock rows yet. Connect live data in Profile, then hit Refresh.
         </div>
       ) : (
-        grouped.map((section) => (
-          <section key={section.category} className="space-y-3">
+        <>
+          <div className="flex flex-wrap gap-2 sticky top-14 z-10 py-2 bg-[#0a0e17]/95 backdrop-blur-sm border-b border-[#1a1f2e]/80">
+            {grouped.map((section) => (
+              <a
+                key={section.category}
+                href={`#rm-${section.category}`}
+                className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border border-[#1a1f2e] bg-[#121520] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40"
+              >
+                {section.categoryLabel.replace(' Screeners', '')}
+              </a>
+            ))}
+          </div>
+
+          {grouped.map((section) => (
+          <section key={section.category} id={`rm-${section.category}`} className="space-y-3 scroll-mt-28">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-white tracking-wide">{section.categoryLabel}</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-[#d4af37]/40 to-transparent" />
@@ -181,7 +194,8 @@ export default function ReadyMadeScreeners({
               ))}
             </div>
           </section>
-        ))
+          ))}
+        </>
       )}
     </div>
   );
