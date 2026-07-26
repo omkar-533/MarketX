@@ -46,7 +46,9 @@ function feedLabel(mode?: string, label?: string, loading?: boolean): string {
 }
 
 function StockRow({ stock }: { stock: ReadyMadeHit }) {
-  const up = stock.changePercent >= 0;
+  const change = Number.isFinite(stock.changePercent) ? stock.changePercent : 0;
+  const price = Number.isFinite(stock.price) ? stock.price : 0;
+  const up = change >= 0;
   return (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-[#1a1f2e] last:border-0">
       <div className="min-w-0">
@@ -55,11 +57,11 @@ function StockRow({ stock }: { stock: ReadyMadeHit }) {
       </div>
       <div className="text-right shrink-0">
         <div className="text-sm font-semibold tabular-nums text-slate-200">
-          ₹{stock.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+          ₹{price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
         </div>
         <div className={`text-[11px] font-bold tabular-nums ${up ? 'text-emerald-400' : 'text-red-400'}`}>
           {up ? '+' : ''}
-          {stock.changePercent.toFixed(2)}%
+          {change.toFixed(2)}%
         </div>
       </div>
     </div>

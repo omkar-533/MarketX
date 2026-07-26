@@ -187,13 +187,14 @@ export function generateCandles(_count: number = 100): CandleData[] {
 
 export function getSignals(): SignalData[] {
   return getStocks()
-    .filter((s) => Math.abs(s.changePercent) >= 0.5)
+    .filter((s) => Number.isFinite(s.changePercent) && Math.abs(s.changePercent) >= 0.5)
     .slice(0, 10)
     .map((stock) => {
-      const isBuy = stock.changePercent > 0;
-      const strength = Math.min(95, Math.floor(55 + Math.abs(stock.changePercent) * 12));
-      const entry = stock.price;
-      const type = stock.changePercent > 1.5 ? 'Breakout' : stock.volume > 5_000_000 ? 'Volume Spike' : 'Momentum';
+      const pct = Number.isFinite(stock.changePercent) ? stock.changePercent : 0;
+      const isBuy = pct > 0;
+      const strength = Math.min(95, Math.floor(55 + Math.abs(pct) * 12));
+      const entry = stock.price || 0;
+      const type = pct > 1.5 ? 'Breakout' : stock.volume > 5_000_000 ? 'Volume Spike' : 'Momentum';
       return {
         symbol: stock.symbol,
         name: stock.name,
@@ -203,7 +204,7 @@ export function getSignals(): SignalData[] {
         target: Math.round((isBuy ? entry * 1.02 : entry * 0.98) * 100) / 100,
         stopLoss: Math.round((isBuy ? entry * 0.99 : entry * 1.01) * 100) / 100,
         timeframe: '15m',
-        reason: `${type} from live quote (${stock.changePercent.toFixed(2)}%)`,
+        reason: `${type} from live quote (${pct.toFixed(2)}%)`,
         type,
       };
     });
@@ -230,36 +231,47 @@ function heatmapWeight(item: { marketCap: number; volume: number; price: number;
 
 export function getStockHeatmapData(): StockHeatmapItem[] {
   const live = getFnoLiveQuotes().filter((q) => q.type === 'stock' && FNO_STOCK_SYMBOLS.has(q.symbol));
+  const safePct = (v: unknown) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+  };
+  const safeNum = (v: unknown, fallback = 0) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   const rows =
     live.length > 0
       ? live.map((q) => {
           const sector = FNO_SECTOR_BY_SYMBOL.get(q.symbol) || q.sector || 'Other';
+          const price = safeNum(q.price);
+          const volume = safeNum(q.volume);
           const marketCap =
             q.marketCap && q.marketCap > 0
               ? q.marketCap
-              : Math.round(Math.max(q.volume, 1) * Math.max(q.price, 1) * 0.02);
+              : Math.round(Math.max(volume, 1) * Math.max(price, 1) * 0.02);
           return {
             symbol: q.symbol,
-            name: q.name,
+            name: q.name || q.symbol,
             sector,
-            changePercent: Number(q.changePercent.toFixed(2)),
+            changePercent: safePct(q.changePercent),
             marketCap,
-            price: q.price,
-            change: q.change,
-            volume: q.volume,
+            price,
+            change: safeNum(q.change),
+            volume,
           };
         })
       : getStocks()
           .filter((s) => FNO_STOCK_SYMBOLS.has(s.symbol))
           .map((s) => ({
             symbol: s.symbol,
-            name: s.name,
+            name: s.name || s.symbol,
             sector: FNO_SECTOR_BY_SYMBOL.get(s.symbol) || s.sector || 'Other',
-            changePercent: Number(s.changePercent.toFixed(2)),
+            changePercent: safePct(s.changePercent),
             marketCap: s.marketCap > 0 ? s.marketCap : heatmapWeight(s),
-            price: s.price,
-            change: s.change,
-            volume: s.volume,
+            price: safeNum(s.price),
+            change: safeNum(s.change),
+            volume: safeNum(s.volume),
           }));
 
   return rows;
@@ -304,9 +316,16 @@ export function getSectorHeatmapData(): SectorHeatmapItem[] {
 }
 
 export function getOIHeatmapData(symbol: string = 'NIFTY'): OIHeatmapSnapshot {
-  const index = getIndices().find((i) => i.symbol === symbol) ?? getIndices()[0];
+  const indices = getIndices();
+  const index = indices.find((i) => i.symbol === symbol) ?? indices[0];
   const liveQ = getLiveQuote(symbol);
-  const spotPrice = liveQ?.price && liveQ.price > 0 ? liveQ.price : index.price;
+  const fallbackSpot = getFnoInstrument(symbol)?.basePrice ?? 24500;
+  const spotPrice =
+    liveQ?.price && liveQ.price > 0
+      ? liveQ.price
+      : index?.price && index.price > 0
+        ? index.price
+        : fallbackSpot;
   const cached = getCachedOptionChain(symbol, undefined, 0);
   const chain = cached.length ? cached : buildOptionChain(symbol, spotPrice, undefined, 0);
   const interval = symbol === 'BANKNIFTY' ? 100 : 50;

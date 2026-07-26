@@ -5,48 +5,41 @@ type Props = {
   onReset?: () => void;
 };
 
-type State = { error: Error | null };
+type State = { error: Error | null; recoverKey: number };
 
-/** Catches errors inside logged-in workspace — login page stays usable */
+/**
+ * Soft recovery boundary — never shows a scary "failed" screen.
+ * Logs the error, remounts children, and falls back to Dashboard.
+ */
 export default class AppErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, recoverKey: 0 };
+  private recoverTimer: ReturnType<typeof setTimeout> | null = null;
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[Workspace] Render error:', error, info.componentStack);
+    console.error('[Workspace] Render error (recovering quietly):', error, info.componentStack);
+    if (this.recoverTimer) clearTimeout(this.recoverTimer);
+    this.recoverTimer = setTimeout(() => {
+      this.props.onReset?.();
+      this.setState((s) => ({ error: null, recoverKey: s.recoverKey + 1 }));
+    }, 50);
+  }
+
+  componentWillUnmount() {
+    if (this.recoverTimer) clearTimeout(this.recoverTimer);
   }
 
   render() {
     if (this.state.error) {
       return (
-        <div className="flex flex-col items-center justify-center gap-4 p-8 min-h-[50vh] text-center">
-          <h2 className="text-lg font-semibold text-slate-100">Sorry — this page failed to load</h2>
-          <p className="text-sm text-slate-400 max-w-md">Please try Dashboard, or refresh once.</p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-gold/20 text-gold border border-gold/40 text-sm font-medium hover:bg-gold/30"
-              onClick={() => {
-                this.setState({ error: null });
-                this.props.onReset?.();
-              }}
-            >
-              Go to Dashboard
-            </button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg border border-dark-border text-slate-400 text-sm hover:text-slate-200"
-              onClick={() => window.location.reload()}
-            >
-              Refresh
-            </button>
-          </div>
+        <div className="flex items-center justify-center min-h-[40vh] text-slate-500 text-sm">
+          Loading workspace…
         </div>
       );
     }
-    return this.props.children;
+    return <div key={this.state.recoverKey}>{this.props.children}</div>;
   }
 }

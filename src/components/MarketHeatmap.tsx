@@ -70,9 +70,10 @@ function shortStockName(name: string): string {
 }
 
 function formatHeatPct(value: number): string {
-  const abs = Math.abs(value);
+  const n = Number.isFinite(value) ? value : 0;
+  const abs = Math.abs(n);
   const digits = abs >= 10 ? 1 : 2;
-  return `${value > 0 ? '+' : value < 0 ? '-' : ''}${abs.toFixed(digits)}%`;
+  return `${n > 0 ? '+' : n < 0 ? '-' : ''}${abs.toFixed(digits)}%`;
 }
 
 function textOnBg(change: number, maxAbs = 4): string {

@@ -662,7 +662,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     const payload = consumePendingStrategy() ?? pendingStrategy;
     if (!payload) return;
     const sel = getJournalSymbolSelection(payload.symbol);
-    if (sel) addToWatchlist(sel);
+    if (sel) addMarketItemToWatchlist(journalToMarketItem(sel));
     const group = strategyPayloadToPaperGroup(payload);
     const res = executeHedgeStrategy(group);
     if (!res.ok) setStatusMessage(res.message);
@@ -805,7 +805,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
               type="button"
               title="Add symbol to watchlist"
               onClick={() => {
-                setAddWatchDraft(null);
+                setAddWatchEquity(null);
+                setAddWatchGlobal(null);
                 setShowAddWatchlist(true);
               }}
               className="p-1 hover:bg-[#1a1f2e] rounded text-slate-500 hover:text-[#d4af37]"
