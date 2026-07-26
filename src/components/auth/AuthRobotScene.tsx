@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 
 const LOGIN_VIDEO = '/auth/215500_medium.mp4?v=4k1';
 const LOGIN_POSTER = '/auth/ai-thinker-poster.jpg?v=4k1';
@@ -66,17 +65,6 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           </div>
         )}
         <div className="auth-thinker-vignette" />
-      </div>
-
-      <div className="auth-thinker-hud">
-        <motion.div
-          className="auth-thinker-chip auth-thinker-chip--tl auth-thinker-chip--brand"
-          animate={{ opacity: [0.75, 1, 0.75] }}
-          transition={{ duration: 2.4, repeat: Infinity }}
-        >
-          AI POWERED
-          <span>MARKET INTELLIGENT</span>
-        </motion.div>
       </div>
     </div>
   );

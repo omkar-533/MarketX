@@ -8,6 +8,7 @@ import {
   Target,
   Zap,
 } from 'lucide-react';
+import { BRAND_SHORT } from '../../constants/brandLabels';
 
 const SPARK = [42, 48, 45, 55, 52, 61, 58, 68, 72, 70, 78, 85];
 
@@ -46,7 +47,7 @@ export default function AuthTradingOverlay() {
           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Live LTP</span>
           <span className="flex items-center gap-1 text-[9px] text-emerald-400 font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            APMI
+            {BRAND_SHORT}
           </span>
         </div>
         <p className="text-xs font-bold text-gold">NIFTY 50</p>

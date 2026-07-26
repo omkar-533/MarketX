@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
-import { Bot } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthRobotScene from './AuthRobotScene';
 import AuthTradingOverlay from './AuthTradingOverlay';
 import ThemeToggle from '../ThemeToggle';
-import { BRAND } from '../../constants/brandLabels';
+import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
 
 const AUTH_TICKER = [
   { sym: 'NIFTY', val: '24,580.00', ch: '+0.42%', up: true },
@@ -19,6 +19,7 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
 };
 
+/** Same brand block as Sidebar / Header — only labels that are visible in-app */
 export default function AuthPage(props: AuthPageProps) {
   const ticker = AUTH_TICKER;
 
@@ -29,27 +30,31 @@ export default function AuthPage(props: AuthPageProps) {
       <div className="auth-scan-grid" aria-hidden="true" />
       <div className="auth-scanbeam" aria-hidden="true" />
 
-      {/* Full-screen AI Thinker portrait */}
       <div className="auth-fullscreen-stage" aria-hidden="true">
         <AuthRobotScene fullscreen />
       </div>
       <div className="auth-fullscreen-shade auth-fullscreen-shade--thinker" aria-hidden="true" />
       <AuthTradingOverlay />
 
-      <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/50 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2 px-4 py-3 sm:py-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="auth-ai-logo auth-ai-logo--sm shrink-0">
-              <Bot className="w-3.5 h-3.5" />
+      <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/55 backdrop-blur-md">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-2.5 min-w-0" title={BRAND}>
+            <div className="w-9 h-9 bg-gold rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-gold/20">
+              <Crown className="w-4 h-4 text-dark-surface" />
             </div>
-            <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white leading-tight truncate">
-              <span className="text-[#d4af37]">AI Powered</span>{' '}
-              <span className="text-slate-100">Market Intelligent</span>
-            </h1>
+            <div className="min-w-0">
+              <div className="text-sm sm:text-base font-bold text-gold leading-tight">
+                {BRAND_LINE1}
+              </div>
+              <div className="text-[11px] sm:text-xs text-slate-300 -mt-0.5 leading-tight tracking-wide font-bold">
+                {BRAND_LINE2}
+              </div>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.14em] mt-0.5">
+                {BRAND_SHORT} · Live
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
         <div className="flex gap-10 py-1.5 ticker-scroll whitespace-nowrap px-4 overflow-hidden border-t border-gold/10">
           {[...ticker, ...ticker, ...ticker].map((t, i) => (
@@ -71,20 +76,12 @@ export default function AuthPage(props: AuthPageProps) {
           transition={{ duration: 0.45 }}
           className="w-full max-w-md"
         >
-          <div className="mb-4 hidden sm:block">
-            <p className="auth-ai-headline text-2xl lg:text-3xl font-extrabold tracking-tight">
-              <span className="text-[#d4af37]">AI Powered</span> Market Intelligent
-            </p>
-            <p className="text-sm text-slate-500 mt-1">
-              Live LTP · Option Chain · OI · Signals · LPT Master
-            </p>
-          </div>
           <div className="auth-form-card auth-form-card--robot auth-form-card--overlay p-5 sm:p-8">
             <div className="auth-form-robot-edge" aria-hidden="true" />
             <AuthForm {...props} />
           </div>
           <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            {BRAND}
+            {BRAND_LINE1} {BRAND_LINE2}
           </p>
         </motion.div>
       </div>
