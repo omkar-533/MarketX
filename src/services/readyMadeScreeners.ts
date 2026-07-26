@@ -86,6 +86,16 @@ const CATEGORY_LABELS: Record<ReadyMadeCategoryId, string> = {
 
 type Row = ScreenerMarketRow;
 
+/** Indicator scans need real OHLC-derived EMAs / RSI / highs */
+function tech(r: Row) {
+  return Boolean(r.hasRealTechnicals);
+}
+
+/** Delivery % is not in live quotes — use accumulation tape proxy */
+function accumulation(r: Row) {
+  return r.changePercent > 0 && r.volumeRatio >= 1.15 && r.close >= r.vwap && r.dayRangePercent < 4;
+}
+
 function sectorHas(r: Row, needle: string) {
   return `${r.sector} ${r.industry}`.toLowerCase().includes(needle.toLowerCase());
 }
@@ -145,25 +155,25 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
   // 1. Momentum
   // ═══════════════════════════════════════════
   s('mom-price-ema20', 'momentum', 'Price > 20 EMA', 'Close holding above 20 EMA — short-term momentum.', 'bullish',
-    (r) => r.close > r.ema20, (r) => ((r.close - r.ema20) / r.price) * 400 + r.changePercent * 5),
+    (r) => tech(r) && r.close > r.ema20, (r) => ((r.close - r.ema20) / r.price) * 400 + r.changePercent * 5),
   s('mom-price-ema50', 'momentum', 'Price > 50 EMA', 'Close above 50 EMA — intermediate trend support.', 'bullish',
-    (r) => r.close > r.ema50, (r) => ((r.close - r.ema50) / r.price) * 400 + r.changePercent * 5),
+    (r) => tech(r) && r.close > r.ema50, (r) => ((r.close - r.ema50) / r.price) * 400 + r.changePercent * 5),
   s('mom-price-ema200', 'momentum', 'Price > 200 EMA', 'Close above 200 SMA/EMA proxy — long-term bullish structure.', 'bullish',
-    (r) => r.close > r.sma200, (r) => ((r.close - r.sma200) / r.price) * 400 + r.changePercent * 4),
+    (r) => tech(r) && r.close > r.sma200, (r) => ((r.close - r.sma200) / r.price) * 400 + r.changePercent * 4),
   s('mom-52w-high', 'momentum', '52 Week High Breakout', 'Near multi-week highs (50D high proxy) with volume.', 'bullish',
-    (r) => nearHigh(r, r.maxHigh50, 0.012) && r.changePercent > 0.3 && r.volumeRatio > 1.05,
+    (r) => tech(r) && nearHigh(r, r.maxHigh50, 0.012) && r.changePercent > 0.3 && r.volumeRatio > 1.05,
     (r) => (r.close / Math.max(r.maxHigh50, 1)) * 100 + r.volumeRatio * 10 + r.changePercent * 6),
   s('mom-ath', 'momentum', 'All Time High Breakout', 'Pressing rolling highs with strong session tape.', 'bullish',
-    (r) => nearHigh(r, r.rollingHigh, 0.008) && r.changePercent > 0.5 && r.volumeRatio > 1.1 && r.aiScore > 60,
+    (r) => tech(r) && nearHigh(r, r.rollingHigh, 0.008) && r.changePercent > 0.5 && r.volumeRatio > 1.1 && r.aiScore > 60,
     (r) => r.aiScore + r.volumeRatio * 12 + r.changePercent * 8),
   s('mom-vol-bo', 'momentum', 'Volume Breakout', 'Price up with volume ≥ 1.5× average.', 'bullish',
     (r) => r.changePercent > 0.8 && r.volumeRatio >= 1.5,
     (r) => r.volumeRatio * 20 + r.changePercent * 10),
-  s('mom-high-del', 'momentum', 'High Delivery Stocks', 'Delivery ≥ 45% with positive price — investment demand.', 'bullish',
-    (r) => r.delivery >= 45 && r.changePercent > 0,
-    (r) => r.delivery * 0.9 + r.changePercent * 6 + r.volumeRatio * 5),
+  s('mom-high-del', 'momentum', 'High Delivery Stocks', 'Accumulation tape — price up, above VWAP, elevated volume.', 'bullish',
+    (r) => accumulation(r),
+    (r) => r.changePercent * 6 + r.volumeRatio * 10 + r.aiScore * 0.3),
   s('mom-rs', 'momentum', 'Strong Relative Strength (RS)', 'Outperforming on change + AI score vs universe.', 'bullish',
-    (r) => r.changePercent >= 1.5 && r.aiScore >= 70 && r.rsi14 >= 55,
+    (r) => r.changePercent >= 1.5 && r.aiScore >= 70 && (!tech(r) || r.rsi14 >= 55),
     (r) => r.changePercent * 10 + r.aiScore * 0.8 + (r.rsi14 - 50)),
 
   // ═══════════════════════════════════════════
@@ -188,35 +198,35 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
     (r) => r.breakout && r.adx >= 18 && r.adx <= 35 && r.volumeRatio > 1.15 && r.changePercent > 0.5,
     (r) => r.adx + r.volumeRatio * 10 + r.changePercent * 8),
   s('bo-cup', 'breakout', 'Cup & Handle Breakout', 'Near 20D high after constructive base + volume.', 'bullish',
-    (r) => nearHigh(r, r.maxHigh20, 0.015) && r.rsi14 > 50 && r.rsi14 < 70 && r.volumeRatio > 1.1 && r.changePercent > 0.4,
+    (r) => tech(r) && nearHigh(r, r.maxHigh20, 0.015) && r.rsi14 > 50 && r.rsi14 < 70 && r.volumeRatio > 1.1 && r.changePercent > 0.4,
     (r) => (r.close / Math.max(r.maxHigh20, 1)) * 80 + r.volumeRatio * 10),
   s('bo-flag', 'breakout', 'Flag & Pole Breakout', 'Strong prior thrust continuing with volume.', 'bullish',
-    (r) => r.changePercent > 1.5 && r.volumeRatio > 1.25 && r.close > r.ema20 && r.rsi14 > 55,
+    (r) => r.changePercent > 1.5 && r.volumeRatio > 1.25 && (!tech(r) || (r.close > r.ema20 && r.rsi14 > 55)),
     (r) => r.changePercent * 12 + r.volumeRatio * 12),
 
   // ═══════════════════════════════════════════
   // 3. Swing
   // ═══════════════════════════════════════════
   s('sw-supertrend', 'swing', 'Supertrend Buy', 'Price above Supertrend — swing long bias.', 'bullish',
-    (r) => r.close > r.supertrend && r.changePercent > 0,
+    (r) => tech(r) && r.close > r.supertrend && r.changePercent > 0,
     (r) => ((r.close - r.supertrend) / r.price) * 400 + r.changePercent * 6),
   s('sw-ema-x', 'swing', 'EMA Crossover (20 EMA > 50 EMA)', 'Bullish EMA stack 20 > 50 with price confirmation.', 'bullish',
-    (r) => r.ema20 > r.ema50 && r.close > r.ema20,
+    (r) => tech(r) && r.ema20 > r.ema50 && r.close > r.ema20,
     (r) => ((r.ema20 - r.ema50) / r.price) * 600 + r.changePercent * 5),
   s('sw-macd', 'swing', 'MACD Bullish Crossover', 'MACD above signal with positive histogram.', 'bullish',
-    (r) => r.macd > r.macdSignal && r.macdHist > 0,
+    (r) => tech(r) && r.macd > r.macdSignal && r.macdHist > 0,
     (r) => r.macdHist * 50 + r.changePercent * 5),
   s('sw-rsi60', 'swing', 'RSI Crossing 60', 'RSI pushing through 60 — momentum swing entry zone.', 'bullish',
-    (r) => r.rsi14 >= 58 && r.rsi14 <= 68 && r.changePercent > 0.3,
+    (r) => tech(r) && r.rsi14 >= 58 && r.rsi14 <= 68 && r.changePercent > 0.3,
     (r) => r.rsi14 + r.changePercent * 8 + r.volumeRatio * 5),
   s('sw-adx25', 'swing', 'ADX Above 25', 'Trending market (ADX > 25) with DI+ leadership.', 'bullish',
-    (r) => r.adx >= 25 && r.adxDiPlus > r.adxDiMinus,
+    (r) => r.adx >= 25 && r.adxDiPlus > r.adxDiMinus && r.changePercent > 0.3,
     (r) => r.adx + (r.adxDiPlus - r.adxDiMinus) + r.changePercent * 4),
   s('sw-vwap', 'swing', 'VWAP Breakout', 'Close reclaiming VWAP with volume.', 'bullish',
     (r) => r.close > r.vwap && r.priceVsVwap > 0.2 && r.volumeRatio > 1.1,
     (r) => r.priceVsVwap * 25 + r.volumeRatio * 10),
   s('sw-bb-sq', 'swing', 'Bollinger Band Squeeze', 'Tight BB (%B mid) then expansion — squeeze release.', 'neutral',
-    (r) => r.bbPercentB > 0.35 && r.bbPercentB < 0.65 && r.dayRangePercent < 1.8 && r.volumeRatio > 1.05,
+    (r) => tech(r) && r.bbPercentB > 0.35 && r.bbPercentB < 0.65 && r.dayRangePercent < 1.8 && r.volumeRatio > 1.05,
     (r) => (1 - Math.abs(r.bbPercentB - 0.5)) * 40 + r.volumeRatio * 8),
 
   // ═══════════════════════════════════════════
@@ -277,23 +287,24 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
   // ═══════════════════════════════════════════
   // 6. Delivery
   // ═══════════════════════════════════════════
-  s('del-high', 'delivery', 'High Delivery %', 'Delivery ≥ 50% — strong delivery participation.', 'bullish',
-    (r) => r.delivery >= 50, (r) => r.delivery + r.changePercent * 3),
-  s('del-spike', 'delivery', 'Delivery Spike', 'High delivery with elevated volume — spike day.', 'bullish',
-    (r) => r.delivery >= 45 && r.volumeRatio >= 1.3,
-    (r) => r.delivery * 0.8 + r.volumeRatio * 15),
-  s('del-smart', 'delivery', 'Smart Money Buying', 'Delivery + price + volume aligned bullish.', 'bullish',
-    (r) => r.delivery >= 40 && r.changePercent > 0.5 && r.volumeRatio > 1.15 && r.close > r.vwap,
-    (r) => r.delivery * 0.7 + r.changePercent * 8 + r.volumeRatio * 10),
-  s('del-inst', 'delivery', 'Institutional Buying', 'Large-cap delivery accumulation proxy.', 'bullish',
-    (r) => r.marketCapName === 'Large Cap' && r.delivery >= 42 && r.changePercent > 0.3,
-    (r) => r.delivery + r.changePercent * 6 + r.aiScore * 0.3),
-  s('del-bulk', 'delivery', 'Bulk Deal Stocks', 'Unusual volume + delivery (bulk-deal style tape).', 'neutral',
-    (r) => r.volumeRatio >= 2.2 && r.delivery >= 35,
-    (r) => r.volumeRatio * 20 + r.delivery * 0.5),
+  s('del-high', 'delivery', 'High Delivery %', 'Accumulation tape proxy — steady buying above VWAP.', 'bullish',
+    (r) => accumulation(r) && r.changePercent >= 0.4,
+    (r) => r.changePercent * 8 + r.volumeRatio * 12),
+  s('del-spike', 'delivery', 'Delivery Spike', 'Elevated volume with constructive price — spike-day proxy.', 'bullish',
+    (r) => r.volumeRatio >= 1.4 && r.changePercent > 0.3 && r.close >= r.vwap,
+    (r) => r.volumeRatio * 15 + r.changePercent * 8),
+  s('del-smart', 'delivery', 'Smart Money Buying', 'Price + volume + VWAP aligned bullish.', 'bullish',
+    (r) => r.changePercent > 0.5 && r.volumeRatio > 1.15 && r.close > r.vwap,
+    (r) => r.changePercent * 8 + r.volumeRatio * 10 + r.aiScore * 0.3),
+  s('del-inst', 'delivery', 'Institutional Buying', 'Large-cap accumulation with volume confirmation.', 'bullish',
+    (r) => (r.marketCapName === 'Large Cap' || r.inNifty50) && r.changePercent > 0.3 && r.volumeRatio >= 1.2,
+    (r) => r.changePercent * 6 + r.volumeRatio * 10 + r.aiScore * 0.3),
+  s('del-bulk', 'delivery', 'Bulk Deal Stocks', 'Unusual volume with contained range — bulk-deal style tape.', 'neutral',
+    (r) => r.volumeRatio >= 2 && Math.abs(r.changePercent) < 2.5,
+    (r) => r.volumeRatio * 20 + Math.abs(r.changePercent) * 2),
   s('del-block', 'delivery', 'Block Deal Stocks', 'Very high RVOL with stable price — block-deal proxy.', 'neutral',
-    (r) => r.volumeRatio >= 2.5 && Math.abs(r.changePercent) < 1.5 && r.delivery >= 30,
-    (r) => r.volumeRatio * 22 + r.delivery * 0.4),
+    (r) => r.volumeRatio >= 2.2 && Math.abs(r.changePercent) < 1.5,
+    (r) => r.volumeRatio * 22),
 
   // ═══════════════════════════════════════════
   // 7. Volume
@@ -314,36 +325,36 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
   // ═══════════════════════════════════════════
   // 8. Fundamental (proxies from PE / PB / cap / tape)
   // ═══════════════════════════════════════════
-  s('fun-roe', 'fundamental', 'ROE > 20%', 'Quality proxy: strong PE efficiency + large/mid quality names.', 'bullish',
-    (r) => r.pe > 8 && r.pe < 35 && r.priceToBook > 1 && r.priceToBook < 8 && r.marketCap > 50_000,
-    (r) => (30 - Math.abs(r.pe - 18)) + r.aiScore * 0.3),
-  s('fun-roce', 'fundamental', 'ROCE > 20%', 'Capital efficiency proxy via PE + book quality band.', 'bullish',
-    (r) => r.pe > 10 && r.pe < 28 && r.priceToBook > 1.5 && r.priceToBook < 6,
-    (r) => (25 - Math.abs(r.pe - 16)) + r.changePercent * 2),
-  s('fun-debtfree', 'fundamental', 'Debt Free Companies', 'Conservative balance-sheet proxy — stable large caps.', 'bullish',
-    (r) => r.marketCapName === 'Large Cap' && r.pe > 0 && r.pe < 40 && r.priceToBook < 5,
-    (r) => r.aiScore * 0.5 + (40 - r.pe) * 0.4),
-  s('fun-peg', 'fundamental', 'PEG < 1', 'Growth-at-reasonable-price proxy (PE vs momentum).', 'bullish',
-    (r) => r.pe > 0 && r.pe < 22 && r.changePercent > 0.5 && r.aiScore > 55,
-    (r) => (22 - r.pe) + r.changePercent * 5),
-  s('fun-pe-ind', 'fundamental', 'PE Below Industry PE', 'Relatively cheaper PE with constructive tape.', 'bullish',
-    (r) => r.pe > 0 && r.pe < 18 && r.changePercent > -1,
-    (r) => (20 - r.pe) * 2 + r.aiScore * 0.3),
-  s('fun-sales', 'fundamental', 'Sales Growth > 20%', 'Sales/scale proxy via rising market-cap names with strength.', 'bullish',
-    (r) => r.ttmSales > 0 && r.changePercent > 0.8 && r.volumeRatio > 1.1 && r.aiScore > 60,
+  s('fun-roe', 'fundamental', 'ROE > 20%', 'Quality tape proxy — large/mid names with constructive strength.', 'bullish',
+    (r) => (r.marketCapName === 'Large Cap' || r.marketCapName === 'Mid Cap' || r.inNifty50) && r.changePercent > 0.2 && r.aiScore > 55,
+    (r) => r.aiScore * 0.5 + r.changePercent * 4),
+  s('fun-roce', 'fundamental', 'ROCE > 20%', 'Capital efficiency proxy — stable names holding above VWAP.', 'bullish',
+    (r) => r.close > r.vwap && r.changePercent > 0 && r.volumeRatio >= 1.05 && (r.inNifty50 || r.marketCapName !== 'Small Cap'),
+    (r) => r.aiScore * 0.4 + r.changePercent * 5),
+  s('fun-debtfree', 'fundamental', 'Debt Free Companies', 'Conservative large-cap stability proxy.', 'bullish',
+    (r) => (r.marketCapName === 'Large Cap' || r.inNifty50) && Math.abs(r.changePercent) < 2.5 && r.volumeRatio < 2.5,
+    (r) => r.aiScore * 0.5 + (3 - Math.abs(r.changePercent)) * 4),
+  s('fun-peg', 'fundamental', 'PEG < 1', 'Growth-at-reasonable-price proxy via momentum quality.', 'bullish',
+    (r) => r.changePercent > 0.5 && r.aiScore > 55 && r.volumeRatio >= 1.1,
+    (r) => r.aiScore * 0.4 + r.changePercent * 5),
+  s('fun-pe-ind', 'fundamental', 'PE Below Industry PE', 'Relative value proxy — constructive but not extended names.', 'bullish',
+    (r) => r.changePercent > -1 && r.changePercent < 3 && r.aiScore >= 50 && r.close <= r.vwap * 1.02,
+    (r) => r.aiScore * 0.4 + (2 - Math.abs(r.changePercent)) * 3),
+  s('fun-sales', 'fundamental', 'Sales Growth > 20%', 'Scale + strength proxy — rising names with volume.', 'bullish',
+    (r) => r.changePercent > 0.8 && r.volumeRatio > 1.1 && r.aiScore > 60,
     (r) => r.changePercent * 8 + r.aiScore * 0.5),
-  s('fun-profit', 'fundamental', 'Profit Growth > 20%', 'Earnings momentum proxy — PE compression + price strength.', 'bullish',
-    (r) => r.pe > 5 && r.pe < 30 && r.changePercent > 1 && r.rsi14 > 52,
+  s('fun-profit', 'fundamental', 'Profit Growth > 20%', 'Earnings momentum proxy — price strength with RSI support.', 'bullish',
+    (r) => r.changePercent > 1 && (!tech(r) || r.rsi14 > 52) && r.volumeRatio >= 1.1,
     (r) => r.changePercent * 8 + (r.rsi14 - 50)),
-  s('fun-promoter', 'fundamental', 'Promoter Holding Increase', 'Delivery + low float churn proxy for promoter/insider interest.', 'bullish',
-    (r) => r.delivery >= 48 && r.volumeRatio > 1.1 && r.changePercent >= 0,
-    (r) => r.delivery + r.volumeRatio * 8),
-  s('fun-fii', 'fundamental', 'FII Buying', 'Large-cap strength + delivery — FII-style flow proxy.', 'bullish',
-    (r) => (r.inNifty50 || r.marketCapName === 'Large Cap') && r.changePercent > 0.6 && r.delivery > 35,
-    (r) => r.changePercent * 10 + r.delivery * 0.5),
-  s('fun-dii', 'fundamental', 'DII Buying', 'Domestic institutional proxy — banks/PSU/large delivery buys.', 'bullish',
-    (r) => (sectorHas(r, 'bank') || sectorHas(r, 'psu') || r.marketCapName === 'Large Cap') && r.delivery > 40 && r.changePercent > 0.3,
-    (r) => r.delivery * 0.8 + r.changePercent * 8),
+  s('fun-promoter', 'fundamental', 'Promoter Holding Increase', 'Accumulation proxy for insider-style interest.', 'bullish',
+    (r) => accumulation(r) && r.volumeRatio > 1.1 && r.changePercent >= 0,
+    (r) => r.volumeRatio * 10 + r.changePercent * 6 + r.aiScore * 0.3),
+  s('fun-fii', 'fundamental', 'FII Buying', 'Large-cap strength with volume — FII-style flow proxy.', 'bullish',
+    (r) => (r.inNifty50 || r.marketCapName === 'Large Cap') && r.changePercent > 0.6 && r.volumeRatio >= 1.15,
+    (r) => r.changePercent * 10 + r.volumeRatio * 8),
+  s('fun-dii', 'fundamental', 'DII Buying', 'Domestic institutional proxy — banks/PSU/large accumulation.', 'bullish',
+    (r) => (sectorHas(r, 'bank') || sectorHas(r, 'psu') || r.marketCapName === 'Large Cap') && accumulation(r),
+    (r) => r.volumeRatio * 8 + r.changePercent * 8),
 
   // ═══════════════════════════════════════════
   // 9. F&O
@@ -358,8 +369,8 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
   s('fno-ban', 'fno', 'Ban List', 'Extreme OI + volume stress — ban-watch proxy (not exchange ban feed).', 'bearish',
     (r) => r.isFno && r.oiChange >= 8 && r.volumeRatio >= 1.8,
     (r) => r.oiChange * 6 + r.volumeRatio * 10),
-  s('fno-prem', 'fno', 'High Futures Premium', 'Price stretched above VWAP/EMA — premium-style rich valuation tape.', 'bullish',
-    (r) => r.isFno && r.priceVsVwap > 0.6 && r.close > r.ema20,
+  s('fno-prem', 'fno', 'High Futures Premium', 'Price stretched above VWAP — premium-style rich valuation tape.', 'bullish',
+    (r) => r.isFno && r.priceVsVwap > 0.6 && (!tech(r) || r.close > r.ema20),
     (r) => r.priceVsVwap * 30 + r.changePercent * 5),
   s('fno-fut-long', 'fno', 'Futures Long Build-up', 'F&O long buildup: OI↑ price↑ volume↑.', 'bullish',
     (r) => r.isFno && r.oiChange >= 3 && r.changePercent > 0.5 && r.volumeRatio > 1.1,
@@ -403,7 +414,7 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
     (r) => r.changePercent <= -1.2 && r.volumeRatio >= 1.05,
     (r) => Math.abs(r.changePercent) * 12 + r.volumeRatio * 6),
   s('sec-rot', 'sector', 'Sector Rotation', 'Money rotating into relative strength vs broad tape.', 'bullish',
-    (r) => r.changePercent > 1 && r.rsi14 > 55 && r.close > r.ema20 && r.volumeRatio > 1.1,
+    (r) => r.changePercent > 1 && r.volumeRatio > 1.1 && (!tech(r) || (r.rsi14 > 55 && r.close > r.ema20)),
     (r) => r.changePercent * 8 + (r.rsi14 - 50) + r.volumeRatio * 6),
   s('sec-bo', 'sector', 'Sector Breakout', 'Sector names breaking out with volume.', 'bullish',
     (r) => r.breakout && r.changePercent > 0.7,
@@ -416,25 +427,25 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
   // 12. Positional
   // ═══════════════════════════════════════════
   s('pos-golden', 'positional', 'Golden Cross (50 EMA > 200 EMA)', 'EMA50 above SMA200 — classic golden cross structure.', 'bullish',
-    (r) => r.ema50 > r.sma200 && r.close > r.ema50,
+    (r) => tech(r) && r.ema50 > r.sma200 && r.close > r.ema50,
     (r) => ((r.ema50 - r.sma200) / r.price) * 500 + r.changePercent * 4),
   s('pos-death', 'positional', 'Death Cross', 'EMA50 below SMA200 — bearish long-term structure.', 'bearish',
-    (r) => r.ema50 < r.sma200 && r.close < r.ema50,
+    (r) => tech(r) && r.ema50 < r.sma200 && r.close < r.ema50,
     (r) => ((r.sma200 - r.ema50) / r.price) * 500 + Math.abs(Math.min(r.changePercent, 0)) * 4),
   s('pos-weekly', 'positional', 'Weekly Breakout', 'Near 50D high with trend — weekly breakout proxy.', 'bullish',
-    (r) => nearHigh(r, r.maxHigh50, 0.02) && r.close > r.ema50 && r.volumeRatio > 1.1,
+    (r) => tech(r) && nearHigh(r, r.maxHigh50, 0.02) && r.close > r.ema50 && r.volumeRatio > 1.1,
     (r) => (r.close / Math.max(r.maxHigh50, 1)) * 90 + r.volumeRatio * 8),
   s('pos-monthly', 'positional', 'Monthly Breakout', 'Major high break with strong AI score.', 'bullish',
-    (r) => nearHigh(r, r.rollingHigh, 0.015) && r.aiScore > 65 && r.volumeRatio > 1.15,
+    (r) => tech(r) && nearHigh(r, r.rollingHigh, 0.015) && r.aiScore > 65 && r.volumeRatio > 1.15,
     (r) => r.aiScore + r.volumeRatio * 10),
   s('pos-rev', 'positional', 'Trend Reversal', 'RSI reclaim from oversold with MACD turning up.', 'bullish',
-    (r) => r.rsi14 > 40 && r.rsi14 < 55 && r.macdHist > 0 && r.changePercent > 0.4,
+    (r) => tech(r) && r.rsi14 > 40 && r.rsi14 < 55 && r.macdHist > 0 && r.changePercent > 0.4,
     (r) => r.macdHist * 40 + r.changePercent * 8),
   s('pos-hhhl', 'positional', 'Higher High Higher Low', 'Uptrend structure — price > EMAs and rising lows proxy.', 'bullish',
-    (r) => r.close > r.ema20 && r.ema20 > r.ema50 && r.minLow20 > r.minLow50 * 0.98 && r.changePercent > 0,
+    (r) => tech(r) && r.close > r.ema20 && r.ema20 > r.ema50 && r.minLow20 > r.minLow50 * 0.98 && r.changePercent > 0,
     (r) => ((r.ema20 - r.ema50) / r.price) * 400 + r.changePercent * 5),
   s('pos-lhll', 'positional', 'Lower High Lower Low', 'Downtrend structure — price below EMAs.', 'bearish',
-    (r) => r.close < r.ema20 && r.ema20 < r.ema50 && r.changePercent < 0,
+    (r) => tech(r) && r.close < r.ema20 && r.ema20 < r.ema50 && r.changePercent < 0,
     (r) => ((r.ema50 - r.ema20) / r.price) * 400 + Math.abs(r.changePercent) * 5),
 
   // ═══════════════════════════════════════════
@@ -444,20 +455,20 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
     (r) => r.volumeRatio >= 1.8 && r.dayRangePercent >= 2,
     (r) => r.volumeRatio * 15 + r.dayRangePercent * 8),
   s('news-div', 'news', 'Dividend Stocks', 'Stable large-cap quality — dividend-style names proxy.', 'bullish',
-    (r) => r.marketCapName === 'Large Cap' && r.pe > 8 && r.pe < 25 && Math.abs(r.changePercent) < 1.5,
-    (r) => (25 - r.pe) + r.delivery * 0.3),
+    (r) => (r.marketCapName === 'Large Cap' || r.inNifty50) && Math.abs(r.changePercent) < 1.5 && r.volumeRatio < 2,
+    (r) => r.aiScore * 0.4 + (2 - Math.abs(r.changePercent)) * 5),
   s('news-bonus', 'news', 'Bonus Announcement', 'Sudden volume spike with contained move — corporate action proxy.', 'neutral',
-    (r) => r.volumeRatio >= 2 && Math.abs(r.changePercent) < 2 && r.delivery > 30,
+    (r) => r.volumeRatio >= 2 && Math.abs(r.changePercent) < 2,
     (r) => r.volumeRatio * 18),
   s('news-split', 'news', 'Stock Split', 'Liquidity event proxy — unusual volume, moderate price.', 'neutral',
     (r) => r.volumeRatio >= 2.2 && Math.abs(r.changePercent) < 3,
     (r) => r.volumeRatio * 16),
   s('news-rights', 'news', 'Rights Issue', 'Dilution-event style tape — volume up, price soft.', 'bearish',
-    (r) => r.volumeRatio >= 1.6 && r.changePercent < -0.5 && r.delivery > 25,
+    (r) => r.volumeRatio >= 1.6 && r.changePercent < -0.5,
     (r) => r.volumeRatio * 12 + Math.abs(r.changePercent) * 6),
-  s('news-insider', 'news', 'Insider Buying', 'High delivery + price up — insider/smart-money proxy.', 'bullish',
-    (r) => r.delivery >= 50 && r.changePercent > 0.3 && r.volumeRatio > 1.1,
-    (r) => r.delivery + r.changePercent * 8),
+  s('news-insider', 'news', 'Insider Buying', 'Accumulation + price up — insider/smart-money proxy.', 'bullish',
+    (r) => accumulation(r) && r.changePercent > 0.3 && r.volumeRatio > 1.1,
+    (r) => r.volumeRatio * 10 + r.changePercent * 8),
   s('news-bulk', 'news', 'Bulk Deals', 'Bulk-deal style unusual volume prints.', 'neutral',
     (r) => r.volumeRatio >= 2.5, (r) => r.volumeRatio * 20 + Math.abs(r.changePercent) * 4),
 
@@ -493,14 +504,14 @@ export const READY_MADE_SCREENERS: ReadyMadeScreenerDef[] = [
     (r) => r.dayRangePercent >= 2.8 && bodyPct(r) > 1.2,
     (r) => r.dayRangePercent * 10 + bodyPct(r) * 5),
   s('smc-bos', 'smart-money', 'Break of Structure (BOS)', 'Break of recent high/low structure with volume.', 'bullish',
-    (r) => nearHigh(r, r.maxHigh20, 0.01) && r.volumeRatio > 1.2 && r.changePercent > 0.5,
+    (r) => tech(r) && nearHigh(r, r.maxHigh20, 0.01) && r.volumeRatio > 1.2 && r.changePercent > 0.5,
     (r) => r.volumeRatio * 12 + r.changePercent * 8),
   s('smc-choch', 'smart-money', 'Change of Character (CHOCH)', 'Trend shift — RSI/MACD flip against prior move.', 'neutral',
-    (r) => (r.rsi14 > 55 && r.macdHist > 0 && r.minLow20 < r.sma20 * 0.97) ||
-      (r.rsi14 < 45 && r.macdHist < 0 && r.maxHigh20 > r.sma20 * 1.03),
+    (r) => tech(r) && ((r.rsi14 > 55 && r.macdHist > 0 && r.minLow20 < r.sma20 * 0.97) ||
+      (r.rsi14 < 45 && r.macdHist < 0 && r.maxHigh20 > r.sma20 * 1.03)),
     (r) => Math.abs(r.macdHist) * 40 + Math.abs(r.changePercent) * 6),
   s('smc-mitigation', 'smart-money', 'Mitigation Block', 'Return into prior impulse zone — hold above VWAP/EMA.', 'bullish',
-    (r) => r.close > r.vwap && r.close > r.ema20 && r.rsi14 > 48 && r.rsi14 < 62 && r.volumeRatio > 1.05,
+    (r) => r.close > r.vwap && (!tech(r) || (r.close > r.ema20 && r.rsi14 > 48 && r.rsi14 < 62)) && r.volumeRatio > 1.05,
     (r) => r.priceVsVwap * 15 + r.volumeRatio * 8),
   s('smc-prem-disc', 'smart-money', 'Premium & Discount Zone', 'Discount = below VWAP/mid; Premium = extended above.', 'neutral',
     (r) => r.priceVsVwap <= -0.4 || r.priceVsVwap >= 0.7,
@@ -513,6 +524,17 @@ export function getReadyMadeCategoryOrder(): ReadyMadeCategoryId[] {
 
 export function getReadyMadeCategoryLabel(id: ReadyMadeCategoryId): string {
   return CATEGORY_LABELS[id];
+}
+
+/** When OHLC avg-volume is missing, rank volume vs median of live universe */
+function withSessionVolumeRatio(rows: ScreenerMarketRow[]): ScreenerMarketRow[] {
+  const vols = rows.map((r) => r.volume).filter((v) => v > 0).sort((a, b) => a - b);
+  const median = vols[Math.floor(vols.length / 2)] || 1;
+  return rows.map((r) => {
+    if (r.hasRealTechnicals && r.volumeRatio > 0) return r;
+    const ratio = Number((r.volume / Math.max(median, 1)).toFixed(2));
+    return { ...r, volumeRatio: Math.max(ratio, 0.01) };
+  });
 }
 
 export function runReadyMadeScreener(rows: ScreenerMarketRow[], def: ReadyMadeScreenerDef, limit = 5): ReadyMadeHit[] {
@@ -548,10 +570,11 @@ export function runReadyMadeScreener(rows: ScreenerMarketRow[], def: ReadyMadeSc
     .slice(0, limit);
 }
 
-export function runAllReadyMadeScreeners(rows: ScreenerMarketRow[], limit = 5): ReadyMadeScreenerResult[] {
+export function runAllReadyMadeScreeners(rows: ScreenerMarketRow[], limit = 8): ReadyMadeScreenerResult[] {
+  const enriched = withSessionVolumeRatio(rows);
   return READY_MADE_SCREENERS.map((def) => ({
     def,
-    stocks: runReadyMadeScreener(rows, def, limit),
+    stocks: runReadyMadeScreener(enriched, def, limit),
   }));
 }
 

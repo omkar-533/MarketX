@@ -52,9 +52,21 @@ body {
   box-sizing: border-box;
 }
 
+/* Scanners: normal document scroll (do NOT trap overflow) */
+.page-content--scanners {
+  max-width: none;
+  padding: 0.75rem 1rem 2.5rem;
+  overflow: visible;
+  height: auto;
+  max-height: none;
+}
+
 @media (min-width: 1024px) {
   .page-content--screener {
     padding: 0.75rem 1rem 0.5rem;
+  }
+  .page-content--scanners {
+    padding: 1rem 1.25rem 3rem;
   }
 }
 

@@ -109,6 +109,8 @@ export interface ScreenerMarketRow {
   inNifty500: boolean;
   inBankNifty: boolean;
   isFno: boolean;
+  /** True when EMA/SMA/RSI come from real OHLC bars (not quote fallbacks) */
+  hasRealTechnicals: boolean;
 }
 
 export const QUICK_SCAN_TYPES = [
@@ -175,14 +177,16 @@ export function buildScreenerRow(
   const haHigh = Math.max(high, haOpen, haClose);
   const haLow = Math.min(low, haOpen, haClose);
 
-  const sma20 = technicals?.sma20 ?? Number((close * 0.99).toFixed(2));
-  const sma50 = technicals?.sma50 ?? Number((close * 0.97).toFixed(2));
+  const hasRealTechnicals = Boolean(technicals);
+  // Without OHLC: keep EMAs = close so "price > EMA" does not falsely match everyone
+  const sma20 = technicals?.sma20 ?? close;
+  const sma50 = technicals?.sma50 ?? close;
   const sma5 = technicals?.sma5 ?? close;
   const sma10 = technicals?.sma10 ?? close;
-  const sma200 = technicals?.sma200 ?? Number((close * 0.92).toFixed(2));
+  const sma200 = technicals?.sma200 ?? close;
   const ema9 = technicals?.ema9 ?? close;
-  const ema20 = technicals?.ema20 ?? sma20;
-  const ema50 = technicals?.ema50 ?? sma50;
+  const ema20 = technicals?.ema20 ?? close;
+  const ema50 = technicals?.ema50 ?? close;
   const wma20 = Number((sma20 * 1.002).toFixed(2));
   const tema20 = Number((ema20 * 1.001).toFixed(2));
   const hma20 = Number((ema20 * 0.999).toFixed(2));
@@ -203,8 +207,8 @@ export function buildScreenerRow(
   const williamsR = Number((-20 - (100 - rsi14) * 0.6).toFixed(1));
   const atr = Number((close * 0.018 * (1 + (idx % 5) * 0.02)).toFixed(2));
   const trueRange = Number((atr * 1.05).toFixed(2));
-  const upperBB = technicals?.upperBB ?? Number((sma20 * 1.04).toFixed(2));
-  const lowerBB = technicals?.lowerBB ?? Number((sma20 * 0.96).toFixed(2));
+  const upperBB = technicals?.upperBB ?? Number((close * 1.02).toFixed(2));
+  const lowerBB = technicals?.lowerBB ?? Number((close * 0.98).toFixed(2));
   const bbPercentB =
     technicals?.bbPercentB ??
     Number((((close - lowerBB) / Math.max(upperBB - lowerBB, 0.01)) * 100).toFixed(1));
@@ -322,19 +326,20 @@ export function buildScreenerRow(
     inNifty500: seg.inNifty500,
     inBankNifty: seg.inBankNifty,
     isFno: seg.isFno,
+    hasRealTechnicals,
   };
 
-  draft.maxHigh20 = technicals?.maxHigh20 ?? getRollingHigh(draft, 20);
-  draft.minLow20 = technicals?.minLow20 ?? getRollingLow(draft, 20);
-  draft.maxHigh50 = technicals?.maxHigh50 ?? getRollingHigh(draft, 50);
-  draft.minLow50 = technicals?.minLow50 ?? getRollingLow(draft, 50);
+  draft.maxHigh20 = technicals?.maxHigh20 ?? (hasRealTechnicals ? getRollingHigh(draft, 20) : high);
+  draft.minLow20 = technicals?.minLow20 ?? (hasRealTechnicals ? getRollingLow(draft, 20) : low);
+  draft.maxHigh50 = technicals?.maxHigh50 ?? (hasRealTechnicals ? getRollingHigh(draft, 50) : high);
+  draft.minLow50 = technicals?.minLow50 ?? (hasRealTechnicals ? getRollingLow(draft, 50) : low);
   draft.rollingHigh = draft.maxHigh20;
   draft.rollingLow = draft.minLow20;
   draft.aiScore = Math.max(
     12,
     Math.min(98, Math.round(48 + stock.changePercent * 6 + (rsi14 - 50) * 0.35 + volumeRatio * 4)),
   );
-  draft.breakout = close > vwap && close > ema20 && volumeRatio > 1.12;
+  draft.breakout = close > vwap && volumeRatio > 1.12 && stock.changePercent > 0.5 && (hasRealTechnicals ? close > ema20 : true);
   draft.signal = draft.aiScore > 72 || draft.breakout ? 'BUY' : draft.aiScore < 32 ? 'SELL' : 'NEUTRAL';
 
   return draft;

@@ -212,9 +212,11 @@ function AppWorkspace() {
           <div
             className={
               auth.isLoggedIn
-                ? activeTab === 'scanner' || activeTab === 'master-tx'
+                ? activeTab === 'master-tx'
                   ? 'page-content page-content--screener'
-                  : 'page-content'
+                  : activeTab === 'scanner'
+                    ? 'page-content page-content--scanners'
+                    : 'page-content'
                 : ''
             }
           >
