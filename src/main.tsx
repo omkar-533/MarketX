@@ -12,14 +12,18 @@ try {
   console.warn("[main] API warmup skipped:", err);
 }
 
+/**
+ * Service workers were causing full-page reload loops
+ * (unregister → register → skipWaiting → clients.claim on every visit).
+ * Unregister once and do NOT re-register.
+ */
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    // Drop every old SW + cache so label/layout updates always show
-    void navigator.serviceWorker.getRegistrations().then((regs) =>
-      Promise.all(regs.map((r) => r.unregister())),
-    ).then(() =>
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
-    ).then(() => navigator.serviceWorker.register("/sw.js?v=6")).catch(() => undefined);
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .then(() => caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))))
+      .catch(() => undefined);
   });
 }
 
@@ -40,7 +44,7 @@ if (!rootEl) {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    rootEl.innerHTML = `<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;background:#0a0e17;color:#e2e8f0;font-family:system-ui"><p style="font-weight:600">Failed to start app</p><p style="color:#94a3b8;font-size:14px;max-width:420px;text-align:center">${msg}</p><button type="button" onclick="location.reload()" style="padding:8px 16px;border-radius:8px;border:1px solid #d4af3766;background:#d4af3722;color:#d4af37;cursor:pointer">Reload</button></div>`;
-    console.error('[main] bootstrap failed:', err);
+    rootEl.innerHTML = `<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;background:#0a0e17;color:#e2e8f0;font-family:system-ui"><p style="font-weight:600">Sorry — app could not start</p><p style="color:#94a3b8;font-size:14px;max-width:420px;text-align:center">Please refresh once. If it keeps happening, clear site data for this site.</p><button type="button" onclick="location.reload()" style="padding:8px 16px;border-radius:8px;border:1px solid #d4af3766;background:#d4af3722;color:#d4af37;cursor:pointer">Refresh</button></div>`;
+    console.error("[main] bootstrap failed:", err, msg);
   }
 }
