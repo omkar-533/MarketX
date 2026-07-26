@@ -11,6 +11,7 @@ import { ArrowRight, Quote, Star, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import AuthPricing from './AuthPricing';
+import AuthForgotForm, { type AuthForgotFormProps as ForgotFormProps } from './AuthForgotForm';
 import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './AuthSignupForm';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
@@ -23,6 +24,9 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   onSignupStart: SignupFormProps['onSignupStart'];
   onSignupVerify: SignupFormProps['onSignupVerify'];
   onSignupResend: SignupFormProps['onSignupResend'];
+  onResetStart: ForgotFormProps['onResetStart'];
+  onResetResend: ForgotFormProps['onResetResend'];
+  onResetComplete: ForgotFormProps['onResetComplete'];
 };
 
 const STORY_BANDS = [
@@ -244,10 +248,18 @@ function StoryBand({
  * LuxAlgo-style premium landing — cinematic hero, story bands, reviews.
  * Login ONLY via Sign In modal (invite-only).
  */
-type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId };
+type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId } | { kind: 'forgot' };
 
 export default function AuthPage(props: AuthPageProps) {
-  const { onSignupStart, onSignupVerify, onSignupResend, ...formProps } = props;
+  const {
+    onSignupStart,
+    onSignupVerify,
+    onSignupResend,
+    onResetStart,
+    onResetResend,
+    onResetComplete,
+    ...formProps
+  } = props;
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -284,7 +296,25 @@ export default function AuthPage(props: AuthPageProps) {
 
   const openSignIn = () => setAuthView({ kind: 'signin' });
   const openSignUp = (plan: PlanId = 'trial') => setAuthView({ kind: 'signup', plan });
-  const closeAuth = () => setAuthView(null);
+  const openForgot = () => setAuthView({ kind: 'forgot' });
+  const closeAuth = () => {
+    setAuthView(null);
+    if (/^#(forgot|reset-password|signin)$/i.test(window.location.hash)) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  };
+
+  /** So a "reset your password" link can drop someone straight into the flow. */
+  useEffect(() => {
+    const openFromHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#forgot' || hash === '#reset-password') setAuthView({ kind: 'forgot' });
+      else if (hash === '#signin') setAuthView({ kind: 'signin' });
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
+  }, []);
 
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
@@ -596,7 +626,11 @@ export default function AuthPage(props: AuthPageProps) {
                 <X className="w-5 h-5" />
               </button>
               <div id="auth-signin-title" className="sr-only">
-                {authView.kind === 'signup' ? 'Create your account' : 'Sign In'}
+                {authView.kind === 'signup'
+                  ? 'Create your account'
+                  : authView.kind === 'forgot'
+                    ? 'Reset your password'
+                    : 'Sign In'}
               </div>
               {authView.kind === 'signup' ? (
                 <AuthSignupForm
@@ -606,8 +640,15 @@ export default function AuthPage(props: AuthPageProps) {
                   onSwitchToSignIn={openSignIn}
                   selectedPlan={authView.plan}
                 />
+              ) : authView.kind === 'forgot' ? (
+                <AuthForgotForm
+                  onResetStart={onResetStart}
+                  onResetResend={onResetResend}
+                  onResetComplete={onResetComplete}
+                  onSwitchToSignIn={openSignIn}
+                />
               ) : (
-                <AuthForm {...formProps} />
+                <AuthForm {...formProps} onForgotClick={openForgot} />
               )}
             </motion.div>
           </motion.div>

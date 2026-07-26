@@ -24,13 +24,16 @@ export interface AuthFormProps {
   onForgotPassword: (email: string) => Promise<void>;
   onSwitchMode: (mode: 'login' | 'signup' | 'forgot' | 'otp') => void;
   headerExtra?: ReactNode;
+  /** Opens the reset flow. Omitted where there is nowhere to switch to. */
+  onForgotClick?: () => void;
 }
 
-/** Invite-only login — admin creates email/password; no public signup */
+/** Email or mobile + the password the member chose at sign-up. */
 export default function AuthForm({
   onLogin,
   onSwitchMode: _onSwitchMode,
   headerExtra,
+  onForgotClick,
 }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,7 +114,7 @@ export default function AuthForm({
         <AuthField
           label="Password"
           type={showPassword ? 'text' : 'password'}
-          placeholder="Password from admin"
+          placeholder="Your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -134,6 +137,11 @@ export default function AuthForm({
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             <span>Keep me signed in</span>
           </label>
+          {onForgotClick ? (
+            <button type="button" className="auth-inline-link text-[11px]" onClick={onForgotClick}>
+              Forgot password?
+            </button>
+          ) : null}
         </div>
 
         {errorMessage ? (

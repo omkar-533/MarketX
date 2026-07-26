@@ -3,15 +3,19 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { getSupabase } from '@/lib/supabase';
 import {
   clearAppSession,
+  completePasswordReset,
   fetchAccessState,
   loadAppSession,
   loginWithInvite,
+  resendPasswordResetOtp,
   resendSignupOtp,
+  startPasswordReset,
   startSignup,
   verifySignupOtp,
   type AccessSnapshot,
   type AccessStatus,
   type OtpChallenge,
+  type ResetChallenge,
 } from '../services/appInviteAuth';
 
 export interface User {
@@ -325,8 +329,33 @@ export function useAuth() {
     throw new Error('Phone OTP is disabled. Use the email & password from admin.');
   }, []);
 
-  const forgotPassword = useCallback(async () => {
-    throw new Error('Password reset is disabled. Contact admin for a new password.');
+  /** Step 1 of the reset: an OTP goes to the mobile number saved on the account. */
+  const resetStart = useCallback(
+    async (identifier: string): Promise<ResetChallenge> =>
+      startPasswordReset(identifier.trim()),
+    [],
+  );
+
+  const resetResend = useCallback(
+    async (identifier: string): Promise<ResetChallenge> =>
+      resendPasswordResetOtp(identifier.trim()),
+    [],
+  );
+
+  /** Step 2: the new password is saved and the session starts right away. */
+  const resetComplete = useCallback(
+    async (identifier: string, code: string, password: string) => {
+      const session = await completePasswordReset(identifier.trim(), code, password);
+      setUser(session.user);
+      setAccess(session.snapshot);
+      setIsLoggedIn(true);
+      setShowAuth(false);
+    },
+    [],
+  );
+
+  const forgotPassword = useCallback(async (identifier: string) => {
+    await startPasswordReset(identifier.trim());
   }, []);
 
   /** An expiry can land mid-session, so recheck on a timer and when the tab wakes. */
@@ -366,6 +395,9 @@ export function useAuth() {
     googleLogin,
     otpLogin,
     forgotPassword,
+    resetStart,
+    resetResend,
+    resetComplete,
     adminPassword,
     adminEmail: user?.role === 'admin' ? user.email : null,
     access: access?.access ?? null,

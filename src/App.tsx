@@ -236,6 +236,9 @@ function AppWorkspace() {
                 onSignupStart={auth.signupStart}
                 onSignupVerify={auth.signupVerify}
                 onSignupResend={auth.signupResend}
+                onResetStart={auth.resetStart}
+                onResetResend={auth.resetResend}
+                onResetComplete={auth.resetComplete}
                 onGoogleLogin={auth.googleLogin}
                 onOtpLogin={auth.otpLogin}
                 onForgotPassword={auth.forgotPassword}

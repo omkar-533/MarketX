@@ -176,6 +176,61 @@ export async function verifySignupOtp(
   return { ...session, snapshot: snapshotOf(data) };
 }
 
+/* ────────────────────────── forgot password ────────────────────────── */
+
+export type ResetChallenge = {
+  /** Masked on the server — the full number is never sent back to the browser. */
+  phoneMasked: string;
+  expiresInSec: number;
+  devMode: boolean;
+  devCode: string | null;
+};
+
+function toResetChallenge(data: Record<string, unknown>): ResetChallenge {
+  return {
+    phoneMasked: String(data.phoneMasked || ''),
+    expiresInSec: Number(data.expiresInSec) || 600,
+    devMode: data.devMode === true,
+    devCode: data.devCode ? String(data.devCode) : null,
+  };
+}
+
+/** Step 1: texts a reset code to the mobile number on file for this login. */
+export async function startPasswordReset(identifier: string): Promise<ResetChallenge> {
+  const res = await apiFetch('/api/app-auth/password/forgot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  });
+  return toResetChallenge(await readJson(res, 'Could not send the reset code'));
+}
+
+export async function resendPasswordResetOtp(identifier: string): Promise<ResetChallenge> {
+  const res = await apiFetch('/api/app-auth/password/resend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  });
+  return toResetChallenge(await readJson(res, 'Could not resend the reset code'));
+}
+
+/** Step 2: the code sets the new password and signs the user straight in. */
+export async function completePasswordReset(
+  identifier: string,
+  code: string,
+  password: string,
+): Promise<AppSession & { snapshot: AccessSnapshot | null }> {
+  const res = await apiFetch('/api/app-auth/password/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, code, password }),
+  });
+  const data = await readJson(res, 'Could not reset the password');
+  const session = toSession(data);
+  saveAppSession(session);
+  return { ...session, snapshot: snapshotOf(data) };
+}
+
 function sessionHeaders(): HeadersInit {
   const session = loadAppSession();
   return {

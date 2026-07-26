@@ -372,6 +372,16 @@ export async function setUserAccess(id, { status = 'granted', days = null, planI
   );
 }
 
+/** Used by the OTP password reset — the plain password never leaves this call. */
+export async function setUserPassword(id, password) {
+  const pwd = String(password || '');
+  if (pwd.length < 6) {
+    throw Object.assign(new Error('Password must be at least 6 characters'), { status: 400 });
+  }
+  const passwordHash = hashPassword(pwd);
+  return patchUser(id, { password_hash: passwordHash }, { passwordHash });
+}
+
 export async function setPhoneVerified(id, verified = true) {
   return patchUser(id, { phone_verified: Boolean(verified) }, { phoneVerified: Boolean(verified) });
 }

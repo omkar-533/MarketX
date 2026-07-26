@@ -6,6 +6,7 @@ import {
   deleteAppUser,
   findAppUserByEmail,
   findAppUserById,
+  findAppUserByIdentifier,
   findAppUserByPhone,
   hashPassword,
   listAppUsers,
@@ -16,6 +17,7 @@ import {
   setAppUserActive,
   setPhoneVerified,
   setUserAccess,
+  setUserPassword,
   setUserPhone,
 } from './appUserStore.mjs';
 import { accessStateFor } from './accessState.mjs';
@@ -325,6 +327,112 @@ router.post('/signup/verify', async (req, res) => {
     });
   } catch (err) {
     return failed(res, err, 'Verification failed');
+  }
+});
+
+/* ────────────────────────── forgot password ────────────────────────── */
+
+const RESET_PURPOSE = 'reset';
+
+/** Enough of the number to recognise it, not enough to learn it from an email. */
+function maskPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '').slice(-10);
+  if (digits.length !== 10) return '';
+  return `+91 ${digits.slice(0, 2)}••••${digits.slice(-4)}`;
+}
+
+/**
+ * The reset always runs against the mobile number on file — the client only ever
+ * sends the identifier it already knows, so an email can never reveal a number.
+ */
+async function resolveResetTarget(identifier) {
+  const raw = String(identifier || '').trim();
+  if (!raw) {
+    throw Object.assign(new Error('Enter your email or mobile number'), { status: 400 });
+  }
+
+  const user = await findAppUserByIdentifier(raw);
+  if (!user) {
+    if (raw.toLowerCase() === ADMIN_EMAIL) {
+      throw Object.assign(new Error('The desk admin login cannot be reset from here.'), {
+        status: 400,
+      });
+    }
+    throw Object.assign(new Error('No account found with this email or mobile number.'), {
+      status: 404,
+    });
+  }
+  if (user.active === false) {
+    throw Object.assign(new Error('This account is disabled. Contact the desk to reopen it.'), {
+      status: 403,
+    });
+  }
+  if (!user.phone) {
+    throw Object.assign(
+      new Error('No mobile number is linked to this account. Contact the desk to reset it.'),
+      { status: 400 },
+    );
+  }
+  return user;
+}
+
+async function sendResetOtp(user) {
+  const { code, expiresInSec } = await issueOtp(user.phone, RESET_PURPOSE, { userId: user.id });
+  const sent = await sendOtpSms(user.phone, code);
+  return {
+    sent: true,
+    phoneMasked: maskPhone(user.phone),
+    expiresInSec,
+    devMode: isDevSmsMode(),
+    devCode: sent.devCode ?? null,
+  };
+}
+
+/** POST /api/app-auth/password/forgot — texts a reset code to the number on file */
+router.post('/password/forgot', async (req, res) => {
+  try {
+    return res.json(await sendResetOtp(await resolveResetTarget(req.body?.identifier)));
+  } catch (err) {
+    return failed(res, err, 'Could not send the reset code');
+  }
+});
+
+/** POST /api/app-auth/password/resend */
+router.post('/password/resend', async (req, res) => {
+  try {
+    return res.json(await sendResetOtp(await resolveResetTarget(req.body?.identifier)));
+  } catch (err) {
+    return failed(res, err, 'Could not resend the reset code');
+  }
+});
+
+/** POST /api/app-auth/password/reset — sets the new password and signs the user in */
+router.post('/password/reset', async (req, res) => {
+  const code = String(req.body?.code || '').trim();
+  const password = String(req.body?.password || '');
+
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Enter the 6-digit OTP' });
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const target = await resolveResetTarget(req.body?.identifier);
+    const payload = await consumeOtp(target.phone, RESET_PURPOSE, code);
+    if (payload?.userId && payload.userId !== target.id) {
+      return res.status(400).json({ error: 'This code belongs to another account.' });
+    }
+
+    await setUserPassword(target.id, password);
+    const user = (await recordLogin(target.id)) || publicUser(target);
+    return res.json({
+      token: signAppToken(user),
+      user,
+      source: 'reset',
+      ...(await accessPayloadFor(user)),
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not reset the password');
   }
 });
 

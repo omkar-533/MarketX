@@ -4834,6 +4834,25 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.5rem 0.7rem;
 }
 
+.auth-forgot-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 1.25rem;
+  font-size: 0.6875rem;
+  line-height: 1.6;
+  color: rgba(148, 163, 184, 0.9);
+  background: rgba(148, 163, 184, 0.07);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.auth-forgot-note svg {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
 /* ───────────────────────── access gate + trial nudge ───────────────────────── */
 
 .access-gate {
