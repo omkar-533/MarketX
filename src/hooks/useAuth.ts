@@ -5,6 +5,7 @@ import {
   clearAppSession,
   loadAppSession,
   loginWithInvite,
+  signupWithTrial,
 } from '../services/appInviteAuth';
 
 export interface User {
@@ -17,6 +18,8 @@ export interface User {
   plan: 'free' | 'pro' | 'premium';
   verified: boolean;
   createdAt: string;
+  /** Set for self-signup trial accounts — ISO date when full access ends. */
+  trialEndsAt?: string | null;
 }
 
 const ADMIN_EMAIL = 'omkarchauhan533@gmail.com';
@@ -236,8 +239,12 @@ export function useAuth() {
     [hydrateSession, setAdminFallbackSession],
   );
 
-  const signup = useCallback(async () => {
-    throw new Error('Public sign-up is disabled. Ask admin for a login.');
+  /** Free-trial sign-up — the new account is signed in immediately. */
+  const signup = useCallback(async (name: string, email: string, password: string) => {
+    const session = await signupWithTrial(name.trim(), email.trim().toLowerCase(), password);
+    setUser(session.user);
+    setIsLoggedIn(true);
+    setShowAuth(false);
   }, []);
 
   const logout = useCallback(async () => {

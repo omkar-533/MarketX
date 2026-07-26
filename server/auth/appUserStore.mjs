@@ -18,6 +18,7 @@ const storePath = resolve(dataDir, 'app-users.json');
  *  active: boolean,
  *  createdAt: string,
  *  createdBy: string,
+ *  trialEndsAt?: string,
  * }} AppUserRecord
  */
 
@@ -68,6 +69,7 @@ export function publicUser(record) {
     active: record.active !== false,
     verified: true,
     createdAt: record.createdAt,
+    trialEndsAt: record.trialEndsAt ?? null,
   };
 }
 
@@ -80,7 +82,15 @@ export function findAppUserByEmail(email) {
   return readStore().users.find((u) => u.email === normalized) ?? null;
 }
 
-export function createAppUser({ email, password, name, plan = 'free', role = 'user', createdBy = 'admin' }) {
+export function createAppUser({
+  email,
+  password,
+  name,
+  plan = 'free',
+  role = 'user',
+  createdBy = 'admin',
+  trialDays = 0,
+}) {
   const normalized = String(email || '').trim().toLowerCase();
   const pwd = String(password || '');
   const displayName = String(name || '').trim() || normalized.split('@')[0] || 'User';
@@ -107,6 +117,8 @@ export function createAppUser({ email, password, name, plan = 'free', role = 'us
     active: true,
     createdAt: new Date().toISOString(),
     createdBy,
+    trialEndsAt:
+      trialDays > 0 ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString() : null,
   };
 
   store.users.unshift(record);

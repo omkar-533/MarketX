@@ -10,9 +10,12 @@ import {
 import { ArrowRight, Quote, Star, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
+import AuthPricing from './AuthPricing';
+import AuthSignupForm from './AuthSignupForm';
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
+import { TRIAL_DAYS, type PlanId } from '../../constants/plans';
 import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
@@ -238,8 +241,10 @@ function StoryBand({
  * LuxAlgo-style premium landing — cinematic hero, story bands, reviews.
  * Login ONLY via Sign In modal (invite-only).
  */
+type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId };
+
 export default function AuthPage(props: AuthPageProps) {
-  const [signInOpen, setSignInOpen] = useState(false);
+  const [authView, setAuthView] = useState<AuthView | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
 
@@ -260,21 +265,22 @@ export default function AuthPage(props: AuthPageProps) {
   const copyOpacity = useTransform(heroP, [0, 0.55], [1, 0]);
 
   useEffect(() => {
-    if (!signInOpen) return;
+    if (!authView) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSignInOpen(false);
+      if (e.key === 'Escape') setAuthView(null);
     };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
     };
-  }, [signInOpen]);
+  }, [authView]);
 
-  const openSignIn = () => setSignInOpen(true);
-  const closeSignIn = () => setSignInOpen(false);
+  const openSignIn = () => setAuthView({ kind: 'signin' });
+  const openSignUp = (plan: PlanId = 'trial') => setAuthView({ kind: 'signup', plan });
+  const closeAuth = () => setAuthView(null);
 
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
@@ -299,13 +305,14 @@ export default function AuthPage(props: AuthPageProps) {
             <a href="#platform">Features</a>
             <a href="#reviews">Reviews</a>
             <a href="#modules">Library</a>
+            <a href="#pricing">Pricing</a>
           </nav>
           <div className="auth-lux__nav-actions">
             <button type="button" className="auth-lux__btn-ghost" onClick={openSignIn}>
               Sign In
             </button>
-            <button type="button" className="auth-lux__btn-solid" onClick={openSignIn}>
-              Get Access
+            <button type="button" className="auth-lux__btn-solid" onClick={() => openSignUp()}>
+              Start free trial
             </button>
           </div>
         </div>
@@ -346,12 +353,16 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.68, ease }}
             >
-              <button type="button" className="auth-lux__btn-solid auth-lux__btn-solid--xl" onClick={openSignIn}>
-                Get access now
+              <button
+                type="button"
+                className="auth-lux__btn-solid auth-lux__btn-solid--xl"
+                onClick={() => openSignUp()}
+              >
+                Start {TRIAL_DAYS}-day free trial
                 <ArrowRight className="w-5 h-5" aria-hidden />
               </button>
-              <a href="#reviews" className="auth-lux__link-underline">
-                See trader stories
+              <a href="#pricing" className="auth-lux__link-underline">
+                See pricing
               </a>
             </motion.div>
             <motion.div
@@ -361,7 +372,9 @@ export default function AuthPage(props: AuthPageProps) {
               transition={{ duration: 0.7, delay: 0.85, ease }}
             >
               <Stars rating={5} size="lg" />
-              <p>Loved by desks that care about process — invite-only access</p>
+              <p>
+                Loved by desks that care about process — {TRIAL_DAYS} days free, no card required
+              </p>
             </motion.div>
           </motion.div>
 
@@ -400,7 +413,7 @@ export default function AuthPage(props: AuthPageProps) {
         {/* Story bands */}
         <section className="auth-lux__stories" id="platform" aria-label="Platform">
           {STORY_BANDS.map((band, i) => (
-            <StoryBand key={band.id} band={band} flip={i % 2 === 1} onCta={openSignIn} />
+            <StoryBand key={band.id} band={band} flip={i % 2 === 1} onCta={() => openSignUp()} />
           ))}
         </section>
 
@@ -477,27 +490,42 @@ export default function AuthPage(props: AuthPageProps) {
           </div>
         </section>
 
+        <AuthPricing onStartTrial={() => openSignUp('trial')} onChoosePlan={openSignUp} />
+
         {/* Bottom CTA */}
         <section className="auth-lux__bottom-cta">
           <div className="auth-lux__bottom-cta-inner">
             <Reveal y={24} blur={false}>
-              <p className="auth-lux__kicker">Invite only</p>
+              <p className="auth-lux__kicker">{TRIAL_DAYS} days free</p>
             </Reveal>
             <h2 className="auth-lux__section-title">
-              <Words text="Plans for every style" />
+              <Words text="Try the whole desk" />
               <br />
-              <GradientLine text="of trading" delay={0.22} />
+              <GradientLine text="before you pay" delay={0.22} />
             </h2>
             <Reveal delay={0.26} y={22}>
               <p className="auth-lux__section-sub">
-                Safe, private access. Sign in with credentials created for your desk — cancel anytime from profile.
+                Create your account in under a minute — every module unlocks instantly for{' '}
+                {TRIAL_DAYS} days. Cancel anytime from profile.
               </p>
             </Reveal>
             <Reveal delay={0.36} y={20} blur={false}>
-              <button type="button" className="auth-lux__btn-solid auth-lux__btn-solid--xl" onClick={openSignIn}>
-                Sign In to {BRAND}
+              <button
+                type="button"
+                className="auth-lux__btn-solid auth-lux__btn-solid--xl"
+                onClick={() => openSignUp()}
+              >
+                Start free on {BRAND}
                 <ArrowRight className="w-5 h-5" aria-hidden />
               </button>
+            </Reveal>
+            <Reveal delay={0.44} y={16} blur={false}>
+              <p className="auth-lux__bottom-cta-alt">
+                Already have a login?{' '}
+                <button type="button" className="auth-inline-link" onClick={openSignIn}>
+                  Sign in
+                </button>
+              </p>
             </Reveal>
           </div>
         </section>
@@ -516,6 +544,7 @@ export default function AuthPage(props: AuthPageProps) {
               <a href="#platform">Features</a>
               <a href="#reviews">Reviews</a>
               <a href="#modules">Library</a>
+              <a href="#pricing">Pricing</a>
               <button type="button" onClick={openSignIn}>
                 Sign In
               </button>
@@ -530,7 +559,7 @@ export default function AuthPage(props: AuthPageProps) {
       </main>
 
       <AnimatePresence>
-        {signInOpen && (
+        {authView && (
           <motion.div
             className="auth-lux-modal"
             initial={{ opacity: 0 }}
@@ -541,8 +570,8 @@ export default function AuthPage(props: AuthPageProps) {
             <button
               type="button"
               className="auth-lux-modal__backdrop"
-              aria-label="Close sign in"
-              onClick={closeSignIn}
+              aria-label="Close"
+              onClick={closeAuth}
             />
             <motion.div
               className="auth-lux-modal__panel"
@@ -558,14 +587,22 @@ export default function AuthPage(props: AuthPageProps) {
                 type="button"
                 className="auth-lux-modal__close"
                 aria-label="Close"
-                onClick={closeSignIn}
+                onClick={closeAuth}
               >
                 <X className="w-5 h-5" />
               </button>
               <div id="auth-signin-title" className="sr-only">
-                Sign In
+                {authView.kind === 'signup' ? 'Create your account' : 'Sign In'}
               </div>
-              <AuthForm {...props} />
+              {authView.kind === 'signup' ? (
+                <AuthSignupForm
+                  onSignup={props.onSignup}
+                  onSwitchToSignIn={openSignIn}
+                  selectedPlan={authView.plan}
+                />
+              ) : (
+                <AuthForm {...props} />
+              )}
             </motion.div>
           </motion.div>
         )}

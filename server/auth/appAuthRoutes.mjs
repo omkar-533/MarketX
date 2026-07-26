@@ -15,6 +15,8 @@ const JWT_SECRET =
   process.env.JWT_SECRET ||
   'apmi-invite-auth-change-me-in-production';
 
+const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 3);
+
 function signAppToken(user) {
   return jwt.sign(
     {
@@ -23,6 +25,7 @@ function signAppToken(user) {
       role: user.role,
       plan: user.plan,
       name: user.name,
+      trialEndsAt: user.trialEndsAt ?? null,
       typ: 'app-invite',
     },
     JWT_SECRET,
@@ -100,6 +103,36 @@ router.post('/login', (req, res) => {
   return res.json({ token: signAppToken(user), user, source: 'invite' });
 });
 
+/** POST /api/app-auth/signup — public 3-day trial; signs the user straight in */
+router.post('/signup', (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+
+  if (email === ADMIN_EMAIL) {
+    return res.status(409).json({ error: 'This email already has an account. Please sign in.' });
+  }
+
+  try {
+    const user = createAppUser({
+      email,
+      password: req.body?.password,
+      name: req.body?.name,
+      plan: 'free',
+      role: 'user',
+      createdBy: 'self-signup',
+      trialDays: TRIAL_DAYS,
+    });
+    return res.status(201).json({
+      token: signAppToken(user),
+      user,
+      trialDays: TRIAL_DAYS,
+      source: 'trial',
+    });
+  } catch (err) {
+    const status = err?.status || 500;
+    return res.status(status).json({ error: err instanceof Error ? err.message : 'Signup failed' });
+  }
+});
+
 /** GET /api/app-auth/me */
 router.get('/me', (req, res) => {
   const auth = String(req.headers.authorization || '');
@@ -113,6 +146,7 @@ router.get('/me', (req, res) => {
       name: payload.name,
       role: payload.role,
       plan: payload.plan,
+      trialEndsAt: payload.trialEndsAt ?? null,
       verified: true,
       createdAt: new Date().toISOString(),
     },

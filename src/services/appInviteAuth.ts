@@ -28,6 +28,26 @@ export function clearAppSession() {
   localStorage.removeItem(APP_SESSION_KEY);
 }
 
+function toSession(data: {
+  token?: unknown;
+  user?: Record<string, unknown>;
+}): AppSession {
+  const raw = (data.user ?? {}) as Record<string, string | null | undefined>;
+  return {
+    token: String(data.token),
+    user: {
+      id: String(raw.id),
+      name: String(raw.name),
+      email: String(raw.email),
+      role: raw.role === 'admin' ? 'admin' : 'user',
+      plan: raw.plan === 'premium' || raw.plan === 'pro' ? raw.plan : 'free',
+      verified: true,
+      createdAt: raw.createdAt || new Date().toISOString(),
+      trialEndsAt: raw.trialEndsAt ?? null,
+    },
+  };
+}
+
 export async function loginWithInvite(email: string, password: string): Promise<AppSession> {
   const res = await apiFetch('/api/app-auth/login', {
     method: 'POST',
@@ -38,18 +58,27 @@ export async function loginWithInvite(email: string, password: string): Promise<
   if (!res.ok) {
     throw new Error(typeof data?.error === 'string' ? data.error : 'Invalid email or password');
   }
-  const session: AppSession = {
-    token: String(data.token),
-    user: {
-      id: data.user.id,
-      name: data.user.name,
-      email: data.user.email,
-      role: data.user.role === 'admin' ? 'admin' : 'user',
-      plan: data.user.plan === 'premium' || data.user.plan === 'pro' ? data.user.plan : 'free',
-      verified: true,
-      createdAt: data.user.createdAt || new Date().toISOString(),
-    },
-  };
+  const session = toSession(data);
+  saveAppSession(session);
+  return session;
+}
+
+/** Public sign-up — creates a free-trial login and returns an active session. */
+export async function signupWithTrial(
+  name: string,
+  email: string,
+  password: string,
+): Promise<AppSession> {
+  const res = await apiFetch('/api/app-auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'Could not create your account');
+  }
+  const session = toSession(data);
   saveAppSession(session);
   return session;
 }
