@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 
 type Candle = { o: number; h: number; l: number; c: number };
 
@@ -53,26 +54,163 @@ function ema(values: number[], period: number): number[] {
   return out;
 }
 
+const AI_THREAD = [
+  {
+    q: "What's the NIFTY bias right now?",
+    a: 'Bullish while 24,380 holds — price is above VWAP and CE writers are unwinding at 24,500.',
+  },
+  {
+    q: 'Where is max pain sitting?',
+    a: 'At 24,400. PE writers added 18% OI there, so it stays the magnet into expiry.',
+  },
+  {
+    q: 'Any breakout scans firing?',
+    a: '3 hits — RELIANCE, ICICIBANK and TATAMOTORS are clearing 20-day highs on rising volume.',
+  },
+  {
+    q: 'How is my journal trending?',
+    a: 'Win rate 61% over 28 trades. Your losses cluster in the first 15 minutes of the open.',
+  },
+] as const;
+
+const Q_CHAR_MS = 34;
+const A_CHAR_MS = 16;
+const THINK_MS = 620;
+const HOLD_MS = 2100;
+
+type ChatPhase = 'question' | 'thinking' | 'answer' | 'hold';
+
+/** Types a question, pauses, then streams the answer — cycles the whole thread. */
+function MasterAiChat({ running }: { running: boolean }) {
+  const [pair, setPair] = useState(0);
+  const [phase, setPhase] = useState<ChatPhase>('question');
+  const [chars, setChars] = useState(0);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  const item = AI_THREAD[pair % AI_THREAD.length];
+
+  useEffect(() => {
+    if (!running) return;
+
+    let timer: number;
+
+    if (phase === 'question') {
+      if (chars < item.q.length) {
+        timer = window.setTimeout(() => setChars((c) => c + 1), Q_CHAR_MS);
+      } else {
+        timer = window.setTimeout(() => setPhase('thinking'), 260);
+      }
+    } else if (phase === 'thinking') {
+      timer = window.setTimeout(() => {
+        setChars(0);
+        setPhase('answer');
+      }, THINK_MS);
+    } else if (phase === 'answer') {
+      if (chars < item.a.length) {
+        timer = window.setTimeout(() => setChars((c) => c + 1), A_CHAR_MS);
+      } else {
+        timer = window.setTimeout(() => setPhase('hold'), HOLD_MS);
+      }
+    } else {
+      timer = window.setTimeout(() => {
+        setPair((p) => p + 1);
+        setChars(0);
+        setPhase('question');
+      }, 320);
+    }
+
+    return () => window.clearTimeout(timer);
+  }, [running, phase, chars, item]);
+
+  useEffect(() => {
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chars, phase]);
+
+  const showAnswer = phase === 'answer' || phase === 'hold';
+
+  return (
+    <div className="hero-ai">
+      <p className="hero-ai__head">
+        <Sparkles className="w-3.5 h-3.5" aria-hidden />
+        Master AI
+        <span>· live market context</span>
+      </p>
+
+      <div className="hero-ai__thread" ref={threadRef}>
+        <div className="hero-ai__msg is-user">
+          {phase === 'question' ? item.q.slice(0, chars) : item.q}
+          {phase === 'question' && <i className="hero-ai__caret" />}
+        </div>
+
+        {phase === 'thinking' && (
+          <div className="hero-ai__msg is-ai is-thinking">
+            <i />
+            <i />
+            <i />
+          </div>
+        )}
+
+        {showAnswer && (
+          <div className="hero-ai__msg is-ai">
+            {phase === 'answer' ? item.a.slice(0, chars) : item.a}
+            {phase === 'answer' && <i className="hero-ai__caret" />}
+          </div>
+        )}
+      </div>
+
+      <div className="hero-ai__input">
+        <span>Ask Master AI anything…</span>
+        <i className="hero-ai__send" />
+      </div>
+    </div>
+  );
+}
+
 /**
- * Animated stand-in for the product UI: streaming candles, ticking level and an
- * option ladder. Pauses when offscreen or hidden so it costs nothing idle.
+ * Animated stand-in for the product UI: streaming candles, a Master AI thread and
+ * an option ladder. Pauses when offscreen or hidden so it costs nothing idle.
  */
 export default function LiveHeroTerminal() {
   const [series, setSeries] = useState<Candle[]>(seedSeries);
   const [ladder, setLadder] = useState(seedLadder);
   const [pcr, setPcr] = useState(1.18);
+  const [running, setRunning] = useState(false);
   const hostRef = useRef<HTMLDivElement>(null);
   const tickRef = useRef(0);
 
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    let timer: number | undefined;
     let onScreen = false;
     let tabVisible = !document.hidden;
+    const sync = () => setRunning(onScreen && tabVisible);
 
-    const step = () => {
+    const onVisibility = () => {
+      tabVisible = !document.hidden;
+      sync();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.05 },
+    );
+    if (hostRef.current) observer.observe(hostRef.current);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!running) return;
+
+    const timer = window.setInterval(() => {
       tickRef.current += 1;
       const commit = tickRef.current % TICKS_PER_CANDLE === 0;
 
@@ -99,76 +237,39 @@ export default function LiveHeroTerminal() {
         );
         setPcr((p) => Math.min(1.62, Math.max(0.78, p + (Math.random() - 0.5) * 0.16)));
       }
-    };
+    }, TICK_MS);
 
-    const sync = () => {
-      const shouldRun = onScreen && tabVisible;
-      if (shouldRun && timer === undefined) {
-        timer = window.setInterval(step, TICK_MS);
-      } else if (!shouldRun && timer !== undefined) {
-        window.clearInterval(timer);
-        timer = undefined;
-      }
-    };
-
-    const onVisibility = () => {
-      tabVisible = !document.hidden;
-      sync();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        onScreen = entry.isIntersecting;
-        sync();
-      },
-      { threshold: 0.05 },
-    );
-    if (hostRef.current) observer.observe(hostRef.current);
-
-    return () => {
-      if (timer !== undefined) window.clearInterval(timer);
-      observer.disconnect();
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, []);
+    return () => window.clearInterval(timer);
+  }, [running]);
 
   const view = useMemo(() => {
-    const highs = series.map((c) => c.h);
-    const lows = series.map((c) => c.l);
-    const max = Math.max(...highs);
-    const min = Math.min(...lows);
+    const max = Math.max(...series.map((c) => c.h));
+    const min = Math.min(...series.map((c) => c.l));
     const span = Math.max(max - min, 1);
     const y = (v: number) => 10 + ((max - v) / span) * (PRICE_H - 20);
     const step = CHART_W / series.length;
-    const bodyW = step * 0.56;
 
     const closes = series.map((c) => c.c);
-    const trend = ema(closes, 9);
-    const trendPath = trend
+    const trendPath = ema(closes, 9)
       .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i + 0.5) * step},${y(v)}`)
       .join(' ');
     const closePath = closes
       .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i + 0.5) * step},${y(v)}`)
       .join(' ');
-    const areaPath = `${closePath} L${CHART_W},${PRICE_H} L0,${PRICE_H} Z`;
 
-    const volMax = Math.max(...series.map((c) => c.h - c.l), 0.6);
     const last = series[series.length - 1];
     const first = series[0];
     const level = toLevel(last.c);
-    const changePct = ((last.c - first.c) / first.c) * 100;
 
     return {
       step,
-      bodyW,
+      bodyW: step * 0.56,
       y,
       trendPath,
-      areaPath,
-      volMax,
-      last,
+      areaPath: `${closePath} L${CHART_W},${PRICE_H} L0,${PRICE_H} Z`,
+      volMax: Math.max(...series.map((c) => c.h - c.l), 0.6),
       level,
-      changePct,
+      changePct: ((last.c - first.c) / first.c) * 100,
       lastY: y(last.c),
       atm: Math.round(level / 50) * 50,
     };
@@ -223,6 +324,7 @@ export default function LiveHeroTerminal() {
               const color = rising ? '#2dd4bf' : '#fb7185';
               const top = view.y(Math.max(c.o, c.c));
               const bottom = view.y(Math.min(c.o, c.c));
+              const volH = ((c.h - c.l) / view.volMax) * (CHART_H - VOL_TOP);
               return (
                 <g key={i}>
                   <line
@@ -245,9 +347,9 @@ export default function LiveHeroTerminal() {
                   />
                   <rect
                     x={x - view.bodyW / 2}
-                    y={CHART_H - ((c.h - c.l) / view.volMax) * (CHART_H - VOL_TOP)}
+                    y={CHART_H - volH}
                     width={view.bodyW}
-                    height={((c.h - c.l) / view.volMax) * (CHART_H - VOL_TOP)}
+                    height={volH}
                     fill={color}
                     fillOpacity="0.3"
                   />
@@ -275,11 +377,10 @@ export default function LiveHeroTerminal() {
               vectorEffect="non-scaling-stroke"
             />
           </svg>
-          <span
-            className="hero-term__pulse"
-            style={{ top: `${(view.lastY / CHART_H) * 100}%` }}
-          />
+          <span className="hero-term__pulse" style={{ top: `${(view.lastY / CHART_H) * 100}%` }} />
         </div>
+
+        <MasterAiChat running={running} />
 
         <div className="hero-term__rail">
           <p className="hero-term__rail-head">
