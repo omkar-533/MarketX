@@ -63,7 +63,7 @@ export default function AuthPage(props: AuthPageProps) {
       </header>
 
       <main className="auth-lux__main relative z-20">
-        <section className="auth-lux__hero auth-lux__hero--solo">
+        <section className="auth-lux__hero">
           <motion.div
             className="auth-lux__hero-copy"
             initial={{ opacity: 0, y: 18 }}
@@ -82,6 +82,24 @@ export default function AuthPage(props: AuthPageProps) {
             <button type="button" className="auth-lux__hero-cta" onClick={openSignIn}>
               Sign In
             </button>
+          </motion.div>
+
+          <motion.div
+            className="auth-lux__hero-mark"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.65, delay: 0.12 }}
+          >
+            <div className="auth-lux__hero-mark-glow" aria-hidden="true" />
+            <img
+              className="auth-lux__hero-mark-img"
+              src={`${import.meta.env.BASE_URL}brand-logo.png`}
+              alt="AI Powered Market Intelligence"
+              width={720}
+              height={720}
+              decoding="async"
+              fetchPriority="high"
+            />
           </motion.div>
         </section>
 

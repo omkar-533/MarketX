@@ -2023,7 +2023,7 @@ input[type="number"] { -moz-appearance: textfield; }
   z-index: 20;
 }
 
-/* Normal scrolling hero — marketing only, no inline login */
+/* Normal scrolling hero — copy left, brand mark right */
 .auth-lux__hero {
   position: relative;
   z-index: 20;
@@ -2032,33 +2032,72 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 100%;
   padding: 2.5rem 1.25rem 3rem;
   display: grid;
-  gap: 2.25rem;
+  gap: 1.5rem;
   align-items: center;
   min-height: calc(100dvh - 4rem);
   box-sizing: border-box;
-}
-
-.auth-lux__hero--solo {
   grid-template-columns: 1fr;
-  max-width: 40rem;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: left;
-  align-content: center;
 }
 
 @media (min-width: 960px) {
-  .auth-lux__hero:not(.auth-lux__hero--solo) {
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 3.5rem;
+  .auth-lux__hero {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 1.5rem 2.5rem;
     padding: 3.5rem 1.5rem 4rem;
   }
+}
 
-  .auth-lux__hero--solo {
-    max-width: 44rem;
-    margin-left: 0;
-    padding: 4rem 1.5rem 4.5rem;
+/* Brand mark: soft edges so PNG plate merges with page (no hard box) */
+.auth-lux__hero-mark {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 22rem);
+  max-width: 100%;
+  pointer-events: none;
+  line-height: 0;
+}
+
+@media (min-width: 960px) {
+  .auth-lux__hero-mark {
+    width: min(100%, 30rem);
+    justify-self: end;
   }
+}
+
+.auth-lux__hero-mark-glow {
+  position: absolute;
+  inset: 8% 6%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(212, 175, 55, 0.22), transparent 58%),
+    radial-gradient(ellipse at 55% 55%, rgba(30, 58, 95, 0.4), transparent 62%);
+  filter: blur(32px);
+  z-index: 0;
+  opacity: 0.95;
+}
+
+.auth-lux__hero-mark-img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  /* Soft fade at edges — rectangular frame disappears */
+  -webkit-mask-image: radial-gradient(
+    ellipse 78% 74% at 50% 48%,
+    #000 45%,
+    rgba(0, 0, 0, 0.92) 62%,
+    transparent 82%
+  );
+  mask-image: radial-gradient(
+    ellipse 78% 74% at 50% 48%,
+    #000 45%,
+    rgba(0, 0, 0, 0.92) 62%,
+    transparent 82%
+  );
+  filter: drop-shadow(0 12px 36px rgba(0, 0, 0, 0.45));
 }
 
 .auth-lux__hero-cta {
