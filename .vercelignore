@@ -1,0 +1,19 @@
+# Exclude everything heavy from CLI uploads
+node_modules
+.git
+.github
+release
+tools
+dist
+electron
+android
+ios
+coverage
+.cursor
+*.mp4
+*.webm
+*.exe
+*.dmg
+*.AppImage
+public/auth
+public/auth/**

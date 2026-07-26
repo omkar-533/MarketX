@@ -1,0 +1,31 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+data/fyers-token.json
+data/fyers-logs/
+data/app-users.json
+*.log
+.DS_Store
+tmptest.txt
+.vscode/
+
+.vercel
+
+# Native app build outputs
+release/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/App/Pods/
+*.apk
+*.ipa
+electron/dist/
+
+# Local AI upscale tooling / temp frames
+tools/
+public/auth/_frames_in/
+public/auth/_frames_out/
+
