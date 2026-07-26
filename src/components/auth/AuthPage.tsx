@@ -1,5 +1,6 @@
-﻿import { motion } from 'framer-motion';
-import { Crown } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Crown, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import ThemeToggle from '../ThemeToggle';
@@ -10,13 +11,28 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
 };
 
 /**
- * LuxAlgo-style: fixed top bar (brand + Sign In) never scrolls.
- * Page content scrolls underneath.
+ * LuxAlgo-style landing: fixed brand + Sign In.
+ * Login form opens ONLY from Sign In button (modal) — not on the page by default.
  */
 export default function AuthPage(props: AuthPageProps) {
-  const scrollToSignIn = () => {
-    document.getElementById('sign-in')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const [signInOpen, setSignInOpen] = useState(false);
+
+  useEffect(() => {
+    if (!signInOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSignInOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [signInOpen]);
+
+  const openSignIn = () => setSignInOpen(true);
+  const closeSignIn = () => setSignInOpen(false);
 
   return (
     <div className="auth-lux min-h-screen flex flex-col relative">
@@ -26,7 +42,6 @@ export default function AuthPage(props: AuthPageProps) {
         <div className="auth-lux__grid" />
       </div>
 
-      {/* Fixed top bar — brand + Sign In (does not scroll) */}
       <header className="auth-lux__nav">
         <div className="auth-lux__nav-inner">
           <div className="flex items-center gap-3 min-w-0" title={BRAND}>
@@ -40,7 +55,7 @@ export default function AuthPage(props: AuthPageProps) {
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
-            <button type="button" className="auth-lux__signin-btn" onClick={scrollToSignIn}>
+            <button type="button" className="auth-lux__signin-btn" onClick={openSignIn}>
               Sign In
             </button>
           </div>
@@ -48,7 +63,7 @@ export default function AuthPage(props: AuthPageProps) {
       </header>
 
       <main className="auth-lux__main relative z-20">
-        <section className="auth-lux__hero">
+        <section className="auth-lux__hero auth-lux__hero--solo">
           <motion.div
             className="auth-lux__hero-copy"
             initial={{ opacity: 0, y: 18 }}
@@ -64,18 +79,9 @@ export default function AuthPage(props: AuthPageProps) {
             <p className="auth-lux__sub">
               Live NSE workspace for bias, heatmaps, scanners, journals, and Master AI — built for serious traders.
             </p>
-          </motion.div>
-
-          <motion.div
-            id="sign-in"
-            className="auth-lux__cta"
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.12 }}
-          >
-            <div className="auth-lux__cta-card">
-              <AuthForm {...props} />
-            </div>
+            <button type="button" className="auth-lux__hero-cta" onClick={openSignIn}>
+              Sign In
+            </button>
           </motion.div>
         </section>
 
@@ -108,6 +114,49 @@ export default function AuthPage(props: AuthPageProps) {
           </p>
         </footer>
       </main>
+
+      {/* Sign In modal — only entry to login */}
+      <AnimatePresence>
+        {signInOpen && (
+          <motion.div
+            className="auth-lux-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <button
+              type="button"
+              className="auth-lux-modal__backdrop"
+              aria-label="Close sign in"
+              onClick={closeSignIn}
+            />
+            <motion.div
+              className="auth-lux-modal__panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="auth-signin-title"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.22 }}
+            >
+              <button
+                type="button"
+                className="auth-lux-modal__close"
+                aria-label="Close"
+                onClick={closeSignIn}
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div id="auth-signin-title" className="sr-only">
+                Sign In
+              </div>
+              <AuthForm {...props} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

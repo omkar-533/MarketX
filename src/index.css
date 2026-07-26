@@ -2023,7 +2023,7 @@ input[type="number"] { -moz-appearance: textfield; }
   z-index: 20;
 }
 
-/* Normal scrolling hero — not sticky */
+/* Normal scrolling hero — marketing only, no inline login */
 .auth-lux__hero {
   position: relative;
   z-index: 20;
@@ -2038,12 +2038,49 @@ input[type="number"] { -moz-appearance: textfield; }
   box-sizing: border-box;
 }
 
+.auth-lux__hero--solo {
+  grid-template-columns: 1fr;
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+  align-content: center;
+}
+
 @media (min-width: 960px) {
-  .auth-lux__hero {
+  .auth-lux__hero:not(.auth-lux__hero--solo) {
     grid-template-columns: 1.15fr 0.85fr;
     gap: 3.5rem;
     padding: 3.5rem 1.5rem 4rem;
   }
+
+  .auth-lux__hero--solo {
+    max-width: 44rem;
+    margin-left: 0;
+    padding: 4rem 1.5rem 4.5rem;
+  }
+}
+
+.auth-lux__hero-cta {
+  margin-top: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #0a0e17;
+  background: linear-gradient(145deg, #e8c547, #d4af37);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(212, 175, 55, 0.28);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.auth-lux__hero-cta:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
 }
 
 .auth-lux__cta {
@@ -2055,6 +2092,70 @@ input[type="number"] { -moz-appearance: textfield; }
   z-index: 20;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: #070a12;
+}
+
+/* Sign In modal — only place login form appears */
+.auth-lux-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.auth-lux-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: rgba(2, 4, 10, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.auth-lux-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 26rem;
+  max-height: min(90dvh, 720px);
+  overflow-y: auto;
+  padding: 1.5rem 1.35rem 1.75rem;
+  border-radius: 1.25rem;
+  background: rgba(10, 12, 20, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), 0 0 40px rgba(212, 175, 55, 0.08);
+}
+
+@media (min-width: 640px) {
+  .auth-lux-modal__panel {
+    padding: 1.85rem 1.75rem 2rem;
+  }
+}
+
+.auth-lux-modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 18, 28, 0.9);
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.auth-lux-modal__close:hover {
+  color: #f1f5f9;
+  border-color: rgba(212, 175, 55, 0.4);
 }
 
 .auth-lux__eyebrow {
