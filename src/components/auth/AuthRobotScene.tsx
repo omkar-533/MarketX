@@ -1,25 +1,19 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-const AuthRobot3D = lazy(() => import('./AuthRobot3D'));
-
-function ThinkerFallback() {
-  return (
-    <div className="auth-thinker-portrait auth-thinker-portrait--fallback">
-      <img src="/auth/ai-thinker.png" alt="" className="auth-thinker-img" draggable={false} />
-      <div className="auth-thinker-vignette" />
-    </div>
-  );
-}
-
-/** Full-screen moving 3D AI Thinker robot */
+/** Full-screen looping video of the user's AI Thinker image */
 export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: boolean }) {
-  const [prefer3d, setPrefer3d] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
-    if (reduce || saveData) setPrefer3d(false);
+    const el = videoRef.current;
+    if (!el) return;
+    el.playbackRate = 1;
+    const play = () => {
+      void el.play().catch(() => setFailed(true));
+    };
+    play();
   }, []);
 
   return (
@@ -31,17 +25,28 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
         <div className="auth-thinker-glow auth-thinker-glow--a" />
         <div className="auth-thinker-glow auth-thinker-glow--b" />
         <div className="auth-thinker-grid" />
-        <div className="auth-thinker-orbit auth-thinker-orbit--a" />
-        <div className="auth-thinker-orbit auth-thinker-orbit--b" />
       </div>
 
-      <div className="auth-thinker-3d-wrap">
-        {prefer3d ? (
-          <Suspense fallback={<ThinkerFallback />}>
-            <AuthRobot3D compact={!fullscreen} />
-          </Suspense>
+      <div className="auth-thinker-video-wrap">
+        {!failed ? (
+          <video
+            ref={videoRef}
+            className="auth-thinker-video"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster="/auth/ai-thinker.png"
+            onError={() => setFailed(true)}
+          >
+            <source src="/auth/ai-thinker.webm" type="video/webm" />
+            <source src="/auth/ai-thinker.mp4" type="video/mp4" />
+          </video>
         ) : (
-          <ThinkerFallback />
+          <div className="auth-thinker-portrait auth-thinker-portrait--fallback">
+            <img src="/auth/ai-thinker.png" alt="" className="auth-thinker-img" draggable={false} />
+          </div>
         )}
         <div className="auth-thinker-vignette" />
         <div className="auth-thinker-scan" />
@@ -54,7 +59,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           transition={{ duration: 2.4, repeat: Infinity }}
         >
           NEURAL CORE
-          <span>3D LIVE</span>
+          <span>VIDEO LIVE</span>
         </motion.div>
         <motion.div
           className="auth-thinker-chip auth-thinker-chip--tr"
@@ -62,7 +67,7 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
         >
           MARKET AI
-          <span>MOVING</span>
+          <span>ONLINE</span>
         </motion.div>
         <div className="auth-thinker-chip auth-thinker-chip--bl">
           DEPTH

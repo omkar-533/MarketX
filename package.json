@@ -52,8 +52,6 @@
   "dependencies": {
     "@capacitor/core": "^7.2.0",
     "@google/generative-ai": "^0.24.1",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
     "@supabase/supabase-js": "^2.106.2",
     "clsx": "2.1.1",
     "cookie-parser": "^1.4.7",
@@ -74,7 +72,6 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "3.4.0",
-    "three": "^0.185.1",
     "ws": "^8.21.0",
     "xlsx": "^0.18.5"
   },
@@ -89,7 +86,6 @@
     "@types/node": "^22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "5.1.1",
     "cross-env": "^7.0.3",
     "electron": "^35.1.5",
