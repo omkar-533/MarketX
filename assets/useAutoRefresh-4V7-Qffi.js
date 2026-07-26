@@ -1,0 +1,1 @@
+import{c5 as u}from"./vendor-BrOFlTdi.js";import{aP as f,Q as c}from"./index-DlCKJeTL.js";function i(r,e=!0){const t=u.useRef(r);t.current=r,u.useEffect(()=>{if(!e)return;const s=o=>t.current(o);return s({tick:c(),at:Date.now()}),f(s)},[e])}export{i as u};
