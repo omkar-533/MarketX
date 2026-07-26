@@ -1,7 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-/** Live app URL — always latest UI + Render API (no stale bundle) */
-const LIVE_APP_URL = process.env.CAPACITOR_SERVER_URL || 'https://mmtt-flame.vercel.app';
+/** Live app URL — GitHub Pages while Vercel daily deploy limit is exhausted */
+const LIVE_APP_URL =
+  process.env.CAPACITOR_SERVER_URL || 'https://omkar-533.github.io/MarketX/';
 
 const config: CapacitorConfig = {
   appId: 'com.mastertradex.app',
@@ -12,6 +13,7 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     iosScheme: 'https',
     allowNavigation: [
+      'omkar-533.github.io',
       'mmtt-flame.vercel.app',
       'market-api-t9co.onrender.com',
       '*.supabase.co',
