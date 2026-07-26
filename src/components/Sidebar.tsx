@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT, PAGE_NAMES } from '../constants/brandLabels';
+import BrandMark from './BrandMark';
 
 interface SidebarProps {
   activeTab: string;
@@ -53,9 +54,7 @@ export default function Sidebar({
     >
       <div className="h-14 flex items-center px-3 border-b border-dark-border/60 shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 bg-gold rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-gold/20" title={BRAND}>
-            <Crown className="w-4 h-4 text-dark-surface" />
-          </div>
+          <BrandMark size="sm" className="rounded-lg" />
           {collapsed && (
             <span className="sr-only">{BRAND_SHORT}</span>
           )}

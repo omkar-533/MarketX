@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Crown, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
+import BrandMark from '../BrandMark';
 import ThemeToggle from '../ThemeToggle';
 import { BRAND, BRAND_LINE1, BRAND_LINE2, BRAND_SHORT } from '../../constants/brandLabels';
 
@@ -45,9 +46,7 @@ export default function AuthPage(props: AuthPageProps) {
       <header className="auth-lux__nav">
         <div className="auth-lux__nav-inner">
           <div className="flex items-center gap-3 min-w-0" title={BRAND}>
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gold rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-gold/25">
-              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-dark-surface" />
-            </div>
+            <BrandMark size="md" />
             <div className="min-w-0 leading-none">
               <div className="text-base sm:text-lg font-extrabold text-gold tracking-tight">{BRAND_LINE1}</div>
               <div className="text-xs sm:text-sm font-bold text-slate-100 tracking-wide mt-0.5">{BRAND_LINE2}</div>
