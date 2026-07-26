@@ -14,7 +14,12 @@ try {
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    // Drop every old SW + cache so label/layout updates always show
+    void navigator.serviceWorker.getRegistrations().then((regs) =>
+      Promise.all(regs.map((r) => r.unregister())),
+    ).then(() =>
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
+    ).then(() => navigator.serviceWorker.register("/sw.js?v=5")).catch(() => undefined);
   });
 }
 
