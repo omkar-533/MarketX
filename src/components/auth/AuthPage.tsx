@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Quote, Star, X } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
+import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
 
@@ -127,23 +128,6 @@ export default function AuthPage(props: AuthPageProps) {
         {/* LuxAlgo-style centered hero */}
         <section className="auth-lux__hero">
           <motion.div
-            className="auth-lux__hero-product"
-            aria-hidden="true"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.15, ease }}
-          >
-            <img
-              src={`${import.meta.env.BASE_URL}landing/hero-desk.jpg`}
-              alt=""
-              width={1600}
-              height={1067}
-              decoding="async"
-              fetchPriority="high"
-            />
-          </motion.div>
-
-          <motion.div
             className="auth-lux__hero-center"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
@@ -179,6 +163,15 @@ export default function AuthPage(props: AuthPageProps) {
               </div>
               <p>Loved by desks that care about process — invite-only access</p>
             </div>
+          </motion.div>
+
+          <motion.div
+            className="auth-lux__hero-stage"
+            initial={{ opacity: 0, y: 46 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.2, ease }}
+          >
+            <LiveHeroTerminal />
           </motion.div>
         </section>
 
