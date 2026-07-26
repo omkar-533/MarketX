@@ -5,47 +5,26 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
-  ChevronRight,
   Flame,
-  Globe,
-  Layers,
-  Newspaper,
-  ScanLine,
-  Target,
   TrendingDown,
   TrendingUp,
   Volume2,
   Zap,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { getIntradayData, getMarketBreadth } from '../data/marketData';
+import { getMarketBreadth } from '../data/marketData';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
   calculateMaxPain,
-  getFiiDiiData,
   getFuturesOIData,
   getGainers,
   getIndices,
   getLosers,
   getMostActive,
-  getNews,
   getOIIntelligence,
   getOptionChain,
   getSectorHeatmapData,
   getSignals,
   type IndexData,
-  type NewsItem,
   type SectorHeatmapItem,
   type StockData,
 } from '../data/marketData';
@@ -54,9 +33,7 @@ interface DashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
-function fmtCr(n: number) {
-  return `₹${(n / 100).toFixed(0)}Cr`;
-}
+const HIDDEN_INDEX_SYMBOLS = new Set(['NIFTYNXT50']);
 
 function sparklinePoints(base: number, current: number, len = 12): number[] {
   return Array.from({ length: len }, (_, i) =>
@@ -232,48 +209,19 @@ function SectorStrip({ sectors }: { sectors: SectorHeatmapItem[] }) {
   );
 }
 
-function QuickActions({ onNavigate }: { onNavigate?: (tab: string) => void }) {
-  const actions = [
-    { id: 'strategy', label: 'Strategy Builder', icon: Zap, color: 'text-[#d4af37]' },
-    { id: 'optionchain', label: 'Option Chain', icon: Layers, color: 'text-violet-400' },
-    { id: 'scanner', label: 'Scanners', icon: ScanLine, color: 'text-blue-400' },
-    { id: 'oiintelligence', label: 'OI Intelligence', icon: Activity, color: 'text-emerald-400' },
-    { id: 'heatmap', label: 'Heatmap', icon: BarChart3, color: 'text-orange-400' },
-    { id: 'signals', label: 'Signals', icon: Target, color: 'text-cyan-400' },
-  ];
-
-  return (
-    <div className="app-card p-4">
-      <h3 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Quick Access</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {actions.map(({ id, label, icon: Icon, color }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onNavigate?.(id)}
-            className="flex items-center gap-2 p-2.5 rounded-lg bg-[#121520] border border-[#1a1f2e] hover:border-[#d4af37]/30 hover:bg-[#1a1f2e] transition-all text-left group"
-          >
-            <Icon className={`w-4 h-4 shrink-0 ${color}`} />
-            <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">{label}</span>
-            <ChevronRight className="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function Dashboard({ onNavigate }: DashboardProps) {
+export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
   const [indices, setIndices] = useState<IndexData[]>([]);
   const [gainers, setGainers] = useState<StockData[]>([]);
   const [losers, setLosers] = useState<StockData[]>([]);
   const [active, setActive] = useState<StockData[]>([]);
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [intraday, setIntraday] = useState<{ time: string; price: number; volume: number }[]>([]);
   const [breadth, setBreadth] = useState(getMarketBreadth());
-  const [fiiDii, setFiiDii] = useState(getFiiDiiData().slice(-10));
   const [sectors, setSectors] = useState<SectorHeatmapItem[]>([]);
   const [lastSync, setLastSync] = useState(new Date());
+
+  const visibleIndices = useMemo(
+    () => indices.filter((i) => !HIDDEN_INDEX_SYMBOLS.has(i.symbol)),
+    [indices],
+  );
 
   const oiSnap = useMemo(() => {
     const nifty = indices.find((i) => i.symbol === 'NIFTY');
@@ -294,10 +242,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     setGainers(getGainers(6));
     setLosers(getLosers(6));
     setActive(getMostActive(6));
-    setNews(getNews());
-    setIntraday(getIntradayData().map((d) => ({ time: d.time, price: d.price, volume: d.volume })));
     setBreadth(getMarketBreadth());
-    setFiiDii(getFiiDiiData().slice(-10));
     setSectors(getSectorHeatmapData());
     setLastSync(new Date());
   }, []);
@@ -306,8 +251,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const nifty = indices.find((i) => i.symbol === 'NIFTY');
   const bankNifty = indices.find((i) => i.symbol === 'BANKNIFTY');
-  const fiiNet = fiiDii[fiiDii.length - 1];
-  const diiNet = fiiDii[fiiDii.length - 1];
   const pcrBias = oiSnap.pcr > 1.05 ? 'Bullish' : oiSnap.pcr < 0.95 ? 'Bearish' : 'Neutral';
   const sentimentScore = Math.round(
     50 +
@@ -377,7 +320,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
 
-        <div className="relative mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="relative mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           <StatPill label="PCR (OI)" value={oiSnap.pcr.toFixed(2)} sub={pcrBias} trend={oiSnap.pcr > 1 ? 'up' : 'down'} />
           <StatPill label="Max Pain" value={oiSnap.maxPain.toLocaleString('en-IN')} sub="NIFTY weekly" />
           <StatPill
@@ -391,124 +334,93 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             sub={oiSnap.fut?.signal ?? '—'}
             trend={oiSnap.fut && oiSnap.fut.premiumDiscount >= 0 ? 'up' : 'down'}
           />
-          <StatPill label="FII Cash" value={fiiNet ? fmtCr(fiiNet.fiiCash) : '—'} trend={fiiNet && fiiNet.fiiCash >= 0 ? 'up' : 'down'} />
-          <StatPill label="DII Cash" value={diiNet ? fmtCr(diiNet.diiCash) : '—'} trend={diiNet && diiNet.diiCash >= 0 ? 'up' : 'down'} />
         </div>
       </div>
 
       {/* Indices */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {indices.map((index, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {visibleIndices.map((index, i) => (
           <IndexCard key={index.symbol} index={index} delay={i} />
         ))}
       </div>
 
-      {/* Chart + sentiment + OI */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-8 app-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-[#d4af37]">NIFTY Intraday</h3>
-            <span className="text-[10px] text-slate-500">Live · 5 min</span>
+      {/* Sentiment + OI */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="app-card p-4">
+          <h3 className="text-xs font-bold text-[#d4af37] mb-3 flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" />
+            Market Sentiment
+          </h3>
+          <div className="relative h-3 bg-[#1a1f2e] rounded-full overflow-hidden mb-2">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${clampedSentiment}%` }}
+              className="h-full bg-gradient-to-r from-red-500 via-[#d4af37] to-emerald-500 rounded-full"
+            />
           </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={intraday}>
-              <defs>
-                <linearGradient id="dashId" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#d4af37" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#d4af37" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-              <XAxis dataKey="time" stroke="#64748b" fontSize={9} tickLine={false} interval={14} />
-              <YAxis domain={['auto', 'auto']} stroke="#64748b" fontSize={9} tickLine={false} width={52} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#0b0e17',
-                  border: '1px solid #1a1f2e',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                }}
-              />
-              <Area type="monotone" dataKey="price" stroke="#d4af37" fill="url(#dashId)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="flex justify-between text-[9px] text-slate-600 mb-3">
+            <span>Bearish</span>
+            <span>Neutral</span>
+            <span>Bullish</span>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-[#d4af37]">{clampedSentiment}%</div>
+            <div className="text-[10px] text-slate-500">
+              {clampedSentiment >= 60 ? 'Bullish' : clampedSentiment <= 40 ? 'Bearish' : 'Neutral'} composite
+            </div>
+          </div>
         </div>
 
-        <div className="xl:col-span-4 space-y-4">
-          <div className="app-card p-4">
-            <h3 className="text-xs font-bold text-[#d4af37] mb-3 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5" />
-              Market Sentiment
-            </h3>
-            <div className="relative h-3 bg-[#1a1f2e] rounded-full overflow-hidden mb-2">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${clampedSentiment}%` }}
-                className="h-full bg-gradient-to-r from-red-500 via-[#d4af37] to-emerald-500 rounded-full"
-              />
+        <div className="app-card p-4">
+          <h3 className="text-xs font-bold text-[#d4af37] mb-2 flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5" />
+            OI Snapshot
+          </h3>
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total CE OI</span>
+              <span className="text-red-300 font-bold tabular-nums">{(oiSnap.ceOi / 1e6).toFixed(2)}M</span>
             </div>
-            <div className="flex justify-between text-[9px] text-slate-600 mb-3">
-              <span>Bearish</span>
-              <span>Neutral</span>
-              <span>Bullish</span>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total PE OI</span>
+              <span className="text-emerald-300 font-bold tabular-nums">{(oiSnap.peOi / 1e6).toFixed(2)}M</span>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-[#d4af37]">{clampedSentiment}%</div>
-              <div className="text-[10px] text-slate-500">
-                {clampedSentiment >= 60 ? 'Bullish' : clampedSentiment <= 40 ? 'Bearish' : 'Neutral'} composite
-              </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Support</span>
+              <span className="text-slate-200 font-bold">{oiSnap.intel.strongestSupport.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Resistance</span>
+              <span className="text-slate-200 font-bold">{oiSnap.intel.strongestResistance.toLocaleString('en-IN')}</span>
             </div>
           </div>
+        </div>
 
+        {oiSnap.signals.length > 0 && (
           <div className="app-card p-4">
-            <h3 className="text-xs font-bold text-[#d4af37] mb-2 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5" />
-              OI Snapshot
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Total CE OI</span>
-                <span className="text-red-300 font-bold tabular-nums">{(oiSnap.ceOi / 1e6).toFixed(2)}M</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Total PE OI</span>
-                <span className="text-emerald-300 font-bold tabular-nums">{(oiSnap.peOi / 1e6).toFixed(2)}M</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Support</span>
-                <span className="text-slate-200 font-bold">{oiSnap.intel.strongestSupport.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Resistance</span>
-                <span className="text-slate-200 font-bold">{oiSnap.intel.strongestResistance.toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-          </div>
-
-          {oiSnap.signals.length > 0 && (
-            <div className="app-card p-4">
-              <h3 className="text-xs font-bold text-emerald-400 mb-2">Live Signals</h3>
-              {oiSnap.signals.map((s) => (
-                <div key={s.symbol} className="py-1.5 border-b border-[#1a1f2e] last:border-0">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-bold text-slate-200">{s.symbol}</span>
-                    <span className={s.signal === 'BUY' ? 'text-emerald-400' : 'text-red-400'}>{s.signal}</span>
-                  </div>
-                  <div className="text-[10px] text-slate-600 truncate">{s.reason}</div>
+            <h3 className="text-xs font-bold text-emerald-400 mb-2">Live Signals</h3>
+            {oiSnap.signals.map((s) => (
+              <div key={s.symbol} className="py-1.5 border-b border-[#1a1f2e] last:border-0">
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-slate-200">{s.symbol}</span>
+                  <span className={s.signal === 'BUY' ? 'text-emerald-400' : 'text-red-400'}>{s.signal}</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="text-[10px] text-slate-600 truncate">{s.reason}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <SectorStrip sectors={sectors} />
 
-      {/* Breadth + PCR + movers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <MoversPanel stocks={gainers} type="gainers" />
         <MoversPanel stocks={losers} type="losers" />
+        <MoversPanel stocks={active} type="active" />
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="app-card p-4">
           <h3 className="text-xs font-bold text-[#d4af37] mb-3 flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5" />
@@ -577,73 +489,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <MoversPanel stocks={active} type="active" />
-
-        <div className="app-card p-4">
-          <h3 className="text-xs font-bold text-[#d4af37] mb-3 flex items-center gap-1.5">
-            <Newspaper className="w-3.5 h-3.5" />
-            Market News
-          </h3>
-          <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-            {news.map((n) => (
-              <div key={n.id} className="p-2.5 bg-[#121520] rounded-lg hover:bg-[#1a1f2e] transition-colors cursor-pointer border border-transparent hover:border-[#1a1f2e]">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
-                      n.impact === 'High'
-                        ? 'bg-red-500/10 text-red-400'
-                        : n.impact === 'Medium'
-                          ? 'bg-[#d4af37]/10 text-[#d4af37]'
-                          : 'bg-slate-500/10 text-slate-400'
-                    }`}
-                  >
-                    {n.impact}
-                  </span>
-                  <span className="text-[9px] text-slate-600">{n.source}</span>
-                </div>
-                <div className="text-[11px] text-slate-300 font-medium leading-snug">{n.title}</div>
-                <div className="text-[9px] text-slate-600 mt-0.5">{n.time}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="app-card p-4">
-          <h3 className="text-xs font-bold text-[#d4af37] mb-3 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5" />
-            FII / DII Cash Flow
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={fiiDii}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-              <XAxis dataKey="date" stroke="#64748b" fontSize={8} tickLine={false} angle={-25} textAnchor="end" height={36} />
-              <YAxis stroke="#64748b" fontSize={8} tickLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#0b0e17',
-                  border: '1px solid #1a1f2e',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                }}
-              />
-              <Bar dataKey="fiiCash" name="FII" radius={[2, 2, 0, 0]}>
-                {fiiDii.map((entry, i) => (
-                  <Cell key={i} fill={entry.fiiCash >= 0 ? '#d4af37' : '#ef4444'} fillOpacity={0.85} />
-                ))}
-              </Bar>
-              <Bar dataKey="diiCash" name="DII" radius={[2, 2, 0, 0]}>
-                {fiiDii.map((entry, i) => (
-                  <Cell key={i} fill={entry.diiCash >= 0 ? '#10b981' : '#f97316'} fillOpacity={0.75} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <QuickActions onNavigate={onNavigate} />
     </div>
   );
 }
