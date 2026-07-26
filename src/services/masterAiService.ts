@@ -149,6 +149,18 @@ export function getTradingBlockMessage(langCode: string): string {
   return 'I only help with trading and investing — markets, options, risk, strategies, platform features, or portfolio ideas. Please rephrase your question in that space.';
 }
 
+/** Soft user-facing error — never show technical / npm / stack details */
+export function getMasterAiSorryMessage(langCode: string, kind: 'chat' | 'chart' | 'image' = 'chat'): string {
+  if (isHindiLang(langCode)) {
+    if (kind === 'chart') return 'Sorry — chart abhi analyze nahi ho paya. Thodi der baad dubara try karo.';
+    if (kind === 'image') return 'Sorry — image load nahi hui. Koi aur screenshot try karo.';
+    return 'Sorry — abhi jawab nahi de paaya. Thodi der baad dubara try karo.';
+  }
+  if (kind === 'chart') return 'Sorry — I couldn’t analyze that chart right now. Please try again in a moment.';
+  if (kind === 'image') return 'Sorry — that image couldn’t be loaded. Please try another screenshot.';
+  return 'Sorry — I couldn’t complete that just now. Please try again in a moment.';
+}
+
 /** Prefer web/news models only when the question needs “latest” info */
 export function shouldUseWebSearch(input: string): boolean {
   const n = input.toLowerCase();

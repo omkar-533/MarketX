@@ -30,6 +30,7 @@ import {
   generateLocalTradingReply,
   getChartVisionPrompt,
   getMasterAiWelcome,
+  getMasterAiSorryMessage,
   getTradingBlockMessage,
   isHindiLang,
   isTradingRelated,
@@ -213,9 +214,8 @@ export default function MasterAI() {
       if (autoAnalyze) {
         await handleSend(undefined, { imageDataUrl: dataUrl, imageName: fileName });
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not load image';
-      setImageError(msg);
+    } catch {
+      setImageError(getMasterAiSorryMessage(selectedLang.code, 'image'));
       clearSelectedImage();
     }
   };
@@ -333,13 +333,11 @@ export default function MasterAI() {
             context,
           );
           if (result.reply) responseText = result.reply;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'AI unavailable';
-          responseText = hasImage
-            ? hindi
-              ? `Chart analysis abhi nahi ho payi: ${msg}. Thodi der baad dubara try karo.`
-              : `Could not analyze the chart: ${msg}. Please refresh and try again.`
-            : `${generateLocalTradingReply(userText, context, selectedLang.code)}\n\n(${msg})`;
+        } catch {
+          responseText = getMasterAiSorryMessage(
+            selectedLang.code,
+            hasImage ? 'chart' : 'chat',
+          );
         }
       }
 
