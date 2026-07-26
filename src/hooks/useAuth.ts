@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { getSupabase } from '@/lib/supabase';
+import {
+  clearAppSession,
+  loadAppSession,
+  loginWithInvite,
+} from '../services/appInviteAuth';
 
 export interface User {
   id: string;
@@ -105,6 +110,7 @@ export function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'otp'>('login');
+  const [adminPassword, setAdminPassword] = useState<string | null>(null);
 
   const syncSession = useCallback(async () => {
     const supabase = getSupabase();
@@ -125,6 +131,14 @@ export function useAuth() {
   const hydrateSession = useCallback(async () => {
     const realSession = await syncSession();
     if (realSession) {
+      return true;
+    }
+
+    const invite = loadAppSession();
+    if (invite?.user) {
+      setUser(invite.user);
+      setIsLoggedIn(true);
+      setShowAuth(false);
       return true;
     }
 
@@ -155,6 +169,13 @@ export function useAuth() {
         setShowAuth(false);
         return;
       }
+      const invite = loadAppSession();
+      if (invite?.user) {
+        setUser(invite.user);
+        setIsLoggedIn(true);
+        setShowAuth(false);
+        return;
+      }
       const fallbackUser = restoreAdminSession();
       if (fallbackUser) {
         setUser(fallbackUser);
@@ -169,12 +190,13 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, [hydrateSession]);
 
-  const setAdminFallbackSession = useCallback(() => {
+  const setAdminFallbackSession = useCallback((password?: string) => {
     const adminUser = createAdminUser();
     persistAdminSession(adminUser);
     setUser(adminUser);
     setIsLoggedIn(true);
     setShowAuth(false);
+    if (password) setAdminPassword(password);
   }, []);
 
   const login = useCallback(
@@ -182,7 +204,6 @@ export function useAuth() {
       const normalizedEmail = email.trim().toLowerCase();
       const supabase = getSupabase();
 
-      let authError: Error | null = null;
       if (supabase) {
         const { error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
@@ -192,59 +213,40 @@ export function useAuth() {
           await hydrateSession();
           return;
         }
-        authError = error;
+      }
+
+      try {
+        const session = await loginWithInvite(normalizedEmail, password);
+        setUser(session.user);
+        setIsLoggedIn(true);
+        setShowAuth(false);
+        if (session.user.role === 'admin') setAdminPassword(password);
+        return;
+      } catch {
+        /* fall through */
       }
 
       if (isAdminCredentials(normalizedEmail, password)) {
-        setAdminFallbackSession();
+        setAdminFallbackSession(password);
         return;
       }
 
-      throw authError ?? new Error('Invalid email or password');
+      throw new Error('Invalid email or password');
     },
-    [hydrateSession, setAdminFallbackSession]
+    [hydrateSession, setAdminFallbackSession],
   );
 
-  const signup = useCallback(
-    async (name: string, email: string, password: string, phone?: string) => {
-      const supabase = getSupabase();
-      if (!supabase) throw new Error('Sign-up is unavailable (Supabase not configured).');
-
-      const redirectTo =
-        typeof window !== 'undefined' ? `${window.location.origin}/` : undefined;
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectTo,
-          data: {
-            full_name: name,
-            phone,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        await hydrateSession();
-        setShowAuth(false);
-        return;
-      }
-
-      throw new Error(
-        'Account created. Open the confirmation link in your email (check spam), then sign in.',
-      );
-    },
-    [hydrateSession]
-  );
+  const signup = useCallback(async () => {
+    throw new Error('Public sign-up is disabled. Ask admin for a login.');
+  }, []);
 
   const logout = useCallback(async () => {
     try {
       await getSupabase()?.auth.signOut();
     } finally {
       clearAdminSession();
+      clearAppSession();
+      setAdminPassword(null);
       setUser(null);
       setIsLoggedIn(false);
       setShowAuth(false);
@@ -252,102 +254,31 @@ export function useAuth() {
   }, []);
 
   const googleLogin = useCallback(async () => {
-    const supabase = getSupabase();
-    if (!supabase) throw new Error('Google sign-in is unavailable (Supabase not configured).');
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-
-    if (error) throw error;
+    throw new Error('Google sign-in is disabled. Use the email & password from admin.');
   }, []);
 
-  const otpLogin = useCallback(
-    async (phone: string, otp: string): Promise<OtpResult> => {
-      const supabase = getSupabase();
-      if (!supabase) throw new Error('OTP login is unavailable (Supabase not configured).');
-
-      if (!otp) {
-        const { error } = await supabase.auth.signInWithOtp({
-          phone,
-          options: {
-            shouldCreateUser: false,
-          },
-        });
-
-        if (error) throw error;
-        return 'sent';
-      }
-
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone,
-        token: otp,
-        type: 'sms',
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        await hydrateSession();
-        setShowAuth(false);
-      }
-
-      return 'verified';
-    },
-    [hydrateSession]
-  );
-
-  const forgotPassword = useCallback(async (email: string) => {
-    const supabase = getSupabase();
-    if (!supabase) throw new Error('Password reset is unavailable (Supabase not configured).');
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
-    });
-
-    if (error) throw error;
+  const otpLogin = useCallback(async (_phone: string, _otp: string): Promise<OtpResult> => {
+    throw new Error('Phone OTP is disabled. Use the email & password from admin.');
   }, []);
 
-  const updateProfile = useCallback((updates: Partial<User>) => {
-    setUser((prev) => {
-      if (!prev) return null;
-      return { ...prev, ...updates };
-    });
+  const forgotPassword = useCallback(async () => {
+    throw new Error('Password reset is disabled. Contact admin for a new password.');
   }, []);
-
-  const changePassword = useCallback(async (oldPass: string, newPass: string) => {
-    if (!user) return false;
-    if (!oldPass || !newPass || newPass.length < 6) return false;
-
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPass,
-    });
-
-    if (error) throw error;
-    return true;
-  }, [user]);
 
   return {
     user,
     isLoggedIn,
     showAuth,
-    setShowAuth,
     authMode,
     setAuthMode,
+    setShowAuth,
     login,
     signup,
     logout,
     googleLogin,
     otpLogin,
     forgotPassword,
-    updateProfile,
-    changePassword,
-    hydrateSession,
+    adminPassword,
+    adminEmail: user?.role === 'admin' ? user.email : null,
   };
 }

@@ -5,6 +5,7 @@ dist
 .env.*.local
 data/fyers-token.json
 data/fyers-logs/
+data/app-users.json
 *.log
 .DS_Store
 tmptest.txt

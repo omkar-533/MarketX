@@ -156,7 +156,7 @@ function AppWorkspace() {
       case 'global':
         return <GlobalMarkets />;
       case 'admin':
-        return <AdminPanel />;
+        return <AdminPanel user={auth.user} adminPassword={auth.adminPassword} />;
       case 'subscription':
         return <Subscription user={auth.user} />;
       default:

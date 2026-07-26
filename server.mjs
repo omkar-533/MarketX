@@ -15,6 +15,7 @@ import { attachMarketWebSocket } from './server/market/liveWebSocket.mjs';
 import { attachSocketIo } from './server/market/socketIoServer.mjs';
 import fyersRoutes from './server/fyers/routes.mjs';
 import fyersAuthRoutes from './server/auth/fyersAuthRoutes.mjs';
+import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS } from './server/masterAi.mjs';
 import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
 import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
@@ -36,6 +37,7 @@ app.use(express.json({ limit: '12mb' }));
 app.use('/api/market', marketRoutes);
 app.use('/api/fyers', fyersRoutes);
 app.use('/api/auth', fyersAuthRoutes);
+app.use('/api/app-auth', appAuthRoutes);
 
 const envOpenRouterKey = getOpenRouterApiKey();
 

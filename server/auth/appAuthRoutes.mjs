@@ -1,0 +1,170 @@
+import { Router } from 'express';
+import jwt from 'jsonwebtoken';
+import {
+  authenticateAppUser,
+  createAppUser,
+  deleteAppUser,
+  listAppUsers,
+  setAppUserActive,
+} from './appUserStore.mjs';
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
+const JWT_SECRET =
+  process.env.APP_AUTH_JWT_SECRET ||
+  process.env.JWT_SECRET ||
+  'apmi-invite-auth-change-me-in-production';
+
+function signAppToken(user) {
+  return jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      plan: user.plan,
+      name: user.name,
+      typ: 'app-invite',
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' },
+  );
+}
+
+function verifyAppToken(token) {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload?.typ !== 'app-invite') return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function isAdminPair(email, password) {
+  return (
+    String(email || '').trim().toLowerCase() === ADMIN_EMAIL &&
+    String(password || '') === ADMIN_PASSWORD
+  );
+}
+
+/** Admin gate: local admin credentials OR invite JWT with role=admin */
+function requireAdmin(req, res, next) {
+  const headerEmail = String(req.headers['x-admin-email'] || '').trim().toLowerCase();
+  const headerPassword = String(req.headers['x-admin-password'] || '');
+  if (isAdminPair(headerEmail, headerPassword)) {
+    req.adminActor = headerEmail;
+    return next();
+  }
+
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const payload = token ? verifyAppToken(token) : null;
+  if (payload?.role === 'admin') {
+    req.adminActor = payload.email;
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Admin access required' });
+}
+
+const router = Router();
+
+/** POST /api/app-auth/login — invite users + local admin */
+router.post('/login', (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+
+  if (isAdminPair(email, password)) {
+    const user = {
+      id: 'admin_local_omkar',
+      name: 'Omkar Chauhan',
+      email: ADMIN_EMAIL,
+      role: 'admin',
+      plan: 'premium',
+      verified: true,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+    return res.json({ token: signAppToken(user), user, source: 'admin' });
+  }
+
+  const user = authenticateAppUser(email, password);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  return res.json({ token: signAppToken(user), user, source: 'invite' });
+});
+
+/** GET /api/app-auth/me */
+router.get('/me', (req, res) => {
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const payload = token ? verifyAppToken(token) : null;
+  if (!payload) return res.status(401).json({ error: 'Not authenticated' });
+  return res.json({
+    user: {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+      plan: payload.plan,
+      verified: true,
+      createdAt: new Date().toISOString(),
+    },
+  });
+});
+
+/** GET /api/app-auth/admin/users */
+router.get('/admin/users', requireAdmin, (_req, res) => {
+  res.json({ users: listAppUsers() });
+});
+
+/** POST /api/app-auth/admin/users — create invite login */
+router.post('/admin/users', requireAdmin, (req, res) => {
+  try {
+    const user = createAppUser({
+      email: req.body?.email,
+      password: req.body?.password,
+      name: req.body?.name,
+      plan: req.body?.plan,
+      role: req.body?.role === 'admin' ? 'admin' : 'user',
+      createdBy: req.adminActor || 'admin',
+    });
+    return res.status(201).json({
+      user,
+      message: 'Login created. Share email & password with the user privately.',
+    });
+  } catch (err) {
+    const status = err?.status || 500;
+    return res.status(status).json({ error: err instanceof Error ? err.message : 'Create failed' });
+  }
+});
+
+/** PATCH /api/app-auth/admin/users/:id — activate / deactivate */
+router.patch('/admin/users/:id', requireAdmin, (req, res) => {
+  try {
+    const user = setAppUserActive(req.params.id, req.body?.active !== false);
+    return res.json({ user });
+  } catch (err) {
+    const status = err?.status || 500;
+    return res.status(status).json({ error: err instanceof Error ? err.message : 'Update failed' });
+  }
+});
+
+/** DELETE /api/app-auth/admin/users/:id */
+router.delete('/admin/users/:id', requireAdmin, (req, res) => {
+  try {
+    deleteAppUser(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    const status = err?.status || 500;
+    return res.status(status).json({ error: err instanceof Error ? err.message : 'Delete failed' });
+  }
+});
+
+export default router;
