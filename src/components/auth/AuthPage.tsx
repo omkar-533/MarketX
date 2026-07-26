@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Crown } from 'lucide-react';
 import AuthForm, { type AuthFormProps } from './AuthForm';
+import AuthFeatureGrid from './AuthFeatureGrid';
 import AuthRobotScene from './AuthRobotScene';
 import AuthTradingOverlay from './AuthTradingOverlay';
 import ThemeToggle from '../ThemeToggle';
@@ -69,12 +70,21 @@ export default function AuthPage(props: AuthPageProps) {
         </div>
       </header>
 
-      <div className="relative z-20 flex-1 flex items-end sm:items-center justify-center sm:justify-end px-4 sm:px-8 lg:px-16 py-6 lg:py-10">
+      <div className="relative z-20 flex-1 flex flex-col lg:flex-row items-stretch lg:items-center justify-end gap-5 lg:gap-10 px-4 sm:px-8 lg:px-12 xl:px-16 py-5 lg:py-8 min-h-0 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full lg:flex-1 lg:max-w-xl xl:max-w-2xl order-2 lg:order-1"
+        >
+          <AuthFeatureGrid />
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md shrink-0 order-1 lg:order-2 mx-auto lg:mx-0"
         >
           <div className="auth-form-card auth-form-card--robot auth-form-card--overlay p-5 sm:p-8">
             <div className="auth-form-robot-edge" aria-hidden="true" />
