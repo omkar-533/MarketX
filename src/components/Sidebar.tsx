@@ -23,11 +23,11 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
-  { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
   { id: 'oiintelligence', label: PAGE_NAMES.oiintelligence, icon: Activity },
   { id: 'heatmap', label: PAGE_NAMES.heatmap, icon: PieChart },
   { id: 'scanner', label: PAGE_NAMES.scanner, icon: ScanLine },
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
+  { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 
 export default function Sidebar({
