@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import brandLogoUrl from '../../assets/brand/brand-logo.png';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import BrandMark from '../BrandMark';
@@ -92,7 +93,7 @@ export default function AuthPage(props: AuthPageProps) {
             <div className="auth-lux__hero-mark-glow" aria-hidden="true" />
             <img
               className="auth-lux__hero-mark-img"
-              src={`${import.meta.env.BASE_URL}brand-logo.png`}
+              src={brandLogoUrl}
               alt="AI Powered Market Intelligence"
               width={720}
               height={720}

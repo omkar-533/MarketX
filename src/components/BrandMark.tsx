@@ -1,3 +1,4 @@
+import brandMarkUrl from '../assets/brand/brand-mark.png';
 import { BRAND } from '../constants/brandLabels';
 
 type BrandMarkProps = {
@@ -13,22 +14,21 @@ const sizeClass = {
   lg: 'w-10 h-10',
 } as const;
 
-/** App brand emblem — uses cropped mark for nav / sidebar chips */
+/** App brand emblem — Vite-bundled so it always ships in /assets */
 export default function BrandMark({
   className = '',
   imgClassName = '',
   size = 'md',
   title = BRAND,
 }: BrandMarkProps) {
-  const src = `${import.meta.env.BASE_URL}brand-mark.png`;
   return (
     <div
       className={`${sizeClass[size]} rounded-xl overflow-hidden shrink-0 shadow-lg shadow-gold/20 ring-1 ring-gold/25 bg-[#0a0e17] ${className}`}
       title={title}
     >
       <img
-        src={src}
-        alt=""
+        src={brandMarkUrl}
+        alt={BRAND}
         className={`w-full h-full object-cover ${imgClassName}`}
         width={80}
         height={80}
