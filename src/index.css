@@ -1930,19 +1930,43 @@ input[type="number"] { -moz-appearance: textfield; }
   inset: 0;
   z-index: 0;
   pointer-events: none;
-}
-
-.auth-lux__bg .auth-robot-stage--fullscreen {
-  position: absolute;
-  inset: 0;
-}
-
-.auth-lux__shade {
-  position: absolute;
-  inset: 0;
   background:
-    linear-gradient(105deg, rgba(5, 7, 13, 0.92) 0%, rgba(5, 7, 13, 0.72) 42%, rgba(5, 7, 13, 0.55) 100%),
-    linear-gradient(to top, rgba(5, 7, 13, 0.95) 0%, transparent 40%);
+    radial-gradient(ellipse 80% 50% at 15% 20%, rgba(212, 175, 55, 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 85% 70%, rgba(30, 58, 95, 0.35), transparent 50%),
+    #05070d;
+}
+
+.auth-lux__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.45;
+}
+
+.auth-lux__glow--a {
+  width: min(48vw, 420px);
+  height: min(48vw, 420px);
+  top: -8%;
+  left: -6%;
+  background: rgba(212, 175, 55, 0.22);
+}
+
+.auth-lux__glow--b {
+  width: min(42vw, 380px);
+  height: min(42vw, 380px);
+  bottom: 10%;
+  right: -4%;
+  background: rgba(56, 90, 140, 0.28);
+}
+
+.auth-lux__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
 }
 
 .auth-lux__nav {
