@@ -24,7 +24,7 @@ const iconWrap = {
   lg: 'w-10 h-10',
 } as const;
 
-/** Full APMI logo — Vite-bundled so it always ships */
+/** Full APMI logo — dark PNG plate blends into page via CSS */
 export default function BrandMark({
   className = '',
   imgClassName = '',
@@ -34,14 +34,11 @@ export default function BrandMark({
 }: BrandMarkProps) {
   if (iconOnly) {
     return (
-      <div
-        className={`${iconWrap[size]} rounded-xl overflow-hidden shrink-0 ring-1 ring-gold/25 bg-[#0a0e17] ${className}`}
-        title={title}
-      >
+      <div className={`${iconWrap[size]} shrink-0 ${className}`} title={title}>
         <img
           src={brandMarkUrl}
           alt={BRAND}
-          className={`w-full h-full object-cover ${imgClassName}`}
+          className={`brand-logo-blend brand-logo-blend--icon ${imgClassName}`}
           width={80}
           height={80}
           decoding="async"
@@ -51,11 +48,11 @@ export default function BrandMark({
   }
 
   return (
-    <div className={`${fullWrap[size]} shrink-0 overflow-hidden rounded-lg ${className}`} title={title}>
+    <div className={`${fullWrap[size]} shrink-0 ${className}`} title={title}>
       <img
         src={brandLogoUrl}
         alt={BRAND}
-        className={`block h-full w-auto max-w-full object-contain object-left ${imgClassName}`}
+        className={`brand-logo-blend brand-logo-blend--nav object-left ${imgClassName}`}
         width={320}
         height={174}
         decoding="async"
