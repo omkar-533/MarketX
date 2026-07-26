@@ -70,20 +70,12 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
 
       <div className="auth-thinker-hud">
         <motion.div
-          className="auth-thinker-chip auth-thinker-chip--tl"
-          animate={{ opacity: [0.7, 1, 0.7] }}
+          className="auth-thinker-chip auth-thinker-chip--tl auth-thinker-chip--brand"
+          animate={{ opacity: [0.75, 1, 0.75] }}
           transition={{ duration: 2.4, repeat: Infinity }}
         >
-          NEURAL CORE
-          <span>VIDEO LIVE</span>
-        </motion.div>
-        <motion.div
-          className="auth-thinker-chip auth-thinker-chip--tr"
-          animate={{ opacity: [0.55, 1, 0.55] }}
-          transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-        >
-          MARKET AI
-          <span>ONLINE</span>
+          AI POWERED
+          <span>MARKET INTELLIGENT</span>
         </motion.div>
       </div>
     </div>

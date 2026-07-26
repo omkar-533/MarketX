@@ -1553,6 +1553,18 @@ input[type="number"] { -moz-appearance: textfield; }
 .auth-thinker-chip--bl { bottom: 16%; left: 5%; min-width: 120px; }
 .auth-thinker-chip--br { bottom: 18%; left: 38%; min-width: 120px; }
 
+.auth-thinker-chip--brand {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  padding: 0.7rem 0.9rem;
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.auth-thinker-chip--brand span {
+  color: #d4af37;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+
 .auth-thinker-bar {
   margin-top: 0.25rem;
   height: 4px;

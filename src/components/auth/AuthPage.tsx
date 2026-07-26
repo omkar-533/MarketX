@@ -37,23 +37,17 @@ export default function AuthPage(props: AuthPageProps) {
       <AuthTradingOverlay />
 
       <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/50 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="auth-ai-logo auth-ai-logo--sm">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="auth-ai-logo auth-ai-logo--sm shrink-0">
               <Bot className="w-3.5 h-3.5" />
             </div>
-            <div>
-              <p className="auth-ai-brand text-[11px] leading-none">{BRAND}</p>
-              <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-0.5">
-                AI Neural Core
-              </p>
-            </div>
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white leading-tight truncate">
+              <span className="text-[#d4af37]">AI Powered</span>{' '}
+              <span className="text-slate-100">Market Intelligent</span>
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="auth-version-badge auth-version-badge--ai hidden sm:inline-flex">
-              AI VIDEO · LIVE
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
           </div>
         </div>
@@ -78,8 +72,8 @@ export default function AuthPage(props: AuthPageProps) {
           className="w-full max-w-md"
         >
           <div className="mb-4 hidden sm:block">
-            <p className="auth-ai-headline text-2xl lg:text-3xl">
-              <span>AI</span> market intelligence
+            <p className="auth-ai-headline text-2xl lg:text-3xl font-extrabold tracking-tight">
+              <span className="text-[#d4af37]">AI Powered</span> Market Intelligent
             </p>
             <p className="text-sm text-slate-500 mt-1">
               Live LTP · Option Chain · OI · Signals · LPT Master
@@ -90,7 +84,7 @@ export default function AuthPage(props: AuthPageProps) {
             <AuthForm {...props} />
           </div>
           <p className="mt-3 text-center text-[10px] text-slate-500 tracking-wide">
-            {BRAND} · Secure AI video login
+            {BRAND}
           </p>
         </motion.div>
       </div>
