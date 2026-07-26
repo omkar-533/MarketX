@@ -16,6 +16,7 @@ import { attachSocketIo } from './server/market/socketIoServer.mjs';
 import fyersRoutes from './server/fyers/routes.mjs';
 import fyersAuthRoutes from './server/auth/fyersAuthRoutes.mjs';
 import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
+import { isCloudUserStore, migrateFileUsersToCloud } from './server/auth/appUserStore.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS } from './server/masterAi.mjs';
 import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
 import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
@@ -132,4 +133,16 @@ httpServer.listen(config.port, () => {
   console.log(`  Fyers redirect: ${config.fyersRedirect}`);
   console.log(`  Auth: GET /api/auth/fyers/login · GET /api/auth/session`);
   console.log(`  Market: Socket.IO /socket.io (${marketProvider})`);
+
+  if (!isCloudUserStore()) {
+    console.log('  Logins: local file store — set SUPABASE_SERVICE_ROLE_KEY to persist in Supabase');
+    return;
+  }
+  migrateFileUsersToCloud()
+    .then(({ migrated }) => {
+      console.log(
+        `  Logins: Supabase app_users${migrated ? ` — lifted ${migrated} local login(s)` : ''}`,
+      );
+    })
+    .catch((err) => console.warn('  Logins: Supabase store error —', err.message));
 });

@@ -50,6 +50,11 @@ function isAdminPair(email, password) {
   );
 }
 
+function failed(res, err, fallback) {
+  const status = err?.status || 500;
+  return res.status(status).json({ error: err instanceof Error ? err.message : fallback });
+}
+
 /** Admin gate: local admin credentials OR invite JWT with role=admin */
 function requireAdmin(req, res, next) {
   const headerEmail = String(req.headers['x-admin-email'] || '').trim().toLowerCase();
@@ -73,7 +78,7 @@ function requireAdmin(req, res, next) {
 const router = Router();
 
 /** POST /api/app-auth/login — invite users + local admin */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
 
@@ -95,16 +100,19 @@ router.post('/login', (req, res) => {
     return res.json({ token: signAppToken(user), user, source: 'admin' });
   }
 
-  const user = authenticateAppUser(email, password);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid email or password' });
+  try {
+    const user = await authenticateAppUser(email, password);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    return res.json({ token: signAppToken(user), user, source: 'invite' });
+  } catch (err) {
+    return failed(res, err, 'Login failed');
   }
-
-  return res.json({ token: signAppToken(user), user, source: 'invite' });
 });
 
 /** POST /api/app-auth/signup — public 3-day trial; signs the user straight in */
-router.post('/signup', (req, res) => {
+router.post('/signup', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
 
   if (email === ADMIN_EMAIL) {
@@ -112,7 +120,7 @@ router.post('/signup', (req, res) => {
   }
 
   try {
-    const user = createAppUser({
+    const user = await createAppUser({
       email,
       password: req.body?.password,
       name: req.body?.name,
@@ -128,8 +136,7 @@ router.post('/signup', (req, res) => {
       source: 'trial',
     });
   } catch (err) {
-    const status = err?.status || 500;
-    return res.status(status).json({ error: err instanceof Error ? err.message : 'Signup failed' });
+    return failed(res, err, 'Signup failed');
   }
 });
 
@@ -154,14 +161,18 @@ router.get('/me', (req, res) => {
 });
 
 /** GET /api/app-auth/admin/users */
-router.get('/admin/users', requireAdmin, (_req, res) => {
-  res.json({ users: listAppUsers() });
+router.get('/admin/users', requireAdmin, async (_req, res) => {
+  try {
+    return res.json({ users: await listAppUsers() });
+  } catch (err) {
+    return failed(res, err, 'Could not load users');
+  }
 });
 
 /** POST /api/app-auth/admin/users — create invite login */
-router.post('/admin/users', requireAdmin, (req, res) => {
+router.post('/admin/users', requireAdmin, async (req, res) => {
   try {
-    const user = createAppUser({
+    const user = await createAppUser({
       email: req.body?.email,
       password: req.body?.password,
       name: req.body?.name,
@@ -174,30 +185,27 @@ router.post('/admin/users', requireAdmin, (req, res) => {
       message: 'Login created. Share email & password with the user privately.',
     });
   } catch (err) {
-    const status = err?.status || 500;
-    return res.status(status).json({ error: err instanceof Error ? err.message : 'Create failed' });
+    return failed(res, err, 'Create failed');
   }
 });
 
 /** PATCH /api/app-auth/admin/users/:id — activate / deactivate */
-router.patch('/admin/users/:id', requireAdmin, (req, res) => {
+router.patch('/admin/users/:id', requireAdmin, async (req, res) => {
   try {
-    const user = setAppUserActive(req.params.id, req.body?.active !== false);
+    const user = await setAppUserActive(req.params.id, req.body?.active !== false);
     return res.json({ user });
   } catch (err) {
-    const status = err?.status || 500;
-    return res.status(status).json({ error: err instanceof Error ? err.message : 'Update failed' });
+    return failed(res, err, 'Update failed');
   }
 });
 
 /** DELETE /api/app-auth/admin/users/:id */
-router.delete('/admin/users/:id', requireAdmin, (req, res) => {
+router.delete('/admin/users/:id', requireAdmin, async (req, res) => {
   try {
-    deleteAppUser(req.params.id);
+    await deleteAppUser(req.params.id);
     return res.json({ ok: true });
   } catch (err) {
-    const status = err?.status || 500;
-    return res.status(status).json({ error: err instanceof Error ? err.message : 'Delete failed' });
+    return failed(res, err, 'Delete failed');
   }
 });
 
