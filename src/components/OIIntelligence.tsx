@@ -128,7 +128,7 @@ export default function OIIntelligence({ onNavigate }: OIIntelligenceProps) {
             <div className="p-2 bg-[#d4af37]/10 rounded-lg border border-[#d4af37]/20">
               <Brain className="w-6 h-6 text-[#d4af37]" />
             </div>
-            OI Intelligence
+            AI Intelligence
           </h2>
           <p className="text-sm text-slate-500 mt-1">Smart money tracking, buildup analysis, and institutional positioning</p>
           <p className="text-[10px] mt-1">

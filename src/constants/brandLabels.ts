@@ -31,7 +31,7 @@ export const PAGE_NAMES: Record<string, string> = {
   heatmap: 'Heatmap',
   signals: 'Signals',
   futures: 'Futures Analytics',
-  oiintelligence: 'OI Intelligence',
+  oiintelligence: 'AI Intelligence',
   footprint: 'Footprint',
   trafi: 'Master AI',
 };

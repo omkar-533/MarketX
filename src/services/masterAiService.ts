@@ -131,7 +131,7 @@ Master TradeX platform (answer using this when user asks about the app):
 - Strategy Builder: multi-leg templates, payoff, Greeks, paper trade bridge
 - Option Chain / TradeX-style chain with OI, PCR, max pain
 - Futures Analytics: OI vs price, delivery, daily/weekly
-- OI Intelligence, Footprint, Scanners (volume, OI, gaps, momentum)
+- AI Intelligence, Footprint, Scanners (volume, OI, gaps, momentum)
 - Trading Journal: trades, analytics, calendar, Supabase sync
 - Backtesting, Signals panel, Watchlist, Portfolio, Alerts, News
 - Master AI (this assistant): trading-only copilot

@@ -130,7 +130,7 @@ export default function AuthTradingOverlay() {
       >
         <div className="flex items-center gap-1.5 mb-2">
           <Activity className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-[9px] font-bold text-slate-400 uppercase">OI Intelligence</span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase">AI Intelligence</span>
         </div>
         <div className="flex flex-wrap gap-1">
           <span className="auth-oi-pill auth-oi-pill--long">Long Buildup</span>

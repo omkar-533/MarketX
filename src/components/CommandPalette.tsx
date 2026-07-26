@@ -15,7 +15,7 @@ const commands = [
   { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },
   { id: 'strategy', label: 'Strategy Builder', shortcut: 'S' },
-  { id: 'oiintelligence', label: 'OI Intelligence', shortcut: 'I' },
+  { id: 'oiintelligence', label: 'AI Intelligence', shortcut: 'I' },
   { id: 'papertrading', label: 'Paper Trading Terminal', shortcut: 'P' },
   { id: 'futures', label: 'Futures Analytics', shortcut: 'F' },
   { id: 'heatmap', label: 'Market Heatmap', shortcut: 'H' },

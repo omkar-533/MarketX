@@ -24,7 +24,7 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tradingjournal', label: 'Trading Journal', icon: NotebookPen },
-  { id: 'oiintelligence', label: 'OI Intelligence', icon: Activity },
+  { id: 'oiintelligence', label: 'AI Intelligence', icon: Activity },
   { id: 'papertrading', label: 'Paper Trading', icon: Wallet },
   { id: 'heatmap', label: 'Heatmap', icon: PieChart },
   { id: 'scanner', label: 'Scanners', icon: ScanLine },
