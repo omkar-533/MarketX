@@ -265,7 +265,7 @@ export async function fetchMasterAiStatus(): Promise<{
         ? keySource === 'server'
           ? 'Master AI ready (server key)'
           : 'Live intelligence ready'
-        : 'Add OpenRouter API key in Profile',
+        : 'Add OpenAI or OpenRouter API key in Profile',
     };
   } catch {
     return {

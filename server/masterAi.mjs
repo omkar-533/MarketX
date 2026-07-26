@@ -16,7 +16,7 @@ export const MASTER_AI_MODELS = [
   { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 (free)', provider: 'Meta', free: true },
 ];
 
-const SYSTEM_PROMPT = `You are Master AI — a warm, experienced Indian markets mentor on Master TradeX.
+const SYSTEM_PROMPT = `You are Master AI — a warm, experienced Indian markets mentor on AI Powered Market Intelligent.
 
 STRICT RULES:
 1. ONLY discuss trading, investing, derivatives, macro/market news impact, risk, and this platform. Politely refuse anything else.
@@ -36,6 +36,15 @@ If text or prices are blurry, say what you can see vs what you cannot — never 
 
 const WEB_HINT = `The user may need information beyond the app snapshot. Use broad trading knowledge and recent market reasoning. If uncertain on a live number, say so clearly.`;
 
+/** ChatGPT Plus/Premium is NOT an API key. Real OpenAI API keys start with sk- (not sk-or-). */
+export function detectAiProvider(apiKey) {
+  const key = String(apiKey || '').trim();
+  if (!key) return null;
+  if (key.startsWith('sk-or-')) return 'openrouter';
+  if (key.startsWith('sk-')) return 'openai';
+  return null;
+}
+
 function buildMessages({ platformContext, history, userContent, hasImage }) {
   const system = hasImage
     ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}\n\n${platformContext}`
@@ -51,7 +60,10 @@ function buildMessages({ platformContext, history, userContent, hasImage }) {
   return msgs;
 }
 
-function pickTextModels(requested, needsWeb, langCode) {
+function pickTextModels(requested, needsWeb, langCode, provider) {
+  if (provider === 'openai') {
+    return ['gpt-4o-mini', 'gpt-4o'];
+  }
   const chain = [];
   const hindi = String(langCode || '').startsWith('hi');
   if (needsWeb) chain.push('perplexity/sonar');
@@ -63,8 +75,10 @@ function pickTextModels(requested, needsWeb, langCode) {
   return [...new Set(chain)];
 }
 
-/** Vision-capable models only (no Sonar — text-only) */
-function pickVisionModels(langCode) {
+function pickVisionModels(langCode, provider) {
+  if (provider === 'openai') {
+    return ['gpt-4o', 'gpt-4o-mini'];
+  }
   const hindi = String(langCode || '').startsWith('hi');
   const chain = [
     'openai/gpt-4o',
@@ -79,13 +93,24 @@ function pickVisionModels(langCode) {
   return [...new Set(chain)];
 }
 
+function createClient(apiKey) {
+  const provider = detectAiProvider(apiKey);
+  if (!provider) return { client: null, provider: null };
+  if (provider === 'openai') {
+    return { client: new OpenAI({ apiKey }), provider: 'openai' };
+  }
+  return {
+    client: new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey }),
+    provider: 'openrouter',
+  };
+}
+
 export function createMasterAiRouter(apiKey) {
-  const client = apiKey
-    ? new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey })
-    : null;
+  const { client, provider } = createClient(apiKey);
 
   return {
     isConfigured: Boolean(client),
+    provider,
 
     async chat(body) {
       const message = typeof body?.message === 'string' ? body.message.trim() : '';
@@ -101,7 +126,10 @@ export function createMasterAiRouter(apiKey) {
         throw Object.assign(new Error('message or image required'), { status: 400 });
       }
       if (!client) {
-        throw Object.assign(new Error('OPENROUTER_API_KEY is not configured on the server.'), { status: 503 });
+        throw Object.assign(
+          new Error('Add an OpenAI API key (platform.openai.com) or OpenRouter key in Profile.'),
+          { status: 503 },
+        );
       }
 
       if (hasImage && imageDataUrl.length > 6_500_000) {
@@ -130,7 +158,9 @@ export function createMasterAiRouter(apiKey) {
       const userContent = hasImage ? contentParts : textBlock;
       const messages = buildMessages({ platformContext, history, userContent, hasImage });
 
-      const models = hasImage ? pickVisionModels(lang) : pickTextModels(model, needsWeb, lang);
+      const models = hasImage
+        ? pickVisionModels(lang, provider)
+        : pickTextModels(model, needsWeb, lang, provider);
       let lastError = null;
 
       for (const modelId of models) {
@@ -143,7 +173,7 @@ export function createMasterAiRouter(apiKey) {
           });
           const reply = completion.choices[0]?.message?.content?.trim();
           if (reply) {
-            return { reply, modelUsed: modelId, source: 'openrouter' };
+            return { reply, modelUsed: modelId, source: provider };
           }
         } catch (err) {
           lastError = err;

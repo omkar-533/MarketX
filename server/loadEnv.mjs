@@ -43,6 +43,8 @@ export function getOpenRouterApiKey() {
   return (
     process.env.OPENROUTER_API_KEY?.trim() ||
     process.env.VITE_OPENROUTER_API_KEY?.trim() ||
+    process.env.OPENAI_API_KEY?.trim() ||
+    process.env.VITE_OPENAI_API_KEY?.trim() ||
     ''
   );
 }

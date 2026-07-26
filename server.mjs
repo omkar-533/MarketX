@@ -40,9 +40,9 @@ app.use('/api/auth', fyersAuthRoutes);
 const envOpenRouterKey = getOpenRouterApiKey();
 
 if (!envOpenRouterKey) {
-  console.warn('[Master AI] OPENROUTER_API_KEY missing — users can add key in Profile');
+  console.warn('[Master AI] No OPENAI_API_KEY / OPENROUTER_API_KEY — users can add key in Profile');
 } else {
-  console.log('[Master AI] OpenRouter API key loaded from env ✓');
+  console.log('[Master AI] API key loaded from env ✓');
 }
 
 app.get('/api/health', (_req, res) => {
@@ -85,7 +85,7 @@ app.get('/api/chat/status', (req, res) => {
     configured: ai.isConfigured,
     message: ai.isConfigured
       ? 'Master AI ready'
-      : 'Add OpenRouter API key in Profile (or OPENROUTER_API_KEY on server)',
+      : 'Add OpenAI API key (platform.openai.com) or OpenRouter key in Profile',
     models: MASTER_AI_MODELS.length,
     keySource: key ? (key === envOpenRouterKey ? 'server' : 'profile') : 'none',
   });

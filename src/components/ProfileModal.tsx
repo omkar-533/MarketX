@@ -11,6 +11,8 @@ import {
   saveOpenRouterApiKey,
   maskOpenRouterApiKey,
   clearOpenRouterApiKey,
+  isValidMasterAiKey,
+  detectMasterAiKeyProvider,
 } from '../services/openRouterKey';
 
 
@@ -50,14 +52,21 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
 
   const handleSaveOpenRouterKey = () => {
     const key = openRouterInput.trim();
-    if (!key.startsWith('sk-or-')) {
-      setOpenRouterMsg('Valid OpenRouter key starts with sk-or-');
+    const provider = detectMasterAiKeyProvider(key);
+    if (!isValidMasterAiKey(key) || !provider) {
+      setOpenRouterMsg(
+        'Use OpenAI API key (sk-… from platform.openai.com) or OpenRouter key (sk-or-…). ChatGPT Plus login is not an API key.',
+      );
       return;
     }
     saveOpenRouterApiKey(key);
     setOpenRouterSaved(key);
     setOpenRouterInput('');
-    setOpenRouterMsg('OpenRouter key saved — Master AI will use it.');
+    setOpenRouterMsg(
+      provider === 'openai'
+        ? 'OpenAI API key saved — Master AI will use GPT models.'
+        : 'OpenRouter key saved — Master AI will use it.',
+    );
   };
 
   return (
@@ -132,7 +141,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <KeyRound className="w-4 h-4 text-gold" />
-                      <span className="text-sm text-slate-400">Master AI (OpenRouter)</span>
+                      <span className="text-sm text-slate-400">Master AI (API key)</span>
                     </div>
                     {(serverAiReady || hasLocalKey) && (
                       <span className="text-[10px] font-bold text-emerald-400">Active</span>
@@ -145,8 +154,8 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   ) : null}
                   {!serverAiReady && !hasLocalKey ? (
                     <p className="text-[10px] text-slate-500">
-                      Server pe key nahi — openrouter.ai se key paste karo ya Render env me
-                      OPENROUTER_API_KEY set karo.
+                      Server pe key nahi — platform.openai.com se OpenAI API key (sk-…) ya openrouter.ai se key paste karo.
+                      ChatGPT Plus/Premium website login API key nahi hota.
                     </p>
                   ) : null}
                   {showPasteUi ? (
@@ -158,7 +167,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                           setOpenRouterInput(e.target.value);
                           setOpenRouterMsg('');
                         }}
-                        placeholder="sk-or-… (optional override)"
+                        placeholder="sk-… (OpenAI) or sk-or-… (OpenRouter)"
                         className="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-slate-200 placeholder:text-slate-600 focus:border-gold/50 focus:outline-none"
                         autoComplete="off"
                       />
