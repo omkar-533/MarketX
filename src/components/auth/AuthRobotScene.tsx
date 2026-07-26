@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-/** Full-screen looping login video (user-provided robot clip) */
+const LOGIN_VIDEO = '/auth/215500_medium.mp4?v=2';
+const LOGIN_POSTER = '/auth/ai-thinker-poster.jpg?v=2';
+
+/** Full-screen looping login video — exact user-provided clip */
 export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -40,7 +43,6 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
       <div className="auth-thinker-bg">
         <div className="auth-thinker-glow auth-thinker-glow--a" />
         <div className="auth-thinker-glow auth-thinker-glow--b" />
-        <div className="auth-thinker-grid" />
       </div>
 
       <div className="auth-thinker-video-wrap">
@@ -48,25 +50,22 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           <video
             ref={videoRef}
             className="auth-thinker-video"
+            src={LOGIN_VIDEO}
             autoPlay
             muted
             loop
             playsInline
             disablePictureInPicture
             preload="auto"
-            poster="/auth/ai-thinker-poster.jpg"
+            poster={LOGIN_POSTER}
             onError={() => setFailed(true)}
-          >
-            <source src="/auth/ai-thinker.mp4" type="video/mp4" />
-            <source src="/auth/ai-thinker.webm" type="video/webm" />
-          </video>
+          />
         ) : (
           <div className="auth-thinker-portrait auth-thinker-portrait--fallback">
-            <img src="/auth/ai-thinker-poster.jpg" alt="" className="auth-thinker-img" draggable={false} />
+            <img src={LOGIN_POSTER} alt="" className="auth-thinker-img" draggable={false} />
           </div>
         )}
         <div className="auth-thinker-vignette" />
-        <div className="auth-thinker-scan" />
       </div>
 
       <div className="auth-thinker-hud">
@@ -86,18 +85,6 @@ export default function AuthRobotScene({ fullscreen = false }: { fullscreen?: bo
           MARKET AI
           <span>ONLINE</span>
         </motion.div>
-        <div className="auth-thinker-chip auth-thinker-chip--bl">
-          DEPTH
-          <div className="auth-thinker-bar">
-            <i style={{ width: '78%' }} />
-          </div>
-        </div>
-        <div className="auth-thinker-chip auth-thinker-chip--br">
-          SIGNAL
-          <div className="auth-thinker-bar auth-thinker-bar--cyan">
-            <i style={{ width: '91%' }} />
-          </div>
-        </div>
       </div>
     </div>
   );
