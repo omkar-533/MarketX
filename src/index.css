@@ -2767,25 +2767,28 @@ input[type="number"] { -moz-appearance: textfield; }
   user-select: none;
   background: transparent;
   mix-blend-mode: lighten;
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 62%, rgba(0, 0, 0, 0.92) 74%, transparent 86%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 62%, rgba(0, 0, 0, 0.92) 74%, transparent 86%);
 }
 
 .brand-mark {
   line-height: 0;
-  border-radius: 999px;
   overflow: hidden;
+  border-radius: 0.55rem;
 }
 
+.brand-mark--square {
+  border-radius: 0.55rem;
+}
+
+.brand-logo-blend--square,
 .brand-logo-blend--round,
 .brand-logo-blend--nav,
 .brand-logo-blend--icon {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 86%);
-  mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 86%);
+  object-fit: contain;
   filter: none;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 /* Modal */
