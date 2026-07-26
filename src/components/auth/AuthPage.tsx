@@ -38,18 +38,18 @@ export default function AuthPage(props: AuthPageProps) {
 
       <header className="relative z-20 border-b border-cyan-400/10 shrink-0 bg-[#041018]/55 backdrop-blur-md">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-2.5 min-w-0" title={BRAND}>
-            <div className="w-9 h-9 bg-gold rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-gold/20">
-              <Crown className="w-4 h-4 text-dark-surface" />
+          <div className="flex items-center gap-3 min-w-0" title={BRAND}>
+            <div className="w-11 h-11 sm:w-12 sm:h-12 bg-gold rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-gold/20">
+              <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-dark-surface" />
             </div>
             <div className="min-w-0">
-              <div className="text-sm sm:text-base font-bold text-gold leading-tight">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gold leading-tight tracking-tight">
                 {BRAND_LINE1}
               </div>
-              <div className="text-[11px] sm:text-xs text-slate-300 -mt-0.5 leading-tight tracking-wide font-bold">
+              <div className="text-base sm:text-xl lg:text-2xl text-slate-100 -mt-0.5 leading-tight tracking-wide font-bold">
                 {BRAND_LINE2}
               </div>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.14em] mt-0.5">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-[0.16em] mt-1">
                 {BRAND_SHORT} · Live
               </p>
             </div>
