@@ -1,20 +1,43 @@
 ﻿import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import brandLogoUrl from '../../assets/brand/brand-logo.png';
 import AuthForm, { type AuthFormProps } from './AuthForm';
 import AuthFeatureGrid from './AuthFeatureGrid';
 import BrandMark from '../BrandMark';
-import ThemeToggle from '../ThemeToggle';
 import { BRAND, BRAND_SHORT } from '../../constants/brandLabels';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   initialMode?: AuthFormProps['mode'];
 };
 
+const STORY_BANDS = [
+  {
+    id: 'master-ai',
+    kicker: 'Master AI',
+    title: 'Build your edge with AI',
+    body: 'Ask market questions, surface structure, and get context-aware answers across bias, OI, and live tape — a copilot for serious NSE traders.',
+    cta: 'Sign In to continue',
+  },
+  {
+    id: 'workspace',
+    kicker: 'Live workspace',
+    title: 'One terminal for the full session',
+    body: 'Dashboard bias, heatmaps, option intelligence, and journals in a single invite-only workspace — built for speed when the market moves.',
+    cta: 'Enter the platform',
+  },
+  {
+    id: 'scanners',
+    kicker: 'Scanners & heatmaps',
+    title: 'Your edge, now on the tape',
+    body: 'Momentum, breakout, volume, and F&O screeners refresh with live quotes. Spot strength by sector and stock before the crowd catches up.',
+    cta: 'Get access',
+  },
+] as const;
+
 /**
- * LuxAlgo-style landing: fixed brand + Sign In.
- * Login form opens ONLY from Sign In button (modal) — not on the page by default.
+ * LuxAlgo-inspired premium landing.
+ * Login opens ONLY from Sign In (modal) — invite-only.
  */
 export default function AuthPage(props: AuthPageProps) {
   const [signInOpen, setSignInOpen] = useState(false);
@@ -41,16 +64,21 @@ export default function AuthPage(props: AuthPageProps) {
       <div className="auth-lux__bg" aria-hidden="true">
         <div className="auth-lux__glow auth-lux__glow--a" />
         <div className="auth-lux__glow auth-lux__glow--b" />
+        <div className="auth-lux__glow auth-lux__glow--c" />
         <div className="auth-lux__grid" />
+        <div className="auth-lux__vignette" />
       </div>
 
       <header className="auth-lux__nav">
         <div className="auth-lux__nav-inner">
-          <div className="flex items-center gap-3 min-w-0" title={BRAND}>
+          <a href="#top" className="auth-lux__brand" title={BRAND}>
             <BrandMark size="md" />
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <ThemeToggle />
+          </a>
+          <nav className="auth-lux__nav-links" aria-label="Primary">
+            <a href="#features">Features</a>
+            <a href="#platform">Platform</a>
+          </nav>
+          <div className="auth-lux__nav-actions">
             <button type="button" className="auth-lux__signin-btn" onClick={openSignIn}>
               Sign In
             </button>
@@ -58,34 +86,43 @@ export default function AuthPage(props: AuthPageProps) {
         </div>
       </header>
 
-      <main className="auth-lux__main relative z-20">
+      <main id="top" className="auth-lux__main relative z-20">
+        {/* Hero — LuxAlgo cadence */}
         <section className="auth-lux__hero">
           <motion.div
             className="auth-lux__hero-copy"
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           >
-            <p className="auth-lux__eyebrow">{BRAND_SHORT} · AI Market Platform</p>
+            <p className="auth-lux__eyebrow">{BRAND_SHORT} · AI algorithmic trading</p>
             <h1 className="auth-lux__headline">
-              Trade with
+              Start trading with
               <br />
               <span>smart intelligence</span>
             </h1>
             <p className="auth-lux__sub">
-              Live NSE workspace for bias, heatmaps, scanners, journals, and Master AI — built for serious traders.
+              The AI platform to read NSE structure and deploy your edge — live bias, heatmaps,
+              scanners, journals, and Master AI in one invite-only workspace.
             </p>
-            <button type="button" className="auth-lux__hero-cta" onClick={openSignIn}>
-              Sign In
-            </button>
+            <div className="auth-lux__hero-actions">
+              <button type="button" className="auth-lux__cta-primary" onClick={openSignIn}>
+                Sign In
+                <ArrowRight className="w-4 h-4" aria-hidden />
+              </button>
+              <a href="#features" className="auth-lux__cta-ghost">
+                Explore features
+              </a>
+            </div>
           </motion.div>
 
           <motion.div
             className="auth-lux__hero-mark"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.08 }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
+            <div className="auth-lux__hero-mark-ring" aria-hidden="true" />
             <img
               className="auth-lux__hero-mark-img"
               src={brandLogoUrl}
@@ -98,37 +135,97 @@ export default function AuthPage(props: AuthPageProps) {
           </motion.div>
         </section>
 
+        {/* Story bands */}
+        <section className="auth-lux__stories" id="platform" aria-label="Platform stories">
+          {STORY_BANDS.map((band, i) => (
+            <motion.article
+              key={band.id}
+              className={`auth-lux__band ${i % 2 === 1 ? 'auth-lux__band--flip' : ''}`}
+              initial={{ opacity: 0, y: 36 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="auth-lux__band-copy">
+                <p className="auth-lux__eyebrow">{band.kicker}</p>
+                <h2 className="auth-lux__band-title">{band.title}</h2>
+                <p className="auth-lux__band-body">{band.body}</p>
+                <button type="button" className="auth-lux__cta-text" onClick={openSignIn}>
+                  {band.cta}
+                  <ArrowRight className="w-4 h-4" aria-hidden />
+                </button>
+              </div>
+              <div className="auth-lux__band-visual" aria-hidden="true">
+                <div className="auth-lux__band-panel">
+                  <span className="auth-lux__band-panel-label">{band.kicker}</span>
+                  <span className="auth-lux__band-panel-glow" />
+                </div>
+              </div>
+            </motion.article>
+          ))}
+        </section>
+
+        {/* Modules grid */}
         <section className="auth-lux__features" id="features">
           <div className="auth-lux__features-inner">
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.5 }}
               className="auth-lux__features-head"
             >
-              <p className="auth-lux__eyebrow">Explore the platform</p>
+              <p className="auth-lux__eyebrow">Explore all features</p>
               <h2 className="auth-lux__features-title">
                 Everything you need to
                 <br />
                 <span>read the market</span>
               </h2>
               <p className="auth-lux__features-sub">
-                Six core modules — live data, structure, and AI in one invite-only workspace.
+                Six core modules — live data, structure, and AI in one premium workspace.
               </p>
             </motion.div>
             <AuthFeatureGrid />
           </div>
         </section>
 
+        {/* Bottom CTA */}
+        <section className="auth-lux__bottom-cta">
+          <motion.div
+            className="auth-lux__bottom-cta-inner"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="auth-lux__bottom-cta-title">
+              Ready to trade with
+              <br />
+              <span>smart intelligence</span>
+            </h2>
+            <p className="auth-lux__bottom-cta-sub">
+              Invite-only access. Sign in with the credentials created for your desk.
+            </p>
+            <button type="button" className="auth-lux__cta-primary auth-lux__cta-primary--lg" onClick={openSignIn}>
+              Sign In
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </button>
+          </motion.div>
+        </section>
+
         <footer className="auth-lux__footer">
-          <p>
-            {BRAND} · Invite-only access
+          <div className="auth-lux__footer-brand">
+            <BrandMark size="sm" />
+            <span>{BRAND}</span>
+          </div>
+          <p className="auth-lux__footer-note">
+            Trading involves risk. Content on this site is not financial advice. Past performance does
+            not guarantee future results. Invite-only platform · wolftradeai.in
           </p>
+          <p className="auth-lux__footer-copy">© {new Date().getFullYear()} {BRAND_SHORT}</p>
         </footer>
       </main>
 
-      {/* Sign In modal — only entry to login */}
       <AnimatePresence>
         {signInOpen && (
           <motion.div

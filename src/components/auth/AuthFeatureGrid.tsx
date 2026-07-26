@@ -63,7 +63,7 @@ const LOGIN_FEATURES: Feature[] = [
   },
 ];
 
-/** LuxAlgo-style feature modules — icon + title + description */
+/** LuxAlgo-style premium module cards */
 export default function AuthFeatureGrid() {
   return (
     <div className="auth-lux-features">
@@ -73,10 +73,10 @@ export default function AuthFeatureGrid() {
           <motion.article
             key={f.id}
             className="auth-lux-feature"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-20px' }}
-            transition={{ delay: 0.05 * i, duration: 0.4 }}
+            viewport={{ once: true, margin: '-24px' }}
+            transition={{ delay: 0.04 * i, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="auth-lux-feature__icon" aria-hidden="true">
               <Icon className="w-5 h-5" />
