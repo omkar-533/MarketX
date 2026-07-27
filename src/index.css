@@ -7,11 +7,10 @@
 body {
   background-color: var(--tf-bg);
   color: var(--tf-text);
-  font-family: 'Modern Era', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  letter-spacing: -0.011em;
 }
 
 /* ─── App design system ─── */
@@ -4233,22 +4232,22 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .brand-lockup__name {
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #e8d48b;
+  letter-spacing: 0.02em;
+  color: #e8c547;
   white-space: nowrap;
-  text-shadow: 0 1px 18px rgba(201, 162, 39, 0.2);
+  text-shadow: 0 1px 12px rgba(212, 175, 55, 0.22);
 }
 
 .brand-lockup__name--sm {
-  font-size: 1.35rem;
+  font-size: 1.05rem;
 }
 
 .brand-lockup__name--md {
-  font-size: 1.55rem;
+  font-size: 1.2rem;
 }
 
 .brand-lockup__name--lg {
-  font-size: 1.85rem;
+  font-size: 1.45rem;
 }
 
 /* Brand emblem — transparent vector, no blend hacks needed */

@@ -1,17 +1,14 @@
-import { type MouseEvent } from 'react';
-import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  ArrowRight,
   Check,
   Crown,
   ExternalLink,
   Hourglass,
   MessageCircle,
   ShieldCheck,
-  Sparkles,
-  Zap,
+  Star,
 } from 'lucide-react';
-import { PLANS, TRIAL_DAYS, type Plan } from '../constants/plans';
+import { PLANS, TRIAL_DAYS } from '../constants/plans';
 import type { User } from '../hooks/useAuth';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
 
@@ -38,167 +35,36 @@ function statusLine(access: AccessState | null | undefined) {
   return `${access.daysLeft} days left on your current access.`;
 }
 
-function PlanCard({
-  plan,
-  index,
-  link,
-  isTrialUser,
-  popupLabel,
-}: {
-  plan: Plan;
-  index: number;
-  link?: string;
-  isTrialUser: boolean;
-  popupLabel?: string;
-}) {
-  const reduced = useReducedMotion();
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
-  const rotateX = useSpring(rawX, { stiffness: 240, damping: 20 });
-  const rotateY = useSpring(rawY, { stiffness: 240, damping: 20 });
-  const isTrial = plan.id === 'trial';
-
-  const onMove = (e: MouseEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    const box = el.getBoundingClientRect();
-    const px = (e.clientX - box.left) / box.width;
-    const py = (e.clientY - box.top) / box.height;
-    el.style.setProperty('--mx', `${px * 100}%`);
-    el.style.setProperty('--my', `${py * 100}%`);
-    if (reduced) return;
-    rawY.set((px - 0.5) * 11);
-    rawX.set(-(py - 0.5) * 11);
-  };
-
-  const onLeave = () => {
-    rawX.set(0);
-    rawY.set(0);
-  };
-
-  return (
-    <motion.div
-      className={`plan-wrap ${plan.featured ? 'plan-wrap--featured' : ''}`}
-      initial={{ opacity: 0, y: 28 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.06 * index, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <motion.article
-        className={`plan ${plan.featured ? 'plan--featured' : ''}`}
-        onMouseMove={onMove}
-        onMouseLeave={onLeave}
-        style={{ rotateX, rotateY, transformPerspective: 1000 }}
-      >
-        <span className="plan__ring" aria-hidden="true" />
-        <span className="plan__plate" aria-hidden="true" />
-        <span className="plan__spot" aria-hidden="true" />
-        {plan.featured ? <span className="plan__sheen" aria-hidden="true" /> : null}
-
-        <div className="plan__body">
-          {plan.badge ? (
-            <span className={`plan__badge ${plan.featured ? 'plan__badge--hot' : ''}`}>
-              {plan.featured ? <Sparkles className="w-3 h-3" aria-hidden /> : null}
-              {plan.badge}
-            </span>
-          ) : (
-            <span className="plan__badge plan__badge--ghost">Full access</span>
-          )}
-
-          <h3 className="plan__name">{plan.name}</h3>
-
-          <div className="plan__price">
-            {plan.price === 0 ? (
-              <>
-                <span className="plan__amount plan__amount--free">Free</span>
-                <span className="plan__period">for {TRIAL_DAYS} days</span>
-              </>
-            ) : (
-              <>
-                <span className="plan__amount">
-                  <i aria-hidden>₹</i>
-                  {plan.price.toLocaleString('en-IN')}
-                </span>
-                <span className="plan__period">{plan.period}</span>
-              </>
-            )}
-          </div>
-
-          {plan.equivalent || plan.save ? (
-            <p className="plan__meta">
-              {plan.equivalent ? <span>{plan.equivalent}</span> : null}
-              {plan.save ? <b>{plan.save}</b> : null}
-            </p>
-          ) : (
-            <p className="plan__meta plan__meta--empty">Master AI · Indicators · Journal</p>
-          )}
-
-          <p className="plan__tagline">{plan.tagline}</p>
-
-          {isTrial ? (
-            <div className="plan__cta plan__cta--solid" style={{ pointerEvents: 'none', opacity: 0.9 }}>
-              <ShieldCheck className="w-4 h-4" aria-hidden />
-              {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
-            </div>
-          ) : link ? (
-            <a
-              href={link}
-              target="_blank"
-              rel="noreferrer noopener"
-              className={`plan__cta ${plan.featured ? 'plan__cta--solid' : ''}`}
-            >
-              {plan.featured ? <Zap className="w-4 h-4" aria-hidden /> : null}
-              {popupLabel || plan.cta}
-              <ExternalLink className="w-4 h-4" aria-hidden />
-            </a>
-          ) : (
-            <div className="plan__cta" style={{ pointerEvents: 'none', opacity: 0.7 }}>
-              Contact the desk
-              <ArrowRight className="w-4 h-4" aria-hidden />
-            </div>
-          )}
-          <p className="plan__note">{plan.note}</p>
-
-          <ul className="plan__features">
-            {plan.features.map((feature) => (
-              <li key={feature}>
-                <span className="plan__tick" aria-hidden="true">
-                  <Check className="w-3 h-3" />
-                </span>
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </motion.article>
-    </motion.div>
-  );
-}
-
-/** In-app pricing — same plan cards as the landing page. */
+/** In-app pricing — simple app cards (landing plan UI stays on the marketing page only). */
 export default function Subscription({ user, access, popup }: SubscriptionProps) {
   const link = popup?.url?.trim();
   const whatsapp = popup?.whatsapp?.trim();
   const isTrialUser = access?.isTrial ?? Boolean(user?.trialEndsAt);
 
   return (
-    <div className="app-lux-page space-y-8">
-      <header className="app-lux-page__head">
-        <p className="auth-lux__kicker">Pricing</p>
-        <h2 className="auth-lux__section-title">
-          <Crown className="inline-block w-7 h-7 mr-2 text-[#e8d48b] align-middle" />
-          Same full desk, your choice of term
+    <div className="space-y-5">
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-[#d4af37] flex items-center justify-center gap-2">
+          <Crown className="w-5 h-5" />
+          Subscription Plans
         </h2>
-        <p className="auth-lux__section-sub">
+        <p className="text-sm text-slate-500 mt-1">
           Every plan covers Master AI, Indicators, and Trading Journal — higher plans unlock more.
         </p>
-      </header>
+      </div>
 
-      <div className="lux-panel lux-panel--pad lux-panel--static flex flex-wrap items-center gap-3">
-        <Hourglass className="w-4 h-4 text-[#e8d48b] shrink-0" />
-        <p className="text-sm text-[rgba(190,190,198,0.9)]">{statusLine(access)}</p>
+      <div className="w-full app-card p-4 flex flex-wrap items-center gap-3">
+        <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
+        <p className="text-xs text-slate-300">{statusLine(access)}</p>
         {link ? (
-          <a href={link} target="_blank" rel="noreferrer noopener" className="auth-lux__btn-solid ml-auto text-xs !py-2 !px-4">
+          <a
+            href={link}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#d4af37] text-[#0b0e17] text-[11px] font-bold"
+          >
             {popup?.buttonLabel || 'Open link'}
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3 h-3" />
           </a>
         ) : null}
         {whatsapp ? (
@@ -206,28 +72,98 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
             href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="auth-lux__btn-ghost text-xs !py-2 !px-4 inline-flex items-center gap-1.5"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1a1f2e] text-slate-300 text-[11px] font-bold hover:border-[#d4af37]/30"
           >
-            <MessageCircle className="w-3.5 h-3.5" />
+            <MessageCircle className="w-3 h-3" />
             Talk to the desk
           </a>
         ) : null}
       </div>
 
-      <div className="auth-lux__plans">
-        {PLANS.map((plan, i) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            index={i}
-            link={link}
-            isTrialUser={isTrialUser}
-            popupLabel={popup?.buttonLabel}
-          />
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
+        {PLANS.map((plan, idx) => {
+          const isTrial = plan.id === 'trial';
+          return (
+            <motion.div
+              key={plan.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.08 }}
+              className={`relative app-card p-5 flex flex-col ${
+                plan.featured ? 'border-[#d4af37]/40 shadow-[0_0_0_1px_rgba(212,175,55,0.2)]' : ''
+              }`}
+            >
+              {plan.badge ? (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#d4af37] text-[#0b0e17] text-[10px] font-bold rounded-full flex items-center gap-1 whitespace-nowrap">
+                  <Star className="w-3 h-3" />
+                  {plan.badge}
+                </div>
+              ) : null}
+
+              <div className="text-center mb-4 mt-1">
+                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                  {plan.name}
+                </div>
+                <div className="mt-2">
+                  <span className="text-3xl font-bold text-[#d4af37]">
+                    {plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">{plan.period}</div>
+                {plan.equivalent ? (
+                  <div className="text-[10px] text-emerald-400 mt-0.5">{plan.equivalent}</div>
+                ) : null}
+                {plan.save ? (
+                  <div className="text-[10px] text-emerald-400 mt-0.5">{plan.save}</div>
+                ) : null}
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed mb-4">{plan.tagline}</p>
+
+              <ul className="space-y-2 mb-5">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-[11px] text-slate-400">
+                    <Check
+                      className={`w-3.5 h-3.5 mt-px shrink-0 ${plan.featured ? 'text-[#d4af37]' : 'text-emerald-400'}`}
+                    />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-auto">
+                {isTrial ? (
+                  <div className="w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <ShieldCheck className="w-4 h-4" />
+                    {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
+                  </div>
+                ) : link ? (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={`w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      plan.featured
+                        ? 'bg-[#d4af37] text-[#0b0e17] hover:bg-[#b8941f]'
+                        : 'bg-[#121520] text-slate-300 border border-[#1a1f2e] hover:border-[#d4af37]/30'
+                    }`}
+                  >
+                    {plan.cta}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <div className="w-full py-2.5 rounded-lg text-[11px] text-slate-500 text-center border border-[#1a1f2e]">
+                    Contact the desk to activate
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-600 text-center mt-2">{plan.note}</p>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      <p className="auth-lux__plans-foot">
+      <p className="text-[11px] text-slate-600 text-center max-w-2xl mx-auto">
         Prices in INR, inclusive of taxes. Paid access is activated by the desk after your account
         is verified — upload your screenshot from the popup and we switch it on.
       </p>

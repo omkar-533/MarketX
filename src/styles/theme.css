@@ -2,19 +2,19 @@
 
 html,
 html[data-theme="dark"] {
-  --tf-bg: #050505;
-  --tf-surface: #0c0c0e;
-  --tf-elevated: #121214;
-  --tf-border: rgba(255, 255, 255, 0.08);
-  --tf-border-soft: rgba(255, 255, 255, 0.12);
-  --tf-text: #f5f5f7;
-  --tf-text-secondary: #d4d4d8;
-  --tf-text-muted: #a1a1aa;
-  --tf-glass: rgba(5, 5, 5, 0.78);
-  --tf-overlay: rgba(0, 0, 0, 0.6);
-  --tf-input-bg: #121214;
-  --tf-chart-bg: #0a0a0d;
-  --tf-shadow: rgba(0, 0, 0, 0.45);
+  --tf-bg: #080a12;
+  --tf-surface: #0b0e17;
+  --tf-elevated: #121520;
+  --tf-border: #1a1f2e;
+  --tf-border-soft: #24324b;
+  --tf-text: #f1f5f9;
+  --tf-text-secondary: #cbd5e1;
+  --tf-text-muted: #94a3b8;
+  --tf-glass: rgba(11, 14, 23, 0.88);
+  --tf-overlay: rgba(0, 0, 0, 0.55);
+  --tf-input-bg: #121520;
+  --tf-chart-bg: #0b0e17;
+  --tf-shadow: rgba(0, 0, 0, 0.35);
 
   /* Legacy aliases used in custom CSS */
   --color-dark-bg: var(--tf-bg);
@@ -47,9 +47,9 @@ html[data-theme="light"] {
 
 /* Tailwind color utilities → runtime tokens (fixes bg-dark-surface etc.) */
 @theme inline {
-  --color-gold: #c9a227;
-  --color-gold-light: #e8d48b;
-  --color-gold-dark: #a8841c;
+  --color-gold: #d4af37;
+  --color-gold-light: #e8c04a;
+  --color-gold-dark: #b8941f;
   --color-dark-bg: var(--tf-bg);
   --color-dark-surface: var(--tf-surface);
   --color-dark-elevated: var(--tf-elevated);

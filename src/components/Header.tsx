@@ -22,44 +22,43 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
   }, []);
 
   return (
-    <header className={`app-lux-header ${className}`}>
-      <div className="app-lux-header__inner">
-        <button
-          type="button"
-          onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-1 text-[rgba(190,190,198,0.9)] hover:text-[#e8d48b] rounded-lg hover:bg-white/[0.04] shrink-0"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+    <header
+      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-dark-border/60 ${className}`}
+    >
+      <button
+        type="button"
+        onClick={onMenuClick}
+        className="lg:hidden p-2 -ml-1 text-slate-400 hover:text-gold rounded-lg hover:bg-dark-border/60 shrink-0"
+        aria-label="Open menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
 
-        <div className="shrink-0 min-w-0 mr-auto overflow-hidden" title={BRAND}>
-          <BrandMark size="sm" nameClassName="auth-lux__brand-text tracking-[0.06em]" />
+      <div className="shrink-0 min-w-0 mr-auto overflow-hidden" title={BRAND}>
+        <BrandMark size="sm" nameClassName="tracking-[0.06em] text-[1.15rem] sm:text-[1.3rem]" />
+      </div>
+
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
+          <Clock className="w-3.5 h-3.5" />
+          <span className="tabular-nums">{currentTime.toLocaleTimeString('en-IN')}</span>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-[rgba(190,190,198,0.75)]">
-            <Clock className="w-3.5 h-3.5" />
-            <span className="tabular-nums">{currentTime.toLocaleTimeString('en-IN')}</span>
-          </div>
+        <ThemeToggle />
 
-          <ThemeToggle />
-
-          {user && (
-            <button
-              type="button"
-              onClick={onProfile}
-              className="auth-lux__btn-ghost !py-1.5 !px-3 text-xs inline-flex items-center gap-2"
-            >
-              <span className="w-6 h-6 rounded-full bg-[rgba(201,162,39,0.18)] text-[#e8d48b] text-[11px] font-bold grid place-items-center">
-                {user.name[0]?.toUpperCase()}
-              </span>
-              <span className="hidden lg:inline max-w-[100px] truncate font-semibold text-[#f5f5f7]">
-                {user.name}
-              </span>
-            </button>
-          )}
-        </div>
+        {user && (
+          <button
+            onClick={onProfile}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-dark-border/60 transition-colors"
+          >
+            <div className="w-7 h-7 bg-gold/20 rounded-full flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+            </div>
+            <span className="hidden lg:block text-xs text-slate-300 font-medium max-w-[100px] truncate">
+              {user.name}
+            </span>
+          </button>
+        )}
       </div>
     </header>
   );

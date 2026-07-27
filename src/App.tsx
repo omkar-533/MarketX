@@ -188,15 +188,7 @@ function AppWorkspace() {
         {auth.isLoggedIn ? (
           <div className="app-shell__ambiance" aria-hidden="true">
             <div className="app-shell__bg" />
-            <img
-              className="app-shell__fx app-shell__fx--stroke"
-              src={`${import.meta.env.BASE_URL}landing/bg-aurora.jpg`}
-              alt=""
-            />
-            <div className="app-shell__aurora app-shell__aurora--1" />
-            <div className="app-shell__aurora app-shell__aurora--2" />
             <div className="app-shell__noise" />
-            <div className="app-shell__vignette" />
           </div>
         ) : null}
         {auth.isLoggedIn && (

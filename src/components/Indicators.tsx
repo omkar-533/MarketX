@@ -266,11 +266,11 @@ export default function Indicators() {
   }
 
   return (
-    <div className="lux-lib app-lux-page">
-      <header className="lux-lib__hero app-lux-page__head">
-        <p className="auth-lux__kicker">The Algorithmic Library</p>
-        <h1 className="auth-lux__section-title">Universal Indicator Library</h1>
-        <p className="auth-lux__section-sub">
+    <div className="lux-lib">
+      <header className="lux-lib__hero">
+        <p className="lux-lib__eyebrow">The Algorithmic Library</p>
+        <h1 className="lux-lib__title">Universal Indicator Library</h1>
+        <p className="lux-lib__lead">
           Curated indicators — previewed, linked, and ready for your desk. {TRIAL_DAYS}-day demo
           included; longer access after approval.
         </p>

@@ -1,43 +1,39 @@
 /**
- * App luxury system — matches landing `.auth-lux` material language.
- * Restraint > gimmicks: Modern Era type, pure black, soft plates, gold accents.
- * Spinning rings ONLY on `.lux-card` / `.lux-card--shine` (marketing surfaces).
+ * App surfaces — clean workspace cards.
+ * Landing marketing cards (auth-lux-feature / plan) stay on the landing page only.
  */
 
 html,
 html[data-theme='dark'] {
-  --lux-bg: #050505;
-  --lux-surface: #0c0c0e;
-  --lux-plate: #0a0a0d;
-  --lux-elevated: #121214;
-  --lux-ink: #f5f5f7;
-  --lux-muted: rgba(190, 190, 198, 0.88);
-  --lux-line: rgba(255, 255, 255, 0.08);
-  --lux-line-strong: rgba(255, 255, 255, 0.12);
-  --lux-gold: #c9a227;
-  --lux-gold-soft: #e8d48b;
-  --lux-gold-glow: rgba(201, 162, 39, 0.14);
-  --lux-cyan: #5eead4;
-  --lux-radius: 1.15rem;
-  --lux-radius-sm: 0.85rem;
-  --lux-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-  --lux-sans: 'Modern Era', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --lux-bg: #080a12;
+  --lux-surface: #0b0e17;
+  --lux-plate: #0b0e17;
+  --lux-elevated: #121520;
+  --lux-ink: #f1f5f9;
+  --lux-muted: #94a3b8;
+  --lux-line: #1a1f2e;
+  --lux-line-strong: #24324b;
+  --lux-gold: #d4af37;
+  --lux-gold-soft: #e8c04a;
+  --lux-gold-glow: rgba(212, 175, 55, 0.14);
+  --lux-radius: 0.75rem;
+  --lux-radius-sm: 0.5rem;
+  --lux-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --lux-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Keep theme tokens in sync */
   --tf-bg: var(--lux-bg);
   --tf-surface: var(--lux-surface);
   --tf-elevated: var(--lux-elevated);
   --tf-border: var(--lux-line);
   --tf-border-soft: var(--lux-line-strong);
   --tf-text: var(--lux-ink);
-  --tf-text-secondary: #d4d4d8;
-  --tf-text-muted: #a1a1aa;
-  --tf-glass: rgba(8, 8, 10, 0.88);
+  --tf-text-secondary: #cbd5e1;
+  --tf-text-muted: #94a3b8;
+  --tf-glass: rgba(11, 14, 23, 0.88);
   --tf-input-bg: var(--lux-elevated);
-  --tf-chart-bg: var(--lux-plate);
+  --tf-chart-bg: var(--lux-surface);
 }
 
-/* ── App canvas = landing atmosphere ── */
 .app-shell {
   position: relative;
   min-height: 100vh;
@@ -45,7 +41,6 @@ html[data-theme='dark'] {
   color: var(--lux-ink) !important;
   font-family: var(--lux-sans) !important;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.011em;
 }
 
 .app-shell__ambiance {
@@ -59,183 +54,24 @@ html[data-theme='dark'] {
 .app-shell__bg {
   position: absolute;
   inset: 0;
-  background: #050505;
-}
-
-.app-shell__fx {
-  position: absolute;
-  pointer-events: none;
-  user-select: none;
-  mix-blend-mode: screen;
-}
-
-.app-shell__fx--stroke {
-  top: 0;
-  left: 0;
-  width: min(70vw, 720px);
-  opacity: 0.35;
-  transform: rotate(180deg);
-  object-fit: cover;
-}
-
-.app-shell__aurora {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.55;
-}
-
-.app-shell__aurora--1 {
-  width: min(70vw, 640px);
-  height: min(70vw, 640px);
-  top: -18%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(59, 130, 246, 0.28);
-}
-
-.app-shell__aurora--2 {
-  width: min(50vw, 420px);
-  height: min(50vw, 420px);
-  top: 40%;
-  right: -10%;
-  background: rgba(94, 234, 212, 0.16);
+  background: var(--lux-bg);
 }
 
 .app-shell__noise {
   position: absolute;
   inset: 0;
-  opacity: 0.04;
+  opacity: 0.02;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px;
 }
 
-.app-shell__vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 70% 60% at 50% 30%,
-    transparent 0%,
-    rgba(5, 5, 5, 0.55) 70%,
-    #050505 100%
-  );
-}
-
-/* In-app pages share landing section typography */
-.app-lux-page {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 0.5rem 0 2rem;
-}
-
-.app-lux-page__head {
-  text-align: center;
-  max-width: 40rem;
-  margin: 0 auto 0.5rem;
-}
-
-.app-shell .auth-lux__kicker {
-  margin: 0 0 0.75rem;
-}
-
-.app-shell .auth-lux__section-title {
-  margin: 0;
-  font-size: clamp(1.55rem, 3vw, 2.15rem);
-}
-
-.app-shell .auth-lux__section-sub {
-  margin: 0.85rem auto 0;
-  max-width: 36rem;
-}
-
-.app-shell .auth-lux__plans {
-  margin-top: 0.5rem;
-}
-
-.app-shell .auth-lux__btn-solid,
-.app-shell .lux-btn--primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border-radius: 999px !important;
-  border: 0;
-  background: linear-gradient(135deg, #f0e0a8 0%, #c9a227 48%, #a8841c 100%) !important;
-  color: #0a0a0a !important;
-  font-weight: 750;
-  box-shadow: 0 10px 36px rgba(201, 162, 39, 0.28);
-  text-decoration: none;
-}
-
-.app-shell .auth-lux__btn-ghost,
-.app-shell .lux-btn--ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border-radius: 999px !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  background: transparent !important;
-  color: var(--lux-ink) !important;
-  font-weight: 650;
-  text-decoration: none;
-}
-
-.app-shell a.plan__cta {
-  text-decoration: none;
-  box-sizing: border-box;
-}
-
-/* Keep fixed header/sidebar; only lift stacking above ambiance */
 .app-shell > .app-header,
-.app-shell > .app-lux-header,
-.app-shell > aside,
-.app-shell > .app-main,
-.app-shell > .sidebar-overlay {
-  z-index: 1;
-}
-
-.app-shell > .app-header,
-.app-shell > .app-lux-header,
 .app-shell > aside {
   z-index: 50;
 }
 
-.app-lux-header {
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 3.5rem;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(5, 5, 5, 0.72) !important;
-  backdrop-filter: blur(22px) saturate(1.2);
-  -webkit-backdrop-filter: blur(22px) saturate(1.2);
-  transition: left 0.25s ease-in-out;
-}
-
-.app-lux-header__inner {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  height: 100%;
-  padding: 0 0.85rem 0 1rem;
-}
-
-@media (min-width: 1024px) {
-  .app-header--sidebar.app-lux-header,
-  .app-lux-header.app-header--sidebar {
-    left: 280px;
-  }
-  .app-header--sidebar-collapsed.app-lux-header,
-  .app-lux-header.app-header--sidebar-collapsed {
-    left: 64px;
-  }
+.app-shell > .app-main {
+  z-index: 1;
 }
 
 .app-main,
@@ -246,36 +82,25 @@ html[data-theme='dark'] {
   background: transparent !important;
 }
 
-/* ── Glass chrome (header / sidebar) ── */
 .app-shell .glass,
 .app-shell header.glass,
 .app-shell aside.glass {
-  background: rgba(5, 5, 5, 0.72) !important;
+  background: rgba(11, 14, 23, 0.92) !important;
   border-color: var(--lux-line) !important;
-  backdrop-filter: blur(22px) saturate(1.2);
-  -webkit-backdrop-filter: blur(22px) saturate(1.2);
-  box-shadow: none !important;
+  backdrop-filter: blur(14px);
 }
 
-/* ── Quiet luxury plates (default cards) ── */
+/* Simple app cards — no landing ring/plate chrome */
 .app-card,
 .app-card-elevated,
 .lux-panel {
   position: relative !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
-    var(--lux-surface) !important;
+  background: var(--lux-surface) !important;
   border: 1px solid var(--lux-line) !important;
   border-radius: var(--lux-radius) !important;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28) !important;
+  box-shadow: none !important;
   overflow: hidden;
-  transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    background 0.25s ease !important;
-  /* kill previous gimmick layers */
   translate: none !important;
-  isolation: auto;
 }
 
 .app-card::before,
@@ -288,241 +113,79 @@ html[data-theme='dark'] {
   display: none !important;
 }
 
-.app-card > *,
-.app-card-elevated > *,
-.lux-panel > * {
-  position: relative;
-  z-index: auto;
-}
-
 .app-card:hover,
 .app-card-elevated:hover,
-.lux-panel:not(.lux-panel--static):hover {
-  border-color: rgba(232, 212, 139, 0.28) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4) !important;
+.lux-panel:hover {
+  border-color: rgba(212, 175, 55, 0.28) !important;
   translate: none !important;
+  box-shadow: none !important;
 }
 
 .app-card-elevated {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 40%),
-    var(--lux-elevated) !important;
+  background: var(--lux-elevated) !important;
 }
 
 .lux-panel--pad {
-  padding: 1.2rem 1.25rem;
+  padding: 1rem;
 }
 
 .lux-panel--soft {
-  background: rgba(255, 255, 255, 0.025) !important;
+  background: rgba(18, 21, 32, 0.8) !important;
 }
 
 .lux-panel--featured {
-  border-color: rgba(201, 162, 39, 0.32) !important;
-  background:
-    linear-gradient(165deg, rgba(201, 162, 39, 0.1), transparent 48%),
-    var(--lux-surface) !important;
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(201, 162, 39, 0.08) inset !important;
+  border-color: rgba(212, 175, 55, 0.35) !important;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.06), var(--lux-surface)) !important;
 }
 
 .lux-panel--static:hover {
   border-color: var(--lux-line) !important;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28) !important;
 }
 
-/* ── Premium interactive card (landing feature / plan style) ── */
-.lux-card {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  border-radius: var(--lux-radius);
-  background: transparent;
-  transition: box-shadow 0.35s ease, translate 0.35s ease;
-}
-
-.lux-card:not(.lux-card--static):hover {
-  translate: 0 -4px;
-  box-shadow: var(--lux-shadow);
-}
-
-.lux-card__ring {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  overflow: hidden;
-  background: var(--lux-line);
-}
-
-.lux-card__plate {
-  position: absolute;
-  inset: 1px;
-  z-index: 1;
-  border-radius: calc(var(--lux-radius) - 1px);
-  background: var(--lux-plate);
-  transition: background 0.3s ease;
-}
-
-.lux-card:not(.lux-card--static):hover .lux-card__plate {
-  background: #0d0c0a;
-}
-
-.lux-card--featured .lux-card__ring {
-  background: rgba(201, 162, 39, 0.28);
-}
-
-.lux-card--featured .lux-card__plate {
-  background: linear-gradient(180deg, rgba(201, 162, 39, 0.1), var(--lux-plate));
-}
-
-/* Shine ring only when explicitly requested */
-.lux-card--shine .lux-card__ring::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 170%;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  opacity: 0;
-  background: conic-gradient(
-    transparent 0deg,
-    rgba(232, 212, 139, 0.9) 40deg,
-    rgba(94, 234, 212, 0.55) 70deg,
-    transparent 120deg
-  );
-  animation: fx-ring-spin 2.8s linear infinite;
-  transition: opacity 0.35s ease;
-}
-
-.lux-card--shine:hover .lux-card__ring::before {
-  opacity: 1;
-}
-
-.lux-card__spot {
-  position: absolute;
-  inset: 1px;
-  z-index: 2;
-  border-radius: calc(var(--lux-radius) - 1px);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  background: radial-gradient(
-    14rem circle at var(--mx, 50%) var(--my, 40%),
-    rgba(232, 212, 139, 0.14),
-    transparent 62%
-  );
-}
-
-.lux-card:not(.lux-card--static):hover .lux-card__spot {
-  opacity: 1;
-}
-
-.lux-card__body {
-  position: relative;
-  z-index: 3;
-  height: 100%;
-}
-
-/* ── Toolbar / chips ── */
 .lux-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem;
-  border-radius: 999px;
+  padding: 0.35rem;
+  border-radius: var(--lux-radius);
   border: 1px solid var(--lux-line);
-  background: rgba(12, 12, 14, 0.9);
+  background: var(--lux-surface);
 }
 
 .lux-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.9rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--lux-muted);
-  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  border: 1px solid var(--lux-line);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
 }
 
 .lux-chip.is-active,
 .lux-chip--active {
-  border-color: rgba(201, 162, 39, 0.35);
+  border-color: rgba(212, 175, 55, 0.35);
   background: var(--lux-gold-glow);
-  color: var(--lux-gold-soft);
+  color: #e8c04a;
 }
 
 .lux-input,
-.tf-field,
-.app-shell input:not([type='checkbox']):not([type='radio']):not([type='range']),
-.app-shell select,
-.app-shell textarea {
-  border-radius: var(--lux-radius-sm) !important;
+.tf-field {
+  border-radius: 0.5rem !important;
   border-color: var(--lux-line) !important;
   background: var(--lux-elevated) !important;
-  color: var(--lux-ink) !important;
-  font-family: inherit;
 }
 
-.lux-input:focus,
-.tf-field:focus,
-.app-shell input:focus,
-.app-shell select:focus,
-.app-shell textarea:focus {
-  border-color: rgba(201, 162, 39, 0.45) !important;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.1);
-}
-
-.lux-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.7rem 1.15rem;
-  border-radius: var(--lux-radius-sm);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  border: 0;
-  cursor: pointer;
-  text-decoration: none;
-  font-family: inherit;
-}
-
-.lux-btn--primary {
-  background: linear-gradient(135deg, var(--lux-gold-soft), var(--lux-gold));
-  color: #0a0a0d;
-  box-shadow: 0 10px 28px rgba(201, 162, 39, 0.22);
-}
-
-.lux-btn--primary:hover {
-  filter: brightness(1.05);
-}
-
-.lux-btn--ghost {
-  border: 1px solid rgba(201, 162, 39, 0.35);
-  background: var(--lux-gold-glow);
-  color: var(--lux-gold-soft);
-}
-
-/* ── Indicator library cards ── */
 .lux-lib-card {
   border: 1px solid var(--lux-line) !important;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%),
-    var(--lux-surface) !important;
-  border-radius: var(--lux-radius) !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
-  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  background: var(--lux-surface) !important;
+  border-radius: 1rem !important;
+  box-shadow: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .lux-lib-card::before,
@@ -532,74 +195,31 @@ html[data-theme='dark'] {
 }
 
 .lux-lib-card:hover {
-  border-color: rgba(201, 162, 39, 0.35) !important;
-  transform: translateY(-3px);
-  box-shadow: var(--lux-shadow);
+  border-color: rgba(212, 175, 55, 0.35) !important;
+  transform: translateY(-2px);
 }
 
-.lux-lib-card > * {
-  position: relative;
-  z-index: auto;
-}
-
-.lux-lib__chip.is-active {
-  border-color: rgba(201, 162, 39, 0.35);
-  background: var(--lux-gold-glow);
-  color: var(--lux-gold-soft);
-}
-
-/* Soft remap of old hex utilities → luxury palette */
-.app-shell [class*='bg-[#0b0e17]'],
-.app-shell [class*='bg-[#080a12]'],
-.app-shell [class*='bg-[#101420]'],
-.app-shell [class*='bg-[#111827]'],
-.app-shell [class*='bg-[#121520]'],
-.app-shell [class*='bg-[#0d1728]'] {
-  background-color: var(--lux-surface) !important;
-}
-
-.app-shell [class*='border-[#1a1f2e]'],
-.app-shell [class*='border-[#24324b]'] {
-  border-color: var(--lux-line) !important;
-}
-
-.app-shell .text-\[\#d4af37\],
-.app-shell .text-gold {
-  color: var(--lux-gold-soft) !important;
-}
-
-.app-shell .bg-\[\#d4af37\],
-.app-shell .bg-gold {
-  background-color: var(--lux-gold) !important;
-}
-
-/* Sidebar nav polish */
-.app-shell aside .text-slate-400 {
-  color: rgba(190, 190, 198, 0.75) !important;
-}
-
-.app-shell aside button.bg-gold\/10,
-.app-shell aside [class*='bg-gold/10'] {
-  background: var(--lux-gold-glow) !important;
-}
-
-.access-gate__card {
-  border-radius: var(--lux-radius) !important;
-  border: 1px solid rgba(201, 162, 39, 0.28) !important;
-  background:
-    linear-gradient(180deg, rgba(201, 162, 39, 0.08), transparent 40%),
-    var(--lux-surface) !important;
-  box-shadow: var(--lux-shadow) !important;
-  padding: 1.5rem !important;
-}
-
-.access-gate__card::after {
+/* Hide unused LuxCard chrome if any leftover */
+.lux-card__ring,
+.lux-card__plate,
+.lux-card__spot {
   display: none !important;
 }
 
+.lux-card {
+  background: var(--lux-surface);
+  border: 1px solid var(--lux-line);
+  border-radius: var(--lux-radius);
+}
+
+.lux-card__body {
+  position: relative;
+  z-index: 1;
+}
+
 .brand-lockup__name {
-  font-family: var(--lux-sans) !important;
-  color: var(--lux-gold-soft) !important;
-  letter-spacing: 0.06em;
-  font-weight: 750;
+  font-family: inherit !important;
+  color: #e8c547 !important;
+  letter-spacing: 0.04em;
+  font-weight: 800;
 }

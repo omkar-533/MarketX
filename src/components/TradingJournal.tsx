@@ -38,7 +38,6 @@ import {
 import type { User } from '../hooks/useAuth';
 import { useChartTheme } from '../hooks/useChartTheme';
 import type { JournalMarket, PnlCurrency, TradeRecord, TradeSide, TradeType } from '../types/journal';
-import LuxCard from './ui/LuxCard';
 import {
   createManualGlobalInstrument,
   defaultPnlCurrency,
@@ -1034,18 +1033,19 @@ export default function TradingJournal({
         onClose={() => setLightbox(null)}
       />
       {/* Hero */}
-      <LuxCard featured shine className="relative" bodyClassName="relative p-5 sm:p-6">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[rgba(201,162,39,0.06)] rounded-full blur-3xl pointer-events-none" />
+      {/* Hero */}
+      <div className="relative overflow-hidden app-card p-5">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <p className="auth-lux__kicker !mb-2">Professional Journal</p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#f5f5f7] tracking-tight">Trading Journal</h1>
-            <p className={`${mutedClass} text-sm mt-2 max-w-xl text-[rgba(190,190,198,0.88)]`}>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-[#d4af37] font-bold">Professional Journal</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1">Trading Journal</h1>
+            <p className={`${mutedClass} text-sm mt-1 max-w-xl`}>
               NSE/BSE, crypto &amp; forex — log any market with manual P&amp;L.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[rgba(201,162,39,0.3)] bg-[rgba(201,162,39,0.12)] px-3 py-1.5 text-xs font-semibold text-[#e8d48b]">
+            <span className="rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-1.5 text-xs font-semibold text-[#d4af37]">
               {isAdmin ? 'Admin · All Traders' : user.name}
             </span>
             <button
@@ -1054,7 +1054,7 @@ export default function TradingJournal({
                 setActiveTab('trades');
                 setShowTradeForm(true);
               }}
-              className="auth-lux__btn-solid !py-2 !px-4 text-sm inline-flex items-center gap-1.5"
+              className="flex items-center gap-1.5 rounded-lg bg-[#d4af37] px-4 py-2 text-sm font-bold text-[#0b0e17] hover:bg-[#e8c04a]"
             >
               <Plus className="w-4 h-4" /> Log Trade
             </button>
@@ -1062,11 +1062,11 @@ export default function TradingJournal({
               type="button"
               onClick={handleSync}
               disabled={isSyncing}
-              className="auth-lux__btn-ghost !py-2 !px-4 text-sm disabled:opacity-50"
+              className="rounded-lg border border-[#1a1f2e] px-4 py-2 text-sm text-slate-300 hover:border-[#d4af37]/40 disabled:opacity-50"
             >
               {isSyncing ? 'Syncing…' : 'Sync now'}
             </button>
-            <button type="button" onClick={handleExportCsv} className="auth-lux__btn-ghost !p-2 text-[rgba(190,190,198,0.9)]" title="Export CSV">
+            <button type="button" onClick={handleExportCsv} className="rounded-lg border border-[#1a1f2e] px-3 py-2 text-slate-400 hover:text-[#d4af37]" title="Export CSV">
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -1090,7 +1090,7 @@ export default function TradingJournal({
             </div>
           ))}
         </div>
-      </LuxCard>
+      </div>
 
       <div className="lux-toolbar overflow-x-auto">
         {journalTabs.map(({ id, label, icon: Icon }) => (
