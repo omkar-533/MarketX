@@ -11,6 +11,7 @@ import {
 import { PLANS, TRIAL_DAYS } from '../constants/plans';
 import type { User } from '../hooks/useAuth';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
+import LuxCard from './ui/LuxCard';
 
 interface SubscriptionProps {
   user: User | null;
@@ -35,7 +36,7 @@ function statusLine(access: AccessState | null | undefined) {
   return `${access.daysLeft} days left on your current access.`;
 }
 
-/** In-app pricing — same plans and prices as the landing page. */
+/** In-app pricing — landing Lux cards + same plans. */
 export default function Subscription({ user, access, popup }: SubscriptionProps) {
   const link = popup?.url?.trim();
   const whatsapp = popup?.whatsapp?.trim();
@@ -53,7 +54,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
         </p>
       </div>
 
-      <div className="w-full lux-panel lux-panel--pad flex flex-wrap items-center gap-3">
+      <LuxCard bodyClassName="p-4 flex flex-wrap items-center gap-3">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
         {link ? (
@@ -78,7 +79,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
             Talk to the desk
           </a>
         ) : null}
-      </div>
+      </LuxCard>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
         {PLANS.map((plan, idx) => {
@@ -89,75 +90,79 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.08 }}
-              className={`relative lux-panel lux-panel--pad lux-panel--interactive flex flex-col ${
-                plan.featured ? 'lux-panel--featured' : ''
-              }`}
+              className="h-full"
             >
-              {plan.badge ? (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#d4af37] text-[#0b0e17] text-[10px] font-bold rounded-full flex items-center gap-1 whitespace-nowrap">
-                  <Star className="w-3 h-3" />
-                  {plan.badge}
-                </div>
-              ) : null}
-
-              <div className="text-center mb-4 mt-1">
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                  {plan.name}
-                </div>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-[#d4af37]">
-                    {plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">{plan.period}</div>
-                {plan.equivalent ? (
-                  <div className="text-[10px] text-emerald-400 mt-0.5">{plan.equivalent}</div>
-                ) : null}
-                {plan.save ? (
-                  <div className="text-[10px] text-emerald-400 mt-0.5">{plan.save}</div>
-                ) : null}
-              </div>
-
-              <p className="text-[11px] text-slate-500 leading-relaxed mb-4">{plan.tagline}</p>
-
-              <ul className="space-y-2 mb-5">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-[11px] text-slate-400">
-                    <Check
-                      className={`w-3.5 h-3.5 mt-px shrink-0 ${plan.featured ? 'text-[#d4af37]' : 'text-emerald-400'}`}
-                    />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-auto">
-                {isTrial ? (
-                  <div className="w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <ShieldCheck className="w-4 h-4" />
-                    {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
+              <LuxCard
+                featured={Boolean(plan.featured)}
+                className="h-full"
+                bodyClassName="relative p-5 flex flex-col h-full"
+              >
+                {plan.badge ? (
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#d4af37] text-[#0b0e17] text-[10px] font-bold rounded-full flex items-center gap-1 whitespace-nowrap z-10">
+                    <Star className="w-3 h-3" />
+                    {plan.badge}
                   </div>
-                ) : link ? (
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className={`w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                      plan.featured
-                        ? 'bg-[#d4af37] text-[#0b0e17] hover:bg-[#b8941f]'
-                        : 'bg-[#121520] text-slate-300 border border-[#1a1f2e] hover:border-[#d4af37]/30'
-                    }`}
-                  >
-                    {plan.cta}
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                ) : (
-                  <div className="w-full py-2.5 rounded-lg text-[11px] text-slate-500 text-center border border-[#1a1f2e]">
-                    Contact the desk to activate
+                ) : null}
+
+                <div className="text-center mb-4 mt-2">
+                  <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                    {plan.name}
                   </div>
-                )}
-                <p className="text-[10px] text-slate-600 text-center mt-2">{plan.note}</p>
-              </div>
+                  <div className="mt-2">
+                    <span className="text-3xl font-bold text-[#d4af37]">
+                      {plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{plan.period}</div>
+                  {plan.equivalent ? (
+                    <div className="text-[10px] text-emerald-400 mt-0.5">{plan.equivalent}</div>
+                  ) : null}
+                  {plan.save ? (
+                    <div className="text-[10px] text-emerald-400 mt-0.5">{plan.save}</div>
+                  ) : null}
+                </div>
+
+                <p className="text-[11px] text-slate-500 leading-relaxed mb-4">{plan.tagline}</p>
+
+                <ul className="space-y-2 mb-5">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-[11px] text-slate-400">
+                      <Check
+                        className={`w-3.5 h-3.5 mt-px shrink-0 ${plan.featured ? 'text-[#d4af37]' : 'text-emerald-400'}`}
+                      />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto">
+                  {isTrial ? (
+                    <div className="w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <ShieldCheck className="w-4 h-4" />
+                      {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
+                    </div>
+                  ) : link ? (
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={`w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                        plan.featured
+                          ? 'bg-[#d4af37] text-[#0b0e17] hover:bg-[#b8941f]'
+                          : 'bg-[#121520] text-slate-300 border border-[#1a1f2e] hover:border-[#d4af37]/30'
+                      }`}
+                    >
+                      {plan.cta}
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  ) : (
+                    <div className="w-full py-2.5 rounded-lg text-[11px] text-slate-500 text-center border border-[#1a1f2e]">
+                      Contact the desk to activate
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-600 text-center mt-2">{plan.note}</p>
+                </div>
+              </LuxCard>
             </motion.div>
           );
         })}

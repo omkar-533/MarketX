@@ -1,74 +1,250 @@
 /**
- * Site-wide LuxAlgo / landing-feature card system.
- * Matches auth-lux-feature look: deep plate, soft ring, hover lift.
+ * Site-wide LuxAlgo / landing feature-card surfaces.
+ * Matches auth-lux-feature + plan cards: deep plate, 1px ring, gold spin, spotlight.
  */
 
 html,
 html[data-theme='dark'] {
   --lux-bg: #050508;
-  --lux-panel: #0a0a0d;
-  --lux-panel-deep: #08080b;
+  --lux-plate: #0a0a0d;
+  --lux-plate-hover: #0d0c0a;
   --lux-elevated: #101018;
-  --lux-border: rgba(255, 255, 255, 0.1);
-  --lux-border-strong: rgba(255, 255, 255, 0.14);
+  --lux-ring: rgba(255, 255, 255, 0.1);
   --lux-gold: #d4af37;
   --lux-gold-soft: rgba(212, 175, 55, 0.14);
   --lux-gold-border: rgba(232, 212, 139, 0.45);
   --lux-radius: 1.2rem;
-  --lux-radius-lg: 1.35rem;
   --lux-shadow: 0 28px 64px rgba(0, 0, 0, 0.55);
-  --lux-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .app-shell {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.06), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.05), transparent 55%),
     var(--lux-bg) !important;
 }
 
-/* ── Shared Lux surface (landing feature cards) ── */
+/* ═══════════════════════════════════════════
+   LuxCard component (landing feature chrome)
+   ═══════════════════════════════════════════ */
+.lux-card {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--lux-radius);
+  background: transparent;
+  transform-style: preserve-3d;
+  transition: box-shadow 0.3s ease, translate 0.3s ease;
+}
+
+.lux-card:not(.lux-card--static):hover {
+  translate: 0 -5px;
+  box-shadow: var(--lux-shadow);
+}
+
+.lux-card__ring {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--lux-ring);
+}
+
+.lux-card__ring::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  opacity: 0;
+  background: conic-gradient(
+    transparent 0deg,
+    rgba(232, 212, 139, 0.95) 40deg,
+    rgba(103, 232, 249, 0.7) 70deg,
+    transparent 120deg
+  );
+  animation: fx-ring-spin 2.8s linear infinite;
+  transition: opacity 0.35s ease;
+}
+
+.lux-card:not(.lux-card--static):hover .lux-card__ring::before {
+  opacity: 1;
+}
+
+.lux-card__plate {
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  border-radius: calc(var(--lux-radius) - 1px);
+  background: var(--lux-plate);
+  transition: background 0.3s ease;
+}
+
+.lux-card:not(.lux-card--static):hover .lux-card__plate {
+  background: var(--lux-plate-hover);
+}
+
+.lux-card--featured .lux-card__plate {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), var(--lux-plate));
+}
+
+.lux-card--featured .lux-card__ring {
+  background: rgba(232, 212, 139, 0.22);
+}
+
+.lux-card__spot {
+  position: absolute;
+  inset: 1px;
+  z-index: 2;
+  border-radius: calc(var(--lux-radius) - 1px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    15rem circle at var(--mx, 50%) var(--my, 40%),
+    rgba(232, 212, 139, 0.16),
+    transparent 62%
+  );
+}
+
+.lux-card:not(.lux-card--static):hover .lux-card__spot {
+  opacity: 1;
+}
+
+.lux-card__body {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+}
+
+.lux-card--pad > .lux-card__body,
+.lux-card .lux-card__body.lux-card__body--pad {
+  padding: 1.15rem 1.2rem;
+}
+
+/* ═══════════════════════════════════════════
+   Global: .lux-panel / .app-card = same chrome
+   (CSS-only ring + plate so every page updates)
+   ═══════════════════════════════════════════ */
 .app-card,
 .app-card-elevated,
-.lux-panel,
-.lux-lib-card {
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 32%),
-    var(--lux-panel) !important;
-  border: 1px solid var(--lux-border) !important;
+.lux-panel {
+  position: relative !important;
+  background: var(--lux-ring) !important;
+  border: none !important;
   border-radius: var(--lux-radius) !important;
-  box-shadow:
-    var(--lux-inset),
-    0 16px 40px rgba(0, 0, 0, 0.4) !important;
-  overflow: hidden;
+  overflow: hidden !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
   transition:
-    border-color 0.25s ease,
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    background 0.25s ease;
+    translate 0.3s ease,
+    box-shadow 0.3s ease !important;
+  isolation: isolate;
 }
 
-.app-card:hover,
-.app-card-elevated:hover,
-.lux-panel--interactive:hover,
-.lux-lib-card:hover {
-  border-color: var(--lux-gold-border) !important;
-  transform: translateY(-4px);
-  box-shadow:
-    var(--lux-inset),
-    0 28px 64px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(212, 175, 55, 0.12) !important;
+.app-card:not(.lux-panel--static):hover,
+.app-card-elevated:not(.lux-panel--static):hover,
+.lux-panel:not(.lux-panel--static):hover {
+  translate: 0 -4px;
+  box-shadow: var(--lux-shadow) !important;
 }
 
-.app-card-elevated {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 36%),
-    var(--lux-elevated) !important;
+/* Spinning gold ring (1px frame) */
+.app-card::before,
+.app-card-elevated::before,
+.lux-panel::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    transparent 0deg,
+    rgba(232, 212, 139, 0.95) 40deg,
+    rgba(103, 232, 249, 0.7) 70deg,
+    transparent 120deg
+  );
+  animation: fx-ring-spin 2.8s linear infinite;
+  transition: opacity 0.35s ease;
+}
+
+.app-card:not(.lux-panel--static):hover::before,
+.app-card-elevated:not(.lux-panel--static):hover::before,
+.lux-panel:not(.lux-panel--static):hover::before {
+  opacity: 1;
+}
+
+/* Deep plate */
+.app-card::after,
+.app-card-elevated::after,
+.lux-panel::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  border-radius: calc(var(--lux-radius) - 1px);
+  background: var(--lux-plate);
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.app-card:not(.lux-panel--static):hover::after,
+.app-card-elevated:not(.lux-panel--static):hover::after,
+.lux-panel:not(.lux-panel--static):hover::after {
+  background: var(--lux-plate-hover);
+}
+
+.app-card-elevated::after {
+  background: var(--lux-elevated);
+}
+
+.app-card > *,
+.app-card-elevated > *,
+.lux-panel > * {
+  position: relative;
+  z-index: 2;
+}
+
+.lux-panel--pad {
+  padding: 1.15rem 1.2rem;
+}
+
+.lux-panel--soft::after {
+  background: #0c0c10 !important;
+}
+
+.lux-panel--featured {
+  box-shadow: 0 20px 48px rgba(212, 175, 55, 0.1) !important;
+}
+
+.lux-panel--featured::after {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), var(--lux-plate)) !important;
+}
+
+.lux-panel--featured {
+  background: rgba(232, 212, 139, 0.22) !important;
+}
+
+.lux-panel--static:hover,
+.app-card.lux-panel--static:hover {
+  translate: none !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35) !important;
+}
+
+.lux-panel--static:hover::before,
+.app-card.lux-panel--static:hover::before {
+  opacity: 0 !important;
 }
 
 .glass {
-  background: rgba(10, 10, 13, 0.92) !important;
-  border-color: var(--lux-border) !important;
+  background: rgba(10, 10, 13, 0.94) !important;
+  border-color: var(--lux-ring) !important;
   backdrop-filter: blur(18px);
 }
 
@@ -79,45 +255,6 @@ html[data-theme='dark'] {
   background: transparent;
 }
 
-/* Padding variant */
-.lux-panel--pad {
-  padding: 1.15rem 1.2rem;
-}
-
-.lux-panel--soft {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 40%),
-    rgba(255, 255, 255, 0.02) !important;
-}
-
-.lux-panel--featured {
-  border-color: var(--lux-gold-border) !important;
-  background:
-    linear-gradient(180deg, rgba(212, 175, 55, 0.14), transparent 42%),
-    var(--lux-panel) !important;
-  box-shadow:
-    var(--lux-inset),
-    0 20px 48px rgba(212, 175, 55, 0.1),
-    0 0 0 1px rgba(212, 175, 55, 0.12) !important;
-}
-
-/* Golden ring frame (like landing auth-lux-feature) */
-.lux-panel::before,
-.app-card::before,
-.app-card-elevated::before {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  z-index: 1;
-}
-
-.lux-panel--featured::before {
-  box-shadow: inset 0 0 0 1px rgba(232, 212, 139, 0.18);
-}
-
 .lux-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -125,9 +262,9 @@ html[data-theme='dark'] {
   gap: 0.45rem;
   padding: 0.45rem;
   border-radius: 999px;
-  border: 1px solid var(--lux-border);
-  background: rgba(10, 10, 13, 0.9);
-  box-shadow: var(--lux-inset);
+  border: 1px solid var(--lux-ring);
+  background: var(--lux-plate);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .lux-chip {
@@ -136,7 +273,7 @@ html[data-theme='dark'] {
   gap: 0.35rem;
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid var(--lux-border);
+  border: 1px solid var(--lux-ring);
   background: rgba(255, 255, 255, 0.03);
   font-size: 0.7rem;
   font-weight: 700;
@@ -154,7 +291,7 @@ html[data-theme='dark'] {
 .lux-input,
 .tf-field {
   border-radius: 0.85rem !important;
-  border-color: var(--lux-border) !important;
+  border-color: var(--lux-ring) !important;
   background: var(--lux-elevated) !important;
 }
 
@@ -195,12 +332,63 @@ html[data-theme='dark'] {
   color: var(--lux-gold);
 }
 
-.lux-btn--ghost:hover {
-  background: rgba(212, 175, 55, 0.22);
+.lux-lib-card {
+  border: none !important;
+  background: var(--lux-ring) !important;
+  border-radius: var(--lux-radius) !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  transition: translate 0.3s ease, box-shadow 0.3s ease;
 }
 
-.lux-lib__chip {
-  border-color: var(--lux-border);
+.lux-lib-card:hover {
+  translate: 0 -4px;
+  box-shadow: var(--lux-shadow);
+}
+
+.lux-lib-card::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    transparent 0deg,
+    rgba(232, 212, 139, 0.95) 40deg,
+    rgba(103, 232, 249, 0.7) 70deg,
+    transparent 120deg
+  );
+  animation: fx-ring-spin 2.8s linear infinite;
+  transition: opacity 0.35s ease;
+}
+
+.lux-lib-card:hover::before {
+  opacity: 1;
+}
+
+.lux-lib-card::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  border-radius: calc(var(--lux-radius) - 1px);
+  background: var(--lux-plate);
+  pointer-events: none;
+}
+
+.lux-lib-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.lux-lib-card:hover::after {
+  background: var(--lux-plate-hover);
 }
 
 .lux-lib__chip.is-active {
@@ -208,40 +396,49 @@ html[data-theme='dark'] {
   background: var(--lux-gold-soft);
 }
 
-/* Force old hex panels → Lux plate (whole site, including landing leftovers) */
+/* Force old hex panels → plate colors */
 [class*='bg-[#0b0e17]'],
 [class*='bg-[#101420]'],
 [class*='bg-[#111827]'],
 [class*='bg-[#0d1728]'] {
-  background-color: var(--lux-panel) !important;
+  background-color: var(--lux-plate) !important;
 }
 
 [class*='border-[#1a1f2e]'],
 [class*='border-[#24324b]'],
 [class*='border-dark-border'] {
-  border-color: var(--lux-border) !important;
+  border-color: var(--lux-ring) !important;
 }
 
-.app-shell [class*='rounded-xl']:not(button):not(input):not(select):not(textarea):not(img):not(svg),
+.app-shell [class*='rounded-xl']:not(button):not(input):not(select):not(textarea):not(img):not(svg):not(.lux-chip):not(.lux-toolbar),
 .app-shell [class*='rounded-2xl']:not(button):not(input):not(select):not(textarea):not(img):not(svg) {
   border-radius: var(--lux-radius) !important;
 }
 
-/* Access gate + command palette */
 .access-gate__card {
-  border-radius: var(--lux-radius-lg) !important;
-  border-color: var(--lux-gold-border) !important;
-  background:
-    linear-gradient(180deg, rgba(212, 175, 55, 0.12), transparent 40%),
-    var(--lux-panel) !important;
+  border-radius: var(--lux-radius) !important;
+  border: 1px solid var(--lux-gold-border) !important;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), var(--lux-plate)) !important;
   box-shadow: var(--lux-shadow) !important;
+  padding: 1.5rem !important;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Sidebar / header feel */
+.access-gate__card::after {
+  display: none;
+}
+
+.access-gate__card > * {
+  position: relative;
+  z-index: 1;
+  padding: 0;
+}
+
 .app-shell aside.glass,
 .app-shell header.glass,
 .glass.border-r,
 .glass.border-b {
   background: rgba(8, 8, 11, 0.94) !important;
-  border-color: var(--lux-border) !important;
+  border-color: var(--lux-ring) !important;
 }

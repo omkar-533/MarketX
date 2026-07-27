@@ -387,7 +387,7 @@ export default function MasterAI() {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col text-slate-200 lux-panel overflow-hidden shadow-2xl">
+    <div className="h-[calc(100vh-100px)] flex flex-col text-slate-200 lux-panel lux-panel--static overflow-hidden shadow-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-[#0b0e17] border-b border-[#1a1f2e]">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
@@ -471,7 +471,7 @@ export default function MasterAI() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-3 p-3 sm:p-4 bg-[#080a12] border-b border-[#1a1f2e]">
-        <div className="lux-panel lux-panel--pad">
+        <div className="lux-panel lux-panel--pad lux-panel--static">
           <p className="text-[10px] uppercase tracking-wider text-slate-500">
             {hindi ? 'बाज़ार पल्स' : 'Market pulse'}
           </p>
@@ -490,7 +490,7 @@ export default function MasterAI() {
             </div>
           </div>
         </div>
-        <div className="lux-panel lux-panel--pad lux-panel--featured">
+        <div className="lux-panel lux-panel--pad lux-panel--featured lux-panel--static">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
             <span className="text-[10px] text-slate-400">

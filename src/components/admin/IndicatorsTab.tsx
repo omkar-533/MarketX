@@ -199,7 +199,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       {showForm ? (
         <form
           onSubmit={(e) => void save(e)}
-          className="lux-panel lux-panel--pad space-y-4"
+          className="lux-panel lux-panel--pad lux-panel--static space-y-4"
         >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-200">
@@ -338,7 +338,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         </form>
       ) : null}
 
-      <div className="lux-panel overflow-hidden">
+      <div className="lux-panel lux-panel--static overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-500">Loading…</div>
         ) : rows.length === 0 ? (

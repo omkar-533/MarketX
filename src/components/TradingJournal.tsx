@@ -38,6 +38,7 @@ import {
 import type { User } from '../hooks/useAuth';
 import { useChartTheme } from '../hooks/useChartTheme';
 import type { JournalMarket, PnlCurrency, TradeRecord, TradeSide, TradeType } from '../types/journal';
+import LuxCard from './ui/LuxCard';
 import {
   createManualGlobalInstrument,
   defaultPnlCurrency,
@@ -1033,7 +1034,7 @@ export default function TradingJournal({
         onClose={() => setLightbox(null)}
       />
       {/* Hero */}
-      <div className="relative overflow-hidden lux-panel lux-panel--featured p-5">
+      <LuxCard featured className="relative" bodyClassName="relative p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
@@ -1089,7 +1090,7 @@ export default function TradingJournal({
             </div>
           ))}
         </div>
-      </div>
+      </LuxCard>
 
       <div className="lux-toolbar overflow-x-auto">
         {journalTabs.map(({ id, label, icon: Icon }) => (
