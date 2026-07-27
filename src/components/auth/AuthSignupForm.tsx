@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import AuthField from './AuthField';
 import { isValidEmail } from './authUtils';
-import { PLAN_FEATURES, TRIAL_DAYS, planById, type PlanId } from '../../constants/plans';
+import { TRIAL_DAYS, planById, type PlanId } from '../../constants/plans';
 import type { OtpChallenge } from '../../services/appInviteAuth';
 
 export type AuthSignupFormProps = {
@@ -352,7 +352,7 @@ export default function AuthSignupForm({
       </form>
 
       <ul className="auth-signup-perks">
-        {PLAN_FEATURES.slice(0, 4).map((feature) => (
+        {plan.features.slice(0, 4).map((feature) => (
           <li key={feature}>
             <Check className="w-3 h-3" aria-hidden />
             {feature}

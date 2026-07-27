@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { ArrowRight, Check, Sparkles, Zap } from 'lucide-react';
-import { PLAN_FEATURES, PLANS, TRIAL_DAYS, type Plan, type PlanId } from '../../constants/plans';
+import { PLANS, TRIAL_DAYS, type Plan, type PlanId } from '../../constants/plans';
 import { Counter, EASE, GradientLine, Reveal, Words } from './scrollFx';
 
 type AuthPricingProps = {
@@ -112,7 +112,7 @@ function PlanCard({
           <p className="plan__note">{plan.note}</p>
 
           <ul className="plan__features">
-            {PLAN_FEATURES.map((feature, i) => (
+            {plan.features.map((feature, i) => (
               <motion.li
                 key={feature}
                 initial={{ opacity: 0, x: -8 }}
@@ -149,9 +149,8 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
           </h2>
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
-              Every plan unlocks Master AI, Indicators, and Trading Journal. Start with{' '}
-              {TRIAL_DAYS} free days — no card, no commitment — then pick the term that suits how
-              you trade.
+              Features grow with each plan — Trial → Monthly → 3 Months → Yearly. Prices stay the
+              same; pick the term that matches how deep you want Master AI, Indicators, and Journal.
             </p>
           </Reveal>
         </div>

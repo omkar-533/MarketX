@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react';
-import { PLANS, PLAN_FEATURES, TRIAL_DAYS } from '../constants/plans';
+import { PLANS, TRIAL_DAYS } from '../constants/plans';
 import type { User } from '../hooks/useAuth';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
 
@@ -49,7 +49,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan unlocks the same workspace — only the duration changes.
+          Every plan covers Master AI, Indicators, and Trading Journal — higher plans unlock more.
         </p>
       </div>
 
@@ -123,7 +123,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
               <p className="text-[11px] text-slate-500 leading-relaxed mb-4">{plan.tagline}</p>
 
               <ul className="space-y-2 mb-5">
-                {PLAN_FEATURES.slice(0, 5).map((feature) => (
+                {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-[11px] text-slate-400">
                     <Check
                       className={`w-3.5 h-3.5 mt-px shrink-0 ${plan.featured ? 'text-[#d4af37]' : 'text-emerald-400'}`}
