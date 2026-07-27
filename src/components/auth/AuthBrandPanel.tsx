@@ -11,10 +11,10 @@ import {
 } from '../../constants/brandLabels';
 
 const capabilities = [
-  { icon: Bot, text: 'Neural market scan' },
-  { icon: Zap, text: 'Real-time signal core' },
-  { icon: Cpu, text: 'Smart money detection' },
   { icon: Sparkles, text: 'Master AI copilots' },
+  { icon: Bot, text: 'Indicators library' },
+  { icon: Zap, text: 'Trading journal' },
+  { icon: Cpu, text: 'Invite-only desk' },
 ];
 
 function LiveClock() {

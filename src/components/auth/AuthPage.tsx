@@ -34,23 +34,23 @@ const STORY_BANDS = [
     id: 'master-ai',
     kicker: 'Master AI',
     title: 'Build your own edge with AI',
-    body: 'Use advanced algorithms and a live market copilot to read bias, OI, and structure in real time — then act with clarity when the tape moves.',
+    body: 'Ask market questions and get context-aware answers — bias, structure, and session context in one copilot.',
     cta: 'Get started now',
     image: `${import.meta.env.BASE_URL}landing/band-ai-copilot.jpg`,
   },
   {
-    id: 'workspace',
-    kicker: 'Next-gen workspace',
-    title: 'An AI desk for winning sessions',
-    body: 'Ask the platform to surface setups, track your journal, and keep heatmaps, scanners, and option intelligence synced in one invite-only terminal.',
+    id: 'indicators',
+    kicker: 'Indicators',
+    title: 'A library built for serious charts',
+    body: 'Browse published indicator scripts, preview covers, and copy code into your charting workflow in one click.',
     cta: 'Get access now',
     image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg`,
   },
   {
-    id: 'alerts',
-    kicker: 'Precision tools',
-    title: 'Your edge, now on autopilot',
-    body: 'Turn live scanners and structure into a disciplined workflow — alerts, journals, and Master AI context so you never trade blind.',
+    id: 'tradingjournal',
+    kicker: 'Trading Journal',
+    title: 'Process over impulse',
+    body: 'Log every trade, review discipline, and track P&L so your edge compounds session after session.',
     cta: 'Start now',
     image: `${import.meta.env.BASE_URL}landing/band-autopilot.jpg`,
   },
@@ -141,10 +141,10 @@ const TICKER = [
 ] as const;
 
 const STATS = [
-  { to: 220, suffix: '+', label: 'F&O symbols tracked' },
-  { to: 24, suffix: '', label: 'ready-made scanners' },
-  { to: 6, suffix: '', label: 'core modules' },
-  { to: 99.9, suffix: '%', decimals: 1, label: 'data uptime' },
+  { to: 3, suffix: '', label: 'core modules' },
+  { to: 1, suffix: '', label: 'AI copilot desk' },
+  { to: 1, suffix: '', label: 'indicators library' },
+  { to: 1, suffix: '', label: 'trading journal' },
 ] as const;
 
 const ease = EASE;
@@ -377,8 +377,8 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55, ease }}
             >
-              The AI platform to build &amp; deploy your own edge — powered by live bias, heatmaps,
-              scanners, journals, and Master AI used by serious Indian traders.
+              The AI platform for serious Indian traders — Master AI, Indicators, and Trading
+              Journal in one invite-only workspace.
             </motion.p>
             <motion.div
               className="auth-lux__hero-actions"
@@ -515,7 +515,7 @@ export default function AuthPage(props: AuthPageProps) {
               </h2>
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
-                  Six core modules — live data, structure, and AI in one luxury workspace.
+                  Three core modules — Master AI, Indicators, and Trading Journal in one luxury workspace.
                 </p>
               </Reveal>
             </div>

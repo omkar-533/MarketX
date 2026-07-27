@@ -22,13 +22,10 @@ export const TRIAL_DAYS = 3;
 
 /** Same feature set on every plan — only the billing duration changes. */
 export const PLAN_FEATURES = [
-  'All 20+ modules unlocked, nothing gated',
-  'Master AI copilot with live market context',
-  'Live NSE data — LTP, option chain, OI & PCR',
-  'Ready-made scanners + strategy builder',
-  'Heatmaps, futures analytics & signals',
+  'Master AI copilot for market questions',
+  'Indicators library — browse, preview, copy code',
   'Trading journal with P&L analytics',
-  'Paper trading and backtesting',
+  'Invite-only workspace access',
   'Priority support on WhatsApp',
 ] as const;
 

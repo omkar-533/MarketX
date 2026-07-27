@@ -1,12 +1,9 @@
 import type { MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import {
-  Activity,
   Bot,
-  LayoutDashboard,
+  Code2,
   NotebookPen,
-  PieChart,
-  ScanLine,
   type LucideIcon,
 } from 'lucide-react';
 import { PAGE_NAMES } from '../../constants/brandLabels';
@@ -22,14 +19,23 @@ type Feature = {
   viz: VizKind;
 };
 
+/** Matches the live sidebar — same card UI, only active modules. */
 const LOGIN_FEATURES: Feature[] = [
   {
-    id: 'dashboard',
-    title: PAGE_NAMES.dashboard,
-    detail: 'Market pulse',
-    description: 'Live indices, breadth, sector pulse, and directional bias in one command view.',
-    icon: LayoutDashboard,
-    viz: 'bars',
+    id: 'trafi',
+    title: PAGE_NAMES.trafi,
+    detail: 'AI copilot',
+    description: 'Ask market questions and get context-aware answers across your workspace.',
+    icon: Bot,
+    viz: 'chat',
+  },
+  {
+    id: 'indicators',
+    title: PAGE_NAMES.indicators,
+    detail: 'Code library',
+    description: 'Browse published indicator scripts, preview covers, and copy code in one click.',
+    icon: Code2,
+    viz: 'scan',
   },
   {
     id: 'tradingjournal',
@@ -38,38 +44,6 @@ const LOGIN_FEATURES: Feature[] = [
     description: 'Log every trade, review discipline, and track performance with a clean journal.',
     icon: NotebookPen,
     viz: 'line',
-  },
-  {
-    id: 'oiintelligence',
-    title: PAGE_NAMES.oiintelligence,
-    detail: 'Smart money',
-    description: 'Open interest, PCR, and flow signals to read institutional positioning.',
-    icon: Activity,
-    viz: 'ladder',
-  },
-  {
-    id: 'heatmap',
-    title: PAGE_NAMES.heatmap,
-    detail: 'Performance map',
-    description: 'Stock and sector heatmaps colored by live performance — spot strength instantly.',
-    icon: PieChart,
-    viz: 'tiles',
-  },
-  {
-    id: 'scanner',
-    title: PAGE_NAMES.scanner,
-    detail: 'Ready-made scans',
-    description: 'Momentum, breakout, volume, and F&O screeners that refresh with the live tape.',
-    icon: ScanLine,
-    viz: 'scan',
-  },
-  {
-    id: 'trafi',
-    title: PAGE_NAMES.trafi,
-    detail: 'AI copilot',
-    description: 'Ask market questions and get context-aware answers across your workspace.',
-    icon: Bot,
-    viz: 'chat',
   },
 ];
 
