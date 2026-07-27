@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Copy,
@@ -8,7 +9,6 @@ import {
   ImageOff,
   Loader2,
   Search,
-  X,
 } from 'lucide-react';
 import { listIndicators, type IndicatorItem } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
@@ -19,6 +19,32 @@ function formatDate(value?: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** Split admin description into overview + optional ## sections (Usage / Details / FAQ). */
+function splitDescription(raw: string) {
+  const text = String(raw || '').trim();
+  if (!text) {
+    return {
+      overview:
+        'This indicator is provided via invite link. Open access below to add it on TradingView and use it on your charts.',
+      sections: [] as { title: string; body: string }[],
+    };
+  }
+
+  const parts = text.split(/\n(?=##\s+)/);
+  if (parts.length === 1) {
+    return { overview: text, sections: [] as { title: string; body: string }[] };
+  }
+
+  const overview = parts[0].replace(/^##\s+.*\n?/, '').trim() || text;
+  const sections = parts.slice(1).map((block) => {
+    const lines = block.trim().split('\n');
+    const title = lines[0].replace(/^##\s+/, '').trim() || 'Details';
+    const body = lines.slice(1).join('\n').trim();
+    return { title, body };
+  });
+  return { overview, sections };
 }
 
 export default function Indicators() {
@@ -56,12 +82,8 @@ export default function Indicators() {
       if (e.key === 'Escape') setActive(null);
     };
     window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return () => window.removeEventListener('keydown', onKey);
   }, [active]);
 
   const filtered = useMemo(() => {
@@ -73,6 +95,11 @@ export default function Indicators() {
     );
   }, [items, query]);
 
+  const detail = useMemo(
+    () => (active ? splitDescription(active.description) : null),
+    [active],
+  );
+
   const copyLink = async () => {
     if (!active?.link) return;
     try {
@@ -83,6 +110,153 @@ export default function Indicators() {
       setCopied(false);
     }
   };
+
+  const openDetail = (item: IndicatorItem) => {
+    setCopied(false);
+    setActive(item);
+  };
+
+  if (active && detail) {
+    return (
+      <div className="lux-lib lux-ind">
+        <button type="button" className="lux-ind__back" onClick={() => setActive(null)}>
+          <ArrowLeft className="w-4 h-4" />
+          All indicators
+        </button>
+
+        <header className="lux-ind__hero">
+          <h1 className="lux-ind__title">{active.title}</h1>
+          <p className="lux-ind__byline">
+            By {BRAND}
+            <span aria-hidden>·</span>
+            <time dateTime={active.createdAt}>{formatDate(active.createdAt)}</time>
+          </p>
+        </header>
+
+        <div className="lux-ind__chart">
+          {active.imageUrl ? (
+            <img src={active.imageUrl} alt={`${active.title} chart preview`} />
+          ) : (
+            <div className="lux-ind__chart-empty">
+              <ImageOff className="w-10 h-10" />
+              <span>Chart preview</span>
+            </div>
+          )}
+          <div className="lux-ind__chart-badge">
+            <span className="lux-ind__dot" />
+            Preview
+          </div>
+        </div>
+
+        <div className="lux-ind__tags">
+          <span className="lux-ind__tag">TradingView</span>
+          <span className="lux-ind__tag">Invite link</span>
+          <span className="lux-ind__tag">{BRAND_SHORT}</span>
+        </div>
+
+        <section className="lux-ind__access">
+          <div className="lux-ind__access-copy">
+            <h2>Get access</h2>
+            <p>
+              Use this indicator on TradingView via the invite link. Demo access lasts {TRIAL_DAYS}{' '}
+              days — longer plans after the desk approves.
+            </p>
+          </div>
+          {active.link ? (
+            <div className="lux-ind__access-actions">
+              <a
+                href={active.link}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="lux-ind__btn lux-ind__btn--primary"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Get Access
+              </a>
+              <button
+                type="button"
+                className="lux-ind__btn lux-ind__btn--ghost"
+                onClick={() => void copyLink()}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied' : 'Copy link'}
+              </button>
+              <div className="lux-ind__platform">
+                <span className="lux-ind__platform-label">TradingView</span>
+                <a
+                  href={active.link}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="lux-ind__platform-cta"
+                >
+                  Get Access
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="lux-ind__locked">
+              Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can approve
+              a longer plan.
+            </div>
+          )}
+        </section>
+
+        <section className="lux-ind__section">
+          <p className="lux-ind__overview">{detail.overview}</p>
+        </section>
+
+        {detail.sections.length > 0 ? (
+          detail.sections.map((section) => (
+            <section key={section.title} className="lux-ind__section">
+              <h2>{section.title}</h2>
+              <div className="lux-ind__prose">{section.body}</div>
+            </section>
+          ))
+        ) : (
+          <>
+            <section className="lux-ind__section">
+              <h2>Usage</h2>
+              <div className="lux-ind__prose">
+                Open the invite link, add the indicator on TradingView, then apply it to your chart.
+                Use the preview image above as a reference for how setups are meant to look.
+              </div>
+            </section>
+            <section className="lux-ind__section">
+              <h2>Details</h2>
+              <div className="lux-ind__prose">
+                This tool is distributed as a share / invite link rather than raw script code. Access
+                stays on during your demo window and extends after admin approval.
+              </div>
+            </section>
+          </>
+        )}
+
+        <section className="lux-ind__section lux-ind__faq">
+          <h2>FAQ</h2>
+          <div className="lux-ind__faq-item">
+            <h3>How do I access this indicator?</h3>
+            <p>
+              Click <strong>Get Access</strong> above to open the invite link on TradingView and add
+              it to your account.
+            </p>
+          </div>
+          <div className="lux-ind__faq-item">
+            <h3>What happens after the {TRIAL_DAYS}-day demo?</h3>
+            <p>
+              Links lock when the demo ends. Upload your access request so the desk can approve a
+              longer plan.
+            </p>
+          </div>
+        </section>
+
+        <div className="lux-ind__footer-note">
+          <span>Original indicator</span>
+          <span>Shared by {BRAND}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lux-lib">
@@ -143,10 +317,7 @@ export default function Indicators() {
               <button
                 type="button"
                 className="lux-lib-card__media"
-                onClick={() => {
-                  setCopied(false);
-                  setActive(item);
-                }}
+                onClick={() => openDetail(item)}
                 aria-label={`View ${item.title}`}
               >
                 {item.imageUrl ? (
@@ -165,13 +336,7 @@ export default function Indicators() {
                   <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
                 </p>
                 <h2 className="lux-lib-card__title">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCopied(false);
-                      setActive(item);
-                    }}
-                  >
+                  <button type="button" onClick={() => openDetail(item)}>
                     {item.title}
                   </button>
                 </h2>
@@ -179,14 +344,7 @@ export default function Indicators() {
                   {item.description ||
                     'Open this indicator to get the invite link and use it on your chart.'}
                 </p>
-                <button
-                  type="button"
-                  className="lux-lib-card__cta"
-                  onClick={() => {
-                    setCopied(false);
-                    setActive(item);
-                  }}
-                >
+                <button type="button" className="lux-lib-card__cta" onClick={() => openDetail(item)}>
                   View indicator
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -195,92 +353,6 @@ export default function Indicators() {
           ))}
         </div>
       )}
-
-      <AnimatePresence>
-        {active && (
-          <motion.div
-            className="lux-lib-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <button
-              type="button"
-              className="lux-lib-modal__backdrop"
-              aria-label="Close"
-              onClick={() => setActive(null)}
-            />
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="indicator-detail-title"
-              className="lux-lib-modal__panel"
-              initial={{ opacity: 0, y: 28, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.98 }}
-              transition={{ duration: 0.22 }}
-            >
-              <div className="lux-lib-modal__head">
-                <div className="min-w-0">
-                  <p className="lux-lib-card__meta">
-                    <span>{BRAND}</span>
-                    <span aria-hidden>·</span>
-                    <time dateTime={active.createdAt}>{formatDate(active.createdAt)}</time>
-                  </p>
-                  <h2 id="indicator-detail-title">{active.title}</h2>
-                </div>
-                <button
-                  type="button"
-                  className="lux-lib-modal__close"
-                  onClick={() => setActive(null)}
-                  aria-label="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="lux-lib-modal__body">
-                {active.imageUrl ? (
-                  <div className="lux-lib-modal__media">
-                    <img src={active.imageUrl} alt="" />
-                  </div>
-                ) : null}
-
-                {active.description ? (
-                  <p className="lux-lib-modal__desc">{active.description}</p>
-                ) : null}
-
-                {active.link ? (
-                  <div className="lux-lib-modal__actions">
-                    <a
-                      href={active.link}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="lux-lib-modal__primary"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open indicator
-                    </a>
-                    <button
-                      type="button"
-                      className="lux-lib-modal__secondary"
-                      onClick={() => void copyLink()}
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copied ? 'Copied' : 'Copy link'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="lux-lib-modal__locked">
-                    Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
-                    approve a longer plan.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
