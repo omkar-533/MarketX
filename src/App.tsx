@@ -4,7 +4,6 @@ import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import FyersConnectBanner from './components/FyersConnectBanner';
 import FyersLoginPage from './components/FyersLoginPage';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
@@ -312,7 +311,6 @@ function AppWorkspace() {
           />
         </Suspense>
       ) : null}
-      {auth.isLoggedIn ? <FyersConnectBanner /> : null}
     </AutoRefreshProvider>
   );
 }
