@@ -1,11 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Bell, Wifi, WifiOff, X, TrendingUp, TrendingDown, Clock, Menu } from 'lucide-react';
-import { getIndices, getStocks, type IndexData, type StockData } from '../data/marketData';
-import { useAutoRefresh } from '../hooks/useAutoRefresh';
-import { useAutoRefreshMeta } from '../context/AutoRefreshContext';
+import { Bell, Clock, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
-import MarketLiveBadge from './MarketLiveBadge';
 import type { User } from '../hooks/useAuth';
 import { BRAND } from '../constants/brandLabels';
 import BrandMark from './BrandMark';
@@ -19,40 +15,13 @@ interface HeaderProps {
 }
 
 export default function Header({ user, onProfile, onMenuClick, className = '' }: HeaderProps) {
-  const [indices, setIndices] = useState<IndexData[]>(getIndices());
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [stocks] = useState<StockData[]>(getStocks());
-  const { tick } = useAutoRefreshMeta();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-
-  useAutoRefresh(() => {
-    setIndices(getIndices());
-  });
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const filteredStocks =
-    searchQuery.length > 0
-      ? stocks.filter(
-          (s) =>
-            s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-      : [];
 
   return (
     <header
@@ -67,122 +36,11 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
         <Menu className="w-5 h-5" />
       </button>
 
-      <div className="shrink-0 min-w-0 max-w-[58vw] sm:max-w-[280px] md:max-w-none" title={BRAND}>
+      <div className="shrink-0 min-w-0 max-w-[58vw] sm:max-w-[280px] md:max-w-none mr-auto" title={BRAND}>
         <BrandMark size="sm" nameClassName="truncate text-[1.05rem] sm:text-[1.2rem]" />
       </div>
 
-      {/* Ticker — hidden on small screens */}
-      <div className="hidden md:flex items-center gap-4 lg:gap-5 overflow-hidden mr-auto min-w-0">
-        {indices.slice(0, 4).map((idx) => (
-          <motion.div
-            key={idx.symbol}
-            className="flex items-center gap-2 shrink-0"
-            initial={false}
-            animate={{ x: [0, -1, 0] }}
-            transition={{ duration: 0.3 }}
-          >
-            <span className="text-[10px] font-bold text-slate-500 uppercase">{idx.symbol}</span>
-            <span className="text-sm font-bold text-slate-200 tabular-nums">
-              {idx.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </span>
-            <span
-              className={`flex items-center gap-0.5 text-[10px] font-bold ${idx.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-            >
-              {idx.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {idx.change >= 0 ? '+' : ''}
-              {idx.changePercent}%
-            </span>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Mobile: compact NIFTY */}
-      <div className="md:hidden flex items-center gap-2 mr-auto min-w-0">
-        {indices[0] && (
-          <>
-            <span className="text-[10px] font-bold text-slate-500">NIFTY</span>
-            <span className="text-xs font-bold text-slate-200 tabular-nums truncate">
-              {indices[0].price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-            </span>
-            <span className={`text-[10px] font-bold ${indices[0].change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {indices[0].change >= 0 ? '+' : ''}
-              {indices[0].changePercent}%
-            </span>
-          </>
-        )}
-      </div>
-
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <div ref={searchRef} className="relative hidden sm:block">
-          <div
-            className={`flex items-center bg-dark-elevated border rounded-lg transition-all duration-200 ${
-              searchOpen ? 'border-gold/50 w-48 md:w-64' : 'border-dark-border w-36 md:w-48'
-            }`}
-          >
-            <Search className="w-4 h-4 text-slate-600 ml-2.5 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              className="bg-transparent text-sm text-slate-200 placeholder-slate-600 px-2 py-2 w-full focus:outline-none min-w-0"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchOpen(false);
-                }}
-                className="p-1 mr-1 text-slate-600 hover:text-slate-300"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          <AnimatePresence>
-            {searchOpen && filteredStocks.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="absolute top-full right-0 mt-1 w-72 max-w-[calc(100vw-2rem)] bg-dark-elevated border border-dark-border rounded-lg shadow-2xl overflow-hidden z-50"
-              >
-                {filteredStocks.slice(0, 8).map((stock) => (
-                  <button
-                    key={stock.symbol}
-                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-dark-border transition-colors text-left"
-                  >
-                    <div>
-                      <div className="text-sm font-bold text-slate-200">{stock.symbol}</div>
-                      <div className="text-[10px] text-slate-500 truncate max-w-[140px]">{stock.name}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-slate-200">₹{stock.price}</div>
-                      <div
-                        className={`text-xs font-semibold ${stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-                      >
-                        {stock.changePercent >= 0 ? '+' : ''}
-                        {stock.changePercent}%
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <MarketLiveBadge />
-        <div
-          className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
-            tick > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-          }`}
-        >
-          {tick > 0 ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          <span>{tick > 0 ? 'Synced' : 'Sync…'}</span>
-        </div>
-
         <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
           <Clock className="w-3.5 h-3.5" />
           <span className="tabular-nums">{currentTime.toLocaleTimeString('en-IN')}</span>
