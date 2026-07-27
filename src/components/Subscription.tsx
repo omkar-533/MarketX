@@ -53,7 +53,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
         </p>
       </div>
 
-      <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
+      <div className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
         {link ? (
@@ -80,7 +80,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
         {PLANS.map((plan, idx) => {
           const isTrial = plan.id === 'trial';
           return (

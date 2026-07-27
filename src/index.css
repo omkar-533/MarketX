@@ -36,10 +36,11 @@ body {
 
 .page-content {
   padding: 1rem;
-  max-width: 1600px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .page-content--screener {
@@ -68,6 +69,14 @@ body {
   overflow: visible;
 }
 
+.page-content--full {
+  max-width: none;
+  width: 100%;
+  min-height: calc(100vh - 3.5rem);
+  overflow: visible;
+  padding: 1rem 1rem 2.5rem;
+}
+
 @media (min-width: 1024px) {
   .page-content--screener {
     padding: 0.75rem 1rem 0.5rem;
@@ -77,6 +86,9 @@ body {
   }
   .page-content--indicators {
     padding: 1.25rem 1.5rem 3rem;
+  }
+  .page-content--full {
+    padding: 1.15rem 1.5rem 3rem;
   }
 }
 
@@ -5330,8 +5342,8 @@ input[type="number"] { -moz-appearance: textfield; }
 /* ─── Indicator library (LuxAlgo-style gallery) ─── */
 .lux-lib {
   width: 100%;
-  max-width: 72rem;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0.5rem 0 2.5rem;
 }
 

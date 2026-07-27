@@ -224,11 +224,7 @@ function AppWorkspace() {
               auth.isLoggedIn
                 ? activeTab === 'master-tx'
                   ? 'page-content page-content--screener'
-                  : activeTab === 'scanner'
-                    ? 'page-content page-content--scanners'
-                    : activeTab === 'indicators'
-                      ? 'page-content page-content--indicators'
-                      : 'page-content'
+                  : 'page-content page-content--full'
                 : ''
             }
           >
