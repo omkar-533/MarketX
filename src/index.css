@@ -3222,8 +3222,10 @@ input[type="number"] { -moz-appearance: textfield; }
   flex: 0 0 auto;
   border-radius: 999px;
   object-fit: cover;
-  border: 1px solid rgba(245, 201, 69, 0.35);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  object-position: center top;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  filter: saturate(0.92) contrast(0.96) brightness(0.98);
 }
 
 .auth-lux__review-avatar {

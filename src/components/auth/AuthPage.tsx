@@ -56,7 +56,7 @@ const STORY_BANDS = [
   },
 ] as const;
 
-const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader-${n}.jpg`;
+const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader-${n}.jpg?v=3`;
 
 const REVIEWS = [
   {
