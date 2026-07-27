@@ -65,7 +65,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(1),
     quote:
-      'I used to keep five tabs open just to check OI and index bias. Now it is one screen. Took me about a week to stop cross-checking the numbers elsewhere — after that I never went back.',
+      'Master AI replaced three group chats for me. I ask what the tape is saying and get a clear answer instead of ten conflicting opinions. That alone was worth signing up.',
   },
   {
     name: 'Ananya Kulkarni',
@@ -73,7 +73,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(2),
     quote:
-      'The journal is what actually changed things for me. Tagging every entry showed that most of my losses came from the first fifteen minutes. So I stopped trading the open.',
+      'The Trading Journal is what actually changed things for me. Tagging every entry showed most of my losses came from the first fifteen minutes — so I stopped trading the open.',
   },
   {
     name: 'Vikram Singh',
@@ -81,7 +81,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(3),
     quote:
-      'Scanners refresh with the tape, which is rare at this price. I run the breakout scan around 9:45, shortlist three names, and that is my whole morning routine now.',
+      'Indicators library is clean — open a card, read the note, copy the code. I stopped hunting scripts on Telegram and Discord every morning.',
   },
   {
     name: 'Neha Patil',
@@ -89,7 +89,7 @@ const REVIEWS = [
     rating: 4,
     photo: avatar(4),
     quote:
-      'Master AI will not tell you what to buy, and honestly that is why I trust it. I ask what changed in OI since yesterday and get a straight answer. Wish the mobile layout was a bit denser.',
+      'Master AI will not tell you what to buy, and honestly that is why I trust it. I ask for structure and get a straight answer. Wish the mobile layout was a bit denser.',
   },
   {
     name: 'Karthik Raman',
@@ -97,7 +97,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(5),
     quote:
-      'The sector heatmap is the first thing I open. Working out which sector is holding up on a red day used to take me twenty minutes of scrolling through lists.',
+      'I keep the Indicators page bookmarked. New scripts show up with a cover and description — I preview, copy, and I am on my chart in under a minute.',
   },
   {
     name: 'Sneha Desai',
@@ -105,7 +105,7 @@ const REVIEWS = [
     rating: 4,
     photo: avatar(6),
     quote:
-      'Having max pain and PCR in one view kept me out of two bad expiry positions last month. Still waiting on SMS alerts, but the in-app ones do the job.',
+      'End of day I dump every trade into the Journal. Seeing P&L and tags in one place kept me out of revenge trades twice last month.',
   },
   {
     name: 'Aditya Joshi',
@@ -113,7 +113,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(7),
     quote:
-      'Setup took ten minutes. What sold me was that the quotes matched my broker terminal exactly — I sat and checked it tick by tick for two full sessions before trusting it.',
+      'Setup took ten minutes. What sold me was Master AI plus the Journal together — ask a question, then log the trade the same session. Simple loop.',
   },
   {
     name: 'Meera Sharma',
@@ -121,7 +121,7 @@ const REVIEWS = [
     rating: 5,
     photo: avatar(8),
     quote:
-      'I trade after work, so I need the day reviewed fast. Dashboard bias plus a journal pass takes me about fifteen minutes instead of the hour it used to.',
+      'I trade after work, so I need a fast review. Master AI for context and a Journal pass takes me about fifteen minutes instead of the hour it used to.',
   },
 ] as const;
 
