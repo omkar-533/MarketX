@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Clock, Menu } from 'lucide-react';
+import { Clock, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import type { User } from '../hooks/useAuth';
 import { BRAND } from '../constants/brandLabels';
@@ -16,7 +15,6 @@ interface HeaderProps {
 
 export default function Header({ user, onProfile, onMenuClick, className = '' }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -47,47 +45,6 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
         </div>
 
         <ThemeToggle />
-
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 text-slate-500 hover:text-gold transition-colors rounded-lg hover:bg-dark-border/60"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-gold rounded-full" />
-          </button>
-          <AnimatePresence>
-            {showNotifications && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-dark-elevated border border-dark-border rounded-xl shadow-2xl z-50 overflow-hidden"
-              >
-                <div className="p-3 border-b border-dark-border">
-                  <span className="text-sm font-bold text-slate-200">Notifications</span>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {[
-                    'NIFTY crossed 24600',
-                    'RELIANCE volume spike detected',
-                    'BANKNIFTY PCR turned bullish',
-                    'Your price alert triggered for INFY',
-                  ].map((n, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-2.5 hover:bg-dark-border transition-colors border-b border-dark-border/50"
-                    >
-                      <div className="text-xs text-slate-300">{n}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">{i + 1} min ago</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
         {user && (
           <button
