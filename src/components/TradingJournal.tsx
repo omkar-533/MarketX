@@ -1033,7 +1033,7 @@ export default function TradingJournal({
         onClose={() => setLightbox(null)}
       />
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-xl border border-[#1a1f2e] bg-gradient-to-br from-[#121520] via-[#0b0e17] to-[#080a12] p-5">
+      <div className="relative overflow-hidden lux-panel lux-panel--featured p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
@@ -1080,7 +1080,7 @@ export default function TradingJournal({
             { label: 'Avg R:R', value: `${metrics.avgRR.toFixed(2)}x`, sub: 'risk-reward' },
             { label: 'Max Drawdown', value: formatCurrency(advanced.maxDrawdown), sub: `${metrics.streak}W streak`, up: false },
           ].map((s) => (
-            <div key={s.label} className="rounded-lg bg-[#0b0e17]/80 border border-[#1a1f2e] px-3 py-2">
+            <div key={s.label} className="lux-panel lux-panel--soft px-3 py-2">
               <div className="text-[9px] uppercase tracking-wider text-slate-500">{s.label}</div>
               <div className={`text-base font-bold tabular-nums ${s.up === true ? 'text-emerald-400' : s.up === false && s.label === 'Max Drawdown' ? 'text-red-400' : s.label === 'Net P&L' ? (metrics.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white'}`}>
                 {s.value}
@@ -1091,7 +1091,7 @@ export default function TradingJournal({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0b0e17] border border-[#1a1f2e] overflow-x-auto">
+      <div className="lux-toolbar overflow-x-auto">
         {journalTabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -1202,7 +1202,7 @@ export default function TradingJournal({
       <>
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="lux-panel lux-panel--pad">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">Add / Edit Trade</h2>
@@ -1495,7 +1495,7 @@ export default function TradingJournal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="lux-panel lux-panel--pad">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">AI Trading Coach</h2>
@@ -1529,7 +1529,7 @@ export default function TradingJournal({
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="lux-panel lux-panel--pad">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">Filters & Search</h2>
@@ -1597,7 +1597,7 @@ export default function TradingJournal({
             )}
           </div>
 
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="lux-panel lux-panel--pad">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">Premium Features</h2>

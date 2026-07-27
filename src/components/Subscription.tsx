@@ -53,7 +53,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
         </p>
       </div>
 
-      <div className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
+      <div className="w-full lux-panel lux-panel--pad flex flex-wrap items-center gap-3">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
         {link ? (
@@ -89,10 +89,8 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.08 }}
-              className={`relative bg-[#0b0e17] border rounded-xl p-5 flex flex-col ${
-                plan.featured
-                  ? 'border-[#d4af37]/40 shadow-lg shadow-[#d4af37]/5'
-                  : 'border-[#1a1f2e]'
+              className={`relative lux-panel lux-panel--pad lux-panel--interactive flex flex-col ${
+                plan.featured ? 'lux-panel--featured' : ''
               }`}
             >
               {plan.badge ? (

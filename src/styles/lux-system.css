@@ -1,0 +1,247 @@
+/**
+ * Site-wide LuxAlgo / landing-feature card system.
+ * Matches auth-lux-feature look: deep plate, soft ring, hover lift.
+ */
+
+html,
+html[data-theme='dark'] {
+  --lux-bg: #050508;
+  --lux-panel: #0a0a0d;
+  --lux-panel-deep: #08080b;
+  --lux-elevated: #101018;
+  --lux-border: rgba(255, 255, 255, 0.1);
+  --lux-border-strong: rgba(255, 255, 255, 0.14);
+  --lux-gold: #d4af37;
+  --lux-gold-soft: rgba(212, 175, 55, 0.14);
+  --lux-gold-border: rgba(232, 212, 139, 0.45);
+  --lux-radius: 1.2rem;
+  --lux-radius-lg: 1.35rem;
+  --lux-shadow: 0 28px 64px rgba(0, 0, 0, 0.55);
+  --lux-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.app-shell {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.06), transparent 55%),
+    var(--lux-bg) !important;
+}
+
+/* ── Shared Lux surface (landing feature cards) ── */
+.app-card,
+.app-card-elevated,
+.lux-panel,
+.lux-lib-card {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 32%),
+    var(--lux-panel) !important;
+  border: 1px solid var(--lux-border) !important;
+  border-radius: var(--lux-radius) !important;
+  box-shadow:
+    var(--lux-inset),
+    0 16px 40px rgba(0, 0, 0, 0.4) !important;
+  overflow: hidden;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.app-card:hover,
+.app-card-elevated:hover,
+.lux-panel--interactive:hover,
+.lux-lib-card:hover {
+  border-color: var(--lux-gold-border) !important;
+  transform: translateY(-4px);
+  box-shadow:
+    var(--lux-inset),
+    0 28px 64px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(212, 175, 55, 0.12) !important;
+}
+
+.app-card-elevated {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 36%),
+    var(--lux-elevated) !important;
+}
+
+.glass {
+  background: rgba(10, 10, 13, 0.92) !important;
+  border-color: var(--lux-border) !important;
+  backdrop-filter: blur(18px);
+}
+
+.page-content,
+.page-content--full,
+.page-content--indicators,
+.page-content--scanners {
+  background: transparent;
+}
+
+/* Padding variant */
+.lux-panel--pad {
+  padding: 1.15rem 1.2rem;
+}
+
+.lux-panel--soft {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 40%),
+    rgba(255, 255, 255, 0.02) !important;
+}
+
+.lux-panel--featured {
+  border-color: var(--lux-gold-border) !important;
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.14), transparent 42%),
+    var(--lux-panel) !important;
+  box-shadow:
+    var(--lux-inset),
+    0 20px 48px rgba(212, 175, 55, 0.1),
+    0 0 0 1px rgba(212, 175, 55, 0.12) !important;
+}
+
+/* Golden ring frame (like landing auth-lux-feature) */
+.lux-panel::before,
+.app-card::before,
+.app-card-elevated::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: 1;
+}
+
+.lux-panel--featured::before {
+  box-shadow: inset 0 0 0 1px rgba(232, 212, 139, 0.18);
+}
+
+.lux-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--lux-border);
+  background: rgba(10, 10, 13, 0.9);
+  box-shadow: var(--lux-inset);
+}
+
+.lux-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--lux-border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.lux-chip.is-active,
+.lux-chip--active {
+  border-color: var(--lux-gold-border);
+  background: var(--lux-gold-soft);
+  color: #f0d67a;
+}
+
+.lux-input,
+.tf-field {
+  border-radius: 0.85rem !important;
+  border-color: var(--lux-border) !important;
+  background: var(--lux-elevated) !important;
+}
+
+.lux-input:focus,
+.tf-field:focus {
+  border-color: rgba(212, 175, 55, 0.5) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+}
+
+.lux-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lux-btn--primary {
+  background: linear-gradient(135deg, #f0d67a, #d4af37);
+  color: #0b0e16;
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.25);
+}
+
+.lux-btn--primary:hover {
+  filter: brightness(1.06);
+}
+
+.lux-btn--ghost {
+  border: 1px solid var(--lux-gold-border);
+  background: var(--lux-gold-soft);
+  color: var(--lux-gold);
+}
+
+.lux-btn--ghost:hover {
+  background: rgba(212, 175, 55, 0.22);
+}
+
+.lux-lib__chip {
+  border-color: var(--lux-border);
+}
+
+.lux-lib__chip.is-active {
+  border-color: var(--lux-gold-border);
+  background: var(--lux-gold-soft);
+}
+
+/* Force old hex panels → Lux plate (whole site, including landing leftovers) */
+[class*='bg-[#0b0e17]'],
+[class*='bg-[#101420]'],
+[class*='bg-[#111827]'],
+[class*='bg-[#0d1728]'] {
+  background-color: var(--lux-panel) !important;
+}
+
+[class*='border-[#1a1f2e]'],
+[class*='border-[#24324b]'],
+[class*='border-dark-border'] {
+  border-color: var(--lux-border) !important;
+}
+
+.app-shell [class*='rounded-xl']:not(button):not(input):not(select):not(textarea):not(img):not(svg),
+.app-shell [class*='rounded-2xl']:not(button):not(input):not(select):not(textarea):not(img):not(svg) {
+  border-radius: var(--lux-radius) !important;
+}
+
+/* Access gate + command palette */
+.access-gate__card {
+  border-radius: var(--lux-radius-lg) !important;
+  border-color: var(--lux-gold-border) !important;
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.12), transparent 40%),
+    var(--lux-panel) !important;
+  box-shadow: var(--lux-shadow) !important;
+}
+
+/* Sidebar / header feel */
+.app-shell aside.glass,
+.app-shell header.glass,
+.glass.border-r,
+.glass.border-b {
+  background: rgba(8, 8, 11, 0.94) !important;
+  border-color: var(--lux-border) !important;
+}

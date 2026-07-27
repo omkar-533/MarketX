@@ -200,7 +200,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         </p>
       </div>
 
-      <div className="flex overflow-x-auto bg-dark-elevated rounded-lg border border-dark-border">
+      <div className="lux-toolbar overflow-x-auto">
         {(
           [
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
@@ -218,9 +218,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all shrink-0 ${
-                activeTab === t.id ? 'bg-gold/10 text-gold' : 'text-slate-500 hover:text-slate-300'
-              }`}
+              className={`lux-chip shrink-0 ${activeTab === t.id ? 'is-active' : ''}`}
             >
               <Icon className="w-3.5 h-3.5" />
               {t.label}
@@ -257,7 +255,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
 
       {activeTab === 'users' && (
         <div className="space-y-4">
-          <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-3">
+          <div className="lux-panel lux-panel--pad space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-[#d4af37] flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
@@ -343,7 +341,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             ) : null}
           </div>
 
-          <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
+          <div className="lux-panel overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#1a1f2e]">
               <h3 className="text-sm font-bold text-white">
                 Users ({rows.length})
@@ -540,7 +538,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4"
+                  className="lux-panel lux-panel--pad"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <Icon className={`w-5 h-5 ${stat.color}`} />
@@ -553,7 +551,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             })}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
+            <div className="lux-panel lux-panel--pad">
               <h3 className="text-sm font-bold text-[#d4af37] mb-3">Traffic Overview</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={trafficData}>
@@ -571,7 +569,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
+            <div className="lux-panel lux-panel--pad">
               <h3 className="text-sm font-bold text-[#d4af37] mb-3">Revenue</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={revenueData}>
@@ -588,13 +586,13 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       )}
 
       {activeTab === 'analytics' && (
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 text-sm text-slate-500">
+        <div className="lux-panel lux-panel--pad text-sm text-slate-500">
           Analytics charts are illustrative. Invite user counts above are live.
         </div>
       )}
 
       {activeTab === 'payments' && (
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 text-sm text-slate-500">
+        <div className="lux-panel lux-panel--pad text-sm text-slate-500">
           Payments integration coming later. Plans on invite users are set when you create the login.
         </div>
       )}

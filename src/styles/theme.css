@@ -2,11 +2,11 @@
 
 html,
 html[data-theme="dark"] {
-  --tf-bg: #080a12;
-  --tf-surface: #0b0e17;
-  --tf-elevated: #121520;
-  --tf-border: #1a1f2e;
-  --tf-border-soft: #24324b;
+  --tf-bg: #050508;
+  --tf-surface: #0a0a0d;
+  --tf-elevated: #101018;
+  --tf-border: rgba(255, 255, 255, 0.1);
+  --tf-border-soft: rgba(255, 255, 255, 0.14);
   --tf-text: #f1f5f9;
   --tf-text-secondary: #cbd5e1;
   --tf-text-muted: #94a3b8;
