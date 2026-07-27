@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, PieChart, ScanLine,
-  Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot,
+  Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
   NotebookPen, Code2,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
@@ -22,10 +21,6 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
-  { id: 'oiintelligence', label: PAGE_NAMES.oiintelligence, icon: Activity },
-  { id: 'heatmap', label: PAGE_NAMES.heatmap, icon: PieChart },
-  { id: 'scanner', label: PAGE_NAMES.scanner, icon: ScanLine },
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
   { id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 },
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },

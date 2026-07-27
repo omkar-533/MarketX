@@ -9,15 +9,13 @@ interface CommandPaletteProps {
 }
 
 const commands = [
-  { id: 'dashboard', label: 'Go to Dashboard', shortcut: 'D' },
+  { id: 'trafi', label: 'Open Master AI', shortcut: 'M' },
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },
   { id: 'strategy', label: 'Strategy Builder', shortcut: 'S' },
-  { id: 'oiintelligence', label: 'AI Intelligence', shortcut: 'I' },
   { id: 'futures', label: 'Futures Analytics', shortcut: 'F' },
-  { id: 'heatmap', label: 'Market Heatmap', shortcut: 'H' },
   { id: 'indicators', label: 'Open Indicators', shortcut: 'C' },
 ];
 
