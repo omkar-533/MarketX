@@ -2,7 +2,6 @@
 @import "./styles/theme.css";
 @import "./styles/theme-light-overrides.css";
 @import "./styles/screener-chartink.css";
-@import "./styles/lux-system.css";
 
 body {
   background-color: var(--tf-bg);
@@ -24,14 +23,14 @@ body {
 .app-card {
   background: var(--tf-surface);
   border: 1px solid var(--tf-border);
-  border-radius: var(--lux-radius, 1rem);
+  border-radius: 0.75rem;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .app-card-elevated {
   background: var(--tf-elevated);
   border: 1px solid var(--tf-border);
-  border-radius: var(--lux-radius, 1rem);
+  border-radius: 0.75rem;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -108,7 +107,7 @@ body {
 
 @media (min-width: 1024px) {
   .app-main--sidebar {
-    margin-left: 280px;
+    margin-left: 240px;
   }
   .app-main--sidebar-collapsed {
     margin-left: 64px;
@@ -123,14 +122,11 @@ body {
   height: 3.5rem;
   z-index: 40;
   transition: left 0.25s ease-in-out;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
 }
 
 @media (min-width: 1024px) {
   .app-header--sidebar {
-    left: 280px;
+    left: 240px;
   }
   .app-header--sidebar-collapsed {
     left: 64px;
@@ -1958,17 +1954,11 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.85rem 0.95rem;
-  border-radius: var(--lux-radius, 1rem);
-  background: var(--lux-panel, #0b0e17);
-  border: 1px solid var(--lux-border, rgba(255, 255, 255, 0.08));
+  border-radius: 0.85rem;
+  background: rgba(8, 10, 18, 0.78);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   backdrop-filter: blur(14px);
-  box-shadow: var(--lux-shadow, 0 18px 40px rgba(0, 0, 0, 0.35));
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.auth-feature-card:hover {
-  border-color: var(--lux-gold-border, rgba(212, 175, 55, 0.35));
-  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 .auth-feature-card__icon {
@@ -4939,10 +4929,12 @@ input[type="number"] { -moz-appearance: textfield; }
 .access-gate__card {
   width: 100%;
   max-width: 34rem;
-  border-radius: var(--lux-radius-lg, 1.2rem);
-  border: 1px solid var(--lux-gold-border, rgba(212, 175, 55, 0.35));
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), var(--lux-panel, #0b0e17));
-  box-shadow: var(--lux-shadow, 0 18px 40px rgba(0, 0, 0, 0.35));
+  border-radius: 1.25rem;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: linear-gradient(180deg, rgba(18, 21, 32, 0.98), rgba(10, 12, 20, 0.98));
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
   padding: 1.5rem;
 }
 

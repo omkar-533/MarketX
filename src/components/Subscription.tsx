@@ -35,7 +35,7 @@ function statusLine(access: AccessState | null | undefined) {
   return `${access.daysLeft} days left on your current access.`;
 }
 
-/** In-app pricing — simple app cards (landing plan UI stays on the marketing page only). */
+/** In-app pricing — same plans and prices as the landing page. */
 export default function Subscription({ user, access, popup }: SubscriptionProps) {
   const link = popup?.url?.trim();
   const whatsapp = popup?.whatsapp?.trim();
@@ -53,7 +53,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
         </p>
       </div>
 
-      <div className="w-full app-card p-4 flex flex-wrap items-center gap-3">
+      <div className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
         {link ? (
@@ -89,8 +89,10 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.08 }}
-              className={`relative app-card p-5 flex flex-col ${
-                plan.featured ? 'border-[#d4af37]/40 shadow-[0_0_0_1px_rgba(212,175,55,0.2)]' : ''
+              className={`relative bg-[#0b0e17] border rounded-xl p-5 flex flex-col ${
+                plan.featured
+                  ? 'border-[#d4af37]/40 shadow-lg shadow-[#d4af37]/5'
+                  : 'border-[#1a1f2e]'
               }`}
             >
               {plan.badge ? (

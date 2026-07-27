@@ -108,7 +108,7 @@ export default function AccessRequestsTab({
       {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
 
       {rows.length === 0 ? (
-        <div className="lux-panel lux-panel--pad text-center text-xs text-slate-500">
+        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-8 text-center text-xs text-slate-500">
           {loading ? 'Loading…' : `No ${filter === 'all' ? '' : filter} requests.`}
         </div>
       ) : (
@@ -119,7 +119,7 @@ export default function AccessRequestsTab({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.04 }}
-              className="lux-panel overflow-hidden lux-panel--interactive"
+              className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden"
             >
               <button
                 type="button"

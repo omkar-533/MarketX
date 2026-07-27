@@ -71,7 +71,7 @@ export default function AccessSettingsTab({
 
   if (loading || !popup) {
     return (
-      <div className="lux-panel lux-panel--pad text-center text-xs text-slate-500">
+      <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-8 text-center text-xs text-slate-500">
         {error || 'Loading settings…'}
       </div>
     );
@@ -79,7 +79,7 @@ export default function AccessSettingsTab({
 
   return (
     <div className="space-y-4">
-      <div className="lux-panel lux-panel--pad space-y-4">
+      <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-[#d4af37]">Access popup</h3>
@@ -193,7 +193,7 @@ export default function AccessSettingsTab({
         </div>
       </div>
 
-      <div className="lux-panel lux-panel--pad text-[11px] text-slate-400 space-y-1.5">
+      <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 text-[11px] text-slate-400 space-y-1.5">
         <p className="text-sm font-bold text-slate-200">System</p>
         <p>
           Free trial length: <span className="text-slate-200 font-bold">{trialDays} days</span>{' '}

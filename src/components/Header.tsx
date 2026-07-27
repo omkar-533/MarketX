@@ -13,6 +13,7 @@ interface HeaderProps {
   className?: string;
 }
 
+/** Clean app header — ticker/search/alerts stay hidden as requested earlier. */
 export default function Header({ user, onProfile, onMenuClick, className = '' }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -34,8 +35,8 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
         <Menu className="w-5 h-5" />
       </button>
 
-      <div className="shrink-0 min-w-0 mr-auto overflow-hidden" title={BRAND}>
-        <BrandMark size="sm" nameClassName="tracking-[0.06em] text-[1.15rem] sm:text-[1.3rem]" />
+      <div className="shrink-0 min-w-0 mr-auto" title={BRAND}>
+        <BrandMark size="sm" nameClassName="truncate text-[1.05rem] sm:text-[1.2rem]" />
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">

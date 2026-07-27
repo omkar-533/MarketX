@@ -43,7 +43,7 @@ export default function CommandPalette({ isOpen, onClose, onNavigate }: CommandP
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh] bg-black/60 backdrop-blur-sm p-4">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-lg lux-panel shadow-2xl overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full max-w-lg bg-[#0b0e17] border border-[#1a1f2e] rounded-xl shadow-2xl overflow-hidden">
         <div className="flex items-center gap-3 p-4 border-b border-[#1a1f2e]">
           <Search className="w-5 h-5 text-slate-500" />
           <input 

@@ -998,7 +998,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
             {activeTab === 'overview' && (
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="lux-panel lux-panel--pad">
+                <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-white">Live position summary</h3>
                     <Bell className="w-4 h-4 text-[#d4af37]" />
@@ -1012,7 +1012,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                   </div>
                 </div>
 
-                <div className="lux-panel lux-panel--pad">
+                <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-white">Strategy & execution controls</h3>
                   </div>
@@ -1049,7 +1049,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                   openGroups.map((group) => {
                     const pnl = groupUnrealizedPnl(group, quoteMap);
                     return (
-                      <div key={group.id} className="lux-panel lux-panel--pad">
+                      <div key={group.id} className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                           <div>
                             <h4 className="font-bold text-white">{group.name}</h4>
@@ -1213,7 +1213,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
             {activeTab === 'analytics' && (
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="lux-panel lux-panel--pad">
+                <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
                   <h3 className="text-sm font-bold text-white mb-4">Trade analytics</h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span className="text-slate-500">Total closed trades</span><span className="font-bold text-white">{closedTrades.length}</span></div>
@@ -1222,7 +1222,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     <div className="flex justify-between"><span className="text-slate-500">Current open risk</span><span className="font-bold text-red-400">₹{Math.max(0, -openPositionStats.totalPnl).toFixed(2)}</span></div>
                   </div>
                 </div>
-                <div className="lux-panel lux-panel--pad">
+                <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
                   <h3 className="text-sm font-bold text-white mb-4">Execution tips</h3>
                   <ul className="space-y-2 text-sm text-slate-300">
                     <li>• Market — instant fill at live price.</li>

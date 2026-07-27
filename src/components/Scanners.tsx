@@ -141,7 +141,7 @@ function ScreenerCard({
   const tfLabel = SCAN_TIMEFRAMES.find((t) => t.id === timeframe)?.label ?? timeframe;
 
   return (
-    <article className="lux-panel lux-panel--pad lux-panel--interactive flex flex-col min-h-[320px]">
+    <article className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 hover:border-[#d4af37]/25 transition-colors flex flex-col min-h-[320px]">
       <div className="flex items-start justify-between gap-2 mb-1">
         <h2 className="text-sm font-bold text-slate-100 leading-snug">{screener.name}</h2>
       </div>
@@ -341,7 +341,7 @@ export default function Scanners(_props: ScannersProps) {
       </div>
 
       {stocks.length === 0 && !loading ? (
-        <div className="lux-panel lux-panel--pad text-center">
+        <div className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-10 text-center">
           <p className="text-sm text-slate-300 font-medium">Market data is reconnecting</p>
           <p className="text-[12px] text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
             Scans will populate once the live feed is available. Tap Refresh to retry.

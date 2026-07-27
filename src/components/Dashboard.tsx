@@ -246,7 +246,7 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
   return (
     <div className="space-y-3 pb-6">
       {/* Hero — left market pulse + right analytics strip */}
-      <div className="relative overflow-hidden lux-panel lux-panel--featured p-4 sm:p-5">
+      <div className="relative overflow-hidden rounded-xl border border-[#1a1f2e] bg-gradient-to-br from-[#121520] via-[#0b0e17] to-[#0a0c14] p-4 sm:p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
 
         <div className="relative grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-stretch">
