@@ -48,12 +48,12 @@ export default function Sidebar({
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
-      <div className="h-16 flex items-center px-4 border-b border-white/[0.08] shrink-0">
+      <div className="h-14 flex items-center px-3 border-b border-white/[0.08] shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
           {collapsed ? (
             <BrandMark size="sm" iconOnly />
           ) : (
-            <BrandMark size="sm" nameClassName="tracking-[0.08em] text-[1.15rem]" />
+            <BrandMark size="sm" nameClassName="tracking-[0.06em] text-[1.05rem]" />
           )}
           {collapsed ? <span className="sr-only">{BRAND}</span> : null}
         </div>

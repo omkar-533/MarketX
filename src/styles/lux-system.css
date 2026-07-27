@@ -94,9 +94,17 @@ html[data-theme='dark'] {
   background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
 }
 
-.app-shell > *:not(.app-shell__ambiance) {
-  position: relative;
+/* Keep fixed header/sidebar; only lift stacking above ambiance */
+.app-shell > .app-header,
+.app-shell > aside,
+.app-shell > .app-main,
+.app-shell > .sidebar-overlay {
   z-index: 1;
+}
+
+.app-shell > .app-header,
+.app-shell > aside {
+  z-index: 50;
 }
 
 .app-main,

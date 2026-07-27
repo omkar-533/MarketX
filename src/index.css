@@ -124,6 +124,9 @@ body {
   height: 3.5rem;
   z-index: 40;
   transition: left 0.25s ease-in-out;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 @media (min-width: 1024px) {
