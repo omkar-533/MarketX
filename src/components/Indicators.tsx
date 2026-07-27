@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ArrowRight,
   Check,
   Copy,
   ExternalLink,
   ImageOff,
-  Link2,
   Loader2,
   Search,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { listIndicators, type IndicatorItem } from '../services/indicatorLibrary';
+import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
+
+function formatDate(value?: string) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function Indicators() {
   const [items, setItems] = useState<IndicatorItem[]>([]);
@@ -78,112 +85,113 @@ export default function Indicators() {
   };
 
   return (
-    <div className="w-full pb-10">
-      <div className="relative overflow-hidden rounded-2xl border border-[#1a1f2e] bg-[#0b0e17] mb-6">
-        <div
-          className="absolute inset-0 opacity-70 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse 70% 80% at 12% 20%, rgba(212,175,55,0.16), transparent 55%), radial-gradient(ellipse 50% 60% at 88% 10%, rgba(80,120,255,0.08), transparent 50%)',
-          }}
-        />
-        <div className="relative px-5 sm:px-8 py-7 sm:py-9 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
-          <div className="max-w-xl">
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d4af37] mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              Indicator library
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Indicators via invite link
-            </h1>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Open any card for the share link. New accounts get a {TRIAL_DAYS}-day demo — after that,
-              the desk approves longer access.
-            </p>
-            <p className="text-[11px] text-slate-600 mt-3">
-              {items.length} indicator{items.length === 1 ? '' : 's'} in the library
-            </p>
-          </div>
-          <div className="relative w-full lg:w-[280px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search title…"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 focus:outline-none focus:border-[#d4af37]/40"
-            />
-          </div>
+    <div className="lux-lib">
+      <header className="lux-lib__hero">
+        <p className="lux-lib__eyebrow">The Algorithmic Library</p>
+        <h1 className="lux-lib__title">Universal Indicator Library</h1>
+        <p className="lux-lib__lead">
+          Curated indicators — previewed, linked, and ready for your desk. {TRIAL_DAYS}-day demo
+          included; longer access after approval.
+        </p>
+      </header>
+
+      <div className="lux-lib__toolbar">
+        <div className="lux-lib__filters">
+          <span className="lux-lib__chip is-active">{BRAND_SHORT}</span>
+          <span className="lux-lib__chip">TradingView</span>
+          <span className="lux-lib__chip">Invite link</span>
+        </div>
+        <div className="lux-lib__search">
+          <Search className="lux-lib__search-icon" aria-hidden />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search indicators…"
+            aria-label="Search indicators"
+          />
         </div>
       </div>
 
+      <p className="lux-lib__count">
+        {loading ? 'Loading…' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
+      </p>
+      <hr className="lux-lib__rule" />
+
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-slate-500 text-sm">
-          <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="lux-lib__state">
+          <Loader2 className="w-5 h-5 animate-spin" />
           Loading library…
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center text-sm text-red-300">
-          {error}
-        </div>
+        <div className="lux-lib__state lux-lib__state--error">{error}</div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-12 text-center">
-          <Link2 className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-          <p className="text-sm text-slate-300 font-medium">
-            {items.length === 0 ? 'No indicators published yet' : 'No matches for that search'}
-          </p>
-          <p className="text-[12px] text-slate-500 mt-2 max-w-md mx-auto">
-            {items.length === 0
-              ? 'When the desk adds invite links from Admin → Indicators, they will appear here.'
-              : 'Try a different title or keyword.'}
-          </p>
+        <div className="lux-lib__state">
+          {items.length === 0
+            ? 'No indicators published yet. Add invite links from Admin → Indicators.'
+            : 'No matches for that search.'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="lux-lib__grid">
           {filtered.map((item, idx) => (
-            <motion.button
+            <motion.article
               key={item.id}
-              type="button"
-              initial={{ opacity: 0, y: 14 }}
+              className="lux-lib-card"
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, delay: Math.min(idx * 0.04, 0.28) }}
-              onClick={() => {
-                setCopied(false);
-                setActive(item);
-              }}
-              className="group text-left rounded-2xl border border-[#1a1f2e] bg-[#0b0e17] overflow-hidden hover:border-[#d4af37]/35 transition-colors flex flex-col"
+              transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.32) }}
             >
-              <div className="relative aspect-[16/10] bg-[#121520] overflow-hidden">
+              <button
+                type="button"
+                className="lux-lib-card__media"
+                onClick={() => {
+                  setCopied(false);
+                  setActive(item);
+                }}
+                aria-label={`View ${item.title}`}
+              >
                 {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt=""
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    loading="lazy"
-                  />
+                  <img src={item.imageUrl} alt="" loading="lazy" />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600">
-                    <ImageOff className="w-7 h-7" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">No preview</span>
-                  </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0b0e17] to-transparent" />
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <h2 className="text-sm font-bold text-slate-100 leading-snug group-hover:text-[#d4af37] transition-colors">
-                  {item.title}
-                </h2>
-                <p className="text-[12px] text-slate-500 mt-2 line-clamp-3 leading-relaxed flex-1">
-                  {item.description || 'Open to get the invite link.'}
-                </p>
-                <div className="mt-3 pt-3 border-t border-[#1a1f2e] flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                  <span className="inline-flex items-center gap-1">
-                    <Link2 className="w-3 h-3 text-[#d4af37]/70" />
-                    Link
+                  <span className="lux-lib-card__placeholder">
+                    <ImageOff className="w-8 h-8" />
                   </span>
-                  <span className="text-[#d4af37]/80 group-hover:text-[#d4af37]">Open</span>
-                </div>
+                )}
+              </button>
+
+              <div className="lux-lib-card__body">
+                <p className="lux-lib-card__meta">
+                  <span>{BRAND}</span>
+                  <span aria-hidden>·</span>
+                  <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
+                </p>
+                <h2 className="lux-lib-card__title">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCopied(false);
+                      setActive(item);
+                    }}
+                  >
+                    {item.title}
+                  </button>
+                </h2>
+                <p className="lux-lib-card__desc">
+                  {item.description ||
+                    'Open this indicator to get the invite link and use it on your chart.'}
+                </p>
+                <button
+                  type="button"
+                  className="lux-lib-card__cta"
+                  onClick={() => {
+                    setCopied(false);
+                    setActive(item);
+                  }}
+                >
+                  View indicator
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-            </motion.button>
+            </motion.article>
           ))}
         </div>
       )}
@@ -191,14 +199,14 @@ export default function Indicators() {
       <AnimatePresence>
         {active && (
           <motion.div
-            className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6"
+            className="lux-lib-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <button
               type="button"
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              className="lux-lib-modal__backdrop"
               aria-label="Close"
               onClick={() => setActive(null)}
             />
@@ -206,87 +214,68 @@ export default function Indicators() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="indicator-detail-title"
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              className="lux-lib-modal__panel"
+              initial={{ opacity: 0, y: 28, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.98 }}
               transition={{ duration: 0.22 }}
-              className="relative w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-2xl border border-[#1a1f2e] bg-[#0b0e17] shadow-2xl flex flex-col"
             >
-              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[#1a1f2e]">
+              <div className="lux-lib-modal__head">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#d4af37] mb-1">
-                    Indicator
+                  <p className="lux-lib-card__meta">
+                    <span>{BRAND}</span>
+                    <span aria-hidden>·</span>
+                    <time dateTime={active.createdAt}>{formatDate(active.createdAt)}</time>
                   </p>
-                  <h2
-                    id="indicator-detail-title"
-                    className="text-lg sm:text-xl font-extrabold text-white truncate"
-                  >
-                    {active.title}
-                  </h2>
+                  <h2 id="indicator-detail-title">{active.title}</h2>
                 </div>
                 <button
                   type="button"
+                  className="lux-lib-modal__close"
                   onClick={() => setActive(null)}
-                  className="p-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-[#121520]"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-5 space-y-5">
+              <div className="lux-lib-modal__body">
                 {active.imageUrl ? (
-                  <div className="rounded-xl overflow-hidden border border-[#1a1f2e] bg-[#121520]">
-                    <img
-                      src={active.imageUrl}
-                      alt=""
-                      className="w-full max-h-[280px] object-contain bg-[#0a0e17]"
-                    />
+                  <div className="lux-lib-modal__media">
+                    <img src={active.imageUrl} alt="" />
                   </div>
                 ) : null}
 
                 {active.description ? (
-                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {active.description}
-                  </p>
+                  <p className="lux-lib-modal__desc">{active.description}</p>
                 ) : null}
 
-                <div>
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">
-                    Invite link
-                  </h3>
-                  {active.link ? (
-                    <>
-                      <div className="rounded-xl border border-[#1a1f2e] bg-[#080a12] px-4 py-3 text-[12px] text-slate-300 break-all font-mono">
-                        {active.link}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <a
-                          href={active.link}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#d4af37] text-[#0b0e17] text-[11px] font-bold hover:brightness-110"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          Open link
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => void copyLink()}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 text-[11px] font-bold text-[#d4af37] hover:bg-[#d4af37]/15"
-                        >
-                          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copied ? 'Copied' : 'Copy link'}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                      Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
-                      approve a longer plan.
-                    </div>
-                  )}
-                </div>
+                {active.link ? (
+                  <div className="lux-lib-modal__actions">
+                    <a
+                      href={active.link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="lux-lib-modal__primary"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open indicator
+                    </a>
+                    <button
+                      type="button"
+                      className="lux-lib-modal__secondary"
+                      onClick={() => void copyLink()}
+                    >
+                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="lux-lib-modal__locked">
+                    Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
+                    approve a longer plan.
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

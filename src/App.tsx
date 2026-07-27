@@ -226,7 +226,9 @@ function AppWorkspace() {
                   ? 'page-content page-content--screener'
                   : activeTab === 'scanner'
                     ? 'page-content page-content--scanners'
-                    : 'page-content'
+                    : activeTab === 'indicators'
+                      ? 'page-content page-content--indicators'
+                      : 'page-content'
                 : ''
             }
           >
