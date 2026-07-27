@@ -7,7 +7,8 @@ import { useAutoRefreshMeta } from '../context/AutoRefreshContext';
 import ThemeToggle from './ThemeToggle';
 import MarketLiveBadge from './MarketLiveBadge';
 import type { User } from '../hooks/useAuth';
-import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
+import { BRAND } from '../constants/brandLabels';
+import BrandMark from './BrandMark';
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -66,13 +67,8 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
         <Menu className="w-5 h-5" />
       </button>
 
-      <div className="shrink-0 min-w-0 max-w-[46vw] sm:max-w-[220px] md:max-w-none" title={BRAND}>
-        <p className="text-[10px] sm:text-[11px] font-extrabold text-gold leading-tight truncate tracking-wide">
-          {BRAND}
-        </p>
-        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.14em] leading-none mt-0.5 hidden sm:block">
-          {BRAND_SHORT} · Live
-        </p>
+      <div className="shrink-0 min-w-0 max-w-[58vw] sm:max-w-[280px] md:max-w-none" title={BRAND}>
+        <BrandMark size="sm" nameClassName="truncate text-[1.05rem] sm:text-[1.2rem]" />
       </div>
 
       {/* Ticker — hidden on small screens */}

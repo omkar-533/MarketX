@@ -332,8 +332,7 @@ export default function AuthPage(props: AuthPageProps) {
       <header className={`auth-lux__nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="auth-lux__nav-inner">
           <a href="#top" className="auth-lux__brand" title={BRAND}>
-            <BrandMark size="sm" />
-            <span className="auth-lux__brand-text">{BRAND}</span>
+            <BrandMark size="sm" nameClassName="auth-lux__brand-text" />
           </a>
           <nav className="auth-lux__nav-links" aria-label="Primary">
             <a href="#platform">Features</a>
@@ -567,7 +566,7 @@ export default function AuthPage(props: AuthPageProps) {
         <footer className="auth-lux__footer">
           <div className="auth-lux__footer-top">
             <div className="auth-lux__footer-brand">
-              <BrandMark size="sm" />
+              <BrandMark size="sm" iconOnly />
               <div>
                 <strong>{BRAND}</strong>
                 <em>{BRAND_TAGLINE_FULL}</em>

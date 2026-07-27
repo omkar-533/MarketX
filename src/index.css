@@ -2185,14 +2185,15 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .auth-lux__brand-text {
-  font-size: 1.12rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.2rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+  color: #e8c547 !important;
 }
 
 @media (max-width: 520px) {
-  .auth-lux__brand-text {
+  .auth-lux__brand .brand-lockup__name {
     display: none;
   }
 }
@@ -4180,6 +4181,39 @@ input[type="number"] { -moz-appearance: textfield; }
   line-height: 1.6;
   color: rgba(130, 130, 140, 0.95);
   max-width: 52rem;
+}
+
+/* Brand emblem + wordmark */
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  line-height: 1;
+}
+
+.brand-lockup--icon {
+  gap: 0;
+}
+
+.brand-lockup__name {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #e8c547;
+  white-space: nowrap;
+  text-shadow: 0 1px 12px rgba(212, 175, 55, 0.22);
+}
+
+.brand-lockup__name--sm {
+  font-size: 1.05rem;
+}
+
+.brand-lockup__name--md {
+  font-size: 1.2rem;
+}
+
+.brand-lockup__name--lg {
+  font-size: 1.45rem;
 }
 
 /* Brand emblem — transparent vector, no blend hacks needed */

@@ -53,9 +53,13 @@ export default function Sidebar({
       }`}
     >
       <div className="h-14 flex items-center px-3 border-b border-dark-border/60 shrink-0">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          {collapsed ? <BrandMark size="sm" iconOnly /> : <BrandMark size="sm" />}
-          <span className="sr-only">{BRAND}</span>
+        <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+          {collapsed ? (
+            <BrandMark size="sm" iconOnly />
+          ) : (
+            <BrandMark size="sm" nameClassName="truncate" />
+          )}
+          {collapsed ? <span className="sr-only">{BRAND}</span> : null}
         </div>
         <button
           onClick={onToggle}

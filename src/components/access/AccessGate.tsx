@@ -67,7 +67,7 @@ export default function AccessGate({
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="access-gate__head">
-              <BrandMark size="sm" />
+              <BrandMark size="sm" iconOnly />
               <span className="access-gate__brand">{BRAND}</span>
               <span className="access-gate__badge">
                 {isBlocked ? <ShieldAlert className="w-3 h-3" /> : <LockKeyhole className="w-3 h-3" />}

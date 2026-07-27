@@ -4,8 +4,10 @@ import { BRAND } from '../constants/brandLabels';
 type BrandMarkProps = {
   className?: string;
   imgClassName?: string;
+  nameClassName?: string;
   /** sm = sidebar, md = auth nav, lg = wide nav */
   size?: 'sm' | 'md' | 'lg';
+  /** Logo only — use when the name is already rendered beside this mark. */
   iconOnly?: boolean;
   title?: string;
 };
@@ -16,24 +18,35 @@ const sizeClass = {
   lg: 'w-12 h-12',
 } as const;
 
-/** Wolf Trade AI emblem — transparent vector, crisp at any size. */
+/** Wolf Trade AI emblem — name sits to the right in large letters when not icon-only. */
 export default function BrandMark({
   className = '',
   imgClassName = '',
+  nameClassName = '',
   size = 'md',
-  iconOnly: _iconOnly = false,
+  iconOnly = false,
   title = BRAND,
 }: BrandMarkProps) {
   return (
-    <div className={`brand-mark ${sizeClass[size]} shrink-0 ${className}`} title={title}>
-      <img
-        src={brandMarkUrl}
-        alt={BRAND}
-        className={`brand-logo ${imgClassName}`}
-        width={64}
-        height={64}
-        decoding="async"
-      />
+    <div
+      className={`brand-lockup ${iconOnly ? 'brand-lockup--icon' : ''} ${className}`}
+      title={title}
+    >
+      <div className={`brand-mark ${sizeClass[size]} shrink-0`}>
+        <img
+          src={brandMarkUrl}
+          alt={iconOnly ? BRAND : ''}
+          className={`brand-logo ${imgClassName}`}
+          width={64}
+          height={64}
+          decoding="async"
+        />
+      </div>
+      {!iconOnly ? (
+        <span className={`brand-lockup__name brand-lockup__name--${size} ${nameClassName}`}>
+          {BRAND}
+        </span>
+      ) : null}
     </div>
   );
 }
