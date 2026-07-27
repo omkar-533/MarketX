@@ -100,7 +100,7 @@ const TONE_CLASS = {
 };
 
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('indicators');
   const [rows, setRows] = useState<InviteUserRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -204,8 +204,8 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         {(
           [
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
-            { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
             { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
+            { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
             { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
             { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
             { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },

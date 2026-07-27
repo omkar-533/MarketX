@@ -54,7 +54,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
   const [msg, setMsg] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -342,8 +342,18 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-500">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-500">
-            No indicators yet. Click “Add indicator” to publish the first invite link.
+          <div className="p-10 text-center space-y-3">
+            <p className="text-sm text-slate-400">
+              No indicators yet. Fill the form above (title, link, image) and click Create.
+            </p>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#d4af37] text-[#0b0e17] text-xs font-bold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Show add form
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-[#1a1f2e]">
