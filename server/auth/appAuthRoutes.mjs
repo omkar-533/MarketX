@@ -44,6 +44,7 @@ import {
   listPublishedIndicators,
   updateIndicator,
 } from './indicatorsStore.mjs';
+import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessSheet.mjs';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
@@ -545,6 +546,51 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
     return res.json({ indicator: pub });
   } catch (err) {
     return failed(res, err, 'Could not load indicator');
+  }
+});
+
+/**
+ * POST /api/app-auth/indicators/:id/tv-access
+ * Member submits TradingView username → Google Sheet for manual invite grant.
+ */
+router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
+  try {
+    const tradingViewId = String(req.body?.tradingViewId || req.body?.tvUsername || '')
+      .trim()
+      .replace(/^@/, '');
+    if (!tradingViewId || tradingViewId.length < 2) {
+      return res.status(400).json({ error: 'Enter your TradingView username' });
+    }
+    if (tradingViewId.length > 64) {
+      return res.status(400).json({ error: 'TradingView username is too long' });
+    }
+    if (!/^[a-zA-Z0-9._-]+$/.test(tradingViewId)) {
+      return res.status(400).json({
+        error: 'Use your TradingView username only (letters, numbers, . _ -)',
+      });
+    }
+
+    const row = await getIndicatorById(req.params.id, { publishedOnly: true });
+    if (!row) return res.status(404).json({ error: 'Indicator not found' });
+
+    const user = req.appUser;
+    await appendTvAccessRequest({
+      tradingViewId,
+      indicatorId: row.id,
+      indicatorTitle: row.title,
+      userId: user?.id,
+      userName: user?.name,
+      userEmail: user?.email,
+      userMobile: user?.phone,
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Submitted. The desk will add your TradingView access manually.',
+      sheetConfigured: isTvAccessSheetConfigured(),
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not submit TradingView access request');
   }
 });
 

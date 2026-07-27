@@ -5,12 +5,12 @@ import {
   ArrowRight,
   Check,
   Copy,
-  ExternalLink,
   ImageOff,
   Loader2,
   Search,
+  Send,
 } from 'lucide-react';
-import { listIndicators, type IndicatorItem } from '../services/indicatorLibrary';
+import { listIndicators, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
 
@@ -54,6 +54,11 @@ export default function Indicators() {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState<IndicatorItem | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tvId, setTvId] = useState('');
+  const [tvBusy, setTvBusy] = useState(false);
+  const [tvMsg, setTvMsg] = useState('');
+  const [tvErr, setTvErr] = useState('');
+  const [tvDone, setTvDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +118,27 @@ export default function Indicators() {
 
   const openDetail = (item: IndicatorItem) => {
     setCopied(false);
+    setTvId('');
+    setTvMsg('');
+    setTvErr('');
+    setTvDone(false);
     setActive(item);
+  };
+
+  const submitTvAccess = async () => {
+    if (!active) return;
+    setTvBusy(true);
+    setTvErr('');
+    setTvMsg('');
+    try {
+      const result = await submitTradingViewAccess(active.id, tvId);
+      setTvDone(true);
+      setTvMsg(result.message);
+    } catch (err) {
+      setTvErr(err instanceof Error ? err.message : 'Could not submit');
+    } finally {
+      setTvBusy(false);
+    }
   };
 
   if (active && detail) {
@@ -192,15 +217,16 @@ export default function Indicators() {
               <div className="lux-ind__faq-item">
                 <h3>How do I access this indicator?</h3>
                 <p>
-                  Click <strong>Get Access</strong> to open the invite link on TradingView and add it
-                  to your account.
+                  Enter your <strong>TradingView username</strong> in the form and submit. The desk
+                  adds you manually on TradingView — you will see the invite in your TradingView
+                  account.
                 </p>
               </div>
               <div className="lux-ind__faq-item">
                 <h3>What happens after the {TRIAL_DAYS}-day demo?</h3>
                 <p>
-                  Links lock when the demo ends. Upload your access request so the desk can approve a
-                  longer plan.
+                  Workspace access may lock when the demo ends. Submit a fresh request so the desk
+                  can approve longer access.
                 </p>
               </div>
             </section>
@@ -216,28 +242,81 @@ export default function Indicators() {
               <div className="lux-ind__access-copy">
                 <h2>Get access</h2>
                 <p>
-                  Use this indicator on TradingView via the invite link. Demo access lasts{' '}
-                  {TRIAL_DAYS} days — longer plans after the desk approves.
+                  Enter your TradingView username. We send it to the desk sheet — access is granted
+                  manually on TradingView (usually within a short review).
                 </p>
               </div>
-              {active.link ? (
-                <div className="lux-ind__access-actions">
-                  <a
-                    href={active.link}
-                    target="_blank"
-                    rel="noreferrer noopener"
+
+              {tvDone ? (
+                <div className="lux-ind__tv-done">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="lux-ind__tv-done-title">Request received</p>
+                    <p className="lux-ind__tv-done-body">
+                      {tvMsg ||
+                        'Your TradingView ID is on the sheet. The desk will invite you manually.'}
+                    </p>
+                    <button
+                      type="button"
+                      className="lux-ind__tv-again"
+                      onClick={() => {
+                        setTvDone(false);
+                        setTvId('');
+                        setTvMsg('');
+                      }}
+                    >
+                      Submit another ID
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form
+                  className="lux-ind__tv-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void submitTvAccess();
+                  }}
+                >
+                  <label className="lux-ind__tv-label" htmlFor="tv-username">
+                    TradingView user ID
+                  </label>
+                  <input
+                    id="tv-username"
+                    className="lux-ind__tv-input"
+                    value={tvId}
+                    onChange={(e) => setTvId(e.target.value)}
+                    placeholder="e.g. your_tv_username"
+                    autoComplete="username"
+                    disabled={tvBusy}
+                  />
+                  <p className="lux-ind__tv-hint">
+                    Open TradingView → profile → copy your username (not email).
+                  </p>
+                  {tvErr ? <p className="lux-ind__tv-error">{tvErr}</p> : null}
+                  <button
+                    type="submit"
                     className="lux-ind__btn lux-ind__btn--primary"
+                    disabled={tvBusy || !tvId.trim()}
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Get Access
-                  </a>
+                    {tvBusy ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    {tvBusy ? 'Submitting…' : 'Submit for access'}
+                  </button>
+                </form>
+              )}
+
+              {active.link ? (
+                <div className="lux-ind__access-actions lux-ind__access-actions--secondary">
                   <button
                     type="button"
                     className="lux-ind__btn lux-ind__btn--ghost"
                     onClick={() => void copyLink()}
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied' : 'Copy link'}
+                    {copied ? 'Copied' : 'Copy invite link'}
                   </button>
                   <div className="lux-ind__platform">
                     <span className="lux-ind__platform-label">TradingView</span>
@@ -247,15 +326,15 @@ export default function Indicators() {
                       rel="noreferrer noopener"
                       className="lux-ind__platform-cta"
                     >
-                      Get Access
+                      Open invite
                       <ArrowRight className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 </div>
               ) : (
                 <div className="lux-ind__locked">
-                  Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
-                  approve a longer plan.
+                  Invite link locked until your desk access is approved. You can still submit your
+                  TradingView ID above.
                 </div>
               )}
             </section>

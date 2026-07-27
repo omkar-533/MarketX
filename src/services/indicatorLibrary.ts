@@ -122,3 +122,23 @@ export async function adminDeleteIndicator(
   });
   await readJson(res, 'Could not delete indicator');
 }
+
+/** Submit TradingView username for manual invite — stored in admin Google Sheet. */
+export async function submitTradingViewAccess(
+  indicatorId: string,
+  tradingViewId: string,
+): Promise<{ ok: boolean; message: string }> {
+  const res = await apiFetch(
+    `/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/tv-access`,
+    {
+      method: 'POST',
+      headers: sessionHeaders(),
+      body: JSON.stringify({ tradingViewId }),
+    },
+  );
+  const data = await readJson(res, 'Could not submit TradingView ID');
+  return {
+    ok: true,
+    message: typeof data.message === 'string' ? data.message : 'Submitted',
+  };
+}
