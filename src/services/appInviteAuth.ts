@@ -385,6 +385,22 @@ export type AdminAccessRequest = {
   screenshotUrl: string | null;
 };
 
+export type AdminTvAccessRequest = {
+  id: string;
+  tradingViewId: string;
+  indicatorId: string;
+  indicatorTitle: string | null;
+  userId: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  status: 'pending' | 'granted' | 'dismissed';
+  adminNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
 export type AccessPopupSettings = AccessPopup & { defaultGrantDays: number };
 
 /** `days` of 0 means lifetime access. */
@@ -462,6 +478,43 @@ export async function adminReviewAccessRequest(
       method: 'POST',
       headers: authHeaders(adminEmail, adminPassword),
       body: JSON.stringify({ days: input.days, adminNote: input.adminNote }),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `Could not ${action} the request`);
+  return true;
+}
+
+export async function adminListTvAccessRequests(
+  status: 'pending' | 'granted' | 'dismissed' | 'all' = 'pending',
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(`/api/app-auth/admin/tv-access-requests?status=${status}`, {
+    headers: authHeaders(adminEmail, adminPassword),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not load TradingView access requests');
+  return {
+    requests: (data.requests || []) as AdminTvAccessRequest[],
+    pendingCount: Number(data.pendingCount || 0),
+    latestPending: (data.latestPending || null) as AdminTvAccessRequest | null,
+  };
+}
+
+export async function adminReviewTvAccessRequest(
+  id: string,
+  action: 'granted' | 'dismiss',
+  input: { adminNote?: string } = {},
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(
+    `/api/app-auth/admin/tv-access-requests/${encodeURIComponent(id)}/${action}`,
+    {
+      method: 'POST',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify({ adminNote: input.adminNote }),
     },
   );
   const data = await res.json().catch(() => ({}));

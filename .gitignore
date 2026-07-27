@@ -9,6 +9,7 @@ data/app-users.json
 data/app-users.migrated.json
 data/app-otp-codes.json
 data/app-access-requests.json
+data/app-tv-access-requests.json
 data/app-settings.json
 data/app-indicators.json
 *.log

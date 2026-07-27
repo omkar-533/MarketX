@@ -45,6 +45,13 @@ import {
   updateIndicator,
 } from './indicatorsStore.mjs';
 import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessSheet.mjs';
+import {
+  createTvAccessRequest,
+  latestPendingTvAccessRequest,
+  listTvAccessRequests,
+  pendingTvAccessRequestCount,
+  reviewTvAccessRequest,
+} from './tvAccessRequests.mjs';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
@@ -551,7 +558,7 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
 
 /**
  * POST /api/app-auth/indicators/:id/tv-access
- * Member submits TradingView username → Google Sheet for manual invite grant.
+ * Member submits TradingView username → in-app store (+ Google Sheet backup).
  */
 router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
   try {
@@ -574,20 +581,40 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Indicator not found' });
 
     const user = req.appUser;
-    await appendTvAccessRequest({
+    const request = await createTvAccessRequest({
       tradingViewId,
       indicatorId: row.id,
       indicatorTitle: row.title,
-      userId: user?.id,
-      userName: user?.name,
-      userEmail: user?.email,
-      userMobile: user?.phone,
+      user,
     });
+
+    let sheetOk = false;
+    let sheetError = null;
+    if (isTvAccessSheetConfigured()) {
+      try {
+        await appendTvAccessRequest({
+          tradingViewId,
+          indicatorId: row.id,
+          indicatorTitle: row.title,
+          userId: user?.id,
+          userName: user?.name,
+          userEmail: user?.email,
+          userMobile: user?.phone,
+        });
+        sheetOk = true;
+      } catch (sheetErr) {
+        sheetError = sheetErr instanceof Error ? sheetErr.message : 'Sheet sync failed';
+        console.warn('[tv-access] sheet append failed after store write:', sheetError);
+      }
+    }
 
     return res.json({
       ok: true,
+      request,
       message: 'Submitted. The desk will add your TradingView access manually.',
       sheetConfigured: isTvAccessSheetConfigured(),
+      sheetOk,
+      sheetError,
     });
   } catch (err) {
     return failed(res, err, 'Could not submit TradingView access request');
@@ -808,6 +835,52 @@ router.get('/admin/access-requests', requireAdmin, async (req, res) => {
     return res.json({ requests, pendingCount: await pendingAccessRequestCount() });
   } catch (err) {
     return failed(res, err, 'Could not load requests');
+  }
+});
+
+/* ────────────────────────── admin: TradingView access requests ────────────────────────── */
+
+/** GET /api/app-auth/admin/tv-access-requests?status=pending|granted|dismissed|all */
+router.get('/admin/tv-access-requests', requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.query?.status || 'pending');
+    const requests = await listTvAccessRequests({
+      status,
+      limit: Math.min(200, Number(req.query?.limit) || 100),
+    });
+    const pendingCount = await pendingTvAccessRequestCount();
+    const latestPending = await latestPendingTvAccessRequest();
+    return res.json({ requests, pendingCount, latestPending });
+  } catch (err) {
+    return failed(res, err, 'Could not load TradingView access requests');
+  }
+});
+
+/** POST /api/app-auth/admin/tv-access-requests/:id/granted */
+router.post('/admin/tv-access-requests/:id/granted', requireAdmin, async (req, res) => {
+  try {
+    const result = await reviewTvAccessRequest(req.params.id, {
+      status: 'granted',
+      adminNote: req.body?.adminNote,
+      reviewedBy: req.adminActor || 'admin',
+    });
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Could not mark as granted');
+  }
+});
+
+/** POST /api/app-auth/admin/tv-access-requests/:id/dismiss */
+router.post('/admin/tv-access-requests/:id/dismiss', requireAdmin, async (req, res) => {
+  try {
+    const result = await reviewTvAccessRequest(req.params.id, {
+      status: 'dismissed',
+      adminNote: req.body?.adminNote,
+      reviewedBy: req.adminActor || 'admin',
+    });
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Could not dismiss request');
   }
 });
 

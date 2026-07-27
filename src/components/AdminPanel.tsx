@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   FileImage,
   Settings,
   Code2,
+  Link2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -33,14 +34,17 @@ import {
   adminDeleteUser,
   adminGetSettings,
   adminListUsers,
+  adminListTvAccessRequests,
   adminMarkUsersSeen,
   adminSetUserAccess,
   adminSetUserActive,
+  type AdminTvAccessRequest,
   type InviteUserRow,
 } from '../services/appInviteAuth';
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
 import IndicatorsTab from './admin/IndicatorsTab';
+import TvAccessRequestsTab from './admin/TvAccessRequestsTab';
 
 const trafficData = Array.from({ length: 14 }, (_, i) => ({
   date: `Day ${i + 1}`,
@@ -66,7 +70,7 @@ function randomPassword(len = 10) {
   return out;
 }
 
-type AdminTab = 'users' | 'requests' | 'indicators' | 'settings' | 'overview' | 'analytics' | 'payments';
+type AdminTab = 'users' | 'requests' | 'tv' | 'indicators' | 'settings' | 'overview' | 'analytics' | 'payments';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -113,9 +117,27 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
   const [grantDays, setGrantDays] = useState<Record<string, string>>({});
   const [defaultGrantDays, setDefaultGrantDays] = useState(30);
+  const [tvPendingCount, setTvPendingCount] = useState(0);
+  const [tvAlert, setTvAlert] = useState<AdminTvAccessRequest | null>(null);
+  const tvPendingRef = useRef(-1);
 
   const adminEmail = user?.email ?? null;
   const newUserCount = rows.filter((r) => !r.adminSeenAt && r.role !== 'admin').length;
+
+  const refreshTvPending = useCallback(async () => {
+    try {
+      const data = await adminListTvAccessRequests('pending', adminEmail, adminPassword);
+      const next = data.pendingCount;
+      const prev = tvPendingRef.current;
+      if (prev >= 0 && next > prev && data.latestPending) {
+        setTvAlert(data.latestPending);
+      }
+      tvPendingRef.current = next;
+      setTvPendingCount(next);
+    } catch {
+      /* ignore poll errors */
+    }
+  }, [adminEmail, adminPassword]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -139,6 +161,12 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       .then((data) => setDefaultGrantDays(data.popup.defaultGrantDays))
       .catch(() => undefined);
   }, [adminEmail, adminPassword]);
+
+  useEffect(() => {
+    void refreshTvPending();
+    const timer = window.setInterval(() => void refreshTvPending(), 25000);
+    return () => window.clearInterval(timer);
+  }, [refreshTvPending]);
 
   const handleCreate = async () => {
     setMsg('');
@@ -203,6 +231,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         {(
           [
             { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
+            { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
             { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
             { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
@@ -238,6 +267,14 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           adminPassword={adminPassword}
           defaultGrantDays={defaultGrantDays}
           onReviewed={() => void refresh()}
+        />
+      )}
+
+      {activeTab === 'tv' && (
+        <TvAccessRequestsTab
+          adminEmail={adminEmail}
+          adminPassword={adminPassword}
+          onReviewed={() => void refreshTvPending()}
         />
       )}
 
@@ -596,6 +633,44 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           Payments integration coming later. Plans on invite users are set when you create the login.
         </div>
       )}
+
+      {tvAlert ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-gold/30 bg-[#0b0e17] p-5 shadow-2xl"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gold mb-1">
+              New TradingView access request
+            </p>
+            <h3 className="text-lg font-bold text-slate-100 mb-1">@{tvAlert.tradingViewId}</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              {tvAlert.indicatorTitle || 'Indicator'}
+              {tvAlert.name ? ` · ${tvAlert.name}` : ''}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTvAlert(null);
+                  setActiveTab('tv');
+                }}
+                className="flex-1 rounded-lg bg-gold/90 px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#0b0e16]"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                onClick={() => setTvAlert(null)}
+                className="rounded-lg border border-[#1a1f2e] px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-400"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
     </div>
   );
 }

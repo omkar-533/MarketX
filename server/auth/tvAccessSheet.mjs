@@ -46,14 +46,22 @@ export async function appendTvAccessRequest(row) {
   const res = await fetch(url, {
     method: 'POST',
     // text/plain avoids CORS preflight quirks with Google Apps Script redirects
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+      'User-Agent': 'WolfTradeAI/1.0',
+    },
     body: JSON.stringify(payload),
     redirect: 'follow',
   });
 
   const text = await res.text().catch(() => '');
-  if (!res.ok) {
-    const err = new Error(text.slice(0, 200) || 'Could not update Google Sheet');
+  const looksLikeHtml = /^\s*<!DOCTYPE html/i.test(text) || /<html[\s>]/i.test(text);
+  if (!res.ok || looksLikeHtml) {
+    const err = new Error(
+      res.status === 403 || looksLikeHtml
+        ? 'Google Sheet webhook blocked (403). Redeploy Apps Script as Web app: Execute as Me, Who has access = Anyone, then paste the new /exec URL.'
+        : text.slice(0, 200) || 'Could not update Google Sheet',
+    );
     err.status = 502;
     throw err;
   }
