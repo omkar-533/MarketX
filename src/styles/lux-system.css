@@ -56,34 +56,56 @@ html[data-theme='dark'] {
   overflow: hidden;
 }
 
+.app-shell__bg {
+  position: absolute;
+  inset: 0;
+  background: #050505;
+}
+
+.app-shell__fx {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: screen;
+}
+
+.app-shell__fx--stroke {
+  top: 0;
+  left: 0;
+  width: min(70vw, 720px);
+  opacity: 0.35;
+  transform: rotate(180deg);
+  object-fit: cover;
+}
+
 .app-shell__aurora {
   position: absolute;
   border-radius: 50%;
-  filter: blur(110px);
-  opacity: 0.45;
+  filter: blur(100px);
+  opacity: 0.55;
 }
 
 .app-shell__aurora--1 {
-  width: min(70vw, 560px);
-  height: min(70vw, 560px);
-  top: -20%;
-  left: 42%;
+  width: min(70vw, 640px);
+  height: min(70vw, 640px);
+  top: -18%;
+  left: 50%;
   transform: translateX(-50%);
-  background: rgba(59, 130, 246, 0.22);
+  background: rgba(59, 130, 246, 0.28);
 }
 
 .app-shell__aurora--2 {
-  width: min(45vw, 380px);
-  height: min(45vw, 380px);
-  bottom: 10%;
-  right: -8%;
-  background: rgba(94, 234, 212, 0.1);
+  width: min(50vw, 420px);
+  height: min(50vw, 420px);
+  top: 40%;
+  right: -10%;
+  background: rgba(94, 234, 212, 0.16);
 }
 
 .app-shell__noise {
   position: absolute;
   inset: 0;
-  opacity: 0.035;
+  opacity: 0.04;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px;
 }
@@ -91,11 +113,82 @@ html[data-theme='dark'] {
 .app-shell__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 30%,
+    transparent 0%,
+    rgba(5, 5, 5, 0.55) 70%,
+    #050505 100%
+  );
+}
+
+/* In-app pages share landing section typography */
+.app-lux-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+}
+
+.app-lux-page__head {
+  text-align: center;
+  max-width: 40rem;
+  margin: 0 auto 0.5rem;
+}
+
+.app-shell .auth-lux__kicker {
+  margin: 0 0 0.75rem;
+}
+
+.app-shell .auth-lux__section-title {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+}
+
+.app-shell .auth-lux__section-sub {
+  margin: 0.85rem auto 0;
+  max-width: 36rem;
+}
+
+.app-shell .auth-lux__plans {
+  margin-top: 0.5rem;
+}
+
+.app-shell .auth-lux__btn-solid,
+.app-shell .lux-btn--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px !important;
+  border: 0;
+  background: linear-gradient(135deg, #f0e0a8 0%, #c9a227 48%, #a8841c 100%) !important;
+  color: #0a0a0a !important;
+  font-weight: 750;
+  box-shadow: 0 10px 36px rgba(201, 162, 39, 0.28);
+  text-decoration: none;
+}
+
+.app-shell .auth-lux__btn-ghost,
+.app-shell .lux-btn--ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: transparent !important;
+  color: var(--lux-ink) !important;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.app-shell a.plan__cta {
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 /* Keep fixed header/sidebar; only lift stacking above ambiance */
 .app-shell > .app-header,
+.app-shell > .app-lux-header,
 .app-shell > aside,
 .app-shell > .app-main,
 .app-shell > .sidebar-overlay {
@@ -103,8 +196,46 @@ html[data-theme='dark'] {
 }
 
 .app-shell > .app-header,
+.app-shell > .app-lux-header,
 .app-shell > aside {
   z-index: 50;
+}
+
+.app-lux-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3.5rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 5, 5, 0.72) !important;
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  transition: left 0.25s ease-in-out;
+}
+
+.app-lux-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100%;
+  padding: 0 0.85rem 0 1rem;
+}
+
+@media (min-width: 1024px) {
+  .app-header--sidebar.app-lux-header,
+  .app-lux-header.app-header--sidebar {
+    left: 280px;
+  }
+  .app-header--sidebar-collapsed.app-lux-header,
+  .app-lux-header.app-header--sidebar-collapsed {
+    left: 64px;
+  }
 }
 
 .app-main,

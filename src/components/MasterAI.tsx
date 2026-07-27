@@ -387,25 +387,25 @@ export default function MasterAI() {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col text-slate-200 lux-panel lux-panel--static overflow-hidden shadow-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-[#0b0e17] border-b border-[#1a1f2e]">
+    <div className="h-[calc(100vh-100px)] flex flex-col text-[#f5f5f7] lux-panel lux-panel--static overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-white/[0.08] bg-[#0a0a0d]/80">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-10 h-10 bg-[#d4af37]/10 rounded-full flex items-center justify-center border border-[#d4af37]/30">
-              <Bot className="w-5 h-5 text-[#d4af37]" />
+            <div className="w-10 h-10 bg-[rgba(201,162,39,0.12)] rounded-full flex items-center justify-center border border-[rgba(201,162,39,0.3)]">
+              <Bot className="w-5 h-5 text-[#e8d48b]" />
             </div>
             <div
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0b0e17] ${isSpeaking ? 'bg-emerald-500 animate-pulse' : aiStatus.configured ? 'bg-emerald-500/80' : 'bg-amber-500'}`}
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0a0a0d] ${isSpeaking ? 'bg-emerald-500 animate-pulse' : aiStatus.configured ? 'bg-emerald-500/80' : 'bg-amber-500'}`}
             />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
+            <h2 className="text-base sm:text-lg font-bold text-[#f5f5f7] flex items-center gap-2 flex-wrap">
               Master AI
-              <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/20 text-[#d4af37] rounded-full border border-[#d4af37]/30">
+              <span className="text-[9px] px-2 py-0.5 bg-[rgba(201,162,39,0.14)] text-[#e8d48b] rounded-full border border-[rgba(201,162,39,0.28)] tracking-wide">
                 TRADING ONLY
               </span>
             </h2>
-            <p className="text-[10px] text-slate-500 truncate" title={aiStatus.message}>
+            <p className="text-[10px] text-[rgba(190,190,198,0.75)] truncate" title={aiStatus.message}>
               {aiStatus.configured
                 ? hindi
                   ? 'लाइव बाज़ार जानकारी · प्राकृतिक हिंदी/अंग्रेज़ी'

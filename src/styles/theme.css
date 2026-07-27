@@ -47,9 +47,9 @@ html[data-theme="light"] {
 
 /* Tailwind color utilities → runtime tokens (fixes bg-dark-surface etc.) */
 @theme inline {
-  --color-gold: #d4af37;
-  --color-gold-light: #e8c04a;
-  --color-gold-dark: #b8941f;
+  --color-gold: #c9a227;
+  --color-gold-light: #e8d48b;
+  --color-gold-dark: #a8841c;
   --color-dark-bg: var(--tf-bg);
   --color-dark-surface: var(--tf-surface);
   --color-dark-elevated: var(--tf-elevated);
