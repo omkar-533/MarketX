@@ -271,11 +271,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       )}
 
       {activeTab === 'tv' && (
-        <TvAccessRequestsTab
-          adminEmail={adminEmail}
-          adminPassword={adminPassword}
-          onReviewed={() => void refreshTvPending()}
-        />
+        <TvAccessRequestsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
       {activeTab === 'indicators' && (
