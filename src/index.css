@@ -62,7 +62,8 @@ body {
 }
 
 .page-content--indicators {
-  max-width: 76rem;
+  max-width: none;
+  width: 100%;
   padding: 1rem 1rem 2.5rem;
   overflow: visible;
 }
@@ -5334,6 +5335,13 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.5rem 0 2.5rem;
 }
 
+.lux-lib.lux-ind {
+  max-width: none;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .lux-lib__hero {
   text-align: center;
   max-width: 42rem;
@@ -5598,7 +5606,37 @@ input[type="number"] { -moz-appearance: textfield; }
 
 /* ─── Indicator detail (LuxAlgo indicator page) ─── */
 .lux-ind {
-  max-width: 48rem;
+  max-width: none;
+  width: 100%;
+}
+
+.lux-ind__layout {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (min-width: 1100px) {
+  .lux-ind__layout {
+    grid-template-columns: minmax(0, 1.55fr) minmax(20rem, 0.85fr);
+    align-items: start;
+    gap: 1.75rem;
+  }
+}
+
+.lux-ind__main {
+  min-width: 0;
+}
+
+.lux-ind__aside {
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .lux-ind__aside {
+    position: sticky;
+    top: 4.25rem;
+  }
 }
 
 .lux-ind__back {
@@ -5649,7 +5687,10 @@ input[type="number"] { -moz-appearance: textfield; }
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #080a12;
+  width: 100%;
   aspect-ratio: 16 / 9;
+  min-height: 240px;
+  max-height: min(70vh, 820px);
 }
 
 .lux-ind__chart img {
@@ -5718,7 +5759,7 @@ input[type="number"] { -moz-appearance: textfield; }
   display: grid;
   gap: 1rem;
   padding: 1.15rem 1.2rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 0;
   border-radius: 1rem;
   border: 1px solid rgba(212, 175, 55, 0.22);
   background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), rgba(11, 14, 23, 0.4));
@@ -5726,8 +5767,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 @media (min-width: 720px) {
   .lux-ind__access {
-    grid-template-columns: 1.2fr 1fr;
-    align-items: center;
+    grid-template-columns: 1fr;
   }
 }
 

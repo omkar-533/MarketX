@@ -133,126 +133,133 @@ export default function Indicators() {
           </p>
         </header>
 
-        <div className="lux-ind__chart">
-          {active.imageUrl ? (
-            <img src={active.imageUrl} alt={`${active.title} chart preview`} />
-          ) : (
-            <div className="lux-ind__chart-empty">
-              <ImageOff className="w-10 h-10" />
-              <span>Chart preview</span>
-            </div>
-          )}
-          <div className="lux-ind__chart-badge">
-            <span className="lux-ind__dot" />
-            Preview
-          </div>
-        </div>
-
-        <div className="lux-ind__tags">
-          <span className="lux-ind__tag">TradingView</span>
-          <span className="lux-ind__tag">Invite link</span>
-          <span className="lux-ind__tag">{BRAND_SHORT}</span>
-        </div>
-
-        <section className="lux-ind__access">
-          <div className="lux-ind__access-copy">
-            <h2>Get access</h2>
-            <p>
-              Use this indicator on TradingView via the invite link. Demo access lasts {TRIAL_DAYS}{' '}
-              days — longer plans after the desk approves.
-            </p>
-          </div>
-          {active.link ? (
-            <div className="lux-ind__access-actions">
-              <a
-                href={active.link}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="lux-ind__btn lux-ind__btn--primary"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Get Access
-              </a>
-              <button
-                type="button"
-                className="lux-ind__btn lux-ind__btn--ghost"
-                onClick={() => void copyLink()}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copied' : 'Copy link'}
-              </button>
-              <div className="lux-ind__platform">
-                <span className="lux-ind__platform-label">TradingView</span>
-                <a
-                  href={active.link}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="lux-ind__platform-cta"
-                >
-                  Get Access
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </a>
+        <div className="lux-ind__layout">
+          <div className="lux-ind__main">
+            <div className="lux-ind__chart">
+              {active.imageUrl ? (
+                <img src={active.imageUrl} alt={`${active.title} chart preview`} />
+              ) : (
+                <div className="lux-ind__chart-empty">
+                  <ImageOff className="w-10 h-10" />
+                  <span>Chart preview</span>
+                </div>
+              )}
+              <div className="lux-ind__chart-badge">
+                <span className="lux-ind__dot" />
+                Preview
               </div>
             </div>
-          ) : (
-            <div className="lux-ind__locked">
-              Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can approve
-              a longer plan.
+
+            <div className="lux-ind__tags">
+              <span className="lux-ind__tag">TradingView</span>
+              <span className="lux-ind__tag">Invite link</span>
+              <span className="lux-ind__tag">{BRAND_SHORT}</span>
             </div>
-          )}
-        </section>
 
-        <section className="lux-ind__section">
-          <p className="lux-ind__overview">{detail.overview}</p>
-        </section>
-
-        {detail.sections.length > 0 ? (
-          detail.sections.map((section) => (
-            <section key={section.title} className="lux-ind__section">
-              <h2>{section.title}</h2>
-              <div className="lux-ind__prose">{section.body}</div>
-            </section>
-          ))
-        ) : (
-          <>
             <section className="lux-ind__section">
-              <h2>Usage</h2>
-              <div className="lux-ind__prose">
-                Open the invite link, add the indicator on TradingView, then apply it to your chart.
-                Use the preview image above as a reference for how setups are meant to look.
+              <p className="lux-ind__overview">{detail.overview}</p>
+            </section>
+
+            {detail.sections.length > 0 ? (
+              detail.sections.map((section) => (
+                <section key={section.title} className="lux-ind__section">
+                  <h2>{section.title}</h2>
+                  <div className="lux-ind__prose">{section.body}</div>
+                </section>
+              ))
+            ) : (
+              <>
+                <section className="lux-ind__section">
+                  <h2>Usage</h2>
+                  <div className="lux-ind__prose">
+                    Open the invite link, add the indicator on TradingView, then apply it to your
+                    chart. Use the preview image above as a reference for how setups are meant to
+                    look.
+                  </div>
+                </section>
+                <section className="lux-ind__section">
+                  <h2>Details</h2>
+                  <div className="lux-ind__prose">
+                    This tool is distributed as a share / invite link rather than raw script code.
+                    Access stays on during your demo window and extends after admin approval.
+                  </div>
+                </section>
+              </>
+            )}
+
+            <section className="lux-ind__section lux-ind__faq">
+              <h2>FAQ</h2>
+              <div className="lux-ind__faq-item">
+                <h3>How do I access this indicator?</h3>
+                <p>
+                  Click <strong>Get Access</strong> to open the invite link on TradingView and add it
+                  to your account.
+                </p>
+              </div>
+              <div className="lux-ind__faq-item">
+                <h3>What happens after the {TRIAL_DAYS}-day demo?</h3>
+                <p>
+                  Links lock when the demo ends. Upload your access request so the desk can approve a
+                  longer plan.
+                </p>
               </div>
             </section>
-            <section className="lux-ind__section">
-              <h2>Details</h2>
-              <div className="lux-ind__prose">
-                This tool is distributed as a share / invite link rather than raw script code. Access
-                stays on during your demo window and extends after admin approval.
+
+            <div className="lux-ind__footer-note">
+              <span>Original indicator</span>
+              <span>Shared by {BRAND}</span>
+            </div>
+          </div>
+
+          <aside className="lux-ind__aside">
+            <section className="lux-ind__access">
+              <div className="lux-ind__access-copy">
+                <h2>Get access</h2>
+                <p>
+                  Use this indicator on TradingView via the invite link. Demo access lasts{' '}
+                  {TRIAL_DAYS} days — longer plans after the desk approves.
+                </p>
               </div>
+              {active.link ? (
+                <div className="lux-ind__access-actions">
+                  <a
+                    href={active.link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="lux-ind__btn lux-ind__btn--primary"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Get Access
+                  </a>
+                  <button
+                    type="button"
+                    className="lux-ind__btn lux-ind__btn--ghost"
+                    onClick={() => void copyLink()}
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied' : 'Copy link'}
+                  </button>
+                  <div className="lux-ind__platform">
+                    <span className="lux-ind__platform-label">TradingView</span>
+                    <a
+                      href={active.link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="lux-ind__platform-cta"
+                    >
+                      Get Access
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="lux-ind__locked">
+                  Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
+                  approve a longer plan.
+                </div>
+              )}
             </section>
-          </>
-        )}
-
-        <section className="lux-ind__section lux-ind__faq">
-          <h2>FAQ</h2>
-          <div className="lux-ind__faq-item">
-            <h3>How do I access this indicator?</h3>
-            <p>
-              Click <strong>Get Access</strong> above to open the invite link on TradingView and add
-              it to your account.
-            </p>
-          </div>
-          <div className="lux-ind__faq-item">
-            <h3>What happens after the {TRIAL_DAYS}-day demo?</h3>
-            <p>
-              Links lock when the demo ends. Upload your access request so the desk can approve a
-              longer plan.
-            </p>
-          </div>
-        </section>
-
-        <div className="lux-ind__footer-note">
-          <span>Original indicator</span>
-          <span>Shared by {BRAND}</span>
+          </aside>
         </div>
       </div>
     );
