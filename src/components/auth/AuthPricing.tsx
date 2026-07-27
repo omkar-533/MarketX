@@ -95,7 +95,7 @@ function PlanCard({
               {plan.save ? <b>{plan.save}</b> : null}
             </p>
           ) : (
-            <p className="plan__meta plan__meta--empty">Everything unlocked from minute one</p>
+            <p className="plan__meta plan__meta--empty">Master AI · Indicators · Journal</p>
           )}
 
           <p className="plan__tagline">{plan.tagline}</p>
@@ -149,8 +149,9 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
           </h2>
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
-              Every plan unlocks every module. Start with {TRIAL_DAYS} free days — no card, no
-              commitment — then pick the term that suits how you trade.
+              Every plan unlocks Master AI, Indicators, and Trading Journal. Start with{' '}
+              {TRIAL_DAYS} free days — no card, no commitment — then pick the term that suits how
+              you trade.
             </p>
           </Reveal>
         </div>

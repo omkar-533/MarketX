@@ -22,11 +22,11 @@ export const TRIAL_DAYS = 3;
 
 /** Same feature set on every plan — only the billing duration changes. */
 export const PLAN_FEATURES = [
-  'Master AI copilot for market questions',
-  'Indicators library — browse, preview, copy code',
-  'Trading journal with P&L analytics',
-  'Invite-only workspace access',
-  'Priority support on WhatsApp',
+  'Master AI — ask markets, get clear trade context',
+  'Indicators library — browse, preview & copy code',
+  'Trading Journal — log trades, review P&L & discipline',
+  'All three modules unlocked on every plan',
+  'WhatsApp support when you need a hand',
 ] as const;
 
 export const PLANS: readonly Plan[] = [
@@ -35,7 +35,8 @@ export const PLANS: readonly Plan[] = [
     name: 'Free Trial',
     price: 0,
     period: `${TRIAL_DAYS} days free`,
-    tagline: 'Full access for 3 days — see the desk before you pay a rupee.',
+    tagline:
+      'Try Master AI, Indicators, and Trading Journal for 3 days — full desk, zero payment.',
     badge: 'Start here',
     cta: 'Start 3-day free trial',
     note: 'No card required · instant access',
@@ -46,7 +47,8 @@ export const PLANS: readonly Plan[] = [
     name: 'Monthly',
     price: 2999,
     period: 'per month',
-    tagline: 'Month-to-month access for traders who like to stay flexible.',
+    tagline:
+      'Flexible month access to Master AI, the Indicators library, and your Trading Journal.',
     cta: 'Choose monthly',
     note: 'Cancel anytime from profile',
   },
@@ -56,7 +58,8 @@ export const PLANS: readonly Plan[] = [
     price: 5999,
     period: 'per 3 months',
     equivalent: '≈ ₹2,000 / month',
-    tagline: 'One quarter of committed screen time at a lower monthly rate.',
+    tagline:
+      'Three months of the full desk — AI answers, indicator codes, and journal reviews at a better rate.',
     badge: 'Best balance',
     save: 'Save ₹2,998',
     cta: 'Choose 3 months',
@@ -68,7 +71,8 @@ export const PLANS: readonly Plan[] = [
     price: 14999,
     period: 'per year',
     equivalent: '≈ ₹1,250 / month',
-    tagline: 'The serious option — a full season of markets at the best rate.',
+    tagline:
+      'A full year with Master AI, Indicators, and Trading Journal — best value for serious traders.',
     badge: 'Best value',
     save: 'Save ₹20,989',
     cta: 'Choose yearly',
