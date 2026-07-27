@@ -182,6 +182,36 @@ function toHit(c: Ctx, def: ScanDef): ScanHit {
   };
 }
 
+function contextsFor(rows: ScreenerMarketRow[], tf: ScanTimeframe): Ctx[] {
+  const k = TF_WEIGHT[tf];
+  const contexts: Ctx[] = [];
+  for (const row of rows) {
+    if (!row.price) continue;
+    const m = metricsFor(row.symbol, tf);
+    if (m) contexts.push({ row, m, k });
+  }
+  return contexts;
+}
+
+function runDef(def: ScanDef, contexts: Ctx[], limit: number): ScanResult {
+  const hits = contexts
+    .filter((c) => {
+      try {
+        return def.match(c);
+      } catch {
+        return false;
+      }
+    })
+    .map((c) => toHit(c, def))
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, limit);
+
+  return {
+    screener: { id: def.id, name: def.name, tagline: def.tagline, points: def.points },
+    hits,
+  };
+}
+
 /**
  * Runs every scan against the rows that already have candles on `tf`.
  * Symbols still waiting for history are skipped rather than guessed at.
@@ -191,31 +221,18 @@ export function runTradefinderScans(
   tf: ScanTimeframe,
   limit = 8,
 ): ScanResult[] {
-  const k = TF_WEIGHT[tf];
-  const contexts: Ctx[] = [];
+  const contexts = contextsFor(rows, tf);
+  return SCANS.map((def) => runDef(def, contexts, limit));
+}
 
-  for (const row of rows) {
-    if (!row.price) continue;
-    const m = metricsFor(row.symbol, tf);
-    if (m) contexts.push({ row, m, k });
-  }
-
-  return SCANS.map((def) => {
-    const hits = contexts
-      .filter((c) => {
-        try {
-          return def.match(c);
-        } catch {
-          return false;
-        }
-      })
-      .map((c) => toHit(c, def))
-      .sort((a, b) => b.strength - a.strength)
-      .slice(0, limit);
-
-    return {
-      screener: { id: def.id, name: def.name, tagline: def.tagline, points: def.points },
-      hits,
-    };
-  });
+/** One card, its own candle size — so each screener can pick 5m / 15m / 1h independently. */
+export function runTradefinderScan(
+  rows: ScreenerMarketRow[],
+  screenerId: string,
+  tf: ScanTimeframe,
+  limit = 8,
+): ScanResult | null {
+  const def = SCANS.find((s) => s.id === screenerId);
+  if (!def) return null;
+  return runDef(def, contextsFor(rows, tf), limit);
 }

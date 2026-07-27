@@ -9,7 +9,7 @@ export type ScanTimeframe = '5m' | '15m' | '1h' | '1d';
 export const SCAN_TIMEFRAMES: { id: ScanTimeframe; label: string }[] = [
   { id: '5m', label: '5 min' },
   { id: '15m', label: '15 min' },
-  { id: '1h', label: '1 hour' },
+  { id: '1h', label: '1 hr' },
   { id: '1d', label: '1 day' },
 ];
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, RefreshCw, Search, TrendingDown, TrendingUp } from 'lucide-react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { User } from '../hooks/useAuth';
@@ -16,18 +16,25 @@ import {
   timeframeCoverage,
   type ScanTimeframe,
 } from '../services/screenerTimeframeFeed';
-import { runTradefinderScans, type ScanHit } from '../services/tradefinderScreeners';
+import {
+  runTradefinderScan,
+  TRADEFINDER_SCREENERS,
+  type ScanHit,
+  type TradefinderScreener,
+} from '../services/tradefinderScreeners';
 import { sanitizeDisplayMessage } from '../constants/brandLabels';
 
 interface ScannersProps {
   user: User | null;
 }
 
-const TF_LABEL: Record<ScanTimeframe, string> = {
-  '5m': '5m',
-  '15m': '15m',
-  '1h': '1H',
-  '1d': '1D',
+/** Sensible defaults — swing/day cards start slower, pulse/clock start faster. */
+const DEFAULT_TF: Record<string, ScanTimeframe> = {
+  'insider-strategy': '15m',
+  'swing-spectrum': '1h',
+  'option-clock': '5m',
+  'option-apex': '15m',
+  'market-pulse': '5m',
 };
 
 function feedLabel(mode?: string, label?: string, loading?: boolean): string {
@@ -91,28 +98,125 @@ function HitRow({ hit }: { hit: ScanHit }) {
   );
 }
 
+function TimeframeChips({
+  value,
+  onChange,
+}: {
+  value: ScanTimeframe;
+  onChange: (tf: ScanTimeframe) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {SCAN_TIMEFRAMES.map((tf) => (
+        <button
+          key={tf.id}
+          type="button"
+          onClick={() => onChange(tf.id)}
+          className={`px-2 py-1 rounded-md text-[10px] font-bold transition-colors border ${
+            value === tf.id
+              ? 'border-[#d4af37]/40 bg-[#d4af37]/15 text-[#d4af37]'
+              : 'border-[#1a1f2e] bg-[#121520] text-slate-500 hover:text-slate-200 hover:border-slate-600'
+          }`}
+        >
+          {tf.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ScreenerCard({
+  screener,
+  hits,
+  timeframe,
+  coverage,
+  onTimeframeChange,
+}: {
+  screener: TradefinderScreener;
+  hits: ScanHit[];
+  timeframe: ScanTimeframe;
+  coverage: number;
+  onTimeframeChange: (tf: ScanTimeframe) => void;
+}) {
+  const tfLabel = SCAN_TIMEFRAMES.find((t) => t.id === timeframe)?.label ?? timeframe;
+
+  return (
+    <article className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 hover:border-[#d4af37]/25 transition-colors flex flex-col min-h-[320px]">
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <h2 className="text-sm font-bold text-slate-100 leading-snug">{screener.name}</h2>
+      </div>
+      <p className="text-[11px] text-slate-500">{screener.tagline}</p>
+      <ul className="mt-2 mb-3 space-y-0.5">
+        {screener.points.map((point) => (
+          <li key={point} className="text-[10px] text-slate-600 flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-[#d4af37]/50" />
+            {point}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mb-3 pb-3 border-b border-[#1a1f2e]">
+        <div className="text-[10px] uppercase tracking-wider text-slate-600 font-bold mb-1.5">
+          Timeframe
+        </div>
+        <TimeframeChips value={timeframe} onChange={onTimeframeChange} />
+      </div>
+
+      <div className="flex-1">
+        {hits.length === 0 ? (
+          <div className="h-full min-h-[110px] flex items-center justify-center text-center px-2">
+            <p className="text-[11px] text-slate-600">
+              {coverage === 0
+                ? `Loading ${tfLabel} candles…`
+                : `No setups on ${tfLabel} right now.`}
+            </p>
+          </div>
+        ) : (
+          hits.map((hit) => <HitRow key={hit.symbol} hit={hit} />)
+        )}
+      </div>
+
+      {hits.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-[#1a1f2e] text-[10px] text-slate-600 flex justify-between">
+          <span>
+            Top {hits.length} · {tfLabel}
+          </span>
+          <span>Strength {hits[0]?.strength ?? 0}</span>
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function Scanners(_props: ScannersProps) {
   const [stocks, setStocks] = useState<ScreenerMarketRow[]>(() => getCachedScreenerRows());
   const [loading, setLoading] = useState(() => getCachedScreenerRows().length === 0);
   const [status, setStatus] = useState(getScreenerFeedStatus);
-  const [timeframe, setTimeframe] = useState<ScanTimeframe>('15m');
   const [query, setQuery] = useState('');
   const [candleTick, setCandleTick] = useState(0);
   const [scanning, setScanning] = useState(false);
-  const timeframeRef = useRef(timeframe);
+  const [timeframes, setTimeframes] = useState<Record<string, ScanTimeframe>>(() =>
+    Object.fromEntries(TRADEFINDER_SCREENERS.map((s) => [s.id, DEFAULT_TF[s.id] ?? '15m'])),
+  );
 
-  timeframeRef.current = timeframe;
+  const activeTimeframes = useMemo(
+    () => [...new Set(Object.values(timeframes))] as ScanTimeframe[],
+    [timeframes],
+  );
 
-  const loadCandles = useCallback(async (rows: ScreenerMarketRow[], force: boolean) => {
-    if (!rows.length) return;
-    setScanning(true);
-    try {
-      await ensureTimeframeBars(rows, timeframeRef.current, { force });
-      setCandleTick((n) => n + 1);
-    } finally {
-      setScanning(false);
-    }
-  }, []);
+  const loadCandles = useCallback(
+    async (rows: ScreenerMarketRow[], tfs: ScanTimeframe[], force: boolean) => {
+      if (!rows.length || !tfs.length) return;
+      setScanning(true);
+      try {
+        await Promise.all(tfs.map((tf) => ensureTimeframeBars(rows, tf, { force })));
+        setCandleTick((n) => n + 1);
+      } finally {
+        setScanning(false);
+      }
+    },
+    [],
+  );
 
   const refresh = useCallback(
     async (opts?: { force?: boolean }) => {
@@ -122,12 +226,13 @@ export default function Scanners(_props: ScannersProps) {
         const rows = getCachedScreenerRows();
         setStocks(rows);
         setStatus(getScreenerFeedStatus());
-        await loadCandles(rows, Boolean(opts?.force));
+        const tfs = [...new Set(Object.values(timeframes))] as ScanTimeframe[];
+        await loadCandles(rows, tfs, Boolean(opts?.force));
       } finally {
         setLoading(false);
       }
     },
-    [loadCandles],
+    [loadCandles, timeframes],
   );
 
   useEffect(() => {
@@ -136,46 +241,54 @@ export default function Scanners(_props: ScannersProps) {
       setStocks(getCachedScreenerRows());
       setStatus(getScreenerFeedStatus());
     });
-  }, [refresh]);
+    // Mount once — later refreshes come from auto-refresh / button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => subscribeTimeframeFeed(() => setCandleTick((n) => n + 1)), []);
   useEffect(() => subscribeMarketLive(() => setStatus(getScreenerFeedStatus())), []);
 
-  // Switching the candle size needs its own history before any scan can run.
+  // Whenever a card switches candle size, fetch that history (other cards keep theirs).
   useEffect(() => {
-    void loadCandles(getCachedScreenerRows(), false);
-  }, [timeframe, loadCandles]);
+    void loadCandles(getCachedScreenerRows(), activeTimeframes, false);
+  }, [activeTimeframes, loadCandles]);
 
   useAutoRefresh(() => {
     void refresh();
   });
 
-  const results = useMemo(() => {
+  const setCardTimeframe = (screenerId: string, tf: ScanTimeframe) => {
+    setTimeframes((prev) => (prev[screenerId] === tf ? prev : { ...prev, [screenerId]: tf }));
+  };
+
+  const cards = useMemo(() => {
     void candleTick;
-    const all = runTradefinderScans(stocks, timeframe, 8);
     const q = query.trim().toLowerCase();
-    if (!q) return all;
 
-    return all
-      .map((result) =>
-        result.screener.name.toLowerCase().includes(q)
-          ? result
-          : {
-              ...result,
-              hits: result.hits.filter(
-                (h) => h.symbol.toLowerCase().includes(q) || h.name.toLowerCase().includes(q),
-              ),
-            },
-      )
-      .filter((result) => result.hits.length > 0 || result.screener.name.toLowerCase().includes(q));
-  }, [stocks, timeframe, query, candleTick]);
+    return TRADEFINDER_SCREENERS.map((screener) => {
+      const tf = timeframes[screener.id] ?? '15m';
+      const result = runTradefinderScan(stocks, screener.id, tf, 8);
+      const hits = result?.hits ?? [];
+      const filteredHits = q
+        ? hits.filter(
+            (h) =>
+              h.symbol.toLowerCase().includes(q) ||
+              h.name.toLowerCase().includes(q) ||
+              screener.name.toLowerCase().includes(q),
+          )
+        : hits;
 
-  const coverage = useMemo(() => {
-    void candleTick;
-    return timeframeCoverage(timeframe);
-  }, [timeframe, candleTick]);
+      return {
+        screener,
+        timeframe: tf,
+        hits: filteredHits,
+        coverage: timeframeCoverage(tf),
+        visible: !q || filteredHits.length > 0 || screener.name.toLowerCase().includes(q),
+      };
+    }).filter((c) => c.visible);
+  }, [stocks, timeframes, query, candleTick]);
 
-  const totalHits = results.reduce((n, r) => n + r.hits.length, 0);
+  const totalHits = cards.reduce((n, c) => n + c.hits.length, 0);
   const label = feedLabel(status.mode, status.message, loading);
   const busy = loading || scanning;
 
@@ -185,7 +298,7 @@ export default function Scanners(_props: ScannersProps) {
         <div>
           <h1 className="text-2xl font-bold text-[#d4af37]">Scanners</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Five live scans across F&amp;O stocks — pick a candle size and the desk does the rest.
+            Five live scans — each card has its own candle size (5 min, 15 min, 1 hr, 1 day).
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
             <span
@@ -201,33 +314,11 @@ export default function Scanners(_props: ScannersProps) {
               {label}
             </span>
             {stocks.length > 0 && <span>· {stocks.length.toLocaleString('en-IN')} symbols</span>}
-            {coverage > 0 && (
-              <span>
-                · {coverage} on {TF_LABEL[timeframe]} candles
-              </span>
-            )}
             {totalHits > 0 && <span>· {totalHits} matches</span>}
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 p-1 rounded-lg border border-[#1a1f2e] bg-[#0b0e17]">
-            {SCAN_TIMEFRAMES.map((tf) => (
-              <button
-                key={tf.id}
-                type="button"
-                onClick={() => setTimeframe(tf.id)}
-                title={tf.label}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-colors ${
-                  timeframe === tf.id
-                    ? 'bg-[#d4af37]/15 text-[#d4af37]'
-                    : 'text-slate-500 hover:text-slate-200'
-                }`}
-              >
-                {TF_LABEL[tf.id]}
-              </button>
-            ))}
-          </div>
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -258,48 +349,15 @@ export default function Scanners(_props: ScannersProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {results.map(({ screener, hits }) => (
-            <article
+          {cards.map(({ screener, hits, timeframe, coverage }) => (
+            <ScreenerCard
               key={screener.id}
-              className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 hover:border-[#d4af37]/25 transition-colors flex flex-col min-h-[300px]"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="text-sm font-bold text-slate-100 leading-snug">{screener.name}</h2>
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-[#d4af37]/30 text-[#d4af37] bg-[#d4af37]/10">
-                  {TF_LABEL[timeframe]}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">{screener.tagline}</p>
-              <ul className="mt-2 mb-3 space-y-0.5">
-                {screener.points.map((point) => (
-                  <li key={point} className="text-[10px] text-slate-600 flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-[#d4af37]/50" />
-                    {point}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex-1">
-                {hits.length === 0 ? (
-                  <div className="h-full min-h-[110px] flex items-center justify-center text-center px-2">
-                    <p className="text-[11px] text-slate-600">
-                      {coverage === 0
-                        ? `Loading ${TF_LABEL[timeframe]} candles…`
-                        : 'No setups on this candle right now.'}
-                    </p>
-                  </div>
-                ) : (
-                  hits.map((hit) => <HitRow key={hit.symbol} hit={hit} />)
-                )}
-              </div>
-
-              {hits.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-[#1a1f2e] text-[10px] text-slate-600 flex justify-between">
-                  <span>Top {hits.length}</span>
-                  <span>Strength {hits[0]?.strength ?? 0}</span>
-                </div>
-              )}
-            </article>
+              screener={screener}
+              hits={hits}
+              timeframe={timeframe}
+              coverage={coverage}
+              onTimeframeChange={(tf) => setCardTimeframe(screener.id, tf)}
+            />
           ))}
         </div>
       )}
