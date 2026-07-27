@@ -1034,7 +1034,7 @@ export default function TradingJournal({
         onClose={() => setLightbox(null)}
       />
       {/* Hero */}
-      <LuxCard featured className="relative" bodyClassName="relative p-5">
+      <LuxCard featured shine className="relative" bodyClassName="relative p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>

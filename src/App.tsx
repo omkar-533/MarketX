@@ -185,6 +185,14 @@ function AppWorkspace() {
   return (
     <AutoRefreshProvider enabled={auth.isLoggedIn}>
       <div className="app-shell">
+        {auth.isLoggedIn ? (
+          <div className="app-shell__ambiance" aria-hidden="true">
+            <div className="app-shell__aurora app-shell__aurora--1" />
+            <div className="app-shell__aurora app-shell__aurora--2" />
+            <div className="app-shell__noise" />
+            <div className="app-shell__vignette" />
+          </div>
+        ) : null}
         {auth.isLoggedIn && (
           <Suspense fallback={null}>
             <>

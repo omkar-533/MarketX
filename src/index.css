@@ -7,10 +7,11 @@
 body {
   background-color: var(--tf-bg);
   color: var(--tf-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Modern Era', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  letter-spacing: -0.011em;
 }
 
 /* ─── App design system ─── */
@@ -4229,10 +4230,10 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .brand-lockup__name {
   font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #e8c547;
+  letter-spacing: 0.06em;
+  color: #e8d48b;
   white-space: nowrap;
-  text-shadow: 0 1px 12px rgba(212, 175, 55, 0.22);
+  text-shadow: 0 1px 18px rgba(201, 162, 39, 0.2);
 }
 
 .brand-lockup__name--sm {

@@ -94,6 +94,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
             >
               <LuxCard
                 featured={Boolean(plan.featured)}
+                shine
                 className="h-full"
                 bodyClassName="relative p-5 flex flex-col h-full"
               >

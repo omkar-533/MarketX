@@ -12,12 +12,14 @@ type LuxCardProps = {
   staticSurface?: boolean;
   /** Enable cursor spotlight like landing feature cards */
   spotlight?: boolean;
+  /** Gold spinning ring (landing feature cards only) */
+  shine?: boolean;
   as?: 'div' | 'article' | 'section';
 } & Omit<HTMLAttributes<HTMLElement>, 'children'>;
 
 /**
- * Exact landing-page card chrome: ring + deep plate + optional spotlight.
- * Same visual system as `.auth-lux-feature` / pricing `.plan`.
+ * Landing-grade surface: deep plate + soft ring.
+ * Pass shine for the marketing gold-spin effect (plans / hero cards).
  */
 export default function LuxCard({
   children,
@@ -26,6 +28,7 @@ export default function LuxCard({
   featured = false,
   staticSurface = false,
   spotlight = true,
+  shine = false,
   as: Tag = 'div',
   onMouseMove,
   onMouseLeave,
@@ -56,6 +59,7 @@ export default function LuxCard({
         'lux-card',
         featured ? 'lux-card--featured' : '',
         staticSurface ? 'lux-card--static' : '',
+        shine ? 'lux-card--shine' : '',
         className,
       ]
         .filter(Boolean)
