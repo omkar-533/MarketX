@@ -82,9 +82,10 @@ export default function AccessSettingsTab({
       <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-[#d4af37]">Access popup</h3>
+            <h3 className="text-sm font-bold text-[#d4af37]">Approval access</h3>
             <p className="text-[11px] text-slate-500">
-              Shown during the trial and on the lock screen after it ends.
+              Users request access with a screenshot. You approve in Access requests — no payment
+              gateway required.
             </p>
           </div>
           <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
@@ -138,15 +139,18 @@ export default function AccessSettingsTab({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="md:col-span-2">
             <label className={LABEL} htmlFor="popup-url">
-              Your link (account creation)
+              Optional help link (not payment)
             </label>
             <input
               id="popup-url"
               className={FIELD}
-              placeholder="https://…"
+              placeholder="https://… instructions / form (optional)"
               value={popup.url}
               onChange={(e) => patch({ url: e.target.value })}
             />
+            <p className="text-[10px] text-slate-600 mt-1">
+              Leave blank if users only need to upload a screenshot for approval.
+            </p>
           </div>
           <div>
             <label className={LABEL} htmlFor="popup-whatsapp">

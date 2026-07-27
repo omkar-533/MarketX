@@ -17,11 +17,11 @@ type AccessGateProps = {
 const COPY: Record<string, { title: string; body: string }> = {
   trial_expired: {
     title: 'Your free trial has ended',
-    body: 'Unlock the desk again by completing the step below. Your account and settings are safe.',
+    body: 'Request access below. Upload a screenshot — the admin reviews it and unlocks your Indicators, Master AI, and Journal.',
   },
   access_expired: {
     title: 'Your access has expired',
-    body: 'Renew below and the admin will switch your access back on after a quick check.',
+    body: 'Send a fresh approval request with a screenshot. The desk will switch access back on after a quick check.',
   },
   blocked: {
     title: 'Access paused by admin',
@@ -30,8 +30,7 @@ const COPY: Record<string, { title: string; body: string }> = {
 };
 
 /**
- * Non-dismissible lock screen for expired/blocked accounts. Mounted above the
- * workspace so nothing behind it is usable.
+ * Lock screen: approval-first (screenshot → admin approve). Optional help link/WhatsApp only.
  */
 export default function AccessGate({
   access,
@@ -46,6 +45,7 @@ export default function AccessGate({
   const isBlocked = access?.status === 'blocked';
   const link = popup?.url?.trim();
   const whatsapp = popup?.whatsapp?.trim();
+  const pending = access?.request?.status === 'pending';
 
   return (
     <AnimatePresence>
@@ -71,7 +71,7 @@ export default function AccessGate({
               <span className="access-gate__brand">{BRAND}</span>
               <span className="access-gate__badge">
                 {isBlocked ? <ShieldAlert className="w-3 h-3" /> : <LockKeyhole className="w-3 h-3" />}
-                {isBlocked ? 'Paused' : 'Locked'}
+                {isBlocked ? 'Paused' : pending ? 'Pending approval' : 'Locked'}
               </span>
             </div>
 
@@ -81,60 +81,68 @@ export default function AccessGate({
             </h2>
             <p className="access-gate__body">{copy.body}</p>
 
-            {!isBlocked && popup?.enabled ? (
+            {!isBlocked && (popup?.enabled !== false) ? (
               <div className="access-gate__steps">
                 <div className="access-gate__step">
                   <span className="access-gate__step-num">1</span>
-                  <div>
-                    <p className="access-gate__step-title">{popup.title}</p>
-                    <p className="access-gate__step-body">{popup.message}</p>
-                    {link ? (
-                      <a
-                        className="access-gate__link"
-                        href={link}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        {popup.buttonLabel || 'Open link'}
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    ) : (
-                      <p className="access-gate__step-body access-gate__step-body--muted">
-                        The admin has not published the link yet — contact the desk below.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="access-gate__step">
-                  <span className="access-gate__step-num">2</span>
                   <div className="min-w-0 flex-1">
-                    <p className="access-gate__step-title">Upload the screenshot</p>
+                    <p className="access-gate__step-title">
+                      {popup?.title?.trim() || 'Request access'}
+                    </p>
+                    <p className="access-gate__step-body">
+                      {popup?.message?.trim() ||
+                        'Upload a clear screenshot for the desk. After approval, Indicators and the rest of your workspace unlock automatically.'}
+                    </p>
                     <AccessProofUpload request={access?.request ?? null} onSubmitted={onRefresh} />
                   </div>
                 </div>
+
+                {link || whatsapp ? (
+                  <div className="access-gate__step">
+                    <span className="access-gate__step-num">2</span>
+                    <div>
+                      <p className="access-gate__step-title">Need help?</p>
+                      <p className="access-gate__step-body">
+                        Optional — contact the desk if you have a question about your request.
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {link ? (
+                          <a
+                            className="access-gate__link"
+                            href={link}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            {popup?.buttonLabel || 'Open help link'}
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        ) : null}
+                        {whatsapp ? (
+                          <a
+                            className="access-gate__link"
+                            href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            WhatsApp
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
             <div className="access-gate__actions">
               <button type="button" className="access-gate__ghost" onClick={() => void onRefresh()}>
                 <RefreshCw className="w-3.5 h-3.5" />
-                Check again
+                Check approval
               </button>
               <button type="button" className="access-gate__ghost" onClick={onSeePlans}>
                 See plans
               </button>
-              {whatsapp ? (
-                <a
-                  className="access-gate__ghost"
-                  href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Talk to the desk
-                </a>
-              ) : null}
               <button type="button" className="access-gate__ghost" onClick={onLogout}>
                 <LogOut className="w-3.5 h-3.5" />
                 Sign out

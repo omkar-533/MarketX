@@ -94,7 +94,10 @@ export default function TrialReminderPopup({
           </div>
 
           <p className="trial-nudge__title">{headline}</p>
-          <p className="trial-nudge__body">{popup?.message}</p>
+          <p className="trial-nudge__body">
+            {popup?.message?.trim() ||
+              'Before the trial ends, you can already send an access request. Upload a screenshot — the admin will approve and unlock Indicators after review.'}
+          </p>
 
           {popup?.url ? (
             <a
@@ -103,7 +106,7 @@ export default function TrialReminderPopup({
               target="_blank"
               rel="noreferrer noopener"
             >
-              {popup.buttonLabel || 'Open link'}
+              {popup.buttonLabel || 'Help / instructions'}
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           ) : null}
@@ -121,7 +124,7 @@ export default function TrialReminderPopup({
               className="trial-nudge__cta"
               onClick={() => setShowUpload(true)}
             >
-              Upload screenshot
+              Request access (screenshot)
             </button>
           )}
 

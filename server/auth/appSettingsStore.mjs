@@ -8,11 +8,11 @@ export const ACCESS_POPUP_KEY = 'access_popup';
 
 export const DEFAULT_ACCESS_POPUP = {
   enabled: true,
-  title: 'Unlock full access',
+  title: 'Request access',
   message:
-    'Create your account on the link below, then upload a screenshot of it here. We unlock your access after a quick check.',
+    'Upload a clear screenshot for the desk. After the admin approves it, Indicators, Master AI, and Journal unlock automatically — no payment step required here.',
   url: '',
-  buttonLabel: 'Open link',
+  buttonLabel: 'Help / instructions',
   whatsapp: '',
   defaultGrantDays: 30,
 };
