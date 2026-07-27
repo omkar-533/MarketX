@@ -108,7 +108,7 @@ body {
 
 @media (min-width: 1024px) {
   .app-main--sidebar {
-    margin-left: 240px;
+    margin-left: 280px;
   }
   .app-main--sidebar-collapsed {
     margin-left: 64px;
@@ -127,7 +127,7 @@ body {
 
 @media (min-width: 1024px) {
   .app-header--sidebar {
-    left: 240px;
+    left: 280px;
   }
   .app-header--sidebar-collapsed {
     left: 64px;
@@ -2214,9 +2214,9 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .auth-lux__brand-text {
-  font-size: 1.2rem !important;
+  font-size: 1.55rem !important;
   font-weight: 800 !important;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.1em;
   white-space: nowrap;
   color: #e8c547 !important;
 }
@@ -4229,22 +4229,22 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .brand-lockup__name {
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
   color: #e8c547;
   white-space: nowrap;
   text-shadow: 0 1px 12px rgba(212, 175, 55, 0.22);
 }
 
 .brand-lockup__name--sm {
-  font-size: 1.05rem;
+  font-size: 1.35rem;
 }
 
 .brand-lockup__name--md {
-  font-size: 1.2rem;
+  font-size: 1.55rem;
 }
 
 .brand-lockup__name--lg {
-  font-size: 1.45rem;
+  font-size: 1.85rem;
 }
 
 /* Brand emblem — transparent vector, no blend hacks needed */

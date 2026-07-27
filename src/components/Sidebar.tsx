@@ -42,7 +42,7 @@ export default function Sidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 64 : 240 }}
+      animate={{ width: collapsed ? 64 : 280 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
       className={`fixed left-0 top-0 h-screen glass border-r border-dark-border/60 z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -53,7 +53,7 @@ export default function Sidebar({
           {collapsed ? (
             <BrandMark size="sm" iconOnly />
           ) : (
-            <BrandMark size="sm" nameClassName="truncate" />
+            <BrandMark size="sm" nameClassName="tracking-[0.08em] text-[1.2rem]" />
           )}
           {collapsed ? <span className="sr-only">{BRAND}</span> : null}
         </div>

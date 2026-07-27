@@ -36,8 +36,8 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
         <Menu className="w-5 h-5" />
       </button>
 
-      <div className="shrink-0 min-w-0 max-w-[58vw] sm:max-w-[280px] md:max-w-none mr-auto" title={BRAND}>
-        <BrandMark size="sm" nameClassName="truncate text-[1.05rem] sm:text-[1.2rem]" />
+      <div className="shrink-0 min-w-0 mr-auto" title={BRAND}>
+        <BrandMark size="md" nameClassName="tracking-[0.1em] text-[1.35rem] sm:text-[1.55rem] md:text-[1.7rem]" />
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
