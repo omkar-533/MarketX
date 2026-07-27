@@ -36,6 +36,14 @@ import {
   pendingAccessRequestCount,
   reviewAccessRequest,
 } from './accessRequests.mjs';
+import {
+  createIndicator,
+  deleteIndicator,
+  getIndicatorById,
+  listAllIndicators,
+  listPublishedIndicators,
+  updateIndicator,
+} from './indicatorsStore.mjs';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
@@ -470,6 +478,99 @@ router.post('/access/request', requireUser, async (req, res) => {
     });
   } catch (err) {
     return failed(res, err, 'Upload failed');
+  }
+});
+
+/* ────────────────────────── indicators library ────────────────────────── */
+
+function publicIndicator(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    code: row.code,
+    sortOrder: row.sortOrder,
+    published: row.published,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    imageUrl: row.imageUrl,
+  };
+}
+
+/** GET /api/app-auth/indicators — published library for signed-in members */
+router.get('/indicators', requireUser, async (_req, res) => {
+  try {
+    const indicators = await listPublishedIndicators();
+    return res.json({ indicators: indicators.map(publicIndicator) });
+  } catch (err) {
+    return failed(res, err, 'Could not load indicators');
+  }
+});
+
+/** GET /api/app-auth/indicators/:id */
+router.get('/indicators/:id', requireUser, async (req, res) => {
+  try {
+    const row = await getIndicatorById(req.params.id, { publishedOnly: true });
+    if (!row) return res.status(404).json({ error: 'Indicator not found' });
+    return res.json({ indicator: publicIndicator(row) });
+  } catch (err) {
+    return failed(res, err, 'Could not load indicator');
+  }
+});
+
+/** GET /api/app-auth/admin/indicators */
+router.get('/admin/indicators', requireAdmin, async (_req, res) => {
+  try {
+    const indicators = await listAllIndicators();
+    return res.json({ indicators: indicators.map(publicIndicator) });
+  } catch (err) {
+    return failed(res, err, 'Could not load indicators');
+  }
+});
+
+/** POST /api/app-auth/admin/indicators */
+router.post('/admin/indicators', requireAdmin, async (req, res) => {
+  try {
+    const indicator = await createIndicator({
+      title: req.body?.title,
+      description: req.body?.description,
+      code: req.body?.code,
+      image: req.body?.image,
+      sortOrder: req.body?.sortOrder,
+      published: req.body?.published,
+      createdBy: req.adminActor || 'admin',
+    });
+    return res.status(201).json({ indicator: publicIndicator(indicator) });
+  } catch (err) {
+    return failed(res, err, 'Could not create indicator');
+  }
+});
+
+/** PATCH /api/app-auth/admin/indicators/:id */
+router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
+  try {
+    const indicator = await updateIndicator(req.params.id, {
+      title: req.body?.title,
+      description: req.body?.description,
+      code: req.body?.code,
+      image: req.body?.image,
+      sortOrder: req.body?.sortOrder,
+      published: req.body?.published,
+    });
+    return res.json({ indicator: publicIndicator(indicator) });
+  } catch (err) {
+    return failed(res, err, 'Could not update indicator');
+  }
+});
+
+/** DELETE /api/app-auth/admin/indicators/:id */
+router.delete('/admin/indicators/:id', requireAdmin, async (req, res) => {
+  try {
+    await deleteIndicator(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    return failed(res, err, 'Could not delete indicator');
   }
 });
 

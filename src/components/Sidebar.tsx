@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, PieChart, ScanLine,
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Activity, Bot,
-  NotebookPen,
+  NotebookPen, Code2,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
@@ -27,6 +27,7 @@ const navItems = [
   { id: 'heatmap', label: PAGE_NAMES.heatmap, icon: PieChart },
   { id: 'scanner', label: PAGE_NAMES.scanner, icon: ScanLine },
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
+  { id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 },
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 

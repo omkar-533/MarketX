@@ -37,6 +37,7 @@ export const PAGE_NAMES: Record<string, string> = {
   oiintelligence: 'AI Intelligence',
   footprint: 'Footprint',
   trafi: 'Master AI',
+  indicators: 'Indicators',
 };
 
 export function pageDocumentTitle(tabId?: string | null): string {

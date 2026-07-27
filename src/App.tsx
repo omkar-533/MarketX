@@ -39,6 +39,7 @@ const FuturesAnalytics = lazy(() => import('./components/FuturesAnalytics'));
 const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
+const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 
 function PageLoader() {
@@ -143,6 +144,8 @@ function AppWorkspace() {
         return <FootprintChart />;
       case 'trafi':
         return <MasterAI />;
+      case 'indicators':
+        return <Indicators />;
       case 'papertrading':
         return <PaperTrading user={auth.user} onNavigate={setActiveTab} />;
       case 'backtesting':

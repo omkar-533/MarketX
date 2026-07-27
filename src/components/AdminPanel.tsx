@@ -15,6 +15,7 @@ import {
   Eye,
   FileImage,
   Settings,
+  Code2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -40,6 +41,7 @@ import {
 } from '../services/appInviteAuth';
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
+import IndicatorsTab from './admin/IndicatorsTab';
 
 const trafficData = Array.from({ length: 14 }, (_, i) => ({
   date: `Day ${i + 1}`,
@@ -65,7 +67,7 @@ function randomPassword(len = 10) {
   return out;
 }
 
-type AdminTab = 'users' | 'requests' | 'settings' | 'overview' | 'analytics' | 'payments';
+type AdminTab = 'users' | 'requests' | 'indicators' | 'settings' | 'overview' | 'analytics' | 'payments';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -203,6 +205,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           [
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
             { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
+            { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
             { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
             { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
             { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
@@ -238,6 +241,10 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           defaultGrantDays={defaultGrantDays}
           onReviewed={() => void refresh()}
         />
+      )}
+
+      {activeTab === 'indicators' && (
+        <IndicatorsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
       {activeTab === 'settings' && (

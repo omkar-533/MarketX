@@ -18,6 +18,7 @@ const commands = [
   { id: 'oiintelligence', label: 'AI Intelligence', shortcut: 'I' },
   { id: 'futures', label: 'Futures Analytics', shortcut: 'F' },
   { id: 'heatmap', label: 'Market Heatmap', shortcut: 'H' },
+  { id: 'indicators', label: 'Open Indicators', shortcut: 'C' },
 ];
 
 export default function CommandPalette({ isOpen, onClose, onNavigate }: CommandPaletteProps) {
