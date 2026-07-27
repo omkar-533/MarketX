@@ -5,7 +5,8 @@ export type IndicatorItem = {
   id: string;
   title: string;
   description: string;
-  code: string;
+  /** Invite / share URL — only present when access is unlocked. */
+  link: string;
   sortOrder: number;
   published: boolean;
   createdAt: string;
@@ -75,7 +76,7 @@ export async function adminListIndicators(
 export type IndicatorInput = {
   title: string;
   description: string;
-  code: string;
+  link: string;
   image?: string | null;
   sortOrder?: number;
   published?: boolean;

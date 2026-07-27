@@ -41,13 +41,22 @@ function writeRows(indicators) {
   writeJsonFile(FILE, { indicators });
 }
 
+/** Prefer dedicated link; fall back to legacy `code` if it holds a URL. */
+function rowLink(row) {
+  const link = String(row?.link || '').trim();
+  if (link) return link;
+  const legacy = String(row?.code || '').trim();
+  if (/^https?:\/\//i.test(legacy)) return legacy;
+  return '';
+}
+
 function fromRow(row, signedUrl = null) {
   if (!row) return null;
   return {
     id: row.id,
     title: row.title,
     description: row.description ?? '',
-    code: row.code ?? '',
+    link: rowLink(row),
     sortOrder: Number(row.sort_order || 0),
     published: row.published !== false,
     createdAt: row.created_at,
@@ -72,15 +81,28 @@ async function mapRows(db, rows) {
   return Promise.all(rows.map(async (row) => fromRow(row, await signImage(db, row))));
 }
 
-function validateFields({ title, description, code }) {
+function validateFields({ title, description, link }) {
   const cleanTitle = String(title || '').trim();
   if (cleanTitle.length < 2) {
     throw Object.assign(new Error('Enter a title for the indicator'), { status: 400 });
   }
+  const cleanLink = String(link || '').trim();
+  if (!cleanLink) {
+    throw Object.assign(new Error('Paste the indicator invite / share link'), { status: 400 });
+  }
+  let parsed;
+  try {
+    parsed = new URL(cleanLink);
+  } catch {
+    throw Object.assign(new Error('Enter a valid http(s) link'), { status: 400 });
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw Object.assign(new Error('Link must start with http:// or https://'), { status: 400 });
+  }
   return {
     title: cleanTitle.slice(0, 120),
     description: String(description || '').slice(0, 4000),
-    code: String(code || '').slice(0, 200_000),
+    link: cleanLink.slice(0, 2000),
   };
 }
 
@@ -169,13 +191,13 @@ export async function getIndicatorById(id, { publishedOnly = false } = {}) {
 export async function createIndicator({
   title,
   description,
-  code,
+  link,
   image,
   sortOrder = 0,
   published = true,
   createdBy = 'admin',
 }) {
-  const fields = validateFields({ title, description, code });
+  const fields = validateFields({ title, description, link });
   const id = `ind_${randomBytes(9).toString('hex')}`;
   const now = new Date().toISOString();
   const db = getAdminClient();
@@ -185,7 +207,9 @@ export async function createIndicator({
     id,
     title: fields.title,
     description: fields.description,
-    code: fields.code,
+    link: fields.link,
+    // Keep legacy column in sync so older schemas without `link` still work via code.
+    code: fields.link,
     image_path: media.path,
     image_data: media.data,
     sort_order: Number(sortOrder) || 0,
@@ -200,7 +224,12 @@ export async function createIndicator({
     return fromRow(row);
   }
 
-  const { data, error } = await db.from(TABLE).insert(row).select().single();
+  let { data, error } = await db.from(TABLE).insert(row).select().single();
+  if (error && /link/i.test(error.message || '')) {
+    const legacy = { ...row };
+    delete legacy.link;
+    ({ data, error } = await db.from(TABLE).insert(legacy).select().single());
+  }
   if (error) throw storeError(error);
   return fromRow(data, await signImage(db, data));
 }
@@ -214,7 +243,7 @@ export async function updateIndicator(id, patch = {}) {
   const fields = validateFields({
     title: patch.title ?? current.title,
     description: patch.description ?? current.description,
-    code: patch.code ?? current.code,
+    link: patch.link ?? current.link,
   });
 
   const db = getAdminClient();
@@ -235,7 +264,8 @@ export async function updateIndicator(id, patch = {}) {
   const next = {
     title: fields.title,
     description: fields.description,
-    code: fields.code,
+    link: fields.link,
+    code: fields.link,
     sort_order:
       patch.sortOrder === undefined ? current.sortOrder : Number(patch.sortOrder) || 0,
     published: patch.published === undefined ? current.published : patch.published !== false,
@@ -252,6 +282,7 @@ export async function updateIndicator(id, patch = {}) {
           ...row,
           title: next.title,
           description: next.description,
+          link: next.link,
           code: next.code,
           sort_order: next.sort_order,
           published: next.published,
@@ -270,6 +301,7 @@ export async function updateIndicator(id, patch = {}) {
   const cloudPatch = {
     title: next.title,
     description: next.description,
+    link: next.link,
     code: next.code,
     sort_order: next.sort_order,
     published: next.published,
@@ -280,7 +312,12 @@ export async function updateIndicator(id, patch = {}) {
     cloudPatch.image_data = null;
   }
 
-  const { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
+  let { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
+  if (error && /link/i.test(error.message || '')) {
+    const legacy = { ...cloudPatch };
+    delete legacy.link;
+    ({ data, error } = await db.from(TABLE).update(legacy).eq('id', id).select().maybeSingle());
+  }
   if (error) throw storeError(error);
   if (!data) throw Object.assign(new Error('Indicator not found'), { status: 404 });
   return fromRow(data, await signImage(db, data));

@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
-  Code2,
   Copy,
+  ExternalLink,
   ImageOff,
+  Link2,
   Loader2,
   Search,
   Sparkles,
   X,
 } from 'lucide-react';
 import { listIndicators, type IndicatorItem } from '../services/indicatorLibrary';
+import { TRIAL_DAYS } from '../constants/plans';
 
 export default function Indicators() {
   const [items, setItems] = useState<IndicatorItem[]>([]);
@@ -60,16 +62,14 @@ export default function Indicators() {
     if (!q) return items;
     return items.filter(
       (item) =>
-        item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
-        item.code.toLowerCase().includes(q),
+        item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
     );
   }, [items, query]);
 
-  const copyCode = async () => {
-    if (!active?.code) return;
+  const copyLink = async () => {
+    if (!active?.link) return;
     try {
-      await navigator.clipboard.writeText(active.code);
+      await navigator.clipboard.writeText(active.link);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -94,11 +94,11 @@ export default function Indicators() {
               Indicator library
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Professional scripts for your desk
+              Indicators via invite link
             </h1>
             <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Browse curated indicator codes with charts and notes. Open any card to read the full
-              description and copy the script in one click.
+              Open any card for the share link. New accounts get a {TRIAL_DAYS}-day demo — after that,
+              the desk approves longer access.
             </p>
             <p className="text-[11px] text-slate-600 mt-3">
               {items.length} indicator{items.length === 1 ? '' : 's'} in the library
@@ -109,7 +109,7 @@ export default function Indicators() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search title or code…"
+              placeholder="Search title…"
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 focus:outline-none focus:border-[#d4af37]/40"
             />
           </div>
@@ -127,13 +127,13 @@ export default function Indicators() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-12 text-center">
-          <Code2 className="w-8 h-8 text-slate-600 mx-auto mb-3" />
+          <Link2 className="w-8 h-8 text-slate-600 mx-auto mb-3" />
           <p className="text-sm text-slate-300 font-medium">
             {items.length === 0 ? 'No indicators published yet' : 'No matches for that search'}
           </p>
           <p className="text-[12px] text-slate-500 mt-2 max-w-md mx-auto">
             {items.length === 0
-              ? 'When the desk adds scripts from Admin → Indicators, they will appear here.'
+              ? 'When the desk adds invite links from Admin → Indicators, they will appear here.'
               : 'Try a different title or keyword.'}
           </p>
         </div>
@@ -173,14 +173,14 @@ export default function Indicators() {
                   {item.title}
                 </h2>
                 <p className="text-[12px] text-slate-500 mt-2 line-clamp-3 leading-relaxed flex-1">
-                  {item.description || 'Open to view the full script.'}
+                  {item.description || 'Open to get the invite link.'}
                 </p>
                 <div className="mt-3 pt-3 border-t border-[#1a1f2e] flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-600">
                   <span className="inline-flex items-center gap-1">
-                    <Code2 className="w-3 h-3 text-[#d4af37]/70" />
-                    Script
+                    <Link2 className="w-3 h-3 text-[#d4af37]/70" />
+                    Link
                   </span>
-                  <span className="text-[#d4af37]/80 group-hover:text-[#d4af37]">View</span>
+                  <span className="text-[#d4af37]/80 group-hover:text-[#d4af37]">Open</span>
                 </div>
               </div>
             </motion.button>
@@ -210,7 +210,7 @@ export default function Indicators() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.98 }}
               transition={{ duration: 0.22 }}
-              className="relative w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl border border-[#1a1f2e] bg-[#0b0e17] shadow-2xl flex flex-col"
+              className="relative w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-2xl border border-[#1a1f2e] bg-[#0b0e17] shadow-2xl flex flex-col"
             >
               <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[#1a1f2e]">
                 <div className="min-w-0">
@@ -240,7 +240,7 @@ export default function Indicators() {
                     <img
                       src={active.imageUrl}
                       alt=""
-                      className="w-full max-h-[320px] object-contain bg-[#0a0e17]"
+                      className="w-full max-h-[280px] object-contain bg-[#0a0e17]"
                     />
                   </div>
                 ) : null}
@@ -252,22 +252,40 @@ export default function Indicators() {
                 ) : null}
 
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                      Indicator code
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => void copyCode()}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 text-[11px] font-bold text-[#d4af37] hover:bg-[#d4af37]/15"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copied ? 'Copied' : 'Copy code'}
-                    </button>
-                  </div>
-                  <pre className="rounded-xl border border-[#1a1f2e] bg-[#080a12] p-4 overflow-x-auto text-[12px] leading-relaxed text-slate-300 font-mono max-h-[420px]">
-                    <code>{active.code || '// No code yet'}</code>
-                  </pre>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 mb-2">
+                    Invite link
+                  </h3>
+                  {active.link ? (
+                    <>
+                      <div className="rounded-xl border border-[#1a1f2e] bg-[#080a12] px-4 py-3 text-[12px] text-slate-300 break-all font-mono">
+                        {active.link}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <a
+                          href={active.link}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#d4af37] text-[#0b0e17] text-[11px] font-bold hover:brightness-110"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open link
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => void copyLink()}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 text-[11px] font-bold text-[#d4af37] hover:bg-[#d4af37]/15"
+                        >
+                          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copied ? 'Copied' : 'Copy link'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                      Link locked — your {TRIAL_DAYS}-day demo ended. Request access so the desk can
+                      approve a longer plan.
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

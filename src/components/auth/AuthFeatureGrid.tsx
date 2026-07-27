@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import {
   Bot,
-  Code2,
+  Link2,
   NotebookPen,
   type LucideIcon,
 } from 'lucide-react';
@@ -32,9 +32,9 @@ const LOGIN_FEATURES: Feature[] = [
   {
     id: 'indicators',
     title: PAGE_NAMES.indicators,
-    detail: 'Code library',
-    description: 'Browse published indicator scripts, preview covers, and copy code in one click.',
-    icon: Code2,
+    detail: 'Invite links',
+    description: 'Browse published indicators, open invite links, and use them during your demo.',
+    icon: Link2,
     viz: 'scan',
   },
   {

@@ -15,6 +15,7 @@ import {
   adminUpdateIndicator,
   type IndicatorItem,
 } from '../../services/indicatorLibrary';
+import { TRIAL_DAYS } from '../../constants/plans';
 
 type IndicatorsTabProps = {
   adminEmail: string | null;
@@ -28,7 +29,7 @@ const LABEL = 'block text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 
 type FormState = {
   title: string;
   description: string;
-  code: string;
+  link: string;
   sortOrder: string;
   published: boolean;
   image: string | null;
@@ -38,7 +39,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   title: '',
   description: '',
-  code: '',
+  link: '',
   sortOrder: '0',
   published: true,
   image: null,
@@ -86,7 +87,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
     setForm({
       title: row.title,
       description: row.description,
-      code: row.code,
+      link: row.link,
       sortOrder: String(row.sortOrder ?? 0),
       published: row.published,
       image: null,
@@ -119,7 +120,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       const payload = {
         title: form.title,
         description: form.description,
-        code: form.code,
+        link: form.link,
         sortOrder: Number(form.sortOrder) || 0,
         published: form.published,
         ...(form.clearImage
@@ -170,7 +171,8 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add title, description, script and cover image. Published items show in the member library.
+            Add title, description, invite link and cover image. Members open the link during the{' '}
+            {TRIAL_DAYS}-day demo; after that you approve longer access.
           </p>
         </div>
         <button
@@ -301,14 +303,19 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           </div>
 
           <div>
-            <label className={LABEL}>Indicator code</label>
-            <textarea
-              className={`${FIELD} min-h-[220px] font-mono text-[12px] resize-y`}
-              value={form.code}
-              onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-              placeholder="// Paste Pine Script or any indicator source here"
+            <label className={LABEL}>Indicator link</label>
+            <input
+              type="url"
+              className={FIELD}
+              value={form.link}
+              onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}
+              placeholder="https://… invite / share link"
+              required
               spellCheck={false}
             />
+            <p className="text-[10px] text-slate-600 mt-1.5">
+              Paste the TradingView / invite URL users should open. No script code needed.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -336,7 +343,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           <div className="p-8 text-center text-xs text-slate-500">Loading…</div>
         ) : rows.length === 0 ? (
           <div className="p-10 text-center text-sm text-slate-500">
-            No indicators yet. Click “Add indicator” to publish the first script.
+            No indicators yet. Click “Add indicator” to publish the first invite link.
           </div>
         ) : (
           <div className="divide-y divide-[#1a1f2e]">
@@ -369,7 +376,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                     <span className="text-[10px] text-slate-600">sort {row.sortOrder}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                    {row.description || 'No description'}
+                    {row.link || row.description || 'No link'}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">

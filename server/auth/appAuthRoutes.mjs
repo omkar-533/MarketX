@@ -489,7 +489,7 @@ function publicIndicator(row) {
     id: row.id,
     title: row.title,
     description: row.description,
-    code: row.code,
+    link: row.link,
     sortOrder: row.sortOrder,
     published: row.published,
     createdAt: row.createdAt,
@@ -499,10 +499,24 @@ function publicIndicator(row) {
 }
 
 /** GET /api/app-auth/indicators — published library for signed-in members */
-router.get('/indicators', requireUser, async (_req, res) => {
+router.get('/indicators', requireUser, async (req, res) => {
   try {
+    const access = accessStateFor(req.appUser);
     const indicators = await listPublishedIndicators();
-    return res.json({ indicators: indicators.map(publicIndicator) });
+    const rows = indicators.map((row) => {
+      const pub = publicIndicator(row);
+      if (!access.unlocked) pub.link = '';
+      return pub;
+    });
+    return res.json({
+      indicators: rows,
+      access: {
+        unlocked: access.unlocked,
+        isTrial: access.isTrial,
+        daysLeft: access.daysLeft,
+        reason: access.reason,
+      },
+    });
   } catch (err) {
     return failed(res, err, 'Could not load indicators');
   }
@@ -511,9 +525,24 @@ router.get('/indicators', requireUser, async (_req, res) => {
 /** GET /api/app-auth/indicators/:id */
 router.get('/indicators/:id', requireUser, async (req, res) => {
   try {
+    const access = accessStateFor(req.appUser);
     const row = await getIndicatorById(req.params.id, { publishedOnly: true });
     if (!row) return res.status(404).json({ error: 'Indicator not found' });
-    return res.json({ indicator: publicIndicator(row) });
+    const pub = publicIndicator(row);
+    if (!access.unlocked) {
+      pub.link = '';
+      return res.status(403).json({
+        error: 'Your demo ended — get access approved to open indicator links',
+        indicator: pub,
+        access: {
+          unlocked: false,
+          isTrial: access.isTrial,
+          daysLeft: access.daysLeft,
+          reason: access.reason,
+        },
+      });
+    }
+    return res.json({ indicator: pub });
   } catch (err) {
     return failed(res, err, 'Could not load indicator');
   }
@@ -535,7 +564,7 @@ router.post('/admin/indicators', requireAdmin, async (req, res) => {
     const indicator = await createIndicator({
       title: req.body?.title,
       description: req.body?.description,
-      code: req.body?.code,
+      link: req.body?.link ?? req.body?.code,
       image: req.body?.image,
       sortOrder: req.body?.sortOrder,
       published: req.body?.published,
@@ -553,7 +582,7 @@ router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
     const indicator = await updateIndicator(req.params.id, {
       title: req.body?.title,
       description: req.body?.description,
-      code: req.body?.code,
+      link: req.body?.link ?? req.body?.code,
       image: req.body?.image,
       sortOrder: req.body?.sortOrder,
       published: req.body?.published,

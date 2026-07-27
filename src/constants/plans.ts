@@ -25,7 +25,7 @@ export const TRIAL_DAYS = 3;
 /** @deprecated Prefer plan.features — kept for any leftover imports. */
 export const PLAN_FEATURES = [
   'Master AI — ask markets, get clear trade context',
-  'Indicators library — browse, preview & copy code',
+  'Indicators library — browse & open invite links',
   'Trading Journal — log trades, review P&L & discipline',
 ] as const;
 
@@ -42,7 +42,7 @@ export const PLANS: readonly Plan[] = [
     featured: true,
     features: [
       'Master AI — limited daily questions',
-      'Indicators — browse & preview library',
+      'Indicators — browse & open invite links',
       'Trading Journal — log up to 20 trades',
       `${TRIAL_DAYS}-day access · no card needed`,
       'Email support only',
@@ -58,7 +58,7 @@ export const PLANS: readonly Plan[] = [
     note: 'Cancel anytime from profile',
     features: [
       'Master AI — full copilot access',
-      'Indicators — browse, preview & copy code',
+      'Indicators — browse & open invite links',
       'Trading Journal — unlimited trade logs',
       'All 3 modules unlocked',
       'Standard WhatsApp support',
@@ -97,7 +97,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       'Everything in 3 Months',
       'Master AI — highest limits + priority replies',
-      'Indicators — full vault + early access codes',
+      'Indicators — full vault + priority invite links',
       'Trading Journal — advanced reviews & exports',
       'VIP WhatsApp support · fastest response',
     ],

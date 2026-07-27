@@ -42,9 +42,9 @@ const STORY_BANDS = [
     id: 'indicators',
     kicker: 'Indicators',
     title: 'A library built for serious charts',
-    body: 'Browse published indicator scripts, preview covers, and copy code into your charting workflow in one click.',
+    body: 'Browse published indicators, open the invite link, and use them during your demo — longer access after the desk approves.',
     cta: 'Get access now',
-    image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=2`,
+    image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=4`,
   },
   {
     id: 'tradingjournal',
