@@ -31,6 +31,7 @@ import {
   getMasterAiSorryMessage,
   getTradingBlockMessage,
   isHindiLang,
+  isHinglishLang,
   isTradingRelated,
   loadAutoSpeak,
   loadLanguageMode,
@@ -95,7 +96,7 @@ export default function MasterAI() {
       role: 'trafi',
       text:
         initialMode === 'auto'
-          ? 'Auto language on — type in English, हिंदी, தமிழ், বাংলা… I’ll reply in your language. Send a chart (📷) anytime.'
+          ? 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karungi. Chart (📷) bhej sakte ho.'
           : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
@@ -179,7 +180,7 @@ export default function MasterAI() {
       if (!synthRef.current) return;
       synthRef.current.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = selectedLang.code;
+      utterance.lang = isHinglishLang(selectedLang.code) ? 'hi-IN' : selectedLang.code;
       utterance.rate = hindi ? 0.88 : 0.95;
       utterance.pitch = 1;
       const voices = synthRef.current.getVoices();
@@ -205,7 +206,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — type in English, हिंदी, தமிழ், বাংলা… I’ll reply in your language. Send a chart (📷) anytime.',
+                text: 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karungi. Chart (📷) bhej sakte ho.',
               }
             : m,
         ),
@@ -340,9 +341,12 @@ export default function MasterAI() {
         userText || userNote || '',
         selectedLang.code,
       );
-      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
-        setSelectedLang(activeLang);
-        saveSelectedLanguage(activeLang.code);
+      if (langMode === 'auto') {
+        // Always sync detected / sticky language into UI so Auto · label updates
+        if (activeLang.code !== selectedLang.code) {
+          setSelectedLang(activeLang);
+          saveSelectedLanguage(activeLang.code);
+        }
       }
       const visionMessage = hasImage
         ? getChartVisionPrompt(activeLang.code, userNote || undefined)
@@ -484,7 +488,7 @@ export default function MasterAI() {
               title="Auto detects from your message, or lock a language"
             >
               <option value="auto" className="bg-[#12161f] text-slate-200">
-                Auto detect
+                Auto · {selectedLang.nativeLabel}
               </option>
               {MASTER_AI_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code} className="bg-[#12161f] text-slate-200">

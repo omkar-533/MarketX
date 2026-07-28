@@ -172,20 +172,69 @@ const SCRIPT_RANGES: { code: MasterAiLangCode; re: RegExp }[] = [
 const MARATHI_MARKERS =
   /\b(आहे|आहेत|तुम्ही|तुमचा|मला|आम्ही|कसे|काय|नाही|होय|कृपया)\b|आहे|तुम्ही|मला/;
 
-const HINGLISH_MARKERS =
-  /\b(kya|hai|nahi|nahin|mat|karo|karna|batao|samjhao|dekho|bhai|yaar|kaise|kitna|thik|theek|acha|accha|please bata|market kaisa|aaj|kal|mere|mera|mujhe|humko|kyun|kyu)\b/i;
-
 function countMatches(text: string, re: RegExp): number {
   return (text.match(re) || []).length;
 }
 
+/** Common Roman-Hindi / Hinglish tokens (trading desk chat) */
+const HINGLISH_WORD_SET = new Set([
+  'kya', 'kyun', 'kyu', 'kyunki', 'hai', 'hain', 'hoon', 'hun', 'nahi', 'nahin', 'mat',
+  'karo', 'karna', 'karke', 'kardo', 'krdo', 'krna', 'batao', 'bata', 'btao', 'bolo',
+  'samjhao', 'samjha', 'dekho', 'dekh', 'suno', 'sunao', 'poochho', 'poocho', 'pooch',
+  'bhai', 'yaar', 'dost', 'kaise', 'kaisa', 'kaisi', 'kitna', 'kitni', 'kitne',
+  'thik', 'theek', 'acha', 'accha', 'acche', 'sahi', 'galat',
+  'aaj', 'kal', 'abhi', 'pehle', 'pahle', 'baad', 'baadme', 'phir',
+  'mere', 'mera', 'meri', 'mujhe', 'mujhko', 'mujko', 'humko', 'hamari', 'humari', 'hamara',
+  'tum', 'tumhara', 'tumhari', 'tera', 'teri', 'apna', 'apni', 'apne',
+  'chahiye', 'chahie', 'sakta', 'sakti', 'sakte', 'raha', 'rahi', 'rahe', 'rahega', 'rahegi',
+  'gaya', 'gayi', 'gaye', 'hoga', 'hogi', 'honge', 'hogaya', 'hogayi',
+  'lekin', 'magar', 'agar', 'toh', 'sirf', 'zyada', 'jyada', 'bahut',
+  'thoda', 'bilkul', 'sach', 'waise', 'aise', 'jaise', 'wahan', 'yahan', 'yaha', 'waha',
+  'andar', 'bahar', 'upar', 'neeche', 'saath', 'bhejo', 'bhejna', 'padho', 'padhao', 'likho',
+  'wala', 'wali', 'wale', 'hone', 'hona',
+]);
+
+const HINGLISH_SUFFIX =
+  /^(?:[a-z]{2,})(?:ao|na|ne|ega|egi|ungi|unga|ogi|oge|iya|iyan|wala|wali|wale)$/i;
+
+function tokenizeLatin(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9']+/i)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2);
+}
+
+function scoreHinglish(text: string): number {
+  const tokens = tokenizeLatin(text);
+  let score = 0;
+  for (const t of tokens) {
+    if (HINGLISH_WORD_SET.has(t)) score += 2;
+    else if (HINGLISH_SUFFIX.test(t) && t.length >= 4) score += 1;
+  }
+  // Multi-word desk phrases
+  if (/\b(kya\s+hai|kaise\s+hai|bata\s*do|bhej\s*do|samjha\s*do|view\s+kya|sl\s+kahan|entry\s+kahan|aaj\s+ka|mujhe\s+bata)\b/i.test(text)) {
+    score += 3;
+  }
+  return score;
+}
+
 /**
- * Detect reply language from user text (script + light Hinglish/Marathi heuristics).
- * Returns null when text is too short / inconclusive.
+ * Detect reply language from user text (script + Hinglish heuristics).
+ * Returns null when text is too short / inconclusive — caller keeps last language.
  */
 export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
   const raw = String(text || '').trim();
   if (raw.length < 2) return null;
+
+  // Skip pure greetings — keep sticky last language
+  if (
+    /^(hi+|hii+|hello+|hey+|yo|sup|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|thanks|thank\s*you|ok|okay|cool)[!?.,…]*$/i.test(
+      raw,
+    )
+  ) {
+    return null;
+  }
 
   let best: { code: MasterAiLangCode; score: number } | null = null;
   for (const row of SCRIPT_RANGES) {
@@ -195,27 +244,33 @@ export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
     }
   }
 
-  if (best && best.score >= 2) {
-    // Devanagari can be Hindi or Marathi
-    if (best.code === 'hi-IN' && MARATHI_MARKERS.test(raw)) {
-      return 'mr-IN';
-    }
-    return best.code;
-  }
-
-  // Single-script short words (e.g. "क्या")
-  if (best && best.score >= 1 && raw.length <= 24) {
+  // Clear Indic script → that language
+  if (best && best.score >= 1) {
     if (best.code === 'hi-IN' && MARATHI_MARKERS.test(raw)) return 'mr-IN';
-    return best.code;
+    // Enough Devanagari / other script
+    if (best.score >= 2 || raw.length <= 40) return best.code;
   }
 
-  if (HINGLISH_MARKERS.test(raw)) return 'hi-Latn';
+  const hinglishScore = scoreHinglish(raw);
+  const tokens = tokenizeLatin(raw);
+  const englishCue =
+    /\b(the|and|what|how|please|today|tomorrow|should|would|could|analyze|analysis|support|resistance|because|which|where|when)\b/i.test(
+      raw,
+    );
+  const englishOnlyScore = englishCue ? 1 : 0;
 
-  // Mostly Latin letters → English
+  // Hinglish wins with any solid signal (even mixed with English trading words)
+  if (hinglishScore >= 2) return 'hi-Latn';
+  if (hinglishScore >= 1 && tokens.length <= 12) return 'hi-Latn';
+  if (hinglishScore >= 1 && !englishCue) return 'hi-Latn';
+
+  // Mostly Latin + English cues → English
   const letters = raw.replace(/[^A-Za-z\u0900-\u0D7F]/g, '');
   if (letters.length >= 3) {
     const latin = (letters.match(/[A-Za-z]/g) || []).length;
-    if (latin / letters.length >= 0.85) return 'en-US';
+    if (latin / letters.length >= 0.85) {
+      if (englishOnlyScore || hinglishScore === 0) return 'en-US';
+    }
   }
 
   return null;
@@ -228,6 +283,7 @@ export function resolveMasterAiLanguage(
 ): MasterAiLanguage {
   if (mode !== 'auto') return getMasterAiLanguage(mode);
   const detected = detectMasterAiLanguage(userText);
+  // Sticky: if unclear, keep last detected / selected language
   return getMasterAiLanguage(detected || fallback);
 }
 
