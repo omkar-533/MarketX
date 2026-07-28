@@ -386,11 +386,50 @@ const TRADING_KEYWORDS = [
   'screener', 'heatmap', 'journal', 'bias', 'lot',
 ];
 
+export function isCasualGreeting(input: string): boolean {
+  const n = input
+    .toLowerCase()
+    .trim()
+    .replace(/[!?.,…]+$/g, '')
+    .replace(/\s+/g, ' ');
+  if (!n || n.length > 48) return false;
+  return /^(hi|hii|hiii|hello|helloo|hey|heyy|yo|sup|hola|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|kaise\s*ho|kaisa\s*hai|how\s*are\s*you|what'?s\s*up|wassup|hola\s*bhai|radhe\s*radhe|sat\s*sri\s*akal)$/i.test(
+    n,
+  );
+}
+
 export function isTradingRelated(input: string): boolean {
   const n = input.toLowerCase().trim();
-  if (n.length < 3) return false;
+  if (!n) return false;
+  if (isCasualGreeting(n)) return true;
+  if (n.length < 2) return false;
   if (NON_TRADING_TERMS.some((t) => n.includes(t))) return false;
-  return TRADING_KEYWORDS.some((t) => n.includes(t));
+  if (TRADING_KEYWORDS.some((t) => n.includes(t))) return true;
+  // Short polite chat on the desk (thanks / ok / cool)
+  if (/^(thanks|thank\s*you|ok|okay|cool|great|nice|done|thik|theek|acha|accha|bye|goodbye)$/i.test(n)) {
+    return true;
+  }
+  return false;
+}
+
+export function getHumanGreetingReply(langCode: string, userText: string): string {
+  const hi = langCode.startsWith('hi');
+  const variantsHi = [
+    'Hey! Kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
+    'Hi — main yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
+    'Namaste! Good to see you. Aaj kya dekhna hai — chart, setup, ya risk plan?',
+    'Arre hello! Bol kya chahiye — Nifty view, options lens, ya chart padhwaun?',
+  ];
+  const variantsEn = [
+    "Hey — good to see you. Want a quick market take, options view, or drop a chart and I'll read it?",
+    "Hi! I'm right here. Tell me what you need — Nifty pulse, risk check, or chart analysis.",
+    "Hello! How's the session treating you? Chart, setup, or just a quick desk check — your call.",
+    "Hey there. Fire away — market, options, risk, or paste a screenshot and I'll break it down.",
+  ];
+  const list = hi ? variantsHi : variantsEn;
+  // Light variation from message length / time
+  const idx = (userText.length + new Date().getMinutes()) % list.length;
+  return list[idx];
 }
 
 export interface MasterMarketContext {
@@ -534,6 +573,15 @@ export async function fetchMasterAiStatus(): Promise<{
 }
 
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
+  const greeting = isCasualGreeting(req.message || '');
+  const platformContext = greeting
+    ? [
+        buildLanguageDirective(req.lang),
+        'User sent a casual greeting. Reply like a warm human trading buddy — short, natural, no market data dump.',
+        'Invite them to share a chart or ask about Nifty / options / risk.',
+      ].join('\n')
+    : formatContextBlock(ctx, req.lang);
+
   const res = await apiFetch('/api/chat', {
     method: 'POST',
     headers: { ...openRouterRequestHeaders() },
@@ -545,7 +593,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
       imageDataUrl: req.imageDataUrl ?? null,
       history: req.history ?? [],
       needsWeb: req.needsWeb ?? false,
-      platformContext: formatContextBlock(ctx, req.lang),
+      platformContext,
     }),
   });
 
@@ -613,8 +661,18 @@ export function saveAutoSpeak(on: boolean): void {
 
 /** Local fallback when API is down */
 export function generateLocalTradingReply(input: string, ctx: MasterMarketContext, lang: string): string {
-  const lower = input.toLowerCase();
+  const lower = input.toLowerCase().trim();
   const hi = lang.startsWith('hi');
+
+  if (isCasualGreeting(lower)) {
+    return getHumanGreetingReply(lang, lower);
+  }
+
+  if (/^(thanks|thank\s*you|ok|okay|cool|great|nice|thik|theek|acha|accha)$/i.test(lower)) {
+    return hi
+      ? 'Bilkul — jab ready ho chart ya sawaal bhej dena. Main yahin hoon.'
+      : "Anytime — send a chart or your next question whenever you're ready.";
+  }
 
   if (lower.includes('option') || lower.includes('pcr') || lower.includes('oi') || lower.includes('ऑप्शन')) {
     return hi
