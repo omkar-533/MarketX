@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ExternalLink, Hourglass, X } from 'lucide-react';
+import { Clock, Hourglass, X } from 'lucide-react';
 import AccessProofUpload from './AccessProofUpload';
 import type { AccessPopup, AccessState } from '../../services/appInviteAuth';
 
@@ -11,16 +11,43 @@ type TrialReminderPopupProps = {
   onRefresh: () => unknown | Promise<unknown>;
 };
 
-const STORAGE_PREFIX = 'tradeflow_trial_reminder_';
-const SHOW_DELAY_MS = 3500;
+const SESSION_KEY_PREFIX = 'tradeflow_trial_nudge_session_';
+const LAST_SHOWN_PREFIX = 'tradeflow_trial_nudge_last_';
+/** First nudge after login */
+const SHOW_DELAY_MS = 2800;
+/** Occasional re-show while they stay logged in (~3.5 hours) */
+const RESHOW_EVERY_MS = 3.5 * 60 * 60 * 1000;
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function formatExpiry(iso: string | null | undefined) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  });
+}
+
+function formatCountdown(daysLeft: number | null, hoursLeft: number | null) {
+  if (daysLeft === null) return 'Trial active';
+  if (daysLeft <= 0) {
+    const h = hoursLeft ?? 0;
+    if (h <= 0) return 'Ends very soon';
+    if (h === 1) return 'About 1 hour left';
+    return `About ${h} hours left`;
+  }
+  if (daysLeft === 1) {
+    const h = hoursLeft ?? 24;
+    if (h < 24) return `About ${h} hours left`;
+    return '1 day left';
+  }
+  return `${daysLeft} days left`;
 }
 
 /**
- * Trial countdown nudge: once a day, and every session on the final day so the
- * user is never surprised by the lock screen.
+ * Occasional trial countdown for free-trial members: once per login session,
+ * then again every few hours so expiry timing stays visible.
  */
 export default function TrialReminderPopup({
   access,
@@ -32,45 +59,51 @@ export default function TrialReminderPopup({
   const [showUpload, setShowUpload] = useState(false);
 
   const daysLeft = access?.daysLeft ?? null;
-  const eligible = Boolean(
-    access?.unlocked && access.isTrial && daysLeft !== null && userId && popup?.enabled,
-  );
-  const finalDay = daysLeft !== null && daysLeft <= 1;
+  const hoursLeft = access?.hoursLeft ?? null;
+  const expiresAt = access?.expiresAt ?? null;
+  const eligible = Boolean(access?.unlocked && access.isTrial && userId);
+
+  const tryShow = (reason: 'session' | 'interval') => {
+    if (!eligible || !userId) return;
+    const sessionKey = `${SESSION_KEY_PREFIX}${userId}`;
+    const lastKey = `${LAST_SHOWN_PREFIX}${userId}`;
+    const last = Number(localStorage.getItem(lastKey) || 0);
+    const now = Date.now();
+
+    if (reason === 'session') {
+      if (sessionStorage.getItem(sessionKey) === '1') return;
+    } else if (now - last < RESHOW_EVERY_MS) {
+      return;
+    }
+
+    setOpen(true);
+    sessionStorage.setItem(sessionKey, '1');
+    localStorage.setItem(lastKey, String(now));
+  };
 
   useEffect(() => {
     if (!eligible || !userId) return;
 
-    const dayKey = `${STORAGE_PREFIX}${userId}`;
-    const sessionKey = `${dayKey}_session`;
+    const timer = window.setTimeout(() => tryShow('session'), SHOW_DELAY_MS);
+    const interval = window.setInterval(() => tryShow('interval'), Math.min(RESHOW_EVERY_MS, 15 * 60 * 1000));
 
-    if (finalDay) {
-      if (sessionStorage.getItem(sessionKey)) return;
-    } else if (localStorage.getItem(dayKey) === today()) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setOpen(true);
-      localStorage.setItem(dayKey, today());
-      sessionStorage.setItem(sessionKey, '1');
-    }, SHOW_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [eligible, finalDay, userId]);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+    };
+  }, [eligible, userId, daysLeft, hoursLeft, expiresAt]);
 
   const close = () => {
     setOpen(false);
     setShowUpload(false);
   };
 
+  const expiryLabel = formatExpiry(expiresAt);
+  const countdown = formatCountdown(daysLeft, hoursLeft);
   const headline =
-    daysLeft === null
-      ? 'Trial running'
-      : daysLeft <= 0
-        ? 'Your trial ends today'
-        : daysLeft === 1
-          ? '1 day left in your trial'
-          : `${daysLeft} days left in your trial`;
+    daysLeft !== null && daysLeft <= 0
+      ? 'Your free trial ends today'
+      : 'Your free trial is running';
 
   return (
     <AnimatePresence>
@@ -94,22 +127,23 @@ export default function TrialReminderPopup({
           </div>
 
           <p className="trial-nudge__title">{headline}</p>
+
+          <div className="trial-nudge__timing">
+            <div className="trial-nudge__countdown">
+              <Clock className="w-4 h-4" />
+              <span>{countdown}</span>
+            </div>
+            {expiryLabel ? (
+              <p className="trial-nudge__expires">
+                Expires: <strong>{expiryLabel}</strong>
+              </p>
+            ) : null}
+          </div>
+
           <p className="trial-nudge__body">
             {popup?.message?.trim() ||
-              'Before the trial ends, you can already send an access request. Upload a screenshot — the admin will approve and unlock Indicators after review.'}
+              'Enjoy full access during the trial. Before it ends, you can request longer access with a screenshot for the desk to review.'}
           </p>
-
-          {popup?.url ? (
-            <a
-              className="trial-nudge__link"
-              href={popup.url}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              {popup.buttonLabel || 'Help / instructions'}
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          ) : null}
 
           {showUpload ? (
             <AccessProofUpload
