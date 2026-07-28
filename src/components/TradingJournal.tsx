@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowDownRight,
@@ -54,8 +54,6 @@ import TradePsychologyFields, { DEFAULT_TRADE_PSYCHOLOGY } from './trader/TradeP
 import ImageLightbox from './journal/ImageLightbox';
 import JournalCalendar from './journal/JournalCalendar';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
-
-const JournalSymbolPicker = lazy(() => import('./journal/JournalSymbolPicker'));
 import {
   calculateJournalTradeMetrics,
   getInstrumentLotSize,
@@ -750,19 +748,6 @@ export default function TradingJournal({
     });
   }, activeTab === 'trades');
 
-  const handleSymbolSelect = (sel: JournalSymbolSelection) => {
-    const useLots =
-      sel.isFno && (form.type === 'Futures' || form.type === 'Options');
-
-    setForm((prev) => ({
-      ...prev,
-      market: 'equity',
-      pnlCurrency: 'INR',
-      instrument: sel.symbol,
-      quantityIsLots: useLots,
-    }));
-  };
-
   const totalScreenshots = filteredTrades.filter((trade) => trade.screenshot).length;
   const goalProgress = Math.min((metrics.totalPnl / goalTarget) * 100, 100);
 
@@ -1162,27 +1147,37 @@ export default function TradingJournal({
                   <p className="text-xs text-slate-500 mb-2">Market — Indian Equity (NSE / BSE)</p>
                 </div>
 
-                <p className="text-xs text-slate-500">Instrument * — NSE / BSE stocks & indices</p>
-
-                <Suspense
-                  fallback={
-                    <div className="rounded-lg border border-[#24324b] bg-[#172033] px-3 py-4 text-xs text-slate-500">
-                      Loading NSE / BSE symbol list…
-                    </div>
-                  }
-                >
-                  <JournalSymbolPicker
-                    selectedSymbol={form.instrument || 'NIFTY'}
-                    onSelect={handleSymbolSelect}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Instrument * — company / index / symbol</p>
+                  <input
+                    value={form.instrument}
+                    onChange={(e) => {
+                      const instrument = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        market: 'equity',
+                        pnlCurrency: 'INR',
+                        instrument,
+                        quantityIsLots:
+                          prev.quantityIsLots &&
+                          (prev.type === 'Futures' || prev.type === 'Options'),
+                      }));
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-sm ${inputClass}`}
+                    placeholder="Type manually — e.g. RELIANCE, NIFTY, Bank Nifty, TCS, SENSEX…"
+                    autoComplete="off"
                   />
-                </Suspense>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Free text — koi bhi company naam, index, ya symbol type karo.
+                  </p>
+                </div>
 
                 {selectedSymbolMeta && (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#24324b] bg-[#0d1728] px-3 py-2 text-xs text-slate-500">
                     <span className="font-bold text-slate-300">{selectedSymbolMeta.symbol}</span>
                     <span>{selectedSymbolMeta.name}</span>
                     <span className="rounded bg-[#172033] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
-                    <span className="text-[10px]">Reference only — enter prices manually below</span>
+                    <span className="text-[10px]">Matched from list · prices ab bhi manual</span>
                   </div>
                 )}
               </div>
