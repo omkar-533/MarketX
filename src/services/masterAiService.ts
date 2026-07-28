@@ -332,15 +332,15 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste! Main Anika hoon — Hinglish me baat karti hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataungi. Ya Nifty, options, risk poochho.';
+    return 'Namaste! Main Jarvis hoon — Hinglish me baat karta hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataunga. Ya Nifty, options, risk poochho.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते! मैं Anika हूँ — आपकी trading साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगी। या Nifty, options, risk पूछो।';
+    return 'नमस्ते! मैं Jarvis हूँ — आपका trading साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगा। या Nifty, options, risk पूछो।';
   }
   if (langCode === 'en-US') {
-    return "Hi — I'm Anika, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+    return "Hi — I'm Jarvis, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
   }
-  return `Namaste — I'm Anika. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
+  return `Namaste — I'm Jarvis. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
@@ -438,8 +438,8 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Anika (Master AI): trading-only copilot with chart screenshot analysis — introduce as Anika
-- Owner teachings: when admin uploads PDFs/notes, Anika follows that house method first
+- Jarvis (Master AI): trading-only copilot with chart screenshot analysis — introduce as Jarvis
+- Owner teachings: when admin uploads PDFs/notes, Jarvis follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
 
@@ -489,16 +489,16 @@ export function isTradingRelated(input: string): boolean {
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
-    'Hey! Main Anika — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
-    'Hi — Anika yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
-    'Namaste! Anika here. Aaj kya dekhna hai — chart, setup, ya risk plan?',
-    'Arre hello! Anika bol rahi hoon — Nifty view, options lens, ya chart padhwaun?',
+    'Hey! Main Jarvis — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
+    'Hi — Jarvis yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
+    'Namaste! Jarvis here. Aaj kya dekhna hai — chart, setup, ya risk plan?',
+    'Arre hello! Jarvis bol raha hoon — Nifty view, options lens, ya chart padhwaun?',
   ];
   const variantsEn = [
-    "Hey — Anika here. Want a quick market take, options view, or drop a chart and I'll read it?",
-    "Hi! I'm Anika — right here. Tell me what you need: Nifty pulse, risk check, or chart analysis.",
-    "Hello! Anika on the desk. Chart, setup, or a quick market check — your call.",
-    "Hey there — Anika. Fire away: market, options, risk, or paste a screenshot and I'll break it down.",
+    "Hey — Jarvis here. Want a quick market take, options view, or drop a chart and I'll read it?",
+    "Hi! I'm Jarvis — right here. Tell me what you need: Nifty pulse, risk check, or chart analysis.",
+    "Hello! Jarvis on the desk. Chart, setup, or a quick market check — your call.",
+    "Hey there — Jarvis. Fire away: market, options, risk, or paste a screenshot and I'll break it down.",
   ];
   const list = hinglish ? variantsHi : variantsEn;
   // Light variation from message length / time
@@ -571,7 +571,7 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
   if (compact) {
     return [
       buildLanguageDirective(langCode),
-      'You are Anika. Keep answers short and practical.',
+      'You are Jarvis. Keep answers short and practical.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
     ].join('\n');
@@ -660,7 +660,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang),
-        'User sent a casual greeting. You are Anika — reply like a warm human trading buddy — short, natural, no market data dump.',
+        'User sent a casual greeting. You are Jarvis — reply like a warm human trading buddy — short, natural, no market data dump.',
         'Invite them to share a chart or ask about Nifty / options / risk.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true);

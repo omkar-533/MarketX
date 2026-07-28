@@ -96,7 +96,7 @@ export default function MasterAI() {
       role: 'trafi',
       text:
         initialMode === 'auto'
-          ? 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karungi. Chart (📷) bhej sakte ho.'
+          ? 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karunga. Chart (📷) bhej sakte ho.'
           : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
@@ -354,8 +354,8 @@ export default function MasterAI() {
 
       let responseText = hasImage
         ? isHindiLang(activeLang.code)
-          ? 'Chart load ho gaya. Anika analysis ready nahi hui — thodi der baad dubara bhejo.'
-          : 'Chart loaded, but Anika could not finish analysis — try again in a moment.'
+          ? 'Chart load ho gaya. Jarvis analysis ready nahi hui — thodi der baad dubara bhejo.'
+          : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
         : generateLocalTradingReply(userText, liveContext, activeLang.code);
 
       if (aiStatus.configured) {
@@ -447,7 +447,7 @@ export default function MasterAI() {
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[15px] font-semibold tracking-tight text-white">Anika</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight text-white">Jarvis</h2>
               <span className="rounded border border-[#d4af37]/20 bg-[#d4af37]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]">
                 Master AI
               </span>
