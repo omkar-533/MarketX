@@ -169,10 +169,6 @@ export default function Indicators() {
                   <span>Chart preview</span>
                 </div>
               )}
-              <div className="lux-ind__chart-badge">
-                <span className="lux-ind__dot" />
-                Preview
-              </div>
             </div>
 
             <div className="lux-ind__tags">
