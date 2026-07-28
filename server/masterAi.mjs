@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Gemini)', provider: 'Google', web: false },
@@ -30,6 +31,7 @@ HARD RULES
 5. Always include risk: stop idea, invalidation, and position-size caution for trade ideas.
 6. Follow OUTPUT LANGUAGE instructions exactly (Hindi/Hinglish vs Indian English).
 7. Prefer actionable structure over essays.
+8. If OWNER TEACHINGS appear in context, treat them as the house method — answer from that base first.
 
 ANSWER QUALITY FRAMEWORK (use when relevant)
 For market / setup questions, structure as:
@@ -243,7 +245,11 @@ export function createMasterAiRouter(apiKey) {
     async chat(body) {
       const message = typeof body?.message === 'string' ? body.message.trim() : '';
       const imageDataUrl = typeof body?.imageDataUrl === 'string' ? body.imageDataUrl.trim() : '';
-      const platformContext = typeof body?.platformContext === 'string' ? body.platformContext : '';
+      const platformContextRaw = typeof body?.platformContext === 'string' ? body.platformContext : '';
+      const ownerKnowledge = buildKnowledgeContext(message);
+      const platformContext = ownerKnowledge
+        ? `${platformContextRaw}\n\n${ownerKnowledge}`.trim()
+        : platformContextRaw;
       const model = typeof body?.model === 'string' ? body.model : 'gemini/auto';
       const lang = typeof body?.lang === 'string' ? body.lang : 'en-US';
       const needsWeb = Boolean(body?.needsWeb);

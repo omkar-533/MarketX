@@ -52,6 +52,12 @@ import {
   pendingTvAccessRequestCount,
   reviewTvAccessRequest,
 } from './tvAccessRequests.mjs';
+import {
+  createKnowledgeFromPdf,
+  createKnowledgeFromText,
+  deleteKnowledgeDoc,
+  listKnowledgeDocs,
+} from './masterAiKnowledgeStore.mjs';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
@@ -672,6 +678,49 @@ router.delete('/admin/indicators/:id', requireAdmin, async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     return failed(res, err, 'Could not delete indicator');
+  }
+});
+
+/** GET /api/app-auth/admin/knowledge — Master AI owner teachings */
+router.get('/admin/knowledge', requireAdmin, async (_req, res) => {
+  try {
+    const documents = await listKnowledgeDocs();
+    return res.json({ documents });
+  } catch (err) {
+    return failed(res, err, 'Could not load knowledge docs');
+  }
+});
+
+/** POST /api/app-auth/admin/knowledge — upload PDF or paste text notes */
+router.post('/admin/knowledge', requireAdmin, async (req, res) => {
+  try {
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const pdfDataUrl = typeof req.body?.pdfDataUrl === 'string' ? req.body.pdfDataUrl : '';
+    const text = typeof req.body?.text === 'string' ? req.body.text : '';
+    const filename = typeof req.body?.filename === 'string' ? req.body.filename.trim() : '';
+    const uploadedBy = req.adminActor || 'admin';
+
+    let document;
+    if (pdfDataUrl) {
+      document = await createKnowledgeFromPdf({ title, filename, pdfDataUrl, uploadedBy });
+    } else if (text.trim()) {
+      document = await createKnowledgeFromText({ title, text, uploadedBy });
+    } else {
+      return res.status(400).json({ error: 'Provide a PDF (pdfDataUrl) or teaching text' });
+    }
+    return res.status(201).json({ document });
+  } catch (err) {
+    return failed(res, err, 'Could not save teaching');
+  }
+});
+
+/** DELETE /api/app-auth/admin/knowledge/:id */
+router.delete('/admin/knowledge/:id', requireAdmin, async (req, res) => {
+  try {
+    await deleteKnowledgeDoc(req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    return failed(res, err, 'Could not delete teaching');
   }
 });
 

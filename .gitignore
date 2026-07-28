@@ -12,6 +12,7 @@ data/app-access-requests.json
 data/app-tv-access-requests.json
 data/app-settings.json
 data/app-indicators.json
+data/app-master-ai-knowledge.json
 *.log
 .DS_Store
 tmptest.txt

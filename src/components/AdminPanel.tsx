@@ -16,6 +16,7 @@ import {
   Settings,
   Code2,
   Link2,
+  BookOpen,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -44,6 +45,7 @@ import {
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
 import IndicatorsTab from './admin/IndicatorsTab';
+import KnowledgeTab from './admin/KnowledgeTab';
 import TvAccessRequestsTab from './admin/TvAccessRequestsTab';
 
 const trafficData = Array.from({ length: 14 }, (_, i) => ({
@@ -70,7 +72,7 @@ function randomPassword(len = 10) {
   return out;
 }
 
-type AdminTab = 'users' | 'requests' | 'tv' | 'indicators' | 'settings' | 'overview' | 'analytics' | 'payments';
+type AdminTab = 'users' | 'requests' | 'tv' | 'indicators' | 'knowledge' | 'settings' | 'overview' | 'analytics' | 'payments';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -233,6 +235,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
             { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
             { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
+            { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
             { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
             { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
@@ -276,6 +279,10 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
 
       {activeTab === 'indicators' && (
         <IndicatorsTab adminEmail={adminEmail} adminPassword={adminPassword} />
+      )}
+
+      {activeTab === 'knowledge' && (
+        <KnowledgeTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
       {activeTab === 'settings' && (

@@ -199,6 +199,7 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
 - Master AI (this assistant): trading-only copilot with chart screenshot analysis
+- Owner teachings: when admin uploads PDFs/notes, Master AI follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
 

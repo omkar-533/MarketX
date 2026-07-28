@@ -38,8 +38,9 @@
     ],
     "win": {
       "target": [
-        "nsis"
+        "portable"
       ],
+      "signAndEditExecutable": false,
       "icon": "public/icons/icon-512.png"
     },
     "nsis": {
@@ -64,6 +65,7 @@
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.16.0",
     "openai": "^6.39.0",
+    "pdf-parse": "^1.1.1",
     "prismjs": "^1.30.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
