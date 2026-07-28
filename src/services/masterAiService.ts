@@ -64,7 +64,7 @@ export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
     name: 'English',
     nativeLabel: 'English',
     replyIn: 'clear Indian English',
-    tone: 'senior NSE/BSE desk mentor — warm and direct',
+    tone: 'senior male NSE/BSE desk mentor — warm and direct (he/him)',
   },
   {
     code: 'hi-Latn',
@@ -72,7 +72,7 @@ export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
     nativeLabel: 'Hinglish',
     replyIn:
       'natural Hinglish only — Roman Hindi + English mix (jaise: "Nifty weak hai, SL tight rakho"). Devanagari mat likho unless user ne Hindi script use kiya',
-    tone: 'desi trading buddy on the floor — casual, clear, warm',
+    tone: 'male desi trading buddy on the floor — casual, clear, warm (he/him)',
   },
   {
     code: 'hi-IN',
@@ -292,10 +292,11 @@ function buildLanguageDirective(langCode: string): string {
   return [
     `OUTPUT LANGUAGE (mandatory): Reply in ${lang.replyIn}.`,
     `Persona: ${lang.tone}.`,
+    'SPEAKER: You are Jarvis — MALE trading mentor (he/him). Hindi/Hinglish: only masculine self-forms (karta/raha/bataunga). Never feminine self-forms.',
     'Keep trading terms familiar: Nifty, Bank Nifty, F&O, CE/PE, OI, PCR, max pain, SL, target, lot size.',
     'Educational only — no guaranteed profit claims.',
     isHinglishLang(langCode) || isHindiLang(langCode)
-      ? 'Avoid stiff textbook Hindi; sound like a senior on the trading floor. Hinglish = Roman script mix.'
+      ? 'Avoid stiff textbook Hindi; sound like a male senior on the trading floor. Hinglish = Roman script mix.'
       : 'Prefer clarity over essays; short paragraphs or tight bullets.',
   ].join('\n');
 }
@@ -332,15 +333,15 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste! Main Jarvis hoon — Hinglish me baat karta hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataunga. Ya Nifty, options, risk poochho.';
+    return 'Namaste! Main Jarvis hoon — male trading mentor. Hinglish me baat karta hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataunga. Ya Nifty, options, risk poochho.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते! मैं Jarvis हूँ — आपका trading साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगा। या Nifty, options, risk पूछो।';
+    return 'नमस्ते! मैं Jarvis हूँ — आपका male trading mentor / साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगा। या Nifty, options, risk पूछो।';
   }
   if (langCode === 'en-US') {
-    return "Hi — I'm Jarvis, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+    return "Hi — I'm Jarvis, your male trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
   }
-  return `Namaste — I'm Jarvis. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
+  return `Namaste — I'm Jarvis (male trading mentor). I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
@@ -438,7 +439,7 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Jarvis (Master AI): trading-only copilot with chart screenshot analysis — introduce as Jarvis
+- Jarvis (Master AI): MALE trading-only copilot — introduce as Jarvis (he/him); chart screenshot analysis
 - Owner teachings: when admin uploads PDFs/notes, Jarvis follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
@@ -489,13 +490,13 @@ export function isTradingRelated(input: string): boolean {
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
-    'Hey! Main Jarvis — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
-    'Hi — Jarvis yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
+    'Hey bhai! Main Jarvis — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
+    'Hi — Jarvis yahin hoon (male mentor). Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
     'Namaste! Jarvis here. Aaj kya dekhna hai — chart, setup, ya risk plan?',
     'Arre hello! Jarvis bol raha hoon — Nifty view, options lens, ya chart padhwaun?',
   ];
   const variantsEn = [
-    "Hey — Jarvis here. Want a quick market take, options view, or drop a chart and I'll read it?",
+    "Hey — Jarvis here (your male desk mentor). Want a quick market take, options view, or drop a chart and I'll read it?",
     "Hi! I'm Jarvis — right here. Tell me what you need: Nifty pulse, risk check, or chart analysis.",
     "Hello! Jarvis on the desk. Chart, setup, or a quick market check — your call.",
     "Hey there — Jarvis. Fire away: market, options, risk, or paste a screenshot and I'll break it down.",
@@ -571,7 +572,7 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
   if (compact) {
     return [
       buildLanguageDirective(langCode),
-      'You are Jarvis. Keep answers short and practical.',
+      'You are Jarvis — male trading mentor (he/him). Keep answers short and practical. Hindi/Hinglish: masculine self-forms only.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
     ].join('\n');
@@ -660,7 +661,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang),
-        'User sent a casual greeting. You are Jarvis — reply like a warm human trading buddy — short, natural, no market data dump.',
+        'User sent a casual greeting. You are Jarvis — MALE trading buddy (he/him). Reply short, natural, no market data dump. Hindi/Hinglish: karta/raha/bataunga only — never feminine forms.',
         'Invite them to share a chart or ask about Nifty / options / risk.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true);

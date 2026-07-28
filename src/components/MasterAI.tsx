@@ -182,10 +182,13 @@ export default function MasterAI() {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = isHinglishLang(selectedLang.code) ? 'hi-IN' : selectedLang.code;
       utterance.rate = hindi ? 0.88 : 0.95;
-      utterance.pitch = 1;
+      utterance.pitch = 0.9; // slightly lower = more male-sounding
       const voices = synthRef.current.getVoices();
       const langPrefix = selectedLang.code.slice(0, 2);
+      const maleHint = /male|man|ravi|amit|hemant|google UK English Male|google हिंदी|microsoft.*male|david|mark|rishi/i;
       const preferred =
+        voices.find((v) => maleHint.test(v.name) && (v.lang === selectedLang.code || v.lang.startsWith(langPrefix) || v.lang.startsWith('hi'))) ??
+        voices.find((v) => maleHint.test(v.name)) ??
         voices.find((v) => v.lang === selectedLang.code) ??
         voices.find((v) => v.lang.startsWith(langPrefix) && /hindi|india|hi-/i.test(v.name)) ??
         voices.find((v) => v.lang.startsWith(langPrefix));
@@ -206,7 +209,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karungi. Chart (📷) bhej sakte ho.',
+                text: 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karunga. Chart (📷) bhej sakte ho.',
               }
             : m,
         ),
@@ -354,7 +357,7 @@ export default function MasterAI() {
 
       let responseText = hasImage
         ? isHindiLang(activeLang.code)
-          ? 'Chart load ho gaya. Jarvis analysis ready nahi hui — thodi der baad dubara bhejo.'
+          ? 'Chart load ho gaya. Jarvis analysis ready nahi hua — thodi der baad dubara bhejo.'
           : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
         : generateLocalTradingReply(userText, liveContext, activeLang.code);
 
@@ -449,7 +452,7 @@ export default function MasterAI() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[15px] font-semibold tracking-tight text-white">Jarvis</h2>
               <span className="rounded border border-[#d4af37]/20 bg-[#d4af37]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]">
-                Master AI
+                Male · Master AI
               </span>
             </div>
             <p className="truncate text-[11px] text-slate-500" title={aiStatus.message}>
