@@ -14,8 +14,6 @@ import {
   Activity,
   Newspaper,
   BriefcaseBusiness,
-  Sparkles,
-  ShieldCheck,
   ImagePlus,
   X,
 } from 'lucide-react';
@@ -107,13 +105,6 @@ export default function MasterAI() {
   const handleSendRef = useRef<(text?: string) => void>(() => {});
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [context, setContext] = useState(() => buildMasterMarketContext());
-
-  useEffect(() => {
-    const id = window.setInterval(() => setContext(buildMasterMarketContext()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const refresh = () => void fetchMasterAiStatus().then(setAiStatus);
@@ -311,7 +302,6 @@ export default function MasterAI() {
 
     try {
       const liveContext = buildMasterMarketContext();
-      setContext(liveContext);
       const visionMessage = hasImage
         ? getChartVisionPrompt(selectedLang.code, userNote || undefined)
         : userText;
@@ -391,56 +381,68 @@ export default function MasterAI() {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col bg-[#05070d] text-slate-200 rounded-xl overflow-hidden border border-[#1a1f2e] shadow-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-[#0b0e17] border-b border-[#1a1f2e]">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="mai flex h-[calc(100vh-100px)] flex-col overflow-hidden rounded-2xl border border-[#1e2433] bg-[#07090f] text-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      {/* Header */}
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#1e2433] bg-[#0c1018]/95 px-4 py-3 backdrop-blur sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="relative shrink-0">
-            <div className="w-10 h-10 bg-[#d4af37]/10 rounded-full flex items-center justify-center border border-[#d4af37]/30">
-              <Bot className="w-5 h-5 text-[#d4af37]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#d4af37]/25 bg-gradient-to-br from-[#d4af37]/20 to-[#d4af37]/5">
+              <Bot className="h-5 w-5 text-[#d4af37]" />
             </div>
-            <div
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0b0e17] ${isSpeaking ? 'bg-emerald-500 animate-pulse' : aiStatus.configured ? 'bg-emerald-500/80' : 'bg-amber-500'}`}
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c1018] ${
+                isSpeaking
+                  ? 'bg-emerald-400 animate-pulse'
+                  : aiStatus.configured
+                    ? 'bg-emerald-500'
+                    : 'bg-amber-400'
+              }`}
             />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
-              Master AI
-              <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/20 text-[#d4af37] rounded-full border border-[#d4af37]/30">
-                TRADING ONLY
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[15px] font-semibold tracking-tight text-white">Master AI</h2>
+              <span className="rounded border border-[#d4af37]/20 bg-[#d4af37]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]">
+                Trading desk
               </span>
-            </h2>
-            <p className="text-[10px] text-slate-500 truncate" title={aiStatus.message}>
+            </div>
+            <p className="truncate text-[11px] text-slate-500" title={aiStatus.message}>
               {aiStatus.configured
                 ? hindi
-                  ? 'लाइव बाज़ार जानकारी · प्राकृतिक हिंदी/अंग्रेज़ी'
-                  : 'Live market intelligence · natural English'
-                : aiStatus.message}{' '}
-              · {selectedLang.nativeLabel}
+                  ? 'Online · chart & trading mentor'
+                  : 'Online · chart & trading mentor'
+                : aiStatus.message}
+              {' · '}
+              {selectedLang.nativeLabel}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onAutoSpeakToggle}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold border ${autoSpeak ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-[#121520] border-[#1a1f2e] text-slate-500'}`}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+              autoSpeak
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                : 'border-[#252b3a] bg-[#12161f] text-slate-400 hover:text-slate-200'
+            }`}
             title={autoSpeak ? 'Auto-speak on' : 'Speak only when you tap Speak'}
           >
-            {autoSpeak ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
-            Voice
+            {autoSpeak ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">Voice</span>
           </button>
 
-          <div className="flex items-center gap-0.5 bg-[#121520] border border-[#1a1f2e] rounded-lg p-0.5">
-            <Languages className="w-3.5 h-3.5 text-slate-500 ml-1.5 shrink-0" />
+          <div className="flex items-center gap-0.5 rounded-lg border border-[#252b3a] bg-[#12161f] p-0.5">
+            <Languages className="ml-1.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
             {MASTER_AI_LANGUAGES.map((l) => (
               <button
                 key={l.code}
                 type="button"
                 onClick={() => onLanguageChange(l.code)}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-colors ${
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                   selectedLang.code === l.code
-                    ? 'bg-[#d4af37] text-[#0b0e17]'
+                    ? 'bg-[#d4af37] text-[#0b0e16]'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -449,224 +451,256 @@ export default function MasterAI() {
             ))}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="px-4 sm:px-6 py-2 bg-[#0b0e17]/60 border-b border-[#1a1f2e] flex flex-wrap gap-2">
-        {quickActions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => {
-                setQuickAction(action.id);
-                void handleSend(action.prompt);
-              }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap ${
-                quickAction === action.id
-                  ? 'bg-[#d4af37] text-[#0b0e17] border-[#d4af37]'
-                  : 'bg-[#121520] text-slate-300 border-[#1a1f2e] hover:border-slate-600'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" /> {action.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-3 p-3 sm:p-4 bg-[#080a12] border-b border-[#1a1f2e]">
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-3 sm:p-4">
-          <p className="text-[10px] uppercase tracking-wider text-slate-500">
-            {hindi ? 'बाज़ार पल्स' : 'Market pulse'}
-          </p>
-          <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-            <div className="bg-[#121520] rounded-lg p-2 border border-[#1a1f2e]">
-              <div className="text-[10px] text-slate-500">NIFTY</div>
-              <div className="font-bold text-white text-xs mt-1">{context.nifty}</div>
-            </div>
-            <div className="bg-[#121520] rounded-lg p-2 border border-[#1a1f2e]">
-              <div className="text-[10px] text-slate-500">BANKNIFTY</div>
-              <div className="font-bold text-white text-xs mt-1">{context.bankNifty}</div>
-            </div>
-            <div className="bg-[#121520] rounded-lg p-2 border border-[#1a1f2e]">
-              <div className="text-[10px] text-slate-500">PCR</div>
-              <div className="font-bold text-white text-xs mt-1">{context.pcr}</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-3 sm:p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
-            <span className="text-[10px] text-slate-400">
-              {aiStatus.configured
-                ? hindi
-                  ? 'लाइव डेटा + प्लेटफ़ॉर्म — जैसे सीनियर ट्रेडर समझाता है'
-                  : 'Live data + platform — answers like a senior trader'
-                : hindi
-                  ? 'Profile में Gemini / OpenAI API key डालें'
-                  : 'Add Gemini or OpenAI API key in Profile'}
-            </span>
-          </div>
-          <ShieldCheck className="w-4 h-4 text-[#d4af37] mb-1" />
-          <p className="text-[10px] text-slate-500">
-            {hindi ? 'सिर्फ ट्रेडिंग · जवाब सुनने के लिए Speak दबाएँ' : 'Trading-only · tap Speak on any reply to hear it'}
-          </p>
-        </div>
-      </div>
-
+      {/* Chat thread */}
       <div
         ref={chatAreaRef}
-        className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#080a12] min-h-0"
+        className="mai__thread min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
         onPaste={handlePaste}
       >
+        {messages.length <= 1 && !isThinking && (
+          <div className="mx-auto mb-2 max-w-xl px-2 text-center">
+            <p className="text-[13px] leading-relaxed text-slate-400">
+              {hindi
+                ? 'Chart screenshot bhejo ya market, options, risk ke baare mein poochho.'
+                : 'Send a chart screenshot or ask about markets, options, and risk.'}
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {quickActions.slice(0, 4).map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => {
+                      setQuickAction(action.id);
+                      void handleSend(action.prompt);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#252b3a] bg-[#10141c] px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:border-[#d4af37]/35 hover:text-[#e8d5a3]"
+                  >
+                    <Icon className="h-3 w-3 text-[#d4af37]/80" />
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <AnimatePresence>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  message.role === 'trafi'
-                    ? 'bg-[#d4af37]/10 border border-[#d4af37]/30'
-                    : 'bg-blue-500/10 border border-blue-500/30'
-                }`}
+          {messages.map((message) => {
+            const isUser = message.role === 'user';
+            return (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className={`flex gap-2.5 sm:gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
               >
-                {message.role === 'trafi' ? (
-                  <Bot className="w-4 h-4 text-[#d4af37]" />
-                ) : (
-                  <User className="w-4 h-4 text-blue-400" />
-                )}
-              </div>
-              <div className={`max-w-[85%] ${message.role === 'user' ? 'text-right' : ''}`}>
                 <div
-                  className={`p-3 sm:p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                    message.role === 'trafi'
-                      ? 'bg-[#121520] border border-[#1a1f2e] text-slate-200 rounded-tl-none'
-                      : 'bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] rounded-tr-none'
+                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    isUser
+                      ? 'border-[#2a3142] bg-[#161b26] text-slate-300'
+                      : 'border-[#d4af37]/25 bg-[#d4af37]/10 text-[#d4af37]'
                   }`}
                 >
-                  {message.imageUrl && (
-                    <img
-                      src={message.imageUrl}
-                      alt=""
-                      className="mb-2 max-h-48 w-full rounded-lg border border-[#1a1f2e] object-contain bg-black/40"
-                    />
-                  )}
-                  {message.text}
+                  {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                 </div>
-                <div className="text-[10px] text-slate-600 mt-1 flex items-center gap-2 flex-wrap">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {message.role === 'trafi' && (
-                    <button
-                      type="button"
-                      onClick={() => speakText(message.text)}
-                      className="hover:text-[#d4af37] flex items-center gap-1 font-bold"
-                    >
-                      <Volume2 className="w-3 h-3" /> {hindi ? 'बोलें' : 'Speak'}
-                    </button>
-                  )}
+
+                <div className={`max-w-[min(720px,88%)] ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
+                  <div
+                    className={`px-3.5 py-2.5 text-[13px] leading-relaxed sm:px-4 sm:py-3 sm:text-[14px] ${
+                      isUser
+                        ? 'rounded-2xl rounded-tr-md border border-[#d4af37]/20 bg-[#d4af37]/12 text-[#f0e2b8]'
+                        : 'rounded-2xl rounded-tl-md border border-[#1e2433] bg-[#12161f] text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'
+                    }`}
+                  >
+                    {message.imageUrl && (
+                      <img
+                        src={message.imageUrl}
+                        alt=""
+                        className="mb-2.5 max-h-52 w-full rounded-xl border border-[#252b3a] bg-black/40 object-contain"
+                      />
+                    )}
+                    <div className="whitespace-pre-wrap break-words">{message.text}</div>
+                  </div>
+                  <div
+                    className={`mt-1 flex items-center gap-2 px-1 text-[10px] text-slate-600 ${
+                      isUser ? 'flex-row-reverse' : ''
+                    }`}
+                  >
+                    <span>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {!isUser && (
+                      <button
+                        type="button"
+                        onClick={() => speakText(message.text)}
+                        className="inline-flex items-center gap-1 font-medium text-slate-500 transition-colors hover:text-[#d4af37]"
+                      >
+                        <Volume2 className="h-3 w-3" />
+                        {hindi ? 'बोलें' : 'Speak'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
         {isThinking && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
-            {isAnalyzingChart
-              ? hindi
-                ? 'Chart padh raha hoon — trend, support, resistance nikal raha hoon…'
-                : 'Reading your chart — trend, support, resistance…'
-              : hindi
-                ? 'लाइव बाज़ार डेटा देख रहा हूँ…'
-                : 'Reading live market context…'}
+          <div className="flex items-center gap-3 pl-1">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d4af37]/25 bg-[#d4af37]/10">
+              <Bot className="h-3.5 w-3.5 text-[#d4af37]" />
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-2xl rounded-tl-md border border-[#1e2433] bg-[#12161f] px-4 py-2.5 text-[12px] text-slate-400">
+              <span className="flex gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37] [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37] [animation-delay:300ms]" />
+              </span>
+              {isAnalyzingChart
+                ? hindi
+                  ? 'Chart padh raha hoon…'
+                  : 'Reading your chart…'
+                : hindi
+                  ? 'Soch raha hoon…'
+                  : 'Thinking…'}
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 sm:p-4 bg-[#0b0e17] border-t border-[#1a1f2e]">
-        <div className="flex items-center gap-2 bg-[#121520] border border-[#1a1f2e] rounded-xl p-2 focus-within:border-[#d4af37]/40">
-          <button
-            type="button"
-            onClick={toggleListening}
-            className={`p-2.5 rounded-lg ${isListening ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-[#1a1f2e] text-slate-400 hover:text-white'}`}
-            title="Voice input"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
-            placeholder={
-              isListening
-                ? hindi
-                  ? 'सुन रहा हूँ…'
-                  : 'Listening…'
-                : hindi
-                  ? 'Nifty, options, risk, strategy — kuch bhi poochho…'
-                  : 'Ask about Nifty, options, risk, strategies…'
-            }
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none min-w-0"
-            disabled={isListening}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={MASTER_AI_IMAGE_ACCEPT}
-            className="hidden"
-            onChange={handleImageSelect}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2.5 rounded-lg bg-[#1a1f2e] text-slate-400 hover:text-white"
-            title={hindi ? 'Chart JPG/PNG/WebP… — turant analysis' : 'Chart JPG/PNG/WebP… — instant analysis'}
-          >
-            <ImagePlus className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSend()}
-            disabled={(!inputText.trim() && !selectedImage) || isListening || isThinking}
-            className="p-2.5 bg-[#d4af37] text-[#0b0e17] rounded-lg disabled:opacity-40"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-        {selectedImage && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#d4af37]/30 bg-[#121520] px-2 py-1.5">
-            <img src={selectedImage} alt="" className="h-14 w-14 rounded object-cover border border-[#1a1f2e]" />
-            <span className="text-xs text-slate-400 truncate flex-1">
-              {isAnalyzingChart
-                ? hindi
-                  ? 'Chart analyze ho raha hai…'
-                  : 'Analyzing chart…'
-                : selectedImageName}
-            </span>
-            <button type="button" onClick={clearSelectedImage} className="p-1 text-slate-500 hover:text-white" disabled={isAnalyzingChart}>
-              <X className="w-4 h-4" />
-            </button>
+      {/* Composer */}
+      <div className="shrink-0 border-t border-[#1e2433] bg-[#0c1018] px-3 py-3 sm:px-5 sm:py-4">
+        {messages.length > 1 && (
+          <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => {
+                    setQuickAction(action.id);
+                    void handleSend(action.prompt);
+                  }}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                    quickAction === action.id
+                      ? 'border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8d5a3]'
+                      : 'border-[#252b3a] bg-[#10141c] text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  {action.label}
+                </button>
+              );
+            })}
           </div>
         )}
-        {imageError && <p className="text-center mt-1 text-[10px] text-red-400">{imageError}</p>}
-        <p className="text-center mt-2 text-[10px] text-slate-600">
+
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#252b3a] bg-[#12161f] p-2 shadow-[0_0_0_1px_rgba(212,175,55,0.04)] focus-within:border-[#d4af37]/35">
+          {selectedImage && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#d4af37]/20 bg-[#0c1018] px-2 py-1.5">
+              <img
+                src={selectedImage}
+                alt=""
+                className="h-12 w-12 rounded-lg border border-[#252b3a] object-cover"
+              />
+              <span className="min-w-0 flex-1 truncate text-[11px] text-slate-400">
+                {isAnalyzingChart
+                  ? hindi
+                    ? 'Chart analyze ho raha hai…'
+                    : 'Analyzing chart…'
+                  : selectedImageName}
+              </span>
+              <button
+                type="button"
+                onClick={clearSelectedImage}
+                className="rounded-md p-1 text-slate-500 hover:bg-[#1a1f2e] hover:text-white"
+                disabled={isAnalyzingChart}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end gap-1.5">
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`rounded-xl p-2.5 transition-colors ${
+                isListening
+                  ? 'bg-red-500/15 text-red-400'
+                  : 'text-slate-500 hover:bg-[#1a1f2e] hover:text-slate-200'
+              }`}
+              title="Voice input"
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+
+            <textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleSend();
+                }
+              }}
+              rows={1}
+              placeholder={
+                isListening
+                  ? hindi
+                    ? 'सुन रहा हूँ…'
+                    : 'Listening…'
+                  : hindi
+                    ? 'Message likho… (Enter bheje, Shift+Enter naya line)'
+                    : 'Message… (Enter to send, Shift+Enter for new line)'
+              }
+              className="max-h-32 min-h-[42px] flex-1 resize-none bg-transparent py-2.5 text-[13px] text-white placeholder:text-slate-600 focus:outline-none sm:text-[14px]"
+              disabled={isListening}
+            />
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={MASTER_AI_IMAGE_ACCEPT}
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-xl p-2.5 text-slate-500 transition-colors hover:bg-[#1a1f2e] hover:text-slate-200"
+              title={hindi ? 'Chart image' : 'Attach chart'}
+            >
+              <ImagePlus className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSend()}
+              disabled={(!inputText.trim() && !selectedImage) || isListening || isThinking}
+              className="rounded-xl bg-[#d4af37] p-2.5 text-[#0b0e16] transition-opacity disabled:opacity-35"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {imageError && (
+          <p className="mt-2 text-center text-[10px] text-red-400">{imageError}</p>
+        )}
+        <p className="mt-2 text-center text-[10px] text-slate-600">
           {hindi
-            ? 'JPG · PNG · WebP · GIF · BMP · HEIC · AVIF · SVG — paste/drop ya 📷 se bhejo, turant analysis'
-            : 'JPG · PNG · WebP · GIF · BMP · HEIC · AVIF · SVG — paste, drop, or 📷 for instant analysis'}
-        </p>
-        <p className="text-center mt-1 text-[10px] text-slate-600">
-          {hindi
-            ? 'केवल शिक्षा · Voice ON नहीं तो Speak से सुनें'
-            : 'Educational only · Speak manually unless Voice is on'}
+            ? 'Educational only · Chart JPG/PNG drop/paste · Voice OFF ho to Speak dabao'
+            : 'Educational only · Drop/paste chart images · Use Speak when Voice is off'}
         </p>
       </div>
     </div>
