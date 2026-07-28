@@ -3,7 +3,7 @@
  * Product tabs (Indicators / Master AI / Journal) do not consume live quotes.
  */
 
-export const FYERS_TOKEN_INVALID_EVENT = 'fyers-token-invalid';
+export { FYERS_TOKEN_INVALID_EVENT } from '../constants/fyersEvents';
 
 /** No-op: live websocket ticks are off. */
 export function subscribeLiveSymbols(_symbols: string[]): void {}
