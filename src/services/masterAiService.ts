@@ -344,10 +344,11 @@ export function shouldUseWebSearch(input: string): boolean {
 }
 
 export const MASTER_AI_MODELS: MasterAiModel[] = [
-  { id: 'gemini/auto', name: 'Auto (Gemini)', provider: 'Google', description: 'Best Gemini model for the question' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', description: 'Deep analysis & chart reads' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Fast, clear trading answers' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Quick multilingual answers' },
+  { id: 'gemini/auto', name: 'Auto (Flash-Lite)', provider: 'Google', description: 'Cheapest — text + chart images, long credits' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google', description: 'Lowest cost · still reads charts' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Best chart quality / cost balance' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Fast multilingual fallback' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', description: 'Deepest analysis (uses more credits)' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', description: 'Deeper analysis & charts' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', description: 'Fast, clear trading explanations' },

@@ -12,7 +12,7 @@ const pdfParse = require('pdf-parse');
 const FILE = 'app-master-ai-knowledge.json';
 const MAX_DOCS = 40;
 const MAX_TEXT_PER_DOC = 120_000;
-const MAX_CONTEXT_CHARS = 14_000;
+const MAX_CONTEXT_CHARS = 8_000;
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
 function readRows() {
