@@ -494,7 +494,15 @@ export function buildMasterMarketContext(): MasterMarketContext {
   };
 }
 
-export function formatContextBlock(ctx: MasterMarketContext, langCode: string): string {
+export function formatContextBlock(ctx: MasterMarketContext, langCode: string, compact = false): string {
+  if (compact) {
+    return [
+      buildLanguageDirective(langCode),
+      'You are Anika. Keep answers short and practical.',
+      `Session: ${ctx.session}`,
+      `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
+    ].join('\n');
+  }
   return [
     buildLanguageDirective(langCode),
     'QUALITY: Prefer specific levels and risk over generic commentary. Cite snapshot numbers when used.',
@@ -575,13 +583,21 @@ export async function fetchMasterAiStatus(): Promise<{
 
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
   const greeting = isCasualGreeting(req.message || '');
+  // Always compact market dump — chart/image already carries levels; saves input tokens
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang),
         'User sent a casual greeting. You are Anika — reply like a warm human trading buddy — short, natural, no market data dump.',
         'Invite them to share a chart or ask about Nifty / options / risk.',
       ].join('\n')
-    : formatContextBlock(ctx, req.lang);
+    : formatContextBlock(ctx, req.lang, true);
+
+  const history = (req.history ?? [])
+    .slice(-6)
+    .map((h) => ({
+      role: h.role,
+      content: String(h.content || '').slice(0, 1200),
+    }));
 
   const res = await apiFetch('/api/chat', {
     method: 'POST',
@@ -592,7 +608,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
       lang: req.lang,
       langName: req.langName,
       imageDataUrl: req.imageDataUrl ?? null,
-      history: req.history ?? [],
+      history,
       needsWeb: req.needsWeb ?? false,
       platformContext,
     }),

@@ -327,10 +327,10 @@ export default function MasterAI() {
 
     const history: ChatHistoryItem[] = messages
       .filter((m) => m.id !== 'welcome')
-      .slice(-10)
+      .slice(-6)
       .map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
-        content: m.text,
+        content: m.text.slice(0, 1200),
       }));
 
     try {
@@ -350,8 +350,8 @@ export default function MasterAI() {
 
       let responseText = hasImage
         ? isHindiLang(activeLang.code)
-          ? 'Chart load ho gaya. TradeX server connect karo taaki main trend, support, resistance detail mein bata sakun.'
-          : 'Chart loaded. Connect TradeX server so I can read trend, support, and resistance from your screenshot.'
+          ? 'Chart load ho gaya. Anika analysis ready nahi hui — thodi der baad dubara bhejo.'
+          : 'Chart loaded, but Anika could not finish analysis — try again in a moment.'
         : generateLocalTradingReply(userText, liveContext, activeLang.code);
 
       if (aiStatus.configured) {

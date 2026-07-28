@@ -21,7 +21,7 @@ import {
   isCloudUserStore,
   migrateFileUsersToCloud,
 } from './server/auth/appUserStore.mjs';
-import { createMasterAiRouter, MASTER_AI_MODELS } from './server/masterAi.mjs';
+import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
 import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
 import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
 
@@ -96,6 +96,7 @@ app.get('/api/chat/status', (req, res) => {
     models: MASTER_AI_MODELS.length,
     provider: ai.provider || null,
     keySource: key ? (key === envOpenRouterKey ? 'server' : 'profile') : 'none',
+    costMode: GEMINI_COST_MODE,
   });
 });
 

@@ -18,14 +18,18 @@ export const MASTER_AI_MODELS = [
 ];
 
 /** Cheap multimodal default — Flash-Lite reads images + text at lowest credit burn. */
+export const GEMINI_COST_MODE = {
+  textDefault: 'gemini-2.5-flash-lite',
+  visionDefault: 'gemini-2.5-flash',
+};
 const GEMINI_TEXT_CHAIN = [
-  'gemini-2.5-flash-lite',
+  GEMINI_COST_MODE.textDefault,
   'gemini-2.5-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
 ];
 const GEMINI_VISION_CHAIN = [
-  'gemini-2.5-flash',
+  GEMINI_COST_MODE.visionDefault,
   'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
@@ -174,36 +178,37 @@ function pickTextModels(requested, needsWeb, langCode, provider) {
   return [...new Set(chain)];
 }
 
-function pickVisionModels(langCode, provider) {
+function pickVisionModels(requested, provider) {
   if (provider === 'gemini') {
-    return [...GEMINI_VISION_CHAIN];
+    const chain = [];
+    const mapped = mapRequestedToGemini(requested);
+    // Explicit Pro only when user picks it — otherwise cheap Flash family
+    if (mapped) chain.push(mapped);
+    chain.push(...GEMINI_VISION_CHAIN);
+    return [...new Set(chain)];
   }
   if (provider === 'openai') {
     return ['gpt-4o-mini', 'gpt-4o'];
   }
-  const hindi = String(langCode || '').startsWith('hi');
   const chain = [
     'google/gemini-2.0-flash-001',
     'openai/gpt-4o-mini',
     'openai/gpt-4o',
     'anthropic/claude-3.5-haiku',
   ];
-  if (hindi) {
-    chain.unshift('google/gemini-2.0-flash-001');
-  }
   return [...new Set(chain)];
 }
 
 function mapRequestedToGemini(requested) {
-  const r = String(requested || '');
+  const r = String(requested || '').trim();
   if (!r || r === 'gemini/auto' || r === 'openrouter/auto') return null;
-  if (r.startsWith('gemini-')) return r;
-  if (r.includes('flash-lite')) return 'gemini-2.5-flash-lite';
-  if (r.includes('gemini-2.5-pro')) return 'gemini-2.5-pro';
-  if (r.includes('gemini-2.5-flash')) return 'gemini-2.5-flash';
+  if (r === 'gemini-2.5-flash-lite' || r.endsWith('flash-lite')) return 'gemini-2.5-flash-lite';
+  if (r === 'gemini-2.5-pro' || r.endsWith('2.5-pro')) return 'gemini-2.5-pro';
+  if (r === 'gemini-2.5-flash' || r.includes('gemini-2.5-flash')) return 'gemini-2.5-flash';
   if (r.includes('gemini-2.0')) return 'gemini-2.0-flash';
   if (r.includes('gemini-1.5-pro')) return 'gemini-1.5-pro';
   if (r.includes('gemini-1.5-flash')) return 'gemini-1.5-flash';
+  if (r.startsWith('gemini-')) return r;
   return null;
 }
 
@@ -212,18 +217,25 @@ function isShortChat(message) {
     .toLowerCase()
     .trim()
     .replace(/[!?.,…]+$/g, '');
-  return n.length <= 48 && /^(hi+|hello+|hey+|yo|sup|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|kaise\s*ho|thanks|thank\s*you|ok|okay|cool)$/i.test(n);
+  return (
+    n.length <= 48 &&
+    /^(hi+|hello+|hey+|yo|sup|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|kaise\s*ho|thanks|thank\s*you|ok|okay|cool)$/i.test(
+      n,
+    )
+  );
 }
 
-function geminiGenerationConfig(hasImage, shortChat) {
-  // thinkingBudget 0 = no hidden "thinking" tokens (big credit saver on 2.5 models)
-  const config = {
+/** Prefer cheap config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
+function geminiGenerationConfigs(hasImage, shortChat) {
+  const base = {
     temperature: hasImage ? 0.2 : shortChat ? 0.5 : 0.35,
     topP: hasImage ? 0.85 : 0.9,
     maxOutputTokens: hasImage ? 2048 : shortChat ? 256 : 1024,
   };
-  config.thinkingConfig = { thinkingBudget: 0 };
-  return config;
+  return [
+    { ...base, thinkingConfig: { thinkingBudget: 0 } },
+    base,
+  ];
 }
 
 function parseDataUrl(dataUrl) {
@@ -259,6 +271,17 @@ function createClient(apiKey) {
   };
 }
 
+async function tryGeminiOnce(gemini, { modelId, system, geminiHistory, userParts, generationConfig }) {
+  const model = gemini.getGenerativeModel({
+    model: modelId,
+    systemInstruction: system,
+    generationConfig,
+  });
+  const chat = model.startChat({ history: geminiHistory });
+  const result = await chat.sendMessage(userParts);
+  return String(result?.response?.text?.() ?? '').trim();
+}
+
 async function chatWithGemini(gemini, {
   platformContext,
   history,
@@ -291,34 +314,43 @@ async function chatWithGemini(gemini, {
     userParts.push({ inlineData: { mimeType: parsed.mimeType, data: parsed.data } });
   }
 
+  const configs = geminiGenerationConfigs(hasImage, shortChat);
   let lastError = null;
+
   for (const modelId of models) {
-    try {
-      const generationConfig = geminiGenerationConfig(hasImage, shortChat);
-      let model;
+    let modelFailedHard = false;
+    for (let i = 0; i < configs.length; i += 1) {
+      const generationConfig = configs[i];
       try {
-        model = gemini.getGenerativeModel({
-          model: modelId,
-          systemInstruction: system,
+        const reply = await tryGeminiOnce(gemini, {
+          modelId,
+          system,
+          geminiHistory,
+          userParts,
           generationConfig,
         });
-      } catch {
-        // Older SDK / model may reject thinkingConfig — retry without it
-        const { thinkingConfig: _t, ...safeConfig } = generationConfig;
-        model = gemini.getGenerativeModel({
-          model: modelId,
-          systemInstruction: system,
-          generationConfig: safeConfig,
-        });
+        if (reply) {
+          console.info(`[Master AI] ok model=${modelId} image=${hasImage ? 1 : 0}`);
+          return { reply, modelUsed: modelId, source: 'gemini' };
+        }
+      } catch (err) {
+        lastError = err;
+        const msg = String(err?.message ?? err);
+        const isLastConfig = i === configs.length - 1;
+        if (isLastConfig) {
+          console.warn(`[Master AI] Gemini ${modelId} failed:`, msg);
+          modelFailedHard = true;
+        } else if (/thinkingConfig|thinking_budget|Unknown name/i.test(msg)) {
+          console.warn(`[Master AI] Gemini ${modelId} retry without thinkingConfig`);
+        } else {
+          // Model/auth/quota errors — skip remaining configs for this model
+          console.warn(`[Master AI] Gemini ${modelId} failed:`, msg);
+          modelFailedHard = true;
+          break;
+        }
       }
-      const chat = model.startChat({ history: geminiHistory });
-      const result = await chat.sendMessage(userParts);
-      const reply = String(result?.response?.text?.() ?? '').trim();
-      if (reply) return { reply, modelUsed: modelId, source: 'gemini' };
-    } catch (err) {
-      lastError = err;
-      console.warn(`[Master AI] Gemini ${modelId} failed:`, err?.message ?? err);
     }
+    if (modelFailedHard) continue;
   }
   throw Object.assign(new Error(lastError?.message ?? 'All Gemini models failed'), { status: 502 });
 }
@@ -396,7 +428,7 @@ export function createMasterAiRouter(apiKey) {
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 
       const models = hasImage
-        ? pickVisionModels(lang, provider)
+        ? pickVisionModels(model, provider)
         : pickTextModels(model, needsWeb, lang, provider);
 
       if (provider === 'gemini' && gemini) {
