@@ -55,7 +55,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
     const provider = detectMasterAiKeyProvider(key);
     if (!isValidMasterAiKey(key) || !provider) {
       setOpenRouterMsg(
-        'Use Gemini key (AIza… from aistudio.google.com), OpenAI (sk-…), or OpenRouter (sk-or-…). ChatGPT Plus login is not an API key.',
+        'Use Gemini key (AQ.… or AIza… from aistudio.google.com), OpenAI (sk-…), or OpenRouter (sk-or-…). ChatGPT Plus login is not an API key.',
       );
       return;
     }
@@ -156,7 +156,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   ) : null}
                   {!serverAiReady && !hasLocalKey ? (
                     <p className="text-[10px] text-slate-500">
-                      Server pe key nahi — aistudio.google.com se Gemini key (AIza…), OpenAI (sk-…), ya OpenRouter (sk-or-…) paste karo.
+                      Server pe key nahi — aistudio.google.com se Gemini key (AQ.… / AIza…), OpenAI (sk-…), ya OpenRouter (sk-or-…) paste karo.
                       ChatGPT Plus/Premium website login API key nahi hota.
                     </p>
                   ) : null}
@@ -169,7 +169,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                           setOpenRouterInput(e.target.value);
                           setOpenRouterMsg('');
                         }}
-                        placeholder="AIza… (Gemini) · sk-… · sk-or-…"
+                        placeholder="AQ.… / AIza… (Gemini) · sk-… · sk-or-…"
                         className="w-full px-3 py-2 rounded-lg bg-dark-surface border border-dark-border text-xs text-slate-200 placeholder:text-slate-600 focus:border-gold/50 focus:outline-none"
                         autoComplete="off"
                       />

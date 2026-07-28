@@ -2,7 +2,7 @@ const STORAGE_KEY = 'master_openrouter_api_key';
 
 export const OPENROUTER_KEY_UPDATED_EVENT = 'tradeflow:openrouter-key-updated';
 
-/** Gemini AIza… · OpenRouter sk-or-… · OpenAI sk-… · ChatGPT Plus is NOT an API key */
+/** Gemini AQ.… / AIza… · OpenRouter sk-or-… · OpenAI sk-… · ChatGPT Plus is NOT an API key */
 export type MasterAiKeyProvider = 'gemini' | 'openrouter' | 'openai' | null;
 
 export function detectMasterAiKeyProvider(key: string): MasterAiKeyProvider {
@@ -10,7 +10,7 @@ export function detectMasterAiKeyProvider(key: string): MasterAiKeyProvider {
   if (!k) return null;
   if (k.startsWith('sk-or-')) return 'openrouter';
   if (k.startsWith('sk-')) return 'openai';
-  if (k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k)) return 'gemini';
+  if (k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k)) return 'gemini';
   return null;
 }
 

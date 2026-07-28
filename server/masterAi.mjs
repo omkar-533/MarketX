@@ -60,15 +60,16 @@ Read the image carefully before answering.
 
 const WEB_HINT = `User asked about latest/news/events beyond the app snapshot. Reason with general market knowledge and clearly separate known facts vs what must be verified on live NSE/broker feed.`;
 
-/** OpenAI sk-… · OpenRouter sk-or-… · Google AI Studio / Gemini AIza… */
+/** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
   const key = String(apiKey || '').trim();
   if (!key) return null;
   if (key.startsWith('sk-or-')) return 'openrouter';
   if (key.startsWith('sk-')) return 'openai';
-  if (key.startsWith('AIza')) return 'gemini';
-  // Explicit Gemini keys sometimes arrive without prefix checks in custom setups
-  if (/^AI[a-zA-Z0-9_-]{20,}$/.test(key)) return 'gemini';
+  // New Google AI Studio auth keys (2026+) + legacy standard keys
+  if (key.startsWith('AQ.') || key.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(key)) {
+    return 'gemini';
+  }
   return null;
 }
 
