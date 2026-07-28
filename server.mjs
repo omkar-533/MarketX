@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import http from 'http';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { getOpenRouterApiKey, loadServerEnv } from './server/loadEnv.mjs';
+import { getMasterAiApiKey, getOpenRouterApiKey, loadServerEnv } from './server/loadEnv.mjs';
 import { resolveOpenRouterKey } from './server/utils/openRouterKey.mjs';
 import { getServerConfig } from './server/config/env.mjs';
 import { createCorsMiddleware } from './server/middleware/cors.mjs';
@@ -44,10 +44,10 @@ app.use('/api/fyers', fyersRoutes);
 app.use('/api/auth', fyersAuthRoutes);
 app.use('/api/app-auth', appAuthRoutes);
 
-const envOpenRouterKey = getOpenRouterApiKey();
+const envOpenRouterKey = getMasterAiApiKey() || getOpenRouterApiKey();
 
 if (!envOpenRouterKey) {
-  console.warn('[Master AI] No OPENAI_API_KEY / OPENROUTER_API_KEY — users can add key in Profile');
+  console.warn('[Master AI] No GEMINI_API_KEY / OPENAI / OPENROUTER — users can add key in Profile');
 } else {
   console.log('[Master AI] API key loaded from env ✓');
 }
@@ -91,9 +91,10 @@ app.get('/api/chat/status', (req, res) => {
   res.json({
     configured: ai.isConfigured,
     message: ai.isConfigured
-      ? 'Master AI ready'
-      : 'Add OpenAI API key (platform.openai.com) or OpenRouter key in Profile',
+      ? `Master AI ready (${ai.provider || 'ok'})`
+      : 'Add Gemini API key (aistudio.google.com) or OpenAI / OpenRouter key in Profile',
     models: MASTER_AI_MODELS.length,
+    provider: ai.provider || null,
     keySource: key ? (key === envOpenRouterKey ? 'server' : 'profile') : 'none',
   });
 });

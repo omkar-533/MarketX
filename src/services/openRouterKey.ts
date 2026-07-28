@@ -2,14 +2,15 @@ const STORAGE_KEY = 'master_openrouter_api_key';
 
 export const OPENROUTER_KEY_UPDATED_EVENT = 'tradeflow:openrouter-key-updated';
 
-/** OpenRouter: sk-or-… · OpenAI API (platform.openai.com): sk-… · ChatGPT Plus is NOT an API key */
-export type MasterAiKeyProvider = 'openrouter' | 'openai' | null;
+/** Gemini AIza… · OpenRouter sk-or-… · OpenAI sk-… · ChatGPT Plus is NOT an API key */
+export type MasterAiKeyProvider = 'gemini' | 'openrouter' | 'openai' | null;
 
 export function detectMasterAiKeyProvider(key: string): MasterAiKeyProvider {
   const k = key.trim();
   if (!k) return null;
   if (k.startsWith('sk-or-')) return 'openrouter';
   if (k.startsWith('sk-')) return 'openai';
+  if (k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k)) return 'gemini';
   return null;
 }
 
@@ -41,8 +42,13 @@ export function maskOpenRouterApiKey(key: string): string {
   return `${key.slice(0, 10)}…${key.slice(-4)}`;
 }
 
-/** Sent to server on Master AI requests (Profile-saved OpenAI or OpenRouter key). */
+/** Sent to server on Master AI requests (Profile-saved Gemini / OpenAI / OpenRouter key). */
 export function openRouterRequestHeaders(): Record<string, string> {
   const key = loadOpenRouterApiKey();
-  return key ? { 'X-OpenRouter-Key': key } : {};
+  if (!key) return {};
+  const provider = detectMasterAiKeyProvider(key);
+  if (provider === 'gemini') {
+    return { 'X-Gemini-Key': key, 'X-OpenRouter-Key': key };
+  }
+  return { 'X-OpenRouter-Key': key };
 }

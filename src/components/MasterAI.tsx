@@ -499,8 +499,8 @@ export default function MasterAI() {
                   ? 'लाइव डेटा + प्लेटफ़ॉर्म — जैसे सीनियर ट्रेडर समझाता है'
                   : 'Live data + platform — answers like a senior trader'
                 : hindi
-                  ? 'Profile में OpenAI / OpenRouter API key डालें'
-                  : 'Add OpenAI or OpenRouter API key in Profile'}
+                  ? 'Profile में Gemini / OpenAI API key डालें'
+                  : 'Add Gemini or OpenAI API key in Profile'}
             </span>
           </div>
           <ShieldCheck className="w-4 h-4 text-[#d4af37] mb-1" />

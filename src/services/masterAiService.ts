@@ -25,7 +25,15 @@ export interface MasterAiModel {
 }
 
 /** Internal model id — not shown in UI */
-export const MASTER_AI_MODEL_ID = 'openrouter/auto';
+export const MASTER_AI_MODEL_ID = 'gemini/auto';
+
+export type MasterAiKeySource = 'server' | 'profile' | 'none';
+
+export interface MasterChatResponse {
+  reply: string;
+  modelUsed?: string;
+  source?: 'openrouter' | 'openai' | 'gemini' | 'local';
+}
 
 export type MasterAiLangCode = 'en-US' | 'hi-IN';
 
@@ -170,19 +178,15 @@ export function shouldUseWebSearch(input: string): boolean {
 }
 
 export const MASTER_AI_MODELS: MasterAiModel[] = [
-  { id: 'openrouter/auto', name: 'Auto (best)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
+  { id: 'gemini/auto', name: 'Auto (Gemini)', provider: 'Google', description: 'Best Gemini model for the question' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', description: 'Deep analysis & chart reads' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Fast, clear trading answers' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Quick multilingual answers' },
+  { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', description: 'Deeper analysis & charts' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', description: 'Fast, clear trading explanations' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Quick multilingual answers' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', description: 'Strong reasoning for strategies' },
-  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'Anthropic', description: 'Human-like, concise mentor tone' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'Meta', description: 'Open-weight, solid generalist' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', description: 'Technical & options-friendly' },
-  { id: 'mistralai/mistral-small-3.1-24b-instruct', name: 'Mistral Small', provider: 'Mistral', description: 'Efficient European model' },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B', provider: 'Qwen', description: 'Strong Hindi/English mix' },
   { id: 'perplexity/sonar', name: 'Sonar (web)', provider: 'Perplexity', description: 'Finds latest market info online', web: true },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini Flash (free)', provider: 'Google', description: 'Free tier via OpenRouter', free: true },
-  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 (free)', provider: 'Meta', description: 'Free open model fallback', free: true },
 ];
 
 export const PLATFORM_KNOWLEDGE = `
@@ -351,7 +355,7 @@ export async function fetchMasterAiStatus(): Promise<{
         ? keySource === 'server'
           ? 'Master AI ready (server key)'
           : 'Live intelligence ready'
-        : 'Add OpenAI or OpenRouter API key in Profile',
+        : 'Add Gemini API key (aistudio.google.com) in Profile',
     };
   } catch {
     return {

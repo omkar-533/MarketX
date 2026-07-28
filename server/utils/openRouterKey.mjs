@@ -1,8 +1,12 @@
-import { getOpenRouterApiKey } from '../loadEnv.mjs';
+import { getMasterAiApiKey } from '../loadEnv.mjs';
 
 export function resolveOpenRouterKey(req) {
-  const raw = req?.headers?.['x-openrouter-key'];
-  const fromHeader =
-    typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? String(raw[0] || '').trim() : '';
-  return fromHeader || getOpenRouterApiKey();
+  const headerNames = ['x-openrouter-key', 'x-gemini-key', 'x-master-ai-key'];
+  for (const name of headerNames) {
+    const raw = req?.headers?.[name];
+    const fromHeader =
+      typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? String(raw[0] || '').trim() : '';
+    if (fromHeader) return fromHeader;
+  }
+  return getMasterAiApiKey();
 }
