@@ -26,17 +26,23 @@ import {
   fetchMasterAiStatus,
   generateLocalTradingReply,
   getChartVisionPrompt,
+  getMasterAiLanguage,
   getMasterAiWelcome,
   getMasterAiSorryMessage,
   getTradingBlockMessage,
   isHindiLang,
   isTradingRelated,
   loadAutoSpeak,
+  loadLanguageMode,
   loadSelectedLanguage,
+  resolveMasterAiLanguage,
   saveAutoSpeak,
+  saveLanguageMode,
   saveSelectedLanguage,
   type ChatHistoryItem,
   type MasterAiLangCode,
+  type MasterAiLangMode,
+  type MasterAiLanguage,
 } from '../services/masterAiService';
 import {
   MASTER_AI_IMAGE_ACCEPT,
@@ -76,19 +82,25 @@ function getQuickActions(langCode: string) {
 }
 
 export default function MasterAI() {
-  const initialLang = loadSelectedLanguage();
+  const initialMode = loadLanguageMode();
+  const initialLang =
+    initialMode === 'auto'
+      ? getMasterAiLanguage(loadSelectedLanguage())
+      : getMasterAiLanguage(initialMode);
+  const [langMode, setLangMode] = useState<MasterAiLangMode>(initialMode);
+  const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'trafi',
-      text: getMasterAiWelcome(initialLang),
+      text:
+        initialMode === 'auto'
+          ? 'Auto language on — type in English, हिंदी, தமிழ், বাংলা… I’ll reply in your language. Send a chart (📷) anytime.'
+          : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
   ]);
   const [inputText, setInputText] = useState('');
-  const [selectedLang, setSelectedLang] = useState(
-    () => MASTER_AI_LANGUAGES.find((l) => l.code === initialLang) ?? MASTER_AI_LANGUAGES[0],
-  );
   const hindi = isHindiLang(selectedLang.code);
   const quickActions = getQuickActions(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
@@ -184,9 +196,27 @@ export default function MasterAI() {
     [selectedLang.code, hindi],
   );
 
-  const onLanguageChange = (code: MasterAiLangCode) => {
-    const lang = MASTER_AI_LANGUAGES.find((l) => l.code === code) ?? MASTER_AI_LANGUAGES[0];
+  const onLanguageChange = (value: string) => {
+    if (value === 'auto') {
+      setLangMode('auto');
+      saveLanguageMode('auto');
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === 'welcome'
+            ? {
+                ...m,
+                text: 'Auto language on — type in English, हिंदी, தமிழ், বাংলা… I’ll reply in your language. Send a chart (📷) anytime.',
+              }
+            : m,
+        ),
+      );
+      return;
+    }
+    const code = value as MasterAiLangCode;
+    const lang = getMasterAiLanguage(code);
+    setLangMode(code);
     setSelectedLang(lang);
+    saveLanguageMode(code);
     saveSelectedLanguage(code);
     setMessages((prev) =>
       prev.map((m) => (m.id === 'welcome' ? { ...m, text: getMasterAiWelcome(code) } : m)),
@@ -305,15 +335,24 @@ export default function MasterAI() {
 
     try {
       const liveContext = buildMasterMarketContext();
+      const activeLang = resolveMasterAiLanguage(
+        langMode,
+        userText || userNote || '',
+        selectedLang.code,
+      );
+      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
+        setSelectedLang(activeLang);
+        saveSelectedLanguage(activeLang.code);
+      }
       const visionMessage = hasImage
-        ? getChartVisionPrompt(selectedLang.code, userNote || undefined)
+        ? getChartVisionPrompt(activeLang.code, userNote || undefined)
         : userText;
 
       let responseText = hasImage
-        ? hindi
+        ? isHindiLang(activeLang.code)
           ? 'Chart load ho gaya. TradeX server connect karo taaki main trend, support, resistance detail mein bata sakun.'
           : 'Chart loaded. Connect TradeX server so I can read trend, support, and resistance from your screenshot.'
-        : generateLocalTradingReply(userText, liveContext, selectedLang.code);
+        : generateLocalTradingReply(userText, liveContext, activeLang.code);
 
       if (aiStatus.configured) {
         try {
@@ -321,8 +360,8 @@ export default function MasterAI() {
             {
               message: visionMessage,
               model: MASTER_AI_MODEL_ID,
-              lang: selectedLang.code,
-              langName: selectedLang.nativeLabel,
+              lang: activeLang.code,
+              langName: activeLang.nativeLabel,
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
               needsWeb: !hasImage && shouldUseWebSearch(userText),
@@ -332,7 +371,7 @@ export default function MasterAI() {
           if (result.reply) responseText = result.reply;
         } catch {
           responseText = getMasterAiSorryMessage(
-            selectedLang.code,
+            activeLang.code,
             hasImage ? 'chart' : 'chat',
           );
         }
@@ -411,12 +450,11 @@ export default function MasterAI() {
             </div>
             <p className="truncate text-[11px] text-slate-500" title={aiStatus.message}>
               {aiStatus.configured
-                ? hindi
-                  ? 'Online · chart & trading mentor'
-                  : 'Online · chart & trading mentor'
+                ? langMode === 'auto'
+                  ? `Online · Auto · ${selectedLang.nativeLabel}`
+                  : `Online · ${selectedLang.nativeLabel}`
                 : aiStatus.message}
-              {' · '}
-              {selectedLang.nativeLabel}
+              {langMode === 'auto' ? '' : ` · ${selectedLang.name}`}
             </p>
           </div>
         </div>
@@ -439,12 +477,15 @@ export default function MasterAI() {
           <label className="inline-flex items-center gap-1.5 rounded-lg border border-[#252b3a] bg-[#12161f] px-2 py-1.5">
             <Languages className="h-3.5 w-3.5 shrink-0 text-slate-500" />
             <select
-              value={selectedLang.code}
-              onChange={(e) => onLanguageChange(e.target.value as MasterAiLangCode)}
-              className="max-w-[140px] cursor-pointer bg-transparent text-[11px] font-medium text-slate-200 focus:outline-none sm:max-w-[160px]"
+              value={langMode}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              className="max-w-[150px] cursor-pointer bg-transparent text-[11px] font-medium text-slate-200 focus:outline-none sm:max-w-[170px]"
               aria-label="Reply language"
-              title="Master AI reply language"
+              title="Auto detects from your message, or lock a language"
             >
+              <option value="auto" className="bg-[#12161f] text-slate-200">
+                Auto detect
+              </option>
               {MASTER_AI_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code} className="bg-[#12161f] text-slate-200">
                   {l.nativeLabel} · {l.name}

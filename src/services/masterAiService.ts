@@ -142,6 +142,81 @@ export function isValidMasterAiLang(code: string): code is MasterAiLangCode {
   return MASTER_AI_LANGUAGES.some((l) => l.code === code);
 }
 
+export type MasterAiLangMode = MasterAiLangCode | 'auto';
+
+const SCRIPT_RANGES: { code: MasterAiLangCode; re: RegExp }[] = [
+  { code: 'gu-IN', re: /[\u0A80-\u0AFF]/g },
+  { code: 'pa-IN', re: /[\u0A00-\u0A7F]/g },
+  { code: 'ta-IN', re: /[\u0B80-\u0BFF]/g },
+  { code: 'te-IN', re: /[\u0C00-\u0C7F]/g },
+  { code: 'kn-IN', re: /[\u0C80-\u0CFF]/g },
+  { code: 'ml-IN', re: /[\u0D00-\u0D7F]/g },
+  { code: 'bn-IN', re: /[\u0980-\u09FF]/g },
+  { code: 'hi-IN', re: /[\u0900-\u097F]/g }, // Devanagari — refine Hindi vs Marathi below
+];
+
+const MARATHI_MARKERS =
+  /\b(आहे|आहेत|तुम्ही|तुमचा|मला|आम्ही|कसे|काय|नाही|होय|कृपया)\b|आहे|तुम्ही|मला/;
+
+const HINGLISH_MARKERS =
+  /\b(kya|hai|nahi|nahin|mat|karo|karna|batao|samjhao|dekho|bhai|yaar|kaise|kitna|thik|theek|acha|accha|please bata|market kaisa|aaj|kal|mere|mera|mujhe|humko|kyun|kyu)\b/i;
+
+function countMatches(text: string, re: RegExp): number {
+  return (text.match(re) || []).length;
+}
+
+/**
+ * Detect reply language from user text (script + light Hinglish/Marathi heuristics).
+ * Returns null when text is too short / inconclusive.
+ */
+export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
+  const raw = String(text || '').trim();
+  if (raw.length < 2) return null;
+
+  let best: { code: MasterAiLangCode; score: number } | null = null;
+  for (const row of SCRIPT_RANGES) {
+    const score = countMatches(raw, row.re);
+    if (score > 0 && (!best || score > best.score)) {
+      best = { code: row.code, score };
+    }
+  }
+
+  if (best && best.score >= 2) {
+    // Devanagari can be Hindi or Marathi
+    if (best.code === 'hi-IN' && MARATHI_MARKERS.test(raw)) {
+      return 'mr-IN';
+    }
+    return best.code;
+  }
+
+  // Single-script short words (e.g. "क्या")
+  if (best && best.score >= 1 && raw.length <= 24) {
+    if (best.code === 'hi-IN' && MARATHI_MARKERS.test(raw)) return 'mr-IN';
+    return best.code;
+  }
+
+  if (HINGLISH_MARKERS.test(raw)) return 'hi-IN';
+
+  // Mostly Latin letters → English
+  const letters = raw.replace(/[^A-Za-z\u0900-\u0D7F]/g, '');
+  if (letters.length >= 3) {
+    const latin = (letters.match(/[A-Za-z]/g) || []).length;
+    if (latin / letters.length >= 0.85) return 'en-US';
+  }
+
+  return null;
+}
+
+export function resolveMasterAiLanguage(
+  mode: MasterAiLangMode,
+  userText: string,
+  fallback: MasterAiLangCode = 'en-US',
+): MasterAiLanguage {
+  if (mode !== 'auto') return getMasterAiLanguage(mode);
+  const detected = detectMasterAiLanguage(userText);
+  return getMasterAiLanguage(detected || fallback);
+}
+
 function buildLanguageDirective(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   return [
@@ -490,6 +565,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
 const STORAGE_MODEL = 'master_ai_selected_model';
 const STORAGE_AUTO_SPEAK = 'master_ai_auto_speak';
 const STORAGE_LANGUAGE = 'master_ai_language';
+const STORAGE_LANG_MODE = 'master_ai_language_mode';
 
 export function loadSelectedLanguage(): MasterAiLangCode {
   if (typeof window === 'undefined') return 'en-US';
@@ -499,6 +575,22 @@ export function loadSelectedLanguage(): MasterAiLangCode {
 
 export function saveSelectedLanguage(code: MasterAiLangCode): void {
   if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_LANGUAGE, code);
+}
+
+export function loadLanguageMode(): MasterAiLangMode {
+  if (typeof window === 'undefined') return 'auto';
+  const mode = window.localStorage.getItem(STORAGE_LANG_MODE);
+  if (!mode || mode === 'auto') return 'auto';
+  if (isValidMasterAiLang(mode)) return mode;
+  return 'auto';
+}
+
+export function saveLanguageMode(mode: MasterAiLangMode): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(STORAGE_LANG_MODE, mode);
+  if (mode !== 'auto') {
+    window.localStorage.setItem(STORAGE_LANGUAGE, mode);
+  }
 }
 
 export function loadSelectedModel(): string {
