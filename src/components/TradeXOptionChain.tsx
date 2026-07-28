@@ -156,7 +156,7 @@ export default function TradeXOptionChain() {
           if (!snap?.rows.length || snap?.source === 'error') {
             setChainError(
               snap?.error ||
-                'Live data nahi mila — Profile se connect karein, phir Refresh.',
+                'Option chain data nahi mila — thodi der baad Refresh try karein.',
             );
             setStrikes([]);
             setChainSource('');

@@ -4,7 +4,6 @@ import { X, Mail, Crown, Shield, LogOut, KeyRound } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
-import { useBrokerSession } from '../hooks/useBrokerSession';
 import { fetchMasterAiStatus } from '../services/masterAiService';
 import {
   loadOpenRouterApiKey,
@@ -26,7 +25,6 @@ interface ProfileModalProps {
 
 export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrade }: ProfileModalProps) {
   const { theme } = useTheme();
-  const { session, startBrokerLogin } = useBrokerSession(Boolean(user));
   const [openRouterInput, setOpenRouterInput] = useState('');
   const [openRouterSaved, setOpenRouterSaved] = useState(() => loadOpenRouterApiKey());
   const [openRouterMsg, setOpenRouterMsg] = useState('');
@@ -115,29 +113,6 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
             </p>
 
             <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border gap-3">
-                <div>
-                  <span className="text-sm text-slate-400 block">TradeX live data</span>
-                  <span className="text-[10px] text-slate-500">
-                    {session.brokerConnected
-                      ? session.wsConnected
-                        ? 'Connected · auto-reconnect on'
-                        : 'Token ok · connecting WS…'
-                      : 'Not connected'}
-                  </span>
-                </div>
-                {session.brokerConnected ? (
-                  <span className="text-xs font-bold text-emerald-400">Live</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startBrokerLogin}
-                    className="text-xs font-bold text-gold hover:underline"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
               {showOpenRouterCard ? (
                 <div className="py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border space-y-2">
                   <div className="flex items-center justify-between gap-2">
