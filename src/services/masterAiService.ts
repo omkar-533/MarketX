@@ -262,12 +262,12 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHindiLang(langCode)) {
-    return 'Namaste! Main Master AI hoon — aapka trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataunga. Ya Nifty, options, risk ke baare mein poochho.';
+    return 'Namaste! Main Anika hoon — aapki trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataungi. Ya Nifty, options, risk ke baare mein poochho.';
   }
   if (langCode === 'en-US') {
-    return "Hi — I'm Master AI, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+    return "Hi — I'm Anika, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
   }
-  return `Namaste — I'm Master AI. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
+  return `Namaste — I'm Anika. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
@@ -364,8 +364,8 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Master AI (this assistant): trading-only copilot with chart screenshot analysis
-- Owner teachings: when admin uploads PDFs/notes, Master AI follows that house method first
+- Anika (Master AI): trading-only copilot with chart screenshot analysis — introduce as Anika
+- Owner teachings: when admin uploads PDFs/notes, Anika follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
 
@@ -415,16 +415,16 @@ export function isTradingRelated(input: string): boolean {
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hi = langCode.startsWith('hi');
   const variantsHi = [
-    'Hey! Kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
-    'Hi — main yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
-    'Namaste! Good to see you. Aaj kya dekhna hai — chart, setup, ya risk plan?',
-    'Arre hello! Bol kya chahiye — Nifty view, options lens, ya chart padhwaun?',
+    'Hey! Main Anika — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
+    'Hi — Anika yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
+    'Namaste! Anika here. Aaj kya dekhna hai — chart, setup, ya risk plan?',
+    'Arre hello! Anika bol rahi hoon — Nifty view, options lens, ya chart padhwaun?',
   ];
   const variantsEn = [
-    "Hey — good to see you. Want a quick market take, options view, or drop a chart and I'll read it?",
-    "Hi! I'm right here. Tell me what you need — Nifty pulse, risk check, or chart analysis.",
-    "Hello! How's the session treating you? Chart, setup, or just a quick desk check — your call.",
-    "Hey there. Fire away — market, options, risk, or paste a screenshot and I'll break it down.",
+    "Hey — Anika here. Want a quick market take, options view, or drop a chart and I'll read it?",
+    "Hi! I'm Anika — right here. Tell me what you need: Nifty pulse, risk check, or chart analysis.",
+    "Hello! Anika on the desk. Chart, setup, or a quick market check — your call.",
+    "Hey there — Anika. Fire away: market, options, risk, or paste a screenshot and I'll break it down.",
   ];
   const list = hi ? variantsHi : variantsEn;
   // Light variation from message length / time
@@ -577,7 +577,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang),
-        'User sent a casual greeting. Reply like a warm human trading buddy — short, natural, no market data dump.',
+        'User sent a casual greeting. You are Anika — reply like a warm human trading buddy — short, natural, no market data dump.',
         'Invite them to share a chart or ask about Nifty / options / risk.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang);
