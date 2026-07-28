@@ -66,10 +66,21 @@ export type AccessSnapshot = {
 export type OtpChallenge = {
   phone: string;
   expiresInSec: number;
+  channel: 'sms';
   devMode: boolean;
-  /** Only present when no SMS provider is configured, so testing still works. */
+  /** Only present when Twilio is not configured, so testing still works. */
   devCode: string | null;
 };
+
+function toOtpChallenge(data: Record<string, unknown>): OtpChallenge {
+  return {
+    phone: String(data.phone || ''),
+    expiresInSec: Number(data.expiresInSec) || 600,
+    channel: 'sms',
+    devMode: data.devMode === true,
+    devCode: data.devCode ? String(data.devCode) : null,
+  };
+}
 
 function toSession(data: {
   token?: unknown;
@@ -137,12 +148,7 @@ export async function startSignup(input: {
     body: JSON.stringify(input),
   });
   const data = await readJson(res, 'Could not send the OTP');
-  return {
-    phone: String(data.phone),
-    expiresInSec: Number(data.expiresInSec) || 600,
-    devMode: data.devMode === true,
-    devCode: data.devCode ? String(data.devCode) : null,
-  };
+  return toOtpChallenge(data);
 }
 
 export async function resendSignupOtp(phone: string): Promise<OtpChallenge> {
@@ -152,12 +158,7 @@ export async function resendSignupOtp(phone: string): Promise<OtpChallenge> {
     body: JSON.stringify({ phone }),
   });
   const data = await readJson(res, 'Could not resend the OTP');
-  return {
-    phone: String(data.phone),
-    expiresInSec: Number(data.expiresInSec) || 600,
-    devMode: data.devMode === true,
-    devCode: data.devCode ? String(data.devCode) : null,
-  };
+  return toOtpChallenge(data);
 }
 
 /** Step 2: OTP proves the number, the account is created with the free trial live. */
@@ -182,6 +183,7 @@ export type ResetChallenge = {
   /** Masked on the server — the full number is never sent back to the browser. */
   phoneMasked: string;
   expiresInSec: number;
+  channel: 'sms';
   devMode: boolean;
   devCode: string | null;
 };
@@ -190,6 +192,7 @@ function toResetChallenge(data: Record<string, unknown>): ResetChallenge {
   return {
     phoneMasked: String(data.phoneMasked || ''),
     expiresInSec: Number(data.expiresInSec) || 600,
+    channel: 'sms',
     devMode: data.devMode === true,
     devCode: data.devCode ? String(data.devCode) : null,
   };

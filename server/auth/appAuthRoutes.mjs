@@ -238,9 +238,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/* ────────────────────────── OTP signup ────────────────────────── */
+/* ────────────────────────── OTP signup (Twilio SMS) ────────────────────────── */
 
-/** POST /api/app-auth/signup/start — validate, then text an OTP. No account yet. */
+/** POST /api/app-auth/signup/start — validate, then SMS an OTP. No account yet. */
 router.post('/signup/start', async (req, res) => {
   const { error, value } = validateSignup(req.body || {});
   if (error) return res.status(400).json({ error });
@@ -271,6 +271,7 @@ router.post('/signup/start', async (req, res) => {
       phone: value.phone,
       expiresInSec,
       provider: sent.provider,
+      channel: 'sms',
       devMode: isDevSmsMode(),
       devCode: sent.devCode ?? null,
     });
@@ -297,6 +298,7 @@ router.post('/signup/resend', async (req, res) => {
       phone,
       expiresInSec,
       provider: sent.provider,
+      channel: 'sms',
       devMode: isDevSmsMode(),
       devCode: sent.devCode ?? null,
     });
@@ -346,7 +348,7 @@ router.post('/signup/verify', async (req, res) => {
   }
 });
 
-/* ────────────────────────── forgot password ────────────────────────── */
+/* ────────────────────────── forgot password (SMS OTP) ────────────────────────── */
 
 const RESET_PURPOSE = 'reset';
 
@@ -357,10 +359,6 @@ function maskPhone(phone) {
   return `+91 ${digits.slice(0, 2)}••••${digits.slice(-4)}`;
 }
 
-/**
- * The reset always runs against the mobile number on file — the client only ever
- * sends the identifier it already knows, so an email can never reveal a number.
- */
 async function resolveResetTarget(identifier) {
   const raw = String(identifier || '').trim();
   if (!raw) {
@@ -399,6 +397,7 @@ async function sendResetOtp(user) {
     sent: true,
     phoneMasked: maskPhone(user.phone),
     expiresInSec,
+    channel: 'sms',
     devMode: isDevSmsMode(),
     devCode: sent.devCode ?? null,
   };

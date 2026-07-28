@@ -27,8 +27,8 @@ export type AuthSignupFormProps = {
     phone: string;
     password: string;
   }) => Promise<OtpChallenge>;
-  onSignupVerify: (phone: string, code: string) => Promise<void>;
-  onSignupResend: (phone: string) => Promise<OtpChallenge>;
+  onSignupVerify: (email: string, code: string) => Promise<void>;
+  onSignupResend: (email: string) => Promise<OtpChallenge>;
   onSwitchToSignIn: () => void;
   /** Plan the visitor clicked — paid plans still start on the free trial. */
   selectedPlan?: PlanId;
@@ -203,7 +203,7 @@ export default function AuthSignupForm({
 
           {challenge?.devMode ? (
             <p className="auth-otp-devnote">
-              SMS provider not configured — test code <strong>{challenge.devCode}</strong> filled in
+              SMS / Twilio not configured — test code <strong>{challenge.devCode}</strong> filled in
               for you.
             </p>
           ) : null}

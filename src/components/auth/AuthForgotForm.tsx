@@ -189,7 +189,7 @@ export default function AuthForgotForm({
 
           {challenge?.devMode ? (
             <p className="auth-otp-devnote">
-              SMS provider not configured — test code <strong>{challenge.devCode}</strong> filled in
+              SMS / Twilio not configured — test code <strong>{challenge.devCode}</strong> filled in
               for you.
             </p>
           ) : null}

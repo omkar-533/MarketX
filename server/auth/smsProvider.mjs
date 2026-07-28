@@ -1,11 +1,14 @@
 /**
- * Provider-agnostic OTP delivery. Switching provider is one env var
- * (SMS_PROVIDER=fast2sms|msg91|dev) — no caller changes.
+ * SMS OTP via Twilio (works with the same Twilio account you connect in
+ * Supabase → Auth → Phone). Fast2SMS / MSG91 removed.
  *
- * fast2sms: OTP route, runs on Fast2SMS's own DLT template (no DLT work for us).
- * msg91:    OTP API, needs a DLT-approved template id.
- * dev:      nothing is sent; the code is logged and returned to the caller so the
- *           flow stays usable until a provider key is configured.
+ * Env:
+ *   SMS_PROVIDER=twilio|dev
+ *   TWILIO_ACCOUNT_SID=
+ *   TWILIO_AUTH_TOKEN=
+ *   TWILIO_MESSAGING_SERVICE_SID=   (preferred)
+ *   — or —
+ *   TWILIO_FROM_NUMBER=+1...        (Twilio phone / alphanumeric sender)
  */
 
 function trim(value) {
@@ -14,83 +17,95 @@ function trim(value) {
 
 export function smsProviderName() {
   const explicit = trim(process.env.SMS_PROVIDER).toLowerCase();
-  if (explicit) return explicit;
-  if (trim(process.env.FAST2SMS_API_KEY)) return 'fast2sms';
-  if (trim(process.env.MSG91_AUTH_KEY)) return 'msg91';
+  if (explicit === 'dev') return 'dev';
+  if (explicit === 'twilio') return 'twilio';
+  if (trim(process.env.TWILIO_ACCOUNT_SID) && trim(process.env.TWILIO_AUTH_TOKEN)) {
+    return 'twilio';
+  }
   return 'dev';
 }
 
 export function isDevSmsMode() {
-  return smsProviderName() === 'dev';
+  const hasTwilio =
+    Boolean(trim(process.env.TWILIO_ACCOUNT_SID)) && Boolean(trim(process.env.TWILIO_AUTH_TOKEN));
+  if (smsProviderName() === 'twilio' && hasTwilio) return false;
+  return true;
 }
 
-/** Providers want the bare 10-digit number, not E.164. */
+/** Indian 10-digit → E.164 (+91…) */
+export function toE164(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  const local = digits.length > 10 ? digits.slice(-10) : digits;
+  if (local.length !== 10) return '';
+  return `+91${local}`;
+}
+
 function localNumber(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
-async function sendViaFast2Sms(phone, code) {
-  const apiKey = trim(process.env.FAST2SMS_API_KEY);
-  if (!apiKey) throw Object.assign(new Error('FAST2SMS_API_KEY missing'), { status: 500 });
+async function sendViaTwilio(phone, code) {
+  const accountSid = trim(process.env.TWILIO_ACCOUNT_SID);
+  const authToken = trim(process.env.TWILIO_AUTH_TOKEN);
+  const messagingServiceSid = trim(process.env.TWILIO_MESSAGING_SERVICE_SID);
+  const fromNumber = trim(process.env.TWILIO_FROM_NUMBER);
 
-  const params = new URLSearchParams({
-    route: 'otp',
-    variables_values: code,
-    numbers: localNumber(phone),
-    flash: '0',
-  });
-
-  const res = await fetch(`https://www.fast2sms.com/dev/bulkV2?${params.toString()}`, {
-    method: 'GET',
-    headers: { authorization: apiKey },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok || body?.return === false) {
-    const message = body?.message || `Fast2SMS error ${res.status}`;
-    throw Object.assign(new Error(Array.isArray(message) ? message.join(', ') : message), {
-      status: 502,
+  if (!accountSid || !authToken) {
+    throw Object.assign(new Error('TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN missing'), {
+      status: 500,
     });
   }
-  return { provider: 'fast2sms', id: body?.request_id ?? null };
-}
-
-async function sendViaMsg91(phone, code) {
-  const authKey = trim(process.env.MSG91_AUTH_KEY);
-  const templateId = trim(process.env.MSG91_TEMPLATE_ID);
-  if (!authKey || !templateId) {
-    throw Object.assign(new Error('MSG91_AUTH_KEY or MSG91_TEMPLATE_ID missing'), { status: 500 });
+  if (!messagingServiceSid && !fromNumber) {
+    throw Object.assign(
+      new Error('Set TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER'),
+      { status: 500 },
+    );
   }
 
-  const res = await fetch('https://control.msg91.com/api/v5/otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', authkey: authKey },
-    body: JSON.stringify({
-      template_id: templateId,
-      mobile: `91${localNumber(phone)}`,
-      otp: code,
-    }),
+  const to = toE164(phone);
+  if (!to) {
+    throw Object.assign(new Error('Enter a valid 10-digit Indian mobile number'), { status: 400 });
+  }
+
+  const body = new URLSearchParams({
+    To: to,
+    Body: `Your Wolf Trade AI code is ${code}. Valid for 10 minutes.`,
   });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok || String(body?.type).toLowerCase() === 'error') {
-    throw Object.assign(new Error(body?.message || `MSG91 error ${res.status}`), { status: 502 });
+  if (messagingServiceSid) body.set('MessagingServiceSid', messagingServiceSid);
+  else body.set('From', fromNumber);
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = data?.message || data?.error_message || `Twilio error ${res.status}`;
+    throw Object.assign(new Error(message), { status: 502 });
   }
-  return { provider: 'msg91', id: body?.request_id ?? null };
+  return { provider: 'twilio', id: data?.sid ?? null };
 }
 
 /**
- * @returns {Promise<{ provider: string, devCode?: string }>} devCode is only set
- * when no provider is configured, so the UI can still complete verification.
+ * @returns {Promise<{ provider: string, devCode?: string }>}
  */
 export async function sendOtpSms(phone, code) {
   const provider = smsProviderName();
+  const hasTwilio =
+    Boolean(trim(process.env.TWILIO_ACCOUNT_SID)) && Boolean(trim(process.env.TWILIO_AUTH_TOKEN));
 
-  if (provider === 'fast2sms') return sendViaFast2Sms(phone, code);
-  if (provider === 'msg91') return sendViaMsg91(phone, code);
+  if (provider === 'twilio' && hasTwilio) return sendViaTwilio(phone, code);
 
   console.warn(
-    `[OTP] No SMS provider configured — code for ${phone} is ${code}. ` +
-      'Set SMS_PROVIDER + FAST2SMS_API_KEY to send real messages.',
+    `[OTP] Twilio not configured — code for ${localNumber(phone)} is ${code}. ` +
+      'Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_MESSAGING_SERVICE_SID on Render. ' +
+      'Same Twilio account can be connected in Supabase → Auth → Phone.',
   );
   return { provider: 'dev', devCode: code };
 }
