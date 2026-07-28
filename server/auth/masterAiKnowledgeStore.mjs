@@ -224,39 +224,65 @@ function tokenize(value) {
     .filter((t) => t.length > 2);
 }
 
+const STOP_TOKENS = new Set([
+  'the', 'and', 'for', 'with', 'this', 'that', 'from', 'have', 'what', 'when', 'where',
+  'kya', 'hai', 'hain', 'karo', 'batao', 'please', 'about', 'just', 'into', 'your',
+]);
+
 function scoreText(text, queryTokens) {
   if (!queryTokens.length) return 0;
   const lower = text.toLowerCase();
   let score = 0;
   for (const token of queryTokens) {
-    if (lower.includes(token)) score += 1;
+    if (STOP_TOKENS.has(token)) continue;
+    if (lower.includes(token)) score += token.length >= 5 ? 2 : 1;
   }
   return score;
 }
 
+function isNonTradingDoc(title = '') {
+  return /naacl|nlp research|computational linguistics|association for computational/i.test(title);
+}
+
+function isTradingDoc(title = '') {
+  return /smart money|smc|option|fundamental|technical|stock market|varsity|order block|nifty|trading/i.test(
+    title,
+  );
+}
+
 /**
- * Build a compact OWNER KNOWLEDGE block for the system prompt.
- * Prefers chunks that match the user question; otherwise newest docs.
+ * Build OWNER KNOWLEDGE only when docs actually match the question.
+ * Never dump unrelated PDF garbage into every reply (that makes answers dumb).
  */
 export function buildKnowledgeContext(userMessage = '') {
   const docs = readRows();
   if (!docs.length) return '';
 
-  const queryTokens = tokenize(userMessage);
+  const queryTokens = tokenize(userMessage).filter((t) => !STOP_TOKENS.has(t));
+  if (queryTokens.length < 1) return '';
+
   const scored = docs
-    .map((doc) => ({
-      doc,
-      score: scoreText(`${doc.title}\n${doc.text}`, queryTokens),
-    }))
+    .map((doc) => {
+      const title = String(doc.title || '');
+      let score = scoreText(`${title}\n${String(doc.text || '').slice(0, 40_000)}`, queryTokens);
+      if (isTradingDoc(title)) score += 1;
+      if (isNonTradingDoc(title) && !/nlp|language model|llm|transformer/i.test(userMessage)) {
+        score = 0;
+      }
+      return { doc, score };
+    })
+    .filter((row) => row.score >= 2)
     .sort((a, b) => b.score - a.score || Date.parse(b.doc.created_at) - Date.parse(a.doc.created_at));
+
+  if (!scored.length) return '';
 
   const parts = [];
   let used = 0;
-  for (const { doc, score } of scored) {
+  for (const { doc, score } of scored.slice(0, 3)) {
     if (used >= MAX_CONTEXT_CHARS) break;
-    const header = `### ${doc.title}${score > 0 ? ` (match:${score})` : ''}`;
-    const room = MAX_CONTEXT_CHARS - used - header.length - 2;
-    if (room < 200) break;
+    const header = `### ${doc.title} (match:${score})`;
+    const room = Math.min(4500, MAX_CONTEXT_CHARS - used - header.length - 2);
+    if (room < 280) break;
     const body = String(doc.text || '').slice(0, room);
     parts.push(`${header}\n${body}`);
     used += header.length + body.length + 2;
@@ -265,10 +291,10 @@ export function buildKnowledgeContext(userMessage = '') {
   if (!parts.length) return '';
 
   return [
-    'OWNER TEACHINGS (priority knowledge base):',
-    'When answering, prefer these owner rules / methods / notes over generic market advice.',
-    'If teachings conflict with live market numbers, say so — use live numbers for prices, teachings for method/rules.',
-    'If the question is outside these teachings, answer normally but do not invent owner rules.',
+    'OWNER TEACHINGS (use ONLY if relevant to THIS question):',
+    'Extract the useful method/rule — do NOT paste or ramble the PDF. Ignore unrelated chunks.',
+    'If teachings conflict with live market numbers, use live numbers for prices; teachings for method.',
+    'If nothing here matches the question, ignore OWNER TEACHINGS completely.',
     '',
     ...parts,
   ].join('\n');

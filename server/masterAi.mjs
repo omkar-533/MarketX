@@ -3,9 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 
 export const MASTER_AI_MODELS = [
-  { id: 'gemini/auto', name: 'Auto (Flash-Lite)', provider: 'Google', web: false },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google' },
+  { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google' },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google' },
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
   { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google' },
@@ -17,26 +17,26 @@ export const MASTER_AI_MODELS = [
   { id: 'perplexity/sonar', name: 'Sonar (web)', provider: 'Perplexity', web: true },
 ];
 
-/** Cheap multimodal default — Flash-Lite reads images + text at lowest credit burn. */
+/** Quality-first defaults — Flash is smart + still cheap; Lite only as fallback. */
 export const GEMINI_COST_MODE = {
-  textDefault: 'gemini-2.5-flash-lite',
+  textDefault: 'gemini-2.5-flash',
   visionDefault: 'gemini-2.5-flash',
 };
 const GEMINI_TEXT_CHAIN = [
   GEMINI_COST_MODE.textDefault,
-  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
 ];
 const GEMINI_VISION_CHAIN = [
   GEMINI_COST_MODE.visionDefault,
-  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
+  'gemini-2.5-flash-lite',
   'gemini-1.5-flash',
 ];
-const HISTORY_TURNS = 6;
-const HISTORY_MSG_CHARS = 1200;
-const CONTEXT_CAP_CHARS = 10_000;
+const HISTORY_TURNS = 8;
+const HISTORY_MSG_CHARS = 1800;
+const CONTEXT_CAP_CHARS = 14_000;
 
 const SYSTEM_PROMPT = `You are Jarvis — a male senior NSE/BSE trading mentor inside Wolf Trade AI (Master AI feature).
 
@@ -57,8 +57,9 @@ HARD RULES
 5. Always include risk: stop idea, invalidation, and position-size caution for trade ideas.
 6. Follow OUTPUT LANGUAGE instructions exactly (user-selected language).
 7. Prefer actionable structure over essays — except for greetings/small talk (those stay short and human).
-8. If OWNER TEACHINGS appear in context, treat them as the house method — answer from that base first.
+8. If OWNER TEACHINGS appear AND they clearly match the question, use them. If they are unrelated/garbage, IGNORE them and answer from trading judgment.
 9. Never switch gender mid-chat. Stay male Jarvis in every language.
+10. QUALITY: Be sharp. No filler, no fake confidence, no random textbook dump. Answer what was asked — specific levels, clear bias, clear risk. If unsure, say so in one line.
 
 GREETINGS & SMALL TALK (hello / hi / hey / namaste / good morning / kaise ho)
 - Reply like Jarvis — a friendly male senior trader just said hi back — 1–3 short lines max.
@@ -81,6 +82,7 @@ For chart/screenshot questions, extract visible levels first, then bias, then pl
 
 STYLE
 - Male desk voice: clear, confident, brotherly — not soft-feminine phrasing.
+- Sound like a sharp trader, not a confused chatbot or PDF reader.
 - Human first: contractions, natural rhythm, no corporate fluff.
 - Short paragraphs or tight bullets for analysis.
 - Indian market language: Nifty, Bank Nifty, CE/PE, OI, PCR, lot size, SL, target.
@@ -231,12 +233,12 @@ function isShortChat(message) {
   );
 }
 
-/** Prefer cheap config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
+/** Prefer quality config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
 function geminiGenerationConfigs(hasImage, shortChat) {
   const base = {
-    temperature: hasImage ? 0.2 : shortChat ? 0.5 : 0.35,
+    temperature: hasImage ? 0.2 : shortChat ? 0.45 : 0.3,
     topP: hasImage ? 0.85 : 0.9,
-    maxOutputTokens: hasImage ? 2048 : shortChat ? 256 : 1024,
+    maxOutputTokens: hasImage ? 2800 : shortChat ? 320 : 1600,
   };
   return [
     { ...base, thinkingConfig: { thinkingBudget: 0 } },
@@ -468,8 +470,8 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 1800 : shortChat ? 256 : 900,
-            temperature: hasImage ? 0.25 : shortChat ? 0.5 : 0.35,
+            max_tokens: hasImage ? 2200 : shortChat ? 320 : 1400,
+            temperature: hasImage ? 0.25 : shortChat ? 0.45 : 0.3,
             top_p: 0.9,
             messages,
           });

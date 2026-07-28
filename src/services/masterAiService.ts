@@ -418,9 +418,9 @@ export function shouldUseWebSearch(input: string): boolean {
 }
 
 export const MASTER_AI_MODELS: MasterAiModel[] = [
-  { id: 'gemini/auto', name: 'Auto (Flash-Lite)', provider: 'Google', description: 'Cheapest — text + chart images, long credits' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google', description: 'Lowest cost · still reads charts' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Best chart quality / cost balance' },
+  { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', description: 'Smart default — Gemini 2.5 Flash' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Best quality / cost for trading chat + charts' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google', description: 'Cheapest — lighter answers' },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Fast multilingual fallback' },
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', description: 'Deepest analysis (uses more credits)' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
@@ -572,10 +572,13 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
   if (compact) {
     return [
       buildLanguageDirective(langCode),
-      'You are Jarvis — male trading mentor (he/him). Keep answers short and practical. Hindi/Hinglish: masculine self-forms only.',
+      'You are Jarvis — male trading mentor (he/him). Be sharp and practical — no filler, no random PDF dump.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
-    ].join('\n');
+      ctx.signals ? `Signals: ${ctx.signals}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
   return [
     buildLanguageDirective(langCode),
