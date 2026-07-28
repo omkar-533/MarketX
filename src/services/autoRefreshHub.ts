@@ -8,7 +8,7 @@ import { CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
 import { getFnoLiveQuotes, refreshFnoLiveQuotesAsync } from './symbolLiveService';
 
 export const AUTO_REFRESH_EVENT = 'tradeflow:auto-refresh';
-export const DEFAULT_AUTO_REFRESH_MS = 15_000;
+export const DEFAULT_AUTO_REFRESH_MS = 45_000;
 const OI_REFRESH_EVERY = 8;
 const CHAIN_SYMBOLS = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
 const SECTIONS_REFRESH_EVERY = 4;

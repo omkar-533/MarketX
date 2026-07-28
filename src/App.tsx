@@ -7,7 +7,6 @@ import AppErrorBoundary from './components/AppErrorBoundary';
 import FyersLoginPage from './components/FyersLoginPage';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
-import { useBrokerSession } from './hooks/useBrokerSession';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -56,7 +55,6 @@ function AppWorkspace() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const auth = useAuth();
-  useBrokerSession(auth.isLoggedIn);
 
   useEffect(() => {
     const code = normalizeFyersAuthInput(window.location.href);

@@ -26,6 +26,12 @@ import { serverOfflineMessage, serverUnreachableMessage } from '../constants/bra
 import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from './apiAutoConnect';
 import { setMarketLiveError, setMarketLiveSnapshot, setMarketProvider } from './marketLiveStore';
 
+const FNO_BY_SYMBOL = new Map(FNO_UNIVERSE.map((i) => [i.symbol, i]));
+const SNAPSHOT_PUBLISH_MS = 400;
+let snapshotPublishTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSnapshotQuotes: LiveSymbolQuote[] | null = null;
+let pendingSnapshotError = '';
+
 function isLiveFeedActive(): boolean {
   return getMarketConnectionState().serverOk;
 }
@@ -202,8 +208,22 @@ function publishLiveSnapshot(liveQuotes: LiveSymbolQuote[], errorMsg = '') {
   });
 }
 
+/** Throttle UI store updates — ticks arrive ~20×/sec; React only needs ~2–3×/sec. */
+function schedulePublishLiveSnapshot(liveQuotes: LiveSymbolQuote[], errorMsg = '') {
+  pendingSnapshotQuotes = liveQuotes;
+  pendingSnapshotError = errorMsg;
+  if (snapshotPublishTimer) return;
+  snapshotPublishTimer = setTimeout(() => {
+    snapshotPublishTimer = null;
+    if (!pendingSnapshotQuotes) return;
+    publishLiveSnapshot(pendingSnapshotQuotes, pendingSnapshotError);
+    pendingSnapshotQuotes = null;
+    pendingSnapshotError = '';
+  }, SNAPSHOT_PUBLISH_MS);
+}
+
 function quoteFromTick(q: MarketTickDto): LiveSymbolQuote {
-  const inst = FNO_UNIVERSE.find((i) => i.symbol === q.symbol) ?? getFnoInstrument(q.symbol);
+  const inst = FNO_BY_SYMBOL.get(q.symbol) ?? getFnoInstrument(q.symbol);
   if (inst) return quoteToLive(inst, q);
   const n = normalizeQuoteChange(q);
   return {
@@ -233,12 +253,12 @@ export function applyStreamQuotes(quotes: MarketTickDto[]): void {
   const map = new Map(liveCache.map((item) => [item.symbol, item]));
   for (const q of quotes) {
     const row = quoteFromTick(q);
-    const inst = FNO_UNIVERSE.find((i) => i.symbol === q.symbol);
+    const inst = FNO_BY_SYMBOL.get(q.symbol);
     if (inst) map.set(q.symbol, row);
     else extraLiveCache.set(q.symbol, row);
   }
   liveCache = [...map.values()];
-  publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
+  schedulePublishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
 }
 
 async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {

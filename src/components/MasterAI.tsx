@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic,
@@ -19,7 +19,6 @@ import {
   ImagePlus,
   X,
 } from 'lucide-react';
-import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
   MASTER_AI_LANGUAGES,
   MASTER_AI_MODEL_ID,
@@ -109,9 +108,12 @@ export default function MasterAI() {
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [contextTick, setContextTick] = useState(0);
-  useAutoRefresh(() => setContextTick((t) => t + 1));
-  const context = useMemo(() => buildMasterMarketContext(), [contextTick]);
+  const [context, setContext] = useState(() => buildMasterMarketContext());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setContext(buildMasterMarketContext()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const refresh = () => void fetchMasterAiStatus().then(setAiStatus);
@@ -163,7 +165,7 @@ export default function MasterAI() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: isThinking ? 'auto' : 'smooth' });
   }, [messages, isThinking]);
 
   const speakText = useCallback(
@@ -308,6 +310,8 @@ export default function MasterAI() {
       }));
 
     try {
+      const liveContext = buildMasterMarketContext();
+      setContext(liveContext);
       const visionMessage = hasImage
         ? getChartVisionPrompt(selectedLang.code, userNote || undefined)
         : userText;
@@ -316,7 +320,7 @@ export default function MasterAI() {
         ? hindi
           ? 'Chart load ho gaya. TradeX server connect karo taaki main trend, support, resistance detail mein bata sakun.'
           : 'Chart loaded. Connect TradeX server so I can read trend, support, and resistance from your screenshot.'
-        : generateLocalTradingReply(userText, context, selectedLang.code);
+        : generateLocalTradingReply(userText, liveContext, selectedLang.code);
 
       if (aiStatus.configured) {
         try {
@@ -330,7 +334,7 @@ export default function MasterAI() {
               history,
               needsWeb: !hasImage && shouldUseWebSearch(userText),
             },
-            context,
+            liveContext,
           );
           if (result.reply) responseText = result.reply;
         } catch {

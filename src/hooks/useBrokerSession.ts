@@ -70,7 +70,7 @@ export function useBrokerSession(enabled = true) {
 
   useEffect(() => {
     void refresh();
-    const id = setInterval(() => void refresh(), 12_000);
+    const id = setInterval(() => void refresh(), 45_000);
     const onLive = () => void refresh();
     window.addEventListener(FYERS_MARKET_LIVE_EVENT, onLive);
     return () => {

@@ -1,5 +1,4 @@
 import { CORE_LIVE_SYMBOLS, FNO_UNIVERSE } from '../data/fnoUniverse';
-import { AUTO_REFRESH_EVENT } from './autoRefreshHub';
 import { isMarketLiveEnabled } from './marketApiService';
 import {
   refreshMarketConnection,
@@ -27,7 +26,7 @@ let started = false;
 let cleanupFns: (() => void)[] = [];
 let reconnectTimer: ReturnType<typeof setInterval> | null = null;
 
-const RECONNECT_POLL_MS = 10_000;
+const RECONNECT_POLL_MS = 15_000;
 const LIVE_SYMBOL_CAP = Math.max(
   CORE_LIVE_SYMBOLS.length,
   Number(import.meta.env.VITE_LIVE_SYMBOL_CAP || 40),
@@ -70,8 +69,9 @@ function mapQuoteToStream(q: FyersMarketQuote) {
 
 function onTickPayload(payload: { quotes: FyersMarketQuote[] }) {
   if (!payload?.quotes?.length) return;
+  // Quotes update the live store only — do NOT fan out AUTO_REFRESH_EVENT
+  // (that was re-running ~20×/sec across every useAutoRefresh subscriber).
   applyStreamQuotes(payload.quotes.map(mapQuoteToStream));
-  window.dispatchEvent(new CustomEvent(AUTO_REFRESH_EVENT, { detail: { tick: 0, at: Date.now() } }));
 }
 
 let tokenInvalidNotified = false;
