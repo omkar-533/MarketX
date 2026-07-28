@@ -29,9 +29,9 @@ export type MarketOhlcResponse = {
   fetchedAt: string;
 };
 
-/** Live market data is always required — no demo/simulated quotes */
+/** Live quotes/ticks off by default — enable only with VITE_MARKET_LIVE=true */
 export function isMarketLiveEnabled(): boolean {
-  return import.meta.env.VITE_MARKET_LIVE !== 'false';
+  return import.meta.env.VITE_MARKET_LIVE === 'true';
 }
 
 export type MarketTickDto = {

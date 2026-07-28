@@ -10,7 +10,7 @@ export const API_CONNECT_STATUS_EVENT = 'api-connect-status';
 export const FYERS_MARKET_LIVE_EVENT = 'fyers-market-live';
 
 const MAX_BOOT_ATTEMPTS = 50;
-const WATCH_MS = 15_000;
+const WATCH_MS = 60_000;
 
 let bootStarted = false;
 let connectAttempt = 0;
@@ -60,10 +60,8 @@ async function pingHealthBurst(): Promise<HealthPayload | null> {
 
 async function finishMarketHandshake(): Promise<void> {
   resetMarketConnectionCache();
-  const state = await refreshMarketConnection(true);
-  if (state.fyersConnected) {
-    window.dispatchEvent(new CustomEvent(FYERS_MARKET_LIVE_EVENT));
-  }
+  await refreshMarketConnection(true);
+  // Do not emit FYERS_MARKET_LIVE_EVENT — live ticks/stream are disabled.
 }
 
 async function onHealthOk(payload: HealthPayload): Promise<boolean> {
@@ -73,10 +71,6 @@ async function onHealthOk(payload: HealthPayload): Promise<boolean> {
     serverReady = true;
     window.dispatchEvent(new CustomEvent(API_SERVER_READY_EVENT));
     emitStatus();
-  }
-
-  if (payload.live?.wsConnected) {
-    window.dispatchEvent(new CustomEvent(FYERS_MARKET_LIVE_EVENT));
   }
 
   void finishMarketHandshake();

@@ -1,20 +1,21 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   getAutoRefreshTick,
-  startAutoRefreshHub,
   subscribeAutoRefresh,
   type AutoRefreshDetail,
 } from '../services/autoRefreshHub';
 import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { refreshMarketConnection } from '../services/marketConnection';
-import { startMarketTickStream } from '../services/marketTickStream';
 
 type AutoRefreshMeta = {
   tick: number;
   lastAt: number;
 };
 
-/** Starts global refresh hub only — does NOT re-render the whole app every tick */
+/**
+ * Keeps API connection warm. Does NOT start Fyers websocket ticks or
+ * global live-market refresh — product tabs don't consume live quotes.
+ */
 export function AutoRefreshProvider({
   enabled,
   children,
@@ -25,9 +26,6 @@ export function AutoRefreshProvider({
   useEffect(() => {
     const onApiReady = () => {
       void refreshMarketConnection(true);
-      if (enabled) {
-        startMarketTickStream();
-      }
     };
     window.addEventListener(API_SERVER_READY_EVENT, onApiReady);
 
@@ -35,14 +33,10 @@ export function AutoRefreshProvider({
       return () => window.removeEventListener(API_SERVER_READY_EVENT, onApiReady);
     }
 
-    const stopHub = startAutoRefreshHub();
-    const stopStream = startMarketTickStream();
     void refreshMarketConnection(true);
 
     return () => {
       window.removeEventListener(API_SERVER_READY_EVENT, onApiReady);
-      stopHub();
-      stopStream();
     };
   }, [enabled]);
 
