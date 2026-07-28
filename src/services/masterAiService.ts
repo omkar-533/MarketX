@@ -37,6 +37,7 @@ export interface MasterChatResponse {
 
 export type MasterAiLangCode =
   | 'en-US'
+  | 'hi-Latn'
   | 'hi-IN'
   | 'gu-IN'
   | 'mr-IN'
@@ -66,10 +67,18 @@ export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
     tone: 'senior NSE/BSE desk mentor — warm and direct',
   },
   {
+    code: 'hi-Latn',
+    name: 'Hinglish',
+    nativeLabel: 'Hinglish',
+    replyIn:
+      'natural Hinglish only — Roman Hindi + English mix (jaise: "Nifty weak hai, SL tight rakho"). Devanagari mat likho unless user ne Hindi script use kiya',
+    tone: 'desi trading buddy on the floor — casual, clear, warm',
+  },
+  {
     code: 'hi-IN',
     name: 'Hindi',
     nativeLabel: 'हिंदी',
-    replyIn: 'natural Hinglish or Hindi (Devanagari) — match the user script',
+    replyIn: 'natural Hindi in Devanagari (हिंदी लिपि) — trading terms like Nifty/CE/PE English me reh sakte hain',
     tone: 'seasoned Indian trader mentor (Mumbai/Delhi desk)',
   },
   {
@@ -134,8 +143,13 @@ export function getMasterAiLanguage(code: string): MasterAiLanguage {
   return MASTER_AI_LANGUAGES.find((l) => l.code === code) ?? MASTER_AI_LANGUAGES[0];
 }
 
+/** Hindi Devanagari or Hinglish (Roman) — both use desi desk tone helpers */
 export function isHindiLang(langCode: string): boolean {
-  return langCode.startsWith('hi');
+  return langCode === 'hi-IN' || langCode === 'hi-Latn' || langCode.startsWith('hi');
+}
+
+export function isHinglishLang(langCode: string): boolean {
+  return langCode === 'hi-Latn';
 }
 
 export function isValidMasterAiLang(code: string): code is MasterAiLangCode {
@@ -195,7 +209,7 @@ export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
     return best.code;
   }
 
-  if (HINGLISH_MARKERS.test(raw)) return 'hi-IN';
+  if (HINGLISH_MARKERS.test(raw)) return 'hi-Latn';
 
   // Mostly Latin letters → English
   const letters = raw.replace(/[^A-Za-z\u0900-\u0D7F]/g, '');
@@ -224,8 +238,8 @@ function buildLanguageDirective(langCode: string): string {
     `Persona: ${lang.tone}.`,
     'Keep trading terms familiar: Nifty, Bank Nifty, F&O, CE/PE, OI, PCR, max pain, SL, target, lot size.',
     'Educational only — no guaranteed profit claims.',
-    isHindiLang(langCode)
-      ? 'Avoid stiff textbook Hindi; sound like a senior on the trading floor.'
+    isHinglishLang(langCode) || isHindiLang(langCode)
+      ? 'Avoid stiff textbook Hindi; sound like a senior on the trading floor. Hinglish = Roman script mix.'
       : 'Prefer clarity over essays; short paragraphs or tight bullets.',
   ].join('\n');
 }
@@ -261,8 +275,11 @@ function istSessionNote(): string {
 
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
-  if (isHindiLang(langCode)) {
-    return 'Namaste! Main Anika hoon — aapki trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataungi. Ya Nifty, options, risk ke baare mein poochho.';
+  if (isHinglishLang(langCode)) {
+    return 'Namaste! Main Anika hoon — Hinglish me baat karti hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataungi. Ya Nifty, options, risk poochho.';
+  }
+  if (langCode === 'hi-IN') {
+    return 'नमस्ते! मैं Anika हूँ — आपकी trading साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगी। या Nifty, options, risk पूछो।';
   }
   if (langCode === 'en-US') {
     return "Hi — I'm Anika, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
@@ -414,7 +431,7 @@ export function isTradingRelated(input: string): boolean {
 }
 
 export function getHumanGreetingReply(langCode: string, userText: string): string {
-  const hi = langCode.startsWith('hi');
+  const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
     'Hey! Main Anika — kaisa raha din? Chart bhejna hai ya Nifty / options pe baat karni hai — bol.',
     'Hi — Anika yahin hoon. Seedha poochho: market pulse, options, risk, ya screenshot analysis.',
@@ -427,7 +444,7 @@ export function getHumanGreetingReply(langCode: string, userText: string): strin
     "Hello! Anika on the desk. Chart, setup, or a quick market check — your call.",
     "Hey there — Anika. Fire away: market, options, risk, or paste a screenshot and I'll break it down.",
   ];
-  const list = hi ? variantsHi : variantsEn;
+  const list = hinglish ? variantsHi : variantsEn;
   // Light variation from message length / time
   const idx = (userText.length + new Date().getMinutes()) % list.length;
   return list[idx];

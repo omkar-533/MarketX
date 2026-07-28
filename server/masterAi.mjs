@@ -400,16 +400,19 @@ export function createMasterAiRouter(apiKey) {
         });
       }
 
-      const hindi = lang.startsWith('hi');
-      const userTextBase = message || (hindi
+      const hinglish = lang === 'hi-Latn' || /hinglish/i.test(langName);
+      const hindi = !hinglish && lang.startsWith('hi');
+      const userTextBase = message || (hinglish || hindi
         ? 'Is chart/screenshot ko KHUD se poori analysis do — symbol, timeframe, trend, support/resistance, patterns, indicators, entry/SL/targets, risk. Extra sawaal ka wait mat karo.'
         : 'Analyze this chart/screenshot yourself end-to-end — symbol, timeframe, trend, support/resistance, patterns, indicators, entry/SL/targets, risk. Do not wait for extra questions.');
 
-      const langTag = hindi
-        ? '[OUTPUT LANGUAGE: natural Hinglish or Hindi — senior Indian trader tone]\n'
-        : lang.startsWith('en')
-          ? '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n'
-          : `[OUTPUT LANGUAGE: reply fully in ${langName || lang} — senior Indian trading mentor tone. Keep Nifty/Bank Nifty/CE/PE/OI/PCR/SL terms.]\n`;
+      const langTag = hinglish
+        ? '[OUTPUT LANGUAGE: natural Hinglish only — Roman Hindi + English mix. Devanagari mat likho. Senior desi trader tone]\n'
+        : hindi
+          ? '[OUTPUT LANGUAGE: natural Hindi in Devanagari — senior Indian trader tone]\n'
+          : lang.startsWith('en')
+            ? '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n'
+            : `[OUTPUT LANGUAGE: reply fully in ${langName || lang} — senior Indian trading mentor tone. Keep Nifty/Bank Nifty/CE/PE/OI/PCR/SL terms.]\n`;
 
       const qualityTag = hasImage
         ? '[TASK: AUTO FULL CHART ANALYSIS — Snapshot → Bias → Levels → Plan → Risk → Next check]\n'
@@ -421,7 +424,7 @@ export function createMasterAiRouter(apiKey) {
 
       let textBlock = `${langTag}${qualityTag}${userTextBase}`;
       if (hasImage) {
-        textBlock += hindi
+        textBlock += hinglish || hindi
           ? '\n\nImage padh ke saari important baatein batao. Jo dikhe sirf wohi numbers use karo.'
           : '\n\nRead the image and cover every important visible detail. Use only numbers you can see.';
       }
