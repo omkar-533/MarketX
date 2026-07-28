@@ -50,15 +50,40 @@ STYLE
 - Indian market language: Nifty, Bank Nifty, CE/PE, OI, PCR, lot size, SL, target.
 - No hype, no fear-mongering, no broker tips.`;
 
-const CHART_VISION_PROMPT = `CHART / SCREENSHOT MODE (priority):
-Read the image carefully before answering.
-1) Identify instrument, timeframe, and chart type if visible.
-2) Mark trend (bull / bear / range) and strength.
-3) List at least 2–3 supports and 2–3 resistances from visible price action.
-4) Note patterns, VWAP/MA/RSI/MACD/OI if shown.
-5) If option chain: PCR, max pain, heavy CE/PE strikes, bias.
-6) Give a practical trade plan (entry zone / SL / targets) + what would invalidate it.
-7) If blurry/unreadable — say what you cannot see. Never invent numbers.`;
+const CHART_VISION_PROMPT = `CHART / SCREENSHOT MODE (mandatory — auto full analysis):
+You are a senior chart reader. The user may send ONLY an image with little or no text.
+When an image is present, YOU must analyze it yourself end-to-end. Do not wait for extra questions.
+
+READ ORDER (do all that are visible)
+1) Identify: instrument / index / stock, exchange (NSE/BSE if shown), timeframe, chart type (candles, Heikin, footprint, option chain, DOM, TradingView layout).
+2) Last price / spot / LTP if printed on the image — quote only what you can see.
+3) Structure: higher highs/lows or lower highs/lows? Range? Breakout / breakdown in progress?
+4) Trend bias: bullish / bearish / range + strength (weak / medium / strong) + 1-line why.
+5) Levels: at least 2–3 supports AND 2–3 resistances from visible price / zones / marked lines. Prefer exact numbers from the chart.
+6) Patterns: candles (engulfing, doji, pin, inside), chart patterns (flag, triangle, channel, double top/bottom), gaps if shown.
+7) Indicators on screen: VWAP, EMA/SMA, RSI, MACD, Supertrend, Bollinger, volume — state reading + implication.
+8) Volume / OI / delta / footprint / orderflow: only if visible; explain buying/selling pressure briefly.
+9) If OPTION CHAIN / OI screenshot: PCR feel, max pain if shown, heavy CE vs PE strikes, writing/buying bias, spot vs pain.
+10) TRADE PLAN (educational, not a guarantee):
+    • Bias summary
+    • Entry zone
+    • Stop / invalidation
+    • Target 1 / Target 2 (zones)
+    • Position-size caution (risk small; no lot advice as sure-shot)
+11) What to watch next (next candle close, retest, VWAP reclaim, news risk).
+12) If blurry / cropped / unreadable — say exactly what you cannot see. NEVER invent prices, strikes, or indicator values.
+
+OUTPUT FORMAT (use these headings)
+1. Snapshot
+2. Bias
+3. Levels
+4. What the chart is saying
+5. Plan (entry / SL / targets)
+6. Risk & invalidation
+7. Next check
+
+If OWNER TEACHINGS are in context, apply that house method to the chart plan first.
+Keep it practical and desk-like — no essay fluff, no hype.`;
 
 const WEB_HINT = `User asked about latest/news/events beyond the app snapshot. Reason with general market knowledge and clearly separate known facts vs what must be verified on live NSE/broker feed.`;
 
@@ -222,6 +247,9 @@ async function chatWithGemini(gemini, {
       const model = gemini.getGenerativeModel({
         model: modelId,
         systemInstruction: system,
+        generationConfig: hasImage
+          ? { temperature: 0.2, topP: 0.85, maxOutputTokens: 4096 }
+          : { temperature: 0.35, topP: 0.9, maxOutputTokens: 2048 },
       });
       const chat = model.startChat({ history: geminiHistory });
       const result = await chat.sendMessage(userParts);
@@ -246,7 +274,10 @@ export function createMasterAiRouter(apiKey) {
       const message = typeof body?.message === 'string' ? body.message.trim() : '';
       const imageDataUrl = typeof body?.imageDataUrl === 'string' ? body.imageDataUrl.trim() : '';
       const platformContextRaw = typeof body?.platformContext === 'string' ? body.platformContext : '';
-      const ownerKnowledge = buildKnowledgeContext(message);
+      const hasImage = Boolean(imageDataUrl);
+      const ownerKnowledge = buildKnowledgeContext(
+        hasImage ? `${message} chart support resistance trend entry stop target` : message,
+      );
       const platformContext = ownerKnowledge
         ? `${platformContextRaw}\n\n${ownerKnowledge}`.trim()
         : platformContextRaw;
@@ -254,7 +285,6 @@ export function createMasterAiRouter(apiKey) {
       const lang = typeof body?.lang === 'string' ? body.lang : 'en-US';
       const needsWeb = Boolean(body?.needsWeb);
       const history = Array.isArray(body?.history) ? body.history : [];
-      const hasImage = Boolean(imageDataUrl);
 
       if (!message && !imageDataUrl) {
         throw Object.assign(new Error('message or image required'), { status: 400 });
@@ -276,18 +306,23 @@ export function createMasterAiRouter(apiKey) {
 
       const hindi = lang.startsWith('hi');
       const userTextBase = message || (hindi
-        ? 'Is chart/screenshot ko turant analyze karo — trend, support, resistance, patterns, aur trade plan.'
-        : 'Analyze this chart screenshot now — trend, support, resistance, patterns, and trade plan.');
+        ? 'Is chart/screenshot ko KHUD se poori analysis do — symbol, timeframe, trend, support/resistance, patterns, indicators, entry/SL/targets, risk. Extra sawaal ka wait mat karo.'
+        : 'Analyze this chart/screenshot yourself end-to-end — symbol, timeframe, trend, support/resistance, patterns, indicators, entry/SL/targets, risk. Do not wait for extra questions.');
 
       const langTag = hindi
         ? '[OUTPUT LANGUAGE: natural Hinglish or Hindi — senior Indian trader tone]\n'
         : '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n';
 
       const qualityTag = hasImage
-        ? '[TASK: full chart read → bias → levels → plan → risk]\n'
+        ? '[TASK: AUTO FULL CHART ANALYSIS — Snapshot → Bias → Levels → Plan → Risk → Next check]\n'
         : '[TASK: answer with bias → levels/context → plan → risk when trade-related]\n';
 
       let textBlock = `${langTag}${qualityTag}${userTextBase}`;
+      if (hasImage) {
+        textBlock += hindi
+          ? '\n\nImage padh ke saari important baatein batao. Jo dikhe sirf wohi numbers use karo.'
+          : '\n\nRead the image and cover every important visible detail. Use only numbers you can see.';
+      }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 
       const models = hasImage

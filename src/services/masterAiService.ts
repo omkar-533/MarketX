@@ -111,40 +111,40 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
   const note = userNote?.trim();
   if (isHindiLang(langCode)) {
     return [
-      'User ne trading chart / option chain / footprint screenshot bheja hai. Image dekhte hi turant poori analysis do — wait mat karo.',
-      'Structure: Bias → Levels (S/R) → Patterns/Indicators → Plan (entry/SL/targets) → Risk/invalidation.',
-      'Zaroor cover karo (jo image mein dikhe):',
-      '• Symbol, timeframe, exchange (NSE/BSE) agar visible ho',
-      '• Trend: bullish / bearish / sideways + strength',
-      '• Support levels (kam se kam 2–3) + Resistance levels (kam se kam 2–3)',
-      '• Candlestick / price action pattern (agar dikhe)',
-      '• Volume / OI clue (agar chart mein ho)',
-      '• Indicators: RSI, MACD, VWAP, MA — jo dikhe unka matlab',
-      '• Option chain ho to: PCR, max pain, CE/PE OI bias, key strikes',
-      '• Entry zone, stop-loss idea, target idea (educational — guarantee mat)',
-      '• Agar kuch unclear ho to honestly bolo — price mat guess karo',
-      'Tone: senior Indian trader mentor — seedha, practical Hinglish/Devanagari.',
-      note ? `User ka extra sawal: ${note}` : '',
+      'User ne trading chart / option chain / footprint screenshot bheja hai.',
+      'Tum KHUD image padh ke poori analysis do — extra sawaal ka wait mat karo.',
+      'Format (headings use karo):',
+      '1. Snapshot — symbol, timeframe, LTP/spot (agar dikhe)',
+      '2. Bias — bullish / bearish / range + strength + short why',
+      '3. Levels — kam se kam 2–3 support + 2–3 resistance (chart se exact numbers)',
+      '4. Chart kya keh raha hai — candles, patterns, VWAP/MA/RSI/MACD/volume/OI jo dikhe',
+      '5. Plan — entry zone, SL/invalidation, target 1 & 2 (educational, guarantee nahi)',
+      '6. Risk — size caution + kya setup todta hai',
+      '7. Next check — agla candle close / retest / VWAP etc.',
+      'Option chain ho to: PCR feel, max pain, heavy CE/PE, bias bhi do.',
+      'Blurry/unclear ho to honestly bolo — price mat invent karo.',
+      'Tone: senior Indian trader — seedha practical Hinglish.',
+      note ? `User ka extra sawal: ${note}` : 'User ne alag se sawal nahi likha — phir bhi full analysis do.',
     ]
       .filter(Boolean)
       .join('\n');
   }
 
   return [
-    'The user sent a trading chart, option chain, or platform screenshot. Analyze it immediately.',
-    'Structure: Bias → Levels (S/R) → Patterns/Indicators → Plan (entry/SL/targets) → Risk/invalidation.',
-    'Cover everything visible:',
-    '• Symbol, timeframe, exchange (NSE/BSE) if shown',
-    '• Trend: bullish / bearish / sideways and strength',
-    '• Support levels (at least 2–3) and Resistance levels (at least 2–3)',
-    '• Candlestick / price action patterns if visible',
-    '• Volume or OI clues on the chart',
-    '• Indicators shown (RSI, MACD, VWAP, MAs) — what they imply',
-    '• If option chain: PCR, max pain, CE/PE OI bias, key strikes',
-    '• Practical entry zone, stop-loss zone, target ideas (educational only)',
-    '• Say clearly if something is unreadable — do not invent prices',
-    'Tone: warm Indian English mentor, like a senior on the desk.',
-    note ? `User note: ${note}` : '',
+    'The user sent a trading chart, option chain, or platform screenshot.',
+    'Analyze the image yourself end-to-end — do not wait for extra questions.',
+    'Use these headings:',
+    '1. Snapshot — symbol, timeframe, LTP/spot if visible',
+    '2. Bias — bullish / bearish / range + strength + short why',
+    '3. Levels — at least 2–3 supports and 2–3 resistances (exact numbers from chart)',
+    '4. What the chart is saying — candles, patterns, VWAP/MA/RSI/MACD/volume/OI if shown',
+    '5. Plan — entry zone, stop/invalidation, target 1 & 2 (educational only)',
+    '6. Risk — size caution + what breaks the idea',
+    '7. Next check — next close / retest / VWAP reclaim etc.',
+    'If option chain: PCR feel, max pain, heavy CE/PE, bias.',
+    'If unreadable, say so — never invent prices.',
+    'Tone: senior Indian desk mentor.',
+    note ? `User note: ${note}` : 'No extra question — still give the full analysis.',
   ]
     .filter(Boolean)
     .join('\n');
