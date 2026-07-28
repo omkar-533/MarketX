@@ -12,7 +12,8 @@ const pdfParse = require('pdf-parse');
 const FILE = 'app-master-ai-knowledge.json';
 const MAX_DOCS = 40;
 const MAX_TEXT_PER_DOC = 120_000;
-const MAX_CONTEXT_CHARS = 8_000;
+/** Slightly larger so multi-PDF teachings can surface in answers */
+const MAX_CONTEXT_CHARS = 12_000;
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
 function readRows() {
@@ -56,11 +57,23 @@ function decodePdfDataUrl(dataUrl) {
   return buffer;
 }
 
+function collapseSpacedLetters(raw) {
+  // PDFs sometimes extract "H e l l o" — collapse runs of single spaced letters
+  return String(raw || '').replace(
+    /(?:^|[^A-Za-z0-9])((?:[A-Za-z]\s+){4,}[A-Za-z])(?=[^A-Za-z0-9]|$)/g,
+    (full, group) => {
+      const prefix = full.slice(0, full.length - group.length);
+      return `${prefix}${group.replace(/\s+/g, '')}`;
+    },
+  );
+}
+
 function cleanText(raw) {
-  return String(raw || '')
-    .replace(/\u0000/g, '')
+  return collapseSpacedLetters(String(raw || ''))
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
     .slice(0, MAX_TEXT_PER_DOC);
 }
@@ -116,14 +129,19 @@ export async function createKnowledgeFromText({ title, text, uploadedBy }) {
   });
 }
 
-function saveDoc({ title, filename, sourceType, text, uploadedBy }) {
+function saveDoc({ title, filename, sourceType, text, uploadedBy, id: forcedId }) {
   const rows = readRows();
-  if (rows.length >= MAX_DOCS) {
+  const titleKey = String(title || '').trim().toLowerCase();
+  const withoutDup = rows.filter((row) => {
+    if (forcedId && row.id === forcedId) return false;
+    return String(row.title || '').trim().toLowerCase() !== titleKey;
+  });
+  if (withoutDup.length >= MAX_DOCS) {
     throw Object.assign(new Error(`Max ${MAX_DOCS} teaching docs. Delete one pehle.`), {
       status: 400,
     });
   }
-  const id = `kb_${randomBytes(9).toString('hex')}`;
+  const id = forcedId || `kb_${randomBytes(9).toString('hex')}`;
   const createdAt = new Date().toISOString();
   const row = {
     id,
@@ -135,7 +153,7 @@ function saveDoc({ title, filename, sourceType, text, uploadedBy }) {
     uploaded_by: uploadedBy || null,
     created_at: createdAt,
   };
-  writeRows([row, ...rows]);
+  writeRows([row, ...withoutDup]);
   return fromRow(row);
 }
 
@@ -147,6 +165,56 @@ export async function deleteKnowledgeDoc(id) {
   }
   writeRows(next);
   return true;
+}
+
+/** Replace-or-insert by stable seed id / title (used by local training script + boot seed). */
+export async function upsertKnowledgeDoc({
+  id,
+  title,
+  text,
+  filename = null,
+  sourceType = 'pdf',
+  uploadedBy = 'cursor-train',
+}) {
+  const cleaned = cleanText(text);
+  if (cleaned.length < 40) {
+    throw Object.assign(new Error('Teaching text too short'), { status: 400 });
+  }
+  return saveDoc({
+    id: id || undefined,
+    title,
+    filename,
+    sourceType,
+    text: cleaned,
+    uploadedBy,
+  });
+}
+
+/**
+ * Load durable seed teachings shipped with the repo (survives Render redeploys).
+ * File: data/jarvis-teachings-seed.json
+ */
+export async function ensureSeedTeachings() {
+  const seed = readJsonFile('jarvis-teachings-seed.json', null);
+  const docs = Array.isArray(seed?.documents) ? seed.documents : [];
+  if (!docs.length) return { imported: 0, total: knowledgeDocCount() };
+
+  let imported = 0;
+  for (const doc of docs) {
+    const title = String(doc?.title || '').trim();
+    const text = String(doc?.text || '');
+    if (!title || text.length < 40) continue;
+    await upsertKnowledgeDoc({
+      id: doc.id || `seed_${Buffer.from(title).toString('hex').slice(0, 18)}`,
+      title,
+      text,
+      filename: doc.filename || null,
+      sourceType: doc.sourceType || 'pdf',
+      uploadedBy: doc.uploadedBy || 'seed',
+    });
+    imported += 1;
+  }
+  return { imported, total: knowledgeDocCount() };
 }
 
 function tokenize(value) {

@@ -22,6 +22,7 @@ import {
   migrateFileUsersToCloud,
 } from './server/auth/appUserStore.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
+import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
 import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
 import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
 
@@ -134,6 +135,9 @@ httpServer.listen(config.port, () => {
   attachSocketIo(httpServer);
   startFyersAutoConnectWatch();
   void bootFyersAutoConnect();
+  void ensureSeedTeachings()
+    .then((r) => console.log(`[Jarvis Teach] seed imported=${r.imported} total=${r.total}`))
+    .catch((err) => console.warn('[Jarvis Teach] seed import failed:', err?.message || err));
   console.log(`Wolf Trade AI API on port ${config.port} (${config.nodeEnv})`);
   console.log(`  Frontend: ${config.frontendUrl}`);
   console.log(`  Fyers redirect: ${config.fyersRedirect}`);
