@@ -29,7 +29,7 @@ HARD RULES
 3. Use LIVE CONTEXT numbers when present. Never invent prices, OI, PCR, or strikes not in context or the image.
 4. If data is missing or stale, say so and give a decision framework instead of fake precision.
 5. Always include risk: stop idea, invalidation, and position-size caution for trade ideas.
-6. Follow OUTPUT LANGUAGE instructions exactly (Hindi/Hinglish vs Indian English).
+6. Follow OUTPUT LANGUAGE instructions exactly (user-selected language).
 7. Prefer actionable structure over essays.
 8. If OWNER TEACHINGS appear in context, treat them as the house method — answer from that base first.
 
@@ -283,6 +283,7 @@ export function createMasterAiRouter(apiKey) {
         : platformContextRaw;
       const model = typeof body?.model === 'string' ? body.model : 'gemini/auto';
       const lang = typeof body?.lang === 'string' ? body.lang : 'en-US';
+      const langName = typeof body?.langName === 'string' ? body.langName.trim() : '';
       const needsWeb = Boolean(body?.needsWeb);
       const history = Array.isArray(body?.history) ? body.history : [];
 
@@ -311,7 +312,9 @@ export function createMasterAiRouter(apiKey) {
 
       const langTag = hindi
         ? '[OUTPUT LANGUAGE: natural Hinglish or Hindi — senior Indian trader tone]\n'
-        : '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n';
+        : lang.startsWith('en')
+          ? '[OUTPUT LANGUAGE: clear Indian English — senior desk mentor tone]\n'
+          : `[OUTPUT LANGUAGE: reply fully in ${langName || lang} — senior Indian trading mentor tone. Keep Nifty/Bank Nifty/CE/PE/OI/PCR/SL terms.]\n`;
 
       const qualityTag = hasImage
         ? '[TASK: AUTO FULL CHART ANALYSIS — Snapshot → Bias → Levels → Plan → Risk → Next check]\n'

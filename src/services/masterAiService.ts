@@ -35,39 +35,123 @@ export interface MasterChatResponse {
   source?: 'openrouter' | 'openai' | 'gemini' | 'local';
 }
 
-export type MasterAiLangCode = 'en-US' | 'hi-IN';
+export type MasterAiLangCode =
+  | 'en-US'
+  | 'hi-IN'
+  | 'gu-IN'
+  | 'mr-IN'
+  | 'ta-IN'
+  | 'te-IN'
+  | 'bn-IN'
+  | 'kn-IN'
+  | 'ml-IN'
+  | 'pa-IN';
 
 export interface MasterAiLanguage {
   code: MasterAiLangCode;
   name: string;
   nativeLabel: string;
+  /** What Gemini must write replies in */
+  replyIn: string;
+  /** Short tone note for the model */
+  tone: string;
 }
 
 export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
-  { code: 'en-US', name: 'English', nativeLabel: 'English' },
-  { code: 'hi-IN', name: 'Hindi', nativeLabel: 'हिंदी' },
+  {
+    code: 'en-US',
+    name: 'English',
+    nativeLabel: 'English',
+    replyIn: 'clear Indian English',
+    tone: 'senior NSE/BSE desk mentor — warm and direct',
+  },
+  {
+    code: 'hi-IN',
+    name: 'Hindi',
+    nativeLabel: 'हिंदी',
+    replyIn: 'natural Hinglish or Hindi (Devanagari) — match the user script',
+    tone: 'seasoned Indian trader mentor (Mumbai/Delhi desk)',
+  },
+  {
+    code: 'gu-IN',
+    name: 'Gujarati',
+    nativeLabel: 'ગુજરાતી',
+    replyIn: 'natural Gujarati (ગુજરાતી script preferred; Roman Gujarati OK if user types Latin)',
+    tone: 'friendly Ahmedabad / Surat trading mentor',
+  },
+  {
+    code: 'mr-IN',
+    name: 'Marathi',
+    nativeLabel: 'मराठी',
+    replyIn: 'natural Marathi (मराठी script preferred; Roman Marathi OK if user types Latin)',
+    tone: 'friendly Mumbai / Pune trading mentor',
+  },
+  {
+    code: 'ta-IN',
+    name: 'Tamil',
+    nativeLabel: 'தமிழ்',
+    replyIn: 'natural Tamil (தமிழ் script preferred; Roman Tamil OK if user types Latin)',
+    tone: 'friendly Chennai trading mentor',
+  },
+  {
+    code: 'te-IN',
+    name: 'Telugu',
+    nativeLabel: 'తెలుగు',
+    replyIn: 'natural Telugu (తెలుగు script preferred; Roman Telugu OK if user types Latin)',
+    tone: 'friendly Hyderabad trading mentor',
+  },
+  {
+    code: 'bn-IN',
+    name: 'Bengali',
+    nativeLabel: 'বাংলা',
+    replyIn: 'natural Bengali (বাংলা script preferred; Roman Bengali OK if user types Latin)',
+    tone: 'friendly Kolkata trading mentor',
+  },
+  {
+    code: 'kn-IN',
+    name: 'Kannada',
+    nativeLabel: 'ಕನ್ನಡ',
+    replyIn: 'natural Kannada (ಕನ್ನಡ script preferred; Roman Kannada OK if user types Latin)',
+    tone: 'friendly Bengaluru trading mentor',
+  },
+  {
+    code: 'ml-IN',
+    name: 'Malayalam',
+    nativeLabel: 'മലയാളം',
+    replyIn: 'natural Malayalam (മലയാളം script preferred; Roman Malayalam OK if user types Latin)',
+    tone: 'friendly Kochi / Kerala trading mentor',
+  },
+  {
+    code: 'pa-IN',
+    name: 'Punjabi',
+    nativeLabel: 'ਪੰਜਾਬੀ',
+    replyIn: 'natural Punjabi (ਗੁਰਮੁਖੀ preferred; Roman Punjabi OK if user types Latin)',
+    tone: 'friendly Punjab trading mentor',
+  },
 ];
+
+export function getMasterAiLanguage(code: string): MasterAiLanguage {
+  return MASTER_AI_LANGUAGES.find((l) => l.code === code) ?? MASTER_AI_LANGUAGES[0];
+}
 
 export function isHindiLang(langCode: string): boolean {
   return langCode.startsWith('hi');
 }
 
+export function isValidMasterAiLang(code: string): code is MasterAiLangCode {
+  return MASTER_AI_LANGUAGES.some((l) => l.code === code);
+}
+
 function buildLanguageDirective(langCode: string): string {
-  if (isHindiLang(langCode)) {
-    return [
-      'OUTPUT LANGUAGE (mandatory): Reply in natural Hinglish OR Hindi (Devanagari).',
-      'Match how the user writes — Roman Hinglish if they type in English letters, Devanagari if they use Hindi script.',
-      'Persona: seasoned Indian trader mentor (Mumbai/Delhi desk) — warm, direct, real.',
-      'Use: dekho, samjho, dhyaan rakho, risk mat bhoolna, SL, target, lot size, trend clear hai, support/tod.',
-      'Keep: Nifty, Bank Nifty, F&O, call/put, OI, PCR, max pain — familiar trading words.',
-      'Avoid stiff textbook Hindi; sound like a senior on the trading floor, not a news reader.',
-    ].join('\n');
-  }
+  const lang = getMasterAiLanguage(langCode);
   return [
-    'OUTPUT LANGUAGE (mandatory): Reply in clear Indian English only.',
-    'Persona: experienced NSE/BSE mentor — warm, direct, like explaining to a desk mate.',
-    'Use ₹, lakh/crore when natural. Prefer Nifty/Bank Nifty, not only "the index".',
-    'Avoid US-only slang and robotic lists unless the user asks for bullets.',
+    `OUTPUT LANGUAGE (mandatory): Reply in ${lang.replyIn}.`,
+    `Persona: ${lang.tone}.`,
+    'Keep trading terms familiar: Nifty, Bank Nifty, F&O, CE/PE, OI, PCR, max pain, SL, target, lot size.',
+    'Educational only — no guaranteed profit claims.',
+    isHindiLang(langCode)
+      ? 'Avoid stiff textbook Hindi; sound like a senior on the trading floor.'
+      : 'Prefer clarity over essays; short paragraphs or tight bullets.',
   ].join('\n');
 }
 
@@ -101,18 +185,26 @@ function istSessionNote(): string {
 }
 
 export function getMasterAiWelcome(langCode: string): string {
+  const lang = getMasterAiLanguage(langCode);
   if (isHindiLang(langCode)) {
     return 'Namaste! Main Master AI hoon — aapka trading saathi. Chart/screenshot bhejo (📷) — turant trend, support, resistance bataunga. Ya Nifty, options, risk ke baare mein poochho.';
   }
-  return "Hi — I'm Master AI, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+  if (langCode === 'en-US') {
+    return "Hi — I'm Master AI, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+  }
+  return `Namaste — I'm Master AI. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
   const note = userNote?.trim();
+  const lang = getMasterAiLanguage(langCode);
+  const langLine = `Write the FULL analysis in ${lang.replyIn}. Tone: ${lang.tone}.`;
+
   if (isHindiLang(langCode)) {
     return [
       'User ne trading chart / option chain / footprint screenshot bheja hai.',
       'Tum KHUD image padh ke poori analysis do — extra sawaal ka wait mat karo.',
+      langLine,
       'Format (headings use karo):',
       '1. Snapshot — symbol, timeframe, LTP/spot (agar dikhe)',
       '2. Bias — bullish / bearish / range + strength + short why',
@@ -123,7 +215,6 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
       '7. Next check — agla candle close / retest / VWAP etc.',
       'Option chain ho to: PCR feel, max pain, heavy CE/PE, bias bhi do.',
       'Blurry/unclear ho to honestly bolo — price mat invent karo.',
-      'Tone: senior Indian trader — seedha practical Hinglish.',
       note ? `User ka extra sawal: ${note}` : 'User ne alag se sawal nahi likha — phir bhi full analysis do.',
     ]
       .filter(Boolean)
@@ -133,6 +224,7 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
   return [
     'The user sent a trading chart, option chain, or platform screenshot.',
     'Analyze the image yourself end-to-end — do not wait for extra questions.',
+    langLine,
     'Use these headings:',
     '1. Snapshot — symbol, timeframe, LTP/spot if visible',
     '2. Bias — bullish / bearish / range + strength + short why',
@@ -143,7 +235,6 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
     '7. Next check — next close / retest / VWAP reclaim etc.',
     'If option chain: PCR feel, max pain, heavy CE/PE, bias.',
     'If unreadable, say so — never invent prices.',
-    'Tone: senior Indian desk mentor.',
     note ? `User note: ${note}` : 'No extra question — still give the full analysis.',
   ]
     .filter(Boolean)
@@ -402,8 +493,8 @@ const STORAGE_LANGUAGE = 'master_ai_language';
 
 export function loadSelectedLanguage(): MasterAiLangCode {
   if (typeof window === 'undefined') return 'en-US';
-  const saved = window.localStorage.getItem(STORAGE_LANGUAGE);
-  return saved === 'hi-IN' ? 'hi-IN' : 'en-US';
+  const saved = window.localStorage.getItem(STORAGE_LANGUAGE) || '';
+  return isValidMasterAiLang(saved) ? saved : 'en-US';
 }
 
 export function saveSelectedLanguage(code: MasterAiLangCode): void {

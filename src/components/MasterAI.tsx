@@ -53,24 +53,27 @@ interface Message {
   imageUrl?: string;
 }
 
-const QUICK_ACTIONS = {
-  'en-US': [
-    { id: 'market', label: 'Market pulse', icon: BarChart3, prompt: 'Give me a short, human market pulse on Nifty and Bank Nifty — what should traders watch today?' },
-    { id: 'options', label: 'Options lens', icon: Activity, prompt: 'Explain the current options setup using PCR, max pain, and one practical hedge idea.' },
-    { id: 'strategy', label: 'Strategy help', icon: Zap, prompt: 'Suggest a practical intraday or swing idea for the current market mood.' },
-    { id: 'risk', label: 'Risk control', icon: ShieldAlert, prompt: 'How should I manage risk, stop-loss, and position sizing right now?' },
-    { id: 'news', label: 'News impact', icon: Newspaper, prompt: 'Summarize latest market themes and how they may affect trading today.' },
-    { id: 'portfolio', label: 'Portfolio plan', icon: BriefcaseBusiness, prompt: 'Help me build a balanced watchlist approach for the next few sessions.' },
-  ],
-  'hi-IN': [
-    { id: 'market', label: 'बाज़ार अपडेट', icon: BarChart3, prompt: 'Nifty aur Bank Nifty ka short market pulse do — aaj traders kya dhyaan rakhein?' },
-    { id: 'options', label: 'ऑप्शन व्यू', icon: Activity, prompt: 'PCR, max pain ke saath current options setup samjhao aur ek practical hedge idea do.' },
-    { id: 'strategy', label: 'स्ट्रैटेजी', icon: Zap, prompt: 'Is market mood ke liye ek practical intraday ya swing strategy suggest karo.' },
-    { id: 'risk', label: 'रिस्क कंट्रोल', icon: ShieldAlert, prompt: 'Abhi risk, stop-loss aur position sizing kaise manage karun — seedha batao.' },
-    { id: 'news', label: 'न्यूज़ असर', icon: Newspaper, prompt: 'Latest market themes summarize karo aur trading par unka asar batao.' },
-    { id: 'portfolio', label: 'पोर्टफोलियो', icon: BriefcaseBusiness, prompt: 'Agle kuch sessions ke liye balanced watchlist approach banaane mein help karo.' },
-  ],
-} as const;
+const QUICK_ACTIONS_EN = [
+  { id: 'market', label: 'Market pulse', icon: BarChart3, prompt: 'Give me a short, human market pulse on Nifty and Bank Nifty — what should traders watch today?' },
+  { id: 'options', label: 'Options lens', icon: Activity, prompt: 'Explain the current options setup using PCR, max pain, and one practical hedge idea.' },
+  { id: 'strategy', label: 'Strategy help', icon: Zap, prompt: 'Suggest a practical intraday or swing idea for the current market mood.' },
+  { id: 'risk', label: 'Risk control', icon: ShieldAlert, prompt: 'How should I manage risk, stop-loss, and position sizing right now?' },
+  { id: 'news', label: 'News impact', icon: Newspaper, prompt: 'Summarize latest market themes and how they may affect trading today.' },
+  { id: 'portfolio', label: 'Portfolio plan', icon: BriefcaseBusiness, prompt: 'Help me build a balanced watchlist approach for the next few sessions.' },
+] as const;
+
+const QUICK_ACTIONS_HI = [
+  { id: 'market', label: 'बाज़ार अपडेट', icon: BarChart3, prompt: 'Nifty aur Bank Nifty ka short market pulse do — aaj traders kya dhyaan rakhein?' },
+  { id: 'options', label: 'ऑप्शन व्यू', icon: Activity, prompt: 'PCR, max pain ke saath current options setup samjhao aur ek practical hedge idea do.' },
+  { id: 'strategy', label: 'स्ट्रैटेजी', icon: Zap, prompt: 'Is market mood ke liye ek practical intraday ya swing strategy suggest karo.' },
+  { id: 'risk', label: 'रिस्क कंट्रोल', icon: ShieldAlert, prompt: 'Abhi risk, stop-loss aur position sizing kaise manage karun — seedha batao.' },
+  { id: 'news', label: 'न्यूज़ असर', icon: Newspaper, prompt: 'Latest market themes summarize karo aur trading par unka asar batao.' },
+  { id: 'portfolio', label: 'पोर्टफोलियो', icon: BriefcaseBusiness, prompt: 'Agle kuch sessions ke liye balanced watchlist approach banaane mein help karo.' },
+] as const;
+
+function getQuickActions(langCode: string) {
+  return isHindiLang(langCode) ? QUICK_ACTIONS_HI : QUICK_ACTIONS_EN;
+}
 
 export default function MasterAI() {
   const initialLang = loadSelectedLanguage();
@@ -87,7 +90,7 @@ export default function MasterAI() {
     () => MASTER_AI_LANGUAGES.find((l) => l.code === initialLang) ?? MASTER_AI_LANGUAGES[0],
   );
   const hindi = isHindiLang(selectedLang.code);
-  const quickActions = QUICK_ACTIONS[selectedLang.code];
+  const quickActions = getQuickActions(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -433,23 +436,22 @@ export default function MasterAI() {
             <span className="hidden sm:inline">Voice</span>
           </button>
 
-          <div className="flex items-center gap-0.5 rounded-lg border border-[#252b3a] bg-[#12161f] p-0.5">
-            <Languages className="ml-1.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
-            {MASTER_AI_LANGUAGES.map((l) => (
-              <button
-                key={l.code}
-                type="button"
-                onClick={() => onLanguageChange(l.code)}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                  selectedLang.code === l.code
-                    ? 'bg-[#d4af37] text-[#0b0e16]'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {l.nativeLabel}
-              </button>
-            ))}
-          </div>
+          <label className="inline-flex items-center gap-1.5 rounded-lg border border-[#252b3a] bg-[#12161f] px-2 py-1.5">
+            <Languages className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <select
+              value={selectedLang.code}
+              onChange={(e) => onLanguageChange(e.target.value as MasterAiLangCode)}
+              className="max-w-[140px] cursor-pointer bg-transparent text-[11px] font-medium text-slate-200 focus:outline-none sm:max-w-[160px]"
+              aria-label="Reply language"
+              title="Master AI reply language"
+            >
+              {MASTER_AI_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code} className="bg-[#12161f] text-slate-200">
+                  {l.nativeLabel} · {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </header>
 
