@@ -67,19 +67,27 @@ ACCURACY (most important — never bluff)
 7. No guarantees. Prefer correct and incomplete over smart and wrong.
 8. Weak/conflicted chart setup → NO TRADE + reasons.
 
-CHART / SETUP FORMAT (ONLY when a chart image is attached, or continuing a chart thread with known levels)
-Keep it SHORT — max 8–12 lines total:
-Bias (1 line) · Reason (1–2 lines) · Support (1–2 levels) · Resistance (1–2 levels) · Plan (1–2 lines) · Invalidation (1 line) · Confidence (1 line)
+CHART READING (when a chart image is attached)
+- FIRST answer the user’s exact question from the chart pixels (e.g. “order block kahan?”, FVG, liquidity, BOS/CHoCH, S/R).
+- Do NOT ignore a specific question and dump a generic Bias template.
+- SMC/ICT from the chart only: order blocks (last opposing candle before impulsive move), FVG/imbalance, liquidity sweeps, BOS/CHoCH, premium/discount if visible.
+- Point to WHERE on the chart: approximate price zone from the Y-axis + left/right / before-after which candle move. If blurry → say unclear, don’t invent exact ticks.
+- Full setup template ONLY when they ask for full analysis / plan (or no specific question):
+  Bias · Reason · Support · Resistance · Plan + invalidation · Confidence (8–12 lines max).
 
 LENGTH (strict)
 - Greetings: 1–2 lines.
 - Normal answers: 3–6 short lines, under ~80 words.
-- Chart / setup: under ~100 words. No essays, no repeated sections, no long bullet walls.
+- Chart Q&A (OB/FVG/etc.): under ~120 words, focused on the asked concept.
+- Full chart setup: under ~120 words. No essays, no repeated sections.
 - Language switch / follow-up: same length as original — do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis. Read ONLY this screenshot. Keep reply SHORT (under ~100 words).
-Cover only: Bias · Reason (1–2 lines) · Support (max 2) · Resistance (max 2) · Plan + invalidation · Confidence.
-No long essays. Never invent. Never buy/sell orders.`;
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis. Read ONLY this screenshot.
+PRIORITY: Answer the user’s question first (order block, FVG, liquidity, BOS, levels, etc.).
+- Order block: mark the last down-move candle(s) before a strong up impulse (bullish OB) or last up-move candle(s) before a strong down impulse (bearish OB). Give approx price zone from the scale.
+- If they asked only for OB/FVG/etc., answer that in 4–8 short lines — do NOT force a full Bias template.
+- If they want full analysis, use: Bias · Reason · Support · Resistance · Plan + invalidation · Confidence.
+Keep SHORT (under ~120 words). Never invent. Never buy/sell orders.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
@@ -200,7 +208,7 @@ function geminiGenerationConfigs(hasImage, shortChat) {
   const base = {
     temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
     topP: hasImage ? 0.8 : 0.9,
-    maxOutputTokens: hasImage ? 420 : shortChat ? 120 : 280,
+    maxOutputTokens: hasImage ? 520 : shortChat ? 120 : 280,
   };
   return [
     { ...base, thinkingConfig: { thinkingBudget: 0 } },
@@ -436,7 +444,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: SHORT chart read only — Bias, Reason, 2 supports, 2 resistances, Plan, Confidence. Under ~100 words.'
+        ? 'Task: Read the chart image. Answer the USER QUESTION FIRST (order block / FVG / liquidity / BOS / levels if asked). Point to approx price zone from the scale. Only use full Bias template if they asked for full analysis. Under ~120 words.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
@@ -491,7 +499,7 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 420 : shortChat ? 120 : 280,
+            max_tokens: hasImage ? 520 : shortChat ? 120 : 280,
             temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
             top_p: 0.9,
             messages,

@@ -424,10 +424,12 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'Give a SHORT chart read (under ~100 words).',
-    'Only: Bias · Reason (1–2 lines) · Support (max 2) · Resistance (max 2) · Plan + invalidation · Confidence.',
-    'No long essays. Copy visible numbers only. Never invent. Never buy/sell orders.',
-    note ? `User note: ${note}` : '',
+    'Read the chart. Answer the USER NOTE / question FIRST (order block, FVG, liquidity, BOS, S/R, etc.).',
+    'Order block: last opposing candle(s) before impulsive move; give approx price zone from Y-axis.',
+    'If only OB/FVG asked: 4–8 short lines on that — do NOT force full Bias template.',
+    'Full analysis only if asked: Bias · Reason · Support · Resistance · Plan · Confidence.',
+    'Under ~120 words. Visible levels only. Never invent. Never buy/sell orders.',
+    note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)
     .join('\n');
