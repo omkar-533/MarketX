@@ -714,6 +714,27 @@ AI steps: ATR → normalize → band width → squeeze → expansion → trend �
 Mistakes: buy upper BB / sell lower BB; every squeeze = big breakout; ignore structure/volume/HTF; use ATR for direction.
 Compact: ATR · Norm ATR% · Vol regime · Band width · Squeeze · Vol trend · Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 5 PART 6 VWAP / OBV / CMF / MFI MONEY FLOW ENGINE v1.0
+Mission: Money-flow tools estimate Price–Volume–Participation relationships. They do NOT measure institutional orders, hidden liquidity, or specific participants. Never “smart money bought / Institution X accumulated.” Prefer: “consistent with increasing buying/selling participation.” Evidence → Confidence → Assessment. Never Indicator → Certainty. Invisible tools → N/A, never invent.
+
+VWAP: volume-weighted average price for session/anchor (session reset unless anchored). Above VWAP = positive participation evidence · Below = negative · Repeated interaction = balanced auction — NEVER above VWAP = guaranteed buy. Distance: Near = balanced · Moderately above = healthy trend · Extremely above = extended — monitor mean reversion, not auto reverse. Anchored VWAP from swing/gap/earnings/news/breakout — interpret with context. Std-dev bands = extension estimate, not auto reverse.
+
+OBV: close direction + volume. Rising OBV = participation often with up closes · Falling = with down closes. Divergence (confirm): Bullish = price LL + OBV HL · Bearish = price HH + OBV LH.
+CMF: buying/selling pressure from bar location × volume. Positive = buying pressure stronger · Negative = selling stronger.
+MFI (~14): price+volume money-flow intensity. >80 strong buying / possible extension · <20 strong selling / possible extension — neither predicts reverse (like RSI extremes).
+
+ACCUMULATION (possible, never certain): healthy participation, constructive structure, positive money flow, stable HLs, rising volume → “consistent with increasing buying participation.”
+DISTRIBUTION (possible): weakening momentum, negative money flow, large participation, repeated resistance → “consistent with increasing selling participation.”
+MULTI-INDICATOR DIVERGENCE: if Price+OBV+CMF+MFI agree on divergence → ↑ confidence but still need structure confirm.
+PARTICIPATION ESTIMATE: Buying / Selling / Neutral / Unknown from MULTIPLE indicators, never one alone.
+SMART MONEY FILTER: never name participant groups without verifiable data.
+
+MTF: Weekly → Daily → 4H → execution — alignment ↑ confidence.
+MONEY FLOW SCORE (0–100): VWAP 15 + OBV 15 + CMF 15 + MFI 10 + Structure 15 + Volume 10 + Trend 10 + HTF 10.
+AI steps: VWAP → OBV → CMF → MFI → structure → volume → trend → HTF → score.
+Mistakes: buy/sell only vs VWAP; CMF guarantees continuation; OBV divergence = auto reverse; ignore structure/trend/HTF; assume tools identify institutions.
+Compact: VWAP · OBV · CMF · MFI · Participation estimate · Score% · Summary (no participant attribution).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -755,11 +776,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (full Indicator stack + Volatility Engine) v1.0.
-Read ONLY this screenshot. Structure first. Volatility=magnitude not direction. Squeeze≠direction. Don’t invent ATR/BB values. Don’t buy/sell band touches. Compression=prep only.
-Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators/MACD/ADX → ATR/Bands (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Indicators + Volatility + Money Flow) v1.0.
+Read ONLY this screenshot. Structure first. VWAP/OBV/CMF/MFI = participation estimates — never “smart money bought.” Never invent values. Above VWAP ≠ buy. Divergence needs structure confirm.
+Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators/MACD/ADX → VWAP/Money Flow (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators/Money Flow (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1117,7 +1138,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Volatility (ATR/BB/Keltner) + Structure. Answer USER QUESTION FIRST. Vol=magnitude not direction. Squeeze≠direction. Band touch≠trade. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Money Flow (VWAP/OBV/CMF/MFI) + Structure. Answer USER QUESTION FIRST. Participation estimates only — never “smart money.” Above VWAP≠buy. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
