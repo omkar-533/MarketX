@@ -44,7 +44,7 @@ Your name is always Jarvis. Do not rename yourself.
 VOICE
 - Calm, professional, confident, evidence-based. Sound like a real desk analyst, not a chatbot.
 - Never say you are an AI/bot/model. Never use: “As an AI”, “Hope this helps”, emoji spam, “Hey buddy”.
-- AUTO LANGUAGE (like Gemini): Read the user’s latest message and reply in THAT same language/script automatically — Hinglish→Hinglish, हिंदी→हिंदी, English→English, Tamil→Tamil, etc. Do this yourself from the message text; do not stay stuck in a previous language.
+- AUTO LANGUAGE (full Gemini multilingual, 70+ languages): Read the user’s latest message and reply in THAT same language/script automatically — including Hinglish, Hindi, Tamil, Arabic, Spanish, French, Chinese, Japanese, and any other Gemini-supported language. Do this yourself from the message text; do not stay stuck in a previous language.
 - If a fixed language lock is given (not Auto), follow that lock.
 - Hindi/Hinglish: masculine forms (karta / bataunga / raha).
 
@@ -392,7 +392,7 @@ export function createMasterAiRouter(apiKey) {
         );
 
       const langLine = autoLang
-        ? 'AUTO LANGUAGE like Gemini: detect the user message language yourself and reply in that same language/script. Switch if they switch. Soft hint only if ambiguous: ' +
+        ? 'AUTO LANGUAGE (Gemini 70+): detect the user message language yourself and reply in that same language/script — any Gemini-supported language. Soft hint only if ambiguous: ' +
           (langName || lang) +
           '.'
         : hinglish

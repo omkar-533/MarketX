@@ -35,18 +35,7 @@ export interface MasterChatResponse {
   source?: 'openrouter' | 'openai' | 'gemini' | 'local';
 }
 
-export type MasterAiLangCode =
-  | 'en-US'
-  | 'hi-Latn'
-  | 'hi-IN'
-  | 'gu-IN'
-  | 'mr-IN'
-  | 'ta-IN'
-  | 'te-IN'
-  | 'bn-IN'
-  | 'kn-IN'
-  | 'ml-IN'
-  | 'pa-IN';
+export type MasterAiLangCode = string;
 
 export interface MasterAiLanguage {
   code: MasterAiLangCode;
@@ -56,87 +45,121 @@ export interface MasterAiLanguage {
   replyIn: string;
   /** Short tone note for the model */
   tone: string;
+  /** Optional group for dropdown */
+  group?: 'popular' | 'india' | 'world';
 }
 
+const analystTone = 'senior market analyst — calm, professional, evidence-based';
+
+function lang(
+  code: string,
+  name: string,
+  nativeLabel: string,
+  group: 'popular' | 'india' | 'world' = 'world',
+  replyIn?: string,
+): MasterAiLanguage {
+  return {
+    code,
+    name,
+    nativeLabel,
+    replyIn: replyIn || `natural ${name} (${nativeLabel})`,
+    tone: analystTone,
+    group,
+  };
+}
+
+/**
+ * Languages Jarvis can lock to — aligned with Gemini web app multilingual support (70+).
+ * Auto mode unlocks the full Gemini multilingual capability even beyond this list.
+ */
 export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
-  {
-    code: 'en-US',
-    name: 'English',
-    nativeLabel: 'English',
-    replyIn: 'clear Indian English',
-    tone: 'senior NSE/BSE market analyst — calm, professional, evidence-based',
-  },
-  {
-    code: 'hi-Latn',
-    name: 'Hinglish',
-    nativeLabel: 'Hinglish',
-    replyIn:
-      'natural Hinglish only — Roman Hindi + English mix (jaise: "Nifty weak hai, structure clear rakho"). Devanagari mat likho unless user ne Hindi script use kiya',
-    tone: 'senior Indian market analyst on the desk — calm, professional, Hinglish',
-  },
-  {
-    code: 'hi-IN',
-    name: 'Hindi',
-    nativeLabel: 'हिंदी',
-    replyIn: 'natural Hindi in Devanagari (हिंदी लिपि) — trading terms like Nifty/CE/PE English me reh sakte hain',
-    tone: 'senior Indian market analyst — calm, professional (Mumbai/Delhi desk)',
-  },
-  {
-    code: 'gu-IN',
-    name: 'Gujarati',
-    nativeLabel: 'ગુજરાતી',
-    replyIn: 'natural Gujarati (ગુજરાતી script preferred; Roman Gujarati OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Ahmedabad / Surat desk)',
-  },
-  {
-    code: 'mr-IN',
-    name: 'Marathi',
-    nativeLabel: 'मराठी',
-    replyIn: 'natural Marathi (मराठी script preferred; Roman Marathi OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Mumbai / Pune desk)',
-  },
-  {
-    code: 'ta-IN',
-    name: 'Tamil',
-    nativeLabel: 'தமிழ்',
-    replyIn: 'natural Tamil (தமிழ் script preferred; Roman Tamil OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Chennai desk)',
-  },
-  {
-    code: 'te-IN',
-    name: 'Telugu',
-    nativeLabel: 'తెలుగు',
-    replyIn: 'natural Telugu (తెలుగు script preferred; Roman Telugu OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Hyderabad desk)',
-  },
-  {
-    code: 'bn-IN',
-    name: 'Bengali',
-    nativeLabel: 'বাংলা',
-    replyIn: 'natural Bengali (বাংলা script preferred; Roman Bengali OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Kolkata desk)',
-  },
-  {
-    code: 'kn-IN',
-    name: 'Kannada',
-    nativeLabel: 'ಕನ್ನಡ',
-    replyIn: 'natural Kannada (ಕನ್ನಡ script preferred; Roman Kannada OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Bengaluru desk)',
-  },
-  {
-    code: 'ml-IN',
-    name: 'Malayalam',
-    nativeLabel: 'മലയാളം',
-    replyIn: 'natural Malayalam (മലയാളം script preferred; Roman Malayalam OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Kochi desk)',
-  },
-  {
-    code: 'pa-IN',
-    name: 'Punjabi',
-    nativeLabel: 'ਪੰਜਾਬੀ',
-    replyIn: 'natural Punjabi (ਗੁਰਮੁਖੀ preferred; Roman Punjabi OK if user types Latin)',
-    tone: 'senior market analyst — calm, professional (Punjab desk)',
-  },
+  lang('en-US', 'English', 'English', 'popular', 'clear Indian English'),
+  lang(
+    'hi-Latn',
+    'Hinglish',
+    'Hinglish',
+    'popular',
+    'natural Hinglish — Roman Hindi + English mix. Devanagari mat likho unless user used Hindi script',
+  ),
+  lang(
+    'hi-IN',
+    'Hindi',
+    'हिंदी',
+    'popular',
+    'natural Hindi in Devanagari — trading terms Nifty/CE/PE may stay English',
+  ),
+  // India / South Asia
+  lang('as-IN', 'Assamese', 'অসমীয়া', 'india'),
+  lang('bn-IN', 'Bengali', 'বাংলা', 'india'),
+  lang('gu-IN', 'Gujarati', 'ગુજરાતી', 'india'),
+  lang('kn-IN', 'Kannada', 'ಕನ್ನಡ', 'india'),
+  lang('ml-IN', 'Malayalam', 'മലയാളം', 'india'),
+  lang('mr-IN', 'Marathi', 'मराठी', 'india'),
+  lang('ne-NP', 'Nepali', 'नेपाली', 'india'),
+  lang('or-IN', 'Odia', 'ଓଡ଼ିଆ', 'india'),
+  lang('pa-IN', 'Punjabi', 'ਪੰਜਾਬੀ', 'india'),
+  lang('ta-IN', 'Tamil', 'தமிழ்', 'india'),
+  lang('te-IN', 'Telugu', 'తెలుగు', 'india'),
+  lang('ur-PK', 'Urdu', 'اردو', 'india'),
+  // World (Gemini-supported)
+  lang('af-ZA', 'Afrikaans', 'Afrikaans', 'world'),
+  lang('sq-AL', 'Albanian', 'Shqip', 'world'),
+  lang('am-ET', 'Amharic', 'አማርኛ', 'world'),
+  lang('ar-SA', 'Arabic', 'العربية', 'world'),
+  lang('hy-AM', 'Armenian', 'Հայերեն', 'world'),
+  lang('az-AZ', 'Azerbaijani', 'Azərbaycan', 'world'),
+  lang('eu-ES', 'Basque', 'Euskara', 'world'),
+  lang('be-BY', 'Belarusian', 'Беларуская', 'world'),
+  lang('bs-BA', 'Bosnian', 'Bosanski', 'world'),
+  lang('bg-BG', 'Bulgarian', 'Български', 'world'),
+  lang('ca-ES', 'Catalan', 'Català', 'world'),
+  lang('zh-CN', 'Chinese (Simplified)', '中文 (简体)', 'world'),
+  lang('zh-TW', 'Chinese (Traditional)', '中文 (繁體)', 'world'),
+  lang('hr-HR', 'Croatian', 'Hrvatski', 'world'),
+  lang('cs-CZ', 'Czech', 'Čeština', 'world'),
+  lang('da-DK', 'Danish', 'Dansk', 'world'),
+  lang('nl-NL', 'Dutch', 'Nederlands', 'world'),
+  lang('et-EE', 'Estonian', 'Eesti', 'world'),
+  lang('fa-IR', 'Persian', 'فارسی', 'world'),
+  lang('fil-PH', 'Filipino', 'Filipino', 'world'),
+  lang('fi-FI', 'Finnish', 'Suomi', 'world'),
+  lang('fr-FR', 'French', 'Français', 'world'),
+  lang('gl-ES', 'Galician', 'Galego', 'world'),
+  lang('ka-GE', 'Georgian', 'ქართული', 'world'),
+  lang('de-DE', 'German', 'Deutsch', 'world'),
+  lang('el-GR', 'Greek', 'Ελληνικά', 'world'),
+  lang('he-IL', 'Hebrew', 'עברית', 'world'),
+  lang('hu-HU', 'Hungarian', 'Magyar', 'world'),
+  lang('is-IS', 'Icelandic', 'Íslenska', 'world'),
+  lang('id-ID', 'Indonesian', 'Bahasa Indonesia', 'world'),
+  lang('it-IT', 'Italian', 'Italiano', 'world'),
+  lang('ja-JP', 'Japanese', '日本語', 'world'),
+  lang('kk-KZ', 'Kazakh', 'Қазақ', 'world'),
+  lang('km-KH', 'Khmer', 'ខ្មែរ', 'world'),
+  lang('ko-KR', 'Korean', '한국어', 'world'),
+  lang('lo-LA', 'Lao', 'ລາວ', 'world'),
+  lang('lv-LV', 'Latvian', 'Latviešu', 'world'),
+  lang('lt-LT', 'Lithuanian', 'Lietuvių', 'world'),
+  lang('mk-MK', 'Macedonian', 'Македонски', 'world'),
+  lang('ms-MY', 'Malay', 'Bahasa Melayu', 'world'),
+  lang('mn-MN', 'Mongolian', 'Монгол', 'world'),
+  lang('no-NO', 'Norwegian', 'Norsk', 'world'),
+  lang('pl-PL', 'Polish', 'Polski', 'world'),
+  lang('pt-BR', 'Portuguese', 'Português', 'world'),
+  lang('ro-RO', 'Romanian', 'Română', 'world'),
+  lang('ru-RU', 'Russian', 'Русский', 'world'),
+  lang('sr-RS', 'Serbian', 'Српски', 'world'),
+  lang('sk-SK', 'Slovak', 'Slovenčina', 'world'),
+  lang('sl-SI', 'Slovenian', 'Slovenščina', 'world'),
+  lang('es-ES', 'Spanish', 'Español', 'world'),
+  lang('sw-KE', 'Swahili', 'Kiswahili', 'world'),
+  lang('sv-SE', 'Swedish', 'Svenska', 'world'),
+  lang('th-TH', 'Thai', 'ไทย', 'world'),
+  lang('tr-TR', 'Turkish', 'Türkçe', 'world'),
+  lang('uk-UA', 'Ukrainian', 'Українська', 'world'),
+  lang('uz-UZ', 'Uzbek', 'Oʻzbek', 'world'),
+  lang('vi-VN', 'Vietnamese', 'Tiếng Việt', 'world'),
+  lang('zu-ZA', 'Zulu', 'isiZulu', 'world'),
 ];
 
 export function getMasterAiLanguage(code: string): MasterAiLanguage {
@@ -161,16 +184,30 @@ export type MasterAiLangMode = MasterAiLangCode | 'auto';
 const SCRIPT_RANGES: { code: MasterAiLangCode; re: RegExp }[] = [
   { code: 'gu-IN', re: /[\u0A80-\u0AFF]/g },
   { code: 'pa-IN', re: /[\u0A00-\u0A7F]/g },
+  { code: 'or-IN', re: /[\u0B00-\u0B7F]/g },
   { code: 'ta-IN', re: /[\u0B80-\u0BFF]/g },
   { code: 'te-IN', re: /[\u0C00-\u0C7F]/g },
   { code: 'kn-IN', re: /[\u0C80-\u0CFF]/g },
   { code: 'ml-IN', re: /[\u0D00-\u0D7F]/g },
+  { code: 'th-TH', re: /[\u0E00-\u0E7F]/g },
+  { code: 'lo-LA', re: /[\u0E80-\u0EFF]/g },
+  { code: 'ka-GE', re: /[\u10A0-\u10FF]/g },
+  { code: 'am-ET', re: /[\u1200-\u137F]/g },
   { code: 'bn-IN', re: /[\u0980-\u09FF]/g },
-  { code: 'hi-IN', re: /[\u0900-\u097F]/g }, // Devanagari — refine Hindi vs Marathi below
+  { code: 'ko-KR', re: /[\uAC00-\uD7AF]/g },
+  { code: 'ja-JP', re: /[\u3040-\u30FF]/g },
+  { code: 'zh-CN', re: /[\u4E00-\u9FFF]/g },
+  { code: 'ar-SA', re: /[\u0600-\u06FF]/g },
+  { code: 'he-IL', re: /[\u0590-\u05FF]/g },
+  { code: 'ru-RU', re: /[\u0400-\u04FF]/g },
+  { code: 'el-GR', re: /[\u0370-\u03FF]/g },
+  { code: 'hi-IN', re: /[\u0900-\u097F]/g },
 ];
 
 const MARATHI_MARKERS =
   /\b(आहे|आहेत|तुम्ही|तुमचा|मला|आम्ही|कसे|काय|नाही|होय|कृपया)\b|आहे|तुम्ही|मला/;
+
+const NEPALI_MARKERS = /\b(छ|छन्|हो|होइन|तपाईं|मलाई|कृपया)\b/;
 
 function countMatches(text: string, re: RegExp): number {
   return (text.match(re) || []).length;
@@ -267,9 +304,10 @@ export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
     }
   }
 
-  // Clear Indic script → that language
+  // Clear Indic / other script → that language
   if (best && best.score >= 1) {
     if (best.code === 'hi-IN' && MARATHI_MARKERS.test(raw)) return 'mr-IN';
+    if (best.code === 'hi-IN' && NEPALI_MARKERS.test(raw)) return 'ne-NP';
     // Enough Devanagari / other script
     if (best.score >= 2 || raw.length <= 40) return best.code;
   }
@@ -325,16 +363,17 @@ function buildLanguageDirective(langCode: string, autoMode = false): string {
   const lang = getMasterAiLanguage(langCode);
   if (autoMode) {
     return [
-      'AUTO LANGUAGE (Gemini-style): Detect the language of the user’s latest message yourself and reply in that exact language/script.',
-      'Hinglish (Roman) → Hinglish. Devanagari Hindi → हिंदी. English → English. Other Indian languages → same.',
+      'AUTO LANGUAGE (full Gemini multilingual — 70+ languages):',
+      'Detect the user’s latest message language yourself and reply in that exact language/script.',
+      'Works for Hinglish, Hindi, Tamil, Telugu, Gujarati, Arabic, Spanish, French, Chinese, Japanese, and any other Gemini-supported language.',
       'Switch every turn if the user switches. Do not stay stuck in a previous language.',
-      `Soft hint only (ignore if it conflicts with the message): ${lang.nativeLabel}.`,
+      `Soft UI hint only (ignore if it conflicts with the message): ${lang.nativeLabel}.`,
     ].join(' ');
   }
   if (langCode === 'hi-Latn') return 'Language: Hinglish (Roman Hindi + English).';
   if (langCode === 'hi-IN') return 'Language: Hindi Devanagari.';
   if (langCode === 'en-US') return 'Language: clear Indian English.';
-  return `Language: ${lang.replyIn} (${lang.nativeLabel}).`;
+  return `Language lock: reply ONLY in ${lang.replyIn} (${lang.nativeLabel} / ${lang.name}).`;
 }
 
 function istSessionNote(): string {

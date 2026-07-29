@@ -67,7 +67,7 @@ export default function MasterAI() {
       role: 'trafi',
       text:
         initialMode === 'auto'
-          ? 'Auto language on (like Gemini) — type in English, Hinglish, or हिंदी and Jarvis replies in the same language. Share a chart for structure analysis.'
+          ? 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
           : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
@@ -178,7 +178,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on (like Gemini) — type in English, Hinglish, or हिंदी and Jarvis replies in the same language. Share a chart for structure analysis.',
+                text: 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.',
               }
             : m,
         ),
@@ -510,14 +510,30 @@ export default function MasterAI() {
               value={langMode}
               onChange={(e) => onLanguageChange(e.target.value)}
               aria-label="Reply language"
-              title="Auto detects from your message, or lock a language"
+              title="Auto uses full Gemini multilingual (70+). Or lock a language."
             >
-              <option value="auto">Auto · {selectedLang.nativeLabel}</option>
-              {MASTER_AI_LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.nativeLabel} · {l.name}
-                </option>
-              ))}
+              <option value="auto">Auto · Gemini 70+ · {selectedLang.nativeLabel}</option>
+              <optgroup label="Popular">
+                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'popular').map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.nativeLabel} · {l.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="India & South Asia">
+                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'india').map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.nativeLabel} · {l.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="World (Gemini)">
+                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'world').map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.nativeLabel} · {l.name}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
         </div>
