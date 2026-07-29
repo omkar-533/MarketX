@@ -21,9 +21,6 @@ function earlyApiWakePlugin() {
       (function () {
         var base = ${JSON.stringify(apiUrl)};
         fetch(base + "/api/health", { credentials: "include", mode: "cors" }).catch(function () {});
-        setTimeout(function () {
-          fetch(base + "/api/health", { credentials: "include", mode: "cors" }).catch(function () {});
-        }, 1200);
       })();
     </script>`;
       return html.replace("</head>", `${inject}\n  </head>`);

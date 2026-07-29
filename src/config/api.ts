@@ -12,9 +12,9 @@ export function getWsBaseUrl(): string {
   return api || (typeof window !== 'undefined' ? window.location.origin : '');
 }
 
-const API_TIMEOUT_MS = 50_000;
-const API_HEALTH_TIMEOUT_MS = 28_000;
-const API_RETRY_DELAY_MS = 1_000;
+const API_TIMEOUT_MS = 18_000;
+const API_HEALTH_TIMEOUT_MS = 12_000;
+const API_RETRY_DELAY_MS = 800;
 
 export type ApiFetchOpts = {
   retries?: number;
@@ -37,7 +37,7 @@ export async function apiFetch(
   const resolved = isFetchOpts(opts)
     ? opts
     : {
-        retries: path.includes('/api/health') ? 1 : 2,
+        retries: path.includes('/api/health') ? 0 : 1,
         timeoutMs: path.includes('/api/health') ? API_HEALTH_TIMEOUT_MS : API_TIMEOUT_MS,
       };
   const { retries = 2, timeoutMs = API_TIMEOUT_MS } = resolved;

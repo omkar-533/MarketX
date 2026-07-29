@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 type Candle = { o: number; h: number; l: number; c: number };
 
 const COUNT = 46;
-const TICK_MS = 80;
+const TICK_MS = 400;
 /** Ticks before the live candle is committed and a fresh one opens. */
 const TICKS_PER_CANDLE = 13;
 

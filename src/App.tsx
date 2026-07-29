@@ -1,14 +1,13 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import AuthPage from './components/auth/AuthPage';
 import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import FyersLoginPage from './components/FyersLoginPage';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 
+const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
@@ -39,6 +38,7 @@ const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
+const FyersLoginPage = lazy(() => import('./components/FyersLoginPage'));
 
 function PageLoader() {
   return (
@@ -238,21 +238,23 @@ function AppWorkspace() {
             }
           >
             {!auth.isLoggedIn ? (
-              <AuthPage
-                mode={auth.authMode}
-                onLogin={auth.login}
-                onSignup={auth.signup}
-                onSignupStart={auth.signupStart}
-                onSignupVerify={auth.signupVerify}
-                onSignupResend={auth.signupResend}
-                onResetStart={auth.resetStart}
-                onResetResend={auth.resetResend}
-                onResetComplete={auth.resetComplete}
-                onGoogleLogin={auth.googleLogin}
-                onOtpLogin={auth.otpLogin}
-                onForgotPassword={auth.forgotPassword}
-                onSwitchMode={auth.setAuthMode}
-              />
+              <Suspense fallback={<PageLoader />}>
+                <AuthPage
+                  mode={auth.authMode}
+                  onLogin={auth.login}
+                  onSignup={auth.signup}
+                  onSignupStart={auth.signupStart}
+                  onSignupVerify={auth.signupVerify}
+                  onSignupResend={auth.signupResend}
+                  onResetStart={auth.resetStart}
+                  onResetResend={auth.resetResend}
+                  onResetComplete={auth.resetComplete}
+                  onGoogleLogin={auth.googleLogin}
+                  onOtpLogin={auth.otpLogin}
+                  onForgotPassword={auth.forgotPassword}
+                  onSwitchMode={auth.setAuthMode}
+                />
+              </Suspense>
             ) : (
               <AppErrorBoundary onReset={() => handleTabChange('indicators')}>
                 {planPeek ? (
@@ -330,7 +332,11 @@ function AppWorkspace() {
 
 export default function App() {
   if (window.location.pathname === '/fyers-login') {
-    return <FyersLoginPage />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <FyersLoginPage />
+      </Suspense>
+    );
   }
   return <AppWorkspace />;
 }

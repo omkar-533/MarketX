@@ -9,8 +9,10 @@ export const API_SERVER_READY_EVENT = 'api-server-ready';
 export const API_CONNECT_STATUS_EVENT = 'api-connect-status';
 export const FYERS_MARKET_LIVE_EVENT = 'fyers-market-live';
 
-const MAX_BOOT_ATTEMPTS = 50;
-const WATCH_MS = 60_000;
+/** Keep wake light — Render free tier sleeps; hammering makes the UI feel hung. */
+const MAX_BOOT_ATTEMPTS = 8;
+const WATCH_MS = 3 * 60_000;
+const HEALTH_TIMEOUT_MS = 12_000;
 
 let bootStarted = false;
 let connectAttempt = 0;
@@ -21,8 +23,7 @@ function sleep(ms: number) {
 }
 
 function backoffMs(attempt: number): number {
-  if (attempt < 8) return 500;
-  return Math.min(1000 + attempt * 150, 2500);
+  return Math.min(800 + attempt * 400, 4_000);
 }
 
 function emitStatus() {
@@ -45,7 +46,10 @@ type HealthPayload = {
 
 async function pingHealthOnce(): Promise<HealthPayload | null> {
   try {
-    const h = await apiFetch('/api/health', undefined, { retries: 1, timeoutMs: 35_000 });
+    const h = await apiFetch('/api/health', undefined, {
+      retries: 0,
+      timeoutMs: HEALTH_TIMEOUT_MS,
+    });
     if (!h.ok) return null;
     return (await h.json()) as HealthPayload;
   } catch {
@@ -53,15 +57,11 @@ async function pingHealthOnce(): Promise<HealthPayload | null> {
   }
 }
 
-async function pingHealthBurst(): Promise<HealthPayload | null> {
-  const results = await Promise.all([pingHealthOnce(), pingHealthOnce()]);
-  return results.find((r) => r?.status === 'ok') ?? null;
-}
-
 async function finishMarketHandshake(): Promise<void> {
+  // Live ticks are off for product tabs — skip unless explicitly enabled.
+  if (String(import.meta.env.VITE_MARKET_LIVE || '').toLowerCase() !== 'true') return;
   resetMarketConnectionCache();
   await refreshMarketConnection(true);
-  // Do not emit FYERS_MARKET_LIVE_EVENT — live ticks/stream are disabled.
 }
 
 async function onHealthOk(payload: HealthPayload): Promise<boolean> {
@@ -77,13 +77,7 @@ async function onHealthOk(payload: HealthPayload): Promise<boolean> {
   return true;
 }
 
-async function tryConnect(useBurst: boolean): Promise<boolean> {
-  const payload = useBurst ? await pingHealthBurst() : await pingHealthOnce();
-  if (!payload || payload.status !== 'ok') return false;
-  return onHealthOk(payload);
-}
-
-async function pingApi(): Promise<boolean> {
+async function tryConnect(): Promise<boolean> {
   const payload = await pingHealthOnce();
   if (!payload || payload.status !== 'ok') return false;
   return onHealthOk(payload);
@@ -93,9 +87,7 @@ async function bootConnect(stopped: () => boolean): Promise<void> {
   for (let i = 0; i < MAX_BOOT_ATTEMPTS && !stopped(); i++) {
     connectAttempt = i + 1;
     emitStatus();
-
-    if (await tryConnect(i % 3 !== 1)) return;
-
+    if (await tryConnect()) return;
     await sleep(backoffMs(i));
   }
 }
@@ -112,7 +104,7 @@ export function startApiAutoConnect(): () => void {
   void bootConnect(isStopped);
 
   watchTimer = setInterval(() => {
-    if (!stopped) void pingApi();
+    if (!stopped && !serverReady) void tryConnect();
   }, WATCH_MS);
 
   return () => {
