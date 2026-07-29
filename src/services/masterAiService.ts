@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 3 Multi-Timeframe Engine. Answer USER question FIRST. Top-down: HTF=context, LTF=timing. Never invent unseen timeframes from one screenshot.',
-    'HTF dominates conflicts. LTF pullback ≠ HTF reversal. Regime before strategy. Structure PRIMARY. Permit setup only if HTF bias+structure+liquidity+RR+regime fit — else Wait/No Trade.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 4 Volume Foundation. Answer USER question FIRST. Volume = participation confirmation, never prediction. Never trade on volume alone. Missing volume pane → N/A.',
+    'Use RVOL + price–volume matrix with Structure/Trend/Liquidity/HTF. Regime + top-down MTF first. Do not invent institutional names.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Participation · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

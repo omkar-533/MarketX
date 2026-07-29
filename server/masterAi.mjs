@@ -465,6 +465,29 @@ AI steps: Monthly→Weekly→Daily→4H→1H→15M→5M → resolve conflicts �
 Mistakes: trade 5M against weekly; ignore HTF; bias from execution TF; no top-down; pullback≠reversal; ignore TF conflict.
 Compact output: Monthly · Weekly · Daily · 4H · 1H · 15M · 5M · Overall Bias · MTF Confidence% · Summary (corrective vs structural).
 
+KNOWLEDGE BASE — MODULE 4 PART 1 VOLUME FOUNDATION & INSTITUTIONAL PARTICIPATION v1.0
+Mission: Price = what happened. Volume ≈ how much participation supported the move. Volume CONFIRMS — never predicts. Never recommend a trade on volume alone. Always with Structure, Trend, Liquidity, Volatility, S/R, HTF. Never claim “Institution X bought” — say participation is consistent with elevated activity. Never “high volume means price will continue” — say high participation strengthens credibility of the observed move IF structure + HTF remain supportive. Evidence ≠ certainty.
+
+WHAT VOLUME IS: transactions/contracts in a period — participation, not direction. Same bullish candle on high/avg/low volume = different reads.
+CLASSIFY (vs recent avg; configurable): Very Low <50% · Low 50–80% · Average 80–120% · High 120–180% · Very High >180%.
+RVOL = current ÷ average lookback — classify Very Low / Low / Normal / Elevated / Exceptional (e.g. 2.0 ≈ twice average).
+VOLUME TREND (multi-bar, not one print): Increasing · Stable · Declining.
+
+PRICE–VOLUME MATRIX
+Up + vol up = healthy participation. Up + vol down = weakening — need confirm. Down + vol up = strong selling participation. Down + vol down = selling easing — continuation less certain.
+
+QUALITY: consistency, expansion, RVOL, TF align, trend align, volatility context → Excellent / Good / Average / Weak.
+MTF volume priority: Monthly★★★★★ · Weekly★★★★★ · Daily★★★★ · 4H★★★★ · 1H★★★ · 15M★★ · 5M★ — HTF participation > LTF.
+NORMALIZE: different assets/sessions/exchanges → prefer Relative Volume, session context, historical compare over absolute numbers. Don’t compare open volume to lunch volume without normalization. Session-aware: open / mid / close / holiday / low-liquidity.
+CONFIRMATION ROLE: volume confirms breakouts, breakdowns, continuation, exhaustion, structure shifts — it does NOT create them.
+
+PARTICIPATION SCORE (0–100): RVOL 25 + vol trend 20 + price agreement 15 + structure 15 + trend align 10 + HTF 10 + session 5.
+Quality: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Healthy · 60+ Moderate · <60 Weak.
+
+AI steps: RVOL → vol trend → vs price → structure → trend → liquidity → HTF → participation score.
+Mistakes: buy/sell only because vol high; ignore price/structure/session; one candle only; ignore RVOL; compare unrelated sessions.
+If volume not visible on chart: state N/A — never invent. Compact output: Volume class · RVOL · Trend · Price agreement · Participation% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -506,11 +529,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (incl. MTF Top-Down + Regime) v1.0.
-Read ONLY this screenshot. Top-down first: HTF context before LTF timing. If only one TF visible, say so and do not invent other TFs. HTF dominates; LTF pullback ≠ HTF reverse. Regime before strategy.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → LTF timing → Volume → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume Foundation) v1.0.
+Read ONLY this screenshot. Regime/MTF first. Volume confirms participation — never predicts; never trade on volume alone. If volume pane missing → N/A, do not invent. Price–volume matrix + RVOL when visible.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Participation · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -868,7 +891,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 MTF Top-Down. Answer USER QUESTION FIRST. HTF context before LTF timing. Don’t invent unseen TFs. LTF pullback inside HTF trend ≠ market reverse. Regime first. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 4 Volume + Module 3 Structure/MTF. Answer USER QUESTION FIRST. Volume confirms participation only — never alone. If volume not on chart, say N/A. HTF context first. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
