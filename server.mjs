@@ -114,7 +114,7 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     const status = error?.status ?? 500;
     const message = error instanceof Error ? error.message : 'AI service error';
-    if (status >= 500) console.error('[Master AI]', message);
+    if (status >= 500) console.error('[Analyse AI]', message);
     return res.status(status).json({ error: message });
   }
 });
