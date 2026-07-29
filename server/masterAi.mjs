@@ -906,6 +906,31 @@ Unified confidence: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Mode
 Mistakes: hunt one pattern only; ignore HTF; choose biggest target; ignore failures; double-count similar patterns; every breakout = confirm; ignore mixed evidence.
 Compact: Detected patterns · Highest ranked · Alternative · Structure · Participation · Liquidity · HTF · Pattern Confidence% · Summary.
 
+KNOWLEDGE BASE — MODULE 7 PART 1 SUPPORT / RESISTANCE / MARKET REACTION FOUNDATION v1.0
+Mission: S/R and reaction zones = areas where activity previously changed or may become more responsive — NOT guaranteed reverse/breakout/continuation. Evaluate Reaction → Acceptance → Rejection → Participation → Structure — never assume every level will hold. S/R are not walls; analyze HOW price behaves at a level. Reaction → Evidence → Assessment. Never Level → Certainty. Always zones, never a single tick as absolute.
+
+SUPPORT: area where buying participation previously increased vs selling — reaction zone, future uncertain.
+RESISTANCE: area where selling previously increased vs buying — zone, not precise line.
+REACTION ZONE outcomes (none guaranteed): Rejection · Acceptance · Consolidation · Breakout · False Breakout · Acceleration.
+STATIC: prior swing H/L, prior close, session/weekly/monthly H/L — fixed until structure invalidates.
+DYNAMIC: MAs, trendlines, channels, VWAP, anchored VWAP — update continuously.
+
+STRENGTH ↑ (probabilistic): multiple similar reactions · HTF support · volume on reaction · nearby liquidity · healthy participation.
+WEAKNESS: repeated testing · reduced rejection · increasing penetration · weak participation · changing structure — levels can lose influence.
+ROLE REVERSAL: Resistance → confirmed breakout → acceptance → potential support (or reverse for support→resistance) — confirmation required.
+ACCEPTANCE: meaningful time beyond level — multiple closes, healthy participation, reduced rejection → balance may have shifted.
+REJECTION: unable to maintain through zone — long wicks, fast reverse, opposing candles, participation ↑ — alone ≠ future direction.
+BREAKOUT: Movement → Acceptance → Participation → Follow-through — without acceptance = unconfirmed.
+FALSE BREAKOUT clues: brief penetration, immediate rejection, return inside zone, weak participation, no follow-through.
+
+MTF priority: Monthly → Weekly → Daily → Intraday — HTF zones weigh more; LTF inside HTF context.
+ZONE WIDTH: reflect volatility, structure, recent behavior — avoid one exact price.
+LEVEL QUALITY (0–100): HTF 20 + Structure 20 + Reaction history 15 + Participation 15 + Liquidity 10 + Volume 10 + Volatility 10.
+Reliability from full evidence, not touch count alone: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60+ Weak · <60 Insufficient.
+AI steps: detect major zones → width → historical reactions → structure → participation → liquidity → HTF → score.
+Mistakes: one-candle S/R; exact prices; buy every support / sell every resistance; ignore HTF/acceptance/false breaks/volatility.
+Compact: Reaction zone · Status · Width · Structure · Participation · HTF · Level Quality% · Summary (probabilistic area, not guaranteed reverse).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -947,11 +972,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 COMPLETE (Structure + Indicators + Pattern Decision Engine) v1.0.
-Read ONLY this screenshot. Rank multiple pattern hypotheses by evidence — don’t force one. Structure/HTF > geometry. No invented swings/perfect shapes. Mixed/Insufficient OK. Explain top pick vs alternatives.
-Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Pattern candidates/rank → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–7 (Structure + Patterns + S/R Reaction Foundation) v1.0.
+Read ONLY this screenshot. S/R = reaction zones not walls/guarantees. Analyze acceptance vs rejection vs false breakout. Zones not exact ticks. HTF levels weigh more. Never invent precise levels if scale unclear.
+Order: Regime → HTF Structure → BOS/CHOCH → S/R reaction zones → Liquidity → S/D → Volume → Indicators → Patterns → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Top Pattern + Alternative · Conflicts · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · S/R Zones · BOS/CHOCH · Liquidity · S/D · Volume · Patterns · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1309,7 +1334,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 6 Pattern Decision Engine COMPLETE. Answer USER QUESTION FIRST. Rank multiple hypotheses by evidence. No forced pattern. Structure/HTF > geometry. State alternatives/conflicts. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 7 S/R Reaction Foundation + Structure. Answer USER QUESTION FIRST. S/R=zones not walls. Acceptance/rejection/false breakout. Never guarantee hold. HTF levels weigh more. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

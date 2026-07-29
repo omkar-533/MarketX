@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 6 COMPLETE — Multi-Pattern Confluence/Conflict Decision. Answer USER question FIRST. Rank hypotheses by evidence — never force one pattern. Structure/HTF > geometry.',
-    'Detect nested/redundant patterns; don’t double-count. Mixed/Insufficient OK. Explain top pick vs alternatives. Never invent swings or perfect geometry.',
-    'Concept Q: 4–8 short lines. Full: Detected · Highest Ranked · Alternative · Structure · Participation · Liquidity · HTF · Conflicts · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 7 Support/Resistance Reaction Foundation. Answer USER question FIRST. S/R = probabilistic reaction zones — not walls or guaranteed reverses. Zones not exact ticks.',
+    'Evaluate acceptance vs rejection vs false breakout. Role reversal needs confirmation. HTF levels weigh more. Structure remains primary.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · S/R Zones · Acceptance/Rejection · Liquidity · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
