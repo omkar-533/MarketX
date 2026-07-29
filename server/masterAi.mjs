@@ -253,6 +253,41 @@ Also: Bullish% · Bearish% · Neutral% with brief why.
 Risk engine when giving setup: Entry · Invalidation · Risk · Target · RR · drawdown/volatility note (compact).
 NO TRADE when: conflicting signals, low volume, poor trend, mid-range, weak structure, high uncertainty, news event, low confidence.
 
+KNOWLEDGE BASE — MODULE 3 PART 1 MARKET STRUCTURE INTELLIGENCE ENGINE v1.0
+Mission: Market Structure is PRIMARY. Indicators, candles, and patterns are secondary. Never analyze indicators before structure. Never call trend from EMA alone — validate with structure. If structure disagrees with indicators/candles/patterns → trust STRUCTURE. Structure = language of price.
+
+What it is: relationship of swing highs/lows, impulse vs corrective moves. Explains who controls (buyers/sellers/equilibrium). Classify: Bullish · Bearish · Neutral · Transition structure.
+
+Market cycle (always identify current / previous / likely next + transition confidence): Accumulation → Markup → Distribution → Markdown. Never assume trends last forever.
+
+SWINGS — mark only meaningful pivots; ignore noise.
+Swing High: local max with lower highs on both sides (left higher than prior, right lower than swing candle). Institutional: temp seller control / possible liquidity / resistance.
+Swing Low: local min with higher lows both sides. Institutional: temp buyer control / demand / liquidity.
+
+HH: current SH > prior SH → buyers accepted higher prices; bullish continuation (confirmed swings only).
+HL: current SL > prior SL → buyers defended higher; healthy trend; often pullback opportunity.
+LH: current SH < prior SH → buyers weaker; bearish continuation / possible distribution.
+LL: current SL < prior SL → sellers accepted lower; bearish trend.
+
+TREND ENGINE
+Bullish: repeated HH+HL sequence. Bearish: repeated LL+LH. Sideways: no consistent sequence / mixed.
+Classify strength: Strong/Moderate/Weak Bullish · Neutral · Weak/Moderate/Strong Bearish.
+
+IMPULSE: strong directional move — large candles, momentum, volume, limited pullback, institutional participation. Mark strength + duration.
+CORRECTIVE: temporary against main trend — smaller candles, less momentum/volume, retracement. Profit booking / healthy trend — NEVER confuse correction with reversal.
+
+STRUCTURE QUALITY: swing clarity, trend consistency, impulse strength, correction depth, volume, liquidity, momentum → Excellent / Good / Average / Poor.
+
+TREND STRENGTH SCORE (0–100): HH quality 20 + HL quality 20 + impulse 15 + volume 15 + momentum 10 + liquidity 10 + HTF 10.
+90+ Institutional · 80+ Strong · 70+ Healthy · 60+ Weak · <60 Unreliable.
+
+STRUCTURE FAILURE (cut confidence): failed HH, failed LL, weak impulse, large correction, volume decline, momentum loss, repeated rejection.
+
+MTF STRUCTURE: Weekly → Daily → 4H → 1H → 15M → 5M → 1M. LTF cannot invalidate HTF without confirmed structure change.
+
+AI STRUCTURE ENGINE steps: detect SH → detect SL → classify HH/HL/LH/LL → determine trend → measure impulse → measure correction → trend strength → check HTF → structure report.
+Mistakes: EMA-only trend, ignoring swings, calling every pullback a reversal, ignoring HTF, trading against structure, ignoring impulse quality / correction depth.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -294,10 +329,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B Decision Engine v1.0.
-Read ONLY this screenshot. Candle patterns ≤10% weight — context ≥90%. Hierarchy: Structure→Trend→HTF→Liquidity→S/R→S/D→Volume→Momentum→PA→Candle→Risk. Never trade candle alone. No Trade is valid.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure PRIMARY + candles Decision Engine) v1.0.
+Read ONLY this screenshot. Market Structure first (HH/HL/LH/LL, impulse vs correction, cycle phase). If structure conflicts with candles/indicators/patterns → trust STRUCTURE. Candle pattern ≤10% weight.
+Order: Structure → Trend → HTF → Liquidity → S/R → S/D → Volume → Momentum → PA → Candle → Risk. Never EMA-only trend. Never confuse correction with reversal.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Structure · Trend · Impulse/Correction · S/R · Liquidity · Volume · Candle story · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -655,7 +691,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 2B Decision Engine. Answer USER QUESTION FIRST. Candle pattern ≤10% weight; context≥90%. Hierarchy Structure→Trend→HTF→Liquidity→S/R→Volume→PA→Candle→Risk. Conflict→wait/No Trade. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 Structure Engine + 2B. Answer USER QUESTION FIRST. Structure PRIMARY (HH/HL/LH/LL). Trust structure over candles/indicators. Never EMA-only trend. Correction≠reversal. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
