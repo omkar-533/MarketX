@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ExternalLink, LockKeyhole, LogOut, MessageCircle, RefreshCw, ShieldAlert } from 'lucide-react';
+import { LockKeyhole, LogOut, MessageCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 import BrandMark from '../BrandMark';
 import AccessProofUpload from './AccessProofUpload';
 import { BRAND } from '../../constants/brandLabels';
@@ -9,6 +9,9 @@ type AccessGateProps = {
   access: AccessState | null;
   popup: AccessPopup | null;
   userName?: string;
+  userFullName?: string | null;
+  userPhone?: string | null;
+  userEmail?: string | null;
   onRefresh: () => unknown | Promise<unknown>;
   onLogout: () => void;
   onSeePlans: () => void;
@@ -17,11 +20,11 @@ type AccessGateProps = {
 const COPY: Record<string, { title: string; body: string }> = {
   trial_expired: {
     title: 'Your free trial has ended',
-    body: 'Request access below. Upload a screenshot — the admin reviews it and unlocks your Indicators, Analyse AI, and Journal.',
+    body: 'Please fill in your details below. Our team will review your request and get back to you within 24 hours.',
   },
   access_expired: {
     title: 'Your access has expired',
-    body: 'Send a fresh approval request with a screenshot. The desk will switch access back on after a quick check.',
+    body: 'Submit your details in the form below. Our team will review and restore access within 24 hours.',
   },
   blocked: {
     title: 'Access paused by admin',
@@ -30,12 +33,15 @@ const COPY: Record<string, { title: string; body: string }> = {
 };
 
 /**
- * Lock screen: approval-first (screenshot → admin approve). Optional help link/WhatsApp only.
+ * Lock screen: in-app form (like TV access) → admin approve. Optional WhatsApp only.
  */
 export default function AccessGate({
   access,
   popup,
   userName,
+  userFullName,
+  userPhone,
+  userEmail,
   onRefresh,
   onLogout,
   onSeePlans,
@@ -43,7 +49,6 @@ export default function AccessGate({
   const locked = Boolean(access && !access.unlocked);
   const copy = COPY[access?.reason ?? 'trial_expired'] ?? COPY.trial_expired;
   const isBlocked = access?.status === 'blocked';
-  const link = popup?.url?.trim();
   const whatsapp = popup?.whatsapp?.trim();
   const pending = access?.request?.status === 'pending';
 
@@ -81,7 +86,7 @@ export default function AccessGate({
             </h2>
             <p className="access-gate__body">{copy.body}</p>
 
-            {!isBlocked && (popup?.enabled !== false) ? (
+            {!isBlocked ? (
               <div className="access-gate__steps">
                 <div className="access-gate__step">
                   <span className="access-gate__step-num">1</span>
@@ -91,43 +96,38 @@ export default function AccessGate({
                     </p>
                     <p className="access-gate__step-body">
                       {popup?.message?.trim() ||
-                        'Upload a clear screenshot for the desk. After approval, Indicators and the rest of your workspace unlock automatically.'}
+                        'Please fill in your name, mobile number, and TradingView ID. Our team will review your request and get back to you within 24 hours.'}
                     </p>
-                    <AccessProofUpload request={access?.request ?? null} onSubmitted={onRefresh} />
+                    <AccessProofUpload
+                      request={access?.request ?? null}
+                      onSubmitted={onRefresh}
+                      defaults={{
+                        name: userFullName || userName,
+                        phone: userPhone,
+                        email: userEmail,
+                      }}
+                    />
                   </div>
                 </div>
 
-                {link || whatsapp ? (
+                {whatsapp ? (
                   <div className="access-gate__step">
                     <span className="access-gate__step-num">2</span>
                     <div>
                       <p className="access-gate__step-title">Need help?</p>
                       <p className="access-gate__step-body">
-                        Optional — contact the desk if you have a question about your request.
+                        Optional — talk to the desk on WhatsApp.
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {link ? (
-                          <a
-                            className="access-gate__link"
-                            href={link}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                          >
-                            {popup?.buttonLabel || 'Open help link'}
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        ) : null}
-                        {whatsapp ? (
-                          <a
-                            className="access-gate__link"
-                            href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            WhatsApp
-                          </a>
-                        ) : null}
+                        <a
+                          className="access-gate__link"
+                          href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          WhatsApp
+                        </a>
                       </div>
                     </div>
                   </div>

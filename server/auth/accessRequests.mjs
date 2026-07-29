@@ -47,15 +47,28 @@ function writeRows(requests) {
 
 /* ────────────────────────── mapping ────────────────────────── */
 
+function parseTradingViewId(note) {
+  const match = /^TradingView ID:\s*(.+)$/im.exec(String(note || ''));
+  return match?.[1]?.trim() || null;
+}
+
+function buildAccessNote({ tradingViewId, message }) {
+  const lines = [`TradingView ID: ${tradingViewId}`];
+  if (message) lines.push(`Additional details: ${message}`);
+  return lines.join('\n');
+}
+
 function fromRow(row, signedUrl = null) {
   if (!row) return null;
+  const note = row.note ?? null;
   return {
     id: row.id,
     userId: row.user_id,
     name: row.name ?? null,
     email: row.email ?? null,
     phone: row.phone ?? null,
-    note: row.note ?? null,
+    tradingViewId: row.trading_view_id ?? parseTradingViewId(note),
+    note,
     status: row.status,
     adminNote: row.admin_note ?? null,
     reviewedBy: row.reviewed_by ?? null,
@@ -96,20 +109,51 @@ async function supersedeOpenRequests(userId) {
   if (error) throw storeError(error);
 }
 
-export async function createAccessRequest({ user, note = '', screenshot }) {
-  const { buffer, mime, ext } = decodeDataUrl(screenshot);
+export async function createAccessRequest({
+  user,
+  fullName = '',
+  phone = '',
+  tradingViewId = '',
+  email = '',
+  message = '',
+  note = '',
+  screenshot = '',
+}) {
+  const name = String(fullName || user?.name || '').trim().slice(0, 80);
+  const mobile = String(phone || user?.phone || '').trim().slice(0, 20);
+  const tvId = String(tradingViewId || '').trim().slice(0, 80);
+  const cleanEmail = String(email || user?.email || '').trim().slice(0, 120) || null;
+  const extra = String(message || note || '').trim().slice(0, 500);
+  const hasShot = Boolean(String(screenshot || '').trim());
+
+  if (name.length < 2) {
+    throw Object.assign(new Error('Please enter your full name'), { status: 400 });
+  }
+  if (mobile.replace(/\D/g, '').length < 10) {
+    throw Object.assign(new Error('Please enter a valid mobile number'), { status: 400 });
+  }
+  if (tvId.length < 2) {
+    throw Object.assign(new Error('Please enter your TradingView username / ID'), { status: 400 });
+  }
+
+  let decoded = null;
+  if (hasShot) {
+    decoded = decodeDataUrl(screenshot);
+  }
+
   const id = `req_${randomBytes(9).toString('hex')}`;
   const createdAt = new Date().toISOString();
+  const cleanNote = buildAccessNote({ tradingViewId: tvId, message: extra || null });
 
   await supersedeOpenRequests(user.id);
 
   const base = {
     id,
     user_id: user.id,
-    name: user.name ?? null,
-    email: user.email ?? null,
-    phone: user.phone ?? null,
-    note: String(note || '').slice(0, 500),
+    name,
+    email: cleanEmail,
+    phone: mobile,
+    note: cleanNote,
     status: 'pending',
     admin_note: null,
     reviewed_by: null,
@@ -119,23 +163,31 @@ export async function createAccessRequest({ user, note = '', screenshot }) {
 
   const db = getAdminClient();
   if (!db) {
-    const row = { ...base, screenshot_path: null, screenshot_data: screenshot };
+    const row = {
+      ...base,
+      trading_view_id: tvId,
+      screenshot_path: null,
+      screenshot_data: hasShot ? screenshot : null,
+    };
     writeRows([row, ...readRows()]);
     return fromRow(row);
   }
 
-  await ensureBucket(db);
-  const path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, buffer, {
-    contentType: mime,
-    upsert: false,
-  });
-  if (uploadError) throw storeError(uploadError);
+  let path = null;
+  if (decoded) {
+    await ensureBucket(db);
+    path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${decoded.ext}`;
+    const { error: uploadError } = await db.storage.from(BUCKET).upload(path, decoded.buffer, {
+      contentType: decoded.mime,
+      upsert: false,
+    });
+    if (uploadError) throw storeError(uploadError);
+  }
 
   const row = { ...base, screenshot_path: path, screenshot_data: null };
   const { error } = await db.from(TABLE).insert(row);
   if (error) throw storeError(error);
-  return fromRow(row, await signScreenshot(db, row));
+  return fromRow(row, path ? await signScreenshot(db, row) : null);
 }
 
 export async function latestRequestForUser(userId) {

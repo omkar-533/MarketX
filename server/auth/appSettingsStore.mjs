@@ -10,9 +10,9 @@ export const DEFAULT_ACCESS_POPUP = {
   enabled: true,
   title: 'Request access',
   message:
-    'Upload a clear screenshot for the desk. After the admin approves it, Indicators, Analyse AI, and Journal unlock automatically — no payment step required here.',
+    'Please fill in your name, mobile number, and TradingView ID. Our team will review your request and get back to you within 24 hours.',
   url: '',
-  buttonLabel: 'Help / instructions',
+  buttonLabel: 'Submit request',
   whatsapp: '',
   defaultGrantDays: 30,
 };
@@ -50,15 +50,31 @@ async function writeSetting(key, value, updatedBy) {
   return value;
 }
 
+function looksLikeLegacyPopupCopy(message, buttonLabel, url) {
+  const text = `${message || ''} ${buttonLabel || ''} ${url || ''}`.toLowerCase();
+  return Boolean(
+    url?.trim() ||
+      /screenshot|upload a clear|help \/ instructions|open link|google\.form|forms\.gle|client id \/ note|no payment step|payment gateway/i.test(
+        text,
+      ),
+  );
+}
+
 function sanitizePopup(input) {
   const merged = { ...DEFAULT_ACCESS_POPUP, ...(input || {}) };
   const days = Number(merged.defaultGrantDays);
+  const legacy = looksLikeLegacyPopupCopy(merged.message, merged.buttonLabel, merged.url);
   return {
     enabled: merged.enabled !== false,
-    title: String(merged.title || DEFAULT_ACCESS_POPUP.title).slice(0, 120),
-    message: String(merged.message || DEFAULT_ACCESS_POPUP.message).slice(0, 600),
-    url: String(merged.url || '').trim().slice(0, 500),
-    buttonLabel: String(merged.buttonLabel || DEFAULT_ACCESS_POPUP.buttonLabel).slice(0, 40),
+    title: String(
+      legacy ? DEFAULT_ACCESS_POPUP.title : merged.title || DEFAULT_ACCESS_POPUP.title,
+    ).slice(0, 120),
+    message: String(
+      legacy ? DEFAULT_ACCESS_POPUP.message : merged.message || DEFAULT_ACCESS_POPUP.message,
+    ).slice(0, 600),
+    // External help links are retired — access is an in-app form now.
+    url: '',
+    buttonLabel: DEFAULT_ACCESS_POPUP.buttonLabel,
     whatsapp: String(merged.whatsapp || '').trim().slice(0, 40),
     defaultGrantDays: Number.isFinite(days) && days > 0 ? Math.min(3650, Math.round(days)) : 30,
   };

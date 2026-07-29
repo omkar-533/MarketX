@@ -477,11 +477,16 @@ router.get('/access', requireUser, async (req, res) => {
   }
 });
 
-/** POST /api/app-auth/access/request — screenshot proof for admin review */
+/** POST /api/app-auth/access/request — full details form for admin review */
 router.post('/access/request', requireUser, async (req, res) => {
   try {
     const request = await createAccessRequest({
       user: req.appUser,
+      fullName: req.body?.fullName ?? req.body?.name,
+      phone: req.body?.phone,
+      tradingViewId: req.body?.tradingViewId,
+      email: req.body?.email,
+      message: req.body?.message,
       note: req.body?.note,
       screenshot: req.body?.screenshot,
     });
@@ -490,7 +495,7 @@ router.post('/access/request', requireUser, async (req, res) => {
       ...(await accessPayloadFor(req.appUser)),
     });
   } catch (err) {
-    return failed(res, err, 'Upload failed');
+    return failed(res, err, 'Could not submit access request');
   }
 });
 

@@ -261,13 +261,42 @@ export async function fetchAccessState(): Promise<AccessSnapshot | null> {
   return snapshotOf(data);
 }
 
+export async function submitAccessRequest(input: {
+  fullName: string;
+  phone: string;
+  tradingViewId: string;
+  email?: string;
+  message?: string;
+  screenshot?: string;
+}) {
+  const res = await apiFetch('/api/app-auth/access/request', {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({
+      fullName: input.fullName,
+      phone: input.phone,
+      tradingViewId: input.tradingViewId,
+      email: input.email || undefined,
+      message: input.message || undefined,
+      screenshot: input.screenshot || undefined,
+    }),
+  });
+  const data = await readJson(res, 'Could not submit access request');
+  return snapshotOf(data);
+}
+
+/** @deprecated Prefer submitAccessRequest with full member details. */
 export async function submitAccessProof(screenshot: string, note?: string) {
   const res = await apiFetch('/api/app-auth/access/request', {
     method: 'POST',
     headers: sessionHeaders(),
-    body: JSON.stringify({ screenshot, note }),
+    body: JSON.stringify({
+      message: note || undefined,
+      note: note || undefined,
+      screenshot: screenshot || undefined,
+    }),
   });
-  const data = await readJson(res, 'Could not upload the screenshot');
+  const data = await readJson(res, 'Could not submit access request');
   return snapshotOf(data);
 }
 
@@ -379,6 +408,7 @@ export type AdminAccessRequest = {
   name: string | null;
   email: string | null;
   phone: string | null;
+  tradingViewId?: string | null;
   note: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'superseded';
   adminNote: string | null;

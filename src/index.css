@@ -5199,6 +5199,40 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 1px solid #232a3b;
 }
 
+.access-proof__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.1rem;
+}
+
+.access-proof__field-hint {
+  margin: -0.15rem 0 0.1rem;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.access-proof__grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+@media (min-width: 480px) {
+  .access-proof__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.access-proof__textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  line-height: 1.45;
+}
+
 .access-proof__note {
   width: 100%;
   padding: 0.55rem 0.75rem;

@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import {
   Check,
   Crown,
-  ExternalLink,
   Hourglass,
   MessageCircle,
   ShieldCheck,
@@ -11,11 +10,13 @@ import {
 import { PLANS, TRIAL_DAYS } from '../constants/plans';
 import type { User } from '../hooks/useAuth';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
+import AccessProofUpload from './access/AccessProofUpload';
 
 interface SubscriptionProps {
   user: User | null;
   access?: AccessState | null;
   popup?: AccessPopup | null;
+  onAccessSubmitted?: () => unknown | Promise<unknown>;
 }
 
 function statusLine(access: AccessState | null | undefined) {
@@ -23,8 +24,8 @@ function statusLine(access: AccessState | null | undefined) {
   if (access.status === 'blocked') return 'Your access is paused — contact the desk.';
   if (!access.unlocked) {
     return access.reason === 'trial_expired'
-      ? 'Your free trial has ended — pick a plan below to continue.'
-      : 'Your access has expired — renew below to continue.';
+      ? 'Your free trial has ended — fill the form below. We respond within 24 hours.'
+      : 'Your access has expired — fill the form below. We respond within 24 hours.';
   }
   if (access.daysLeft === null) return 'You have lifetime access. Nothing to renew.';
   if (access.isTrial) {
@@ -36,10 +37,15 @@ function statusLine(access: AccessState | null | undefined) {
 }
 
 /** In-app pricing — same plans and prices as the landing page. */
-export default function Subscription({ user, access, popup }: SubscriptionProps) {
-  const link = popup?.url?.trim();
+export default function Subscription({
+  user,
+  access,
+  popup,
+  onAccessSubmitted,
+}: SubscriptionProps) {
   const whatsapp = popup?.whatsapp?.trim();
   const isTrialUser = access?.isTrial ?? Boolean(user?.trialEndsAt);
+  const needsForm = Boolean(access && !access.unlocked && access.status !== 'blocked');
 
   return (
     <div className="space-y-5">
@@ -56,29 +62,39 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
       <div className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
-        {link ? (
-          <a
-            href={link}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#d4af37] text-[#0b0e17] text-[11px] font-bold"
-          >
-            {popup?.buttonLabel || 'Open link'}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        ) : null}
         {whatsapp ? (
           <a
             href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1a1f2e] text-slate-300 text-[11px] font-bold hover:border-[#d4af37]/30"
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1a1f2e] text-slate-300 text-[11px] font-bold hover:border-[#d4af37]/30"
           >
             <MessageCircle className="w-3 h-3" />
             Talk to the desk
           </a>
         ) : null}
       </div>
+
+      {needsForm ? (
+        <div className="w-full rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 space-y-2">
+          <p className="text-sm font-bold text-[#d4af37]">
+            {popup?.title?.trim() || 'Request access'}
+          </p>
+          <p className="text-[11px] text-slate-500">
+            {popup?.message?.trim() ||
+              'Please fill in your name, mobile number, and TradingView ID. Our team will get back to you within 24 hours.'}
+          </p>
+          <AccessProofUpload
+            request={access?.request ?? null}
+            onSubmitted={onAccessSubmitted || (() => undefined)}
+            defaults={{
+              name: user?.name,
+              phone: user?.phone,
+              email: user?.email,
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
         {PLANS.map((plan, idx) => {

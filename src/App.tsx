@@ -166,7 +166,14 @@ function AppWorkspace() {
       case 'admin':
         return <AdminPanel user={auth.user} adminPassword={auth.adminPassword} />;
       case 'subscription':
-        return <Subscription user={auth.user} access={auth.access} popup={auth.accessPopup} />;
+        return (
+          <Subscription
+            user={auth.user}
+            access={auth.access}
+            popup={auth.accessPopup}
+            onAccessSubmitted={auth.refreshAccess}
+          />
+        );
       default:
         return <Dashboard onNavigate={setActiveTab} />;
     }
@@ -295,12 +302,18 @@ function AppWorkspace() {
             access={auth.access}
             popup={auth.accessPopup}
             userId={auth.user?.id}
+            userName={auth.user?.name}
+            userPhone={auth.user?.phone}
+            userEmail={auth.user?.email}
             onRefresh={auth.refreshAccess}
           />
           <AccessGate
             access={planPeek ? null : auth.access}
             popup={auth.accessPopup}
             userName={auth.user?.name?.split(' ')[0]}
+            userFullName={auth.user?.name}
+            userPhone={auth.user?.phone}
+            userEmail={auth.user?.email}
             onRefresh={auth.refreshAccess}
             onLogout={() => void auth.logout()}
             onSeePlans={() => handleTabChange('subscription')}

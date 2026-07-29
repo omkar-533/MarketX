@@ -16,7 +16,7 @@ const FIELD =
   'w-full px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200';
 const LABEL = 'block text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold';
 
-/** The popup users see when their trial ends: link, copy and default grant length. */
+/** The popup users see when their trial ends: form copy, WhatsApp, and default grant length. */
 export default function AccessSettingsTab({
   adminEmail,
   adminPassword,
@@ -84,8 +84,8 @@ export default function AccessSettingsTab({
           <div>
             <h3 className="text-sm font-bold text-[#d4af37]">Approval access</h3>
             <p className="text-[11px] text-slate-500">
-              Users request access with a screenshot. You approve in Access requests — no payment
-              gateway required.
+              Users request access with an in-app form (name, mobile, TradingView ID). You approve
+              in Access requests — no external link or payment gateway required.
             </p>
           </div>
           <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
@@ -112,14 +112,15 @@ export default function AccessSettingsTab({
             />
           </div>
           <div>
-            <label className={LABEL} htmlFor="popup-button">
-              Button text
+            <label className={LABEL} htmlFor="popup-whatsapp">
+              WhatsApp number
             </label>
             <input
-              id="popup-button"
+              id="popup-whatsapp"
               className={FIELD}
-              value={popup.buttonLabel}
-              onChange={(e) => patch({ buttonLabel: e.target.value })}
+              placeholder="919876543210"
+              value={popup.whatsapp}
+              onChange={(e) => patch({ whatsapp: e.target.value })}
             />
           </div>
         </div>
@@ -134,36 +135,10 @@ export default function AccessSettingsTab({
             value={popup.message}
             onChange={(e) => patch({ message: e.target.value })}
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className={LABEL} htmlFor="popup-url">
-              Optional help link (not payment)
-            </label>
-            <input
-              id="popup-url"
-              className={FIELD}
-              placeholder="https://… instructions / form (optional)"
-              value={popup.url}
-              onChange={(e) => patch({ url: e.target.value })}
-            />
-            <p className="text-[10px] text-slate-600 mt-1">
-              Leave blank if users only need to upload a screenshot for approval.
-            </p>
-          </div>
-          <div>
-            <label className={LABEL} htmlFor="popup-whatsapp">
-              WhatsApp number
-            </label>
-            <input
-              id="popup-whatsapp"
-              className={FIELD}
-              placeholder="919876543210"
-              value={popup.whatsapp}
-              onChange={(e) => patch({ whatsapp: e.target.value })}
-            />
-          </div>
+          <p className="text-[10px] text-slate-600 mt-1">
+            Users fill an in-app form (name, mobile, TradingView ID + optional details). After
+            submit they see a professional “within 24 hours” confirmation.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

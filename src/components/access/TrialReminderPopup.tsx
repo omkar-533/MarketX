@@ -8,6 +8,9 @@ type TrialReminderPopupProps = {
   access: AccessState | null;
   popup: AccessPopup | null;
   userId?: string;
+  userName?: string | null;
+  userPhone?: string | null;
+  userEmail?: string | null;
   onRefresh: () => unknown | Promise<unknown>;
 };
 
@@ -53,6 +56,9 @@ export default function TrialReminderPopup({
   access,
   popup,
   userId,
+  userName,
+  userPhone,
+  userEmail,
   onRefresh,
 }: TrialReminderPopupProps) {
   const [open, setOpen] = useState(false);
@@ -142,12 +148,13 @@ export default function TrialReminderPopup({
 
           <p className="trial-nudge__body">
             {popup?.message?.trim() ||
-              'Enjoy full access during the trial. Before it ends, you can request longer access with a screenshot for the desk to review.'}
+              'Fill in your details to request longer access. Our team will get back to you within 24 hours.'}
           </p>
 
           {showUpload ? (
             <AccessProofUpload
               request={access?.request ?? null}
+              defaults={{ name: userName, phone: userPhone, email: userEmail }}
               onSubmitted={async () => {
                 await onRefresh();
               }}
@@ -158,7 +165,7 @@ export default function TrialReminderPopup({
               className="trial-nudge__cta"
               onClick={() => setShowUpload(true)}
             >
-              Request access (screenshot)
+              Request access
             </button>
           )}
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ImageOff, RefreshCw, X } from 'lucide-react';
+import { Check, RefreshCw, X } from 'lucide-react';
 import {
   adminListAccessRequests,
   adminReviewAccessRequest,
@@ -22,7 +22,7 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-/** Screenshot proofs waiting for approval — approve grants access immediately. */
+/** Access requests with full member details — approve grants access immediately. */
 export default function AccessRequestsTab({
   adminEmail,
   adminPassword,
@@ -121,30 +121,25 @@ export default function AccessRequestsTab({
               transition={{ delay: idx * 0.04 }}
               className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden"
             >
-              <button
-                type="button"
-                className="block w-full bg-[#080a12]"
-                onClick={() => row.screenshotUrl && setLightbox(row.screenshotUrl)}
-              >
-                {row.screenshotUrl ? (
+              {row.screenshotUrl ? (
+                <button
+                  type="button"
+                  className="block w-full bg-[#080a12]"
+                  onClick={() => setLightbox(row.screenshotUrl)}
+                >
                   <img
                     src={row.screenshotUrl}
                     alt={`Proof from ${row.name ?? row.email ?? 'user'}`}
                     className="w-full h-40 object-cover"
                   />
-                ) : (
-                  <div className="h-40 flex flex-col items-center justify-center gap-2 text-slate-600 text-xs">
-                    <ImageOff className="w-5 h-5" />
-                    Screenshot unavailable
-                  </div>
-                )}
-              </button>
+                </button>
+              ) : null}
 
               <div className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-200 truncate">{row.name || '—'}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{row.email}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{row.email || 'no email'}</p>
                     <p className="text-[11px] text-slate-400 font-mono">{row.phone || 'no mobile'}</p>
                   </div>
                   <span
@@ -160,8 +155,27 @@ export default function AccessRequestsTab({
                   </span>
                 </div>
 
+                <div className="rounded-lg border border-[#1a1f2e] bg-[#080a12] px-3 py-2 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                    Form details
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    TradingView ID:{' '}
+                    <span className="font-mono text-[#d4af37]">
+                      {row.tradingViewId || '—'}
+                    </span>
+                  </p>
+                  {row.note
+                    ?.split('\n')
+                    .filter((line) => !/^TradingView ID:/i.test(line))
+                    .map((line) => (
+                      <p key={line} className="text-[11px] text-slate-400">
+                        {line}
+                      </p>
+                    ))}
+                </div>
+
                 <p className="text-[10px] text-slate-600">Sent {formatDate(row.createdAt)}</p>
-                {row.note ? <p className="text-[11px] text-slate-400">Note: {row.note}</p> : null}
                 {row.adminNote ? (
                   <p className="text-[11px] text-slate-500">Admin note: {row.adminNote}</p>
                 ) : null}
