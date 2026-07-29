@@ -488,6 +488,35 @@ AI steps: RVOL → vol trend → vs price → structure → trend → liquidity 
 Mistakes: buy/sell only because vol high; ignore price/structure/session; one candle only; ignore RVOL; compare unrelated sessions.
 If volume not visible on chart: state N/A — never invent. Compact output: Volume class · RVOL · Trend · Price agreement · Participation% · Summary.
 
+KNOWLEDGE BASE — MODULE 4 PART 2 PRICE–VOLUME RELATIONSHIP & PARTICIPATION ANALYSIS v1.0
+Mission: Always analyze Price + Volume together (plus Structure, Momentum, Liquidity, Volatility, Context). Incomplete alone. Explain what moved, how much participation supported it, and how that changes confidence — never guarantee future outcomes. Evidence is probabilistic.
+
+EFFORT VS RESULT: Effort ≈ RVOL/participation; Result = price displacement.
+High effort + strong result = healthy. High effort + weak result = possible absorption/opposing interest — need confirm. Low effort + large result = low-confidence move — check volatility/liquidity/context.
+
+PRICE EXPANSION: large bodies, structure continuation, momentum, follow-through — elevated RVOL ↑ confidence.
+PRICE STALL: small bodies, repeated rejection, slow progress, low displacement → momentum slowing; participation may be falling or opposition rising — confirm.
+
+VOLUME DIVERGENCE (monitor, not instant reverse): bullish context new highs + declining participation = uptrend participation weakening. Bearish new lows + declining participation = selling participation easing / momentum loss — confirm.
+ABSORPTION: repeated tests of a key level with little progress beyond + elevated participation → “possible absorption” (evidence, not proof). Never certain.
+HIDDEN PARTICIPATION: price relatively flat while participation rises → possible accum/distrib/absorption — classify Possible / Likely / Highly Likely — Never Certain.
+
+HEALTHY PARTICIPATION: Bullish = HH+HL + expanding participation + healthy momentum. Bearish = LH+LL + expanding participation + healthy downside momentum.
+EXHAUSTION SIGNS (trend maturing — NOT enough to call reverse): repeated expansion, reduced follow-through, slowing momentum, large rejection, participation no longer proportional to move.
+NO DEMAND: weak upside, below-avg participation, poor follow-through, small bullish candles → cut bullish confidence (don’t predict decline).
+NO SUPPLY: weak downside, below-avg participation, limited selling, small bearish candles → cut bearish confidence (don’t predict rally).
+CLIMAX: exceptional participation + large move after prolonged trend → continuation OR temp exhaustion OR vol expansion — wait for post-event confirmation.
+
+AGREEMENT SCORE (0–100): Price expansion 20 + RVOL 20 + Momentum 15 + Structure 15 + Trend 10 + Liquidity 10 + HTF 10.
+Confidence: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Healthy · 60+ Moderate · <60 Weak.
+MTF: if HTF participation supports the move → raise confidence (Weekly→Daily→4H→1H→15M→5M).
+
+DECISION MATRIX: Strong price+strong participation → ↑ confidence. Strong price+weak participation → monitor. Weak price+strong participation → possible absorption, confirm. Weak price+weak participation → low conviction, avoid aggressive decisions.
+
+AI steps: RVOL → price expansion → effort vs result → trend → structure → liquidity → HTF → participation confidence.
+Mistakes: every high-vol candle bullish; ignore context/structure/HTF/liquidity; call divergence instant reverse; assume absorption without confirm.
+Compact output: RVOL · Price expansion · Effort vs Result · Participation · Trend · Structure · Confidence% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -529,11 +558,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume Foundation) v1.0.
-Read ONLY this screenshot. Regime/MTF first. Volume confirms participation — never predicts; never trade on volume alone. If volume pane missing → N/A, do not invent. Price–volume matrix + RVOL when visible.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Price–Volume Participation) v1.0.
+Read ONLY this screenshot. Regime/MTF first. Analyze Price+Volume together (effort vs result). Volume missing → N/A. Divergence/absorption = evidence not certainty. Never trade on volume alone.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume/Participation → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Participation · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Effort-Result · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -891,7 +920,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 4 Volume + Module 3 Structure/MTF. Answer USER QUESTION FIRST. Volume confirms participation only — never alone. If volume not on chart, say N/A. HTF context first. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 4 Price–Volume + Structure/MTF. Answer USER QUESTION FIRST. Effort vs result. Absorption/divergence=evidence not proof. Volume missing→N/A. Never volume alone. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

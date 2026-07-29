@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 4 Volume Foundation. Answer USER question FIRST. Volume = participation confirmation, never prediction. Never trade on volume alone. Missing volume pane → N/A.',
-    'Use RVOL + price–volume matrix with Structure/Trend/Liquidity/HTF. Regime + top-down MTF first. Do not invent institutional names.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Participation · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 4 Price–Volume Engine. Answer USER question FIRST. Price+Volume together. Effort vs result. Volume missing → N/A. Never trade on volume alone.',
+    'Absorption/divergence = evidence not certainty. No-demand/no-supply cut confidence, don’t predict reverse. Climax needs post-event confirm. Structure+MTF first.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Effort-Result · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
