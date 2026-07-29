@@ -6,12 +6,6 @@ import {
   VolumeX,
   Languages,
   Bot,
-  Zap,
-  BarChart3,
-  ShieldAlert,
-  Activity,
-  Newspaper,
-  BriefcaseBusiness,
   ImagePlus,
   X,
 } from 'lucide-react';
@@ -58,28 +52,6 @@ interface Message {
   imageUrl?: string;
 }
 
-const QUICK_ACTIONS_EN = [
-  { id: 'market', label: 'Market pulse', icon: BarChart3, prompt: 'Give me a short, human market pulse on Nifty and Bank Nifty — what should traders watch today?' },
-  { id: 'options', label: 'Options lens', icon: Activity, prompt: 'Explain the current options setup using PCR, max pain, and one practical hedge idea.' },
-  { id: 'strategy', label: 'Strategy help', icon: Zap, prompt: 'Suggest a practical intraday or swing idea for the current market mood.' },
-  { id: 'risk', label: 'Risk control', icon: ShieldAlert, prompt: 'How should I manage risk, stop-loss, and position sizing right now?' },
-  { id: 'news', label: 'News impact', icon: Newspaper, prompt: 'Summarize latest market themes and how they may affect trading today.' },
-  { id: 'portfolio', label: 'Portfolio plan', icon: BriefcaseBusiness, prompt: 'Help me build a balanced watchlist approach for the next few sessions.' },
-] as const;
-
-const QUICK_ACTIONS_HI = [
-  { id: 'market', label: 'बाज़ार अपडेट', icon: BarChart3, prompt: 'Nifty aur Bank Nifty ka short market pulse do — aaj traders kya dhyaan rakhein?' },
-  { id: 'options', label: 'ऑप्शन व्यू', icon: Activity, prompt: 'PCR, max pain ke saath current options setup samjhao aur ek practical hedge idea do.' },
-  { id: 'strategy', label: 'स्ट्रैटेजी', icon: Zap, prompt: 'Is market mood ke liye ek practical intraday ya swing strategy suggest karo.' },
-  { id: 'risk', label: 'रिस्क कंट्रोल', icon: ShieldAlert, prompt: 'Abhi risk, stop-loss aur position sizing kaise manage karun — seedha batao.' },
-  { id: 'news', label: 'न्यूज़ असर', icon: Newspaper, prompt: 'Latest market themes summarize karo aur trading par unka asar batao.' },
-  { id: 'portfolio', label: 'पोर्टफोलियो', icon: BriefcaseBusiness, prompt: 'Agle kuch sessions ke liye balanced watchlist approach banaane mein help karo.' },
-] as const;
-
-function getQuickActions(langCode: string) {
-  return isHindiLang(langCode) ? QUICK_ACTIONS_HI : QUICK_ACTIONS_EN;
-}
-
 export default function MasterAI() {
   const initialMode = loadLanguageMode();
   const initialLang =
@@ -101,7 +73,6 @@ export default function MasterAI() {
   ]);
   const [inputText, setInputText] = useState('');
   const hindi = isHindiLang(selectedLang.code);
-  const quickActions = getQuickActions(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -488,24 +459,6 @@ export default function MasterAI() {
                   ? 'Market, options, risk, ya chart screenshot — seedha poochho.'
                   : 'Ask about markets, options, risk — or drop a chart screenshot.'}
               </p>
-              <div className="mai-chat__suggestions">
-                {quickActions.slice(0, 4).map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.id}
-                      type="button"
-                      onClick={() => {
-                        void handleSend(action.prompt);
-                      }}
-                      className="mai-chat__suggest"
-                    >
-                      <Icon className="h-4 w-4 text-[#d4af37]" />
-                      <span>{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           ) : null}
 
