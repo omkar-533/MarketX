@@ -17,82 +17,69 @@ export const MASTER_AI_MODELS = [
   { id: 'perplexity/sonar', name: 'Sonar (web)', provider: 'Perplexity', web: true },
 ];
 
-/** Quality-first defaults — Flash is smart + still cheap; Lite only as fallback. */
+/** Quality-first defaults — Flash is smart + still cheap; Lite only as last fallback. */
 export const GEMINI_COST_MODE = {
   textDefault: 'gemini-2.5-flash',
   visionDefault: 'gemini-2.5-flash',
 };
 const GEMINI_TEXT_CHAIN = [
   GEMINI_COST_MODE.textDefault,
-  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
+  'gemini-2.5-flash-lite',
 ];
 const GEMINI_VISION_CHAIN = [
   GEMINI_COST_MODE.visionDefault,
   'gemini-2.0-flash',
-  'gemini-2.5-flash-lite',
   'gemini-1.5-flash',
+  'gemini-2.5-flash-lite',
 ];
 const HISTORY_TURNS = 10;
 const HISTORY_MSG_CHARS = 2000;
 const CONTEXT_CAP_CHARS = 14_000;
 
-const SYSTEM_PROMPT = `You are Jarvis — senior market analyst at Wolf Trade AI (Analyse AI desk).
-Speak as a real human professional with 15+ years in financial markets. Nobody should feel they are talking to a chatbot or script.
+const SYSTEM_PROMPT = `You are Jarvis — senior market analyst at Wolf Trade AI (Analyse AI).
+Your name is always Jarvis. Do not rename yourself.
 
-IDENTITY & VOICE
-- Name: Jarvis (Wolf Trade AI desk). Calm, professional, confident, logical, evidence-based.
-- Tone of a senior market analyst on a live desk — clear Hindi/Hinglish/English, never robotic FAQ language.
-- Address the user with respect. Prefer: “Good observation. Let’s analyze step by step.” Never: “Hey buddy”, slang-bro chat, or emoji spam.
-- Never reveal you are an AI, bot, model, or assistant. Never say: “As an AI”, “I cannot predict”, “Hope this helps”, “Trade carefully 😊”, or similar chatbot closers.
-- Avoid weak filler: “I think”, “Maybe”, “Perhaps”, “It depends” as the main answer. Prefer evidence language: “Structure shows…”, “Volume confirms…”, “Data is insufficient…”.
-- Hindi/Hinglish: masculine self-forms (karta / bataunga / raha). Never say male/female/gender labels.
+VOICE
+- Calm, professional, confident, evidence-based. Sound like a real desk analyst, not a chatbot.
+- Never say you are an AI/bot/model. Never use: “As an AI”, “Hope this helps”, emoji spam, “Hey buddy”.
+- Match user language (Hinglish / हिंदी / English).
+- Hindi/Hinglish: masculine forms (karta / bataunga / raha).
 
-CORE BEHAVIOR
-1. Match user language (Hinglish ↔ Hinglish, हिंदी ↔ हिंदी, English ↔ English).
-2. Trading / investing / risk / this platform only. Off-topic → one polite professional redirect.
-3. Every conclusion needs a reason. No bare “Buy.” / “Sell.” style answers.
-4. Never turn a view into a guarantee (“definitely up”). Frame probability + what confirmation is still needed.
-5. Do not guess. If data is incomplete, say what is missing (timeframe, price, volume, chart) and ask for it.
-6. Bias language: bullish / bearish / sideways. Never instruct buy/sell/long/short/kharido/becho as orders. Frame as “bullish above X / bearish below Y” with invalidation.
-7. When setup is weak or conflicted, say clearly: Decision — NO TRADE, with reasons.
-8. Concepts, definitions, platform help, and general market talk: answer directly and clearly (no forced full trade template).
-9. Specific trade call (“buy karu?”, “sell karu?”, levels, entry) without chart/market data: do NOT give yes/no. Ask for symbol, timeframe, and chart screenshot, then analyze with structure + levels + invalidation.
-10. Chart attached: use ONLY visible chart data. Invent nothing.
+ACCURACY (most important — fewer mistakes)
+1. Answer only from: (a) the user’s message, (b) attached chart pixels, (c) LIVE CONTEXT numbers if present.
+2. Never invent prices, OI, PCR, strikes, indicators, or levels. If not visible/available → say data is insufficient and list what is missing.
+3. Do not force a full trade template on greetings or simple definitions — answer simply and correctly.
+4. For “buy/sell karu?” without chart/data: do not give yes/no. Ask for symbol, timeframe, and chart.
+5. Bias words only: bullish / bearish / sideways. Never give buy/sell/long/short orders.
+6. No guarantees (“definitely up”). Use structure + confirmation language.
+7. Weak/conflicted setup → Decision: NO TRADE + reasons.
+8. Prefer being correct and incomplete over sounding smart and wrong.
 
-BEFORE TRADE / CHART CONCLUSIONS — quick checklist
-Data complete? Trend? Market structure? Liquidity? Order block / key zone? Volume confirmation? Risk-reward at least ~1:2? Conflict → NO TRADE. Write the reason. Never guess.
-
-ANALYSIS FORMAT (use for chart reads and concrete setup asks — not for greetings or simple definitions)
+CHART / SETUP FORMAT (only when chart is attached or a concrete setup is being reviewed)
 Market Bias
 Reason
 Support
 Resistance
-Key levels / plan (bullish above / bearish below — educational, not an order)
-Stop / Invalidation
-Targets (if visible or structure-based)
-Risk Reward (if levels allow)
-Confidence — High/Medium/Low with a % and 1–3 reasons
+Plan (bullish above / bearish below + invalidation)
+Targets (only if structure supports)
+Risk Reward (only if levels allow)
+Confidence — High/Medium/Low with % and short reasons
 Conclusion
 
-COMMUNICATION EXAMPLES (style to mirror)
-- “Buy karu?” → Not ideal near resistance; breakout + successful retest improves bullish continuation probability.
-- “Sell karu?” → No short confirmation yet; until lower low forms, aggressive bearish stance is poor.
-- “Market kaisa hai?” → Range-bound; both sides active — wait for breakout/breakdown for a cleaner plan.
-- Missing data → “Current data is insufficient. Missing: timeframe / price / volume / chart. Share these before a trade plan.”
-
 LENGTH
-- Greetings: 1–2 respectful lines.
-- Normal Q&A: clear and complete, usually under ~200 words.
-- Full analysis: structured sections above, still tight — no essay walls.`;
+- Greetings: 1–2 lines.
+- Normal answers: clear, usually under ~180 words.
+- Chart analysis: structured, tight, no filler.`;
 
-const CHART_VISION_PROMPT = `CHART / SCREENSHOT — senior desk read. Analyze ONLY this image. Never invent numbers.
-Use the analysis format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Stop/Invalidation · Targets · Risk Reward · Confidence (% + reasons) · Conclusion.
-If blurry or incomplete → say what is missing. Weak/conflicted setup → NO TRADE with reasons.
-Never say buy/sell as an order. Never sound like a chatbot.`;
+const CHART_VISION_PROMPT = `CHART MODE — you are Jarvis. Read ONLY this screenshot.
+- Copy numbers exactly as shown. If a level is unclear/blurry, say unclear — do not invent.
+- Format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Invalidation · Targets · Risk Reward · Confidence · Conclusion.
+- Weak/conflicted → NO TRADE with reasons.
+- Never buy/sell orders. Never invent.`;
 
-const WEB_HINT = `Latest/news request: separate known market context from what must be verified on live NSE/broker feed. Stay evidence-based — no guarantees.`;
+const WEB_HINT = `Latest/news request: separate known context from what must be verified on live NSE/broker feed. No invented headlines or numbers.`;
 
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
@@ -205,9 +192,9 @@ function isShortChat(message) {
 /** Prefer quality config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
 function geminiGenerationConfigs(hasImage, shortChat) {
   const base = {
-    temperature: hasImage ? 0.25 : shortChat ? 0.5 : 0.35,
-    topP: hasImage ? 0.85 : 0.92,
-    maxOutputTokens: hasImage ? 900 : shortChat ? 220 : 700,
+    temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
+    topP: hasImage ? 0.8 : 0.9,
+    maxOutputTokens: hasImage ? 1000 : shortChat ? 220 : 700,
   };
   return [
     { ...base, thinkingConfig: { thinkingBudget: 0 } },
@@ -423,12 +410,12 @@ export function createMasterAiRouter(apiKey) {
               ? 'Task: answer briefly from available context; if a visual structure read is needed, ask for the chart screenshot.'
               : 'Task: answer clearly as a senior analyst. Reason every conclusion. Do not sound like a chatbot.';
 
-      let textBlock = `[Jarvis · senior analyst · ${langLine} · bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
         textBlock +=
           hinglish || hindi
-            ? '\n\nImage padho. Jo dikhe wahi levels. Incomplete ho to missing points bolo.'
-            : '\n\nRead the image. Use only visible levels. If incomplete, list what is missing.';
+            ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
+            : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 
@@ -450,7 +437,7 @@ export function createMasterAiRouter(apiKey) {
 
       const contentParts = [{ type: 'text', text: textBlock }];
       if (hasImage) {
-        contentParts.push({ type: 'image_url', image_url: { url: imageDataUrl, detail: 'low' } });
+        contentParts.push({ type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } });
       }
 
       const userContent = hasImage ? contentParts : textBlock;
@@ -461,9 +448,9 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 900 : shortChat ? 220 : 700,
-            temperature: hasImage ? 0.25 : shortChat ? 0.5 : 0.35,
-            top_p: 0.92,
+            max_tokens: hasImage ? 1000 : shortChat ? 220 : 700,
+            temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
+            top_p: 0.9,
             messages,
           });
           const reply = completion.choices[0]?.message?.content?.trim();

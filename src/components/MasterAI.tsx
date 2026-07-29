@@ -481,7 +481,7 @@ export default function MasterAI() {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">Analyse AI</h1>
-              <span className="mai-chat__badge">Analyst</span>
+              <span className="mai-chat__badge">Jarvis</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured

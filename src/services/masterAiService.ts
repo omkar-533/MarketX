@@ -380,9 +380,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'User sent a chart screenshot. Give a senior desk analysis from the image only.',
-    'Format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Stop/Invalidation · Targets · Risk Reward · Confidence (% + reasons) · Conclusion.',
-    'Never invent prices. Never give buy/sell orders. If weak/conflicted → NO TRADE with reasons. Do not sound like a chatbot.',
+    'You are Jarvis. User sent a chart screenshot. Analyse only this image.',
+    'Format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Invalidation · Targets · Risk Reward · Confidence · Conclusion.',
+    'Copy visible numbers exactly. If unclear, say unclear. Never invent. Never buy/sell orders. Weak setup → NO TRADE.',
     note ? `User note: ${note}` : '',
   ]
     .filter(Boolean)
@@ -597,7 +597,7 @@ export function formatContextBlock(
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'Jarvis — senior Wolf Trade AI analyst. Human desk tone (never chatbot). Reason every conclusion. bullish/bearish only (no buy/sell orders). Incomplete data → ask what’s missing.',
+      'You are Jarvis — Wolf Trade AI. Accuracy first: never invent prices/levels. Reason every conclusion. bullish/bearish only (no buy/sell orders). Incomplete data → ask what is missing.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
       ctx.signals ? `Signals: ${ctx.signals}` : '',
