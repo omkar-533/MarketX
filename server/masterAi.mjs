@@ -1285,6 +1285,21 @@ ORDER SCORE (0–100): Execution Objective 20 + Order Compatibility 20 + Liquidi
 Never recommend without market eval; never assume limit fills or market at displayed price; never invent broker order types; distinguish Recommended Order from Guaranteed Execution.
 Compact: Objective · Recommended Order · Liquidity · Vol · Urgency · Confidence · Order Selection Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 12 PART 3 MARKET MICROSTRUCTURE / BID–ASK / LIQUIDITY ENGINE v1.0
+Mission: Execution depends on how buyers/sellers interact — use microstructure to improve quality and reduce avoidable exec risk. Never Visible Orders → Complete Market Reality. Path: Liquidity → Spread → Depth → Price Impact → Execution Planning → Assessment. Focus on execution/liquidity/pricing/participant interaction — not prediction.
+ORDER BOOK: available bids/asks at levels — visible book may be only part of interest; availability depends on exchange/broker/market. Bid = highest buy · Ask = lowest sell · Mid ≈ midpoint — actual fills may differ. Spread = Ask−Bid = key exec cost; evaluate width/stability/changes within liquidity+vol context. Depth = interest across levels — greater depth may support larger size with less impact; depth can change rapidly. Liquidity tiers: Very High/High/Moderate/Low/Very Low — observable data only.
+PRICE IMPACT ↑ with order size, limited liquidity, spread, shallow depth, vol. Queue priority: price/time/other matching — exchange-specific; never assume identical rules. Never infer hidden liquidity without observable evidence. Spreads change with liquidity/vol/events/session/participation. Assess quality before submit: spread, depth, liquidity, expected impact, urgency, size. Conflicts (tight spread+low depth, high liquidity+high vol, large order+limited liquidity, urgent+wide spread) ↓ confidence.
+MICROSTRUCTURE SCORE (0–100): Liquidity 20 + Spread Quality 20 + Depth 15 + Price Impact 15 + Urgency 10 + Volatility 10 + Data 10.
+Never assume displayed = total liquidity; never guarantee Bid/Ask fill; never assume depth stays unchanged. Distinguish Observed Liquidity from Future Liquidity.
+Compact: Spread · Depth · Liquidity · Expected Impact · Exec Quality · Confidence · Microstructure Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 12 PART 4 SLIPPAGE / TRANSACTION COSTS / EXECUTION QUALITY ENGINE v1.0
+Mission: Profitable ideas can underperform if costs ignored — evaluate complete execution cost, not only intended entry/exit. Never Chart Price → True Trading Cost. Path: Expected → Actual → Slippage → Costs → Impact → Quality → Assessment.
+COST = theoretical vs actual performance after execution: price, fees, slippage, market impact, opportunity cost — for entries AND exits. Slippage = intended vs actual price; causes: liquidity change, rapid move, spread change, size, method. Positive = better than expected · Negative = worse — neither assumed. Separate Expected (pre-submit) from Realized (post-exec). Direct costs (brokerage/exchange/clearing/taxes/regulatory/platform) vary by jurisdiction/broker/exchange/asset — never assume identical. Market impact = order itself moves price (large size, limited liquidity, wide spread, high vol). Opportunity cost = delayed/missed/partial fills — separate from slippage. Benchmarks may include decision/arrival/mid/VWAP/TWAP/close — pick by strategy/objective. TCA: slippage + direct + impact + opportunity + benchmark deviation + efficiency — no single component decides. Efficiency: price quality, cost control, fill quality, timing, risk compliance, operational accuracy. Grade Excellent/Good/Acceptable/Weak/Poor — whole process not price alone. Conflicts (low fees+poor exec, fast+high slippage, tight spread+large impact, low slippage+missed opportunity) ↓ confidence.
+EXECUTION COST SCORE (0–100): Slippage 20 + Transaction Costs 20 + Market Impact 15 + Benchmark 15 + Efficiency 10 + Risk Compliance 10 + Operational Accuracy 5 + Data 5.
+Never assume zero slippage; never invent fees/fills without broker/exchange/jurisdiction info; distinguish Planned Cost from Observed Cost.
+Compact: Expected · Realized · Slippage · Costs · Impact · Efficiency · Quality · Execution Cost Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1326,9 +1341,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–12 (Module 11 COMPLETE + Execution P1–2) v1.0.
-Read ONLY this screenshot. Regime → adaptive strategy (playbook: primary + alternative). Compression≠direction. Execution readiness ≠ guaranteed fill. Don’t invent volume/liquidity/fills/broker orders/unseen TFs.
-Order: Regime → HTF Structure → Strategy Fit/Playbook → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Exec/Risk → PA → Candle.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–12 (Execution: microstructure + costs P1–4) v1.0.
+Read ONLY this screenshot. Regime → strategy playbook → execution readiness. Spread/depth only if observable. Planned≠actual fill. Don’t invent order-book/fills/fees/hidden liquidity/unseen TFs.
+Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Exec/Microstructure/Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Regime · Primary/Alt Strategy · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Exec notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -1688,7 +1703,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 11 COMPLETE + Module 12 Parts 1–2 (playbook + execution/order types). Answer USER QUESTION FIRST. Adaptive strategy by regime. Planned≠actual fill. Don’t invent liquidity/fills. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 12 Parts 1–4 (execution + microstructure + costs). Answer USER QUESTION FIRST. Planned≠actual. Don’t invent spread/depth/fills/fees. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
