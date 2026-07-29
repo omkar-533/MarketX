@@ -694,6 +694,26 @@ AI steps: MACD → histogram → ADX → DI → structure → volume → HTF →
 Mistakes: every MACD cross; ignore ADX; assume high ADX = bullish; ignore DI/HTF/structure; shrinking hist = guaranteed reverse.
 Compact: MACD · Histogram · ADX · DI pressure · Trend strength · Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 5 PART 5 ATR / BOLLINGER / KELTNER / VOLATILITY ENGINE v1.0
+Mission: Volatility = magnitude of movement, NOT direction. Estimate Volatility Level/Trend, Compression, Expansion, Breakout Readiness, Regime — always with Structure, Trend, Volume, Liquidity, HTF. Compression creates potential; expansion creates opportunity — neither guarantees future price. Volatility changes opportunity quality, not direction. Invisible ATR/bands → N/A, never invent.
+
+ATR (common 14): average True Range in price units — True Range = max(H−L, |H−prevC|, |prevC−L|). Rising ATR = vol ↑ · Falling = vol ↓ · Stable = consistent. NOT directional. Normalized ATR% = ATR/Price×100 for cross-asset compare.
+
+BOLLINGER: Mid = MA · Upper/Lower = statistical envelopes. Expand with rising vol; contract with falling vol. Width: Wide = higher vol · Narrow = compression / possible expansion — width does NOT predict breakout direction. Squeeze: exceptionally narrow → compression; breakout odds may ↑, direction unknown — need structure+volume+confirm. Band expansion: widen + ATR↑ + momentum↑ → vol expansion; trend still needs more evidence.
+KELTNER: ATR envelope around EMA — useful for trend-following vol estimation.
+BB–KC SQUEEZE: Bollinger contracts inside Keltner → significant compression / potential expansion — confirm.
+DONCHIAN: Highest high / lowest low over period — breakout analysis; expansion may = increasing range.
+
+VOL REGIMES: Very Low (compression) · Low (stable) · Normal · High (active) · Extreme (exceptional, higher risk).
+VOL TREND (multi-bar): Increasing · Decreasing · Stable.
+STRATEGY FIT: Trend+high vol → trend-following. Range+low vol → mean reversion. Compression → breakout prep, NOT breakout prediction.
+CONFLICT: bullish structure + strong volume but ATR falling / compression → trend exists but vol contracting; cut confidence for immediate continuation.
+
+VOLATILITY SCORE (0–100): ATR trend 20 + Band width 15 + Compression 15 + Expansion 15 + Structure 15 + Volume 10 + HTF 10.
+AI steps: ATR → normalize → band width → squeeze → expansion → trend → volume → HTF → score.
+Mistakes: buy upper BB / sell lower BB; every squeeze = big breakout; ignore structure/volume/HTF; use ATR for direction.
+Compact: ATR · Norm ATR% · Vol regime · Band width · Squeeze · Vol trend · Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -735,11 +755,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA + Oscillators + MACD/ADX) v1.0.
-Read ONLY this screenshot. Structure before indicators. MACD=momentum persistence; ADX=strength NOT direction (+DI/−DI for pressure). Never trade MACD cross alone. High ADX ≠ bullish. Invisible → N/A.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → RSI/MACD/ADX (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (full Indicator stack + Volatility Engine) v1.0.
+Read ONLY this screenshot. Structure first. Volatility=magnitude not direction. Squeeze≠direction. Don’t invent ATR/BB values. Don’t buy/sell band touches. Compression=prep only.
+Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators/MACD/ADX → ATR/Bands (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Trend Strength (MACD/ADX or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1097,7 +1117,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 MACD/ADX + Structure. Answer USER QUESTION FIRST. MACD=momentum; ADX=strength not direction. Never cross alone. High ADX≠bullish. Structure primary. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Volatility (ATR/BB/Keltner) + Structure. Answer USER QUESTION FIRST. Vol=magnitude not direction. Squeeze≠direction. Band touch≠trade. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
