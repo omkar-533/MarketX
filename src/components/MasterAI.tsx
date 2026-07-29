@@ -267,7 +267,17 @@ export default function MasterAI() {
 
     // Greetings / short thanks — no chart needed
     if (!hasImage && (isCasualGreeting(userText) || isPoliteAck(userText))) {
-      const activeLang = resolveMasterAiLanguage(langMode, userText, selectedLang.code);
+      const recentUser = messages
+        .filter((m) => m.role === 'user')
+        .slice(-4)
+        .map((m) => m.text)
+        .reverse();
+      const activeLang = resolveMasterAiLanguage(
+        langMode,
+        userText,
+        selectedLang.code,
+        recentUser,
+      );
       if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
         setSelectedLang(activeLang);
         saveSelectedLanguage(activeLang.code);
@@ -287,13 +297,28 @@ export default function MasterAI() {
     }
 
     if (!hasImage && !isTradingRelated(userText)) {
+      const recentUser = messages
+        .filter((m) => m.role === 'user')
+        .slice(-4)
+        .map((m) => m.text)
+        .reverse();
+      const blockLang = resolveMasterAiLanguage(
+        langMode,
+        userText,
+        selectedLang.code,
+        recentUser,
+      );
+      if (langMode === 'auto' && blockLang.code !== selectedLang.code) {
+        setSelectedLang(blockLang);
+        saveSelectedLanguage(blockLang.code);
+      }
       setMessages((prev) => [
         ...prev,
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
         {
           id: `${Date.now()}-block`,
           role: 'trafi',
-          text: getTradingBlockMessage(selectedLang.code),
+          text: getTradingBlockMessage(blockLang.code),
           timestamp: new Date(),
         },
       ]);
@@ -326,11 +351,17 @@ export default function MasterAI() {
       }));
 
     try {
-      const detectFrom = userNote.trim();
+      const detectFrom = userNote.trim() || (hasImage ? '' : userText);
+      const recentUser = messages
+        .filter((m) => m.role === 'user')
+        .slice(-4)
+        .map((m) => m.text)
+        .reverse();
       const activeLang = resolveMasterAiLanguage(
         langMode,
         detectFrom,
         selectedLang.code || 'hi-Latn',
+        recentUser,
       );
       if (langMode === 'auto') {
         // Always sync detected / sticky language into UI so Auto · label updates
@@ -340,7 +371,7 @@ export default function MasterAI() {
         }
       }
       const visionMessage = hasImage
-        ? getChartVisionPrompt(activeLang.code, userNote || undefined)
+        ? getChartVisionPrompt(activeLang.code, userNote || undefined, langMode === 'auto')
         : userText;
 
       let responseText = hasImage
@@ -354,13 +385,16 @@ export default function MasterAI() {
           const textMessage =
             hasImage
               ? visionMessage
-              : `${userText}\n\n[LANGUAGE LOCK: Reply in ${activeLang.replyIn}. Match this language exactly.]`;
+              : langMode === 'auto'
+                ? `${userText}\n\n[AUTO DETECT: Reply in the same language as my message. Detector hint: ${activeLang.replyIn}.]`
+                : `${userText}\n\n[LANGUAGE LOCK: Reply in ${activeLang.replyIn}. Match this language exactly.]`;
           const result = await askMasterAi(
             {
               message: textMessage,
               model: MASTER_AI_MODEL_ID,
               lang: activeLang.code,
               langName: activeLang.nativeLabel,
+              langMode,
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
               needsWeb: false,

@@ -56,7 +56,7 @@ HARD RULES
 3. Use LIVE CONTEXT numbers when present. Never invent prices, OI, PCR, or strikes not in context or the image.
 4. If data is missing or stale, say so briefly — no long essays.
 5. For trade ideas, one short risk line is enough (invalidation / size caution).
-6. Follow LANGUAGE LOCK / OUTPUT LANGUAGE instructions exactly. If locked to Hinglish, never reply in pure English or Devanagari. If locked to Hindi Devanagari, never reply in English-only. If locked to English, no Hindi/Hinglish.
+6. AUTO LANGUAGE: When Auto mode / AUTO LANGUAGE DETECTOR is on, mirror the user's message language exactly (Hinglish↔Hinglish, हिंदी↔हिंदी, English↔English). Use detector hint only if ambiguous. If a fixed LANGUAGE LOCK is set, follow that lock.
 7. If OWNER TEACHINGS match the question, use 1–2 useful points only — never dump the PDF.
 8. Never switch gender mid-chat. Stay Jarvis with masculine Hindi/Hinglish forms.
 9. NEVER say buy, sell, long, short as trade instructions (also avoid Hindi: kharido, becho, खरीदो, बेचो). Use only bias words: bullish / bearish (or sideways). Frame plans as “bullish above X / bearish below Y” — never “buy here / sell here”.
@@ -361,8 +361,10 @@ export function createMasterAiRouter(apiKey) {
         ? `${platformContextRaw}\n\n${ownerKnowledge}`.trim()
         : platformContextRaw;
       const model = typeof body?.model === 'string' ? body.model : 'gemini/auto';
-      const lang = typeof body?.lang === 'string' ? body.lang : 'en-US';
+      const lang = typeof body?.lang === 'string' ? body.lang : 'hi-Latn';
       const langName = typeof body?.langName === 'string' ? body.langName.trim() : '';
+      const langMode = typeof body?.langMode === 'string' ? body.langMode : 'auto';
+      const autoLang = langMode === 'auto';
       const needsWeb = Boolean(body?.needsWeb);
       const history = Array.isArray(body?.history) ? body.history : [];
 
@@ -400,13 +402,15 @@ export function createMasterAiRouter(apiKey) {
       const lengthTag =
         '[LENGTH: short human reply — normal chat 2–6 lines / ~100 words max; chart ~150 words max. No essays.]\n';
 
-      const langTag = hinglish
-        ? '[LANGUAGE LOCK: Reply ONLY in Hinglish (Roman Hindi + English). NO Devanagari. NO pure English essays. Example: "Nifty weak hai, levels clear rakho."]\n'
-        : hindi
-          ? '[LANGUAGE LOCK: Reply ONLY in Hindi Devanagari (हिंदी). NO English-only replies. NO Roman Hinglish as main script.]\n'
-          : lang.startsWith('en')
-            ? '[LANGUAGE LOCK: Reply ONLY in clear Indian English. NO Hindi/Hinglish/Devanagari.]\n'
-            : `[LANGUAGE LOCK: Reply ONLY in ${langName || lang}. Do not switch to English.]\n`;
+      const langTag = autoLang
+        ? `[AUTO LANGUAGE DETECTOR: Match the USER message language/script exactly. Detector hint: ${langName || lang}. Devanagari→Hindi, Roman Hinglish→Hinglish, English→English. Never ignore user language.]\n`
+        : hinglish
+          ? '[LANGUAGE LOCK: Reply ONLY in Hinglish (Roman Hindi + English). NO Devanagari. NO pure English essays. Example: "Nifty weak hai, levels clear rakho."]\n'
+          : hindi
+            ? '[LANGUAGE LOCK: Reply ONLY in Hindi Devanagari (हिंदी). NO English-only replies. NO Roman Hinglish as main script.]\n'
+            : lang.startsWith('en')
+              ? '[LANGUAGE LOCK: Reply ONLY in clear Indian English. NO Hindi/Hinglish/Devanagari.]\n'
+              : `[LANGUAGE LOCK: Reply ONLY in ${langName || lang}. Do not switch to English.]\n`;
 
       const qualityTag = hasImage
         ? '[TASK: SHORT chart read — Snapshot → Bias → Levels → Plan → Risk only]\n'
@@ -416,13 +420,15 @@ export function createMasterAiRouter(apiKey) {
           ? '[TASK: warm short greeting only — natural chat, no market dump, do not push chart unless they ask for analysis]\n'
           : '[TASK: normal short conversation first — acknowledge. NO bias/levels/plan/numbers. Then politely ask for chart screenshot for image-based analysis]\n';
 
-      const endLangLock = hinglish
-        ? '\n\n[FINAL LANGUAGE CHECK: Poora jawab Hinglish Roman me hi likho.]'
-        : hindi
-          ? '\n\n[FINAL LANGUAGE CHECK: पूरा जवाब हिंदी देवनागरी में लिखें।]'
-          : lang.startsWith('en')
-            ? '\n\n[FINAL LANGUAGE CHECK: Write the entire reply in English only.]'
-            : `\n\n[FINAL LANGUAGE CHECK: Write the entire reply in ${langName || lang} only.]`;
+      const endLangLock = autoLang
+        ? `\n\n[FINAL: Reply in the same language as the user. Hint: ${langName || lang}.]`
+        : hinglish
+          ? '\n\n[FINAL LANGUAGE CHECK: Poora jawab Hinglish Roman me hi likho.]'
+          : hindi
+            ? '\n\n[FINAL LANGUAGE CHECK: पूरा जवाब हिंदी देवनागरी में लिखें।]'
+            : lang.startsWith('en')
+              ? '\n\n[FINAL LANGUAGE CHECK: Write the entire reply in English only.]'
+              : `\n\n[FINAL LANGUAGE CHECK: Write the entire reply in ${langName || lang} only.]`;
 
       let textBlock = `${genderTag}${biasTag}${lengthTag}${langTag}${qualityTag}${userTextBase}${endLangLock}`;
       if (hasImage) {

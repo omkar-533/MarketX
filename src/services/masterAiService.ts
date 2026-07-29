@@ -179,8 +179,8 @@ function countMatches(text: string, re: RegExp): number {
 /** Common Roman-Hindi / Hinglish tokens (trading desk chat) */
 const HINGLISH_WORD_SET = new Set([
   'kya', 'kyun', 'kyu', 'kyunki', 'hai', 'hain', 'hoon', 'hun', 'nahi', 'nahin', 'mat',
-  'karo', 'karna', 'karke', 'kardo', 'krdo', 'krna', 'batao', 'bata', 'btao', 'bolo',
-  'samjhao', 'samjha', 'dekho', 'dekh', 'suno', 'sunao', 'poochho', 'poocho', 'pooch',
+  'karo', 'karna', 'karke', 'kardo', 'krdo', 'krna', 'batao', 'bata', 'btao', 'bolo', 'bol',
+  'samjhao', 'samjha', 'dekho', 'dekh', 'dikha', 'dikhao', 'dikh', 'suno', 'sunao', 'poochho', 'poocho', 'pooch',
   'bhai', 'yaar', 'dost', 'kaise', 'kaisa', 'kaisi', 'kitna', 'kitni', 'kitne',
   'thik', 'theek', 'acha', 'accha', 'acche', 'sahi', 'galat',
   'aaj', 'kal', 'abhi', 'pehle', 'pahle', 'baad', 'baadme', 'phir',
@@ -191,7 +191,13 @@ const HINGLISH_WORD_SET = new Set([
   'lekin', 'magar', 'agar', 'toh', 'sirf', 'zyada', 'jyada', 'bahut',
   'thoda', 'bilkul', 'sach', 'waise', 'aise', 'jaise', 'wahan', 'yahan', 'yaha', 'waha',
   'andar', 'bahar', 'upar', 'neeche', 'saath', 'bhejo', 'bhejna', 'padho', 'padhao', 'likho',
-  'wala', 'wali', 'wale', 'hone', 'hona',
+  'wala', 'wali', 'wale', 'hone', 'hona', 'kahan', 'kidhar', 'kab', 'kyase', 'kyasee',
+  'dikhra', 'dikhaega', 'bataega', 'karunga', 'karungi', 'milenga', 'milega',
+]);
+
+/** Short Roman particles — only count with other Hinglish signal */
+const HINGLISH_PARTICLES = new Set([
+  'ka', 'ki', 'ke', 'ko', 'se', 'pe', 'par', 'me', 'mein', 'mai', 'ye', 'yeh', 'vo', 'woh', 'wo', 'na', 'ji',
 ]);
 
 const HINGLISH_SUFFIX =
@@ -208,15 +214,32 @@ function tokenizeLatin(text: string): string[] {
 function scoreHinglish(text: string): number {
   const tokens = tokenizeLatin(text);
   let score = 0;
+  let particles = 0;
   for (const t of tokens) {
     if (HINGLISH_WORD_SET.has(t)) score += 2;
+    else if (HINGLISH_PARTICLES.has(t)) particles += 1;
     else if (HINGLISH_SUFFIX.test(t) && t.length >= 4) score += 1;
   }
+  if (particles >= 2) score += 2;
+  else if (particles === 1 && score > 0) score += 1;
   // Multi-word desk phrases
-  if (/\b(kya\s+hai|kaise\s+hai|bata\s*do|bhej\s*do|samjha\s*do|view\s+kya|sl\s+kahan|entry\s+kahan|aaj\s+ka|mujhe\s+bata)\b/i.test(text)) {
+  if (
+    /\b(kya\s+hai|kaise\s+hai|bata\s*do|bhej\s*do|samjha\s*do|view\s+kya|sl\s+kahan|entry\s+kahan|aaj\s+ka|mujhe\s+bata|nifty\s+ka|ka\s+view|kya\s+view|chart\s+bhej|dekh\s+ke|bata\s+de)\b/i.test(
+      text,
+    )
+  ) {
     score += 3;
   }
   return score;
+}
+
+function cleanForLangDetect(text: string): string {
+  return String(text || '')
+    .replace(/\[INSTRUCTION:[\s\S]*?\]/gi, '')
+    .replace(/\[LANGUAGE LOCK:[\s\S]*?\]/gi, '')
+    .replace(/^chart analysis:.*/i, '')
+    .replace(/^📷\s*/u, '')
+    .trim();
 }
 
 /**
@@ -224,12 +247,12 @@ function scoreHinglish(text: string): number {
  * Returns null when text is too short / inconclusive — caller keeps last language.
  */
 export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
-  const raw = String(text || '').trim();
+  const raw = cleanForLangDetect(text);
   if (raw.length < 2) return null;
 
   // Skip pure greetings — keep sticky last language
   if (
-    /^(hi+|hii+|hello+|hey+|yo|sup|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|thanks|thank\s*you|ok|okay|cool)[!?.,…]*$/i.test(
+    /^(hi+|hii+|hello+|hey+|yo|sup|namaste|namaskar|good\s*(morning|afternoon|evening|night)|gm|gn|thanks|thank\s*you|ok|okay|cool|theek|thik)[!?.,…]*$/i.test(
       raw,
     )
   ) {
@@ -254,22 +277,21 @@ export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
   const hinglishScore = scoreHinglish(raw);
   const tokens = tokenizeLatin(raw);
   const englishCue =
-    /\b(the|and|what|how|please|today|tomorrow|should|would|could|analyze|analysis|support|resistance|because|which|where|when)\b/i.test(
+    /\b(the|and|what|how|please|today|tomorrow|should|would|could|analyze|analysis|because|which|where|when|could\s+you|can\s+you|tell\s+me)\b/i.test(
       raw,
     );
-  const englishOnlyScore = englishCue ? 1 : 0;
 
   // Hinglish wins with any solid signal (even mixed with English trading words)
   if (hinglishScore >= 2) return 'hi-Latn';
-  if (hinglishScore >= 1 && tokens.length <= 12) return 'hi-Latn';
+  if (hinglishScore >= 1 && tokens.length <= 14) return 'hi-Latn';
   if (hinglishScore >= 1 && !englishCue) return 'hi-Latn';
 
-  // Mostly Latin + English cues → English
+  // Mostly Latin + English cues → English (only when no Hinglish)
   const letters = raw.replace(/[^A-Za-z\u0900-\u0D7F]/g, '');
-  if (letters.length >= 3) {
+  if (letters.length >= 3 && hinglishScore === 0) {
     const latin = (letters.match(/[A-Za-z]/g) || []).length;
     if (latin / letters.length >= 0.85) {
-      if (englishOnlyScore || hinglishScore === 0) return 'en-US';
+      if (englishCue || tokens.length >= 3) return 'en-US';
     }
   }
 
@@ -280,19 +302,37 @@ export function resolveMasterAiLanguage(
   mode: MasterAiLangMode,
   userText: string,
   fallback: MasterAiLangCode = 'hi-Latn',
+  recentUserTexts: string[] = [],
 ): MasterAiLanguage {
   if (mode !== 'auto') return getMasterAiLanguage(mode);
-  const cleaned = String(userText || '')
-    .replace(/\[INSTRUCTION:[\s\S]*?\]/gi, '')
-    .replace(/^chart analysis:.*/i, '')
-    .trim();
-  const detected = detectMasterAiLanguage(cleaned);
-  // Sticky: if unclear, keep last detected / selected language (default Hinglish)
+
+  const cleaned = cleanForLangDetect(userText);
+  let detected = detectMasterAiLanguage(cleaned);
+
+  // Auto: if this message is unclear, scan recent user messages (newest first)
+  if (!detected) {
+    for (const prev of recentUserTexts) {
+      detected = detectMasterAiLanguage(prev);
+      if (detected) break;
+    }
+  }
+
+  // Sticky only when detector still inconclusive
   return getMasterAiLanguage(detected || fallback || 'hi-Latn');
 }
 
-function buildLanguageDirective(langCode: string): string {
+function buildLanguageDirective(langCode: string, autoMode = false): string {
   const lang = getMasterAiLanguage(langCode);
+  if (autoMode) {
+    return [
+      'AUTO LANGUAGE DETECTOR (MANDATORY):',
+      '1. Read the USER\'s latest message — match THAT language/script exactly.',
+      '2. Devanagari Hindi → reply Hindi Devanagari. Roman Hinglish → reply Hinglish Roman. English → English. Tamil/Telugu/etc → that language.',
+      `3. Detector hint for this turn: ${lang.nativeLabel} (${lang.code}) — use this if the message is short/ambiguous.`,
+      '4. NEVER reply in a different language than the user used. Do not default to English.',
+      'Trading words OK in English: Nifty, CE, PE, SL, PCR, bullish, bearish.',
+    ].join('\n');
+  }
   if (langCode === 'hi-Latn') {
     return [
       'LANGUAGE LOCK (MANDATORY): Reply ONLY in Hinglish — Roman Hindi + English mix.',
@@ -365,10 +405,10 @@ export function getMasterAiWelcome(langCode: string): string {
   return `Namaste — I'm Jarvis. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
 }
 
-export function getChartVisionPrompt(langCode: string, userNote?: string): string {
+export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
   const note = userNote?.trim();
   const lang = getMasterAiLanguage(langCode);
-  const lock = buildLanguageDirective(langCode);
+  const lock = buildLanguageDirective(langCode, autoMode);
   const endLock =
     langCode === 'hi-Latn'
       ? 'FINAL: Poora jawab Hinglish (Roman) me do — English essay mat likho.'
@@ -617,10 +657,15 @@ export function buildMasterMarketContext(): MasterMarketContext {
   };
 }
 
-export function formatContextBlock(ctx: MasterMarketContext, langCode: string, compact = false): string {
+export function formatContextBlock(
+  ctx: MasterMarketContext,
+  langCode: string,
+  compact = false,
+  autoMode = false,
+): string {
   if (compact) {
     return [
-      buildLanguageDirective(langCode),
+      buildLanguageDirective(langCode, autoMode),
       'You are Jarvis — trading buddy. SHORT simple replies only (2–6 lines). Introduce only as Jarvis — never say “male”. Never say buy/sell — only bullish/bearish.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
@@ -630,7 +675,7 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
       .join('\n');
   }
   return [
-    buildLanguageDirective(langCode),
+    buildLanguageDirective(langCode, autoMode),
     'QUALITY: Prefer specific levels and risk over generic commentary. Cite snapshot numbers when used.',
     PLATFORM_KNOWLEDGE,
     `Session: ${ctx.session}`,
@@ -659,18 +704,12 @@ export interface MasterChatRequest {
   model: string;
   lang: string;
   langName: string;
+  /** When 'auto', server + prompts mirror user message language via detector hint */
+  langMode?: MasterAiLangMode;
   imageDataUrl?: string | null;
   history?: ChatHistoryItem[];
   needsWeb?: boolean;
 }
-
-export interface MasterChatResponse {
-  reply: string;
-  modelUsed?: string;
-  source?: 'openrouter' | 'openai' | 'local';
-}
-
-export type MasterAiKeySource = 'server' | 'profile' | 'none';
 
 export async function fetchMasterAiStatus(): Promise<{
   configured: boolean;
@@ -709,14 +748,15 @@ export async function fetchMasterAiStatus(): Promise<{
 
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
   const greeting = isCasualGreeting(req.message || '');
+  const autoMode = req.langMode === 'auto' || !req.langMode;
   // Always compact market dump — chart/image already carries levels; saves input tokens
   const platformContext = greeting
     ? [
-        buildLanguageDirective(req.lang),
+        buildLanguageDirective(req.lang, autoMode),
         'User sent a casual greeting. You are Jarvis. Reply short, natural, no market data dump. Introduce only as Jarvis — never say “male”. Hindi/Hinglish: karta/raha/bataunga only — never feminine forms.',
         'Invite them to share a chart or ask about Nifty / options / risk.',
       ].join('\n')
-    : formatContextBlock(ctx, req.lang, true);
+    : formatContextBlock(ctx, req.lang, true, autoMode);
 
   const history = (req.history ?? [])
     .slice(-6)
@@ -733,6 +773,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
       model: req.model,
       lang: req.lang,
       langName: req.langName,
+      langMode: autoMode ? 'auto' : req.langMode,
       imageDataUrl: req.imageDataUrl ?? null,
       history,
       needsWeb: req.needsWeb ?? false,
