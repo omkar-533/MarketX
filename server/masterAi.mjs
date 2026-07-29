@@ -1395,7 +1395,12 @@ LENGTH (strict)
 - Normal Q&A: under ~80 words.
 - Specific chart concept Q: under ~120 words.
 - Full report: under ~200 words, one line per field, no essays.
-- Follow-up / language switch: do not expand.`;
+- Follow-up / language switch: do not expand.
+
+REPLY FORMAT (UI — mandatory)
+Prefer short labeled lines. One idea per line. Use plain labels like "Journal Quality:" then value — avoid walls of **markdown**.
+Bullet lists OK with "- " or "• ". Never dump one giant paragraph. Never wrap every word in **.
+Compact desk style beats essay style. For journals: Title line, then 4–8 short labeled lines, then 1–2 line summary.`;
 
 const CHART_VISION_PROMPT = `CHART MODE — Hunter / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
 Read ONLY this screenshot. You are a market analyst — NOT a signal provider. Answer “What is the market showing?” with scenarios + evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.
@@ -1786,7 +1791,7 @@ export function createMasterAiRouter(apiKey) {
                   ? 'Task: answer in 3–5 short lines as analyst; if visual read needed, ask for chart. No trade instructions.'
                   : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
-      let textBlock = `[You are Hunter — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT. Never invent numbers. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Hunter — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
         textBlock +=
           hinglish || hindi

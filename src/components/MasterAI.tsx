@@ -48,6 +48,7 @@ import {
   type MasterAiLangMode,
   type MasterAiLanguage,
 } from '../services/masterAiService';
+import ChatMarkdown from './ChatMarkdown';
 import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
@@ -802,41 +803,59 @@ export default function MasterAI() {
               return (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
+                  initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                   className={`mai-chat__row ${isUser ? 'mai-chat__row--user' : 'mai-chat__row--ai'}`}
                 >
                   {!isUser ? (
-                    <div className="mai-chat__msg-avatar" aria-hidden>
+                    <motion.div
+                      className="mai-chat__msg-avatar"
+                      aria-hidden
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.05, type: 'spring', stiffness: 420, damping: 22 }}
+                    >
                       <LineChart className="h-3.5 w-3.5" />
-          </div>
+                    </motion.div>
                   ) : null}
 
-                  <div className={`mai-chat__bubble ${isUser ? 'mai-chat__bubble--user' : 'mai-chat__bubble--ai'}`}>
+                  <motion.div
+                    className={`mai-chat__bubble ${isUser ? 'mai-chat__bubble--user' : 'mai-chat__bubble--ai'}`}
+                    initial={isUser ? { opacity: 0, x: 12 } : { opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.04, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {!isUser ? <div className="mai-chat__bubble-glow" aria-hidden /> : null}
                     {message.imageUrl ? (
                       <img src={message.imageUrl} alt="" className="mai-chat__img" />
                     ) : null}
-                    <div className="mai-chat__text">{message.text}</div>
+                    <div className="mai-chat__text">
+                      {isUser ? message.text : <ChatMarkdown text={message.text} />}
+                    </div>
                     {!isUser ? (
                       <div className="mai-chat__meta">
                         <button type="button" onClick={() => speakText(message.text)} className="mai-chat__speak">
                           <Volume2 className="h-3 w-3" />
                           {hindi ? 'बोलें' : 'Speak'}
                         </button>
-            </div>
+                      </div>
                     ) : null}
-            </div>
+                  </motion.div>
                 </motion.div>
               );
             })}
           </AnimatePresence>
 
           {isThinking ? (
-            <div className="mai-chat__row mai-chat__row--ai">
+            <motion.div
+              className="mai-chat__row mai-chat__row--ai"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className="mai-chat__msg-avatar" aria-hidden>
                 <LineChart className="h-3.5 w-3.5" />
-            </div>
+              </div>
               <div className="mai-chat__thinking">
                 <span className="mai-chat__dots" aria-hidden>
                   <i />
@@ -851,7 +870,7 @@ export default function MasterAI() {
                     ? 'Analysis taiyar kar raha hoon…'
                     : 'Preparing the analysis…'}
               </div>
-          </div>
+            </motion.div>
           ) : null}
 
           <div ref={messagesEndRef} />
