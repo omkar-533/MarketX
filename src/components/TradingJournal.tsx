@@ -75,6 +75,7 @@ import {
   getInstrumentLotSize,
 } from '../services/journalTradeCalc';
 import HunterMark from './HunterMark';
+import LuxSelect from './ui/LuxSelect';
 
 type NotificationItem = {
   id: string;
@@ -1012,7 +1013,7 @@ export default function TradingJournal({
   const chartTheme = useChartTheme();
   const mutedClass = 'text-dark-muted';
   const inputClass =
-    'tf-field border focus:border-gold/40 focus:outline-none rounded-lg';
+    'tf-field tj-field border focus:border-gold/40 focus:outline-none rounded-lg';
 
   const journalTabs: { id: JournalTab; label: string; icon: typeof LayoutGrid }[] = [
     { id: 'overview', label: 'Overview', icon: LayoutGrid },
@@ -1355,12 +1356,12 @@ export default function TradingJournal({
                           (prev.type === 'Futures' || prev.type === 'Options'),
                       }));
                     }}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-sm ${inputClass}`}
-                    placeholder="Type manually — e.g. RELIANCE, NIFTY, Bank Nifty, TCS, SENSEX…"
+                    className={`w-full rounded-xl border px-2.5 py-1.5 tj-field ${inputClass}`}
+                    placeholder="RELIANCE, NIFTY, Bank Nifty…"
                     autoComplete="off"
                   />
                   <p className="mt-1 text-[10px] text-slate-500">
-                    Free text — koi bhi company naam, index, ya symbol type karo.
+                    Free text — company / index / symbol.
                   </p>
                 </div>
 
@@ -1381,12 +1382,8 @@ export default function TradingJournal({
                 <input
                   value={form.realizedPnl}
                   onChange={(e) => setForm({ ...form, realizedPnl: e.target.value })}
-                  className={`w-full rounded-xl border px-3 py-2.5 text-lg font-bold ${inputClass}`}
-                  placeholder={
-                    form.market === 'equity'
-                      ? 'Profit: 2500  or  Loss: -1200'
-                      : 'Profit: 150  or  Loss: -80'
-                  }
+                  className={`w-full rounded-xl border px-2.5 py-2 tj-field tj-field--pnl ${inputClass}`}
+                  placeholder="Profit: 2500  or  Loss: -1200"
                   inputMode="decimal"
                 />
                 <p className="text-[10px] text-slate-500">Positive = profit, negative (-) = loss. This is saved as your trade P&amp;L.</p>
@@ -1422,14 +1419,24 @@ export default function TradingJournal({
                   </label>
                 )}
               </div>
-              <select value={form.side} onChange={(e) => setForm({ ...form, side: e.target.value as TradeSide })} className={`rounded-xl border px-3 py-2 ${inputClass}`}>
-                <option value="Buy">Buy</option>
-                <option value="Sell">Sell</option>
-              </select>
-              <select
+              <LuxSelect
+                value={form.side}
+                options={[
+                  { value: 'Buy', label: 'Buy' },
+                  { value: 'Sell', label: 'Sell' },
+                ]}
+                onChange={(v) => setForm({ ...form, side: v as TradeSide })}
+              />
+              <LuxSelect
                 value={form.type}
-                onChange={(e) => {
-                  const type = e.target.value as TradeType;
+                options={[
+                  { value: 'Intraday', label: 'Intraday' },
+                  { value: 'Swing', label: 'Swing' },
+                  { value: 'Options', label: 'Options' },
+                  { value: 'Futures', label: 'Futures' },
+                ]}
+                onChange={(v) => {
+                  const type = v as TradeType;
                   setForm({
                     ...form,
                     type,
@@ -1439,13 +1446,7 @@ export default function TradingJournal({
                         : form.quantityIsLots && Boolean(selectedSymbolMeta?.isFno),
                   });
                 }}
-                className={`rounded-xl border px-3 py-2 ${inputClass}`}
-              >
-                <option value="Intraday">Intraday</option>
-                <option value="Swing">Swing</option>
-                <option value="Options">Options</option>
-                <option value="Futures">Futures</option>
-              </select>
+              />
               <input value={form.broker} onChange={(e) => setForm({ ...form, broker: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Broker (optional)" />
               <input value={form.strategy} onChange={(e) => setForm({ ...form, strategy: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Strategy (optional)" />
               <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} className={`rounded-xl border px-3 py-2 md:col-span-2 ${inputClass}`} placeholder="Tags (comma separated)" />
@@ -1564,23 +1565,29 @@ export default function TradingJournal({
                 className={`rounded-xl border px-3 py-2 ${inputClass}`}
                 placeholder="Filter by instrument"
               />
-              <select value={filters.tag} onChange={(e) => setFilters({ ...filters, tag: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`}>
-                <option value="">All Tags</option>
-                {availableTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-              </select>
-              <select
+              <LuxSelect
+                value={filters.tag}
+                options={[{ value: '', label: 'All Tags' }, ...availableTags.map((tag) => ({ value: tag, label: tag }))]}
+                onChange={(v) => setFilters({ ...filters, tag: v })}
+                placeholder="All Tags"
+              />
+              <LuxSelect
                 value={filters.market === 'crypto' || filters.market === 'forex' ? 'equity' : filters.market}
-                onChange={(e) => setFilters({ ...filters, market: e.target.value as 'all' | JournalMarket })}
-                className={`rounded-xl border px-3 py-2 ${inputClass}`}
-              >
-                <option value="all">All Trades</option>
-                <option value="equity">Indian Equity</option>
-              </select>
-              <select value={filters.pnl} onChange={(e) => setFilters({ ...filters, pnl: e.target.value as 'all' | 'win' | 'loss' })} className={`rounded-xl border px-3 py-2 ${inputClass}`}>
-                <option value="all">All Profit / Loss</option>
-                <option value="win">Win Only</option>
-                <option value="loss">Loss Only</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'All Trades' },
+                  { value: 'equity', label: 'Indian Equity' },
+                ]}
+                onChange={(v) => setFilters({ ...filters, market: v as 'all' | JournalMarket })}
+              />
+              <LuxSelect
+                value={filters.pnl}
+                options={[
+                  { value: 'all', label: 'All P&L' },
+                  { value: 'win', label: 'Win Only' },
+                  { value: 'loss', label: 'Loss Only' },
+                ]}
+                onChange={(v) => setFilters({ ...filters, pnl: v as 'all' | 'win' | 'loss' })}
+              />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={handleExportCsv} className="rounded-full border border-[#d4af37]/40 px-3 py-1.5 text-sm text-[#d4af37]">

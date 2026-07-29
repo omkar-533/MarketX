@@ -8527,3 +8527,222 @@ input[type="number"] { -moz-appearance: textfield; }
 @media (prefers-reduced-motion: reduce) {
   .tj-assist__orb { animation: none !important; }
 }
+
+/* --- LuxSelect + compact trades typography --- */
+.tj-trades {
+  font-size: 0.8125rem;
+}
+.tj-trades .tj-trade-form__title {
+  font-size: 1.05rem;
+}
+.tj-trades .tj-trade-form__sub {
+  font-size: 0.72rem;
+}
+.tj-trades .tj-assist__title {
+  font-size: 0.9rem;
+}
+.tj-trades .tj-card h2,
+.tj-trades .text-base.font-bold {
+  font-size: 0.9rem !important;
+}
+.tj-trades .text-lg.font-bold {
+  font-size: 0.95rem !important;
+}
+.tj-trades .text-xl.font-bold {
+  font-size: 1.05rem !important;
+}
+
+.tj-field {
+  font-size: 0.75rem !important;
+  line-height: 1.35;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+  border-radius: 0.65rem !important;
+  background: rgba(8, 10, 16, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #e8edf5 !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.tj-field:focus {
+  border-color: rgba(212, 175, 55, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+  background: rgba(12, 14, 22, 0.9) !important;
+}
+.tj-field--pnl {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+.tj-psych {
+  border-radius: 0.95rem;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: linear-gradient(160deg, rgba(20, 24, 34, 0.9), rgba(10, 12, 18, 0.96));
+  padding: 0.85rem 0.9rem;
+}
+.tj-psych__title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+.tj-psych__hint {
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tj-psych__slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7c8799;
+}
+.tj-psych__slider-label em {
+  font-style: normal;
+  color: #f0d78c;
+}
+.tj-psych__range {
+  accent-color: #d4af37;
+  height: 0.35rem;
+}
+
+.lux-select {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+.lux-select--open { z-index: 60; }
+.lux-select__label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.575rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c8799;
+}
+.lux-select__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.05rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(160deg, rgba(28, 32, 44, 0.95), rgba(10, 12, 18, 0.98));
+  color: #e8edf5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+}
+.lux-select__trigger:hover {
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.lux-select--open .lux-select__trigger {
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12), 0 8px 24px rgba(0,0,0,0.35);
+}
+.lux-select__trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lux-select__value.is-placeholder { color: #64748b; font-weight: 500; }
+.lux-select__chevron {
+  display: inline-flex;
+  color: #f0d78c;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+.lux-select__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  max-height: min(14rem, 42vh);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background:
+    linear-gradient(165deg, rgba(30, 34, 48, 0.99) 0%, rgba(12, 14, 22, 0.99) 60%, rgba(8, 10, 16, 0.99) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 18px 48px rgba(0,0,0,0.55),
+    0 0 36px rgba(212, 175, 55, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
+  transform-origin: top center;
+}
+.lux-select__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -30% -10% auto;
+  height: 4.5rem;
+  background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.18), transparent 70%);
+}
+.lux-select__option {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #dbe3f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.lux-select__option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  transform: translateX(2px);
+}
+.lux-select__option.is-on {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.06));
+  color: #f8e7b0;
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.22);
+}
+.lux-select__check { color: #f0d78c; flex-shrink: 0; }
+
+/* Soft entrance for trade form fields */
+.tj-trade-form .tj-field,
+.tj-trade-form .lux-select {
+  animation: tj-field-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tj-field-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tj-trade-form .lux-select:nth-child(1) { animation-delay: 0.04s; }
+.tj-trade-form .lux-select:nth-child(2) { animation-delay: 0.08s; }
+
+.tj-assist__chip {
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.tj-assist__chip:hover { transform: translateY(-1px); }
+.tj-assist__chip:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tj-trade-form .tj-field,
+  .tj-trade-form .lux-select { animation: none !important; }
+}

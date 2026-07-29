@@ -1,4 +1,5 @@
 import { HeartHandshake } from 'lucide-react';
+import LuxSelect from '../ui/LuxSelect';
 
 export const TRADE_EMOTIONS = [
   'Calm',
@@ -37,80 +38,70 @@ interface TradePsychologyFieldsProps {
 
 export default function TradePsychologyFields({ value, onChange, inputClass }: TradePsychologyFieldsProps) {
   return (
-    <div className="md:col-span-2 rounded-xl border border-[#24324b] bg-[#0d1728] p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <HeartHandshake className="w-4 h-4 text-[#d4af37]" />
-        <h3 className="text-sm font-bold text-white">Trading Psychology</h3>
-        <span className="text-[10px] text-slate-500">(with this trade)</span>
+    <div className="md:col-span-2 tj-psych">
+      <div className="flex items-center gap-2 mb-2.5">
+        <HeartHandshake className="w-3.5 h-3.5 text-[#d4af37]" />
+        <h3 className="tj-psych__title">Trading Psychology</h3>
+        <span className="tj-psych__hint">this trade</span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-[10px] uppercase text-slate-500 mb-1 block">Before trade</label>
-          <select
-            value={value.beforeEmotion}
-            onChange={(e) => onChange({ beforeEmotion: e.target.value })}
-            className={inputClass}
-          >
-            {TRADE_EMOTIONS.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] uppercase text-slate-500 mb-1 block">After trade</label>
-          <select
-            value={value.afterEmotion}
-            onChange={(e) => onChange({ afterEmotion: e.target.value })}
-            className={inputClass}
-          >
-            {TRADE_EMOTIONS.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <LuxSelect
+          label="Before trade"
+          value={value.beforeEmotion}
+          options={TRADE_EMOTIONS}
+          onChange={(v) => onChange({ beforeEmotion: v })}
+        />
+        <LuxSelect
+          label="After trade"
+          value={value.afterEmotion}
+          options={TRADE_EMOTIONS}
+          onChange={(v) => onChange({ afterEmotion: v })}
+        />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-[10px] uppercase text-slate-500">Confidence {value.confidence}%</label>
+      <div className="tj-psych__sliders mt-3 space-y-2.5">
+        <label className="tj-psych__slider-label">
+          Confidence <em>{value.confidence}%</em>
+        </label>
         <input
           type="range"
           min={0}
           max={100}
           value={value.confidence}
           onChange={(e) => onChange({ confidence: e.target.value })}
-          className="w-full accent-[#d4af37]"
+          className="tj-psych__range w-full"
         />
-        <label className="text-[10px] uppercase text-slate-500">Discipline {value.discipline}%</label>
+        <label className="tj-psych__slider-label">
+          Discipline <em>{value.discipline}%</em>
+        </label>
         <input
           type="range"
           min={0}
           max={100}
           value={value.discipline}
           onChange={(e) => onChange({ discipline: e.target.value })}
-          className="w-full accent-[#d4af37]"
+          className="tj-psych__range w-full"
         />
-        <label className="text-[10px] uppercase text-slate-500">Fear / Greed {value.fearGreed}%</label>
+        <label className="tj-psych__slider-label">
+          Fear / Greed <em>{value.fearGreed}%</em>
+        </label>
         <input
           type="range"
           min={0}
           max={100}
           value={value.fearGreed}
           onChange={(e) => onChange({ fearGreed: e.target.value })}
-          className="w-full accent-[#d4af37]"
+          className="tj-psych__range w-full"
         />
       </div>
 
       <textarea
         value={value.psychologyNote}
         onChange={(e) => onChange({ psychologyNote: e.target.value })}
-        className={inputClass}
+        className={`${inputClass} tj-field mt-2.5`}
         rows={2}
-        placeholder="Mindset notes for this trade (optional)"
+        placeholder="Mindset notes (optional)"
       />
     </div>
   );
