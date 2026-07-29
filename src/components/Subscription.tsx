@@ -155,9 +155,9 @@ export default function Subscription({
                     <ShieldCheck className="w-4 h-4" />
                     {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
                   </div>
-                ) : link ? (
+                ) : whatsapp ? (
                   <a
-                    href={link}
+                    href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
                     target="_blank"
                     rel="noreferrer noopener"
                     className={`w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
@@ -166,8 +166,8 @@ export default function Subscription({
                         : 'bg-[#121520] text-slate-300 border border-[#1a1f2e] hover:border-[#d4af37]/30'
                     }`}
                   >
+                    <MessageCircle className="w-3.5 h-3.5" />
                     {plan.cta}
-                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 ) : (
                   <div className="w-full py-2.5 rounded-lg text-[11px] text-slate-500 text-center border border-[#1a1f2e]">
