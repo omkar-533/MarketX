@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -8,6 +8,9 @@ import {
   LineChart,
   ImagePlus,
   X,
+  ChevronDown,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import {
   MASTER_AI_LANGUAGES,
@@ -126,6 +129,9 @@ export default function MasterAI() {
       : getMasterAiLanguage(initialMode);
   const [langMode, setLangMode] = useState<MasterAiLangMode>(initialMode);
   const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [langQuery, setLangQuery] = useState('');
+  const langMenuRef = useRef<HTMLDivElement>(null);
   const welcomeText =
     initialMode === 'auto'
       ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
@@ -253,6 +259,8 @@ export default function MasterAI() {
             : m,
         ),
       );
+      setLangMenuOpen(false);
+      setLangQuery('');
       return;
     }
     const code = value as MasterAiLangCode;
@@ -264,7 +272,45 @@ export default function MasterAI() {
     setMessages((prev) =>
       prev.map((m) => (m.id === 'welcome' ? { ...m, text: getMasterAiWelcome(code) } : m)),
     );
+    setLangMenuOpen(false);
+    setLangQuery('');
   };
+
+  useEffect(() => {
+    if (!langMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!langMenuRef.current?.contains(e.target as Node)) {
+        setLangMenuOpen(false);
+        setLangQuery('');
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLangMenuOpen(false);
+        setLangQuery('');
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [langMenuOpen]);
+
+  const langGroups = useMemo(() => {
+    const q = langQuery.trim().toLowerCase();
+    const match = (l: MasterAiLanguage) =>
+      !q ||
+      l.name.toLowerCase().includes(q) ||
+      l.nativeLabel.toLowerCase().includes(q) ||
+      l.code.toLowerCase().includes(q);
+    return [
+      { id: 'popular', label: 'Popular', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'popular' && match(l)) },
+      { id: 'india', label: 'India & South Asia', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'india' && match(l)) },
+      { id: 'world', label: 'World', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'world' && match(l)) },
+    ].filter((g) => g.items.length > 0);
+  }, [langQuery]);
 
   const clearSelectedImage = () => {
     setSelectedImage(null);
@@ -632,38 +678,98 @@ export default function MasterAI() {
             <span className="hidden sm:inline">Voice</span>
           </button>
 
-          <label className="mai-chat__chip mai-chat__lang">
-            <Languages className="h-3.5 w-3.5 shrink-0 opacity-60" />
-            <select
-              value={langMode}
-              onChange={(e) => onLanguageChange(e.target.value)}
+          <div className={`mai-chat__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
+            <button
+              type="button"
+              className={`mai-chat__chip mai-chat__lang-trigger ${langMenuOpen ? 'mai-chat__chip--active' : ''}`}
+              onClick={() => setLangMenuOpen((o) => !o)}
               aria-label="Reply language"
+              aria-expanded={langMenuOpen}
+              aria-haspopup="listbox"
               title="Auto detects language from your message, or lock a language"
             >
-              <option value="auto">Auto · {selectedLang.nativeLabel}</option>
-              <optgroup label="Popular">
-                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'popular').map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.nativeLabel} · {l.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="India & South Asia">
-                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'india').map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.nativeLabel} · {l.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="World">
-                {MASTER_AI_LANGUAGES.filter((l) => l.group === 'world').map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.nativeLabel} · {l.name}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </label>
+              <Languages className="h-3.5 w-3.5 shrink-0" />
+              <span className="mai-chat__lang-label">
+                {langMode === 'auto' ? `Auto · ${selectedLang.nativeLabel}` : selectedLang.nativeLabel}
+              </span>
+              <ChevronDown className={`mai-chat__lang-chevron ${langMenuOpen ? 'mai-chat__lang-chevron--up' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {langMenuOpen ? (
+                <motion.div
+                  className="mai-chat__lang-menu"
+                  role="listbox"
+                  aria-label="Select reply language"
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                >
+                  <div className="mai-chat__lang-glow" aria-hidden />
+                  <div className="mai-chat__lang-head">
+                    <div className="mai-chat__lang-head-title">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Reply language</span>
+                    </div>
+                    <input
+                      type="search"
+                      className="mai-chat__lang-search"
+                      placeholder="Search language…"
+                      value={langQuery}
+                      onChange={(e) => setLangQuery(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="mai-chat__lang-scroll">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={langMode === 'auto'}
+                      className={`mai-chat__lang-item mai-chat__lang-item--auto ${langMode === 'auto' ? 'mai-chat__lang-item--on' : ''}`}
+                      onClick={() => onLanguageChange('auto')}
+                    >
+                      <span className="mai-chat__lang-item-main">
+                        <span className="mai-chat__lang-item-name">Auto detect</span>
+                        <span className="mai-chat__lang-item-sub">Matches your message · {selectedLang.nativeLabel}</span>
+                      </span>
+                      {langMode === 'auto' ? <Check className="mai-chat__lang-check" /> : null}
+                    </button>
+
+                    {langGroups.map((group) => (
+                      <div key={group.id} className="mai-chat__lang-group">
+                        <div className="mai-chat__lang-group-label">{group.label}</div>
+                        {group.items.map((l) => {
+                          const on = langMode === l.code;
+                          return (
+                            <button
+                              key={l.code}
+                              type="button"
+                              role="option"
+                              aria-selected={on}
+                              className={`mai-chat__lang-item ${on ? 'mai-chat__lang-item--on' : ''}`}
+                              onClick={() => onLanguageChange(l.code)}
+                            >
+                              <span className="mai-chat__lang-item-main">
+                                <span className="mai-chat__lang-item-name">{l.nativeLabel}</span>
+                                <span className="mai-chat__lang-item-sub">{l.name}</span>
+                              </span>
+                              {on ? <Check className="mai-chat__lang-check" /> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+
+                    {langGroups.length === 0 ? (
+                      <p className="mai-chat__lang-empty">No language matched</p>
+                    ) : null}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
