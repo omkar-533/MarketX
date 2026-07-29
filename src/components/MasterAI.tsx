@@ -507,11 +507,7 @@ export default function MasterAI() {
               <h2 className="mai-chat__empty-title">
                 {hindi ? 'Kaise help karun aaj?' : 'How can I help today?'}
               </h2>
-              <p className="mai-chat__empty-sub">
-                {hindi
-                  ? 'Pehle normal baat karo. Trading view chahiye ho to chart screenshot bhejna (📷).'
-                  : 'Chat normally first. When you want a trading view, send a chart screenshot (📷).'}
-              </p>
+              <p className="mai-chat__empty-sub">Post chart screenshots to start analysis</p>
             </div>
           ) : null}
 
