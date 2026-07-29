@@ -69,7 +69,7 @@ function lang(
 }
 
 /**
- * Languages Jarvis can lock to — aligned with Gemini web app multilingual support (70+).
+ * Languages Hunter can lock to — aligned with Gemini web app multilingual support (70+).
  * Auto mode unlocks the full Gemini multilingual capability even beyond this list.
  */
 export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
@@ -408,15 +408,15 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste. Main Jarvis — Wolf Trade AI desk. Chart screenshot bhejo ya market structure, levels, risk poochho. Main step-by-step analysis dunga.';
+    return 'Namaste. Main Hunter — Wolf Trade AI desk. Chart screenshot bhejo ya market structure, levels, risk poochho. Main step-by-step analysis dunga.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते। मैं Jarvis हूँ — Wolf Trade AI desk। Chart screenshot भेजें या market structure, levels, risk पूछें। मैं step-by-step analysis दूँगा।';
+    return 'नमस्ते। मैं Hunter हूँ — Wolf Trade AI desk। Chart screenshot भेजें या market structure, levels, risk पूछें। मैं step-by-step analysis दूँगा।';
   }
   if (langCode === 'en-US') {
-    return "Good day. I'm Jarvis on the Wolf Trade AI desk. Share a chart screenshot or ask about structure, levels, and risk — I'll walk through the analysis step by step.";
+    return "Good day. I'm Hunter on the Wolf Trade AI desk. Share a chart screenshot or ask about structure, levels, and risk — I'll walk through the analysis step by step.";
   }
-  return `Good day — I'm Jarvis (Wolf Trade AI desk). I'll reply in ${lang.name} (${lang.nativeLabel}). Share a chart or ask about structure, levels, and risk.`;
+  return `Good day — I'm Hunter (Wolf Trade AI desk). I'll reply in ${lang.name} (${lang.nativeLabel}). Share a chart or ask about structure, levels, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
@@ -483,8 +483,8 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Jarvis (Analyse AI): senior market analyst voice for Wolf Trade AI — human desk tone, chart analysis, never chatbot phrasing
-- Owner teachings: when admin uploads PDFs/notes, Jarvis follows that house method first
+- Hunter (Analyse AI): senior market analyst voice for Wolf Trade AI — human desk tone, chart analysis, never chatbot phrasing
+- Owner teachings: when admin uploads PDFs/notes, Hunter follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
 
@@ -951,15 +951,15 @@ export function hasActiveDeskThread(
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
-    'Namaste. Jarvis — Wolf Trade AI desk. Bataiye, aaj kya analyse karna hai?',
-    'Good to hear from you. Main Jarvis. Chart ya market sawal — seedha shuru karte hain.',
+    'Namaste. Hunter — Wolf Trade AI desk. Bataiye, aaj kya analyse karna hai?',
+    'Good to hear from you. Main Hunter. Chart ya market sawal — seedha shuru karte hain.',
     'Namaste. Desk ready hai. Symbol, timeframe, ya chart share kijiye.',
-    'Hello. Jarvis yahan. Aaj ka focus kya rakhna hai — structure, levels, ya risk?',
+    'Hello. Hunter yahan. Aaj ka focus kya rakhna hai — structure, levels, ya risk?',
   ];
   const variantsEn = [
-    'Good day. Jarvis on the Wolf Trade AI desk — what would you like to analyse?',
+    'Good day. Hunter on the Wolf Trade AI desk — what would you like to analyse?',
     'Hello. Ready when you are. Share a chart or your market question.',
-    'Good to connect. Jarvis here — symbol, timeframe, or a screenshot, and we begin.',
+    'Good to connect. Hunter here — symbol, timeframe, or a screenshot, and we begin.',
     'Hello. What should we review first — structure, levels, or risk?',
   ];
   const list = hinglish ? variantsHi : variantsEn;
@@ -1043,7 +1043,7 @@ export function formatContextBlock(
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'You are Jarvis — Wolf Trade AI market analyst. Accuracy first: never invent prices/levels. Scenarios + evidence only (no buy/sell/entry/stop/target).',
+      'You are Hunter — Wolf Trade AI market analyst. Accuracy first: never invent prices/levels. Scenarios + evidence only (no buy/sell/entry/stop/target).',
       liveBanner,
       `Session: ${ctx.session}`,
       hasLiveTape
@@ -1187,7 +1187,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const baseContext = greeting
     ? [
         buildLanguageDirective(req.lang, autoMode),
-        'User sent a greeting. Reply in 1–2 respectful desk lines as Jarvis. No market dump.',
+        'User sent a greeting. Reply in 1–2 respectful desk lines as Hunter. No market dump.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true, autoMode);
   const platformContext = [baseContext, memoryNote, req.journalContext?.trim()]

@@ -136,8 +136,8 @@ httpServer.listen(config.port, () => {
   startFyersAutoConnectWatch();
   void bootFyersAutoConnect();
   void ensureSeedTeachings()
-    .then((r) => console.log(`[Jarvis Teach] seed imported=${r.imported} total=${r.total}`))
-    .catch((err) => console.warn('[Jarvis Teach] seed import failed:', err?.message || err));
+    .then((r) => console.log(`[Hunter Teach] seed imported=${r.imported} total=${r.total}`))
+    .catch((err) => console.warn('[Hunter Teach] seed import failed:', err?.message || err));
   console.log(`Wolf Trade AI API on port ${config.port} (${config.nodeEnv})`);
   console.log(`  Frontend: ${config.frontendUrl}`);
   console.log(`  Fyers redirect: ${config.fyersRedirect}`);

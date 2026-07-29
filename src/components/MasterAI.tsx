@@ -128,7 +128,7 @@ export default function MasterAI() {
   const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
   const welcomeText =
     initialMode === 'auto'
-      ? 'Auto language on — type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
+      ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
       : getMasterAiWelcome(initialLang.code);
   const [messages, setMessages] = useState<Message[]>(() =>
     loadChatMemory({
@@ -248,7 +248,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — type in any language and Jarvis replies in the same one. Share a chart for structure analysis.',
+                text: 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.',
               }
             : m,
         ),
@@ -609,7 +609,7 @@ export default function MasterAI() {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">Analyse AI</h1>
-              <span className="mai-chat__badge">Jarvis</span>
+              <span className="mai-chat__badge">Hunter</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured

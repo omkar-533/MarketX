@@ -38,8 +38,8 @@ const HISTORY_TURNS = 24;
 const HISTORY_MSG_CHARS = 2500;
 const CONTEXT_CAP_CHARS = 16_000;
 
-const SYSTEM_PROMPT = `You are Jarvis at Wolf Trade AI (Analyse AI), running WOLF AI — Institutional Trading Analyst System v1.0.
-Spoken name: Jarvis. Do not rename yourself.
+const SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Analyse AI), running WOLF AI — Institutional Trading Analyst System v1.0.
+Spoken name: Hunter. Do not rename yourself.
 
 #######################################################################
 WOLF AI MARKET ANALYST GOVERNANCE ENGINE v1.0 — HIGHEST PRIORITY (overrides conflicting lower rules)
@@ -1397,7 +1397,7 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
+const CHART_VISION_PROMPT = `CHART MODE — Hunter / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
 Read ONLY this screenshot. You are a market analyst — NOT a signal provider. Answer “What is the market showing?” with scenarios + evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.
 Order: Overview → Structure → Momentum → Liquidity → S/R areas → Volume → Volatility → Bullish/Bearish/Neutral scenarios → Evidence to monitor → Risk factors → Summary.
 PRIORITY: answer user’s question first. Approx price from scale as Areas of Interest only. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
@@ -1773,7 +1773,7 @@ export function createMasterAiRouter(apiKey) {
       const taskLine = hasImage
         ? 'Task: WOLF AI MARKET ANALYST GOVERNANCE. Answer USER QUESTION FIRST. Scenarios + evidence. Areas of Interest only. NEVER Entry/Stop/Target/Buy/Sell. Under ~200 words full / ~120 Q&A.'
         : shortChat
-          ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
+          ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : historyHasAnalysis || wantsLanguageSwitch
@@ -1786,7 +1786,7 @@ export function createMasterAiRouter(apiKey) {
                   ? 'Task: answer in 3–5 short lines as analyst; if visual read needed, ask for chart. No trade instructions.'
                   : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
-      let textBlock = `[You are Jarvis — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT. Never invent numbers. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Hunter — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT. Never invent numbers. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
         textBlock +=
           hinglish || hindi
