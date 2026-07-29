@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, CalendarRange, Sparkles, X } from 'lucide-react';
 import type { PnlCurrency, TradeRecord } from '../../types/journal';
 import { formatPnlAmount, tradePnlCurrency } from '../../services/globalInstrumentService';
 
@@ -134,23 +135,16 @@ function formatCompactPnl(value: number, currency: PnlCurrency = 'INR') {
   return `${sign}${core}`;
 }
 
-function cellStyles(cell: CalendarCell): string {
-  const base =
-    'relative min-h-[88px] sm:min-h-[96px] p-2 text-left transition-all border-r border-b border-[#1a1f2e] last:border-r-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]/50';
-
-  if (!cell.inMonth) return `${base} bg-[#0a0e14]/80 opacity-50`;
+function cellTone(cell: CalendarCell): string {
+  if (!cell.inMonth) return 'tj-cal__cell--muted';
   if (!cell.summary || cell.summary.trades === 0) {
-    if (cell.isToday) return `${base} bg-[#d4af37]/5 ring-1 ring-inset ring-[#d4af37]/40`;
-    if (cell.isFuture) return `${base} bg-[#0b0e17]`;
-    return `${base} bg-[#0b0e17] hover:bg-[#121520]`;
+    if (cell.isToday) return 'tj-cal__cell--today';
+    if (cell.isFuture) return 'tj-cal__cell--future';
+    return 'tj-cal__cell--empty';
   }
-  if (cell.summary.pnl > 0) {
-    return `${base} bg-emerald-500/15 hover:bg-emerald-500/22 border-emerald-500/20`;
-  }
-  if (cell.summary.pnl < 0) {
-    return `${base} bg-red-500/15 hover:bg-red-500/22 border-red-500/20`;
-  }
-  return `${base} bg-amber-500/10 hover:bg-amber-500/15`;
+  if (cell.summary.pnl > 0) return 'tj-cal__cell--win';
+  if (cell.summary.pnl < 0) return 'tj-cal__cell--loss';
+  return 'tj-cal__cell--flat';
 }
 
 function formatDayTitle(dateKey: string) {
@@ -168,11 +162,12 @@ interface JournalCalendarProps {
   mutedClass?: string;
 }
 
-export default function JournalCalendar({ trades, mutedClass = 'text-slate-500' }: JournalCalendarProps) {
+export default function JournalCalendar({ trades }: JournalCalendarProps) {
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [direction, setDirection] = useState(0);
 
   const tradesByDay = useMemo(() => buildTradesByDay(trades), [trades]);
   const weeks = useMemo(
@@ -214,6 +209,7 @@ export default function JournalCalendar({ trades, mutedClass = 'text-slate-500' 
   const selectedSummary = selectedDay ? tradesByDay.get(selectedDay) : null;
 
   const shiftMonth = (delta: number) => {
+    setDirection(delta);
     const d = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(d.getFullYear());
     setViewMonth(d.getMonth());
@@ -221,226 +217,268 @@ export default function JournalCalendar({ trades, mutedClass = 'text-slate-500' 
   };
 
   const goToday = () => {
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth());
+    const ty = now.getFullYear();
+    const tm = now.getMonth();
+    setDirection(ty * 12 + tm >= viewYear * 12 + viewMonth ? 1 : -1);
+    setViewYear(ty);
+    setViewMonth(tm);
     setSelectedDay(todayDateKey());
   };
 
+  const monthKey = `${viewYear}-${viewMonth}`;
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <CalendarRange className="w-5 h-5 text-[#d4af37]" />
-            Trade Calendar
-          </h2>
-          <p className={`${mutedClass} text-sm mt-0.5`}>
-            Har din ka total P&L — green profit, red loss. Past & future months browse karo.
+    <div className="tj-cal">
+      <div className="tj-cal__hero">
+        <div className="tj-cal__hero-orb" aria-hidden />
+        <div className="tj-cal__hero-copy">
+          <p className="tj-chart__eyebrow">
+            <CalendarRange className="w-3 h-3" /> Session map
           </p>
+          <h2 className="tj-cal__title">Trade Calendar</h2>
+          <p className="tj-cal__sub">Daily heat map · tap a session for the full tape</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
+
+        <div className="tj-cal__nav">
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => shiftMonth(-1)}
-            className="p-2 rounded-lg border border-[#1a1f2e] bg-[#121520] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40"
+            className="tj-cal__nav-btn"
             aria-label="Previous month"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.95 }}
             onClick={goToday}
-            className="px-3 py-2 rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 text-xs font-bold text-[#d4af37]"
+            className="tj-cal__today"
           >
             Today
-          </button>
-          <span className="min-w-[140px] text-center text-sm font-bold text-white">{monthLabel}</span>
-          <button
+          </motion.button>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={monthKey}
+              className="tj-cal__month"
+              initial={{ opacity: 0, y: direction >= 0 ? 10 : -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: direction >= 0 ? -10 : 10 }}
+              transition={{ duration: 0.22 }}
+            >
+              {monthLabel}
+            </motion.span>
+          </AnimatePresence>
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => shiftMonth(1)}
-            className="p-2 rounded-lg border border-[#1a1f2e] bg-[#121520] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40"
+            className="tj-cal__nav-btn"
             aria-label="Next month"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-lg border border-[#1a1f2e] bg-[#121520] px-3 py-1.5 text-slate-400">
-          Month P&L{' '}
-          <strong className={monthStats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-            {formatCompactPnl(monthStats.totalPnl)}
-          </strong>
-        </span>
-        <span className="rounded-lg border border-[#1a1f2e] bg-[#121520] px-3 py-1.5 text-slate-400">
-          Trading days <strong className="text-white">{monthStats.tradeDays}</strong>
-        </span>
-        <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-emerald-400">
-          Win days {monthStats.winDays}
-        </span>
-        <span className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-red-400">
-          Loss days {monthStats.lossDays}
-        </span>
+      <div className="tj-cal__stats">
+        {[
+          {
+            label: 'Month P&L',
+            value: formatCompactPnl(monthStats.totalPnl),
+            tone: monthStats.totalPnl >= 0 ? 'up' : 'down',
+          },
+          { label: 'Sessions', value: String(monthStats.tradeDays), tone: '' },
+          { label: 'Win days', value: String(monthStats.winDays), tone: 'up' },
+          { label: 'Loss days', value: String(monthStats.lossDays), tone: 'down' },
+        ].map((s, i) => (
+          <motion.div
+            key={s.label}
+            className={`tj-cal__stat ${s.tone ? `tj-cal__stat--${s.tone}` : ''}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 + i * 0.05 }}
+          >
+            <span>{s.label}</span>
+            <strong>{s.value}</strong>
+          </motion.div>
+        ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
-        <div className="grid grid-cols-7 bg-[#121520] border-b border-[#1a1f2e]">
+      <div className="tj-cal__board">
+        <div className="tj-cal__weekdays">
           {WEEKDAYS.map((day) => (
-            <div
-              key={day}
-              className="py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500"
-            >
+            <div key={day} className="tj-cal__weekday">
               {day}
             </div>
           ))}
         </div>
 
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7">
-            {week.map((cell) => {
-              const hasTrades = cell.summary && cell.summary.trades > 0;
-              const pnl = cell.summary?.pnl ?? 0;
-              const dayTrades = hasTrades
-                ? trades.filter((t) => tradeDateKey(t) === cell.dateKey)
-                : [];
-              const dayCurrency = dayTrades[0] ? tradePnlCurrency(dayTrades[0]) : 'INR';
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={monthKey}
+            className="tj-cal__grid"
+            initial={{ opacity: 0, x: direction >= 0 ? 28 : -28, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, x: direction >= 0 ? -24 : 24, filter: 'blur(3px)' }}
+            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          >
+            {weeks.map((week, weekIndex) =>
+              week.map((cell, dayIndex) => {
+                const hasTrades = Boolean(cell.summary && cell.summary.trades > 0);
+                const pnl = cell.summary?.pnl ?? 0;
+                const dayTrades = hasTrades
+                  ? trades.filter((t) => tradeDateKey(t) === cell.dateKey)
+                  : [];
+                const dayCurrency = dayTrades[0] ? tradePnlCurrency(dayTrades[0]) : 'INR';
+                const selected = selectedDay === cell.dateKey;
+                const idx = weekIndex * 7 + dayIndex;
 
-              return (
-                <button
-                  key={cell.dateKey}
-                  type="button"
-                  onClick={() => setSelectedDay(cell.dateKey)}
-                  className={`${cellStyles(cell)} ${
-                    selectedDay === cell.dateKey ? 'ring-2 ring-[#d4af37] z-[1]' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span
-                      className={`text-xs font-bold tabular-nums ${
-                        cell.isToday ? 'text-[#d4af37]' : cell.inMonth ? 'text-slate-200' : 'text-slate-600'
-                      }`}
-                    >
-                      {cell.day}
-                    </span>
-                    {hasTrades && (
-                      <span className="text-[9px] font-semibold text-slate-500 tabular-nums">
-                        {cell.summary!.trades}t
-                      </span>
-                    )}
-                  </div>
-
-                  {hasTrades ? (
-                    <div className="mt-1.5 space-y-0.5">
-                      <p
-                        className={`text-[11px] sm:text-xs font-black tabular-nums leading-tight ${
-                          pnl > 0 ? 'text-emerald-400' : pnl < 0 ? 'text-red-400' : 'text-amber-400'
-                        }`}
-                      >
-                        {formatCompactPnl(pnl, dayCurrency)}
-                      </p>
-                      {cell.summary!.wins > 0 && cell.summary!.losses > 0 && (
-                        <p className="text-[9px] text-slate-500">
-                          <span className="text-emerald-400/90">{cell.summary!.wins}W</span>
-                          {' · '}
-                          <span className="text-red-400/90">{cell.summary!.losses}L</span>
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    cell.inMonth &&
-                    !cell.isFuture && (
-                      <p className="mt-2 text-[9px] text-slate-600">—</p>
-                    )
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-3 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500/40" /> Profit day
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-red-500/30 border border-red-500/40" /> Loss day
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded ring-1 ring-[#d4af37]/50 bg-[#d4af37]/10" /> Today
-        </span>
-      </div>
-
-      {selectedDay && (
-        <div className="rounded-xl border border-[#1a1f2e] bg-[#111827] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-bold text-white">{formatDayTitle(selectedDay)}</p>
-              {selectedSummary && selectedSummary.trades > 0 ? (
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {selectedSummary.trades} trade{selectedSummary.trades === 1 ? '' : 's'} · Day total{' '}
-                  <span
-                    className={`font-bold ${
-                      selectedSummary.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
-                    }`}
+                return (
+                  <motion.button
+                    key={cell.dateKey}
+                    type="button"
+                    onClick={() => setSelectedDay(cell.dateKey)}
+                    className={`tj-cal__cell ${cellTone(cell)} ${selected ? 'tj-cal__cell--on' : ''}`}
+                    initial={{ opacity: 0, scale: 0.86, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{
+                      delay: 0.02 + idx * 0.012,
+                      type: 'spring',
+                      stiffness: 420,
+                      damping: 24,
+                    }}
+                    whileHover={cell.inMonth ? { y: -3, scale: 1.03, zIndex: 2 } : undefined}
+                    whileTap={cell.inMonth ? { scale: 0.97 } : undefined}
                   >
-                    {formatPnlAmount(
-                      selectedSummary.pnl,
-                      selectedTrades[0] ? tradePnlCurrency(selectedTrades[0]) : 'INR',
-                    )}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500 mt-0.5">No trades logged this day</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedDay(null)}
-              className="text-xs text-slate-500 hover:text-slate-300"
-            >
-              Close
-            </button>
-          </div>
+                    {hasTrades && pnl !== 0 ? (
+                      <span className="tj-cal__cell-glow" aria-hidden />
+                    ) : null}
+                    <div className="tj-cal__cell-top">
+                      <span className={`tj-cal__day ${cell.isToday ? 'is-today' : ''}`}>{cell.day}</span>
+                      {hasTrades ? (
+                        <span className="tj-cal__trades">{cell.summary!.trades}t</span>
+                      ) : null}
+                    </div>
 
-          {selectedTrades.length > 0 ? (
-            <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto">
-              {selectedTrades.map((trade) => (
-                <div
-                  key={trade.id}
-                  className={`rounded-lg border p-3 text-sm ${
-                    trade.pnl >= 0
-                      ? 'border-emerald-500/25 bg-emerald-500/5'
-                      : 'border-red-500/25 bg-red-500/5'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-2">
+                    {hasTrades ? (
+                      <div className="tj-cal__pnl-wrap">
+                        <p
+                          className={`tj-cal__pnl ${
+                            pnl > 0 ? 'is-up' : pnl < 0 ? 'is-down' : 'is-flat'
+                          }`}
+                        >
+                          {formatCompactPnl(pnl, dayCurrency)}
+                        </p>
+                        {cell.summary!.wins > 0 && cell.summary!.losses > 0 ? (
+                          <p className="tj-cal__wl">
+                            <span className="is-up">{cell.summary!.wins}W</span>
+                            <span>·</span>
+                            <span className="is-down">{cell.summary!.losses}L</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      cell.inMonth && !cell.isFuture ? <p className="tj-cal__dash">·</p> : null
+                    )}
+                  </motion.button>
+                );
+              }),
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="tj-cal__legend">
+        <span>
+          <i className="tj-cal__dot tj-cal__dot--win" /> Profit
+        </span>
+        <span>
+          <i className="tj-cal__dot tj-cal__dot--loss" /> Loss
+        </span>
+        <span>
+          <i className="tj-cal__dot tj-cal__dot--today" /> Today
+        </span>
+      </div>
+
+      <AnimatePresence>
+        {selectedDay ? (
+          <motion.div
+            className="tj-cal__detail"
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 26 }}
+          >
+            <div className="tj-cal__detail-glow" aria-hidden />
+            <div className="tj-cal__detail-head">
+              <div>
+                <p className="tj-chart__eyebrow">
+                  <Sparkles className="w-3 h-3" /> Day tape
+                </p>
+                <p className="tj-cal__detail-title">{formatDayTitle(selectedDay)}</p>
+                {selectedSummary && selectedSummary.trades > 0 ? (
+                  <p className="tj-cal__detail-sub">
+                    {selectedSummary.trades} trade{selectedSummary.trades === 1 ? '' : 's'} ·{' '}
+                    <span className={selectedSummary.pnl >= 0 ? 'is-up' : 'is-down'}>
+                      {formatPnlAmount(
+                        selectedSummary.pnl,
+                        selectedTrades[0] ? tradePnlCurrency(selectedTrades[0]) : 'INR',
+                      )}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="tj-cal__detail-sub">No trades logged this session</p>
+                )}
+              </div>
+              <motion.button
+                type="button"
+                className="tj-cal__close"
+                whileHover={{ rotate: 90, scale: 1.08 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setSelectedDay(null)}
+                aria-label="Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </motion.button>
+            </div>
+
+            {selectedTrades.length > 0 ? (
+              <div className="tj-cal__tape">
+                {selectedTrades.map((trade, i) => (
+                  <motion.div
+                    key={trade.id}
+                    className={`tj-cal__trade ${trade.pnl >= 0 ? 'is-up' : 'is-down'}`}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 + i * 0.04 }}
+                  >
                     <div>
-                      <p className="font-semibold text-white">{trade.instrument}</p>
-                      <p className="text-[10px] text-slate-500">
-                        {trade.side} · {trade.type} · {new Date(trade.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      <p className="tj-cal__trade-name">{trade.instrument}</p>
+                      <p className="tj-cal__trade-meta">
+                        {trade.side} · {trade.type} ·{' '}
+                        {new Date(trade.date).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                        {trade.strategy ? ` · ${trade.strategy}` : ''}
                       </p>
                     </div>
-                    <p
-                      className={`font-bold tabular-nums shrink-0 ${
-                        trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}
-                    >
+                    <p className="tj-cal__trade-pnl">
                       {formatPnlAmount(trade.pnl, tradePnlCurrency(trade))}
                     </p>
-                  </div>
-                  {trade.strategy && (
-                    <p className="text-[10px] text-slate-500 mt-1">{trade.strategy}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500">Is din koi trade save nahi hai.</p>
-          )}
-        </div>
-      )}
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <p className="tj-cal__empty-note">Quiet day — nothing on the tape.</p>
+            )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

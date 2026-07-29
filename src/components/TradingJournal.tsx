@@ -1779,40 +1779,67 @@ export default function TradingJournal({
       )}
 
       {activeTab === 'calendar' && (
-      <>
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="app-card p-4">
-          <JournalCalendar trades={visibleTrades} mutedClass={mutedClass} />
-            </div>
-        <div className="space-y-4">
-          <div className="app-card p-4">
-            <h3 className="text-sm font-bold text-white mb-3">Weekday P&L</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {heatmapData.map((item) => (
-                <div key={item.day} className="rounded-lg border border-[#1a1f2e] p-3 text-center">
-                  <p className="text-[10px] uppercase text-slate-500">{item.day}</p>
-                  <p className="mt-1 text-sm font-bold" style={{ color: getTradeColor(item.pnl) }}>{formatCurrency(item.pnl)}</p>
+        <motion.div
+          className="tj-cal-page grid gap-3.5 xl:grid-cols-[1.25fr_0.75fr]"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+        >
+          <div className="tj-card p-3.5 sm:p-4">
+            <JournalCalendar trades={visibleTrades} mutedClass={mutedClass} />
           </div>
-                        ))}
-                      </div>
-                    </div>
-          <div className="app-card p-4">
-            <h3 className="text-sm font-bold text-white mb-3">Replay Timeline</h3>
-            <div className="space-y-2 max-h-[280px] overflow-y-auto">
-              {replayTimeline.map((trade) => (
-                <div key={trade.id} className="flex justify-between rounded-lg bg-[#121520] p-2.5 text-sm">
-            <div>
-                    <p className="font-semibold text-white">{trade.instrument}</p>
-                    <p className="text-[10px] text-slate-500">{new Date(trade.date).toLocaleDateString()}</p>
-            </div>
-                  <p className={trade.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>{formatCurrency(trade.pnl)}</p>
-          </div>
+          <div className="space-y-3.5">
+            <div className="tj-card p-3.5">
+              <p className="tj-chart__eyebrow">Edge by weekday</p>
+              <h3 className="tj-chart__title mb-3">Weekday P&L</h3>
+              <div className="tj-cal-weekgrid">
+                {heatmapData.map((item, i) => (
+                  <motion.div
+                    key={item.day}
+                    className="tj-cal-weekcell"
+                    initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: 0.06 + i * 0.05 }}
+                    whileHover={{ y: -3, scale: 1.04 }}
+                  >
+                    <p>{item.day}</p>
+                    <strong style={{ color: getTradeColor(item.pnl) }}>{formatCurrency(item.pnl)}</strong>
+                  </motion.div>
                 ))}
               </div>
+            </div>
+            <div className="tj-card p-3.5">
+              <p className="tj-chart__eyebrow">Recent flow</p>
+              <h3 className="tj-chart__title mb-3">Replay Timeline</h3>
+              <div className="tj-cal-replay space-y-2 max-h-[300px] overflow-y-auto">
+                {replayTimeline.length ? (
+                  replayTimeline.map((trade, i) => (
+                    <motion.div
+                      key={trade.id}
+                      className={`tj-cal-replay__row ${trade.pnl >= 0 ? 'is-up' : 'is-down'}`}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.04 + i * 0.03 }}
+                    >
+                      <div>
+                        <p className="tj-cal-replay__name">{trade.instrument}</p>
+                        <p className="tj-cal-replay__meta">
+                          {new Date(trade.date).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </p>
+                      </div>
+                      <p className="tj-cal-replay__pnl">{formatCurrency(trade.pnl)}</p>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="tj-cal__empty-note">Log trades to fill the replay tape.</p>
+                )}
+              </div>
+            </div>
           </div>
-                    </div>
-                  </div>
-      </>
+        </motion.div>
       )}
 
       <JournalAlertsCoach

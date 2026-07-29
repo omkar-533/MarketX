@@ -9153,3 +9153,460 @@ input[type="number"] { -moz-appearance: textfield; }
   .tj-trade-form .tj-field,
   .tj-trade-form .lux-select { animation: none !important; }
 }
+
+/* --- Trade Calendar luxury desk --- */
+.tj-cal { position: relative; }
+.tj-cal .tj-chart__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tj-cal__hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background:
+    linear-gradient(145deg, rgba(36, 30, 16, 0.42), rgba(12, 14, 22, 0.96) 45%, rgba(8, 10, 16, 0.98));
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28), 0 0 28px rgba(212,175,55,0.06);
+}
+.tj-cal__hero-orb {
+  pointer-events: none;
+  position: absolute;
+  width: 10rem;
+  height: 10rem;
+  top: -4rem;
+  right: -2rem;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.16);
+  filter: blur(36px);
+  animation: tj-orb 5.5s ease-in-out infinite;
+}
+.tj-cal__title {
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+.tj-cal__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  color: #7c8799;
+  line-height: 1.4;
+}
+
+.tj-cal__nav {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.tj-cal__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.28);
+  color: #94a3b8;
+}
+.tj-cal__nav-btn:hover { color: #f0d78c; border-color: rgba(212,175,55,0.4); }
+.tj-cal__today {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.12);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.65rem;
+  font-weight: 750;
+  color: #f0d78c;
+}
+.tj-cal__month {
+  display: inline-block;
+  min-width: 7.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.tj-cal__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+@media (min-width: 640px) {
+  .tj-cal__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.tj-cal__stat {
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.28);
+  padding: 0.45rem 0.55rem;
+}
+.tj-cal__stat span {
+  display: block;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tj-cal__stat strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: #f1f5f9;
+}
+.tj-cal__stat--up strong { color: #34d399; }
+.tj-cal__stat--down strong { color: #fb7185; }
+
+.tj-cal__board {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(20,24,34,0.9), rgba(8,10,16,0.98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 16px 40px rgba(0,0,0,0.3);
+}
+.tj-cal__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.28);
+}
+.tj-cal__weekday {
+  padding: 0.55rem 0.2rem;
+  text-align: center;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tj-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.tj-cal__cell {
+  position: relative;
+  min-height: 4.75rem;
+  padding: 0.45rem 0.4rem 0.4rem;
+  text-align: left;
+  border-right: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(11, 14, 23, 0.85);
+  overflow: hidden;
+  cursor: pointer;
+}
+@media (min-width: 640px) {
+  .tj-cal__cell { min-height: 5.35rem; padding: 0.5rem; }
+}
+.tj-cal__cell:nth-child(7n) { border-right: 0; }
+.tj-cal__cell--muted {
+  opacity: 0.38;
+  background: rgba(8, 10, 16, 0.7);
+  cursor: default;
+}
+.tj-cal__cell--empty:hover { background: rgba(18, 21, 32, 0.95); }
+.tj-cal__cell--future { background: rgba(11, 14, 23, 0.55); }
+.tj-cal__cell--today {
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.06);
+}
+.tj-cal__cell--win {
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.18), rgba(6, 78, 59, 0.12));
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.18);
+}
+.tj-cal__cell--loss {
+  background: linear-gradient(160deg, rgba(244, 63, 94, 0.16), rgba(127, 29, 29, 0.12));
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.18);
+}
+.tj-cal__cell--flat {
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.18);
+}
+.tj-cal__cell--on {
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(212, 175, 55, 0.7),
+    0 0 22px rgba(212, 175, 55, 0.22);
+}
+.tj-cal__cell-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: auto -20% -40%;
+  height: 70%;
+  background: radial-gradient(ellipse, rgba(212,175,55,0.16), transparent 70%);
+  animation: tj-orb 4s ease-in-out infinite;
+}
+.tj-cal__cell--win .tj-cal__cell-glow {
+  background: radial-gradient(ellipse, rgba(52,211,153,0.22), transparent 70%);
+}
+.tj-cal__cell--loss .tj-cal__cell-glow {
+  background: radial-gradient(ellipse, rgba(251,113,133,0.2), transparent 70%);
+}
+
+.tj-cal__cell-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+.tj-cal__day {
+  font-size: 0.68rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+.tj-cal__day.is-today { color: #f0d78c; }
+.tj-cal__cell--muted .tj-cal__day { color: #475569; }
+.tj-cal__trades {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+.tj-cal__pnl-wrap { margin-top: 0.35rem; }
+.tj-cal__pnl {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+@media (min-width: 640px) {
+  .tj-cal__pnl { font-size: 0.72rem; }
+}
+.tj-cal__pnl.is-up { color: #6ee7b7; text-shadow: 0 0 12px rgba(52,211,153,0.25); }
+.tj-cal__pnl.is-down { color: #fda4af; text-shadow: 0 0 12px rgba(251,113,133,0.22); }
+.tj-cal__pnl.is-flat { color: #fbbf24; }
+.tj-cal__wl {
+  margin: 0.15rem 0 0;
+  display: flex;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  font-weight: 650;
+  color: #64748b;
+}
+.tj-cal__wl .is-up { color: rgba(110, 231, 183, 0.9); }
+.tj-cal__wl .is-down { color: rgba(253, 164, 175, 0.9); }
+.tj-cal__dash {
+  margin: 0.55rem 0 0;
+  font-size: 0.65rem;
+  color: #334155;
+}
+
+.tj-cal__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  font-size: 0.58rem;
+  font-weight: 650;
+  color: #64748b;
+}
+.tj-cal__legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.tj-cal__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 0.2rem;
+  display: inline-block;
+}
+.tj-cal__dot--win {
+  background: rgba(16, 185, 129, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.5);
+}
+.tj-cal__dot--loss {
+  background: rgba(244, 63, 94, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.5);
+}
+.tj-cal__dot--today {
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.55);
+}
+
+.tj-cal__detail {
+  position: relative;
+  overflow: hidden;
+  margin-top: 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background:
+    linear-gradient(155deg, rgba(36, 30, 16, 0.35), rgba(12, 14, 22, 0.97) 40%, rgba(8, 10, 16, 0.98));
+  padding: 0.9rem;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.32), 0 0 24px rgba(212,175,55,0.06);
+}
+.tj-cal__detail-glow {
+  pointer-events: none;
+  position: absolute;
+  width: 8rem;
+  height: 8rem;
+  top: -3rem;
+  right: 10%;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.14);
+  filter: blur(28px);
+}
+.tj-cal__detail-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.tj-cal__detail-title {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: #f8fafc;
+}
+.tj-cal__detail-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.65rem;
+  color: #7c8799;
+}
+.tj-cal__detail-sub .is-up { color: #34d399; font-weight: 750; }
+.tj-cal__detail-sub .is-down { color: #fb7185; font-weight: 750; }
+.tj-cal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.28);
+  color: #94a3b8;
+}
+.tj-cal__tape {
+  position: relative;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+.tj-cal__trade {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.28);
+  padding: 0.55rem 0.65rem;
+}
+.tj-cal__trade.is-up {
+  border-color: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.06);
+}
+.tj-cal__trade.is-down {
+  border-color: rgba(244, 63, 94, 0.22);
+  background: rgba(244, 63, 94, 0.06);
+}
+.tj-cal__trade-name {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.tj-cal__trade-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.55rem;
+  color: #64748b;
+}
+.tj-cal__trade-pnl {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.tj-cal__trade.is-up .tj-cal__trade-pnl { color: #34d399; }
+.tj-cal__trade.is-down .tj-cal__trade-pnl { color: #fb7185; }
+.tj-cal__empty-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.tj-cal-weekgrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.tj-cal-weekcell {
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.28);
+  padding: 0.55rem 0.35rem;
+  text-align: center;
+}
+.tj-cal-weekcell p {
+  margin: 0;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tj-cal-weekcell strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.tj-cal-replay__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.28);
+  padding: 0.55rem 0.65rem;
+}
+.tj-cal-replay__row.is-up { border-color: rgba(16,185,129,0.18); }
+.tj-cal-replay__row.is-down { border-color: rgba(244,63,94,0.18); }
+.tj-cal-replay__name {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.tj-cal-replay__meta {
+  margin: 0.1rem 0 0;
+  font-size: 0.55rem;
+  color: #64748b;
+}
+.tj-cal-replay__pnl {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.tj-cal-replay__row.is-up .tj-cal-replay__pnl { color: #34d399; }
+.tj-cal-replay__row.is-down .tj-cal-replay__pnl { color: #fb7185; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tj-cal__hero-orb,
+  .tj-cal__cell-glow { animation: none !important; }
+}
