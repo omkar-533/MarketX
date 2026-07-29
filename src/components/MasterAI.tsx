@@ -67,7 +67,7 @@ export default function MasterAI() {
       role: 'trafi',
       text:
         initialMode === 'auto'
-          ? 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karunga. Chart (📷) bhej sakte ho.'
+          ? 'Language follows your message. Share a chart or ask about structure, levels, and risk — I will analyse step by step.'
           : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
@@ -178,7 +178,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — English, Hinglish, हिंदी, தமிழ்… type karo, main usi language me reply karunga. Chart (📷) bhej sakte ho.',
+                text: 'Language follows your message. Share a chart or ask about structure, levels, and risk — I will analyse step by step.',
               }
             : m,
         ),

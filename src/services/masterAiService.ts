@@ -364,15 +364,15 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste! Main Jarvis hoon. Hinglish me baat karta hoon. Chart/screenshot bhejo (📷) — trend, support, resistance bataunga. Ya Nifty, options, risk poochho.';
+    return 'Namaste. Main Jarvis — Wolf Trade AI desk. Chart screenshot bhejo ya market structure, levels, risk poochho. Main step-by-step analysis dunga.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते! मैं Jarvis हूँ — आपका trading साथी। Chart/screenshot भेजो (📷) — trend, support, resistance बताऊँगा। या Nifty, options, risk पूछो।';
+    return 'नमस्ते। मैं Jarvis हूँ — Wolf Trade AI desk। Chart screenshot भेजें या market structure, levels, risk पूछें। मैं step-by-step analysis दूँगा।';
   }
   if (langCode === 'en-US') {
-    return "Hi — I'm Jarvis, your trading copilot. Send a chart screenshot (📷) for instant trend, support & resistance analysis — or ask about markets, options, and risk.";
+    return "Good day. I'm Jarvis on the Wolf Trade AI desk. Share a chart screenshot or ask about structure, levels, and risk — I'll walk through the analysis step by step.";
   }
-  return `Namaste — I'm Jarvis. I'll reply in ${lang.name} (${lang.nativeLabel}). Send a chart screenshot (📷) or ask about Nifty, options, and risk.`;
+  return `Good day — I'm Jarvis (Wolf Trade AI desk). I'll reply in ${lang.name} (${lang.nativeLabel}). Share a chart or ask about structure, levels, and risk.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
@@ -380,9 +380,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'User sent a chart screenshot. Give a clear analysis from the image only.',
-    'Cover: Snapshot · Bias (bullish/bearish/sideways) · Levels · Plan (bullish above / bearish below) · Risk.',
-    'Never say buy/sell. Do not invent prices. If blurry, say so.',
+    'User sent a chart screenshot. Give a senior desk analysis from the image only.',
+    'Format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Stop/Invalidation · Targets · Risk Reward · Confidence (% + reasons) · Conclusion.',
+    'Never invent prices. Never give buy/sell orders. If weak/conflicted → NO TRADE with reasons. Do not sound like a chatbot.',
     note ? `User note: ${note}` : '',
   ]
     .filter(Boolean)
@@ -438,7 +438,7 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Jarvis (Analyse AI): trading-only copilot — introduce as Jarvis only (never say “male”); chart screenshot analysis
+- Jarvis (Analyse AI): senior market analyst voice for Wolf Trade AI — human desk tone, chart analysis, never chatbot phrasing
 - Owner teachings: when admin uploads PDFs/notes, Jarvis follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
@@ -511,19 +511,18 @@ export function isTradingRelated(input: string): boolean {
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
-    'Hey bhai! Main Jarvis — kaisa raha din? Bol, kya chal raha hai?',
-    'Hi — Jarvis yahin hoon. Seedha baat karo, main sun raha hoon.',
-    'Namaste! Jarvis here. Aaj kya scene hai — bol.',
-    'Arre hello! Jarvis bol raha hoon — kya dekhna hai aaj?',
+    'Namaste. Jarvis — Wolf Trade AI desk. Bataiye, aaj kya analyse karna hai?',
+    'Good to hear from you. Main Jarvis. Chart ya market sawal — seedha shuru karte hain.',
+    'Namaste. Desk ready hai. Symbol, timeframe, ya chart share kijiye.',
+    'Hello. Jarvis yahan. Aaj ka focus kya rakhna hai — structure, levels, ya risk?',
   ];
   const variantsEn = [
-    "Hey — Jarvis here. How’s it going? Tell me what’s on your mind.",
-    "Hi! I'm Jarvis — right here. What’s up?",
-    "Hello! Jarvis on the desk. What do you want to talk about?",
-    "Hey there — Jarvis. Fire away whenever you’re ready.",
+    'Good day. Jarvis on the Wolf Trade AI desk — what would you like to analyse?',
+    'Hello. Ready when you are. Share a chart or your market question.',
+    'Good to connect. Jarvis here — symbol, timeframe, or a screenshot, and we begin.',
+    'Hello. What should we review first — structure, levels, or risk?',
   ];
   const list = hinglish ? variantsHi : variantsEn;
-  // Light variation from message length / time
   const idx = (userText.length + new Date().getMinutes()) % list.length;
   return list[idx];
 }
@@ -598,7 +597,7 @@ export function formatContextBlock(
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'Jarvis — answer clearly like a helpful trading ChatGPT. bullish/bearish only (no buy/sell).',
+      'Jarvis — senior Wolf Trade AI analyst. Human desk tone (never chatbot). Reason every conclusion. bullish/bearish only (no buy/sell orders). Incomplete data → ask what’s missing.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
       ctx.signals ? `Signals: ${ctx.signals}` : '',
@@ -685,7 +684,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang, autoMode),
-        'User sent a greeting. Reply briefly and warmly as Jarvis. No market dump.',
+        'User sent a greeting. Reply in 1–2 respectful desk lines as Jarvis. No market dump. Never sound like a chatbot.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true, autoMode);
 
