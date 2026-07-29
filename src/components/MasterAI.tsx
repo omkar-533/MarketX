@@ -7,7 +7,6 @@ import {
   VolumeX,
   Languages,
   Bot,
-  User,
   Zap,
   BarChart3,
   ShieldAlert,
@@ -107,7 +106,6 @@ export default function MasterAI() {
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [aiStatus, setAiStatus] = useState({ configured: false, message: 'Checking AI…' });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -308,7 +306,6 @@ export default function MasterAI() {
         },
       ]);
       setInputText('');
-      setQuickAction(null);
       clearSelectedImage();
       return;
     }
@@ -324,7 +321,6 @@ export default function MasterAI() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
-    setQuickAction(null);
     analyzingRef.current = true;
     setIsThinking(true);
     if (hasImage) setIsAnalyzingChart(true);
@@ -430,71 +426,54 @@ export default function MasterAI() {
   };
 
   return (
-    <div className="mai flex h-[calc(100vh-100px)] flex-col overflow-hidden rounded-2xl border border-[#1e2433] bg-[#07090f] text-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-      {/* Header */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#1e2433] bg-[#0c1018]/95 px-4 py-3 backdrop-blur sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="relative shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#d4af37]/25 bg-gradient-to-br from-[#d4af37]/20 to-[#d4af37]/5">
-              <Bot className="h-5 w-5 text-[#d4af37]" />
-            </div>
+    <div className="mai-chat">
+      <header className="mai-chat__topbar">
+        <div className="mai-chat__brand">
+          <div className="mai-chat__avatar" aria-hidden>
+            <Bot className="h-4 w-4" />
             <span
-              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c1018] ${
-                isSpeaking
-                  ? 'bg-emerald-400 animate-pulse'
-                  : aiStatus.configured
-                    ? 'bg-emerald-500'
-                    : 'bg-amber-400'
+              className={`mai-chat__pulse ${
+                isSpeaking ? 'mai-chat__pulse--live' : aiStatus.configured ? 'mai-chat__pulse--ok' : 'mai-chat__pulse--warn'
               }`}
             />
           </div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[15px] font-semibold tracking-tight text-white">Jarvis</h2>
-              <span className="rounded border border-[#d4af37]/20 bg-[#d4af37]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]">
-                Male · Analyse AI
-              </span>
+            <div className="mai-chat__title-row">
+              <h1 className="mai-chat__title">Analyse AI</h1>
+              <span className="mai-chat__badge">Jarvis</span>
             </div>
-            <p className="truncate text-[11px] text-slate-500" title={aiStatus.message}>
+            <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
                 ? langMode === 'auto'
-                  ? `Online · Auto · ${selectedLang.nativeLabel}`
-                  : `Online · ${selectedLang.nativeLabel}`
+                  ? `Ready · Auto · ${selectedLang.nativeLabel}`
+                  : `Ready · ${selectedLang.nativeLabel}`
                 : aiStatus.message}
-              {langMode === 'auto' ? '' : ` · ${selectedLang.name}`}
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="mai-chat__controls">
           <button
             type="button"
             onClick={onAutoSpeakToggle}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-              autoSpeak
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                : 'border-[#252b3a] bg-[#12161f] text-slate-400 hover:text-slate-200'
-            }`}
+            className={`mai-chat__chip ${autoSpeak ? 'mai-chat__chip--on' : ''}`}
             title={autoSpeak ? 'Auto-speak on' : 'Speak only when you tap Speak'}
           >
             {autoSpeak ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">Voice</span>
           </button>
 
-          <label className="inline-flex items-center gap-1.5 rounded-lg border border-[#252b3a] bg-[#12161f] px-2 py-1.5">
-            <Languages className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+          <label className="mai-chat__chip mai-chat__lang">
+            <Languages className="h-3.5 w-3.5 shrink-0 opacity-60" />
             <select
               value={langMode}
               onChange={(e) => onLanguageChange(e.target.value)}
-              className="max-w-[150px] cursor-pointer bg-transparent text-[11px] font-medium text-slate-200 focus:outline-none sm:max-w-[170px]"
               aria-label="Reply language"
               title="Auto detects from your message, or lock a language"
             >
-              <option value="auto" className="bg-[#12161f] text-slate-200">
-                Auto · {selectedLang.nativeLabel}
-              </option>
+              <option value="auto">Auto · {selectedLang.nativeLabel}</option>
               {MASTER_AI_LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code} className="bg-[#12161f] text-slate-200">
+                <option key={l.code} value={l.code}>
                   {l.nativeLabel} · {l.name}
                 </option>
               ))}
@@ -503,167 +482,117 @@ export default function MasterAI() {
         </div>
       </header>
 
-      {/* Chat thread */}
       <div
         ref={chatAreaRef}
-        className="mai__thread min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5"
+        className="mai-chat__scroll"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
         onPaste={handlePaste}
       >
-        {messages.length <= 1 && !isThinking && (
-          <div className="mx-auto mb-2 max-w-xl px-2 text-center">
-            <p className="text-[13px] leading-relaxed text-slate-400">
-              {hindi
-                ? 'Chart screenshot bhejo ya market, options, risk ke baare mein poochho.'
-                : 'Send a chart screenshot or ask about markets, options, and risk.'}
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-              {quickActions.slice(0, 4).map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.id}
-                    type="button"
-                    onClick={() => {
-                      setQuickAction(action.id);
-                      void handleSend(action.prompt);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#252b3a] bg-[#10141c] px-3 py-1.5 text-[11px] text-slate-300 transition-colors hover:border-[#d4af37]/35 hover:text-[#e8d5a3]"
-                  >
-                    <Icon className="h-3 w-3 text-[#d4af37]/80" />
-                    {action.label}
-                  </button>
-                );
-              })}
+        <div className="mai-chat__column">
+          {messages.length <= 1 && !isThinking ? (
+            <div className="mai-chat__empty">
+              <div className="mai-chat__empty-mark">
+                <Bot className="h-7 w-7" />
+              </div>
+              <h2 className="mai-chat__empty-title">
+                {hindi ? 'Kaise help karun aaj?' : 'How can I help today?'}
+              </h2>
+              <p className="mai-chat__empty-sub">
+                {hindi
+                  ? 'Market, options, risk, ya chart screenshot — seedha poochho.'
+                  : 'Ask about markets, options, risk — or drop a chart screenshot.'}
+              </p>
+              <div className="mai-chat__suggestions">
+                {quickActions.slice(0, 4).map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      type="button"
+                      onClick={() => {
+                        void handleSend(action.prompt);
+                      }}
+                      className="mai-chat__suggest"
+                    >
+                      <Icon className="h-4 w-4 text-[#d4af37]" />
+                      <span>{action.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null}
 
-        <AnimatePresence>
-          {messages.map((message) => {
-            const isUser = message.role === 'user';
-            return (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.18 }}
-                className={`flex gap-2.5 sm:gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
-              >
-                <div
-                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
-                    isUser
-                      ? 'border-[#2a3142] bg-[#161b26] text-slate-300'
-                      : 'border-[#d4af37]/25 bg-[#d4af37]/10 text-[#d4af37]'
-                  }`}
-                >
-                  {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                </div>
-
-                <div className={`max-w-[min(720px,88%)] ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
-                  <div
-                    className={`px-3.5 py-2.5 text-[13px] leading-relaxed sm:px-4 sm:py-3 sm:text-[14px] ${
-                      isUser
-                        ? 'rounded-2xl rounded-tr-md border border-[#d4af37]/20 bg-[#d4af37]/12 text-[#f0e2b8]'
-                        : 'rounded-2xl rounded-tl-md border border-[#1e2433] bg-[#12161f] text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'
-                    }`}
-                  >
-                    {message.imageUrl && (
-                      <img
-                        src={message.imageUrl}
-                        alt=""
-                        className="mb-2.5 max-h-52 w-full rounded-xl border border-[#252b3a] bg-black/40 object-contain"
-                      />
-                    )}
-                    <div className="whitespace-pre-wrap break-words">{message.text}</div>
-                  </div>
-                  <div
-                    className={`mt-1 flex items-center gap-2 px-1 text-[10px] text-slate-600 ${
-                      isUser ? 'flex-row-reverse' : ''
-                    }`}
-                  >
-                    <span>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {!isUser && (
-                      <button
-                        type="button"
-                        onClick={() => speakText(message.text)}
-                        className="inline-flex items-center gap-1 font-medium text-slate-500 transition-colors hover:text-[#d4af37]"
-                      >
-                        <Volume2 className="h-3 w-3" />
-                        {hindi ? 'बोलें' : 'Speak'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-
-        {isThinking && (
-          <div className="flex items-center gap-3 pl-1">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d4af37]/25 bg-[#d4af37]/10">
-              <Bot className="h-3.5 w-3.5 text-[#d4af37]" />
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-2xl rounded-tl-md border border-[#1e2433] bg-[#12161f] px-4 py-2.5 text-[12px] text-slate-400">
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37] [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#d4af37] [animation-delay:300ms]" />
-              </span>
-              {isAnalyzingChart
-                ? hindi
-                  ? 'Chart padh raha hoon…'
-                  : 'Reading your chart…'
-                : hindi
-                  ? 'Soch raha hoon…'
-                  : 'Thinking…'}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Composer */}
-      <div className="shrink-0 border-t border-[#1e2433] bg-[#0c1018] px-3 py-3 sm:px-5 sm:py-4">
-        {messages.length > 1 && (
-          <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
+          <AnimatePresence>
+            {messages.map((message) => {
+              const isUser = message.role === 'user';
+              if (message.id === 'welcome') return null;
               return (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => {
-                    setQuickAction(action.id);
-                    void handleSend(action.prompt);
-                  }}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                    quickAction === action.id
-                      ? 'border-[#d4af37]/40 bg-[#d4af37]/15 text-[#e8d5a3]'
-                      : 'border-[#252b3a] bg-[#10141c] text-slate-500 hover:text-slate-300'
-                  }`}
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`mai-chat__row ${isUser ? 'mai-chat__row--user' : 'mai-chat__row--ai'}`}
                 >
-                  <Icon className="h-3 w-3" />
-                  {action.label}
-                </button>
+                  {!isUser ? (
+                    <div className="mai-chat__msg-avatar" aria-hidden>
+                      <Bot className="h-3.5 w-3.5" />
+                    </div>
+                  ) : null}
+
+                  <div className={`mai-chat__bubble ${isUser ? 'mai-chat__bubble--user' : 'mai-chat__bubble--ai'}`}>
+                    {message.imageUrl ? (
+                      <img src={message.imageUrl} alt="" className="mai-chat__img" />
+                    ) : null}
+                    <div className="mai-chat__text">{message.text}</div>
+                    {!isUser ? (
+                      <div className="mai-chat__meta">
+                        <button type="button" onClick={() => speakText(message.text)} className="mai-chat__speak">
+                          <Volume2 className="h-3 w-3" />
+                          {hindi ? 'बोलें' : 'Speak'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.div>
               );
             })}
-          </div>
-        )}
+          </AnimatePresence>
 
-        <div className="mx-auto max-w-3xl rounded-2xl border border-[#252b3a] bg-[#12161f] p-2 shadow-[0_0_0_1px_rgba(212,175,55,0.04)] focus-within:border-[#d4af37]/35">
-          {selectedImage && (
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#d4af37]/20 bg-[#0c1018] px-2 py-1.5">
-              <img
-                src={selectedImage}
-                alt=""
-                className="h-12 w-12 rounded-lg border border-[#252b3a] object-cover"
-              />
-              <span className="min-w-0 flex-1 truncate text-[11px] text-slate-400">
+          {isThinking ? (
+            <div className="mai-chat__row mai-chat__row--ai">
+              <div className="mai-chat__msg-avatar" aria-hidden>
+                <Bot className="h-3.5 w-3.5" />
+              </div>
+              <div className="mai-chat__thinking">
+                <span className="mai-chat__dots" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                {isAnalyzingChart
+                  ? hindi
+                    ? 'Chart padh raha hoon…'
+                    : 'Reading your chart…'
+                  : hindi
+                    ? 'Soch raha hoon…'
+                    : 'Thinking…'}
+              </div>
+            </div>
+          ) : null}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      <div className="mai-chat__composer-wrap">
+        <div className="mai-chat__composer">
+          {selectedImage ? (
+            <div className="mai-chat__attach">
+              <img src={selectedImage} alt="" />
+              <span>
                 {isAnalyzingChart
                   ? hindi
                     ? 'Chart analyze ho raha hai…'
@@ -673,31 +602,32 @@ export default function MasterAI() {
               <button
                 type="button"
                 onClick={clearSelectedImage}
-                className="rounded-md p-1 text-slate-500 hover:bg-[#1a1f2e] hover:text-white"
+                aria-label="Remove"
                 disabled={isAnalyzingChart}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-          )}
+          ) : null}
 
-          <div className="flex items-end gap-1.5">
+          <div className="mai-chat__input-row">
             <button
               type="button"
-              onClick={toggleListening}
-              className={`rounded-xl p-2.5 transition-colors ${
-                isListening
-                  ? 'bg-red-500/15 text-red-400'
-                  : 'text-slate-500 hover:bg-[#1a1f2e] hover:text-slate-200'
-              }`}
-              title="Voice input"
+              onClick={() => fileInputRef.current?.click()}
+              className="mai-chat__icon-btn"
+              title={hindi ? 'Chart image' : 'Attach chart'}
             >
-              <Mic className="h-5 w-5" />
+              <ImagePlus className="h-5 w-5" />
             </button>
 
             <textarea
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -711,46 +641,47 @@ export default function MasterAI() {
                     ? 'सुन रहा हूँ…'
                     : 'Listening…'
                   : hindi
-                    ? 'Message likho… (Enter bheje, Shift+Enter naya line)'
-                    : 'Message… (Enter to send, Shift+Enter for new line)'
+                    ? 'Analyse AI se poochho…'
+                    : 'Message Analyse AI…'
               }
-              className="max-h-32 min-h-[42px] flex-1 resize-none bg-transparent py-2.5 text-[13px] text-white placeholder:text-slate-600 focus:outline-none sm:text-[14px]"
+              className="mai-chat__textarea"
               disabled={isListening}
             />
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={MASTER_AI_IMAGE_ACCEPT}
-              className="hidden"
-              onChange={handleImageSelect}
-            />
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-xl p-2.5 text-slate-500 transition-colors hover:bg-[#1a1f2e] hover:text-slate-200"
-              title={hindi ? 'Chart image' : 'Attach chart'}
+              onClick={toggleListening}
+              className={`mai-chat__icon-btn ${isListening ? 'mai-chat__icon-btn--mic-on' : ''}`}
+              title="Voice input"
             >
-              <ImagePlus className="h-5 w-5" />
+              <Mic className="h-5 w-5" />
             </button>
+
             <button
               type="button"
               onClick={() => void handleSend()}
               disabled={(!inputText.trim() && !selectedImage) || isListening || isThinking}
-              className="rounded-xl bg-[#d4af37] p-2.5 text-[#0b0e16] transition-opacity disabled:opacity-35"
+              className="mai-chat__send"
+              aria-label="Send"
             >
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             </button>
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={MASTER_AI_IMAGE_ACCEPT}
+            className="hidden"
+            onChange={handleImageSelect}
+          />
         </div>
 
-        {imageError && (
-          <p className="mt-2 text-center text-[10px] text-red-400">{imageError}</p>
-        )}
-        <p className="mt-2 text-center text-[10px] text-slate-600">
+        {imageError ? <p className="mai-chat__error">{imageError}</p> : null}
+        <p className="mai-chat__footnote">
           {hindi
-            ? 'Educational only · Chart JPG/PNG drop/paste · Voice OFF ho to Speak dabao'
-            : 'Educational only · Drop/paste chart images · Use Speak when Voice is off'}
+            ? 'Educational only · Chart drop/paste · Enter = send'
+            : 'Educational only · Drop or paste charts · Enter to send'}
         </p>
       </div>
     </div>

@@ -229,7 +229,9 @@ function AppWorkspace() {
               auth.isLoggedIn
                 ? activeTab === 'master-tx'
                   ? 'page-content page-content--screener'
-                  : 'page-content page-content--full'
+                  : activeTab === 'trafi'
+                    ? 'page-content page-content--chat'
+                    : 'page-content page-content--full'
                 : ''
             }
           >
