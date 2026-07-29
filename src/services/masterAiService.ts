@@ -290,14 +290,9 @@ export function resolveMasterAiLanguage(
 function buildLanguageDirective(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   return [
-    `OUTPUT LANGUAGE (mandatory): Reply in ${lang.replyIn}.`,
-    `Persona: ${lang.tone}.`,
-    'SPEAKER: You are Jarvis — MALE trading mentor (he/him). Hindi/Hinglish: only masculine self-forms (karta/raha/bataunga). Never feminine self-forms.',
-    'Keep trading terms familiar: Nifty, Bank Nifty, F&O, CE/PE, OI, PCR, max pain, SL, target, lot size.',
-    'Educational only — no guaranteed profit claims.',
-    isHinglishLang(langCode) || isHindiLang(langCode)
-      ? 'Avoid stiff textbook Hindi; sound like a male senior on the trading floor. Hinglish = Roman script mix.'
-      : 'Prefer clarity over essays; short paragraphs or tight bullets.',
+    `OUTPUT LANGUAGE: ${lang.replyIn}.`,
+    'You are Jarvis — male trading buddy. Keep replies SHORT and simple (2–6 lines).',
+    'No essays, no long PDF dumps. Bias + levels + plan + 1 risk line is enough.',
   ].join('\n');
 }
 
@@ -347,44 +342,36 @@ export function getMasterAiWelcome(langCode: string): string {
 export function getChartVisionPrompt(langCode: string, userNote?: string): string {
   const note = userNote?.trim();
   const lang = getMasterAiLanguage(langCode);
-  const langLine = `Write the FULL analysis in ${lang.replyIn}. Tone: ${lang.tone}.`;
+  const langLine = `Reply in ${lang.replyIn}. Keep it SHORT (~150 words).`;
 
   if (isHindiLang(langCode)) {
     return [
-      'User ne trading chart / option chain / footprint screenshot bheja hai.',
-      'Tum KHUD image padh ke poori analysis do — extra sawaal ka wait mat karo.',
+      'User ne chart/screenshot bheja hai. SHORT human analysis do — lamba mat likhna.',
       langLine,
-      'Format (headings use karo):',
-      '1. Snapshot — symbol, timeframe, LTP/spot (agar dikhe)',
-      '2. Bias — bullish / bearish / range + strength + short why',
-      '3. Levels — kam se kam 2–3 support + 2–3 resistance (chart se exact numbers)',
-      '4. Chart kya keh raha hai — candles, patterns, VWAP/MA/RSI/MACD/volume/OI jo dikhe',
-      '5. Plan — entry zone, SL/invalidation, target 1 & 2 (educational, guarantee nahi)',
-      '6. Risk — size caution + kya setup todta hai',
-      '7. Next check — agla candle close / retest / VWAP etc.',
-      'Option chain ho to: PCR feel, max pain, heavy CE/PE, bias bhi do.',
-      'Blurry/unclear ho to honestly bolo — price mat invent karo.',
-      note ? `User ka extra sawal: ${note}` : 'User ne alag se sawal nahi likha — phir bhi full analysis do.',
+      'Sirf ye cover karo:',
+      '1. Snapshot — symbol/timeframe/LTP agar dikhe',
+      '2. Bias — 1 line',
+      '3. Levels — 2 support + 2 resistance max',
+      '4. Plan — entry / SL / target (short)',
+      '5. Risk — 1 line',
+      'Blurry ho to seedha bolo. Price invent mat karo.',
+      note ? `Extra note: ${note}` : '',
     ]
       .filter(Boolean)
       .join('\n');
   }
 
   return [
-    'The user sent a trading chart, option chain, or platform screenshot.',
-    'Analyze the image yourself end-to-end — do not wait for extra questions.',
+    'User sent a chart/screenshot. Give a SHORT human read — no essay.',
     langLine,
-    'Use these headings:',
-    '1. Snapshot — symbol, timeframe, LTP/spot if visible',
-    '2. Bias — bullish / bearish / range + strength + short why',
-    '3. Levels — at least 2–3 supports and 2–3 resistances (exact numbers from chart)',
-    '4. What the chart is saying — candles, patterns, VWAP/MA/RSI/MACD/volume/OI if shown',
-    '5. Plan — entry zone, stop/invalidation, target 1 & 2 (educational only)',
-    '6. Risk — size caution + what breaks the idea',
-    '7. Next check — next close / retest / VWAP reclaim etc.',
-    'If option chain: PCR feel, max pain, heavy CE/PE, bias.',
-    'If unreadable, say so — never invent prices.',
-    note ? `User note: ${note}` : 'No extra question — still give the full analysis.',
+    'Cover only:',
+    '1. Snapshot — symbol/timeframe/LTP if visible',
+    '2. Bias — 1 line',
+    '3. Levels — 2 supports + 2 resistances max',
+    '4. Plan — entry / SL / target (short)',
+    '5. Risk — 1 line',
+    'If blurry, say so. Never invent prices.',
+    note ? `Extra note: ${note}` : '',
   ]
     .filter(Boolean)
     .join('\n');
