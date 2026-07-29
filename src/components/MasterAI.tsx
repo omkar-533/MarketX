@@ -74,6 +74,7 @@ import {
   type ChatSessionMeta,
 } from '../services/masterAiChatStore';
 import ChatMarkdown from './ChatMarkdown';
+import HunterMark from './HunterMark';
 import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
@@ -974,15 +975,7 @@ export default function MasterAI() {
         <div className="mai-chat__column">
           {messages.length <= 1 && !isThinking ? (
             <div className="mai-chat__empty">
-              <motion.div
-                className="mai-chat__empty-mark"
-                initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-              >
-                <LineChart className="h-7 w-7" />
-                <span className="mai-chat__empty-mark-ring" aria-hidden />
-              </motion.div>
+              <HunterMark />
               <motion.h2
                 className="mai-chat__empty-title"
                 initial={{ opacity: 0, y: 12 }}
