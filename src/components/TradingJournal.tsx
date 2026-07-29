@@ -14,7 +14,6 @@ import {
   NotebookPen,
   Plus,
   Search,
-  ShieldCheck,
   Sparkles,
   Table2,
   TrendingUp,
@@ -27,12 +26,7 @@ import {
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -67,6 +61,7 @@ import ImageLightbox from './journal/ImageLightbox';
 import JournalCalendar from './journal/JournalCalendar';
 import JournalWinLossChart from './journal/JournalWinLossChart';
 import JournalMonthlyPnlChart from './journal/JournalMonthlyPnlChart';
+import JournalAnalyticsDesk from './journal/JournalAnalyticsDesk';
 import JournalAlertsCoach from './journal/JournalAlertsCoach';
 import JournalTradeAssistPanel from './journal/JournalTradeAssistPanel';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
@@ -1772,69 +1767,15 @@ export default function TradingJournal({
       )}
 
       {activeTab === 'analytics' && (
-      <>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="app-card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white">Advanced Analytics</h2>
-              <p className={`${mutedClass} text-sm`}>Based on filtered trades in view.</p>
-            </div>
-            <ShieldCheck className="text-[#d4af37]" />
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl bg-[#111827] p-3">
-              <p className="text-sm font-semibold">Win / Loss</p>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={[{ name: 'Win', value: metrics.winRate }, { name: 'Loss', value: 100 - metrics.winRate }]} dataKey="value" innerRadius={35} outerRadius={60} paddingAngle={3}>
-                      <Cell fill="#10b981" />
-                      <Cell fill="#f43f5e" />
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[#111827] p-3">
-              <p className="text-sm font-semibold">Strategy Performance</p>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={strategyData.slice(0, 5)}>
-                    <CartesianGrid stroke="#1a1f2e" strokeDasharray="3 3" />
-                    <XAxis dataKey="strategy" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Bar dataKey="pnl" fill="#d4af37" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[#111827] p-3 md:col-span-2">
-              <p className="text-sm font-semibold">Monthly Comparison</p>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={metrics.monthly}>
-                    <defs>
-                      <linearGradient id="journal_pnl" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#d4af37" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#d4af37" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#1a1f2e" strokeDasharray="3 3" />
-                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="pnl" stroke="#d4af37" fill="url(#journal_pnl)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-            </div>
-      </>
+        <JournalAnalyticsDesk
+          trades={filteredTrades}
+          monthly={metrics.monthly}
+          strategyData={strategyData}
+          riskData={riskData}
+          instrumentData={instrumentData}
+          advanced={advanced}
+          formatCurrency={formatCurrency}
+        />
       )}
 
       {activeTab === 'calendar' && (
@@ -1872,36 +1813,6 @@ export default function TradingJournal({
                     </div>
                   </div>
       </>
-      )}
-
-      {activeTab === 'analytics' && (
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="app-card p-4">
-          <h3 className="text-sm font-bold text-white mb-2">Risk Profile</h3>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={riskData}>
-                <CartesianGrid stroke="#1a1f2e" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                <Tooltip contentStyle={chartTheme.tooltip} />
-                <Bar dataKey="value" fill="#d4af37" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="app-card p-4">
-          <h3 className="text-sm font-bold text-white mb-2">P&L by Instrument</h3>
-          <div className="space-y-2 max-h-52 overflow-y-auto">
-            {instrumentData.map((item) => (
-              <div key={item.instrument} className="flex justify-between rounded-lg bg-[#121520] px-3 py-2 text-sm">
-                <span className="text-slate-300">{item.instrument}</span>
-                <span className={item.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>{formatCurrency(item.pnl)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
       )}
 
       <JournalAlertsCoach
