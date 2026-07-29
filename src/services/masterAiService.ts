@@ -324,42 +324,12 @@ export function resolveMasterAiLanguage(
 function buildLanguageDirective(langCode: string, autoMode = false): string {
   const lang = getMasterAiLanguage(langCode);
   if (autoMode) {
-    return [
-      'AUTO LANGUAGE DETECTOR (MANDATORY):',
-      '1. Read the USER\'s latest message — match THAT language/script exactly.',
-      '2. Devanagari Hindi → reply Hindi Devanagari. Roman Hinglish → reply Hinglish Roman. English → English. Tamil/Telugu/etc → that language.',
-      `3. Detector hint for this turn: ${lang.nativeLabel} (${lang.code}) — use this if the message is short/ambiguous.`,
-      '4. NEVER reply in a different language than the user used. Do not default to English.',
-      'Trading words OK in English: Nifty, CE, PE, SL, PCR, bullish, bearish.',
-    ].join('\n');
+    return `Language: match the user’s message (hint: ${lang.nativeLabel}).`;
   }
-  if (langCode === 'hi-Latn') {
-    return [
-      'LANGUAGE LOCK (MANDATORY): Reply ONLY in Hinglish — Roman Hindi + English mix.',
-      'Example tone: "Nifty weak dikh raha hai, SL tight rakho."',
-      'Do NOT write Devanagari (हिंदी लिपि). Do NOT reply in pure English paragraphs.',
-      'Trading words OK in English: Nifty, CE, PE, SL, PCR, bullish, bearish.',
-    ].join('\n');
-  }
-  if (langCode === 'hi-IN') {
-    return [
-      'LANGUAGE LOCK (MANDATORY): Reply ONLY in Hindi Devanagari (हिंदी लिपि).',
-      'Do NOT reply in English-only. Do NOT use Roman Hinglish as the main script.',
-      'Trading words OK in English: Nifty, CE, PE, SL, PCR, bullish, bearish.',
-    ].join('\n');
-  }
-  if (langCode === 'en-US') {
-    return [
-      'LANGUAGE LOCK (MANDATORY): Reply ONLY in clear Indian English.',
-      'Do NOT write Hindi/Hinglish/Devanagari unless the user mixed it in this message.',
-    ].join('\n');
-  }
-  return [
-    `LANGUAGE LOCK (MANDATORY): Reply ONLY in ${lang.replyIn}.`,
-    `Language name: ${lang.name} (${lang.nativeLabel}).`,
-    'Do not switch to English unless the user wrote English.',
-    'Trading terms Nifty/CE/PE/SL may stay in English.',
-  ].join('\n');
+  if (langCode === 'hi-Latn') return 'Language: Hinglish (Roman Hindi + English).';
+  if (langCode === 'hi-IN') return 'Language: Hindi Devanagari.';
+  if (langCode === 'en-US') return 'Language: clear Indian English.';
+  return `Language: ${lang.replyIn} (${lang.nativeLabel}).`;
 }
 
 function istSessionNote(): string {
@@ -407,51 +377,13 @@ export function getMasterAiWelcome(langCode: string): string {
 
 export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
   const note = userNote?.trim();
-  const lang = getMasterAiLanguage(langCode);
   const lock = buildLanguageDirective(langCode, autoMode);
-  const endLock =
-    langCode === 'hi-Latn'
-      ? 'FINAL: Poora jawab Hinglish (Roman) me do — English essay mat likho.'
-      : langCode === 'hi-IN'
-        ? 'FINAL: पूरा जवाब हिंदी देवनागरी में दें।'
-        : langCode === 'en-US'
-          ? 'FINAL: Reply entirely in English.'
-          : `FINAL: Reply entirely in ${lang.nativeLabel} / ${lang.name}.`;
-
-  if (isHindiLang(langCode)) {
-    return [
-      lock,
-      'User ne chart/screenshot bheja hai. SHORT human analysis do — lamba mat likhna.',
-      'Sirf ye cover karo:',
-      '1. Snapshot — symbol/timeframe/LTP agar dikhe',
-      '2. Bias — bullish / bearish / sideways (1 line)',
-      '3. Levels — 2 support + 2 resistance max',
-      '4. Plan — bullish above / bearish below + invalidation (short)',
-      '5. Risk — 1 line',
-      'IMPORTANT: buy/sell/kharido/becho mat bolo — sirf bullish/bearish.',
-      'IMPORTANT: sirf is image se batao — bahar se price/data mat lao.',
-      'Blurry ho to seedha bolo. Price invent mat karo.',
-      note ? `User note: ${note}` : '',
-      endLock,
-    ]
-      .filter(Boolean)
-      .join('\n');
-  }
-
   return [
     lock,
-    'User sent a chart/screenshot. Give a SHORT human read — no essay.',
-    'Cover only:',
-    '1. Snapshot — symbol/timeframe/LTP if visible',
-    '2. Bias — bullish / bearish / sideways (1 line)',
-    '3. Levels — 2 supports + 2 resistances max',
-    '4. Plan — bullish above / bearish below + invalidation (short)',
-    '5. Risk — 1 line',
-    'IMPORTANT: never say buy or sell — only bullish / bearish.',
-    'IMPORTANT: answer only from this image — no outside prices or live feed.',
-    'If blurry, say so. Never invent prices.',
+    'User sent a chart screenshot. Give a clear analysis from the image only.',
+    'Cover: Snapshot · Bias (bullish/bearish/sideways) · Levels · Plan (bullish above / bearish below) · Risk.',
+    'Never say buy/sell. Do not invent prices. If blurry, say so.',
     note ? `User note: ${note}` : '',
-    endLock,
   ]
     .filter(Boolean)
     .join('\n');
@@ -666,7 +598,7 @@ export function formatContextBlock(
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'You are Jarvis — trading buddy. SHORT simple replies only (2–6 lines). Introduce only as Jarvis — never say “male”. Never say buy/sell — only bullish/bearish.',
+      'Jarvis — answer clearly like a helpful trading ChatGPT. bullish/bearish only (no buy/sell).',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
       ctx.signals ? `Signals: ${ctx.signals}` : '',
@@ -753,8 +685,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
   const platformContext = greeting
     ? [
         buildLanguageDirective(req.lang, autoMode),
-        'User sent a casual greeting. You are Jarvis. Reply short, natural, no market data dump. Introduce only as Jarvis — never say “male”. Hindi/Hinglish: karta/raha/bataunga only — never feminine forms.',
-        'Invite them to share a chart or ask about Nifty / options / risk.',
+        'User sent a greeting. Reply briefly and warmly as Jarvis. No market dump.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true, autoMode);
 

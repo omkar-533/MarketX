@@ -382,12 +382,7 @@ export default function MasterAI() {
 
       if (aiStatus.configured) {
         try {
-          const textMessage =
-            hasImage
-              ? visionMessage
-              : langMode === 'auto'
-                ? `${userText}\n\n[AUTO DETECT: Reply in the same language as my message. Detector hint: ${activeLang.replyIn}.]`
-                : `${userText}\n\n[LANGUAGE LOCK: Reply in ${activeLang.replyIn}. Match this language exactly.]`;
+          const textMessage = hasImage ? visionMessage : userText;
           const result = await askMasterAi(
             {
               message: textMessage,
