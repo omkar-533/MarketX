@@ -269,6 +269,16 @@ export async function submitAccessRequest(input: {
   message?: string;
   screenshot?: string;
 }) {
+  const note = [
+    `TradingView ID: ${input.tradingViewId.trim()}`,
+    input.message?.trim() ? `Additional details: ${input.message.trim()}` : null,
+    `Name: ${input.fullName.trim()}`,
+    `Phone: ${input.phone.trim()}`,
+    input.email?.trim() ? `Email: ${input.email.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
   const res = await apiFetch('/api/app-auth/access/request', {
     method: 'POST',
     headers: sessionHeaders(),
@@ -278,6 +288,8 @@ export async function submitAccessRequest(input: {
       tradingViewId: input.tradingViewId,
       email: input.email || undefined,
       message: input.message || undefined,
+      // Backward compatible with older API builds that only read note/screenshot.
+      note,
       screenshot: input.screenshot || undefined,
     }),
   });
