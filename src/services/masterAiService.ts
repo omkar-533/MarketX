@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 7 Parts 1–5. Answer USER question FIRST. S/R zones + swings/trendlines + S/D + Order/Breaker/Mitigation blocks + FVG/liquidity pools. Observable behavior only — never institutional intent.',
-    'OB near strong departure origin. Breaker = confirmed role reverse. FVG≠must fill. CE=reference. HVN/LVN only with visible VP. Sweep needs return evidence. HTF weighs more.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · S/R · S/D · OB/FVG/Liquidity · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Modules 7–8. Answer USER question FIRST. Unified zone confluence (Module 7 complete) + top-down MTF + execution readiness (Module 8). Context before entries. Never invent unseen TFs/VP/zones.',
+    'HTF > LTF. No double-count Demand+OB. Analysis≠execution — readiness may be Not Ready. Counter-trend needs stronger evidence. Probabilistic language only.',
+    'Concept Q: 4–8 short lines. Full: Regime · Top-Down Bias · Structure · Primary Zone/Confluence · Liquidity · Trigger/Readiness · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
