@@ -326,10 +326,11 @@ export default function MasterAI() {
       }));
 
     try {
+      const detectFrom = userNote.trim();
       const activeLang = resolveMasterAiLanguage(
         langMode,
-        userText || userNote || '',
-        selectedLang.code,
+        detectFrom,
+        selectedLang.code || 'hi-Latn',
       );
       if (langMode === 'auto') {
         // Always sync detected / sticky language into UI so Auto · label updates
@@ -343,18 +344,20 @@ export default function MasterAI() {
         : userText;
 
       let responseText = hasImage
-        ? isHindiLang(activeLang.code)
+        ? isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
           ? 'Chart load ho gaya. Jarvis analysis ready nahi hua — thodi der baad dubara bhejo.'
           : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
         : getChartImageRequiredMessage(activeLang.code);
 
       if (aiStatus.configured) {
         try {
+          const textMessage =
+            hasImage
+              ? visionMessage
+              : `${userText}\n\n[LANGUAGE LOCK: Reply in ${activeLang.replyIn}. Match this language exactly.]`;
           const result = await askMasterAi(
             {
-              message: hasImage
-                ? visionMessage
-                : `${userText}\n\n[INSTRUCTION: Pehle normal short conversation karo — sawal acknowledge karo. Bias/levels/plan/numbers mat do. Phir politely chart screenshot (📷) maango taaki image se analysis ho.]`,
+              message: textMessage,
               model: MASTER_AI_MODEL_ID,
               lang: activeLang.code,
               langName: activeLang.nativeLabel,
