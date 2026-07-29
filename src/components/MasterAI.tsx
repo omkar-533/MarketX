@@ -110,6 +110,9 @@ const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
   aoi: Map,
   liq: Waves,
   scenarios: Split,
+  levels: Crosshair,
+  sr: Layers,
+  bias: GitBranch,
   ob: Box,
   'mtf-chart': Eye,
 };

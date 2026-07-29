@@ -123,6 +123,39 @@ export const WOLF_CHART_PROMPTS: DeskPrompt[] = [
     hintHi: 'Bull vs bear path',
   },
   {
+    id: 'levels',
+    label: 'Important levels',
+    labelHi: 'Important levels',
+    prompt:
+      'Call out the most important price levels on this chart (prior highs/lows, round numbers, session marks) and why each matters as context — no buy/sell or targets.',
+    promptHi:
+      'Is chart pe sabse important price levels batao (prior highs/lows, round numbers, session marks) aur har ek kyun matter karta hai — buy/sell ya targets mat do.',
+    hint: 'Key price marks',
+    hintHi: 'Key price marks',
+  },
+  {
+    id: 'sr',
+    label: 'Support & resistance',
+    labelHi: 'Support & resistance',
+    prompt:
+      'Map the clear support and resistance zones on this chart, how price has reacted there before, and what would weaken each zone — educational only, no trade orders.',
+    promptHi:
+      'Is chart pe clear support aur resistance zones map karo, pehle price ne wahan kaise react kiya, aur kya har zone ko weak karega — sirf educational, trade orders nahi.',
+    hint: 'S&R zones',
+    hintHi: 'S&R zones',
+  },
+  {
+    id: 'bias',
+    label: 'Market bias',
+    labelHi: 'Market bias',
+    prompt:
+      'Read the current market bias from this chart (bullish / bearish / ranging) with structure evidence, and state what would flip the bias. No entry, stop or target.',
+    promptHi:
+      'Is chart se current market bias padho (bullish / bearish / ranging) structure evidence ke saath, aur batao bias kab flip hoga. Entry, stop ya target mat do.',
+    hint: 'Trend context',
+    hintHi: 'Trend context',
+  },
+  {
     id: 'ob',
     label: 'Order blocks & FVG',
     labelHi: 'Order blocks & FVG',
