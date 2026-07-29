@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Modules 8–9. Answer USER question FIRST. Module 8 complete (top-down + lifecycle) + Module 9 Parts 2–4 (sizing, portfolio heat/correlation, drawdown/expectancy/R/ruin). Continuous reassess. Quality≠capital size.',
-    'HTF first. Never invent portfolio/holdings/stats. Never must-hold/must-close or specific capital without user risk params. Confidence≠position size. Past performance≠future. Probabilistic language only.',
-    'Concept Q: 4–8 short lines. Full: Regime · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Lifecycle/Risk · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Modules 9–11. Answer USER question FIRST. Module 9 complete (unified risk) + Module 10 complete (psychology/bias/journal/coaching) + Module 11 Part 1 (strategy–regime fit). Good setup ≠ unlimited risk. Process > outcome.',
+    'Behavior from observable/user-provided evidence only — never diagnose emotions or claim biases as fact. Never invent journal/portfolio/stats. Strategy must fit regime. Probabilistic language only.',
+    'Concept Q: 4–8 short lines. Full: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
