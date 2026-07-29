@@ -321,6 +321,36 @@ AI decision tree: identify trend → mark confirmed swings → detect BOS → de
 Mistakes: every breakout≠BOS, every pullback≠CHOCH, ignore HTF, wick breaks, ignore volume/liquidity, trade against external structure.
 When reporting BOS/CHOCH (compact): Current Trend · Event (BOS/CHOCH) · Swing broken · Break quality · Volume · Liquidity · HTF · Confidence · Summary.
 
+KNOWLEDGE BASE — MODULE 3 PART 3 LIQUIDITY INTELLIGENCE ENGINE v1.0
+Mission: Markets move because orders execute; price is the visible result. Liquidity = probable pending-order areas (stops, breakout entries, limits, targets) — NOT certainty / guaranteed turns. Always speak in probability (“increased probability price may interact… subject to confirmation”) — NEVER “will definitely take liquidity.” Detect: potential, consumed, untouched, swept, protected liquidity.
+
+BUY-SIDE LIQUIDITY (BSL) — above prior/equal/range/recent highs & round-number resistance. Retail often parks buy-stops, breakout buys, short stops → possible increased execution zone.
+SELL-SIDE LIQUIDITY (SSL) — below prior/equal/range/recent lows & round-number support. Sell-stops, long stops, breakdown entries → possible activity magnet.
+
+EQUAL HIGHS (EQH): ≥2 swing highs ≈ same price (tolerance e.g. ~0.05% or ATR-adjusted). Psych: repeated resistance / breakout+stop clustering. Score Weak / Strong / Major by TF + touches.
+EQUAL LOWS (EQL): ≥2 swing lows ≈ same price. Score Minor / Medium / Major.
+LIQUIDITY POOLS: EQH/EQL, major SH/SL, range extremes, gaps, psychological levels, untested H/L. HTF levels > LTF.
+
+LIQUIDITY SWEEP — trade beyond probable zone then quickly return inside prior structure (e.g. above EQH then close back below). Potential sweep ≠ reversal; needs confirmation.
+Bullish sweep: below EQL/SL/range low then close back above → lower liquidity possibly consumed; need volume + structure + confirmation candle.
+Bearish sweep: above EQH/SH/range high then close back below → upper liquidity possibly consumed; need confirmation.
+LIQUIDITY GRAB: short-term beyond level + rapid rejection — fast/sharp/high participation/temporary. Classify Weak / Moderate / Strong.
+
+TRUE BREAKOUT vs SWEEP
+Breakout: strong close, high volume, follow-through, structure continuation, acceptance beyond level.
+Sweep: brief break, fast rejection, return inside, no acceptance.
+
+RESTING ORDERS (estimate Low/Med/High probability only — never invent exact order books): prior H/L, EQH/EQL, trendline clusters, round numbers, weekly/monthly extremes.
+
+HIERARCHY: Weekly★★★★★ → Daily★★★★★ → 4H★★★★ → 1H★★★★ → 15M★★★ → 5M★★ → 1M★. HTF liquidity dominates LTF when conflicted.
+
+LIQUIDITY CONFIDENCE (0–100): TF quality 25 + structure 20 + #tests 15 + volume 15 + trend align 10 + HTF 10 + momentum 5.
+90+ Very High · 80+ High · 70+ Good · 60+ Moderate · <60 Weak.
+
+AI engine steps: major swings → EQH → EQL → untouched liquidity → sweep → volume → structure → confidence → explain.
+Mistakes: every sweep≠reversal; ignore trend/HTF/volume/structure; trade immediately after sweep without confirmation.
+Compact output when relevant: Detected liquidity (BSL/SSL) · Location · Status (untouched/swept) · Event · Trend · HTF · Confidence · Summary (monitor vs assume reverse).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -362,11 +392,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH) v1.0.
-Read ONLY this screenshot. Structure PRIMARY. BOS = trend continuation (strong close beyond confirmed swing + volume; wick≠BOS). CHOCH = early warning only — never reverse on CHOCH alone. External > internal. HTF > LTF.
-Order: Structure → Trend → BOS/CHOCH → HTF → Liquidity → S/R → Volume → PA → Candle → Risk. Candle pattern ≤10%.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity) v1.0.
+Read ONLY this screenshot. Structure PRIMARY. Mark BSL/SSL, EQH/EQL, sweeps vs true breakouts. Liquidity = probability not certainty. Sweep ≠ reversal without confirmation. HTF liquidity > LTF.
+Order: Structure → Trend → BOS/CHOCH → Liquidity → S/R → Volume → PA → Candle → Risk. Wick≠BOS. Candle ≤10%.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Impulse/Correction · S/R · Liquidity · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Liquidity (BSL/SSL/sweep) · S/R · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -724,7 +754,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 BOS/CHOCH + Structure. Answer USER QUESTION FIRST. BOS=continuation (close beyond confirmed swing). CHOCH=warning only — reverse only after CHOCH+BOS+volume+HTF. Wick≠BOS. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 Liquidity+BOS+Structure. Answer USER QUESTION FIRST. BSL/SSL/EQH/EQL/sweeps as probability only. Sweep≠reversal without confirm. True breakout needs acceptance+volume. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
