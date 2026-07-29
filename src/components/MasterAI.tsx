@@ -25,6 +25,8 @@ import {
   isCasualGreeting,
   isPoliteAck,
   getChartImageRequiredMessage,
+  getNeedChartOnlyReply,
+  isDayMarketReviewQuestion,
   getHumanGreetingReply,
   loadAutoSpeak,
   loadLanguageMode,
@@ -291,6 +293,37 @@ export default function MasterAI() {
         ...prev,
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
         { id: `${Date.now()}-a`, role: 'trafi', text: reply, timestamp: new Date() },
+      ]);
+      setInputText('');
+      return;
+    }
+
+    // Day / market review without chart — fixed reply (never invent, never say live data)
+    if (!hasImage && isDayMarketReviewQuestion(userText)) {
+      const recentUser = messages
+        .filter((m) => m.role === 'user')
+        .slice(-4)
+        .map((m) => m.text)
+        .reverse();
+      const activeLang = resolveMasterAiLanguage(
+        langMode,
+        userText,
+        selectedLang.code,
+        recentUser,
+      );
+      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
+        setSelectedLang(activeLang);
+        saveSelectedLanguage(activeLang.code);
+      }
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
+        {
+          id: `${Date.now()}-a`,
+          role: 'trafi',
+          text: getNeedChartOnlyReply(activeLang.code),
+          timestamp: new Date(),
+        },
       ]);
       setInputText('');
       return;

@@ -533,9 +533,26 @@ export function needsChartImage(input: string): boolean {
 
 export function getChartImageRequiredMessage(langCode: string): string {
   if (isHinglishLang(langCode) || langCode === 'hi-IN') {
-    return 'Is analysis ke liye Nifty/chart ka screenshot bhejiye. Us image se structure, levels aur bias clear karunga.';
+    return 'Analysis ke liye Nifty ka chart screenshot bhejiye. Us image se structure aur levels clear karunga.';
   }
-  return 'Please share a Nifty/chart screenshot. I will read structure, levels, and bias from that image.';
+  return 'Please share a Nifty chart screenshot. I will read structure and levels from that image.';
+}
+
+/** “Aaj nifty kaisa tha / market kaisa hai” style — needs chart, no invented levels */
+export function isDayMarketReviewQuestion(input: string): boolean {
+  const n = String(input || '').toLowerCase().trim();
+  if (!n || n.length > 160) return false;
+  return /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty|banknifty|sensex|din\s+(kaisa|kaise)|session)\b/i.test(
+    n,
+  ) && /\b(kaisa|kaise|tha|hai|raha|was|is|view|performance|recap|summary|batao|bata|analyse|analyze)\b/i.test(n);
+}
+
+/** Fixed reply — never mentions live data */
+export function getNeedChartOnlyReply(langCode: string): string {
+  if (isHinglishLang(langCode) || langCode === 'hi-IN' || langCode.startsWith('hi')) {
+    return 'Analysis ke liye Nifty ka TradingView chart screenshot bhejiye. Us image se main structure aur levels clear karunga.';
+  }
+  return 'Please share a Nifty TradingView chart screenshot. I will read structure and levels from that image.';
 }
 
 export function isTradingRelated(input: string): boolean {
@@ -642,7 +659,7 @@ export function formatContextBlock(
   const hasLiveTape = /\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw);
   const liveBanner = hasLiveTape
     ? 'LIVE CONTEXT: real snapshot numbers below — cite only these if you use levels.'
-    : 'NO CHART ATTACHED: Do NOT invent day ranges/levels. Do NOT mention live market data. Ask ONLY for a chart screenshot.';
+    : 'NO CHART ATTACHED: Do not invent levels. Ask only for a TradingView chart screenshot.';
 
   if (compact) {
     return [

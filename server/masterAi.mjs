@@ -424,10 +424,10 @@ export function createMasterAiRouter(apiKey) {
           : wantsTradeCall
             ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
             : wantsDayReview && !contextHasLiveTape
-              ? 'Task: No chart. Do NOT invent levels. Do NOT say live market data. Ask ONLY for a chart screenshot in 2–3 lines.'
+              ? 'Task: Ask only for a TradingView chart screenshot in 2 short lines. Do not invent levels. Do not discuss data sources.'
               : wantsChartRead
-                ? 'Task: answer briefly; if visual read needed, ask ONLY for a chart screenshot — never mention live market data.'
-                : 'Task: answer clearly as Jarvis. Never invent prices. Never claim live NSE data. Accuracy first.';
+                ? 'Task: answer briefly; if visual read needed, ask only for a chart screenshot.'
+                : 'Task: answer clearly as Jarvis. Never invent prices. Accuracy first.';
 
       let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
@@ -436,7 +436,7 @@ export function createMasterAiRouter(apiKey) {
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
       } else if (!contextHasLiveTape) {
-        textBlock += `\n\n${NO_LIVE_TAPE_HINT}`;
+        textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 
