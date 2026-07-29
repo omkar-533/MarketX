@@ -481,9 +481,9 @@ export function needsChartImage(input: string): boolean {
 
 export function getChartImageRequiredMessage(langCode: string): string {
   if (isHinglishLang(langCode) || langCode === 'hi-IN') {
-    return 'Pehle chart / TradingView screenshot bhejo (📷). Us image ke base pe hi main bias, levels aur plan bataunga — bina chart ke market view nahi dunga.';
+    return 'Samajh gaya — ispe baat karte hain. Proper bias aur levels ke liye chart / TradingView screenshot bhej do (📷), usi image se clear bataunga.';
   }
-  return 'Please send a chart / TradingView screenshot first (📷). I’ll explain bias, levels, and plan only from that image — no trading view without the chart.';
+  return "Got it — happy to talk this through. For a clear bias and levels, send a chart / TradingView screenshot (📷) and I’ll read only from that image.";
 }
 
 export function isTradingRelated(input: string): boolean {
@@ -503,16 +503,16 @@ export function isTradingRelated(input: string): boolean {
 export function getHumanGreetingReply(langCode: string, userText: string): string {
   const hinglish = isHinglishLang(langCode) || langCode === 'hi-IN';
   const variantsHi = [
-    'Hey bhai! Main Jarvis. Trading / investment pe baat karni ho to pehle chart screenshot bhejo (📷) — usi pe analysis dunga.',
-    'Hi — Jarvis yahin hoon. Market view ke liye pehle chart image bhejo, phir uske base pe bataunga.',
-    'Namaste! Jarvis here. Chart / screenshot bhejo (📷) — bina image ke trading view nahi dunga.',
-    'Arre hello! Jarvis bol raha hoon — pehle chart drop karo, us image se bias aur levels nikalunga.',
+    'Hey bhai! Main Jarvis — kaisa raha din? Bol, kya chal raha hai?',
+    'Hi — Jarvis yahin hoon. Seedha baat karo, main sun raha hoon.',
+    'Namaste! Jarvis here. Aaj kya scene hai — bol.',
+    'Arre hello! Jarvis bol raha hoon — kya dekhna hai aaj?',
   ];
   const variantsEn = [
-    "Hey — Jarvis here. For any trading or investment question, send a chart screenshot first (📷). I’ll read only from that image.",
-    "Hi! I'm Jarvis. Drop your chart image first — then I’ll give bias and levels from the screenshot only.",
-    "Hello! Jarvis on the desk. Send a chart / TradingView screenshot, and I’ll analyze only what’s in the image.",
-    "Hey there — Jarvis. Trading talk starts with a chart image (📷). No view without the screenshot.",
+    "Hey — Jarvis here. How’s it going? Tell me what’s on your mind.",
+    "Hi! I'm Jarvis — right here. What’s up?",
+    "Hello! Jarvis on the desk. What do you want to talk about?",
+    "Hey there — Jarvis. Fire away whenever you’re ready.",
   ];
   const list = hinglish ? variantsHi : variantsEn;
   // Light variation from message length / time

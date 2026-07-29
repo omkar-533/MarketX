@@ -24,7 +24,6 @@ import {
   isTradingRelated,
   isCasualGreeting,
   isPoliteAck,
-  needsChartImage,
   getChartImageRequiredMessage,
   getHumanGreetingReply,
   loadAutoSpeak,
@@ -276,8 +275,8 @@ export default function MasterAI() {
       const reply = isCasualGreeting(userText)
         ? getHumanGreetingReply(activeLang.code, userText)
         : isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-          ? 'Theek hai. Trading / investment pe baat karni ho to pehle chart screenshot bhejo (📷).'
-          : 'Got it. For trading or investment questions, send a chart screenshot first (📷).';
+          ? 'Theek hai bhai — bolte raho.'
+          : 'Got it — I’m here.';
       setMessages((prev) => [
         ...prev,
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
@@ -300,24 +299,6 @@ export default function MasterAI() {
       ]);
       setInputText('');
       clearSelectedImage();
-      return;
-    }
-
-    // Trading / investment without image → ask for chart first
-    if (!hasImage && needsChartImage(userText)) {
-      const activeLang = resolveMasterAiLanguage(langMode, userText, selectedLang.code);
-      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
-        setSelectedLang(activeLang);
-        saveSelectedLanguage(activeLang.code);
-      }
-      const reply = getChartImageRequiredMessage(activeLang.code);
-      setMessages((prev) => [
-        ...prev,
-        { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
-        { id: `${Date.now()}-a`, role: 'trafi', text: reply, timestamp: new Date() },
-      ]);
-      setInputText('');
-      if (autoSpeak) speakText(reply);
       return;
     }
 
@@ -367,37 +348,58 @@ export default function MasterAI() {
           : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
         : getChartImageRequiredMessage(activeLang.code);
 
-      if (aiStatus.configured && hasImage) {
+      if (aiStatus.configured) {
         try {
           const result = await askMasterAi(
             {
-              message: visionMessage,
+              message: hasImage
+                ? visionMessage
+                : `${userText}\n\n[INSTRUCTION: Pehle normal short conversation karo — sawal acknowledge karo. Bias/levels/plan/numbers mat do. Phir politely chart screenshot (📷) maango taaki image se analysis ho.]`,
               model: MASTER_AI_MODEL_ID,
               lang: activeLang.code,
               langName: activeLang.nativeLabel,
-              imageDataUrl: imageDataUrl,
+              imageDataUrl: hasImage ? imageDataUrl : null,
               history,
               needsWeb: false,
             },
-            {
-              summary: 'Chart screenshot analysis only',
-              nifty: 'from chart',
-              bankNifty: 'from chart',
-              pcr: 0,
-              maxPain: 0,
-              signals: 'from chart',
-              news: 'n/a',
-              gainers: 'n/a',
-              losers: 'n/a',
-              active: 'n/a',
-              breadth: 'n/a',
-              futures: 'n/a',
-              session: 'from chart',
-            },
+            hasImage
+              ? {
+                  summary: 'Chart screenshot analysis only',
+                  nifty: 'from chart',
+                  bankNifty: 'from chart',
+                  pcr: 0,
+                  maxPain: 0,
+                  signals: 'from chart',
+                  news: 'n/a',
+                  gainers: 'n/a',
+                  losers: 'n/a',
+                  active: 'n/a',
+                  breadth: 'n/a',
+                  futures: 'n/a',
+                  session: 'from chart',
+                }
+              : {
+                  summary: 'Normal chat — no chart yet; ask for screenshot before analysis',
+                  nifty: 'n/a',
+                  bankNifty: 'n/a',
+                  pcr: 0,
+                  maxPain: 0,
+                  signals: 'n/a',
+                  news: 'n/a',
+                  gainers: 'n/a',
+                  losers: 'n/a',
+                  active: 'n/a',
+                  breadth: 'n/a',
+                  futures: 'n/a',
+                  session: 'n/a',
+                },
           );
           if (result.reply) responseText = result.reply;
         } catch {
-          responseText = getMasterAiSorryMessage(activeLang.code, 'chart');
+          responseText = getMasterAiSorryMessage(
+            activeLang.code,
+            hasImage ? 'chart' : 'chat',
+          );
         }
       }
 
@@ -507,8 +509,8 @@ export default function MasterAI() {
               </h2>
               <p className="mai-chat__empty-sub">
                 {hindi
-                  ? 'Trading / investment ke liye pehle chart screenshot bhejo (📷) — usi image pe analysis milega.'
-                  : 'For trading or investment, send a chart screenshot first (📷) — analysis is from the image only.'}
+                  ? 'Pehle normal baat karo. Trading view chahiye ho to chart screenshot bhejna (📷).'
+                  : 'Chat normally first. When you want a trading view, send a chart screenshot (📷).'}
               </p>
             </div>
           ) : null}
