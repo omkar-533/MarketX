@@ -622,7 +622,7 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
       ok: true,
       request,
       message:
-        'Request submit ho gayi. Hamari support team 24 hours ke andar aapse contact karegi.',
+        'Your request has been received. Our support team will contact you within 24 hours.',
       sheetConfigured: isTvAccessSheetConfigured(),
       sheetOk,
       sheetError,

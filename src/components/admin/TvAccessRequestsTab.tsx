@@ -61,8 +61,8 @@ export default function TvAccessRequestsTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs text-slate-400">
-          Indicator pages se jo TradingView ID submit hote hain — yahan dikhte hain. TradingView pe
-          access deke <strong className="text-slate-300">Approve</strong> dabao.
+          TradingView usernames submitted from indicator pages appear here. After granting access on
+          TradingView, click <strong className="text-slate-300">Approve</strong>.
         </p>
         <button
           type="button"

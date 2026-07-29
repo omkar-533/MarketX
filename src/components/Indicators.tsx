@@ -238,8 +238,8 @@ export default function Indicators() {
               <div className="lux-ind__access-copy">
                 <h2>Get access</h2>
                 <p>
-                  Apna TradingView username enter karke submit karo. Hamari support team{' '}
-                  <strong>24 hours</strong> ke andar aapse contact karegi.
+                  Enter your TradingView username and submit your request. Our support team will
+                  contact you within <strong>24 hours</strong>.
                 </p>
               </div>
 
@@ -250,7 +250,7 @@ export default function Indicators() {
                     <p className="lux-ind__tv-done-title">Request received</p>
                     <p className="lux-ind__tv-done-body">
                       {tvMsg ||
-                        'Request submit ho gayi. Hamari support team 24 hours ke andar aapse contact karegi.'}
+                        'Your request has been received. Our support team will contact you within 24 hours.'}
                     </p>
                     <button
                       type="button"
