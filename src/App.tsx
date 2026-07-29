@@ -180,7 +180,9 @@ function AppWorkspace() {
   };
 
   const mainClass = auth.isLoggedIn
-    ? `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}`
+    ? `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}${
+        activeTab === 'trafi' ? ' app-main--chat' : ''
+      }`
     : 'app-main';
 
   const headerClass = auth.isLoggedIn

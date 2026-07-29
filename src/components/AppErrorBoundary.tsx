@@ -40,6 +40,10 @@ export default class AppErrorBoundary extends Component<Props, State> {
         </div>
       );
     }
-    return <div key={this.state.recoverKey}>{this.props.children}</div>;
+    return (
+      <div key={this.state.recoverKey} className="app-error-boundary">
+        {this.props.children}
+      </div>
+    );
   }
 }

@@ -12,7 +12,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ─── App design system ─── */
+/* ??? App design system ??? */
 .app-shell {
   min-height: 100vh;
   background-color: var(--tf-bg);
@@ -77,12 +77,12 @@ body {
   padding: 1rem 1rem 2.5rem;
 }
 
-/* Analyse AI — ChatGPT-style full viewport chat */
+/* Analyse AI ? ChatGPT-style full viewport chat */
 .page-content--chat {
   max-width: none;
   width: 100%;
-  height: calc(100vh - 3.5rem);
-  min-height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   display: flex;
@@ -112,6 +112,9 @@ body {
   .page-content {
     padding: 1rem 1.25rem;
   }
+  .page-content--chat {
+    padding: 0;
+  }
 }
 
 .app-main {
@@ -119,6 +122,38 @@ body {
   padding-top: 3.5rem;
   transition: margin-left 0.25s ease-in-out, padding-left 0.25s ease-in-out;
   margin-left: 0;
+}
+
+/* Analyse AI: lock viewport so composer stays pinned at bottom */
+.app-main--chat {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main--chat .page-content--chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
+.app-main--chat .page-content--chat > .app-error-boundary {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.app-main--chat .page-content--chat > div {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (min-width: 1024px) {
@@ -218,7 +253,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .animate-fade-in-up { animation: fade-in-up 0.3s ease-out; }
 
-/* TradingView chart — fill parent (fullscreen + flex layouts) */
+/* TradingView chart ? fill parent (fullscreen + flex layouts) */
 .tradingview-embed-shell {
   position: relative;
   width: 100%;
@@ -322,7 +357,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .auth-float { animation: auth-float 4s ease-in-out infinite; }
 
-/* ─── Premium Auth System ─── */
+/* ??? Premium Auth System ??? */
 .auth-page {
   position: relative;
   background: var(--color-dark-bg);
@@ -577,7 +612,7 @@ input[type="number"] { -moz-appearance: textfield; }
   mask-image: linear-gradient(#000, transparent 40%);
 }
 
-/* ─── Walking robot scene ─── */
+/* ??? Walking robot scene ??? */
 .auth-robot-wrap {
   display: flex;
   align-items: center;
@@ -940,7 +975,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .auth-hud-chip--bl { bottom: 8%; left: 2%; }
 .auth-hud-chip--br { bottom: 12%; right: 2%; }
 
-/* ─── Advanced mech upgrades ─── */
+/* ??? Advanced mech upgrades ??? */
 .auth-robot-stage--mech {
   width: min(100%, 380px);
   height: 310px;
@@ -1372,7 +1407,7 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 280px;
 }
 
-/* ─── Fullscreen AI Thinker ─── */
+/* ??? Fullscreen AI Thinker ??? */
 .auth-page--fullscreen-mech,
 .auth-page--fullscreen-thinker {
   min-height: 100dvh;
@@ -1939,7 +1974,7 @@ input[type="number"] { -moz-appearance: textfield; }
   display: none;
 }
 
-/* Login page — module descriptions with icons (legacy compact) */
+/* Login page ? module descriptions with icons (legacy compact) */
 .auth-feature-grid {
   width: 100%;
 }
@@ -2005,7 +2040,7 @@ input[type="number"] { -moz-appearance: textfield; }
   color: rgba(148, 163, 184, 0.95);
 }
 
-/* ─── LuxAlgo-inspired premium landing (Wolf Trade AI) ─── */
+/* ??? LuxAlgo-inspired premium landing (Wolf Trade AI) ??? */
 @font-face {
   font-family: 'Modern Era';
   src: url('./assets/fonts/lux-sans.woff2') format('woff2');
@@ -2322,7 +2357,7 @@ input[type="number"] { -moz-appearance: textfield; }
   z-index: 20;
 }
 
-/* Hero — centered LuxAlgo punch */
+/* Hero ? centered LuxAlgo punch */
 .auth-lux__hero {
   position: relative;
   display: flex;
@@ -3430,7 +3465,7 @@ input[type="number"] { -moz-appearance: textfield; }
   z-index: 3;
 }
 
-/* ── Per-module mini animations ── */
+/* ?? Per-module mini animations ?? */
 .auth-lux-feature__viz {
   margin-top: 1.15rem;
   height: 3.1rem;
@@ -3447,7 +3482,7 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 100%;
 }
 
-/* Dashboard — breathing bars */
+/* Dashboard ? breathing bars */
 .fviz--bars {
   display: flex;
   align-items: flex-end;
@@ -3478,7 +3513,7 @@ input[type="number"] { -moz-appearance: textfield; }
   50% { transform: scaleY(1); opacity: 1; }
 }
 
-/* Journal — equity curve drawing itself */
+/* Journal ? equity curve drawing itself */
 .fviz--line svg {
   display: block;
   width: 100%;
@@ -3502,7 +3537,7 @@ input[type="number"] { -moz-appearance: textfield; }
   55%, 100% { stroke-dashoffset: 0; }
 }
 
-/* AI Intelligence — OI bars filling both ways */
+/* AI Intelligence ? OI bars filling both ways */
 .fviz--ladder {
   display: flex;
   flex-direction: column;
@@ -3537,7 +3572,7 @@ input[type="number"] { -moz-appearance: textfield; }
   50% { transform: scaleX(1); }
 }
 
-/* Heatmap — tiles pulsing green and red */
+/* Heatmap ? tiles pulsing green and red */
 .fviz--tiles {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -3566,7 +3601,7 @@ input[type="number"] { -moz-appearance: textfield; }
   50% { opacity: 0.95; }
 }
 
-/* Scanners — result rows under a sweeping beam */
+/* Scanners ? result rows under a sweeping beam */
 .fviz--scan {
   display: flex;
   flex-direction: column;
@@ -3602,7 +3637,7 @@ input[type="number"] { -moz-appearance: textfield; }
   to { transform: translateX(400%); }
 }
 
-/* Master AI — bubbles then typing dots */
+/* Master AI ? bubbles then typing dots */
 .fviz--chat {
   display: flex;
   flex-direction: column;
@@ -3718,7 +3753,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 500;
 }
 
-/* ── Pricing ── */
+/* ?? Pricing ?? */
 .auth-lux__pricing {
   border-top: 1px solid var(--lux-line);
   padding: 6rem 1.35rem 6.5rem;
@@ -3840,7 +3875,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 1.7rem 1.5rem 1.75rem;
 }
 
-/* Trial card — brightest thing on the page */
+/* Trial card ? brightest thing on the page */
 .plan--featured {
   animation: plan-aura 3.6s ease-in-out infinite;
 }
@@ -4256,7 +4291,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 1.45rem;
 }
 
-/* Brand emblem — transparent vector, no blend hacks needed */
+/* Brand emblem ? transparent vector, no blend hacks needed */
 .brand-mark {
   line-height: 0;
   display: grid;
@@ -4927,7 +4962,7 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-shrink: 0;
 }
 
-/* ───────────────────────── access gate + trial nudge ───────────────────────── */
+/* ????????????????????????? access gate + trial nudge ????????????????????????? */
 
 .access-gate {
   position: fixed;
@@ -5417,7 +5452,7 @@ input[type="number"] { -moz-appearance: textfield; }
   color: #cbd5e1;
 }
 
-/* ─── Indicator library (LuxAlgo-style gallery) ─── */
+/* ??? Indicator library (LuxAlgo-style gallery) ??? */
 .lux-lib {
   width: 100%;
   max-width: none;
@@ -5694,7 +5729,7 @@ input[type="number"] { -moz-appearance: textfield; }
   color: #f0d67a;
 }
 
-/* ─── Indicator detail (LuxAlgo indicator page) ─── */
+/* ??? Indicator detail (LuxAlgo indicator page) ??? */
 .lux-ind {
   max-width: none;
   width: 100%;
@@ -6094,29 +6129,31 @@ input[type="number"] { -moz-appearance: textfield; }
   color: #64748b;
 }
 
-/* --- Analyse AI � ChatGPT-style full screen --- */
+/* --- Analyse AI ? ChatGPT-style full screen --- */
 .mai-chat {
+  position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
   min-height: 0;
   width: 100%;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 175, 55, 0.07), transparent 55%),
-    #0a0c12;
+  overflow: hidden;
+  background: #0a0c12;
   color: #e8eaed;
 }
 
 .mai-chat__topbar {
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   flex-shrink: 0;
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 12, 18, 0.85);
-  backdrop-filter: blur(12px);
+  background: #0a0c12;
 }
 
 .mai-chat__brand {
@@ -6246,10 +6283,12 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-chat__scroll {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mai-chat__column {
@@ -6266,8 +6305,11 @@ input[type="number"] { -moz-appearance: textfield; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 12vh 0.5rem 2rem;
+  flex: 1;
+  min-height: min(52vh, 28rem);
+  padding: 2rem 0.5rem;
 }
 
 .mai-chat__empty-mark {
@@ -6452,21 +6494,23 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-chat__composer-wrap {
+  position: relative;
+  z-index: 5;
   flex-shrink: 0;
-  padding: 0.5rem 1rem 0.85rem;
-  background: linear-gradient(180deg, transparent, rgba(10, 12, 18, 0.92) 28%);
+  margin-top: auto;
+  padding: 0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0a0c12;
 }
 
 .mai-chat__composer {
   width: min(48rem, 100%);
   margin: 0 auto;
-  padding: 0.65rem 0.75rem;
-  border-radius: 1.35rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.7rem 0.8rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   background: #141820;
-  box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.04),
-    0 18px 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease;
 }
 
