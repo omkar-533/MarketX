@@ -1537,7 +1537,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 7 COMPLETE + Module 8 Top-Down/Execution. Answer USER QUESTION FIRST. Zone confluence no double-count. HTF context before LTF. Analysis≠execution. Don’t invent unseen TFs. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 8 COMPLETE + Module 9 Parts 2–4 (lifecycle + sizing/portfolio/stats). Answer USER QUESTION FIRST. Continuous reassess. Quality≠size. Don’t invent portfolio/stats. Never must-hold/close. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
