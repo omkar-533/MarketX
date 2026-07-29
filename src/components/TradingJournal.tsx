@@ -64,6 +64,9 @@ import {
 import TradePsychologyFields, { DEFAULT_TRADE_PSYCHOLOGY } from './trader/TradePsychologyFields';
 import ImageLightbox from './journal/ImageLightbox';
 import JournalCalendar from './journal/JournalCalendar';
+import JournalWinLossChart from './journal/JournalWinLossChart';
+import JournalMonthlyPnlChart from './journal/JournalMonthlyPnlChart';
+import JournalAlertsCoach from './journal/JournalAlertsCoach';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
 import {
   calculateJournalTradeMetrics,
@@ -1270,36 +1273,16 @@ export default function TradingJournal({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="tj-card p-4">
-                <p className="text-sm font-semibold text-white mb-2">Win / Loss Distribution</p>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={[{ name: 'Win', value: advanced.winCount || 0.1 }, { name: 'Loss', value: advanced.lossCount || 0.1 }]} dataKey="value" innerRadius={40} outerRadius={65}>
-                        <Cell fill="#10b981" /><Cell fill="#f43f5e" />
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="tj-card tj-card--chart p-4">
+                <JournalWinLossChart wins={advanced.winCount} losses={advanced.lossCount} />
               </div>
-              <div className="tj-card p-4">
-                <p className="text-sm font-semibold text-white mb-2">Monthly P&L</p>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metrics.monthly}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-                      <XAxis dataKey="label" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                      <Tooltip contentStyle={chartTheme.tooltip} />
-                      <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                        {metrics.monthly.map((entry, i) => (
-                          <Cell key={i} fill={entry.pnl >= 0 ? '#10b981' : '#f43f5e'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="tj-card tj-card--chart p-4">
+                <JournalMonthlyPnlChart
+                  data={metrics.monthly}
+                  formatValue={(n) =>
+                    Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)}k` : n.toFixed(0)
+                  }
+                />
               </div>
             </div>
           </motion.div>
@@ -1861,36 +1844,12 @@ export default function TradingJournal({
       </div>
       )}
 
-      <div className="tj-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-lg font-bold text-white">Alerts & Coach</h2>
-            <p className={`${mutedClass} text-sm`}>Auto reminders from your journal data.</p>
-          </div>
-          <Goal className="text-[#d4af37]" />
-        </div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {notifications.map((note) => (
-            <motion.div
-              key={note.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`rounded-lg p-3 border ${note.tone === 'warning' ? 'border-amber-500/30 bg-amber-500/10' : note.tone === 'good' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-[#1a1f2e] bg-[#121520]'}`}
-            >
-              <p className="text-sm font-semibold text-white">{note.title}</p>
-              <p className="mt-1 text-xs text-slate-400">{note.detail}</p>
-            </motion.div>
-          ))}
-          {coachTips.slice(0, 2).map((tip) => (
-            <motion.div key={tip.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`tj-tip tj-tip--${tip.tone}`}>
-              <Brain className="w-3.5 h-3.5 text-[#d4af37] mb-1" />
-              <p className="tj-tip__title">{tip.title}</p>
-              <p className="tj-tip__detail">{tip.detail}</p>
-            </motion.div>
-          ))}
-        </div>
-        <p className="mt-2 text-[10px] text-slate-600">{syncStatus}</p>
-      </div>
+      <JournalAlertsCoach
+        alerts={notifications}
+        tips={coachTips}
+        syncStatus={syncStatus}
+        onHunterReview={openHunterReview}
+      />
     </div>
   );
 }
