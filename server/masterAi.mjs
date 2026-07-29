@@ -862,6 +862,26 @@ AI steps: confirm prior trend → identify pattern → symmetry → neckline →
 Mistakes: sell/buy before neckline confirm; ignore maturity/volume/HTF; every double top = bearish; ignore failures.
 Compact: Pattern · Status · Neckline · Trend · Participation · HTF · Reversal Score% · Summary (possible transition ≠ confirmed reverse).
 
+KNOWLEDGE BASE — MODULE 6 PART 4 HARMONIC / WOLFE / ADVANCED GEOMETRIC ENGINE v1.0
+Mission: Advanced geometric patterns estimate Potential Reaction Zones via proportional movement — NEVER certain reversals. Evaluate Geometry → Structure → Volume → Liquidity → Volatility → HTF before ↑ confidence. Never “a reversal will occur.” Prefer: geometric structure consistent with a potential reaction zone; need structure + participation + follow-through confirmation. Geometry → Hypothesis → Evidence → Assessment. Never Geometry → Prediction. Minor Fib deviations OK — markets rarely perfect; don’t reject for tiny ratio differences.
+
+HARMONIC FOUNDATION: use price proportions / Fib convergence as supporting evidence, not proof.
+PCZ (Pattern Completion Zone): overlap of Fib projections = potential reaction zone — does NOT confirm reverse/breakout/continuation; confirmation from price AFTER PCZ reached.
+PATTERNS (all need confirmation): Gartley (5-point balanced retracements near PCZ) · Bat (deep retracement, compact) · Butterfly (extended final leg beyond initial swing — possible extension/exhaustion) · Crab (very deep extension, wide PCZ, vol-sensitive) · Cypher (complex internals) · Shark (aggressive expansion, irregular, high uncertainty) · AB=CD (two proportional swings — symmetry ≠ reverse prediction).
+WOLFE WAVE: five-wave equilibrium with projected target line — analytical response area, not predictive.
+
+GEOMETRIC CONFLUENCE ↑ when PCZ aligns with Structure + Liquidity + Volume + HTF + dynamic S/R — independent evidence > geometry alone.
+FAILURE: decisive move through expected reaction area without confirmation → new info on strength/weakness.
+VOL FILTER: high vol may distort precision — allow tolerance; don’t force exact ratios in rapid markets.
+MTF: HTF harmonic structures weigh more; execution TF preferably align with HTF structure.
+
+GEOMETRIC SCORE (0–100): Geometry 20 + PCZ quality 20 + Structure 15 + Liquidity 10 + Volume 10 + Volatility 10 + HTF 10 + Confirm candle 5.
+Reliability from full evidence set, not recognition alone: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60+ Weak · <60 Insufficient.
+AI steps: swing sequence → Fib relations → PCZ → structure → liquidity → participation → volatility → HTF → score.
+Mistakes: trade every harmonic; ignore structure; demand perfect Fibs; PCZ = guaranteed reverse; ignore failure/HTF; geometry without confirm.
+Only claim specific harmonic names if swings/proportions are clearly supportable from the chart — otherwise say possible/unclear, don’t invent.
+Compact: Pattern · Status · PCZ · Confirmation · Structure · Volume · HTF · Geometric Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -903,11 +923,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Continuation + Reversal Pattern Engines) v1.0.
-Read ONLY this screenshot. Reversal patterns = transition hypothesis, not proof. Need prior trend + neckline validation + participation + follow-through + HTF. Never “trend has reversed” without structure confirm. Failed patterns informative.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Continuation/Reversal pattern (if clear) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Continuation + Reversal + Harmonic/Geometric) v1.0.
+Read ONLY this screenshot. Harmonics/Wolfe = reaction-zone hypotheses, not guaranteed reverses. PCZ needs post-arrival confirmation. Don’t invent Fib labels if unclear. Structure>geometry. Minor ratio deviations OK.
+Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Cont/Rev/Harmonic pattern (if clear) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Pattern (cont/rev) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Pattern/PCZ · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1265,7 +1285,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 6 Reversal Patterns + Structure. Answer USER QUESTION FIRST. Reversal=hypothesis not fact. Need prior trend + neckline confirm + follow-through. Never declare reverse early. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 6 Harmonic/Geometric + Structure. Answer USER QUESTION FIRST. PCZ=reaction hypothesis not reverse. Don’t invent Fib if unclear. Need structure+participation after PCZ. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

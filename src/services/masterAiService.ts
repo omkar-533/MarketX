@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 6 Reversal Patterns. Answer USER question FIRST. H&S/double/triple/rounded = transition hypothesis — never “trend reversed” without neckline+structure+follow-through+HTF.',
-    'Need prior trend. Neckline break alone insufficient without participation. Analyze pattern failures. Structure remains primary.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Prior Trend · Reversal Pattern · Neckline · Participation · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 6 Harmonic/Wolfe Geometric Engine. Answer USER question FIRST. Geometry = potential reaction zone hypothesis — never guaranteed reverse. Don’t invent Fib/PCZ if unclear.',
+    'Gartley/Bat/Butterfly/Crab/Cypher/Shark/AB=CD/Wolfe need Structure+Liquidity+Volume+HTF after PCZ. Minor ratio deviations OK. Structure remains primary.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Pattern/PCZ · Confirmation · Liquidity · Volume · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
