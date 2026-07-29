@@ -16,7 +16,7 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-/** Read-only list of TradingView usernames submitted for manual invite. */
+/** TradingView usernames submitted for manual invite — persisted for admin review. */
 export default function TvAccessRequestsTab({
   adminEmail,
   adminPassword,
@@ -46,7 +46,8 @@ export default function TvAccessRequestsTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs text-slate-400">
-          TradingView IDs submitted from indicator pages — grant access manually on TradingView.
+          Indicator pages se jo TradingView ID submit hote hain — yahan dikhte hain. TradingView pe
+          access manually grant karo, phir Mark granted.
         </p>
         <button
           type="button"
@@ -61,8 +62,14 @@ export default function TvAccessRequestsTab({
       {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
 
       {rows.length === 0 ? (
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-8 text-center text-xs text-slate-500">
-          {loading ? 'Loading…' : 'No TradingView submissions yet.'}
+        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-8 text-center text-xs text-slate-500 space-y-2">
+          <p>{loading ? 'Loading…' : 'No TradingView submissions yet.'}</p>
+          {!loading ? (
+            <p className="text-[10px] text-slate-600 max-w-md mx-auto">
+              Note: pehle Render pe temporary file me save hote the, isliye purani submissions
+              redeploy ke baad wipe ho sakti hain. Ab se naya data permanently save hoga.
+            </p>
+          ) : null}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-[#1a1f2e]">
@@ -72,6 +79,7 @@ export default function TvAccessRequestsTab({
                 <th className="px-3 py-2 font-bold">TradingView ID</th>
                 <th className="px-3 py-2 font-bold">Indicator</th>
                 <th className="px-3 py-2 font-bold">User</th>
+                <th className="px-3 py-2 font-bold">Status</th>
                 <th className="px-3 py-2 font-bold">Submitted</th>
               </tr>
             </thead>
@@ -91,6 +99,19 @@ export default function TvAccessRequestsTab({
                   <td className="px-3 py-2.5 text-slate-300">
                     <div>{row.name || '—'}</div>
                     <div className="text-[10px] text-slate-500">{row.email || row.phone || ''}</div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        row.status === 'pending'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          : row.status === 'granted'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      }`}
+                    >
+                      {row.status}
+                    </span>
                   </td>
                   <td className="px-3 py-2.5 text-slate-400 whitespace-nowrap">
                     {formatDate(row.createdAt)}

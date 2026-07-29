@@ -1,18 +1,21 @@
 /**
  * TradingView invite access requests (manual grant by admin).
- * JSON-first so Render works without a new Supabase migration.
+ * Persists to Supabase app_settings when configured (survives Render redeploys).
+ * Falls back to local JSON for file-only / local-dev mode.
  */
 import { randomBytes } from 'crypto';
+import { getAdminClient, storeError } from './supabaseAdmin.mjs';
 import { readJsonFile, writeJsonFile } from './jsonStore.mjs';
 
 const FILE = 'app-tv-access-requests.json';
+const SETTINGS_KEY = 'tv_access_requests';
 
-function readRows() {
+function readFileRows() {
   const raw = readJsonFile(FILE, { requests: [] });
   return Array.isArray(raw?.requests) ? raw.requests : [];
 }
 
-function writeRows(requests) {
+function writeFileRows(requests) {
   writeJsonFile(FILE, { requests });
 }
 
@@ -33,6 +36,50 @@ function fromRow(row) {
     reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
   };
+}
+
+async function loadRows() {
+  const db = getAdminClient();
+  if (!db) return readFileRows();
+
+  const { data, error } = await db.from('app_settings').select('value').eq('key', SETTINGS_KEY).maybeSingle();
+  if (error) throw storeError(error);
+
+  const cloud = Array.isArray(data?.value?.requests) ? data.value.requests : [];
+  const local = readFileRows();
+
+  // One-time rescue: if cloud is empty but the disk still has rows, promote them.
+  if (!cloud.length && local.length) {
+    await saveRows(local);
+    return local;
+  }
+  return cloud;
+}
+
+async function saveRows(requests) {
+  const db = getAdminClient();
+  if (!db) {
+    writeFileRows(requests);
+    return;
+  }
+
+  const { error } = await db.from('app_settings').upsert(
+    {
+      key: SETTINGS_KEY,
+      value: { requests },
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+    },
+    { onConflict: 'key' },
+  );
+  if (error) throw storeError(error);
+
+  // Best-effort local mirror (ignored on ephemeral Render disks).
+  try {
+    writeFileRows(requests);
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function createTvAccessRequest({
@@ -58,12 +105,14 @@ export async function createTvAccessRequest({
     reviewed_at: null,
     created_at: createdAt,
   };
-  writeRows([row, ...readRows()]);
+
+  const rows = await loadRows();
+  await saveRows([row, ...rows]);
   return fromRow(row);
 }
 
 export async function listTvAccessRequests({ status = 'pending', limit = 100 } = {}) {
-  const rows = readRows()
+  const rows = (await loadRows())
     .filter((row) => (status === 'all' ? true : row.status === status))
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
     .slice(0, limit);
@@ -71,14 +120,15 @@ export async function listTvAccessRequests({ status = 'pending', limit = 100 } =
 }
 
 async function findRequest(id) {
-  return readRows().find((row) => row.id === id) ?? null;
+  return (await loadRows()).find((row) => row.id === id) ?? null;
 }
 
 export async function reviewTvAccessRequest(id, { status, adminNote = '', reviewedBy }) {
   if (!['granted', 'dismissed'].includes(status)) {
     throw Object.assign(new Error('Invalid status'), { status: 400 });
   }
-  const row = await findRequest(id);
+  const rows = await loadRows();
+  const row = rows.find((r) => r.id === id);
   if (!row) throw Object.assign(new Error('Request not found'), { status: 404 });
 
   const patch = {
@@ -87,17 +137,18 @@ export async function reviewTvAccessRequest(id, { status, adminNote = '', review
     reviewed_by: reviewedBy ?? null,
     reviewed_at: new Date().toISOString(),
   };
-  writeRows(readRows().map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+  await saveRows(next);
   return { ok: true, request: fromRow({ ...row, ...patch }) };
 }
 
 export async function pendingTvAccessRequestCount() {
-  return readRows().filter((row) => row.status === 'pending').length;
+  return (await loadRows()).filter((row) => row.status === 'pending').length;
 }
 
 export async function latestPendingTvAccessRequest() {
   const row =
-    readRows()
+    (await loadRows())
       .filter((r) => r.status === 'pending')
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null;
   return row ? fromRow(row) : null;
