@@ -13,6 +13,9 @@ export const DATA_OFFLINE_MSG = 'Live data offline — refresh or reconnect in P
 export const SERVER_OFFLINE_MSG = `${BRAND} server starting — please wait…`;
 export const CONNECT_PATH = '/fyers-login';
 
+/** Chat / copilot product name shown in nav and UI */
+export const AI_PRODUCT_NAME = 'Analyse AI';
+
 /** Tab id → human page name (for document.title + UI) */
 export const PAGE_NAMES: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -36,7 +39,7 @@ export const PAGE_NAMES: Record<string, string> = {
   futures: 'Futures Analytics',
   oiintelligence: 'AI Intelligence',
   footprint: 'Footprint',
-  trafi: 'Master AI',
+  trafi: AI_PRODUCT_NAME,
   indicators: 'Indicators',
 };
 
@@ -63,8 +66,8 @@ export function serverUnreachableMessage(): string {
 
 export function masterAiOfflineMessage(): string {
   return hasRemoteApi
-    ? 'Master AI temporarily offline — reconnecting…'
-    : 'Master AI temporarily unavailable — please try again';
+    ? `${AI_PRODUCT_NAME} temporarily offline — reconnecting…`
+    : `${AI_PRODUCT_NAME} temporarily unavailable — please try again`;
 }
 
 /** Strip vendor names and developer commands from messages shown in UI */

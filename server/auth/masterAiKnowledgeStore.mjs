@@ -1,5 +1,5 @@
 /**
- * Owner teachings for Master AI (PDF / text notes).
+ * Owner teachings for Analyse AI (PDF / text notes).
  * Answers prefer this knowledge base when present.
  */
 import { createRequire } from 'module';

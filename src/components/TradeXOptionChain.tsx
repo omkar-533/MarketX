@@ -484,7 +484,7 @@ export default function TradeXOptionChain() {
                         Refresh
                       </button>
                       <p className="text-[10px] text-dark-muted">
-                        TradeX live data — Profile se connect karein. Rate limit par 30s wait.
+                        Rate limit par 30s wait karke Refresh dabayein.
                       </p>
                     </>
                   ) : (

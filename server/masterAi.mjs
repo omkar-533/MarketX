@@ -38,7 +38,7 @@ const HISTORY_TURNS = 8;
 const HISTORY_MSG_CHARS = 1800;
 const CONTEXT_CAP_CHARS = 14_000;
 
-const SYSTEM_PROMPT = `You are Jarvis — a male senior NSE/BSE trading mentor inside Wolf Trade AI (Master AI feature).
+const SYSTEM_PROMPT = `You are Jarvis — a male senior NSE/BSE trading mentor inside Wolf Trade AI (Analyse AI feature).
 
 IDENTITY (locked — no confusion)
 - Your name is Jarvis. You are MALE. Gender: man / he / him.
@@ -239,7 +239,7 @@ function createClient(apiKey) {
       apiKey,
       defaultHeaders: {
         'HTTP-Referer': 'https://wolftradeai.in',
-        'X-Title': 'Wolf Trade AI Master AI',
+        'X-Title': 'Wolf Trade AI Analyse AI',
       },
     }),
     gemini: null,
@@ -306,7 +306,7 @@ async function chatWithGemini(gemini, {
           generationConfig,
         });
         if (reply) {
-          console.info(`[Master AI] ok model=${modelId} image=${hasImage ? 1 : 0}`);
+          console.info(`[Analyse AI] ok model=${modelId} image=${hasImage ? 1 : 0}`);
           return { reply, modelUsed: modelId, source: 'gemini' };
         }
       } catch (err) {
@@ -314,13 +314,13 @@ async function chatWithGemini(gemini, {
         const msg = String(err?.message ?? err);
         const isLastConfig = i === configs.length - 1;
         if (isLastConfig) {
-          console.warn(`[Master AI] Gemini ${modelId} failed:`, msg);
+          console.warn(`[Analyse AI] Gemini ${modelId} failed:`, msg);
           modelFailedHard = true;
         } else if (/thinkingConfig|thinking_budget|Unknown name/i.test(msg)) {
-          console.warn(`[Master AI] Gemini ${modelId} retry without thinkingConfig`);
+          console.warn(`[Analyse AI] Gemini ${modelId} retry without thinkingConfig`);
         } else {
           // Model/auth/quota errors — skip remaining configs for this model
-          console.warn(`[Master AI] Gemini ${modelId} failed:`, msg);
+          console.warn(`[Analyse AI] Gemini ${modelId} failed:`, msg);
           modelFailedHard = true;
           break;
         }
@@ -452,7 +452,7 @@ export function createMasterAiRouter(apiKey) {
           }
         } catch (err) {
           lastError = err;
-          console.warn(`[Master AI] Model ${modelId} failed:`, err?.message ?? err);
+          console.warn(`[Analyse AI] Model ${modelId} failed:`, err?.message ?? err);
         }
       }
 

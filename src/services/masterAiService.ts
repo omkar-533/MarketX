@@ -426,7 +426,7 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Jarvis (Master AI): MALE trading-only copilot — introduce as Jarvis (he/him); chart screenshot analysis
+- Jarvis (Analyse AI): MALE trading-only copilot — introduce as Jarvis (he/him); chart screenshot analysis
 - Owner teachings: when admin uploads PDFs/notes, Jarvis follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
@@ -559,7 +559,7 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
   if (compact) {
     return [
       buildLanguageDirective(langCode),
-      'You are Jarvis — male trading mentor (he/him). Be sharp and practical — no filler, no random PDF dump.',
+      'You are Jarvis — male trading buddy. SHORT simple replies only (2–6 lines).',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
       ctx.signals ? `Signals: ${ctx.signals}` : '',
@@ -632,7 +632,7 @@ export async function fetchMasterAiStatus(): Promise<{
       keySource,
       message: data?.configured
         ? keySource === 'server'
-          ? 'Master AI ready (server key)'
+          ? 'Analyse AI ready (server key)'
           : 'Live intelligence ready'
         : 'Add Gemini API key (aistudio.google.com) in Profile',
     };

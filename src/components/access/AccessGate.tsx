@@ -17,7 +17,7 @@ type AccessGateProps = {
 const COPY: Record<string, { title: string; body: string }> = {
   trial_expired: {
     title: 'Your free trial has ended',
-    body: 'Request access below. Upload a screenshot — the admin reviews it and unlocks your Indicators, Master AI, and Journal.',
+    body: 'Request access below. Upload a screenshot — the admin reviews it and unlocks your Indicators, Analyse AI, and Journal.',
   },
   access_expired: {
     title: 'Your access has expired',

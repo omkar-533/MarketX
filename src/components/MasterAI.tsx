@@ -452,7 +452,7 @@ export default function MasterAI() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[15px] font-semibold tracking-tight text-white">Jarvis</h2>
               <span className="rounded border border-[#d4af37]/20 bg-[#d4af37]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#d4af37]">
-                Male · Master AI
+                Male · Analyse AI
               </span>
             </div>
             <p className="truncate text-[11px] text-slate-500" title={aiStatus.message}>

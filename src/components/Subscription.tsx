@@ -49,7 +49,7 @@ export default function Subscription({ user, access, popup }: SubscriptionProps)
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan covers Master AI, Indicators, and Trading Journal — higher plans unlock more.
+          Every plan covers Analyse AI, Indicators, and Trading Journal — higher plans unlock more.
         </p>
       </div>
 

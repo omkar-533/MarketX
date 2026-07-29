@@ -62,10 +62,10 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
     setOpenRouterInput('');
     setOpenRouterMsg(
       provider === 'gemini'
-        ? 'Gemini API key saved — Master AI will use Google Gemini.'
+        ? 'Gemini API key saved — Analyse AI will use Google Gemini.'
         : provider === 'openai'
-          ? 'OpenAI API key saved — Master AI will use GPT models.'
-          : 'OpenRouter key saved — Master AI will use it.',
+          ? 'OpenAI API key saved — Analyse AI will use GPT models.'
+          : 'OpenRouter key saved — Analyse AI will use it.',
     );
   };
 
@@ -118,7 +118,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <KeyRound className="w-4 h-4 text-gold" />
-                      <span className="text-sm text-slate-400">Master AI (API key)</span>
+                      <span className="text-sm text-slate-400">Analyse AI (API key)</span>
                     </div>
                     {(serverAiReady || hasLocalKey) && (
                       <span className="text-[10px] font-bold text-emerald-400">Active</span>

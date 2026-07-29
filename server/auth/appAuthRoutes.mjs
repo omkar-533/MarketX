@@ -681,7 +681,7 @@ router.delete('/admin/indicators/:id', requireAdmin, async (req, res) => {
   }
 });
 
-/** GET /api/app-auth/admin/knowledge — Master AI owner teachings */
+/** GET /api/app-auth/admin/knowledge — Analyse AI owner teachings */
 router.get('/admin/knowledge', requireAdmin, async (_req, res) => {
   try {
     const documents = await listKnowledgeDocs();

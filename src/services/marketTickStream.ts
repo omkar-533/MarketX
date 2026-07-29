@@ -1,6 +1,6 @@
 /**
  * Live market tick stream — intentionally disabled.
- * Product tabs (Indicators / Master AI / Journal) do not consume live quotes.
+ * Product tabs (Indicators / Analyse AI / Journal) do not consume live quotes.
  */
 
 export { FYERS_TOKEN_INVALID_EVENT } from '../constants/fyersEvents';

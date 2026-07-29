@@ -11,7 +11,7 @@ import {
 } from '../../constants/brandLabels';
 
 const capabilities = [
-  { icon: Sparkles, text: 'Master AI copilots' },
+  { icon: Sparkles, text: 'Analyse AI copilots' },
   { icon: Bot, text: 'Indicators library' },
   { icon: Zap, text: 'Trading journal' },
   { icon: Cpu, text: 'Invite-only desk' },

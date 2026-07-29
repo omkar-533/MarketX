@@ -10,7 +10,7 @@ export const DEFAULT_ACCESS_POPUP = {
   enabled: true,
   title: 'Request access',
   message:
-    'Upload a clear screenshot for the desk. After the admin approves it, Indicators, Master AI, and Journal unlock automatically — no payment step required here.',
+    'Upload a clear screenshot for the desk. After the admin approves it, Indicators, Analyse AI, and Journal unlock automatically — no payment step required here.',
   url: '',
   buttonLabel: 'Help / instructions',
   whatsapp: '',

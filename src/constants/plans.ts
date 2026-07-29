@@ -24,7 +24,7 @@ export const TRIAL_DAYS = 3;
 
 /** @deprecated Prefer plan.features — kept for any leftover imports. */
 export const PLAN_FEATURES = [
-  'Master AI — ask markets, get clear trade context',
+  'Analyse AI — ask markets, get clear trade context',
   'Indicators library — browse & open invite links',
   'Trading Journal — log trades, review P&L & discipline',
 ] as const;
@@ -35,13 +35,13 @@ export const PLANS: readonly Plan[] = [
     name: 'Free Trial',
     price: 0,
     period: `${TRIAL_DAYS} days free`,
-    tagline: `Try the desk for ${TRIAL_DAYS} days — core Master AI, Indicators browse, and Journal basics.`,
+    tagline: `Try the desk for ${TRIAL_DAYS} days — core Analyse AI, Indicators browse, and Journal basics.`,
     badge: 'Start here',
     cta: 'Start 3-day free trial',
     note: 'No card required · instant access',
     featured: true,
     features: [
-      'Master AI — limited daily questions',
+      'Analyse AI — limited daily questions',
       'Indicators — browse & open invite links',
       'Trading Journal — log up to 20 trades',
       `${TRIAL_DAYS}-day access · no card needed`,
@@ -53,11 +53,11 @@ export const PLANS: readonly Plan[] = [
     name: 'Monthly',
     price: 2999,
     period: 'per month',
-    tagline: 'Full access to Master AI, Indicators, and Trading Journal — cancel anytime.',
+    tagline: 'Full access to Analyse AI, Indicators, and Trading Journal — cancel anytime.',
     cta: 'Choose monthly',
     note: 'Cancel anytime from profile',
     features: [
-      'Master AI — full copilot access',
+      'Analyse AI — full copilot access',
       'Indicators — browse & open invite links',
       'Trading Journal — unlimited trade logs',
       'All 3 modules unlocked',
@@ -77,7 +77,7 @@ export const PLANS: readonly Plan[] = [
     note: 'Billed once for 3 months',
     features: [
       'Everything in Monthly',
-      'Master AI — higher daily limit',
+      'Analyse AI — higher daily limit',
       'Indicators — full library + new drops first',
       'Trading Journal — P&L analytics & tags',
       'Priority WhatsApp support',
@@ -89,14 +89,14 @@ export const PLANS: readonly Plan[] = [
     price: 14999,
     period: 'per year',
     equivalent: '≈ ₹1,250 / month',
-    tagline: 'Best value year — max Master AI, full Indicators vault, and advanced journal reviews.',
+    tagline: 'Best value year — max Analyse AI, full Indicators vault, and advanced journal reviews.',
     badge: 'Best value',
     save: 'Save ₹20,989',
     cta: 'Choose yearly',
     note: 'Billed once for 12 months',
     features: [
       'Everything in 3 Months',
-      'Master AI — highest limits + priority replies',
+      'Analyse AI — highest limits + priority replies',
       'Indicators — full vault + priority invite links',
       'Trading Journal — advanced reviews & exports',
       'VIP WhatsApp support · fastest response',

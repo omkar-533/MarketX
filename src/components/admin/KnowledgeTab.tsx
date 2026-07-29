@@ -111,10 +111,10 @@ export default function KnowledgeTab({ adminEmail, adminPassword }: KnowledgeTab
         <div>
           <h3 className="text-sm font-bold text-[#d4af37] flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
-            Master AI teachings
+            Analyse AI teachings
           </h3>
           <p className="text-[11px] text-slate-500 mt-1">
-            PDF ya notes upload karo — Master AI answers isi base pe dega (house method). Text-PDF
+            PDF ya notes upload karo — Analyse AI answers isi base pe dega (house method). Text-PDF
             best hai; scanned image PDF se text nahi nikalta.
           </p>
         </div>

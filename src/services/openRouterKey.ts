@@ -42,7 +42,7 @@ export function maskOpenRouterApiKey(key: string): string {
   return `${key.slice(0, 10)}…${key.slice(-4)}`;
 }
 
-/** Sent to server on Master AI requests (Profile-saved Gemini / OpenAI / OpenRouter key). */
+/** Sent to server on Analyse AI requests (Profile-saved Gemini / OpenAI / OpenRouter key). */
 export function openRouterRequestHeaders(): Record<string, string> {
   const key = loadOpenRouterApiKey();
   if (!key) return {};

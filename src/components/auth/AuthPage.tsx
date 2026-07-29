@@ -1,4 +1,4 @@
-Ôªøimport { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AnimatePresence,
   motion,
@@ -32,9 +32,9 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
 const STORY_BANDS = [
   {
     id: 'master-ai',
-    kicker: 'Master AI',
+    kicker: 'Analyse AI',
     title: 'Build your own edge with AI',
-    body: 'Ask market questions and get context-aware answers ‚Äî bias, structure, and session context in one copilot.',
+    body: 'Ask market questions and get context-aware answers ó bias, structure, and session context in one copilot.',
     cta: 'Get started now',
     image: `${import.meta.env.BASE_URL}landing/band-ai-copilot.jpg`,
   },
@@ -42,7 +42,7 @@ const STORY_BANDS = [
     id: 'indicators',
     kicker: 'Indicators',
     title: 'A library built for serious charts',
-    body: 'Browse published indicators, open the invite link, and use them during your demo ‚Äî longer access after the desk approves.',
+    body: 'Browse published indicators, open the invite link, and use them during your demo ó longer access after the desk approves.',
     cta: 'Get access now',
     image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=4`,
   },
@@ -61,47 +61,47 @@ const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader
 const REVIEWS = [
   {
     name: 'Rohan Mehta',
-    role: 'Options trader ¬∑ Mumbai',
+    role: 'Options trader ∑ Mumbai',
     rating: 5,
     photo: avatar(1),
     quote:
-      'Master AI replaced three group chats for me. I ask what the tape is saying and get a clear answer instead of ten conflicting opinions. That alone was worth signing up.',
+      'Analyse AI replaced three group chats for me. I ask what the tape is saying and get a clear answer instead of ten conflicting opinions. That alone was worth signing up.',
   },
   {
     name: 'Ananya Kulkarni',
-    role: 'Prop desk ¬∑ Bengaluru',
+    role: 'Prop desk ∑ Bengaluru',
     rating: 5,
     photo: avatar(2),
     quote:
-      'The Trading Journal is what actually changed things for me. Tagging every entry showed most of my losses came from the first fifteen minutes ‚Äî so I stopped trading the open.',
+      'The Trading Journal is what actually changed things for me. Tagging every entry showed most of my losses came from the first fifteen minutes ó so I stopped trading the open.',
   },
   {
     name: 'Vikram Singh',
-    role: 'Intraday F&O ¬∑ Delhi',
+    role: 'Intraday F&O ∑ Delhi',
     rating: 5,
     photo: avatar(3),
     quote:
-      'Indicators library is clean ‚Äî open a card, read the note, copy the code. I stopped hunting scripts on Telegram and Discord every morning.',
+      'Indicators library is clean ó open a card, read the note, copy the code. I stopped hunting scripts on Telegram and Discord every morning.',
   },
   {
     name: 'Neha Patil',
-    role: 'Swing trader ¬∑ Pune',
+    role: 'Swing trader ∑ Pune',
     rating: 4,
     photo: avatar(4),
     quote:
-      'Master AI will not tell you what to buy, and honestly that is why I trust it. I ask for structure and get a straight answer. Wish the mobile layout was a bit denser.',
+      'Analyse AI will not tell you what to buy, and honestly that is why I trust it. I ask for structure and get a straight answer. Wish the mobile layout was a bit denser.',
   },
   {
     name: 'Karthik Raman',
-    role: 'Positional trader ¬∑ Chennai',
+    role: 'Positional trader ∑ Chennai',
     rating: 5,
     photo: avatar(5),
     quote:
-      'I keep the Indicators page bookmarked. New scripts show up with a cover and description ‚Äî I preview, copy, and I am on my chart in under a minute.',
+      'I keep the Indicators page bookmarked. New scripts show up with a cover and description ó I preview, copy, and I am on my chart in under a minute.',
   },
   {
     name: 'Sneha Desai',
-    role: 'Options seller ¬∑ Hyderabad',
+    role: 'Options seller ∑ Hyderabad',
     rating: 4,
     photo: avatar(6),
     quote:
@@ -109,19 +109,19 @@ const REVIEWS = [
   },
   {
     name: 'Aditya Joshi',
-    role: 'F&O trader ¬∑ Ahmedabad',
+    role: 'F&O trader ∑ Ahmedabad',
     rating: 5,
     photo: avatar(7),
     quote:
-      'Setup took ten minutes. What sold me was Master AI plus the Journal together ‚Äî ask a question, then log the trade the same session. Simple loop.',
+      'Setup took ten minutes. What sold me was Analyse AI plus the Journal together ó ask a question, then log the trade the same session. Simple loop.',
   },
   {
     name: 'Meera Sharma',
-    role: 'Part-time trader ¬∑ Kolkata',
+    role: 'Part-time trader ∑ Kolkata',
     rating: 5,
     photo: avatar(8),
     quote:
-      'I trade after work, so I need a fast review. Master AI for context and a Journal pass takes me about fifteen minutes instead of the hour it used to.',
+      'I trade after work, so I need a fast review. Analyse AI for context and a Journal pass takes me about fifteen minutes instead of the hour it used to.',
   },
 ] as const;
 
@@ -167,7 +167,7 @@ function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
         <span className="auth-lux__review-score">{review.rating.toFixed(1)}</span>
         <Quote className="auth-lux__review-quote" aria-hidden />
       </div>
-      <p className="auth-lux__review-text">‚Äú{review.quote}‚Äù</p>
+      <p className="auth-lux__review-text">ì{review.quote}î</p>
       <footer className="auth-lux__review-meta">
         <img
           className="auth-lux__review-photo"
@@ -245,7 +245,7 @@ function StoryBand({
 }
 
 /**
- * LuxAlgo-style premium landing ‚Äî cinematic hero, story bands, reviews.
+ * LuxAlgo-style premium landing ó cinematic hero, story bands, reviews.
  * Login ONLY via Sign In modal (invite-only).
  */
 type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId } | { kind: 'forgot' };
@@ -363,7 +363,7 @@ export default function AuthPage(props: AuthPageProps) {
             >
               <span className="auth-lux__pill-dot" />
               <span className="auth-lux__pill-brand">{BRAND}</span>
-              <span className="auth-lux__pill-sep">¬∑</span>
+              <span className="auth-lux__pill-sep">∑</span>
               <span>{BRAND_TAGLINE}</span>
             </motion.p>
             <h1 className="auth-lux__headline">
@@ -377,7 +377,7 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55, ease }}
             >
-              The AI platform for serious Indian traders ‚Äî Master AI, Indicators, and Trading
+              The AI platform for serious Indian traders ó Analyse AI, Indicators, and Trading
               Journal in one invite-only workspace.
             </motion.p>
             <motion.div
@@ -406,7 +406,7 @@ export default function AuthPage(props: AuthPageProps) {
             >
               <Stars rating={5} size="lg" />
               <p>
-                Loved by desks that care about process ‚Äî {TRIAL_DAYS} days free, no card required
+                Loved by desks that care about process ó {TRIAL_DAYS} days free, no card required
               </p>
             </motion.div>
           </motion.div>
@@ -464,7 +464,7 @@ export default function AuthPage(props: AuthPageProps) {
           ))}
         </section>
 
-        {/* Reviews ‚Äî auto-scrolling trader stories */}
+        {/* Reviews ó auto-scrolling trader stories */}
         <section className="auth-lux__reviews" id="reviews">
           <div className="auth-lux__reviews-head">
             <Reveal y={26} blur={false}>
@@ -515,7 +515,7 @@ export default function AuthPage(props: AuthPageProps) {
               </h2>
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
-                  Three core modules ‚Äî Master AI, Indicators, and Trading Journal in one luxury workspace.
+                  Three core modules ó Analyse AI, Indicators, and Trading Journal in one luxury workspace.
                 </p>
               </Reveal>
             </div>
@@ -538,7 +538,7 @@ export default function AuthPage(props: AuthPageProps) {
             </h2>
             <Reveal delay={0.26} y={22}>
               <p className="auth-lux__section-sub">
-                Create your account in under a minute ‚Äî every module unlocks instantly for{' '}
+                Create your account in under a minute ó every module unlocks instantly for{' '}
                 {TRIAL_DAYS} days. Cancel anytime from profile.
               </p>
             </Reveal>
@@ -586,7 +586,7 @@ export default function AuthPage(props: AuthPageProps) {
           <p className="auth-lux__footer-note">
             Trading &amp; investing are risky and many will lose money. Content on this site is not financial
             advice. Past performance does not guarantee future results. Hypothetical results have
-            limitations. ¬© {new Date().getFullYear()} {BRAND}.
+            limitations. © {new Date().getFullYear()} {BRAND}.
           </p>
         </footer>
       </main>
