@@ -172,6 +172,26 @@ DOJI DECISION MATRIX
 - After liquidity sweep → higher probability (still confirm)
 - Before major news → expect volatility expansion
 
+KNOWLEDGE BASE — MODULE 2B PART 3 MARUBOZU FAMILY v1.0
+Mission: Marubozu = conviction / market acceptance (unlike Doji). Not “just bullish/bearish” — ask who controlled, who failed, and whether the move is CONTINUATION or EXHAUSTION. Never without context. Never let one Marubozu override market structure. Conviction ≠ certainty; risk remains.
+
+BULLISH MARUBOZU — long bullish body, little/no shadows; open near low, close near high. Psych: buyers controlled start→end; sellers no meaningful rejection; continuous acceptance higher. Institutional: aggressive entry, supply absorbed, momentum accelerates → continuation more likely in context. Best at: resistance breakout, BOS, trend continuation, demand reaction, impulse start, range breakout, high-vol expansion. Volume: high=very strong; avg=strong; low=question conviction. Confirm: next holds above midpoint, healthy volume, no immediate bearish engulfing, HTF supports. Fail: into major resistance, tiny volume, immediate bearish engulfing, strong bearish divergence, parabolic exhaustion. Reliability: no context ~62%; +vol ~74%; +trend ~82%; +BOS ~88%; +demand ~91%. AI: Bull Marubozu+BOS+vol expansion+HTF bullish → strong bullish momentum / high continuation confidence; else wait.
+
+BEARISH MARUBOZU — long bearish body, almost no shadows; open near high, close near low. Psych: sellers fully controlled; buyers failed; lower prices accepted. Institutional: distribution, supply overwhelms demand, downside momentum. Best at: support breakdown, supply rejection, lower-high rejection, markdown, BOS, trend continuation. Volume same rule (high/avg/low). Confirm: next stays below midpoint, no bullish engulfing, lower high forms, volume elevated. Fail: demand zone, oversold, liquidity sweep, strong bullish divergence, immediate bullish engulfing. Reliability: no context ~61%; +vol ~76%; +trend ~84%; +structure break ~90%. AI: Bear Marubozu+support break+high vol+bearish trend → strong bearish momentum / high continuation.
+
+OPENING MARUBOZU — little/no opening wick; small closing wick OK. Psych: one side took control immediately; minor late profit-taking; momentum still dominant. Interpretation: healthy continuation / strong open participation. Reliability medium–high (vol+trend dependent).
+
+CLOSING MARUBOZU — little/no closing wick; opening wick OK. Psych: finished with max conviction; winning side controlled to close. Closing strength often > opening strength.
+
+MOMENTUM READ: large body + minimal wick + strong close + volume expansion → institutional participation score. Momentum engine (internal): body, wick, volume, trend, structure, liquidity, HTF → Very Weak / Weak / Moderate / Strong / Very Strong.
+
+CONTINUATION vs EXHAUSTION
+Continuation: strong trend, healthy pullbacks, rising volume, BOS, no divergence, fresh breakout.
+Exhaustion: parabolic move, major S/R, momentum divergence, volume climax, repeated expansion, mature trend.
+Decision matrix: Bull Marubozu+demand+high vol+HH → high continuation | Bear Marubozu+supply+high vol+LL → high bear continuation | Bull Marubozu+major resistance+parabolic → possible exhaustion | Bear Marubozu+major demand+bullish divergence → possible selling exhaustion.
+Mistakes: buying/selling every Marubozu; ignoring S/R, demand, volume, HTF, trend maturity, divergence.
+Checklist before use: Trend, Structure, Volume, S/R, Liquidity, HTF, Momentum, Risk, Reward → then confidence.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -213,9 +233,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles + Doji family) v1.0.
-Read ONLY this screenshot. Candle psychology BEFORE names. Location > shape. Doji = indecision — never trade alone; confirmation candle required. Never trade inside Long-Legged Doji.
-Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation. Wick ≠ breakout.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles, Doji, Marubozu) v1.0.
+Read ONLY this screenshot. Psychology BEFORE candle names. Location > shape. Doji=indecision (confirm). Marubozu=conviction — ask continuation vs exhaustion; never override structure.
+Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -575,7 +595,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle/Doji names. Doji=indecision — never alone; confirm next candle. Never trade inside Long-Legged Doji. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names. Doji=indecision (confirm). Marubozu=conviction — continuation vs exhaustion via context/volume/structure. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
