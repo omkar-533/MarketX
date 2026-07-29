@@ -18,6 +18,111 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      #boot-fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.1rem;
+        margin: 0;
+        background: #07090f;
+        color: #f0d78c;
+        font-family: Orbitron, Inter, system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #boot-fallback .bf-veil {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(ellipse 55% 40% at 50% 42%, rgba(212,175,55,0.08), transparent 70%),
+          radial-gradient(ellipse 40% 30% at 50% 55%, rgba(185,28,28,0.1), transparent 65%);
+        pointer-events: none;
+      }
+      #boot-fallback .bf-stage {
+        position: relative;
+        width: 7.5rem; height: 7.5rem;
+        display: flex; align-items: center; justify-content: center;
+      }
+      #boot-fallback .bf-ring {
+        position: absolute; inset: 0; border-radius: 50%;
+        border: 1px solid rgba(212,175,55,0.28);
+        animation: bf-spin 6s linear infinite;
+      }
+      #boot-fallback .bf-ring--inner {
+        inset: 10%;
+        border-color: rgba(239,68,68,0.35);
+        animation-duration: 3.5s;
+        animation-direction: reverse;
+      }
+      #boot-fallback .bf-badge {
+        position: relative; z-index: 1;
+        width: 4.25rem; height: 4.25rem;
+        border-radius: 1.1rem;
+        border: 1px solid rgba(212,175,55,0.35);
+        background: linear-gradient(145deg, rgba(40,36,24,0.95), rgba(10,12,18,0.98));
+        box-shadow: 0 0 28px rgba(185,28,28,0.25), 0 12px 32px rgba(0,0,0,0.45);
+        display: flex; align-items: center; justify-content: center;
+        animation: bf-float 2.8s ease-in-out infinite;
+      }
+      #boot-fallback svg { width: 2.6rem; height: 2.6rem; display: block; }
+      #boot-fallback .bf-eye {
+        transform-origin: center;
+        transform-box: fill-box;
+        animation: bf-eye 1.35s ease-in-out infinite;
+      }
+      #boot-fallback .bf-eye--r { animation-delay: 0.18s; }
+      #boot-fallback .bf-label {
+        position: relative; z-index: 1;
+        margin: 0;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.42em;
+        text-indent: 0.42em;
+        color: #f0d78c;
+        text-shadow: 0 0 18px rgba(212,175,55,0.35);
+        animation: bf-pulse 1.6s ease-in-out infinite;
+      }
+      #boot-fallback .bf-bar {
+        position: relative; z-index: 1;
+        width: 8.5rem; height: 2px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.06);
+        overflow: hidden;
+      }
+      #boot-fallback .bf-bar > span {
+        display: block; height: 100%; width: 40%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent, #ef4444, #f0d78c, transparent);
+        animation: bf-bar 1.25s ease-in-out infinite;
+      }
+      @keyframes bf-spin { to { transform: rotate(360deg); } }
+      @keyframes bf-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+      @keyframes bf-eye {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; }
+      }
+      @keyframes bf-pulse {
+        0%, 100% { opacity: 0.65; }
+        50% { opacity: 1; }
+      }
+      @keyframes bf-bar {
+        0% { transform: translateX(-120%); }
+        100% { transform: translateX(320%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-fallback .bf-ring,
+        #boot-fallback .bf-badge,
+        #boot-fallback .bf-eye,
+        #boot-fallback .bf-label,
+        #boot-fallback .bf-bar > span { animation: none !important; }
+      }
+    </style>
   </head>
   <body>
     <script>
@@ -32,8 +137,54 @@
       })();
     </script>
     <div id="root">
-      <div id="boot-fallback" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0e17;color:#94a3b8;font-family:Inter,system-ui,sans-serif;font-size:14px">
-        Loading Wolf Trade AI…
+      <div id="boot-fallback" role="status" aria-label="WOLF LOADING">
+        <div class="bf-veil" aria-hidden="true"></div>
+        <div class="bf-stage">
+          <span class="bf-ring" aria-hidden="true"></span>
+          <span class="bf-ring bf-ring--inner" aria-hidden="true"></span>
+          <div class="bf-badge">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <defs>
+                <linearGradient id="bf-lit" x1="8" y1="4" x2="34" y2="58" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#fff8e4" />
+                  <stop offset=".42" stop-color="#f0d894" />
+                  <stop offset="1" stop-color="#cba52a" />
+                </linearGradient>
+                <linearGradient id="bf-shade" x1="56" y1="4" x2="34" y2="58" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#eacf7e" />
+                  <stop offset=".5" stop-color="#bf9525" />
+                  <stop offset="1" stop-color="#94701a" />
+                </linearGradient>
+                <linearGradient id="bf-snout" x1="32" y1="46" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#a8811c" />
+                  <stop offset="1" stop-color="#7a5b10" />
+                </linearGradient>
+                <radialGradient id="bf-eye" cx="50%" cy="50%" r="50%">
+                  <stop offset="0" stop-color="#ffe4e6" />
+                  <stop offset="0.35" stop-color="#ff2d2d" />
+                  <stop offset="0.75" stop-color="#b91c1c" />
+                  <stop offset="1" stop-color="#7f1d1d" stop-opacity="0" />
+                </radialGradient>
+                <filter id="bf-eye-blur" x="-120%" y="-120%" width="340%" height="340%">
+                  <feGaussianBlur stdDeviation="2.4" result="b" />
+                  <feMerge>
+                    <feMergeNode in="b" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <path fill="url(#bf-lit)" fill-rule="evenodd" d="M10 5 23 25 32 21 32 59 19 45 12 31Z M20 32 28 35.5 26 40 19 36.5Z" />
+              <path fill="url(#bf-shade)" fill-rule="evenodd" d="M54 5 41 25 32 21 32 59 45 45 52 31Z M44 32 36 35.5 38 40 45 36.5Z" />
+              <path fill="url(#bf-snout)" d="M27 47 37 47 32 59Z" />
+              <circle class="bf-eye" cx="24.5" cy="34" r="5.2" fill="url(#bf-eye)" filter="url(#bf-eye-blur)" />
+              <circle class="bf-eye bf-eye--r" cx="39.5" cy="34" r="5.2" fill="url(#bf-eye)" filter="url(#bf-eye-blur)" />
+              <circle cx="24.5" cy="34" r="1.55" fill="#fff1f2" />
+              <circle cx="39.5" cy="34" r="1.55" fill="#fff1f2" />
+            </svg>
+          </div>
+        </div>
+        <p class="bf-label">WOLF LOADING</p>
+        <div class="bf-bar" aria-hidden="true"><span></span></div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

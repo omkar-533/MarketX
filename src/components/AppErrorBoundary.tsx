@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import WolfLoader from './WolfLoader';
 
 type Props = {
   children: ReactNode;
@@ -34,11 +35,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      return (
-        <div className="flex items-center justify-center min-h-[40vh] text-slate-500 text-sm">
-          Loading workspace…
-        </div>
-      );
+      return <WolfLoader />;
     }
     return (
       <div key={this.state.recoverKey} className="app-error-boundary">

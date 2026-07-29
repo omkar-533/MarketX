@@ -9610,3 +9610,143 @@ input[type="number"] { -moz-appearance: textfield; }
   .tj-cal__hero-orb,
   .tj-cal__cell-glow { animation: none !important; }
 }
+
+/* --- Wolf loader (boot + Suspense) --- */
+.wolf-loader {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.05rem;
+  overflow: hidden;
+  background: #07090f;
+  color: #f0d78c;
+}
+.wolf-loader--full {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.wolf-loader--inline {
+  min-height: 50vh;
+  width: 100%;
+  border-radius: 1rem;
+}
+.wolf-loader__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 42%, rgba(212,175,55,0.08), transparent 70%),
+    radial-gradient(ellipse 42% 32% at 50% 55%, rgba(185,28,28,0.12), transparent 65%);
+}
+.wolf-loader__orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: tj-orb 5s ease-in-out infinite;
+}
+.wolf-loader__orb--a {
+  width: 14rem; height: 14rem; top: 28%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(185, 28, 28, 0.18);
+}
+.wolf-loader__orb--b {
+  width: 10rem; height: 10rem; bottom: 18%; right: 22%;
+  background: rgba(212, 175, 55, 0.1);
+  animation-delay: -2s;
+}
+.wolf-loader__stage {
+  position: relative;
+  z-index: 1;
+  width: 7.75rem;
+  height: 7.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wolf-loader__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  animation: wolf-loader-spin 6s linear infinite;
+}
+.wolf-loader__ring--inner {
+  inset: 11%;
+  border-color: rgba(239, 68, 68, 0.38);
+  animation-duration: 3.4s;
+  animation-direction: reverse;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.12);
+}
+.wolf-loader__badge {
+  position: relative;
+  z-index: 1;
+  width: 4.35rem;
+  height: 4.35rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  background: linear-gradient(145deg, rgba(42, 36, 22, 0.96), rgba(10, 12, 18, 0.98));
+  box-shadow:
+    0 0 32px rgba(185, 28, 28, 0.28),
+    0 14px 36px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wolf-loader__svg {
+  width: 2.65rem;
+  height: 2.65rem;
+  display: block;
+  overflow: visible;
+}
+.wolf-loader__label {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: Orbitron, Inter, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: #f0d78c;
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+  animation: wolf-loader-pulse 1.6s ease-in-out infinite;
+}
+.wolf-loader__bar {
+  position: relative;
+  z-index: 1;
+  width: 8.75rem;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.wolf-loader__bar > span {
+  display: block;
+  height: 100%;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #ef4444, #f0d78c, transparent);
+  animation: wolf-loader-bar 1.25s ease-in-out infinite;
+}
+@keyframes wolf-loader-spin { to { transform: rotate(360deg); } }
+@keyframes wolf-loader-pulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+@keyframes wolf-loader-bar {
+  0% { transform: translateX(-130%); }
+  100% { transform: translateX(320%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wolf-loader__ring,
+  .wolf-loader__orb,
+  .wolf-loader__label,
+  .wolf-loader__bar > span { animation: none !important; }
+}

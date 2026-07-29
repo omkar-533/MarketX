@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import WolfLoader from './components/WolfLoader';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
@@ -41,11 +42,7 @@ const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 const FyersLoginPage = lazy(() => import('./components/FyersLoginPage'));
 
 function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[50vh] text-slate-500 text-sm">
-      Loading workspace…
-    </div>
-  );
+  return <WolfLoader />;
 }
 
 function AppWorkspace() {
