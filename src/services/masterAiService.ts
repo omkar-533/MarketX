@@ -566,11 +566,67 @@ export function isTradingRelated(input: string): boolean {
   if (n.length < 2) return false;
   if (NON_TRADING_TERMS.some((t) => n.includes(t))) return false;
   if (TRADING_KEYWORDS.some((t) => n.includes(t))) return true;
+  if (isConversationFollowUp(n)) return true;
   // Short polite chat on the desk (thanks / ok / cool)
   if (isPoliteAck(n)) {
     return true;
   }
   return false;
+}
+
+/** Follow-ups that continue an existing desk thread (language switch, SL, more detail, etc.) */
+export function isConversationFollowUp(input: string): boolean {
+  const n = String(input || '').toLowerCase().trim();
+  if (!n || n.length > 160) return false;
+  if (
+    /\b(english|hindi|hinglish|हिंदी|urdu|tamil|telugu|gujarati|marathi|bengali)\b/i.test(n) &&
+    /\b(me|mein|main|in|batao|bata|bolo|bol|likho|reply|explain|samjha|translate|karo|kar)\b/i.test(n)
+  ) {
+    return true;
+  }
+  if (
+    /^(in\s+english|english\s+please|please\s+in\s+english|same\s+in\s+english|hindi\s+me|english\s+me|hinglish\s+me)/i.test(
+      n,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /^(aur\??|phir\??|uske\s+baad\??|uska\??|uski\??|use\??|ese\??|aise\??|is[e]?\??|sl\??|target\??|entry\??|kyun\??|why\??|more|detail|details|explain|dobara|again|same)\b/i.test(
+      n,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Explicit language lock from user text like “english me batao” */
+export function detectExplicitLanguageRequest(input: string): MasterAiLangCode | null {
+  const n = String(input || '').toLowerCase().trim();
+  if (!n) return null;
+  if (/\b(in\s+english|english\s+me|english\s+mein|english\s+main|english\s+please|reply\s+in\s+english)\b/i.test(n)) {
+    return 'en-US';
+  }
+  if (/\b(hinglish\s+me|in\s+hinglish|roman\s+hindi)\b/i.test(n)) return 'hi-Latn';
+  if (/\b(hindi\s+me|in\s+hindi|हिंदी\s+में|devanagari)\b/i.test(n)) return 'hi-IN';
+  return null;
+}
+
+/** True if recent chat already has desk/trading context worth continuing */
+export function hasActiveDeskThread(
+  messages: Array<{ id?: string; role: string; text: string; imageUrl?: string }>,
+): boolean {
+  const recent = messages.filter((m) => m.id !== 'welcome').slice(-10);
+  if (!recent.length) return false;
+  return recent.some(
+    (m) =>
+      Boolean(m.imageUrl) ||
+      m.role === 'trafi' ||
+      m.role === 'assistant' ||
+      isTradingRelated(m.text) ||
+      /chart|bias|support|resistance|nifty|bullish|bearish/i.test(m.text),
+  );
 }
 
 export function getHumanGreetingReply(langCode: string, userText: string): string {

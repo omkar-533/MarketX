@@ -27,6 +27,9 @@ import {
   getChartImageRequiredMessage,
   getNeedChartOnlyReply,
   isDayMarketReviewQuestion,
+  isConversationFollowUp,
+  detectExplicitLanguageRequest,
+  hasActiveDeskThread,
   getHumanGreetingReply,
   loadAutoSpeak,
   loadLanguageMode,
@@ -358,8 +361,13 @@ export default function MasterAI() {
       return;
     }
 
-    // Day / market review without chart — fixed reply (never invent, never say live data)
-    if (!hasImage && isDayMarketReviewQuestion(userText)) {
+    // Day / market review without chart — fixed reply (never invent)
+    // Skip if continuing an active desk thread (e.g. "english me batao" after a chart)
+    if (
+      !hasImage &&
+      isDayMarketReviewQuestion(userText) &&
+      !(hasActiveDeskThread(messages) && isConversationFollowUp(userText))
+    ) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
         .slice(-4)
@@ -389,7 +397,11 @@ export default function MasterAI() {
       return;
     }
 
-    if (!hasImage && !isTradingRelated(userText)) {
+    const allowThreadFollowUp =
+      hasActiveDeskThread(messages) &&
+      (isConversationFollowUp(userText) || userText.trim().length <= 120);
+
+    if (!hasImage && !isTradingRelated(userText) && !allowThreadFollowUp) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
         .slice(-4)
@@ -450,14 +462,16 @@ export default function MasterAI() {
         .slice(-4)
         .map((m) => m.text)
         .reverse();
-      const activeLang = resolveMasterAiLanguage(
-        langMode,
-        detectFrom,
-        selectedLang.code || 'hi-Latn',
-        recentUser,
-      );
-      if (langMode === 'auto') {
-        // Always sync detected / sticky language into UI so Auto · label updates
+      const explicitLang = detectExplicitLanguageRequest(detectFrom);
+      const activeLang = explicitLang
+        ? getMasterAiLanguage(explicitLang)
+        : resolveMasterAiLanguage(
+            langMode,
+            detectFrom,
+            selectedLang.code || 'hi-Latn',
+            recentUser,
+          );
+      if (langMode === 'auto' || explicitLang) {
         if (activeLang.code !== selectedLang.code) {
           setSelectedLang(activeLang);
           saveSelectedLanguage(activeLang.code);
@@ -475,14 +489,20 @@ export default function MasterAI() {
 
       if (aiStatus.configured) {
         try {
-          const textMessage = hasImage ? visionMessage : userText;
+          const textMessage = hasImage
+            ? visionMessage
+            : explicitLang
+              ? `${userText}\n\n[Continue the previous analysis in this chat. Reply in ${activeLang.replyIn}. Do not restart the topic.]`
+              : allowThreadFollowUp
+                ? `${userText}\n\n[This is a follow-up on the previous desk analysis in this chat. Continue that thread — do not reset or refuse.]`
+                : userText;
           const result = await askMasterAi(
             {
               message: textMessage,
               model: MASTER_AI_MODEL_ID,
               lang: activeLang.code,
               langName: activeLang.nativeLabel,
-              langMode,
+              langMode: explicitLang ? explicitLang : langMode,
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
               needsWeb: false,
