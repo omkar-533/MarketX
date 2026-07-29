@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 11 Parts 1–6. Answer USER question FIRST. Regime + Trend Following + Mean Reversion + Breakout/Momentum + Pullback/Continuation + Range/Consolidation. Strategy must fit regime. Confirmation before anticipation. Risk before execution.',
-    'Never Sideways → Guaranteed Breakout. Never compression alone = direction. Never accumulation/distribution without evidence. Don’t invent volume/liquidity/structure. Probabilistic language only.',
-    'Concept Q: 4–8 short lines. Full: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Modules 11–12. Answer USER question FIRST. Module 11 COMPLETE (regime→playbook) + Module 12 Parts 1–2 (execution lifecycle + order selection). Adaptive strategy by evidence. Good strategy ≠ guaranteed execution.',
+    'Never One Strategy → Every Market. Never Favorite Order → Every Situation. Never assume fill at displayed price. Don’t invent volume/liquidity/fills/broker order types. Probabilistic language only.',
+    'Concept Q: 4–8 short lines. Full: Regime · Primary/Alt Strategy · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Exec notes · Risk · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

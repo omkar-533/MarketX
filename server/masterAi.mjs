@@ -1250,6 +1250,41 @@ RANGE SCORE (0–100): Boundary Quality 20 + Range Structure 20 + Volatility Sta
 Never invent volume/liquidity/participation; never predict direction from compression alone. Distinguish Observed Consolidation from Potential Expansion.
 Compact: Range Structure · Boundary Quality · Volatility · Liquidity · Volume · Expansion Readiness · Confidence · Range Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 11 PART 7 VOLATILITY REGIME SWITCHING / ADAPTIVE STRATEGY SELECTION v1.0
+Mission: Markets transition between volatility/participation regimes — adapt strategy from observable evidence, not fixed rules. Never One Strategy → Every Market. Path: Volatility → Regime → Strategy Compatibility → Risk → Execution → Assessment.
+VOL = magnitude/variability of price movement. Higher vol ↑ opportunity and risk; lower vol may compress. Classify: Very Low / Low / Moderate / High / Extreme — observable data only. Tools (never sole): ATR · HV · realized · Bollinger/Keltner width · range expansion · dispersion.
+EXPANSION: ↑ movement, growing participation, wider ranges · CONTRACTION: reduced movement, compressed ranges, lower participation — conditions not future direction. Clustering: high-vol near high-vol / low near low historically — not future certainty. Transitions need multiple independents: ATR change, range expansion, structure, liquidity shift, volume, participation.
+STRATEGY ROTATION (evidence not recent P/L): Trend↔Range · Range→Breakout · MR→Momentum · Momentum→Pullback. Adaptive selection via Regime+Vol+Liquidity+Structure+TF+Risk — never one strategy for every environment. Risk adjust for changing vol/liquidity/participation/portfolio — rule-based. Execution adapt: timing, size, stops, targets, frequency — documented rules not emotion. MTF may show different vol regimes — reconcile before selection. Conflicts (HTF trend/LTF range, high vol/weak liquidity, strong momentum/weak structure) ↓ confidence, don’t force.
+REGIME SCORE (0–100): Vol Regime 20 + Structure 20 + Strategy Compatibility 15 + Liquidity 10 + Volume 10 + TF Align 10 + Risk 10 + Data 5.
+Never one-indicator regime; never certain future vol; distinguish Observed Regime from Future Conditions.
+Compact: Volatility · Regime · Structure · Liquidity · Strategy Compatibility · Confidence · Regime Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 11 PART 8 UNIFIED MULTI-STRATEGY / INSTITUTIONAL PLAYBOOK ENGINE v1.0
+(MODULE 11 COMPLETE — Institutional Trading Strategies & Playbook)
+Mission: Select strategy most consistent with CURRENT market evidence, not recently successful one. Integrate frameworks into one transparent decision process. Never Favorite Strategy → Every Market.
+Hierarchy: Regime → Structure → Liquidity → Vol → HTF → Risk → Strategy Compatibility → Execution → Portfolio → Overall. Evaluate Trend/MR/Breakout/Momentum/Pullback/Range/Vol-Based/Hybrid — no priority before market eval. Per strategy: Market/Structure/Liquidity/Vol/Risk fit + execution readiness — dynamic. Conflicts: resolve via Regime/HTF/Risk/Liquidity/Stats — don’t average signals. Confluence (e.g. Trend+Pullback, Breakout+Momentum, Range+MR) ↑ confidence not certainty.
+PLAYBOOK (adaptive): Primary Strategy · Alternative · Invalidation · Execution Requirements · Risk Notes · Monitoring Checklist. Rank by current compatibility, risk quality, readiness, historical validation, portfolio — not popularity. Rotate only when observable evidence supports. Portfolio: correlation, diversification, risk budget, exposure, capital preservation. Execution readiness: market compatibility, defined risk, liquidity, strategy align, portfolio capacity.
+UNIFIED STRATEGY SCORE (0–100): Regime 20 + Compatibility 20 + Structure 15 + Liquidity 10 + Volatility 10 + Execution Readiness 10 + Risk 10 + Portfolio 5.
+AI steps: regime → all categories → compatibility → resolve conflicts → playbook → confidence → score. Continuous reassess on structure/vol/liquidity/risk/portfolio change.
+Never recommend without regime; never claim universal superiority; distinguish Current Compatibility from Future Performance.
+Compact: Primary · Alternative · Regime · Liquidity · Vol · Execution Readiness · Confidence · Unified Strategy Score% · Playbook notes · Summary.
+
+KNOWLEDGE BASE — MODULE 12 PART 1 EXECUTION PHILOSOPHY / ORDER LIFECYCLE FOUNDATION v1.0
+Mission: Performance depends on analysis AND execution quality. Evaluate whether a trade can be executed efficiently, safely, consistently with strategy + risk. Never Good Strategy → Guaranteed Good Execution. Strategy = what; Execution = how.
+OBJECTIVES: acceptable prices · minimize avoidable costs · control execution risk · strategy integrity · risk limits · portfolio objectives — measure quality, don’t assume. Lifecycle: Decision → Create → Submit → Exchange → Execution → Confirmation → Position Update → Monitoring → Modify/Close. States: Draft/Pending/Submitted/Accepted/Partial/Full/Modified/Cancelled/Rejected/Expired/Closed — track explicitly.
+QUALITY grade High/Moderate/Low/Uncertain: price, fill completeness, speed, slippage, costs, liquidity, order accuracy. Constraints before exec: liquidity, exchange/broker rules, hours, halts, position/capital limits. PRE-TRADE: strategy align, regime, entry/stop/target, size, risk budget, liquidity, method, portfolio — missing critical ↓ readiness. Never begin if critical elements undefined. POST-TRADE: fill quality, position, risk, market changes, stops, targets, portfolio — fill ≠ end. Detect errors before submit: wrong symbol/qty/direction/type/price, duplicates, input/timing. Traceability: Order/Strategy/Portfolio IDs, timestamp, status, mod history, change reasons.
+EXECUTION SCORE (0–100): Strategy Readiness 20 + Risk Definition 20 + Liquidity 15 + Position Size 10 + Operational Checks 10 + Constraints 10 + Portfolio Fit 10 + Data 5.
+Never assume exact fill at observed price; never invent fills/speed/liquidity; distinguish Planned from Actual Execution.
+Compact: Strategy Status · Risk · Liquidity · Constraints · Readiness · Confidence · Execution Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 12 PART 2 ORDER TYPES / ORDER SELECTION ENGINE v1.0
+Mission: Match order type to conditions — balance quality, price control, urgency, liquidity, risk. Never Favorite Order Type → Every Situation. Path: Execution Objective → Market Conditions → Order Compatibility → Risk → Decision → Assessment.
+TYPES (trade-offs; none universal): Market = urgency/speed, price from liquidity, slippage risk · Limit = max buy/min sell control, fill not guaranteed, partials possible · Stop = trigger activation (risk/breakout/confirm) — activation ≠ final price · Stop-Limit = trigger + price control, may go unfilled · Trailing Stop = dynamic stop as price favors — may trip on normal vol · TIF: Day/GTC/IOC/FOK (broker/exchange dependent) · Advanced: Bracket/OCO/Conditional/Multi-leg (availability varies).
+SELECTION factors: urgency, liquidity, spread, vol, strategy, risk, portfolio, objectives. Lower liquidity ↑ exec risk/partials/slippage/impact. Compatibility examples: Market↔high urgency · Limit↔price control · Stop↔trigger entry · Trailing↔dynamic risk. Conflicts (urgency+strict limit, low liquidity+large size, tight stop+high vol) ↓ confidence until resolved.
+ORDER SCORE (0–100): Execution Objective 20 + Order Compatibility 20 + Liquidity 15 + Volatility 10 + Spread 10 + Risk 10 + Broker Capability 10 + Data 5.
+Never recommend without market eval; never assume limit fills or market at displayed price; never invent broker order types; distinguish Recommended Order from Guaranteed Execution.
+Compact: Objective · Recommended Order · Liquidity · Vol · Urgency · Confidence · Order Selection Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1291,11 +1326,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Strategy: Trend/MR/Breakout/Pullback/Range) v1.0.
-Read ONLY this screenshot. Regime → strategy fit. Compression ≠ breakout direction. Never accumulation/distribution without evidence. Don’t invent volume/liquidity/VP/unseen TFs.
-Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Risk → PA → Candle.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–12 (Module 11 COMPLETE + Execution P1–2) v1.0.
+Read ONLY this screenshot. Regime → adaptive strategy (playbook: primary + alternative). Compression≠direction. Execution readiness ≠ guaranteed fill. Don’t invent volume/liquidity/fills/broker orders/unseen TFs.
+Order: Regime → HTF Structure → Strategy Fit/Playbook → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Exec/Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · Primary/Alt Strategy · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Exec notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1653,7 +1688,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 11 Parts 1–6 (regime + trend/MR/breakout/pullback/range). Answer USER QUESTION FIRST. Strategy must fit regime. Compression≠direction. Don’t invent volume/liquidity. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 11 COMPLETE + Module 12 Parts 1–2 (playbook + execution/order types). Answer USER QUESTION FIRST. Adaptive strategy by regime. Planned≠actual fill. Don’t invent liquidity/fills. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
