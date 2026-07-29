@@ -55,6 +55,56 @@ interface Message {
   imageUrl?: string;
 }
 
+const CHAT_MEMORY_KEY = 'master_ai_chat_memory_v1';
+const CHAT_MEMORY_MAX = 40;
+
+function loadChatMemory(fallbackWelcome: Message): Message[] {
+  if (typeof window === 'undefined') return [fallbackWelcome];
+  try {
+    const raw = window.localStorage.getItem(CHAT_MEMORY_KEY);
+    if (!raw) return [fallbackWelcome];
+    const parsed = JSON.parse(raw) as Array<{
+      id: string;
+      role: 'user' | 'trafi';
+      text: string;
+      timestamp?: string;
+      imageUrl?: string;
+    }>;
+    if (!Array.isArray(parsed) || parsed.length === 0) return [fallbackWelcome];
+    const restored = parsed
+      .filter((m) => m && (m.role === 'user' || m.role === 'trafi') && typeof m.text === 'string')
+      .slice(-CHAT_MEMORY_MAX)
+      .map((m) => ({
+        id: m.id || `${Date.now()}-${Math.random()}`,
+        role: m.role,
+        text: m.text.slice(0, 4000),
+        timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+        // skip heavy image persistence
+      }));
+    return restored.length ? restored : [fallbackWelcome];
+  } catch {
+    return [fallbackWelcome];
+  }
+}
+
+function saveChatMemory(msgs: Message[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const slim = msgs
+      .filter((m) => m.id !== 'welcome')
+      .slice(-CHAT_MEMORY_MAX)
+      .map((m) => ({
+        id: m.id,
+        role: m.role,
+        text: m.text.slice(0, 4000),
+        timestamp: m.timestamp.toISOString(),
+      }));
+    window.localStorage.setItem(CHAT_MEMORY_KEY, JSON.stringify(slim));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 export default function MasterAI() {
   const initialMode = loadLanguageMode();
   const initialLang =
@@ -63,17 +113,18 @@ export default function MasterAI() {
       : getMasterAiLanguage(initialMode);
   const [langMode, setLangMode] = useState<MasterAiLangMode>(initialMode);
   const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const welcomeText =
+    initialMode === 'auto'
+      ? 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
+      : getMasterAiWelcome(initialLang.code);
+  const [messages, setMessages] = useState<Message[]>(() =>
+    loadChatMemory({
       id: 'welcome',
       role: 'trafi',
-      text:
-        initialMode === 'auto'
-          ? 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
-          : getMasterAiWelcome(initialLang.code),
+      text: welcomeText,
       timestamp: new Date(),
-    },
-  ]);
+    }),
+  );
   const [inputText, setInputText] = useState('');
   const hindi = isHindiLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
@@ -145,6 +196,10 @@ export default function MasterAI() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: isThinking ? 'auto' : 'smooth' });
   }, [messages, isThinking]);
+
+  useEffect(() => {
+    saveChatMemory(messages);
+  }, [messages]);
 
   const speakText = useCallback(
     (text: string) => {
@@ -377,10 +432,10 @@ export default function MasterAI() {
 
     const history: ChatHistoryItem[] = messages
       .filter((m) => m.id !== 'welcome')
-      .slice(-6)
+      .slice(-24)
       .map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
-        content: m.text.slice(0, 1200),
+        content: m.text.slice(0, 2000),
       }));
 
     try {

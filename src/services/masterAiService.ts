@@ -542,6 +542,10 @@ export function getChartImageRequiredMessage(langCode: string): string {
 export function isDayMarketReviewQuestion(input: string): boolean {
   const n = String(input || '').toLowerCase().trim();
   if (!n || n.length > 160) return false;
+  // Follow-ups about an existing setup should NOT be blocked
+  if (/^\s*(sl|stoploss|stop\s*loss|target|entry|invalidation|rr|risk|aur|uske\s+baad|same|uska|uski)\b/i.test(n)) {
+    return false;
+  }
   return /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty|banknifty|sensex|din\s+(kaisa|kaise)|session)\b/i.test(
     n,
   ) && /\b(kaisa|kaise|tha|hai|raha|was|is|view|performance|recap|summary|batao|bata|analyse|analyze)\b/i.test(n);
@@ -747,23 +751,69 @@ export async function fetchMasterAiStatus(): Promise<{
   }
 }
 
+/** Compact memory cues from recent turns — helps follow-ups (“SL?”, “target?”) stay on-topic */
+export function buildConversationMemoryNote(history: ChatHistoryItem[]): string {
+  if (!history.length) return '';
+  const blob = history
+    .map((h) => h.content)
+    .join('\n')
+    .slice(0, 6000);
+
+  const symbols = Array.from(
+    new Set(
+      (blob.match(/\b(NIFTY|BANKNIFTY|FINNIFTY|SENSEX|RELIANCE|TCS|INFY|HDFCBANK|ICICIBANK|[A-Z]{2,12})\b/g) || [])
+        .filter((s) => !['CE', 'PE', 'SL', 'PCR', 'OI', 'EMA', 'RSI', 'MACD', 'VWAP'].includes(s)),
+    ),
+  ).slice(0, 8);
+
+  const timeframes = Array.from(
+    new Set(blob.match(/\b(\d+\s?(m|min|mins|h|hr|hour|hours|d|day|days)|1H|4H|15m|5m|daily|weekly)\b/gi) || []),
+  ).slice(0, 6);
+
+  const levels = Array.from(new Set(blob.match(/\b\d{4,6}(?:\.\d+)?\b/g) || [])).slice(-12);
+
+  const bias =
+    /\bbullish\b/i.test(blob) && /\bbearish\b/i.test(blob)
+      ? 'mixed (check last assistant turn)'
+      : /\bbullish\b/i.test(blob)
+        ? 'bullish cues in thread'
+        : /\bbearish\b/i.test(blob)
+          ? 'bearish cues in thread'
+          : /\bsideways|range\b/i.test(blob)
+            ? 'sideways/range cues in thread'
+            : '';
+
+  const lines = [
+    'THREAD MEMORY (use for follow-ups; do not invent beyond this + latest chart/message):',
+    symbols.length ? `Symbols mentioned: ${symbols.join(', ')}` : '',
+    timeframes.length ? `Timeframes mentioned: ${timeframes.join(', ')}` : '',
+    levels.length ? `Levels mentioned: ${levels.join(', ')}` : '',
+    bias ? `Bias cues: ${bias}` : '',
+    'If the user asks a short follow-up, continue the last setup — do not restart from zero.',
+  ].filter(Boolean);
+
+  return lines.length > 2 ? lines.join('\n') : '';
+}
+
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
   const greeting = isCasualGreeting(req.message || '');
   const autoMode = req.langMode === 'auto' || !req.langMode;
   // Always compact market dump — chart/image already carries levels; saves input tokens
-  const platformContext = greeting
-    ? [
-        buildLanguageDirective(req.lang, autoMode),
-        'User sent a greeting. Reply in 1–2 respectful desk lines as Jarvis. No market dump. Never sound like a chatbot.',
-      ].join('\n')
-    : formatContextBlock(ctx, req.lang, true, autoMode);
-
   const history = (req.history ?? [])
-    .slice(-6)
+    .slice(-24)
     .map((h) => ({
       role: h.role,
-      content: String(h.content || '').slice(0, 1200),
+      content: String(h.content || '').slice(0, 2000),
     }));
+
+  const memoryNote = buildConversationMemoryNote(history);
+  const baseContext = greeting
+    ? [
+        buildLanguageDirective(req.lang, autoMode),
+        'User sent a greeting. Reply in 1–2 respectful desk lines as Jarvis. No market dump.',
+      ].join('\n')
+    : formatContextBlock(ctx, req.lang, true, autoMode);
+  const platformContext = memoryNote ? `${baseContext}\n\n${memoryNote}` : baseContext;
 
   const res = await apiFetch('/api/chat', {
     method: 'POST',
