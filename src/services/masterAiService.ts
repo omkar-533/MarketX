@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 5 Indicator Foundation. Answer USER question FIRST. Indicators summarize — never predict / never decide alone. Invisible → N/A. Don’t invent RSI/EMA values.',
-    'Priority: Structure → Liquidity → Volume → Volatility → Indicators. Avoid redundancy (EMA+SMA+MACD). Match indicators to regime. HTF weight higher.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 5 Moving Average Engine. Answer USER question FIRST. MAs describe trend — never create/predict it. Invisible → N/A. Never “above MA = buy.”',
+    'Use slope, alignment, distance, compression/expansion with Structure+Volume+HTF. Golden/Death Cross = confirmation not prediction. False crosses in ranges = cut confidence.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA/Indicators (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

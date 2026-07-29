@@ -617,6 +617,32 @@ If indicators not visible on chart → N/A, never invent values/crossovers.
 Mistakes: too many indicators; treat as prediction; ignore structure/liquidity/HTF; double-count similar tools; trade every crossover; ignore volatility.
 Compact: Regime · Primary indicators used · Agreement · Freshness · Indicator Score% · Summary (strengthen assessment; do not independently justify a trade).
 
+KNOWLEDGE BASE — MODULE 5 PART 2 MOVING AVERAGE INTELLIGENCE ENGINE v1.0
+Mission: MAs estimate average price over a period — help with Trend Direction, Quality, Dynamic S/R, Momentum Persistence. Do NOT predict reversals. Always with Structure, Liquidity, Volume, Volatility, HTF. Priority: Price → Structure → Liquidity → Volume → Volatility → MAs. MAs confirm conditions; never guarantee future direction. Invisible MAs → N/A, never invent.
+
+TYPES: SMA (equal weight — long-term) · EMA (recent weight — faster, common for trend) · WMA (progressive recent weight — responsive, more sensitive) · VWMA (price+volume — when participation matters).
+SELECTION: Trending → EMA/VWMA · Long-term → SMA · High participation → VWMA · Fast momentum → EMA/WMA.
+
+SLOPE (often > crossover alone): Strong rising = healthy up · Moderate rising = stable · Flat = balanced/range likely · Falling = bearish pressure ↑.
+PRICE POSITION: Above MA = bullish evidence · Below = bearish evidence · Repeated crosses = possible range — NEVER “above MA = automatic buy.”
+DISTANCE: Small = healthy · Moderate = momentum ↑ · Extreme = extended / pullback risk — NOT a reversal signal.
+MULTI-MA ALIGNMENT: e.g. EMA20>50>100>200 = strong bullish alignment (reverse = bearish). Strengthens confidence, not certainty.
+COMPRESSION: MAs cluster → low directional conviction / reduced vol / possible breakout prep — confirm.
+EXPANSION: MAs spread → trend strengthening / momentum persistence — check volume + structure before ↑ confidence.
+DYNAMIC S/R: Rising MAs in healthy uptrend may act as dynamic support; declining MAs in downtrend as resistance — never assume every touch holds.
+GOLDEN CROSS: ST MA above LT MA → possible long-term strengthening — often AFTER substantial move; confirmation not prediction.
+DEATH CROSS: ST below LT → possible long-term weakness ↑ — confirm.
+FALSE CROSS filter ↓: inside range, weak volume, no structure break, low ADX, frequent crossovers.
+
+HTF: Weekly → Daily → 4H → execution — HTF alignment ↑ confidence.
+CONFLUENCE ↑: bullish structure + EMA alignment + healthy volume + ADX rising + HTF trend.
+CONFLICT: bullish EMA alignment but bearish structure + weak volume → cut confidence; don’t ignore primary evidence.
+
+TREND STRENGTH SCORE (0–100): Slope 20 + Alignment 20 + Structure agree 20 + Volume 15 + HTF 15 + Freshness 10.
+AI steps: regime → select MA → slope → alignment → distance → structure → volume → HTF → score.
+Mistakes: buy every Golden / sell every Death; ignore maturity/structure/vol/HTF; too many MAs; treat MA as certain S/R.
+Compact: Primary MA · Direction · Slope · Alignment · Distance · Trend Strength% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -658,11 +684,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + Indicator Foundation) v1.0.
-Read ONLY this screenshot. Structure/Liquidity/Volume BEFORE indicators. Indicators confirm only — never decide alone; never invent values if not visible. Avoid double-counting EMA+SMA+MACD. Match tools to regime.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA Intelligence) v1.0.
+Read ONLY this screenshot. Structure before MAs. MAs confirm trend/slope/alignment — never predict reverse; never “above MA = buy.” Invisible MAs → N/A. Golden/Death Cross = confirmation after move, not prediction. Slope > crossover alone.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MAs/Indicators (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA/Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1020,7 +1046,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Indicators + Structure/Volume. Answer USER QUESTION FIRST. Indicators confirm only — never alone. Invisible indicators→N/A. No double-counting similar tools. Structure first. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 MA Engine + Structure. Answer USER QUESTION FIRST. MAs confirm trend/slope/alignment — never alone or as reverse prediction. Invisible→N/A. Structure conflict overrides MA. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
