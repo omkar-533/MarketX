@@ -1351,6 +1351,18 @@ Summary · Trend · Structure · Momentum · Volume · Support · Resistance · 
 
 JOURNAL (if shared): win/loss, avg RR, mistakes, discipline, best/worst setups, psychology, improvements — evidence only.
 
+KNOWLEDGE BASE — EXISTING TRADING JOURNAL INTEGRATION ENGINE v2.0
+Mission: NEVER create a separate trading journal. Platform Trading Journal = SINGLE SOURCE OF TRUTH. AI roles only: Reader · Analyzer · Validator · Coach · Performance Intelligence. Never duplicate journal data or maintain another journal DB. Always use existing journal records when provided in context. Never ask user to rewrite trades already stored. Path: Journal → Analysis → Patterns → Insights → Learning → Continuous Improvement.
+DATA: retrieve only from platform journal fields present (Trade ID, Portfolio ID, Strategy, Market, Symbol, Direction, TF, Entry/Exit date-time-price, SL, Target, Size, Risk%, Reward, R-multiple, P/L, Fees, Notes, Screenshots, Tags, Execution/Emotion notes, Rule checklist, Custom). Missing fields → ignore — NEVER invent.
+ON “Review my journal” / journal questions: Read provided entries → validate quality → patterns → statistics → recurring mistakes → strengths → weaknesses → recommendations. Never ask manual rewrite of stored trades.
+AUTO STATS (from provided journal snapshot — no inventing): Win Rate · Expectancy · Profit Factor · Avg Win/Loss · R Distribution · Max DD · Strategy/TF/Instrument/Session/Day-of-week/Holding-time · Risk Consistency · Rule Compliance · Behavioral trends · Portfolio analytics.
+TRADE REVIEW (per trade): setup valid? entry per rules? risk respected? execution clean? stop/target modified? emotion notes present? exit justified? improve execution? Separate Good Decision from Good Result.
+BEHAVIOR: read emotion/execution notes, violations, comments, history — detect patterns MAY be consistent with FOMO/revenge/overconfidence/fear/impatience/late entry/early exit/overtrading/risk drift. Never diagnose psychology — observable patterns only.
+STRATEGY: group by Strategy/TF/Market/Symbol/Session/Regime/Risk%/Holding — Win Rate, Expectancy, PF, Avg RR, Consistency, Stability, Decay, Sample Size. Never declare strategy failed from small sample.
+RULE COMPLIANCE: vs platform/strategy/risk/execution rules → Compliance% · Violation% · Recurring · Top mistakes · Most improved. Screenshots: analyze only what’s visible — never assume unseen chart info.
+INSIGHT: explain WHY for wins and losses; identify repeatable edge and repeatable mistakes — never judge from one trade. LEARNING only from user’s own journal evidence → Behavior/Execution/Risk/Strategy profiles + improvement areas.
+If journal context missing or empty → say “Insufficient journal evidence.” Never invent trades, screenshots, emotions, or reasons.
+
 LENGTH (strict)
 - Greetings: 1–2 lines.
 - Normal Q&A: under ~80 words.
@@ -1368,6 +1380,8 @@ Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
 const NO_CHART_HINT = `No chart attached and no prior analysis in history. Do not invent levels. Reply in 2 short lines asking only for a TradingView/chart screenshot.`;
+
+const JOURNAL_HINT = `JOURNAL MODE: Platform Trading Journal is the single source of truth. Analyze ONLY journal records in PLATFORM TRADING JOURNAL context. Never invent trades/stats/emotions. Never ask user to rewrite stored trades. Never ask for a chart unless they also want chart analysis. Separate Good Decision from Good Result. If trade count is 0 or fields missing → Insufficient journal evidence.`;
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
 
@@ -1678,8 +1692,16 @@ export function createMasterAiRouter(apiKey) {
           String(message || ''),
         );
 
+      const wantsJournalReview =
+        !hasImage &&
+        (/PLATFORM TRADING JOURNAL/i.test(String(platformContextRaw || '')) ||
+          /\b(journal|my\s+trades|trade\s*review|win\s*rate|expectancy|rule\s*compliance|meri\s+trades|journal\s*(review|padh|analyse|analyze|check))\b/i.test(
+            String(message || ''),
+          ));
+
       const wantsTradeCall =
         !hasImage &&
+        !wantsJournalReview &&
         /\b(buy\s*kar|sell\s*kar|kharid|bech|entry|sl\b|stoploss|stop\s*loss|target|trade\s*le|position\s*le|long\s*kar|short\s*kar)\b/i.test(
           String(message || ''),
         );
@@ -1687,6 +1709,7 @@ export function createMasterAiRouter(apiKey) {
       const wantsChartRead =
         !hasImage &&
         !wantsTradeCall &&
+        !wantsJournalReview &&
         !historyHasAnalysis &&
         /\b(chart|screenshot|levels?|support|resistance|setup|analyse|analyze|analysis|padh|structure)\b/i.test(
           String(message || ''),
@@ -1699,6 +1722,7 @@ export function createMasterAiRouter(apiKey) {
         !hasImage &&
         !historyHasAnalysis &&
         !wantsLanguageSwitch &&
+        !wantsJournalReview &&
         /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty\s+(kaise|kaisa|view|recap)|din\s+(kaisa|kaise)|session\s+(kaisa|kaise))\b/i.test(
           String(message || ''),
         );
@@ -1723,6 +1747,8 @@ export function createMasterAiRouter(apiKey) {
         ? 'Task: TRAFI Module 12 Parts 1–6 (execution + scaling + algos). Answer USER QUESTION FIRST. No auto-average losers. Don’t invent broker algos/fills/fees. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
+          : wantsJournalReview
+            ? 'Task: JOURNAL MODE — analyze PLATFORM TRADING JOURNAL only. Never invent trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No buy/sell.'
           : historyHasAnalysis || wantsLanguageSwitch
             ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same levels. Under ~100 words. Do NOT ask for a chart again.'
             : wantsTradeCall
@@ -1739,6 +1765,8 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
+      } else if (wantsJournalReview) {
+        textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (historyHasAnalysis || wantsLanguageSwitch) {
         textBlock += `\n\n${CONTINUE_THREAD_HINT}`;
       } else if (!contextHasLiveTape && (wantsDayReview || wantsChartRead)) {

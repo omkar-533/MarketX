@@ -547,9 +547,130 @@ export function isDayMarketReviewQuestion(input: string): boolean {
   if (/^\s*(sl|stoploss|stop\s*loss|target|entry|invalidation|rr|risk|aur|uske\s+baad|same|uska|uski)\b/i.test(n)) {
     return false;
   }
+  if (isJournalReviewQuestion(n)) return false;
   return /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty|banknifty|sensex|din\s+(kaisa|kaise)|session)\b/i.test(
     n,
   ) && /\b(kaisa|kaise|tha|hai|raha|was|is|view|performance|recap|summary|batao|bata|analyse|analyze)\b/i.test(n);
+}
+
+/** User wants analysis of the platform Trading Journal (not a new journal). */
+export function isJournalReviewQuestion(input: string): boolean {
+  const n = String(input || '').toLowerCase().trim();
+  if (!n) return false;
+  return /\b(journal|trading\s*journal|trade\s*review|my\s*trades|meri\s*(trades?|journal)|journal\s*(review|padh|analyse|analyze|check|dekho)|review\s*my\s*(journal|trades)|trades?\s*(review|analyse|analyze)|win\s*rate|expectancy|profit\s*factor|rule\s*compliance|discipline\s*(score|review)|mera\s*journal)\b/i.test(
+    n,
+  );
+}
+
+/** Compact snapshot from platform journal — no screenshots, no invented fields. */
+export function buildJournalContextForAi(
+  trades: Array<{
+    id?: string;
+    instrument?: string;
+    side?: string;
+    type?: string;
+    strategy?: string;
+    date?: string;
+    entryPrice?: number;
+    exitPrice?: number;
+    stopLoss?: number;
+    target?: number;
+    quantity?: number;
+    pnl?: number;
+    rr?: number;
+    brokerage?: number;
+    notes?: string;
+    tags?: string[];
+    beforeEmotion?: string;
+    afterEmotion?: string;
+    psychologyNote?: string;
+    market?: string;
+    discipline?: number;
+    confidence?: number;
+  }>,
+): string {
+  const list = Array.isArray(trades) ? trades : [];
+  if (!list.length) {
+    return [
+      'PLATFORM TRADING JOURNAL (single source of truth):',
+      'Trade count: 0',
+      'Insufficient journal evidence — do not invent trades. User should log trades in the platform Trading Journal.',
+    ].join('\n');
+  }
+
+  const wins = list.filter((t) => Number(t.pnl) > 0);
+  const losses = list.filter((t) => Number(t.pnl) < 0);
+  const flat = list.filter((t) => Number(t.pnl) === 0);
+  const grossWin = wins.reduce((s, t) => s + Number(t.pnl || 0), 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + Number(t.pnl || 0), 0));
+  const net = list.reduce((s, t) => s + Number(t.pnl || 0), 0);
+  const fees = list.reduce((s, t) => s + Number(t.brokerage || 0), 0);
+  const avgWin = wins.length ? grossWin / wins.length : 0;
+  const avgLoss = losses.length ? grossLoss / losses.length : 0;
+  const winRate = list.length ? (wins.length / list.length) * 100 : 0;
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : 0;
+  const expectancy = list.length ? net / list.length : 0;
+  const avgRr =
+    list.filter((t) => Number.isFinite(Number(t.rr))).reduce((s, t) => s + Number(t.rr || 0), 0) /
+    Math.max(1, list.filter((t) => Number.isFinite(Number(t.rr))).length);
+
+  const byStrategy = new Map<string, { n: number; pnl: number; wins: number }>();
+  for (const t of list) {
+    const key = (t.strategy || 'Unspecified').trim() || 'Unspecified';
+    const row = byStrategy.get(key) || { n: 0, pnl: 0, wins: 0 };
+    row.n += 1;
+    row.pnl += Number(t.pnl || 0);
+    if (Number(t.pnl) > 0) row.wins += 1;
+    byStrategy.set(key, row);
+  }
+  const strategyLines = [...byStrategy.entries()]
+    .sort((a, b) => b[1].n - a[1].n)
+    .slice(0, 8)
+    .map(
+      ([name, s]) =>
+        `${name}: n=${s.n} win%=${((s.wins / s.n) * 100).toFixed(0)} net=${s.pnl.toFixed(2)}`,
+    );
+
+  const recent = [...list]
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+    .slice(0, 25)
+    .map((t) => {
+      const emo = [t.beforeEmotion, t.afterEmotion, t.psychologyNote].filter(Boolean).join('|');
+      const tags = Array.isArray(t.tags) && t.tags.length ? t.tags.slice(0, 4).join('+') : '';
+      const note = String(t.notes || '').replace(/\s+/g, ' ').slice(0, 80);
+      return [
+        t.date || '?',
+        t.instrument || '?',
+        t.side || '?',
+        t.type || '?',
+        t.strategy || '-',
+        `E${t.entryPrice ?? '?'}→X${t.exitPrice ?? '?'}`,
+        `SL${t.stopLoss ?? '?'} T${t.target ?? '?'}`,
+        `qty${t.quantity ?? '?'}`,
+        `pnl=${Number(t.pnl || 0).toFixed(2)}`,
+        `rr=${Number(t.rr || 0).toFixed(2)}`,
+        tags ? `tags:${tags}` : '',
+        emo ? `emo:${emo.slice(0, 60)}` : '',
+        note ? `note:${note}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    });
+
+  return [
+    'PLATFORM TRADING JOURNAL (single source of truth — analyze ONLY these records):',
+    `Trade count: ${list.length} | Wins: ${wins.length} | Losses: ${losses.length} | Flat: ${flat.length}`,
+    `WinRate: ${winRate.toFixed(1)}% | NetP/L: ${net.toFixed(2)} | Fees: ${fees.toFixed(2)} | Expectancy/trade: ${expectancy.toFixed(2)}`,
+    `AvgWin: ${avgWin.toFixed(2)} | AvgLoss: ${avgLoss.toFixed(2)} | ProfitFactor: ${
+      Number.isFinite(profitFactor) ? profitFactor.toFixed(2) : 'n/a'
+    } | AvgRR: ${avgRr.toFixed(2)}`,
+    strategyLines.length ? `By strategy: ${strategyLines.join(' | ')}` : '',
+    'Recent trades (no screenshots; missing fields ignored):',
+    ...recent,
+    'Rules: Never invent trades/emotions/reasons. Separate Good Decision from Good Result. Small samples → low confidence. Insufficient fields → say Insufficient journal evidence for that claim.',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Fixed reply — never mentions live data */
@@ -784,6 +905,8 @@ export interface MasterChatRequest {
   imageDataUrl?: string | null;
   history?: ChatHistoryItem[];
   needsWeb?: boolean;
+  /** Compact PLATFORM TRADING JOURNAL snapshot — single source of truth */
+  journalContext?: string;
 }
 
 export async function fetchMasterAiStatus(): Promise<{
@@ -883,7 +1006,9 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         'User sent a greeting. Reply in 1–2 respectful desk lines as Jarvis. No market dump.',
       ].join('\n')
     : formatContextBlock(ctx, req.lang, true, autoMode);
-  const platformContext = memoryNote ? `${baseContext}\n\n${memoryNote}` : baseContext;
+  const platformContext = [baseContext, memoryNote, req.journalContext?.trim()]
+    .filter(Boolean)
+    .join('\n\n');
 
   const res = await apiFetch('/api/chat', {
     method: 'POST',

@@ -38,6 +38,8 @@ import {
   saveAutoSpeak,
   saveLanguageMode,
   saveSelectedLanguage,
+  isJournalReviewQuestion,
+  buildJournalContextForAi,
   type ChatHistoryItem,
   type MasterAiLangCode,
   type MasterAiLangMode,
@@ -49,6 +51,8 @@ import {
 } from '../services/masterAiImage';
 import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
+import { loadLocalTrades } from '../services/journalSyncService';
+import { useAuth } from '../hooks/useAuth';
 
 interface Message {
   id: string;
@@ -114,6 +118,7 @@ function saveChatMemory(msgs: Message[]) {
 }
 
 export default function MasterAI() {
+  const { user } = useAuth();
   const initialMode = loadLanguageMode();
   const initialLang =
     initialMode === 'auto'
@@ -190,15 +195,15 @@ export default function MasterAI() {
       rec.interimResults = false;
       rec.onresult = (event: { results: { 0: { 0: { transcript: string } } } }) => {
         const transcript = event.results[0]?.[0]?.transcript ?? '';
-        setInputText(transcript);
-        setIsListening(false);
+          setInputText(transcript);
+          setIsListening(false);
         if (transcript.trim()) void handleSendRef.current(transcript);
-      };
+        };
       rec.onerror = () => setIsListening(false);
       rec.onend = () => setIsListening(false);
       recognitionRef.current = rec;
-    }
-    synthRef.current = window.speechSynthesis;
+      }
+      synthRef.current = window.speechSynthesis;
   }, []);
 
   useEffect(() => {
@@ -365,6 +370,7 @@ export default function MasterAI() {
     if (
       !hasImage &&
       isDayMarketReviewQuestion(userText) &&
+      !isJournalReviewQuestion(userText) &&
       !hasActiveDeskThread(messages)
     ) {
       const recentUser = messages
@@ -420,9 +426,9 @@ export default function MasterAI() {
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
         {
           id: `${Date.now()}-block`,
-          role: 'trafi',
+        role: 'trafi',
           text: getTradingBlockMessage(blockLang.code),
-          timestamp: new Date(),
+        timestamp: new Date(),
         },
       ]);
       setInputText('');
@@ -492,13 +498,18 @@ export default function MasterAI() {
           const lastAi = [...messages]
             .reverse()
             .find((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text.trim().length > 40);
+          const journalContext = !hasImage && isJournalReviewQuestion(userText)
+            ? buildJournalContextForAi(loadLocalTrades(user))
+            : undefined;
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
               ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
-              : continuingThread
+              : continuingThread && !journalContext
                 ? `${userText}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
-                : userText;
+                : journalContext
+                  ? `${userText}\n\n[JOURNAL REVIEW: Use PLATFORM TRADING JOURNAL context only. Under ~200 words.]`
+                  : userText;
           const result = await askMasterAi(
             {
               message: textMessage,
@@ -509,6 +520,7 @@ export default function MasterAI() {
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
               needsWeb: false,
+              journalContext,
             },
             hasImage
               ? {
@@ -543,7 +555,7 @@ export default function MasterAI() {
                 },
           );
           if (result.reply) responseText = result.reply;
-        } catch {
+      } catch {
           responseText = getMasterAiSorryMessage(
             activeLang.code,
             hasImage ? 'chart' : 'chat',
@@ -667,7 +679,7 @@ export default function MasterAI() {
             <div className="mai-chat__empty">
               <div className="mai-chat__empty-mark">
                 <LineChart className="h-7 w-7" />
-              </div>
+      </div>
               <h2 className="mai-chat__empty-title">
                 {hindi ? 'Aaj kya analyse karna hai?' : 'What should we analyse today?'}
               </h2>
@@ -692,7 +704,7 @@ export default function MasterAI() {
                   {!isUser ? (
                     <div className="mai-chat__msg-avatar" aria-hidden>
                       <LineChart className="h-3.5 w-3.5" />
-                    </div>
+          </div>
                   ) : null}
 
                   <div className={`mai-chat__bubble ${isUser ? 'mai-chat__bubble--user' : 'mai-chat__bubble--ai'}`}>
@@ -706,9 +718,9 @@ export default function MasterAI() {
                           <Volume2 className="h-3 w-3" />
                           {hindi ? 'बोलें' : 'Speak'}
                         </button>
-                      </div>
+            </div>
                     ) : null}
-                  </div>
+            </div>
                 </motion.div>
               );
             })}
@@ -718,7 +730,7 @@ export default function MasterAI() {
             <div className="mai-chat__row mai-chat__row--ai">
               <div className="mai-chat__msg-avatar" aria-hidden>
                 <LineChart className="h-3.5 w-3.5" />
-              </div>
+            </div>
               <div className="mai-chat__thinking">
                 <span className="mai-chat__dots" aria-hidden>
                   <i />
@@ -733,7 +745,7 @@ export default function MasterAI() {
                     ? 'Analysis taiyar kar raha hoon…'
                     : 'Preparing the analysis…'}
               </div>
-            </div>
+          </div>
           ) : null}
 
           <div ref={messagesEndRef} />
@@ -759,22 +771,22 @@ export default function MasterAI() {
                 disabled={isAnalyzingChart}
               >
                 <X className="h-4 w-4" />
-              </button>
-            </div>
+                    </button>
+                </div>
           ) : null}
 
           <div className="mai-chat__input-row">
-            <button
+          <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="mai-chat__icon-btn"
               title={hindi ? 'Chart image' : 'Attach chart'}
             >
               <ImagePlus className="h-5 w-5" />
-            </button>
+          </button>
 
             <textarea
-              value={inputText}
+            value={inputText}
               onChange={(e) => {
                 setInputText(e.target.value);
                 const el = e.target;
@@ -798,8 +810,8 @@ export default function MasterAI() {
                     : 'Message Analyse AI…'
               }
               className="mai-chat__textarea"
-              disabled={isListening}
-            />
+            disabled={isListening}
+          />
 
             <button
               type="button"
