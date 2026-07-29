@@ -533,9 +533,9 @@ export function needsChartImage(input: string): boolean {
 
 export function getChartImageRequiredMessage(langCode: string): string {
   if (isHinglishLang(langCode) || langCode === 'hi-IN') {
-    return 'Responsible analysis ke liye symbol, timeframe aur chart screenshot chahiye. Share kijiye — uske baad structure, levels, invalidation aur confidence ke saath review dunga.';
+    return 'Is analysis ke liye Nifty/chart ka screenshot bhejiye. Us image se structure, levels aur bias clear karunga.';
   }
-  return 'For a responsible trade review I need the symbol, timeframe, and a chart screenshot. Share those and I will cover structure, levels, invalidation, and confidence.';
+  return 'Please share a Nifty/chart screenshot. I will read structure, levels, and bias from that image.';
 }
 
 export function isTradingRelated(input: string): boolean {
@@ -642,7 +642,7 @@ export function formatContextBlock(
   const hasLiveTape = /\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw);
   const liveBanner = hasLiveTape
     ? 'LIVE CONTEXT: real snapshot numbers below — cite only these if you use levels.'
-    : 'NO VERIFIED LIVE NSE TAPE: NIFTY/BANKNIFTY shown as n/a. Do NOT invent day ranges, highs, lows, or Bias/Support/Resistance. Ask for a chart screenshot instead.';
+    : 'NO CHART ATTACHED: Do NOT invent day ranges/levels. Do NOT mention live market data. Ask ONLY for a chart screenshot.';
 
   if (compact) {
     return [
