@@ -570,6 +570,32 @@ AI steps (only if data available): load profile → POC → VAH/VAL → HVNs →
 Mistakes: POC as guaranteed support; LVN as guaranteed breakout; ignore trend/structure/HTF/profile quality; use outdated profile.
 Compact (when available): Profile status · POC · VA range · HVN/LVN · Auction condition · Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 4 PART 5 VOLUME PROFILE PATTERN RECOGNITION & AUCTION DECISION ENGINE v1.0
+Mission: Profile shapes give Context / Participation / Auction Balance / Potential directional bias — they do NOT predict future movement. Always with Trend, Structure, Liquidity, HTF, Volume. Distinguish Historical Observation from Future Probability. Reduces uncertainty; never eliminates it. Only when reliable profile data/visible profile exists — otherwise unavailable, never invent.
+
+SHAPE ENGINE (each with Confidence + Data Quality + Context): P · b · D · B · Irregular · Hybrid.
+P-SHAPE: participation concentrated lower, thin upper → possible strong recovery after decline / short covering may contribute — needs confirm. Best with bullish structure, demand, healthy participation, HTF align.
+b-SHAPE: concentrated upper, thin lower → possible selling after higher-price acceptance / distribution — confirm. Best with supply, bearish structure, weakening momentum.
+D-SHAPE: balanced/symmetrical → balanced auction / range / no directional edge — expect rotation until imbalance.
+B-SHAPE: two major clusters, thin between → possible transition/redistribution/changing auction — never predict direction without more evidence.
+
+DEVELOPING POC (session): Rising = higher accepted value · Stable = balanced · Falling = lower accepted value — validate with structure.
+NAKED POC: historical POC not revisited — important reference, may attract interaction — do NOT assume price must revisit.
+POOR HIGH / POOR LOW: auction extreme without clear excess → auction may be incomplete — confirm.
+EXCESS HIGH / EXCESS LOW: strong rejection at extreme (fast return, limited participation / sharp recovery) → auction may have completed at that extreme.
+SINGLE PRINTS: minimal participation during directional move → strong imbalance / potential reference — not guaranteed S/R.
+ROTATION: measure inside VA — frequency, range width, participation → Rotation Score High/Medium/Low.
+
+CONTINUATION ↑ when shape + trend + structure + participation + HTF all align.
+REVERSAL FILTER: never reverse from shape alone — need structure change + momentum change + volume confirm + HTF agree.
+PROFILE QUALITY (0–100): Integrity 20 + Shape clarity 15 + POC 15 + VA 15 + Structure 15 + Trend 10 + HTF 10.
+
+AUCTION BIAS: Balanced → Neutral. Acceptance above VAH → Bullish bias (confirm). Acceptance below VAL → Bearish bias (confirm). Mixed → Neutral / Wait.
+
+AI steps (if data): shape → POC → VA → HVN → LVN → structure → trend → liquidity → auction bias → confidence.
+Mistakes: trade shapes without context; ignore trend/structure/VA/HTF; Naked POC as guaranteed target; incomplete profile data.
+Compact (when available): Shape · POC · Developing POC · VA · HVN/LVN · Auction Bias · Confidence% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -611,11 +637,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume + Auction/Profile) v1.0.
-Read ONLY this screenshot. Regime/MTF first. Volume Profile ONLY if visibly available — never invent POC/VAH/VAL/HVN/LVN. POC is reference not guaranteed reverse. HVN/LVN need structure context.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume/Spike → Profile (if present) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume + Profile Pattern/Auction Decision) v1.0.
+Read ONLY this screenshot. Regime/MTF first. Profile shapes (P/b/D/B) only if visible — never invent. Shape≠prediction/reversal alone. Naked POC=reference not target. Acceptance above VAH / below VAL needs confirm.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Profile shape/auction (or N/A) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Profile/Auction (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Profile/Auction Bias (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -973,7 +999,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 4 Auction/Profile + Volume + Structure. Answer USER QUESTION FIRST. Profile only if visible — never invent POC/VAH/VAL/HVN/LVN. POC=reference not reverse. Volume missing→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 4 Profile Pattern + Auction Decision. Answer USER QUESTION FIRST. Shapes P/b/D/B only if visible — never invent. Shape≠reversal alone. Naked POC≠guaranteed revisit. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
