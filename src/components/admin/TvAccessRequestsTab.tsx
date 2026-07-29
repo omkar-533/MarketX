@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
+import { Check, RefreshCw, X } from 'lucide-react';
 import {
   adminListTvAccessRequests,
+  adminReviewTvAccessRequest,
   type AdminTvAccessRequest,
 } from '../../services/appInviteAuth';
 
@@ -24,6 +25,7 @@ export default function TvAccessRequestsTab({
   const [rows, setRows] = useState<AdminTvAccessRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -42,12 +44,25 @@ export default function TvAccessRequestsTab({
     void refresh();
   }, [refresh]);
 
+  const review = async (row: AdminTvAccessRequest, action: 'granted' | 'dismiss') => {
+    setBusyId(row.id);
+    setError('');
+    try {
+      await adminReviewTvAccessRequest(row.id, action, {}, adminEmail, adminPassword);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Could not ${action === 'granted' ? 'approve' : 'dismiss'}`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs text-slate-400">
           Indicator pages se jo TradingView ID submit hote hain — yahan dikhte hain. TradingView pe
-          access manually grant karo, phir Mark granted.
+          access deke <strong className="text-slate-300">Approve</strong> dabao.
         </p>
         <button
           type="button"
@@ -81,6 +96,7 @@ export default function TvAccessRequestsTab({
                 <th className="px-3 py-2 font-bold">User</th>
                 <th className="px-3 py-2 font-bold">Status</th>
                 <th className="px-3 py-2 font-bold">Submitted</th>
+                <th className="px-3 py-2 font-bold">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -110,11 +126,37 @@ export default function TvAccessRequestsTab({
                             : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                       }`}
                     >
-                      {row.status}
+                      {row.status === 'granted' ? 'approved' : row.status}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-slate-400 whitespace-nowrap">
                     {formatDate(row.createdAt)}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {row.status === 'pending' ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => void review(row, 'granted')}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50"
+                        >
+                          <Check className="w-3 h-3" />
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => void review(row, 'dismiss')}
+                          className="inline-flex items-center gap-1 rounded-lg bg-slate-500/10 border border-slate-500/20 px-2.5 py-1.5 text-[10px] font-bold text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
+                        >
+                          <X className="w-3 h-3" />
+                          Dismiss
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-600">—</span>
+                    )}
                   </td>
                 </motion.tr>
               ))}

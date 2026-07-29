@@ -621,7 +621,8 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
     return res.json({
       ok: true,
       request,
-      message: 'Submitted. The desk will add your TradingView access manually.',
+      message:
+        'Request submit ho gayi. Hamari support team 24 hours ke andar aapse contact karegi.',
       sheetConfigured: isTvAccessSheetConfigured(),
       sheetOk,
       sheetError,

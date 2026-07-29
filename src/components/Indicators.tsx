@@ -238,8 +238,8 @@ export default function Indicators() {
               <div className="lux-ind__access-copy">
                 <h2>Get access</h2>
                 <p>
-                  Enter your TradingView username. We send it to the desk sheet — access is granted
-                  manually on TradingView (usually within a short review).
+                  Apna TradingView username enter karke submit karo. Hamari support team{' '}
+                  <strong>24 hours</strong> ke andar aapse contact karegi.
                 </p>
               </div>
 
@@ -250,7 +250,7 @@ export default function Indicators() {
                     <p className="lux-ind__tv-done-title">Request received</p>
                     <p className="lux-ind__tv-done-body">
                       {tvMsg ||
-                        'Your TradingView ID is on the sheet. The desk will invite you manually.'}
+                        'Request submit ho gayi. Hamari support team 24 hours ke andar aapse contact karegi.'}
                     </p>
                     <button
                       type="button"
