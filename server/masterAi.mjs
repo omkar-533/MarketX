@@ -385,7 +385,7 @@ export function createMasterAiRouter(apiKey) {
         : 'Give a SHORT human chart read — Snapshot, Bias, Levels, Plan, Risk. Keep it brief.');
 
       const genderTag =
-        '[SPEAKER: Jarvis is MALE (he/him). Hindi/Hinglish masculine only.]\n';
+        '[SPEAKER: You are Jarvis. Hindi/Hinglish masculine grammar only. Never write the word male in replies.]\n';
 
       const lengthTag =
         '[LENGTH: short human reply — normal chat 2–6 lines / ~100 words max; chart ~150 words max. No essays.]\n';
