@@ -60,7 +60,7 @@ MEMORY & UNDERSTANDING (critical)
 ACCURACY (most important — never bluff)
 1. Answer only from: (a) the user’s message, (b) attached chart pixels, (c) context numbers when they are real — not “n/a”, (d) facts already established in this chat history.
 2. NEVER invent prices, day highs/lows, ranges, OI, PCR, strikes, or levels from memory outside the chart/history.
-3. If the user asks how Nifty/market was today and there is NO chart: reply like this (match language): “Analysis ke liye Nifty ka TradingView chart screenshot bhejiye. Us image se main structure aur levels clear karunga.” Nothing else about data sources.
+3. If the user asks how Nifty/market was today and there is NO chart AND chat history has no prior analysis: ask for a TradingView chart screenshot only. BUT if history already has chart analysis (Bias/Support/Resistance/levels), and the user asks to continue / translate / “hindi me batao” / “english me batao” / “aur detail”: RESTATE that same prior analysis in the requested language. NEVER ask for the chart again mid-thread.
 4. Do not force a full trade template when no chart is attached (unless continuing an already chart-based thread with levels in history).
 5. For “buy/sell karu?” without chart and no prior levels in history: ask only for a chart screenshot.
 6. Bias words only: bullish / bearish / sideways. Never give buy/sell orders.
@@ -91,7 +91,9 @@ const CHART_VISION_PROMPT = `CHART MODE — you are Jarvis. Read ONLY this scree
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
-const NO_CHART_HINT = `No chart attached. Do not invent levels. Reply in 2 short lines asking only for a TradingView/chart screenshot. Example: “Analysis ke liye Nifty ka TradingView chart screenshot bhejiye. Us image se main structure aur levels clear karunga.”`;
+const NO_CHART_HINT = `No chart attached and no prior analysis in history. Do not invent levels. Reply in 2 short lines asking only for a TradingView/chart screenshot.`;
+
+const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
 
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
@@ -386,6 +388,20 @@ export function createMasterAiRouter(apiKey) {
           ? 'Is chart ka professional desk analysis do — Bias, Reason, Support, Resistance, Plan, Invalidation, Confidence, Conclusion.'
           : 'Give a professional desk chart analysis — Bias, Reason, Support, Resistance, Plan, Invalidation, Confidence, Conclusion.');
 
+      const historyText = (history ?? [])
+        .map((h) => String(h?.content || ''))
+        .join('\n');
+      const historyHasAnalysis =
+        /\b(Market Bias|Support|Resistance|Confidence|bullish|bearish|Invalidation|Target)\b/i.test(
+          historyText,
+        ) || /सपोर्ट|रेज़िस्टेंस|बायस|बुलिश|बियरिश/i.test(historyText);
+
+      const wantsLanguageSwitch =
+        !hasImage &&
+        /\b(english|hindi|hinglish|हिंदी|translate|me\s+batao|mein\s+batao|in\s+english|in\s+hindi)\b/i.test(
+          String(message || ''),
+        );
+
       const wantsTradeCall =
         !hasImage &&
         /\b(buy\s*kar|sell\s*kar|kharid|bech|entry|sl\b|stoploss|stop\s*loss|target|trade\s*le|position\s*le|long\s*kar|short\s*kar)\b/i.test(
@@ -395,6 +411,7 @@ export function createMasterAiRouter(apiKey) {
       const wantsChartRead =
         !hasImage &&
         !wantsTradeCall &&
+        !historyHasAnalysis &&
         /\b(chart|screenshot|levels?|support|resistance|setup|analyse|analyze|analysis|padh|structure)\b/i.test(
           String(message || ''),
         ) &&
@@ -404,6 +421,8 @@ export function createMasterAiRouter(apiKey) {
 
       const wantsDayReview =
         !hasImage &&
+        !historyHasAnalysis &&
+        !wantsLanguageSwitch &&
         /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty\s+(kaise|kaisa|view|recap)|din\s+(kaisa|kaise)|session\s+(kaisa|kaise))\b/i.test(
           String(message || ''),
         );
@@ -428,13 +447,15 @@ export function createMasterAiRouter(apiKey) {
         ? 'Task: full chart desk analysis from the image only.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — no market dump.'
-          : wantsTradeCall
-            ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
-            : wantsDayReview && !contextHasLiveTape
-              ? 'Task: Ask only for a TradingView chart screenshot in 2 short lines. Do not invent levels. Do not discuss data sources.'
-              : wantsChartRead
-                ? 'Task: answer briefly; if visual read needed, ask only for a chart screenshot.'
-                : 'Task: answer clearly as Jarvis. Never invent prices. Accuracy first.';
+          : historyHasAnalysis || wantsLanguageSwitch
+            ? 'Task: CONTINUE prior analysis from chat history. Translate/restate/extend as asked. Do NOT ask for a chart again.'
+            : wantsTradeCall
+              ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
+              : wantsDayReview && !contextHasLiveTape
+                ? 'Task: Ask only for a TradingView chart screenshot in 2 short lines. Do not invent levels.'
+                : wantsChartRead
+                  ? 'Task: answer briefly; if visual read needed, ask only for a chart screenshot.'
+                  : 'Task: answer clearly as Jarvis. Never invent prices. Accuracy first.';
 
       let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
@@ -442,7 +463,9 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
-      } else if (!contextHasLiveTape) {
+      } else if (historyHasAnalysis || wantsLanguageSwitch) {
+        textBlock += `\n\n${CONTINUE_THREAD_HINT}`;
+      } else if (!contextHasLiveTape && (wantsDayReview || wantsChartRead)) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;

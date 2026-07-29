@@ -605,11 +605,22 @@ export function isConversationFollowUp(input: string): boolean {
 export function detectExplicitLanguageRequest(input: string): MasterAiLangCode | null {
   const n = String(input || '').toLowerCase().trim();
   if (!n) return null;
-  if (/\b(in\s+english|english\s+me|english\s+mein|english\s+main|english\s+please|reply\s+in\s+english)\b/i.test(n)) {
+  if (
+    /\b(in\s+english|english\s+me|english\s+mein|english\s+main|english\s+please|reply\s+in\s+english|ese\s+english|same\s+in\s+english)\b/i.test(
+      n,
+    )
+  ) {
     return 'en-US';
   }
   if (/\b(hinglish\s+me|in\s+hinglish|roman\s+hindi)\b/i.test(n)) return 'hi-Latn';
-  if (/\b(hindi\s+me|in\s+hindi|हिंदी\s+में|devanagari)\b/i.test(n)) return 'hi-IN';
+  if (
+    /\b(hindi\s+me|hindi\s+mein|hindi\s+main|in\s+hindi|हिंदी\s+में|हिन्दी\s+में|devanagari|hindi\s+batao|hindi\s+me\s+batao|hindi\s+me\s+btao)\b/i.test(
+      n,
+    ) ||
+    /^hindi\s+me\s+bta?o/i.test(n)
+  ) {
+    return 'hi-IN';
+  }
   return null;
 }
 

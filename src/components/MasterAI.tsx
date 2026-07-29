@@ -483,16 +483,21 @@ export default function MasterAI() {
         ? isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
           ? 'Chart abhi complete nahi padha ja saka. Thodi der baad dubara bhejiye.'
           : 'The chart could not be completed just now. Please send it again shortly.'
-        : getChartImageRequiredMessage(activeLang.code);
+        : continuingThread
+          ? getMasterAiSorryMessage(activeLang.code, 'chat')
+          : getChartImageRequiredMessage(activeLang.code);
 
       if (aiStatus.configured) {
         try {
+          const lastAi = [...messages]
+            .reverse()
+            .find((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text.trim().length > 40);
           const textMessage = hasImage
             ? visionMessage
-            : explicitLang
-              ? `${userText}\n\n[Continue the previous analysis in this chat. Reply in ${activeLang.replyIn}. Do not restart the topic.]`
+            : explicitLang && lastAi
+              ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep the same Bias, Support, Resistance, Plan, Targets, Confidence. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 3500)}`
               : continuingThread
-                ? `${userText}\n\n[Continue this conversation from the previous messages in the chat history. Do not refuse or reset the topic.]`
+                ? `${userText}\n\n[Continue this conversation from the previous messages. If they asked for another language, translate the last analysis. Do NOT ask for a chart again.]`
                 : userText;
           const result = await askMasterAi(
             {
