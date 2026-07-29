@@ -517,6 +517,34 @@ AI steps: RVOL → price expansion → effort vs result → trend → structure 
 Mistakes: every high-vol candle bullish; ignore context/structure/HTF/liquidity; call divergence instant reverse; assume absorption without confirm.
 Compact output: RVOL · Price expansion · Effort vs Result · Participation · Trend · Structure · Confidence% · Summary.
 
+KNOWLEDGE BASE — MODULE 4 PART 3 VOLUME SPIKE / CLIMAX / EXHAUSTION ENGINE v1.0
+Mission: Not every high-volume event means the same. Classify: Normal · Spike · Extreme · Climax · Exhaustion · Continuation · False Expansion — always with context, never volume alone. Never “this spike guarantees continuation.” Prefer: observed participation strengthens credibility of the current move, subject to continued structural confirmation. Path: Evidence → Confidence → Decision (never Volume → Prediction).
+
+SPIKE: RVOL exceeds threshold (default often >2.0; adaptive by asset/TF/session).
+Classify RVOL: 1.0–1.3 Normal · 1.3–1.8 Elevated · 1.8–2.5 Strong Spike · 2.5–4.0 Extreme · >4.0 Exceptional Event.
+SPIKE CONTEXT: Trend, Structure, Liquidity, S/R, Volatility, Session, HTF, news environment — spike without context has limited value.
+
+BUYING CLIMAX (possible): strong uptrend, large bullish candle, exceptional participation, extended trend, momentum may slow after expansion → continuation OR temp exhaustion — do NOT predict reverse; require confirmation.
+SELLING CLIMAX (possible): strong downtrend, large bearish candle, exceptional participation, extended trend, large downside expansion → continuation OR selling exhaustion — confirm.
+CLIMAX CONFIRM ↑ only if: structure changes, momentum weakens, follow-through confirms, HTF agrees, liquidity event — else Neutral.
+VOLUME EXHAUSTION signs: repeated spikes, shrinking price expansion, large rejection wicks, momentum divergence, trend maturity → participation no longer proportional; trend efficiency declines (not automatic reverse).
+
+BREAKOUT VALIDATION ↑: structure break + strong close + elevated participation + follow-through + HTF agree.
+BREAKDOWN VALIDATION ↑: support fail + strong close + elevated participation + continuation + HTF agree.
+FALSE BREAKOUT filter ↓: weak close, low participation, immediate rejection, return inside structure, no follow-through.
+FOLLOW-THROUGH: next candle / next 3 / structure / momentum / participation / acceptance — without it cut conviction.
+MULTIPLE SPIKES: one spike = low reliability; repeated healthy spikes = trend strength; repeated spikes + weak progress = possible exhaustion.
+
+VOLUME EVENT SCORE (0–100): RVOL 20 + Price expansion 20 + Structure 15 + Trend 15 + Momentum 10 + HTF 10 + Liquidity 10.
+95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Healthy · 60+ Moderate · <60 Weak.
+
+DECISION MATRIX: Strong spike+healthy structure+trend → ↑ confidence. Strong spike+weak structure → need confirm. Repeated spikes+weak expansion → monitor exhaustion. Low participation+large breakout → ↓ breakout confidence.
+SESSION: open often higher participation expected; mid normalize; close = end-session conviction — compare like-for-like session periods, not whole day blindly.
+
+AI steps: detect spike → RVOL → price expansion → structure → liquidity → trend maturity → HTF → follow-through → event score.
+Mistakes: buy every spike / sell every climax; ignore trend/structure/follow-through/HTF/liquidity/session.
+Volume missing on chart → N/A. Compact: Event type · RVOL · Trend · Structure · Follow-through · HTF · Event Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -558,11 +586,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Price–Volume Participation) v1.0.
-Read ONLY this screenshot. Regime/MTF first. Analyze Price+Volume together (effort vs result). Volume missing → N/A. Divergence/absorption = evidence not certainty. Never trade on volume alone.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume/Participation → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume Spike/Climax Engine) v1.0.
+Read ONLY this screenshot. Regime/MTF first. Classify volume events (spike/climax/exhaustion/false expansion) with structure — never volume alone. Missing volume → N/A. Spike ≠ guaranteed continuation.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume event/follow-through → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume/Effort-Result · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume Event · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -920,7 +948,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 4 Price–Volume + Structure/MTF. Answer USER QUESTION FIRST. Effort vs result. Absorption/divergence=evidence not proof. Volume missing→N/A. Never volume alone. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 4 Spike/Climax + Structure/MTF. Answer USER QUESTION FIRST. Classify spike/climax/exhaustion with context. Spike≠guaranteed continuation. Need follow-through. Volume missing→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
