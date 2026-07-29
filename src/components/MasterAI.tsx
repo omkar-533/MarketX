@@ -14,6 +14,18 @@ import {
   Plus,
   History,
   Trash2,
+  Layers,
+  Waves,
+  Crosshair,
+  GitBranch,
+  Shield,
+  BookOpen,
+  ScanSearch,
+  Map,
+  Split,
+  Box,
+  Eye,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   MASTER_AI_LANGUAGES,
@@ -71,8 +83,34 @@ import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
 import { loadLocalTrades } from '../services/journalSyncService';
 import { useAuth } from '../hooks/useAuth';
 import { AI_PRODUCT_NAME } from '../constants/brandLabels';
+import {
+  WOLF_CHAT_PROMPTS,
+  WOLF_CHART_PROMPTS,
+  deskPromptHint,
+  deskPromptLabel,
+  deskPromptText,
+  type DeskPrompt,
+} from '../constants/wolfAiPrompts';
 
 type Message = ChatMessage;
+
+const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
+  structure: Layers,
+  liquidity: Waves,
+  zones: Crosshair,
+  mtf: GitBranch,
+  risk: Shield,
+  journal: BookOpen,
+};
+
+const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
+  full: ScanSearch,
+  aoi: Map,
+  liq: Waves,
+  scenarios: Split,
+  ob: Box,
+  'mtf-chart': Eye,
+};
 
 export default function MasterAI() {
   const { user } = useAuth();
@@ -87,6 +125,7 @@ export default function MasterAI() {
   const [langQuery, setLangQuery] = useState('');
   const langMenuRef = useRef<HTMLDivElement>(null);
   const historyMenuRef = useRef<HTMLDivElement>(null);
+  const chartPromptRef = useRef<HTMLDivElement>(null);
   const welcomeText =
     initialMode === 'auto'
       ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
@@ -95,9 +134,11 @@ export default function MasterAI() {
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
   const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>(boot.sessions);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [chartPromptOpen, setChartPromptOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(boot.messages);
   const [inputText, setInputText] = useState('');
   const hindi = isHindiLang(selectedLang.code);
+  const useHiPrompts = hindi || isHinglishLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -197,6 +238,34 @@ export default function MasterAI() {
     };
   }, [historyOpen]);
 
+  useEffect(() => {
+    if (!chartPromptOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!chartPromptRef.current?.contains(e.target as Node)) {
+        setChartPromptOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setChartPromptOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [chartPromptOpen]);
+
+  useEffect(() => {
+    if (selectedImage) {
+      setChartPromptOpen(true);
+      setLangMenuOpen(false);
+      setHistoryOpen(false);
+    } else {
+      setChartPromptOpen(false);
+    }
+  }, [selectedImage]);
+
   const speakText = useCallback(
     (text: string) => {
       if (!synthRef.current) return;
@@ -293,7 +362,23 @@ export default function MasterAI() {
     setSelectedImage(null);
     setSelectedImageName('');
     setImageError(null);
+    setChartPromptOpen(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const applyDeskPrompt = (p: DeskPrompt, opts?: { send?: boolean }) => {
+    const text = deskPromptText(p, useHiPrompts);
+    setInputText(text);
+    setChartPromptOpen(false);
+    queueMicrotask(() => {
+      const el = document.querySelector('.mai-chat__textarea') as HTMLTextAreaElement | null;
+      if (el) {
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+        el.focus();
+      }
+    });
+    if (opts?.send) void handleSendRef.current(text);
   };
 
   const handleNewChat = () => {
@@ -889,15 +974,69 @@ export default function MasterAI() {
         <div className="mai-chat__column">
           {messages.length <= 1 && !isThinking ? (
             <div className="mai-chat__empty">
-              <div className="mai-chat__empty-mark">
+              <motion.div
+                className="mai-chat__empty-mark"
+                initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+              >
                 <LineChart className="h-7 w-7" />
-      </div>
-              <h2 className="mai-chat__empty-title">
+                <span className="mai-chat__empty-mark-ring" aria-hidden />
+              </motion.div>
+              <motion.h2
+                className="mai-chat__empty-title"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.4 }}
+              >
                 {hindi ? 'Aaj kya analyse karna hai?' : 'What should we analyse today?'}
-              </h2>
-              <p className="mai-chat__empty-sub">
-                Share a chart screenshot for structure-based analysis
-              </p>
+              </motion.h2>
+              <motion.p
+                className="mai-chat__empty-sub"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.14, duration: 0.4 }}
+              >
+                {hindi
+                  ? 'Quick prompt choose karo, ya chart attach karke desk question select karo'
+                  : 'Pick a quick prompt — or attach a chart and choose a desk question'}
+              </motion.p>
+
+              <div className="mai-chat__suggestions" role="list">
+                {WOLF_CHAT_PROMPTS.map((p, i) => {
+                  const Icon = CHAT_PROMPT_ICONS[p.id] ?? Sparkles;
+                  return (
+                    <motion.button
+                      key={p.id}
+                      type="button"
+                      role="listitem"
+                      className="mai-chat__suggest"
+                      disabled={isThinking || isListening}
+                      onClick={() => applyDeskPrompt(p, { send: true })}
+                      initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{
+                        delay: 0.18 + i * 0.055,
+                        type: 'spring',
+                        stiffness: 420,
+                        damping: 26,
+                      }}
+                      whileHover={{ y: -3, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span className="mai-chat__suggest-glow" aria-hidden />
+                      <span className="mai-chat__suggest-icon" aria-hidden>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="mai-chat__suggest-body">
+                        <span className="mai-chat__suggest-label">{deskPromptLabel(p, useHiPrompts)}</span>
+                        <span className="mai-chat__suggest-hint">{deskPromptHint(p, useHiPrompts)}</span>
+                      </span>
+                      <Sparkles className="mai-chat__suggest-spark" aria-hidden />
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
 
@@ -984,24 +1123,115 @@ export default function MasterAI() {
 
       <div className="mai-chat__composer-wrap">
         <div className="mai-chat__composer">
-          {selectedImage ? (
-            <div className="mai-chat__attach">
-              <img src={selectedImage} alt="" />
-              <span>
-                {hindi
-                  ? `${selectedImageName || 'Chart'} · prompt likho, phir Send`
-                  : `${selectedImageName || 'Chart'} · add a prompt, then Send`}
-              </span>
-              <button
-                type="button"
-                onClick={clearSelectedImage}
-                aria-label="Remove"
-                disabled={isAnalyzingChart}
+          <AnimatePresence>
+            {selectedImage ? (
+              <motion.div
+                className="mai-chat__attach-panel"
+                initial={{ opacity: 0, height: 0, y: 8 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: 6 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : null}
+                <div className="mai-chat__attach">
+                  <motion.img
+                    src={selectedImage}
+                    alt=""
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+                  />
+                  <div className="mai-chat__attach-meta">
+                    <span className="mai-chat__attach-name">{selectedImageName || 'Chart'}</span>
+                    <span className="mai-chat__attach-hint">
+                      {hindi ? 'Prompt select karo ya khud likho' : 'Pick a prompt or write your own'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearSelectedImage}
+                    aria-label="Remove"
+                    disabled={isAnalyzingChart}
+                    className="mai-chat__attach-x"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className={`mai-chat__prompt-dd ${chartPromptOpen ? 'mai-chat__prompt-dd--open' : ''}`} ref={chartPromptRef}>
+                  <button
+                    type="button"
+                    className={`mai-chat__prompt-trigger ${chartPromptOpen ? 'mai-chat__prompt-trigger--on' : ''}`}
+                    onClick={() => setChartPromptOpen((o) => !o)}
+                    aria-expanded={chartPromptOpen}
+                    aria-haspopup="listbox"
+                    disabled={isThinking || isAnalyzingChart}
+                  >
+                    <span className="mai-chat__prompt-trigger-icon" aria-hidden>
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="mai-chat__prompt-trigger-text">
+                      <span className="mai-chat__prompt-trigger-label">
+                        {hindi ? 'Desk prompts' : 'Desk prompts'}
+                      </span>
+                      <span className="mai-chat__prompt-trigger-sub">
+                        {hindi ? 'Predefined chart questions' : 'Predefined chart questions'}
+                      </span>
+                    </span>
+                    <ChevronDown className={`mai-chat__prompt-chevron ${chartPromptOpen ? 'mai-chat__prompt-chevron--up' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {chartPromptOpen ? (
+                      <motion.div
+                        className="mai-chat__prompt-menu"
+                        role="listbox"
+                        aria-label="Chart prompts"
+                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                      >
+                        <div className="mai-chat__prompt-menu-glow" aria-hidden />
+                        <div className="mai-chat__prompt-menu-head">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>{hindi ? 'Chart ke liye sawal choose karo' : 'Choose a chart question'}</span>
+                        </div>
+                        <div className="mai-chat__prompt-menu-scroll">
+                          {WOLF_CHART_PROMPTS.map((p, i) => {
+                            const Icon = CHART_PROMPT_ICONS[p.id] ?? Sparkles;
+                            const selected = inputText.trim() === deskPromptText(p, useHiPrompts).trim();
+                            return (
+                              <motion.button
+                                key={p.id}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                className={`mai-chat__prompt-item ${selected ? 'mai-chat__prompt-item--on' : ''}`}
+                                onClick={() => applyDeskPrompt(p)}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.04 + i * 0.04 }}
+                                whileHover={{ x: 3 }}
+                              >
+                                <span className="mai-chat__prompt-item-icon" aria-hidden>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </span>
+                                <span className="mai-chat__prompt-item-main">
+                                  <span className="mai-chat__prompt-item-name">{deskPromptLabel(p, useHiPrompts)}</span>
+                                  <span className="mai-chat__prompt-item-hint">{deskPromptHint(p, useHiPrompts)}</span>
+                                </span>
+                                {selected ? <Check className="mai-chat__prompt-check" /> : null}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <div className="mai-chat__input-row">
           <button
@@ -1035,8 +1265,8 @@ export default function MasterAI() {
                     : 'Listening…'
                   : selectedImage
                     ? hindi
-                      ? 'Chart ke saath apna sawal likho…'
-                      : 'Write your question with this chart…'
+                      ? 'Prompt dropdown se choose karo ya likho…'
+                      : 'Pick from desk prompts or write…'
                     : hindi
                       ? 'Wolf AI se poochho…'
                       : `Message ${AI_PRODUCT_NAME}…`
@@ -1048,7 +1278,7 @@ export default function MasterAI() {
             <button
               type="button"
               onClick={() => void handleSend()}
-              disabled={(!inputText.trim() && !selectedImage) || isListening || isThinking}
+              disabled={!inputText.trim() || isListening || isThinking}
               className="mai-chat__send"
               aria-label="Send"
             >
@@ -1068,8 +1298,8 @@ export default function MasterAI() {
         {imageError ? <p className="mai-chat__error">{imageError}</p> : null}
         <p className="mai-chat__footnote">
           {hindi
-            ? 'Educational only · Image attach ke baad prompt likho · Enter = send'
-            : 'Educational only · Attach image, write prompt, then Enter to send'}
+            ? 'Educational only · Image + desk prompt · Enter = send'
+            : 'Educational only · Attach chart, pick a desk prompt, Enter to send'}
         </p>
       </div>
     </div>
