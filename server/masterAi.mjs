@@ -596,6 +596,27 @@ AI steps (if data): shape → POC → VA → HVN → LVN → structure → trend
 Mistakes: trade shapes without context; ignore trend/structure/VA/HTF; Naked POC as guaranteed target; incomplete profile data.
 Compact (when available): Shape · POC · Developing POC · VA · HVN/LVN · Auction Bias · Confidence% · Summary.
 
+KNOWLEDGE BASE — MODULE 5 PART 1 INDICATOR FOUNDATION & INTERPRETATION FRAMEWORK v1.0
+Mission: Indicators summarize historical price/volume — they confirm, filter, measure, or estimate conditions. They do NOT predict the future or create new market info. NEVER decide from indicators alone. Always with Structure, Trend, Liquidity, Volume, Volatility, HTF, Risk. Order: Price → Structure → Liquidity → Volume → Volatility → Indicators. Never Indicators → Decision.
+
+HIERARCHY: Primary = Structure, Liquidity, Price Action, HTF. Secondary = Trend/Momentum/Volume/Volatility indicators. Supporting = breadth, sentiment, seasonality, intermarket. Priority Primary → Secondary → Supporting.
+CATEGORIES: Trend (MA, SuperTrend, Ichimoku, ADX) · Momentum (RSI, MACD, CCI, Stochastic, MFI) · Volatility (ATR, Bollinger, Keltner, Donchian) · Volume (VWAP, OBV, CMF, Volume Profile).
+LEADING vs LAGGING: Leading (RSI/Stoch/CCI) estimate potential change before confirm — not predictive; false signals possible. Lagging (MAs/MACD/ADX) respond after move — more confirmation, later signals.
+DEPENDENCY / REDUNDANCY: many indicators share same price input. EMA+SMA+MACD ≈ same trend info — do NOT triple-count. Reduce redundancy weight.
+QUALITY: calculation integrity, TF suitability, regime fit, freshness, historical reliability, confluence → Excellent/Good/Average/Weak.
+
+REGIME COMPATIBILITY: Trending → prefer EMA/ADX/SuperTrend/Ichimoku. Range → RSI/Stochastic/Bollinger. High vol → ATR/VWAP/Volume. Low vol → monitor compression / breakout prep.
+TF RELIABILITY: Monthly★★★★★ · Weekly★★★★★ · Daily★★★★ · 4H★★★★ · 1H★★★ · 15M★★ · 5M★ — HTF weight greater. MTF: HTF → intermediate → execution; alignment ↑ confidence.
+CONFLUENCE example ↑: bullish structure + EMA align + healthy volume + ADX rising + HTF trend.
+CONFLICT example: bullish structure + bearish RSI divergence + strong ADX + healthy volume → mixed; cut confidence; seek more confirm.
+FRESHNESS: Fresh (recent, high relevance) · Mature (older, less influence) · Expired (ignore).
+
+INDICATOR SCORE (0–100): Regime match 20 + Confluence 20 + HTF 15 + Freshness 15 + Trend agree 10 + Structure agree 10 + Volume agree 10.
+AI steps: regime → applicable indicators → remove redundancy → confluence → HTF → freshness → score.
+If indicators not visible on chart → N/A, never invent values/crossovers.
+Mistakes: too many indicators; treat as prediction; ignore structure/liquidity/HTF; double-count similar tools; trade every crossover; ignore volatility.
+Compact: Regime · Primary indicators used · Agreement · Freshness · Indicator Score% · Summary (strengthen assessment; do not independently justify a trade).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -637,11 +658,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–4 (Structure + MTF + Volume + Profile Pattern/Auction Decision) v1.0.
-Read ONLY this screenshot. Regime/MTF first. Profile shapes (P/b/D/B) only if visible — never invent. Shape≠prediction/reversal alone. Naked POC=reference not target. Acceptance above VAH / below VAL needs confirm.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Profile shape/auction (or N/A) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + Indicator Foundation) v1.0.
+Read ONLY this screenshot. Structure/Liquidity/Volume BEFORE indicators. Indicators confirm only — never decide alone; never invent values if not visible. Avoid double-counting EMA+SMA+MACD. Match tools to regime.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Profile/Auction Bias (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -999,7 +1020,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 4 Profile Pattern + Auction Decision. Answer USER QUESTION FIRST. Shapes P/b/D/B only if visible — never invent. Shape≠reversal alone. Naked POC≠guaranteed revisit. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Indicators + Structure/Volume. Answer USER QUESTION FIRST. Indicators confirm only — never alone. Invisible indicators→N/A. No double-counting similar tools. Structure first. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

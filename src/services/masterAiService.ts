@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 4 Profile Pattern/Auction Decision. Answer USER question FIRST. Detect P/b/D/B shapes ONLY if profile visible. Never invent. Shape≠prediction alone.',
-    'Naked POC=reference not guaranteed target. Acceptance above VAH / below VAL needs confirm. Structure+Trend+HTF required for bias. Missing profile → unavailable.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Profile Shape/Auction Bias (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 5 Indicator Foundation. Answer USER question FIRST. Indicators summarize — never predict / never decide alone. Invisible → N/A. Don’t invent RSI/EMA values.',
+    'Priority: Structure → Liquidity → Volume → Volatility → Indicators. Avoid redundancy (EMA+SMA+MACD). Match indicators to regime. HTF weight higher.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
