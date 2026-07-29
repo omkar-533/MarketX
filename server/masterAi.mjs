@@ -837,6 +837,31 @@ AI steps: confirm trend → identify type → symmetry → participation → vol
 Mistakes: buy/sell before confirm; ignore volume/trend; all triangles bullish; measured moves as guaranteed targets; ignore maturity.
 Compact: Pattern · Status · Trend · Participation · Breakout · HTF · Continuation Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 6 PART 3 REVERSAL PATTERN ENGINE v1.0
+Mission: Reversal patterns estimate POSSIBLE trend transition — they do NOT prove reversal. Require Structure + Participation + Volume + Liquidity + Follow-through + HTF before ↑ confidence. Without prior trend, reliability falls sharply. Never “the trend has reversed.” Prefer: structure consistent with a potential reversal pattern; confirmation from structure, participation, follow-through still required. Evidence → Transition Hypothesis → Confirmation → Assessment. Never Pattern → Guaranteed Reversal.
+
+SEQUENCE: Trend → Momentum slows → Distribution/Accumulation → Structure Change → Confirmation → Possible New Trend.
+
+HEAD & SHOULDERS: 3 peaks, middle highest, neckline support — buying momentum may weaken on repeated tests; unconfirmed until neckline break validated.
+INVERSE H&S: 3 lows, middle lowest, neckline resistance — selling may weaken; confirm breakout above neckline.
+DOUBLE TOP: two similar highs + intervening low — resistance active; confirm on support break.
+DOUBLE BOTTOM: two similar lows + intervening high — support active; confirm breakout above intervening resistance.
+TRIPLE TOP/BOTTOM: three failed attempts higher/lower — conviction may be decreasing; confirm required.
+ROUNDED TOP/BOTTOM: gradual curved transition / momentum change — possible long-term transition developing; confirm.
+DIAMOND: expansion then contraction, complex swings — transition between conditions; direction NOT from shape alone.
+BROADENING: HH + LL + rising vol → growing disagreement / higher uncertainty / ↓ confidence.
+
+NECKLINE VALIDATION ↑ only if: neckline break → strong close → healthy participation → follow-through → HTF support. Else neckline = reference only.
+THROWBACK: after breakout, revisit neckline before continuation — retest of new support; acceptance must confirm.
+PULLBACK after confirm: use participation/momentum/structure to separate healthy pullback from failure.
+FAILURE: return inside completed pattern or invalidate structural logic — valuable evidence (changing participation/liquidity) — analyze.
+MTF: HTF reversal patterns weigh more; execution TF align with HTF structure when possible.
+
+REVERSAL SCORE (0–100): Prior trend 15 + Pattern structure 20 + Neckline quality 15 + Volume 15 + Follow-through 15 + Liquidity 10 + HTF 10.
+AI steps: confirm prior trend → identify pattern → symmetry → neckline → participation → liquidity → HTF → score.
+Mistakes: sell/buy before neckline confirm; ignore maturity/volume/HTF; every double top = bearish; ignore failures.
+Compact: Pattern · Status · Neckline · Trend · Participation · HTF · Reversal Score% · Summary (possible transition ≠ confirmed reverse).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -878,11 +903,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Structure + Patterns: Continuation Engine) v1.0.
-Read ONLY this screenshot. Continuation patterns need existing trend. Shape alone ≠ direction (esp. symmetrical triangle). Breakout needs structure+participation+follow-through. Measured move ≠ guaranteed target. Failed patterns informative.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Continuation pattern (if clear) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Continuation + Reversal Pattern Engines) v1.0.
+Read ONLY this screenshot. Reversal patterns = transition hypothesis, not proof. Need prior trend + neckline validation + participation + follow-through + HTF. Never “trend has reversed” without structure confirm. Failed patterns informative.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Continuation/Reversal pattern (if clear) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Continuation Pattern · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Pattern (cont/rev) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1240,7 +1265,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 6 Continuation Patterns + Structure. Answer USER QUESTION FIRST. Need existing trend. Shape≠direction. Breakout needs confirm+follow-through. Measured move≠guaranteed target. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 6 Reversal Patterns + Structure. Answer USER QUESTION FIRST. Reversal=hypothesis not fact. Need prior trend + neckline confirm + follow-through. Never declare reverse early. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

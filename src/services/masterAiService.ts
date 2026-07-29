@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 6 Continuation Patterns. Answer USER question FIRST. Flags/triangles/pennants/rectangles/channels = pause in EXISTING trend — never shape alone. No trend → lower reliability.',
-    'Breakout needs structure+participation+follow-through+HTF. Symmetrical triangle direction unknown from shape. Measured move = objective not guarantee. Analyze failures.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Trend · Continuation Pattern · Participation · Breakout · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 6 Reversal Patterns. Answer USER question FIRST. H&S/double/triple/rounded = transition hypothesis — never “trend reversed” without neckline+structure+follow-through+HTF.',
+    'Need prior trend. Neckline break alone insufficient without participation. Analyze pattern failures. Structure remains primary.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Prior Trend · Reversal Pattern · Neckline · Participation · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
