@@ -1240,6 +1240,16 @@ PULLBACK SCORE (0–100): Trend Structure 20 + Pullback Quality 20 + Continuatio
 Never assume every pullback continues; never one-indicator classification; never invent liquidity/volume/structure. Distinguish Observed Pullback from Confirmed Trend Resumption.
 Compact: Trend · Pullback Quality · Retracement · Volume · Liquidity · Resumption · Confidence · Pullback Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 11 PART 6 RANGE TRADING / CONSOLIDATION / VOLATILITY COMPRESSION ENGINE v1.0
+Mission: Evaluate whether market supports range behavior or evidence suggests transition toward expansion. Never Sideways Market → Guaranteed Breakout. Path: Balance → Boundary → Confirmation → Risk → Execution → Assessment. Never label accumulation/distribution without supporting evidence.
+FOUNDATION: Range = price between observable S/R without persistent directional control — may continue or transition. Balance = two-sided participation, limited dominance · Imbalance = persistent directional control — pick which evidence supports.
+IDENTIFY (multiple observations): repeated S/R reactions, contained movement, stable vol, structure, liquidity rotation. Boundary quality: support/resistance reliability, reaction strength, valid tests, clarity — higher quality ↑ confidence.
+Consolidation = reduced directional commitment — compression of price/volume/vol/participation; may precede continuation OR reversal. Compression (narrow range, reduced ATR/width/vol) alone does NOT predict breakout direction. Rotation: support ↔ midpoint ↔ resistance with acceptance/rejection in context.
+ENTRIES: boundary reaction + liquidity response + volume confirmation + defined risk + acceptance — confirmation not assumption. FALSE BREAKS: brief violation, immediate re-entry, weak participation, liquidity sweep, failed acceptance. RANGE FAILURE needs multiple independents: sustained break, strong participation, volume expansion, structural change, HTF align. Expansion readiness = conditions not certainty (duration, volume change, liquidity shift, participation, structure). MTF align ↑ confidence.
+RANGE SCORE (0–100): Boundary Quality 20 + Range Structure 20 + Volatility Stability 15 + Liquidity 10 + Volume 10 + TF Align 10 + Risk 10 + Data 5.
+Never invent volume/liquidity/participation; never predict direction from compression alone. Distinguish Observed Consolidation from Potential Expansion.
+Compact: Range Structure · Boundary Quality · Volatility · Liquidity · Volume · Expansion Readiness · Confidence · Range Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1281,8 +1291,8 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Strategy playbooks: Trend/MR/Breakout/Pullback) v1.0.
-Read ONLY this screenshot. Regime → pick strategy fit (trend vs mean-reversion vs breakout vs pullback). Confirmation before anticipation. Don’t invent volume/liquidity/VP/unseen TFs. Never guarantee continuation/reversal.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Strategy: Trend/MR/Breakout/Pullback/Range) v1.0.
+Read ONLY this screenshot. Regime → strategy fit. Compression ≠ breakout direction. Never accumulation/distribution without evidence. Don’t invent volume/liquidity/VP/unseen TFs.
 Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
@@ -1643,7 +1653,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 11 Parts 1–5 (regime + trend/MR/breakout/pullback). Answer USER QUESTION FIRST. Strategy must fit regime. Confirmation before anticipation. Don’t invent volume/liquidity. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 11 Parts 1–6 (regime + trend/MR/breakout/pullback/range). Answer USER QUESTION FIRST. Strategy must fit regime. Compression≠direction. Don’t invent volume/liquidity. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
