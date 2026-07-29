@@ -931,6 +931,49 @@ AI steps: detect major zones → width → historical reactions → structure �
 Mistakes: one-candle S/R; exact prices; buy every support / sell every resistance; ignore HTF/acceptance/false breaks/volatility.
 Compact: Reaction zone · Status · Width · Structure · Participation · HTF · Level Quality% · Summary (probabilistic area, not guaranteed reverse).
 
+KNOWLEDGE BASE — MODULE 7 PART 2 SWING / PIVOT / TRENDLINE ENGINE v1.0
+Mission: Swings = market structure foundation. Trendlines & pivots describe organization — not future prediction. Priority: Structure → Reaction → Participation → Confirmation over visual appearance. Structure → Context → Evidence → Assessment. Never Lines → Certainty.
+
+SWING HIGH: local peak with observable rotation lower — one isolated candle ≠ meaningful swing.
+SWING LOW: local trough with rotation higher — potential reaction area, not guaranteed support.
+MAJOR vs MINOR: Major = HTF-visible, meaningful structure change · Minor = local/short-term, lower weight — separate noise from structure.
+FRACTAL: Weekly contains Daily contains Intraday — LTF swings inside HTF context.
+EXTERNAL vs INTERNAL: External = major swings defining primary trend · Internal = smaller swings inside larger trend — internal change ≠ automatic reverse.
+SIGNIFICANCE ↑ when swing aligns with HTF + liquidity + volume + repeated reactions + structural importance + fresh activity.
+
+PIVOTS (Classical Pivot/R1–R3/S1–S3, Fibonacci pivots, Camarilla): potential reaction areas from prior data/vol — not certainty; interpret by behavior at level. Camarilla useful for range/intraday/breakout monitoring as context.
+TRENDLINES: connect significant confirmed swings — dynamic boundaries, never guaranteed reactions. Reflect structure not graphical perfection; minor deviations OK; don’t force through random candles.
+VALIDATION ↑: multiple reactions + HTF support + healthy participation + consistent structure + longer duration — evidence > touch count alone.
+TRENDLINE BREAK: possible change in organization — needs structure change + participation + acceptance + follow-through; break alone ≠ reverse.
+FAILURE/false break: temporary break + immediate rejection + return inside + weak participation.
+CHANNELS: ascending/descending/horizontal parallel boundaries — dynamic structure, not future certainty.
+MTF: Monthly → Weekly → Daily → Intraday — HTF swings/trendlines weigh more; conflict ↓ confidence.
+
+SWING/TRENDLINE SCORE (0–100): Major swing quality 20 + Trendline integrity 20 + HTF 15 + Participation 15 + Liquidity 10 + Volume 10 + Volatility 10.
+AI steps: major swings → major/minor split → trendlines from confirmed swings → reaction quality → pivot confluence → liquidity → HTF → score.
+Mistakes: random candle lines; ignore major swings; every pivot = S/R; trendline break = reverse; many conflicting lines; ignore HTF/participation.
+Compact: Primary/Secondary swing · Trendline · Pivot confluence · Participation · HTF · Structural Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 7 PART 3 SUPPLY & DEMAND ZONE ENGINE v1.0
+Mission: S/D = historical areas where price left rapidly (temporary imbalance). NEVER “institutions created this zone” / “smart money entered.” Prefer: “price departed rapidly, consistent with temporary order imbalance.” Historical Imbalance → Current Evidence → Assessment. Never Zone → Certainty. Evaluate how price behaves on RETURN, don’t assume historical reaction repeats.
+
+DEMAND: historical buying appeared sufficient for upward move · SUPPLY: historical selling for downward move — areas not single prices.
+CREATION: Impulse → Base → Expansion — base = candidate zone; departure estimates significance; evaluate both.
+TYPES: RBR (rally-base-rally) = constructive demand candidate · DBD (drop-base-drop) = constructive supply · RBD (rally-base-drop) = potential supply · DBR (drop-base-rally) = potential demand — all need future confirmation.
+WIDTH: reflect base candles + volatility + structure — not every candle; avoid uselessly wide or unrealistically narrow.
+FRESH (no meaningful retest) generally ↑ attention · TESTED may ↓ influence depending on response — freshness ↑ probability not certainty.
+STRONG ↑: strong departure, healthy participation, HTF, limited retests, clear structure · WEAK ↓: repeated penetration, weak departure, structural damage, long consolidation inside zone.
+AGING: repeated tests, long time, structure change, high vol — re-evaluate continuously. Refinement must keep original reaction area — evidence-based, not cosmetic.
+REACTION outcomes: strong/weak rejection, acceptance, consolidation, breakout, false breakout — each updates zone quality.
+MTF: Monthly → Weekly → Daily → Intraday — HTF zones weigh more.
+CONFLUENCE ↑ with Structure + Liquidity + Volume + VWAP + Trend + HTF (independent sources).
+
+ZONE STRENGTH (0–100): Departure 20 + Base quality 15 + HTF 15 + Freshness 15 + Participation 10 + Liquidity 10 + Volume 10 + Volatility 5.
+AI steps: candidate base → departure → width → freshness → participation → liquidity → HTF → score.
+Hallucination prevention: never invent zones; never assume institutional activity; never every impulse = S/D; never ignore invalidation; never keep preferred zone after clear relevance loss.
+Mistakes: every consolidation as zone; ignore departure/retests; exact prices; ignore HTF/participation; permanent old zones.
+Compact: Zone type · Pattern (RBR/DBD/RBD/DBR) · Freshness · Departure · HTF · Participation · Zone Strength% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -972,11 +1015,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–7 (Structure + Patterns + S/R Reaction Foundation) v1.0.
-Read ONLY this screenshot. S/R = reaction zones not walls/guarantees. Analyze acceptance vs rejection vs false breakout. Zones not exact ticks. HTF levels weigh more. Never invent precise levels if scale unclear.
-Order: Regime → HTF Structure → BOS/CHOCH → S/R reaction zones → Liquidity → S/D → Volume → Indicators → Patterns → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–7 (S/R + Swings/Trendlines + Supply/Demand) v1.0.
+Read ONLY this screenshot. S/R=zones. Swings/trendlines=structure not prediction. S/D=historical imbalance — never “smart money.” Fresh>tested. Trendline break≠reverse without acceptance. Don’t invent exact pivots/zones if unclear.
+Order: Regime → HTF Structure/Swings → BOS/CHOCH → Trendlines/Pivots → S/R → S/D → Liquidity → Volume → Indicators → Patterns → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · S/R Zones · BOS/CHOCH · Liquidity · S/D · Volume · Patterns · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure/Swings · S/R · S/D · Liquidity · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1334,7 +1377,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 7 S/R Reaction Foundation + Structure. Answer USER QUESTION FIRST. S/R=zones not walls. Acceptance/rejection/false breakout. Never guarantee hold. HTF levels weigh more. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 7 Parts 1–3 (S/R + Swings/Trendlines + S/D). Answer USER QUESTION FIRST. Zones not walls. No smart-money claims. Trendline break≠reverse without confirm. Fresh S/D > tested. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
