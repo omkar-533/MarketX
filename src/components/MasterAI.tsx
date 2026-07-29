@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Mic,
   Send,
   Volume2,
   VolumeX,
@@ -401,20 +400,6 @@ export default function MasterAI() {
     void handleSend(text);
   };
 
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-    const rec = recognitionRef.current;
-    if (rec) {
-      rec.lang = selectedLang.code;
-      rec.start();
-      setIsListening(true);
-    }
-  };
-
   const onAutoSpeakToggle = () => {
     const next = !autoSpeak;
     setAutoSpeak(next);
@@ -647,15 +632,6 @@ export default function MasterAI() {
               className="mai-chat__textarea"
               disabled={isListening}
             />
-
-            <button
-              type="button"
-              onClick={toggleListening}
-              className={`mai-chat__icon-btn ${isListening ? 'mai-chat__icon-btn--mic-on' : ''}`}
-              title="Voice input"
-            >
-              <Mic className="h-5 w-5" />
-            </button>
 
             <button
               type="button"
