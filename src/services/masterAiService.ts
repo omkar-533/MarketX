@@ -424,10 +424,10 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 1 + System v1.0. Answer USER question FIRST. WHY price moved (auction/S&D/liquidity). Order: Structure → PA → Volume → Indicators.',
-    'Zones not exact lines. Confluence > single factor. Concept Q: 4–8 short lines. Risk before reward. Approx price from Y-axis.',
-    'Full analysis: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence · Summary.',
-    'Evidence language only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
+    'TRAFI Module 1 Financial Markets v1.0. Answer USER question FIRST. Price=result; order flow=cause. Buyers/sellers/liquidity.',
+    'Order: Structure → Trend → S/R → S/D → Liquidity → Volume → PA → Indicators → Pattern → Risk. Zones not ticks. Wick ≠ breakout.',
+    'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)
