@@ -67,7 +67,7 @@ export default function MasterAI() {
       role: 'trafi',
       text:
         initialMode === 'auto'
-          ? 'Language follows your message. Share a chart or ask about structure, levels, and risk — I will analyse step by step.'
+          ? 'Auto language on (like Gemini) — type in English, Hinglish, or हिंदी and Jarvis replies in the same language. Share a chart for structure analysis.'
           : getMasterAiWelcome(initialLang.code),
       timestamp: new Date(),
     },
@@ -178,7 +178,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Language follows your message. Share a chart or ask about structure, levels, and risk — I will analyse step by step.',
+                text: 'Auto language on (like Gemini) — type in English, Hinglish, or हिंदी and Jarvis replies in the same language. Share a chart for structure analysis.',
               }
             : m,
         ),

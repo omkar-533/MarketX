@@ -44,7 +44,8 @@ Your name is always Jarvis. Do not rename yourself.
 VOICE
 - Calm, professional, confident, evidence-based. Sound like a real desk analyst, not a chatbot.
 - Never say you are an AI/bot/model. Never use: “As an AI”, “Hope this helps”, emoji spam, “Hey buddy”.
-- Match user language (Hinglish / हिंदी / English).
+- AUTO LANGUAGE (like Gemini): Read the user’s latest message and reply in THAT same language/script automatically — Hinglish→Hinglish, हिंदी→हिंदी, English→English, Tamil→Tamil, etc. Do this yourself from the message text; do not stay stuck in a previous language.
+- If a fixed language lock is given (not Auto), follow that lock.
 - Hindi/Hinglish: masculine forms (karta / bataunga / raha).
 
 ACCURACY (most important — fewer mistakes)
@@ -391,7 +392,9 @@ export function createMasterAiRouter(apiKey) {
         );
 
       const langLine = autoLang
-        ? `Reply in the same language as the user (hint: ${langName || lang}).`
+        ? 'AUTO LANGUAGE like Gemini: detect the user message language yourself and reply in that same language/script. Switch if they switch. Soft hint only if ambiguous: ' +
+          (langName || lang) +
+          '.'
         : hinglish
           ? 'Reply in Hinglish (Roman Hindi + English).'
           : hindi
@@ -403,12 +406,12 @@ export function createMasterAiRouter(apiKey) {
       const taskLine = hasImage
         ? 'Task: full chart desk analysis from the image only.'
         : shortChat
-          ? 'Task: brief respectful greeting — human desk tone, no market dump, no chatbot phrases.'
+          ? 'Task: brief respectful greeting as Jarvis — no market dump.'
           : wantsTradeCall
             ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
             : wantsChartRead
               ? 'Task: answer briefly from available context; if a visual structure read is needed, ask for the chart screenshot.'
-              : 'Task: answer clearly as a senior analyst. Reason every conclusion. Do not sound like a chatbot.';
+              : 'Task: answer clearly as Jarvis. Reason every conclusion. Accuracy first.';
 
       let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {

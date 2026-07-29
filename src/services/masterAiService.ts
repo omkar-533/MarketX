@@ -324,7 +324,12 @@ export function resolveMasterAiLanguage(
 function buildLanguageDirective(langCode: string, autoMode = false): string {
   const lang = getMasterAiLanguage(langCode);
   if (autoMode) {
-    return `Language: match the user’s message (hint: ${lang.nativeLabel}).`;
+    return [
+      'AUTO LANGUAGE (Gemini-style): Detect the language of the user’s latest message yourself and reply in that exact language/script.',
+      'Hinglish (Roman) → Hinglish. Devanagari Hindi → हिंदी. English → English. Other Indian languages → same.',
+      'Switch every turn if the user switches. Do not stay stuck in a previous language.',
+      `Soft hint only (ignore if it conflicts with the message): ${lang.nativeLabel}.`,
+    ].join(' ');
   }
   if (langCode === 'hi-Latn') return 'Language: Hinglish (Roman Hindi + English).';
   if (langCode === 'hi-IN') return 'Language: Hindi Devanagari.';
