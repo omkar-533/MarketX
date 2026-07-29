@@ -43,16 +43,17 @@ run('npx cap sync');
 console.log(`
 Done.
 
-Windows desktop (abhi):
+Windows desktop:
   npm run app:desktop          — open app window
   npm run app:desktop:pack     — create installer in release/
 
 Android APK:
-  npm run app:android:open     — Android Studio → Build → APK
+  npm run app:android:open     — Android Studio → Build → Build APK(s)
+  Or: cd android && .\\gradlew.bat assembleDebug
 
 iPhone (without Mac):
-  Safari → https://mmtt-flame.vercel.app → Share → Add to Home Screen
+  Safari → https://wolftradeai.in → Share → Add to Home Screen
 
 Windows PWA:
-  Edge/Chrome → site → Install app icon in address bar
+  Edge/Chrome → https://wolftradeai.in → Install app
 `);

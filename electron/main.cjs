@@ -1,11 +1,11 @@
 /**
- * AI Powered Market Intelligent — clean desktop shell (Electron)
- * Loads your official Vercel app — no third-party code, no bundlers with ads.
+ * Wolf Trade AI — desktop shell (Electron)
+ * Loads the live site (or local Vite in TRADEX_DEV=1).
  */
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
-const APP_URL = process.env.TRADEX_APP_URL || 'https://mmtt-flame.vercel.app';
+const APP_URL = process.env.TRADEX_APP_URL || 'https://wolftradeai.in';
 const isDev = process.env.TRADEX_DEV === '1';
 
 function createWindow() {
@@ -14,7 +14,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 640,
-    title: 'AI Powered Market Intelligent',
+    title: 'Wolf Trade AI',
     backgroundColor: '#0a0e17',
     autoHideMenuBar: true,
     webPreferences: {
