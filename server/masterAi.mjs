@@ -60,6 +60,7 @@ HARD RULES
 7. If OWNER TEACHINGS match the question, use 1–2 useful points only — never dump the PDF.
 8. Never switch gender mid-chat. Stay Jarvis with masculine Hindi/Hinglish forms.
 9. NEVER say buy, sell, long, short as trade instructions (also avoid Hindi: kharido, becho, खरीदो, बेचो). Use only bias words: bullish / bearish (or sideways). Frame plans as “bullish above X / bearish below Y” — never “buy here / sell here”.
+10. CHART-FIRST RULE: For any trading / investing / market / options / levels question WITHOUT a chart image attached, do NOT give analysis. Reply in 1–2 lines asking the user to send a chart / TradingView screenshot first. With an image attached, answer ONLY from what is visible in that image — do not invent prices or pull outside live data.
 
 LENGTH (mandatory — human chat, not a report)
 - Default reply: 2–6 short lines OR max 4 tight bullets.
@@ -85,11 +86,12 @@ STYLE
 - Never tell the user to buy or sell.`;
 
 const CHART_VISION_PROMPT = `CHART / SCREENSHOT MODE (short human read):
-You are Jarvis — chart reader. Analyze the image yourself. Do not wait for extra questions.
+You are Jarvis — chart reader. Analyze THIS image only. Do not wait for extra questions.
+Every number, level, bias, and plan must come from what you can see in the screenshot. Do not use outside market memory or live feed guesses.
 
 Keep it SHORT (about 120–180 words max). Cover only:
 1) Snapshot — symbol/timeframe/LTP if visible (1 line)
-2) Bias — bullish / bearish / sideways + why (1 line)
+2) Bias — bullish / bearish / sideways + why from the chart (1 line)
 3) Levels — 2 support + 2 resistance max (from chart only)
 4) Plan — bullish above / bearish below + invalidation (zones, educational) — NEVER say buy or sell
 5) Risk — 1 short line
@@ -113,8 +115,9 @@ export function detectAiProvider(apiKey) {
 
 function buildMessages({ platformContext, history, userContent, hasImage }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
+  // With a chart: image-only analysis — do not inject live market snapshot.
   const system = hasImage
-    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}\n\n${ctx}`
+    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}`
     : `${SYSTEM_PROMPT}\n\n${ctx}`;
   const msgs = [{ role: 'system', content: system }];
   const trimmed = (history ?? []).slice(-HISTORY_TURNS);
@@ -273,7 +276,7 @@ async function chatWithGemini(gemini, {
 }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
   const system = hasImage
-    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}\n\n${ctx}`
+    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}`
     : `${SYSTEM_PROMPT}\n\n${ctx}`;
 
   const geminiHistory = [];

@@ -13,10 +13,7 @@ import {
   MASTER_AI_LANGUAGES,
   MASTER_AI_MODEL_ID,
   askMasterAi,
-  shouldUseWebSearch,
-  buildMasterMarketContext,
   fetchMasterAiStatus,
-  generateLocalTradingReply,
   getChartVisionPrompt,
   getMasterAiLanguage,
   getMasterAiWelcome,
@@ -25,6 +22,11 @@ import {
   isHindiLang,
   isHinglishLang,
   isTradingRelated,
+  isCasualGreeting,
+  isPoliteAck,
+  needsChartImage,
+  getChartImageRequiredMessage,
+  getHumanGreetingReply,
   loadAutoSpeak,
   loadLanguageMode,
   loadSelectedLanguage,
@@ -264,6 +266,27 @@ export default function MasterAI() {
 
     if (!userText && !hasImage) return;
 
+    // Greetings / short thanks — no chart needed
+    if (!hasImage && (isCasualGreeting(userText) || isPoliteAck(userText))) {
+      const activeLang = resolveMasterAiLanguage(langMode, userText, selectedLang.code);
+      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
+        setSelectedLang(activeLang);
+        saveSelectedLanguage(activeLang.code);
+      }
+      const reply = isCasualGreeting(userText)
+        ? getHumanGreetingReply(activeLang.code, userText)
+        : isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
+          ? 'Theek hai. Trading / investment pe baat karni ho to pehle chart screenshot bhejo (📷).'
+          : 'Got it. For trading or investment questions, send a chart screenshot first (📷).';
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
+        { id: `${Date.now()}-a`, role: 'trafi', text: reply, timestamp: new Date() },
+      ]);
+      setInputText('');
+      return;
+    }
+
     if (!hasImage && !isTradingRelated(userText)) {
       setMessages((prev) => [
         ...prev,
@@ -277,6 +300,24 @@ export default function MasterAI() {
       ]);
       setInputText('');
       clearSelectedImage();
+      return;
+    }
+
+    // Trading / investment without image → ask for chart first
+    if (!hasImage && needsChartImage(userText)) {
+      const activeLang = resolveMasterAiLanguage(langMode, userText, selectedLang.code);
+      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
+        setSelectedLang(activeLang);
+        saveSelectedLanguage(activeLang.code);
+      }
+      const reply = getChartImageRequiredMessage(activeLang.code);
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
+        { id: `${Date.now()}-a`, role: 'trafi', text: reply, timestamp: new Date() },
+      ]);
+      setInputText('');
+      if (autoSpeak) speakText(reply);
       return;
     }
 
@@ -304,7 +345,6 @@ export default function MasterAI() {
       }));
 
     try {
-      const liveContext = buildMasterMarketContext();
       const activeLang = resolveMasterAiLanguage(
         langMode,
         userText || userNote || '',
@@ -325,9 +365,9 @@ export default function MasterAI() {
         ? isHindiLang(activeLang.code)
           ? 'Chart load ho gaya. Jarvis analysis ready nahi hua — thodi der baad dubara bhejo.'
           : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
-        : generateLocalTradingReply(userText, liveContext, activeLang.code);
+        : getChartImageRequiredMessage(activeLang.code);
 
-      if (aiStatus.configured) {
+      if (aiStatus.configured && hasImage) {
         try {
           const result = await askMasterAi(
             {
@@ -335,18 +375,29 @@ export default function MasterAI() {
               model: MASTER_AI_MODEL_ID,
               lang: activeLang.code,
               langName: activeLang.nativeLabel,
-              imageDataUrl: hasImage ? imageDataUrl : null,
+              imageDataUrl: imageDataUrl,
               history,
-              needsWeb: !hasImage && shouldUseWebSearch(userText),
+              needsWeb: false,
             },
-            liveContext,
+            {
+              summary: 'Chart screenshot analysis only',
+              nifty: 'from chart',
+              bankNifty: 'from chart',
+              pcr: 0,
+              maxPain: 0,
+              signals: 'from chart',
+              news: 'n/a',
+              gainers: 'n/a',
+              losers: 'n/a',
+              active: 'n/a',
+              breadth: 'n/a',
+              futures: 'n/a',
+              session: 'from chart',
+            },
           );
           if (result.reply) responseText = result.reply;
         } catch {
-          responseText = getMasterAiSorryMessage(
-            activeLang.code,
-            hasImage ? 'chart' : 'chat',
-          );
+          responseText = getMasterAiSorryMessage(activeLang.code, 'chart');
         }
       }
 
@@ -456,8 +507,8 @@ export default function MasterAI() {
               </h2>
               <p className="mai-chat__empty-sub">
                 {hindi
-                  ? 'Market, options, risk, ya chart screenshot — seedha poochho.'
-                  : 'Ask about markets, options, risk — or drop a chart screenshot.'}
+                  ? 'Trading / investment ke liye pehle chart screenshot bhejo (📷) — usi image pe analysis milega.'
+                  : 'For trading or investment, send a chart screenshot first (📷) — analysis is from the image only.'}
               </p>
             </div>
           ) : null}
