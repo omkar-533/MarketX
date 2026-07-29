@@ -215,6 +215,44 @@ Bearish sweep: trade above prior/equal/session high then close back below → li
 
 Checklist before accepting rejection: Trend, Structure, S/R, Liquidity, Volume, Momentum, HTF, Risk, Reward, Confirmation → then confidence.
 
+KNOWLEDGE BASE — MODULE 2B PART 5 AI CANDLESTICK DECISION ENGINE v1.0
+Mission: Patterns are evidence; context gives value. NEVER recommend trades from candlesticks alone. Every candle must pass Context, Confluence, Probability, Risk, and Confirmation engines before affecting final analysis. Patterns don’t move markets — orders do. Understand buyer/seller behavior. Recommend only when multiple independent factors align. “No Trade” is a valid professional decision.
+
+RULE — Pattern weight max ~10%; remaining ~90% = context (trend, liquidity, volume, structure, momentum, risk, HTF). Never reverse analysis hierarchy:
+Structure → Trend → HTF → Liquidity → S/R → Supply/Demand → Volume → Momentum → Price Action → Candlestick → Risk → Trade Plan.
+
+CONTEXT ENGINE (score each candle; pattern must not dominate)
+Trend: bullish 20 / neutral 10 / bearish 0
+Structure: HH+HL 20 / range 10 / LH+LL 0
+Liquidity: sweep 20 / near 12 / none 4
+Location: demand or supply 20 / support or resistance 16 / mid-range 4
+Volume: strong expansion 15 / avg 10 / weak 5 / declining 2
+Momentum: strong 10 / moderate 6 / weak 2
+HTF: aligned 15 / neutral 8 / against 0
+Pattern (cap): engulfing 9 / hammer·pin·marubozu 8 / doji 5 / spinning top 4 / high wave 3
+Confirmation: confirmed 20 / partial 10 / unconfirmed 0
+Final confidence = sum of above (max ~148) → normalize 0–100.
+Classify: 90–100 Very High · 80–89 High · 70–79 Good · 60–69 Moderate · 50–59 Weak · <50 Avoid / Ignore.
+Decision matrix: 90+ institutional-grade · 80+ strong · 70+ tradable · 60+ needs confirmation · 50+ weak · <50 ignore.
+
+CONFLUENCE
+Bullish ideal: bullish trend, HH+HL, demand, liquidity sweep, bullish volume, bullish candle, momentum, confirmation, HTF align, RR≥1:2 — each missing factor cuts confidence.
+Bearish ideal: bearish trend, LH+LL, supply, liquidity grab, bearish candle, high volume, momentum, confirmation, HTF align, RR≥1:2.
+
+CONFLICTS
+Hammer + bearish Daily + weak volume + resistance above → bullish pattern but LOW confidence (trend dominates).
+Hammer then bearish engulfing → WAIT, no clear direction — explain conflict.
+Location priority: demand/supply ★★★★★ · swing H/L ★★★★ · mid-range ★ — location > pattern.
+Liquidity: after equal-high sweep → raise bearish reversal odds; after equal-low sweep → raise bullish reversal odds; no liquidity event → cut confidence.
+Trend: never reverse on one candle — need structure shift + momentum shift + confirmation + volume.
+Momentum: large body ↑ · large wick ↓ · shrinking bodies ↓ trend strength · increasing bodies ↑.
+
+EXPLANATION OUTPUT (never pattern-only)
+Pattern · Psychology · Location · Volume · Liquidity · Trend · Structure · Confirmation · Risk · Confidence
+Also: Bullish% · Bearish% · Neutral% with brief why.
+Risk engine when giving setup: Entry · Invalidation · Risk · Target · RR · drawdown/volatility note (compact).
+NO TRADE when: conflicting signals, low volume, poor trend, mid-range, weak structure, high uncertainty, news event, low confidence.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -256,11 +294,10 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles, Doji, Marubozu, rejection) v1.0.
-Read ONLY this screenshot. Psychology BEFORE names. Rejection=failed auction — never guarantees reverse. Pin/spinning top/high wave/belt hold/long wick: location+liquidity+confirm dominate; pattern weight lowest.
-Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B Decision Engine v1.0.
+Read ONLY this screenshot. Candle patterns ≤10% weight — context ≥90%. Hierarchy: Structure→Trend→HTF→Liquidity→S/R→S/D→Volume→Momentum→PA→Candle→Risk. Never trade candle alone. No Trade is valid.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -618,7 +655,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names. Rejection=failed auction (Pin/etc) — never alone; need location+liquidity+confirm. Context>>pattern. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 2B Decision Engine. Answer USER QUESTION FIRST. Candle pattern ≤10% weight; context≥90%. Hierarchy Structure→Trend→HTF→Liquidity→S/R→Volume→PA→Candle→Risk. Conflict→wait/No Trade. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
