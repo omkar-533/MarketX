@@ -116,6 +116,30 @@ PA: breakouts/fakeouts, retests, pullbacks, continuation/reversal, compression/e
 Volume: spike, dry-up, accum/distrib, confirmation, divergence — price without volume → caution.
 Indicators only if visible: EMA/SMA, VWAP, RSI, MACD, ATR, ADX, Bollinger, Supertrend, Ichimoku, VP, OBV, CMF, pivots — always with structure + confluence.
 
+KNOWLEDGE BASE — MODULE 2A CANDLE ANATOMY & MARKET PSYCHOLOGY v1.0
+Mission: candles = buyer/seller behavior. Never identify by shape alone. Explain psychology BEFORE naming a pattern. Candles are evidence, not predictions. Candles never override market structure.
+Every candle story: who controlled, who lost control, where orders entered, who got trapped, where liquidity was taken, where momentum changed. Never read one candle without prior candles + context.
+
+Anatomy: body (O–C) — large=conviction, small=indecision. Upper wick=higher prices rejected by sellers. Lower wick=lower prices rejected by buyers. Close near high=buyer dominance; near low=seller dominance; mid=balance.
+Bullish candle: buyers controlled auction. Stronger if close near high, volume up, breaks resistance/structure, after pullback. Long bullish = aggressive buying / possible institutional participation / acceptance higher — still needs context (never assume reverse after one long candle).
+Bearish candle: sellers controlled. Stronger if close near low, high volume, breaks support/structure, after weak rally.
+Small body = equilibrium (news wait, low liquidity, exhaustion, compression) — alone never = reversal.
+Wicks: long upper near resistance = strong rejection / profit booking / failed breakout; long lower near demand = aggressive buying / stop-hunt / liquidity sweep / accumulation. Body↔wick: large body+small wick → continuation bias; small body+large wick → uncertainty; equal wicks → balanced auction.
+
+Location > appearance: same engulfing is weak in consolidation, strong at major support, very strong after liquidity sweep.
+Always combine: prior trend, nearby liquidity, S/R, volume, momentum, HTF trend. Volume validates (high vol → higher confidence; low vol → caution).
+Sequences matter: expansion, compression, alternation, momentum shift, volatility contraction, acceleration — never isolate one print.
+Momentum: large bodies, fast move, limited overlap, strong closes. Weakens when bodies shrink, wicks grow, volume fades.
+Exhaustion clues (need confirmation): large wick, smaller body, repeated failures, volume climax, slowing momentum.
+Traps: bull trap = failed bullish breakout; bear trap = failed breakdown; long wicks common — trap ≠ guaranteed reversal.
+Liquidity sweeps beyond prior/equal H/L or round numbers can trigger stops then continue — sweep alone insufficient; need confirmation.
+Gaps: up/down, continuation, exhaustion, breakaway — interpret with volume, trend, context.
+MTF: 5M bullish candle cannot override Daily bearish trend.
+Interpretation must include: psychology, context, trend, volume, location, structure, liquidity, momentum, HTF.
+Reliability score from confluence: trend align + structure + S/R + volume + liquidity + HTF + momentum. Pattern alone never guarantees outcome.
+Common mistakes: do not trade every hammer/doji/engulfing; do not ignore trend, volume, structure, HTF.
+Decision hierarchy (Module 2A): Structure → Trend → Liquidity → S/R → Volume → Price Action → Candlestick Psychology → Indicators → Decision.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -157,11 +181,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 Financial Markets v1.0.
-Read ONLY this screenshot. Price = result; order flow/aggression = cause. Identify buyers vs sellers vs liquidity. Never memorize pattern names alone.
-Analysis order: Structure → Trend → S/R → Supply/Demand → Liquidity → Volume → PA → Indicators → Pattern → Risk. Price overrides indicators. Zones not ticks. Wick ≠ breakout.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + Module 2A (Candle Psychology) v1.0.
+Read ONLY this screenshot. Price=result; order flow=cause. Candles=behavior — explain psychology BEFORE naming patterns. Location > shape. Candles never override structure.
+Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psychology → Indicators → Risk. Zones not ticks. Wick ≠ breakout. Sweep needs confirmation.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -519,7 +543,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1 v1.0. Answer USER QUESTION FIRST. Order: Structure→Trend→S/R→S/D→Liquidity→Volume→PA→Indicators→Pattern→Risk. Price overrides indicators. Risk before reward. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 1+2A. Answer USER QUESTION FIRST. Candle psychology before pattern names. Location>shape. Order: Structure→Trend→Liquidity→S/R→Volume→PA→Candle psych→Indicators→Risk. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 1 Financial Markets v1.0. Answer USER question FIRST. Price=result; order flow=cause. Buyers/sellers/liquidity.',
-    'Order: Structure → Trend → S/R → S/D → Liquidity → Volume → PA → Indicators → Pattern → Risk. Zones not ticks. Wick ≠ breakout.',
-    'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 1 + 2A. Answer USER question FIRST. Candle psychology BEFORE pattern name. Location > shape. Candles never override structure.',
+    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Zones not ticks. Wick ≠ breakout. Sweep needs confirmation.',
+    'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
