@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 7 Parts 1–3. Answer USER question FIRST. S/R reaction zones + major/minor swings + trendlines/pivots + supply/demand imbalance. Never invent exact levels. Never “smart money.”',
-    'Structure > lines. Trendline break needs acceptance+follow-through. S/D: RBR/DBD/RBD/DBR; fresh>tested; departure quality matters. HTF weighs more.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure/Swings · S/R · S/D · Liquidity · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 7 Parts 1–5. Answer USER question FIRST. S/R zones + swings/trendlines + S/D + Order/Breaker/Mitigation blocks + FVG/liquidity pools. Observable behavior only — never institutional intent.',
+    'OB near strong departure origin. Breaker = confirmed role reverse. FVG≠must fill. CE=reference. HVN/LVN only with visible VP. Sweep needs return evidence. HTF weighs more.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · S/R · S/D · OB/FVG/Liquidity · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

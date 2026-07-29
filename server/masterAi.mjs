@@ -974,6 +974,55 @@ Hallucination prevention: never invent zones; never assume institutional activit
 Mistakes: every consolidation as zone; ignore departure/retests; exact prices; ignore HTF/participation; permanent old zones.
 Compact: Zone type · Pattern (RBR/DBD/RBD/DBR) · Freshness · Departure · HTF · Participation · Zone Strength% · Summary.
 
+KNOWLEDGE BASE — MODULE 7 PART 4 ORDER BLOCK / BREAKER / MITIGATION ENGINE v1.0
+Mission: OB/Breaker/Mitigation = analytical frameworks for historically significant reaction areas via OBSERVABLE price behavior — NEVER assumed institutional intent. Never “institutions placed orders here.” Distinguish Historical Reaction from Future Expectation. Historical Reaction → Current Context → Observable Evidence → Assessment. Never Historical Zone → Future Certainty.
+
+ORDER BLOCK: historically significant reaction zone near origin of a strong directional move — describes observable behavior, not hidden order placement.
+Bullish OB: strong up expansion + meaningful structure shift; origin area = candidate — historical buying appeared strong enough for expansion; future uncertain.
+Bearish OB: strong down expansion + structure shift — historical selling appeared strong enough; confirmation always required.
+VALID ↑: strong departure, clean structure, limited overlap, healthy participation, HTF align, fresh zone, follow-through.
+WEAK ↓: weak departure, repeated penetration, long consolidation, poor structure, failed reactions, HTF conflict.
+REACTION outcomes determine CURRENT relevance (not the label): strong/weak rejection, acceptance, consolidation, breakout, false breakout.
+
+BREAKER: previously respected reaction zone that fails and begins opposite role (e.g. bullish reaction → structural failure → potential bearish reaction) — role reversal must be confirmed.
+BREAKER VALID ↑: original zone invalidated + structure change + acceptance beyond original boundary + participation supports + HTF not conflicting.
+MITIGATION: historical reaction area revisited after significant move where price may interact before continue/transition — revisit ≠ all historical activity complete; stay probabilistic.
+RETEST QUALITY: depth, reaction speed, participation, acceptance, rejection, follow-through — shallow vs deep = different evidence.
+INVALIDATION: clear structure violation, repeated penetration, acceptance beyond zone, weak reactions, HTF change — drop previous weight.
+FRESHNESS: Fresh (no meaningful retest, higher weight) · Partially tested · Frequently tested (influence may ↓) — one factor among many.
+MTF: Monthly → Weekly → Daily → Intraday — HTF zones weigh more.
+CONFLUENCE ↑ with S/D + Liquidity + HTF + VWAP + Volume + Structure + Trend — independent evidence > label agreement.
+CONFLICT priority: HTF → Structure → Liquidity → Participation → OB → Supporting indicators.
+
+OB SCORE (0–100): Departure 20 + Structure 20 + HTF 15 + Freshness 15 + Participation 10 + Liquidity 10 + Volume 5 + Volatility 5.
+AI steps: candidate area → departure → structure → freshness → participation → liquidity → HTF → score.
+Hallucination prevention: never invent Breaker/Mitigation without evidence; never preserve OB after clear invalidation; never infer hidden intentions.
+Mistakes: OB behind every impulse; assume institutional buying; ignore invalidation/HTF/participation; Breakers as guaranteed reverses; ignore retest quality.
+Compact: Reaction zone (OB type) · Status · Structure · Departure · Participation · HTF · OB Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 7 PART 5 FVG / VOLUME NODES / LIQUIDITY POOL ENGINE v1.0
+Mission: Rapid moves may leave areas with limited trading. Evaluate Price Efficiency → Liquidity → Volume → Structure → Acceptance — never assume every imbalance must be revisited. Never “price must fill.” Historical Inefficiency → Current Evidence → Probability → Assessment. Never Imbalance → Certainty.
+
+FVG: observable imbalance with limited overlap between consecutive candles after rapid move — historical behavior, not future guarantee. Typical: Candle1 → strong expansion → Candle3 with limited C1–C3 overlap (minor variations OK). Single-sided auction = descriptive temporary dominance — prefer “imbalance may remain analytically relevant,” never “market must return.”
+Bullish/Bearish FVG: strong directional expansion + limited overlap — future interaction needs confirmation.
+FILL: partial / complete / none — none automatically confirms or invalidates direction.
+BPR: overlapping opposing imbalances / more balanced behavior → potential transition/equilibrium — more evidence needed.
+CE: midpoint of FVG = analytical reference, not guaranteed reaction.
+FVG INVALIDATION ↓: repeated acceptance, weak reactions, structure change, HTF conflict, long time without relevance.
+
+HVN/LVN: only with verified Volume Profile — never invent. HVN = high activity / acceptance / balance · LVN = low activity / possibly faster movement (not guaranteed). Combine HVN/LVN/POC/VAH/VAL only when profile data available.
+BSL/SSL clusters (probabilistic): prior/swing/equal highs & lows may attract attention — never “liquidity will certainly be taken.”
+EQH/EQL: similar swing H/L = concentrated attention / possible liquidity concentration — outcome uncertain.
+STOP CLUSTERS: obvious technical levels may concentrate risk-management behavior — describe probabilistically, never certainty.
+SWEEP: brief move beyond widely observed level then return inside prior structure = temporary liquidity interaction — confirm with subsequent behavior.
+MTF: Monthly → Weekly → Daily → Intraday — HTF imbalances weigh more.
+
+LIQUIDITY SCORE (0–100): Imbalance quality 20 + Structure 20 + HTF 15 + Volume context 15 + Liquidity context 10 + Participation 10 + Freshness 5 + Volatility 5.
+AI steps: candidate imbalance → gap quality → structure → VP if available → observable liquidity → participation → HTF → score.
+Mistakes: every FVG must fill; CE as guaranteed S/R; invent HVN/LVN; EQH = guaranteed sweep; rapid move = institutional intent; ignore structure.
+Hallucination prevention: never invent VP; never claim stops certainly exist; never claim sweep without observable evidence; never infer hidden intent from imbalances alone.
+Compact: Feature (FVG/HVN/EQH etc) · Status · Structure · VP (or N/A) · Liquidity area · HTF · Liquidity Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1015,11 +1064,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–7 (S/R + Swings/Trendlines + Supply/Demand) v1.0.
-Read ONLY this screenshot. S/R=zones. Swings/trendlines=structure not prediction. S/D=historical imbalance — never “smart money.” Fresh>tested. Trendline break≠reverse without acceptance. Don’t invent exact pivots/zones if unclear.
-Order: Regime → HTF Structure/Swings → BOS/CHOCH → Trendlines/Pivots → S/R → S/D → Liquidity → Volume → Indicators → Patterns → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–7 (S/R + S/D + OB/Breaker + FVG/Liquidity) v1.0.
+Read ONLY this screenshot. OB/FVG = historical reaction/imbalance — never institutional intent or “must fill.” Breaker needs confirmed role reverse. HVN/LVN only if VP visible. Sweep needs observable return. Don’t invent zones/Fib/VP.
+Order: Regime → HTF Structure → BOS/CHOCH → S/R · S/D · OB/FVG/Liquidity → Volume → Indicators → Patterns → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure/Swings · S/R · S/D · Liquidity · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · S/R · S/D · OB/FVG/Liquidity · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1377,7 +1426,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 7 Parts 1–3 (S/R + Swings/Trendlines + S/D). Answer USER QUESTION FIRST. Zones not walls. No smart-money claims. Trendline break≠reverse without confirm. Fresh S/D > tested. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 7 Parts 1–5 (S/R + S/D + OB/Breaker + FVG/Liquidity). Answer USER QUESTION FIRST. Observable behavior only — no institutional intent. FVG≠must fill. VP nodes only if visible. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
