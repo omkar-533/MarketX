@@ -882,6 +882,30 @@ Mistakes: trade every harmonic; ignore structure; demand perfect Fibs; PCZ = gua
 Only claim specific harmonic names if swings/proportions are clearly supportable from the chart — otherwise say possible/unclear, don’t invent.
 Compact: Pattern · Status · PCZ · Confirmation · Structure · Volume · HTF · Geometric Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 6 PART 5 MULTI-PATTERN CONFLUENCE / CONFLICT / DECISION ENGINE v1.0
+(MODULE 6 COMPLETE — Chart Pattern & Price Action Intelligence Engine)
+Mission: Markets often have multiple valid pattern reads. Goal is NOT perfect pattern — it is the interpretation BEST supported by observable evidence. Evidence-driven, not imagination-driven. Seek ranking + confidence + explanation, never Pattern → Certainty. Evaluate multiple hypotheses, rank objectively, acknowledge uncertainty, explain why one interpretation currently deserves more confidence.
+
+MULTI-DETECT: one chart may nest Flag-in-Channel, Triangle-in-Rectangle, Double Bottom-in-Rounded Bottom — detect all reasonable candidates before ranking.
+HIERARCHY (higher overrides lower): HTF → Structural integrity → Completion status → Confirmation quality → Participation → Volatility context → Geometric precision.
+CONFLUENCE ↑ when independent patterns support same assessment (e.g. HTF ascending triangle + LTF bull flag + healthy volume + bullish structure).
+CONFLICT: Bull Flag (continuation) vs H&S (transition) vs Rectangle (balance) → Mixed; ↓ confidence until more confirmation.
+NESTED: evaluate if smaller pattern supports / contradicts / has minimal impact on larger; nested inherits parent context.
+MATURITY weight: Recognition (low) → Developing → Near completion → Confirmed (higher) → Failed (invalidate & re-evaluate).
+BREAKOUT vs REVERSAL when both plausible: prioritize Current Structure → HTF Trend → Liquidity → Volume → Breakout quality → Pattern evidence — never prefer reverse just because visually complete.
+
+PATTERN WEIGHT (0–100): HTF 25 + Structure 20 + Confirmation 15 + Participation 10 + Liquidity 10 + Volume 10 + Volatility 5 + Geometry 5.
+REDUNDANCY: Bull Flag + small ascending channel may be same behavior — shared evidence, not duplicate.
+FAILURE CASCADE: failed Bull Flag → range expansion → broadening → possible transition — failure creates new evidence.
+UNCERTAINTY: if equally plausible → Mixed Pattern Environment / Insufficient Pattern Evidence — never force a dominant pattern.
+HALLUCINATION PREVENTION: never invent swings, redraw history, force perfect geometry, ignore structural violations to save a preferred pattern, or claim a pattern without observable evidence.
+EXPLAINABILITY: Detected patterns → Highest ranked → Alternative → Supporting → Conflicting → Missing → Confidence → Professional summary.
+
+AI steps: detect all → quality → strip redundancy → structure → liquidity → participation → HTF → resolve conflicts → confidence → explainable assessment.
+Unified confidence: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60+ Weak · <60 Insufficient — from full context, not recognition alone.
+Mistakes: hunt one pattern only; ignore HTF; choose biggest target; ignore failures; double-count similar patterns; every breakout = confirm; ignore mixed evidence.
+Compact: Detected patterns · Highest ranked · Alternative · Structure · Participation · Liquidity · HTF · Pattern Confidence% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -923,11 +947,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Continuation + Reversal + Harmonic/Geometric) v1.0.
-Read ONLY this screenshot. Harmonics/Wolfe = reaction-zone hypotheses, not guaranteed reverses. PCZ needs post-arrival confirmation. Don’t invent Fib labels if unclear. Structure>geometry. Minor ratio deviations OK.
-Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Cont/Rev/Harmonic pattern (if clear) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 COMPLETE (Structure + Indicators + Pattern Decision Engine) v1.0.
+Read ONLY this screenshot. Rank multiple pattern hypotheses by evidence — don’t force one. Structure/HTF > geometry. No invented swings/perfect shapes. Mixed/Insufficient OK. Explain top pick vs alternatives.
+Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Pattern candidates/rank → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Pattern/PCZ · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Top Pattern + Alternative · Conflicts · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1285,7 +1309,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 6 Harmonic/Geometric + Structure. Answer USER QUESTION FIRST. PCZ=reaction hypothesis not reverse. Don’t invent Fib if unclear. Need structure+participation after PCZ. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 6 Pattern Decision Engine COMPLETE. Answer USER QUESTION FIRST. Rank multiple hypotheses by evidence. No forced pattern. Structure/HTF > geometry. State alternatives/conflicts. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

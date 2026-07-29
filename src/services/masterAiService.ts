@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 6 Harmonic/Wolfe Geometric Engine. Answer USER question FIRST. Geometry = potential reaction zone hypothesis — never guaranteed reverse. Don’t invent Fib/PCZ if unclear.',
-    'Gartley/Bat/Butterfly/Crab/Cypher/Shark/AB=CD/Wolfe need Structure+Liquidity+Volume+HTF after PCZ. Minor ratio deviations OK. Structure remains primary.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Pattern/PCZ · Confirmation · Liquidity · Volume · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 6 COMPLETE — Multi-Pattern Confluence/Conflict Decision. Answer USER question FIRST. Rank hypotheses by evidence — never force one pattern. Structure/HTF > geometry.',
+    'Detect nested/redundant patterns; don’t double-count. Mixed/Insufficient OK. Explain top pick vs alternatives. Never invent swings or perfect geometry.',
+    'Concept Q: 4–8 short lines. Full: Detected · Highest Ranked · Alternative · Structure · Participation · Liquidity · HTF · Conflicts · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
