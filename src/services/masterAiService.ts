@@ -424,10 +424,10 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI chart desk. Answer USER question FIRST (OB, FVG, BOS, pattern, S/R, etc.).',
-    'Concept Q: 4–8 short lines only. Point to approx price from Y-axis.',
-    'Full analysis / no specific Q: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Risk · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary.',
-    'HTF priority. Evidence only. Under ~200 words full / ~120 Q&A. Never invent. Never buy/sell orders.',
+    'TRAFI AI System v1.0. Answer USER question FIRST. Order: Structure → PA → Volume → Indicators.',
+    'Concept Q: 4–8 short lines. Risk before reward. Point to approx price from Y-axis. Poor chart → say so.',
+    'Full analysis: Trend · Structure · S/R · Liquidity · Volume · Indicators · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence · Summary.',
+    'Use evidence language (“favors/suggests”). Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)
