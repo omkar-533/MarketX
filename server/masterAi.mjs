@@ -379,6 +379,35 @@ AI steps: locate zone → displacement → base → freshness → BOS → volume
 Mistakes: drawing every candle as a zone; ignore freshness/HTF/structure/trend; blind first-touch; no confirmation.
 Compact output: Zone type · TF · Freshness · Displacement · BOS · HTF · Strength% · Summary (elevated reaction probability subject to confirmation).
 
+KNOWLEDGE BASE — MODULE 3 PART 5 TREND INTELLIGENCE ENGINE v1.0
+Mission: Trend = sustained directional move confirmed by STRUCTURE — never by a single indicator / EMA alone. Evaluate with Structure, Momentum, Volume, Volatility, HTF, Liquidity, Trend Maturity, Confirmation. Indicators validate; they never lead. Always explain why trend exists, how strong, healthy vs weakening, and supporting evidence.
+
+CLASSIFY (with confidence): Strong/Moderate/Weak Bullish · Neutral · Weak/Moderate/Strong Bearish · Unknown.
+PRIMARY TREND — dominant HTF (Monthly/Weekly/Daily) — highest priority; LTF trades ideally align.
+SECONDARY — intermediate within primary (usually 4H/1H) — healthy corrections or continuation.
+MINOR — short-term (15M/5M/1M) — entries only; never define overall direction.
+
+ALIGNMENT: Primary+Secondary+Minor same way = highest probability. Primary+Secondary bullish with minor bearish pullback = moderate. Primary bullish but secondary+minor bearish = low. Align ↑ confidence; conflict ↓.
+
+STRENGTH factors: structure quality, impulse size, correction quality, volume expansion, momentum, HTF agreement.
+MATURITY stages: Early (fresh breakout, healthy impulse, low exhaustion) · Middle (consistent continuation, healthy pullbacks, high participation) · Late (many expansions, long duration, slowing momentum) · Exhausted (weak impulse, large corrections, repeated rejection, divergence). Exhaustion ≠ reversal — confirmation mandatory. Warnings: shrinking impulse, rising rejection wicks, lower momentum, volume divergence, failed breakouts, structure weakening.
+
+PULLBACKS: Healthy = within trend, structure intact, temp slower momentum, volume contracts. Weak/shallow = trend resumes fast. Deep = near major S/R — needs more confirmation.
+PULLBACK vs REVERSAL: Pullback preserves structure/trend. Reversal needs CHOCH + confirmed BOS + volume + HTF confirmation + trend shift — never confuse.
+CONTINUATION odds ↑ when: healthy HH-HL (or LL-LH), strong impulse, controlled corrections, volume support, HTF align, momentum positive.
+
+EMA: supporting evidence only. Priority: Structure → Trend → Liquidity → Volume → EMA. Never “above EMA = bullish” alone.
+
+MTF WEIGHTS (HTF dominates): Monthly 30 · Weekly 25 · Daily 20 · 4H 10 · 1H 8 · 15M 5 · 5M 2.
+TREND CONFIDENCE (0–100): Primary 25 + Structure 20 + Momentum 15 + Volume 15 + HTF 10 + Liquidity 10 + Maturity 5.
+Quality: 95+ Institutional · 90+ Very Strong · 80+ Strong · 70+ Healthy · 60+ Weak · <60 Avoid trend-based decisions.
+
+DECISION MATRIX: Strong trend + healthy pullback + HTF align → high continuation. Strong trend + exhaustion + major resistance → require confirmation. Weak trend + mixed structure → neutral.
+
+AI steps: primary → secondary → minor → strength → maturity → pullback → reversal signals → HTF validate → confidence.
+Mistakes: EMA-only buy/sell; ignore structure/HTF; buy exhausted trends; sell healthy pullbacks; confuse pullback with reversal.
+Compact output: Primary · Secondary · Minor · Strength% · Stage · Continuation% · Exhaustion · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -420,11 +449,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity + Supply/Demand) v1.0.
-Read ONLY this screenshot. Structure PRIMARY. S/D zones = imbalance interest, not guaranteed reverses. Fresh>tested>broken. Validate with displacement+BOS+volume+HTF. Sweep≠reversal without confirm.
-Order: Structure → Trend → BOS/CHOCH → Liquidity → Supply/Demand → S/R → Volume → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity + S/D + Trend Engine) v1.0.
+Read ONLY this screenshot. Structure defines trend — never EMA alone. Classify Primary/Secondary/Minor, strength, maturity (early→exhausted). Pullback≠reversal (need CHOCH+BOS+vol+HTF). S/D & liquidity = probability.
+Order: Structure → Trend → BOS/CHOCH → Liquidity → Supply/Demand → Volume → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Liquidity · Supply/Demand · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Structure · Primary/Secondary/Minor Trend · Strength/Stage · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -782,7 +811,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 S/D+Liquidity+Structure. Answer USER QUESTION FIRST. Supply/Demand=interest zones not guaranteed reverses. Fresh>tested; need displacement+BOS+volume+confirm. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 Trend+Structure Engine. Answer USER QUESTION FIRST. Trend from structure not EMA. Primary/Secondary/Minor + strength + maturity. Pullback≠reversal without CHOCH+BOS+vol+HTF. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
