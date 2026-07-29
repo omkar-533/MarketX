@@ -361,12 +361,11 @@ export default function MasterAI() {
       return;
     }
 
-    // Day / market review without chart — fixed reply (never invent)
-    // Skip if continuing an active desk thread (e.g. "english me batao" after a chart)
+    // Day / market review without chart — only on a fresh thread (not mid-conversation)
     if (
       !hasImage &&
       isDayMarketReviewQuestion(userText) &&
-      !(hasActiveDeskThread(messages) && isConversationFollowUp(userText))
+      !hasActiveDeskThread(messages)
     ) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
@@ -397,11 +396,10 @@ export default function MasterAI() {
       return;
     }
 
-    const allowThreadFollowUp =
-      hasActiveDeskThread(messages) &&
-      (isConversationFollowUp(userText) || userText.trim().length <= 120);
+    // If chat already started, always continue — never block mid-conversation
+    const continuingThread = hasActiveDeskThread(messages);
 
-    if (!hasImage && !isTradingRelated(userText) && !allowThreadFollowUp) {
+    if (!hasImage && !isTradingRelated(userText) && !continuingThread) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
         .slice(-4)
@@ -493,8 +491,8 @@ export default function MasterAI() {
             ? visionMessage
             : explicitLang
               ? `${userText}\n\n[Continue the previous analysis in this chat. Reply in ${activeLang.replyIn}. Do not restart the topic.]`
-              : allowThreadFollowUp
-                ? `${userText}\n\n[This is a follow-up on the previous desk analysis in this chat. Continue that thread — do not reset or refuse.]`
+              : continuingThread
+                ? `${userText}\n\n[Continue this conversation from the previous messages in the chat history. Do not refuse or reset the topic.]`
                 : userText;
           const result = await askMasterAi(
             {

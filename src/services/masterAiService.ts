@@ -617,15 +617,17 @@ export function detectExplicitLanguageRequest(input: string): MasterAiLangCode |
 export function hasActiveDeskThread(
   messages: Array<{ id?: string; role: string; text: string; imageUrl?: string }>,
 ): boolean {
-  const recent = messages.filter((m) => m.id !== 'welcome').slice(-10);
+  const recent = messages.filter((m) => m.id !== 'welcome').slice(-12);
   if (!recent.length) return false;
+  // Any real back-and-forth means continue the conversation
+  const userTurns = recent.filter((m) => m.role === 'user').length;
+  const aiTurns = recent.filter((m) => m.role === 'trafi' || m.role === 'assistant').length;
+  if (userTurns >= 1 && aiTurns >= 1) return true;
   return recent.some(
     (m) =>
       Boolean(m.imageUrl) ||
-      m.role === 'trafi' ||
-      m.role === 'assistant' ||
       isTradingRelated(m.text) ||
-      /chart|bias|support|resistance|nifty|bullish|bearish/i.test(m.text),
+      /chart|bias|support|resistance|nifty|bullish|bearish|analysis|levels?/i.test(m.text),
   );
 }
 
