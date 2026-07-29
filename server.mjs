@@ -48,9 +48,9 @@ app.use('/api/app-auth', appAuthRoutes);
 const envOpenRouterKey = getMasterAiApiKey() || getOpenRouterApiKey();
 
 if (!envOpenRouterKey) {
-  console.warn('[Master AI] No GEMINI_API_KEY / OPENAI / OPENROUTER — users can add key in Profile');
+  console.warn('[Analyse AI] No GEMINI_API_KEY / OPENAI / OPENROUTER — users can add key in Profile');
 } else {
-  console.log('[Master AI] API key loaded from env ✓');
+  console.log('[Analyse AI] API key loaded from env ✓');
 }
 
 app.get('/api/health', (_req, res) => {
@@ -92,7 +92,7 @@ app.get('/api/chat/status', (req, res) => {
   res.json({
     configured: ai.isConfigured,
     message: ai.isConfigured
-      ? `Master AI ready (${ai.provider || 'ok'})`
+      ? `Analyse AI ready (${ai.provider || 'ok'})`
       : 'Add Gemini API key (aistudio.google.com) or OpenAI / OpenRouter key in Profile',
     models: MASTER_AI_MODELS.length,
     provider: ai.provider || null,
