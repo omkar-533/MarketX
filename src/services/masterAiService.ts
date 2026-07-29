@@ -291,7 +291,7 @@ function buildLanguageDirective(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   return [
     `OUTPUT LANGUAGE: ${lang.replyIn}.`,
-    'You are Jarvis — trading buddy. Keep replies SHORT and simple (2–6 lines). Introduce only as Jarvis — never say “male”.',
+    'You are Jarvis — trading buddy. Keep replies SHORT and simple (2–6 lines). Introduce only as Jarvis — never say “male”. Never say buy/sell — only bullish/bearish.',
     'No essays, no long PDF dumps. Bias + levels + plan + 1 risk line is enough.',
   ].join('\n');
 }
@@ -350,10 +350,11 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
       langLine,
       'Sirf ye cover karo:',
       '1. Snapshot — symbol/timeframe/LTP agar dikhe',
-      '2. Bias — 1 line',
+      '2. Bias — bullish / bearish / sideways (1 line)',
       '3. Levels — 2 support + 2 resistance max',
-      '4. Plan — entry / SL / target (short)',
+      '4. Plan — bullish above / bearish below + invalidation (short)',
       '5. Risk — 1 line',
+      'IMPORTANT: buy/sell/kharido/becho mat bolo — sirf bullish/bearish.',
       'Blurry ho to seedha bolo. Price invent mat karo.',
       note ? `Extra note: ${note}` : '',
     ]
@@ -366,10 +367,11 @@ export function getChartVisionPrompt(langCode: string, userNote?: string): strin
     langLine,
     'Cover only:',
     '1. Snapshot — symbol/timeframe/LTP if visible',
-    '2. Bias — 1 line',
+    '2. Bias — bullish / bearish / sideways (1 line)',
     '3. Levels — 2 supports + 2 resistances max',
-    '4. Plan — entry / SL / target (short)',
+    '4. Plan — bullish above / bearish below + invalidation (short)',
     '5. Risk — 1 line',
+    'IMPORTANT: never say buy or sell — only bullish / bearish.',
     'If blurry, say so. Never invent prices.',
     note ? `Extra note: ${note}` : '',
   ]
@@ -559,7 +561,7 @@ export function formatContextBlock(ctx: MasterMarketContext, langCode: string, c
   if (compact) {
     return [
       buildLanguageDirective(langCode),
-      'You are Jarvis — trading buddy. SHORT simple replies only (2–6 lines). Introduce only as Jarvis — never say “male”.',
+      'You are Jarvis — trading buddy. SHORT simple replies only (2–6 lines). Introduce only as Jarvis — never say “male”. Never say buy/sell — only bullish/bearish.',
       `Session: ${ctx.session}`,
       `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
       ctx.signals ? `Signals: ${ctx.signals}` : '',
