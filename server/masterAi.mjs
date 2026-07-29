@@ -643,6 +643,31 @@ AI steps: regime → select MA → slope → alignment → distance → structur
 Mistakes: buy every Golden / sell every Death; ignore maturity/structure/vol/HTF; too many MAs; treat MA as certain S/R.
 Compact: Primary MA · Direction · Slope · Alignment · Distance · Trend Strength% · Summary.
 
+KNOWLEDGE BASE — MODULE 5 PART 3 RSI / STOCHASTIC / MOMENTUM OSCILLATOR ENGINE v1.0
+Mission: Oscillators estimate speed, strength, persistence of price moves — NOT future direction. NEVER buy/sell from oscillators alone. Secondary confirmation only. Never “RSI overbought → price will fall.” Prefer: momentum elevated; need structure + volume + HTF before changing assessment. Strong/weak momentum ≠ automatic continuation/reversal. Invisible oscillators → N/A, never invent readings.
+
+RSI (default ~14, configurable): magnitude of recent gains vs losses — momentum, not valuation.
+Zones: >70 strong bullish momentum / possible extended — NOT auto sell · 50–70 positive · 45–55 neutral · 30–50 negative · <30 strong bearish / possible extended — NOT auto buy.
+RANGE SHIFT: bullish env often RSI 40–90; bearish often 10–60 — shifts often > isolated readings.
+DIVERGENCE (confirm required): Bullish = price LL + RSI HL → selling momentum may weaken. Bearish = price HH + RSI LH → buying momentum may weaken.
+HIDDEN: Hidden bullish = price HL + RSI LL → possible continuation. Hidden bearish = price LH + RSI HH → possible bearish continuation. Never without trend analysis.
+FAILURE SWINGS: bullish = RSI rejects lower momentum then breaks prior RSI swing high; bearish opposite — supporting evidence only.
+
+STOCHASTIC (common 14,3,3): close vs recent range — more useful in ranges. Zones: >80 high momentum/extended · 20–80 normal · <20 weak/extended. Crosses alone insufficient.
+StochRSI: stochastic on RSI — more sensitive, more signals AND false signals — need stronger confirmation.
+Williams %R: short-term close-in-range momentum — like stochastic, not prediction.
+CCI: deviation from statistical average — positive = strong up momentum; negative = strong down; extremes need context.
+
+COMPRESSION: oscillators stabilize, less movement, lower vol → momentum equilibrium; expansion needs confirm.
+EXPANSION: rapid oscillator move + rising momentum + healthy participation — validate with volume + structure.
+MTF: Weekly → Daily → 4H → execution — multi-TF align ↑ confidence.
+CONFLICT example: bullish RSI + bearish Stoch + bullish structure + healthy volume → mixed momentum; cut confidence; await confirm.
+
+MOMENTUM SCORE (0–100): RSI context 20 + Divergence 15 + Trend agree 20 + Structure 15 + Volume 10 + HTF 10 + Freshness 10.
+AI steps: RSI → Stochastic → divergence → trend → structure → volume → HTF → score.
+Mistakes: buy RSI<30 / sell RSI>70; every crossover; ignore trend/HTF/divergence quality/vol; oscillators in strong trends without context.
+Compact: Oscillator · Reading · Momentum · Range shift · Divergence · Trend agree · Momentum Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -684,11 +709,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA Intelligence) v1.0.
-Read ONLY this screenshot. Structure before MAs. MAs confirm trend/slope/alignment — never predict reverse; never “above MA = buy.” Invisible MAs → N/A. Golden/Death Cross = confirmation after move, not prediction. Slope > crossover alone.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MAs/Indicators (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA + Momentum Oscillators) v1.0.
+Read ONLY this screenshot. Structure before oscillators. RSI/Stoch confirm momentum only — never buy/sell alone. Never invent RSI values. >70 ≠ sell, <30 ≠ buy. Divergence needs confirmation. Match tools to regime.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA/Indicators (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA · Momentum (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1046,7 +1071,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 MA Engine + Structure. Answer USER QUESTION FIRST. MAs confirm trend/slope/alignment — never alone or as reverse prediction. Invisible→N/A. Structure conflict overrides MA. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Momentum Oscillators + Structure. Answer USER QUESTION FIRST. RSI/Stoch confirm only — never alone. RSI>70≠sell, <30≠buy. Divergence needs confirm. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
