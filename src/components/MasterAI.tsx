@@ -5,7 +5,7 @@ import {
   Volume2,
   VolumeX,
   Languages,
-  Bot,
+  LineChart,
   ImagePlus,
   X,
 } from 'lucide-react';
@@ -376,8 +376,8 @@ export default function MasterAI() {
 
       let responseText = hasImage
         ? isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-          ? 'Chart load ho gaya. Jarvis analysis ready nahi hua — thodi der baad dubara bhejo.'
-          : 'Chart loaded, but Jarvis could not finish analysis — try again in a moment.'
+          ? 'Chart abhi complete nahi padha ja saka. Thodi der baad dubara bhejiye.'
+          : 'The chart could not be completed just now. Please send it again shortly.'
         : getChartImageRequiredMessage(activeLang.code);
 
       if (aiStatus.configured) {
@@ -471,7 +471,7 @@ export default function MasterAI() {
       <header className="mai-chat__topbar">
         <div className="mai-chat__brand">
           <div className="mai-chat__avatar" aria-hidden>
-            <Bot className="h-4 w-4" />
+            <LineChart className="h-4 w-4" />
             <span
               className={`mai-chat__pulse ${
                 isSpeaking ? 'mai-chat__pulse--live' : aiStatus.configured ? 'mai-chat__pulse--ok' : 'mai-chat__pulse--warn'
@@ -481,7 +481,7 @@ export default function MasterAI() {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">Analyse AI</h1>
-              <span className="mai-chat__badge">Jarvis</span>
+              <span className="mai-chat__badge">Analyst</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
@@ -534,12 +534,14 @@ export default function MasterAI() {
           {messages.length <= 1 && !isThinking ? (
             <div className="mai-chat__empty">
               <div className="mai-chat__empty-mark">
-                <Bot className="h-7 w-7" />
+                <LineChart className="h-7 w-7" />
               </div>
               <h2 className="mai-chat__empty-title">
-                {hindi ? 'Kaise help karun aaj?' : 'How can I help today?'}
+                {hindi ? 'Aaj kya analyse karna hai?' : 'What should we analyse today?'}
               </h2>
-              <p className="mai-chat__empty-sub">Post chart screenshots to start analysis</p>
+              <p className="mai-chat__empty-sub">
+                Share a chart screenshot for structure-based analysis
+              </p>
             </div>
           ) : null}
 
@@ -557,7 +559,7 @@ export default function MasterAI() {
                 >
                   {!isUser ? (
                     <div className="mai-chat__msg-avatar" aria-hidden>
-                      <Bot className="h-3.5 w-3.5" />
+                      <LineChart className="h-3.5 w-3.5" />
                     </div>
                   ) : null}
 

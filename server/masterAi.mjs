@@ -34,8 +34,8 @@ const GEMINI_VISION_CHAIN = [
   'gemini-2.5-flash-lite',
   'gemini-1.5-flash',
 ];
-const HISTORY_TURNS = 8;
-const HISTORY_MSG_CHARS = 1800;
+const HISTORY_TURNS = 10;
+const HISTORY_MSG_CHARS = 2000;
 const CONTEXT_CAP_CHARS = 14_000;
 
 const SYSTEM_PROMPT = `You are Jarvis — senior market analyst at Wolf Trade AI (Analyse AI desk).

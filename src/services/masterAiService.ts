@@ -64,78 +64,78 @@ export const MASTER_AI_LANGUAGES: MasterAiLanguage[] = [
     name: 'English',
     nativeLabel: 'English',
     replyIn: 'clear Indian English',
-    tone: 'senior male NSE/BSE desk mentor — warm and direct (he/him)',
+    tone: 'senior NSE/BSE market analyst — calm, professional, evidence-based',
   },
   {
     code: 'hi-Latn',
     name: 'Hinglish',
     nativeLabel: 'Hinglish',
     replyIn:
-      'natural Hinglish only — Roman Hindi + English mix (jaise: "Nifty weak hai, SL tight rakho"). Devanagari mat likho unless user ne Hindi script use kiya',
-    tone: 'male desi trading buddy on the floor — casual, clear, warm (he/him)',
+      'natural Hinglish only — Roman Hindi + English mix (jaise: "Nifty weak hai, structure clear rakho"). Devanagari mat likho unless user ne Hindi script use kiya',
+    tone: 'senior Indian market analyst on the desk — calm, professional, Hinglish',
   },
   {
     code: 'hi-IN',
     name: 'Hindi',
     nativeLabel: 'हिंदी',
     replyIn: 'natural Hindi in Devanagari (हिंदी लिपि) — trading terms like Nifty/CE/PE English me reh sakte hain',
-    tone: 'seasoned Indian trader mentor (Mumbai/Delhi desk)',
+    tone: 'senior Indian market analyst — calm, professional (Mumbai/Delhi desk)',
   },
   {
     code: 'gu-IN',
     name: 'Gujarati',
     nativeLabel: 'ગુજરાતી',
     replyIn: 'natural Gujarati (ગુજરાતી script preferred; Roman Gujarati OK if user types Latin)',
-    tone: 'friendly Ahmedabad / Surat trading mentor',
+    tone: 'senior market analyst — calm, professional (Ahmedabad / Surat desk)',
   },
   {
     code: 'mr-IN',
     name: 'Marathi',
     nativeLabel: 'मराठी',
     replyIn: 'natural Marathi (मराठी script preferred; Roman Marathi OK if user types Latin)',
-    tone: 'friendly Mumbai / Pune trading mentor',
+    tone: 'senior market analyst — calm, professional (Mumbai / Pune desk)',
   },
   {
     code: 'ta-IN',
     name: 'Tamil',
     nativeLabel: 'தமிழ்',
     replyIn: 'natural Tamil (தமிழ் script preferred; Roman Tamil OK if user types Latin)',
-    tone: 'friendly Chennai trading mentor',
+    tone: 'senior market analyst — calm, professional (Chennai desk)',
   },
   {
     code: 'te-IN',
     name: 'Telugu',
     nativeLabel: 'తెలుగు',
     replyIn: 'natural Telugu (తెలుగు script preferred; Roman Telugu OK if user types Latin)',
-    tone: 'friendly Hyderabad trading mentor',
+    tone: 'senior market analyst — calm, professional (Hyderabad desk)',
   },
   {
     code: 'bn-IN',
     name: 'Bengali',
     nativeLabel: 'বাংলা',
     replyIn: 'natural Bengali (বাংলা script preferred; Roman Bengali OK if user types Latin)',
-    tone: 'friendly Kolkata trading mentor',
+    tone: 'senior market analyst — calm, professional (Kolkata desk)',
   },
   {
     code: 'kn-IN',
     name: 'Kannada',
     nativeLabel: 'ಕನ್ನಡ',
     replyIn: 'natural Kannada (ಕನ್ನಡ script preferred; Roman Kannada OK if user types Latin)',
-    tone: 'friendly Bengaluru trading mentor',
+    tone: 'senior market analyst — calm, professional (Bengaluru desk)',
   },
   {
     code: 'ml-IN',
     name: 'Malayalam',
     nativeLabel: 'മലയാളം',
     replyIn: 'natural Malayalam (മലയാളം script preferred; Roman Malayalam OK if user types Latin)',
-    tone: 'friendly Kochi / Kerala trading mentor',
+    tone: 'senior market analyst — calm, professional (Kochi desk)',
   },
   {
     code: 'pa-IN',
     name: 'Punjabi',
     nativeLabel: 'ਪੰਜਾਬੀ',
     replyIn: 'natural Punjabi (ਗੁਰਮੁਖੀ preferred; Roman Punjabi OK if user types Latin)',
-    tone: 'friendly Punjab trading mentor',
+    tone: 'senior market analyst — calm, professional (Punjab desk)',
   },
 ];
 
@@ -391,21 +391,21 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
 
 export function getTradingBlockMessage(langCode: string): string {
   if (isHindiLang(langCode)) {
-    return 'Main sirf trading aur investing par help karta hoon — markets, options, risk, strategies, platform. Apna sawal isi context mein poochho.';
+    return 'Main markets, options, risk, strategy aur platform analysis pe focus karta hoon. Apna sawal isi space me poochiye.';
   }
-  return 'I only help with trading and investing — markets, options, risk, strategies, platform features, or portfolio ideas. Please rephrase your question in that space.';
+  return 'I focus on markets, options, risk, strategy, and platform analysis. Please rephrase your question in that space.';
 }
 
 /** Soft user-facing error — never show technical / npm / stack details */
 export function getMasterAiSorryMessage(langCode: string, kind: 'chat' | 'chart' | 'image' = 'chat'): string {
   if (isHindiLang(langCode)) {
-    if (kind === 'chart') return 'Sorry — chart abhi analyze nahi ho paya. Thodi der baad dubara try karo.';
-    if (kind === 'image') return 'Sorry — image load nahi hui. Koi aur screenshot try karo.';
-    return 'Sorry — abhi jawab nahi de paaya. Thodi der baad dubara try karo.';
+    if (kind === 'chart') return 'Chart abhi read nahi ho paya. Thodi der baad dubara bhejiye.';
+    if (kind === 'image') return 'Screenshot load nahi hua. Kripya dusra chart image try kijiye.';
+    return 'Abhi jawab complete nahi ho paya. Thodi der baad phir try kijiye.';
   }
-  if (kind === 'chart') return 'Sorry — I couldn’t analyze that chart right now. Please try again in a moment.';
-  if (kind === 'image') return 'Sorry — that image couldn’t be loaded. Please try another screenshot.';
-  return 'Sorry — I couldn’t complete that just now. Please try again in a moment.';
+  if (kind === 'chart') return 'The chart could not be read just now. Please send it again in a moment.';
+  if (kind === 'image') return 'That screenshot could not be loaded. Please try another chart image.';
+  return 'The response could not be completed just now. Please try again shortly.';
 }
 
 /** Prefer web/news models only when the question needs “latest” info */
@@ -489,9 +489,9 @@ export function needsChartImage(input: string): boolean {
 
 export function getChartImageRequiredMessage(langCode: string): string {
   if (isHinglishLang(langCode) || langCode === 'hi-IN') {
-    return 'Samajh gaya — ispe baat karte hain. Proper bias aur levels ke liye chart / TradingView screenshot bhej do (📷), usi image se clear bataunga.';
+    return 'Responsible analysis ke liye symbol, timeframe aur chart screenshot chahiye. Share kijiye — uske baad structure, levels, invalidation aur confidence ke saath review dunga.';
   }
-  return "Got it — happy to talk this through. For a clear bias and levels, send a chart / TradingView screenshot (📷) and I’ll read only from that image.";
+  return 'For a responsible trade review I need the symbol, timeframe, and a chart screenshot. Share those and I will cover structure, levels, invalidation, and confidence.';
 }
 
 export function isTradingRelated(input: string): boolean {
@@ -785,17 +785,17 @@ export function generateLocalTradingReply(input: string, ctx: MasterMarketContex
 
   if (/^(thanks|thank\s*you|ok|okay|cool|great|nice|thik|theek|acha|accha)$/i.test(lower)) {
     return hi
-      ? 'Bilkul — jab ready ho chart ya sawaal bhej dena. Main yahin hoon.'
-      : "Anytime — send a chart or your next question whenever you're ready.";
+      ? 'Theek hai. Chart ya agla sawal share kijiye — step-by-step review karte hain.'
+      : 'Understood. Share the chart or your next question and we will review it step by step.';
   }
 
   if (lower.includes('option') || lower.includes('pcr') || lower.includes('oi') || lower.includes('ऑप्शन')) {
     return hi
-      ? `Abhi overall PCR ~${ctx.pcr}, max pain ~${ctx.maxPain}. ${ctx.session}. Size chhoti rakho — defined-risk prefer karo jab tak trend clear na ho.`
-      : `Overall PCR is around ${ctx.pcr} with max pain near ${ctx.maxPain}. ${ctx.session}. Keep size modest and prefer defined-risk until the trend is clear.`;
+      ? `Current snapshot: overall PCR ~${ctx.pcr}, max pain ~${ctx.maxPain}. ${ctx.session}. Jab tak structure clear na ho, defined-risk approach better rahegi.`
+      : `Current snapshot: overall PCR around ${ctx.pcr}, max pain near ${ctx.maxPain}. ${ctx.session}. Until structure is clear, a defined-risk approach is more disciplined.`;
   }
 
   return hi
-    ? `NIFTY ${ctx.nifty}, BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Main markets, options, risk aur strategy par help karta hoon — seedha poochho.`
-    : `NIFTY ${ctx.nifty}; BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Ask me anything on markets, options, risk, or strategy — I'll keep it practical.`;
+    ? `NIFTY ${ctx.nifty}, BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Markets, options, risk aur strategy pe focused analysis mil sakti hai — sawal clearly poochiye.`
+    : `NIFTY ${ctx.nifty}; BANKNIFTY ${ctx.bankNifty}. Breadth: ${ctx.breadth}. Ask clearly on markets, options, risk, or strategy for a focused desk review.`;
 }
