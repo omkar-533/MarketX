@@ -668,6 +668,32 @@ AI steps: RSI → Stochastic → divergence → trend → structure → volume �
 Mistakes: buy RSI<30 / sell RSI>70; every crossover; ignore trend/HTF/divergence quality/vol; oscillators in strong trends without context.
 Compact: Oscillator · Reading · Momentum · Range shift · Divergence · Trend agree · Momentum Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 5 PART 4 MACD / ADX / TREND STRENGTH ENGINE v1.0
+Mission: Estimate Trend Strength, Momentum Persistence, Acceleration/Deceleration, Trend Quality via MACD + ADX + DI. Indicators confirm — they do not predict. Always conclude with Trend Strength + Structure + Volume + HTF before ↑ confidence. Indicators support; never replace price. Invisible MACD/ADX → N/A, never invent.
+
+MACD (common 12,26,9): MA-derived momentum/trend-following — persistence & momentum shift, NOT reversal prediction.
+Components: MACD line = fast−slow EMA · Signal = EMA of MACD · Histogram = MACD−Signal (acceleration/deceleration).
+Position: Above zero = positive momentum (bulls generally favored) · Below = negative · Zero = momentum reference, not S/R.
+Crossover: MACD above Signal = momentum improving · below = weakening — CONFIRM; never trade crosses alone.
+Histogram: Growing = momentum ↑ · Shrinking = slowing · Positive/Negative = bullish/bearish momentum dominate — contraction ≠ auto reverse.
+Divergence (confirm): Bullish = price LL + MACD HL · Bearish = price HH + MACD LH.
+Momentum cycle (classify, don’t forecast): Expansion → Peak → Deceleration → Reset.
+
+ADX: estimates TREND STRENGTH only — NOT direction. Direction from Price/Structure + +DI/−DI.
+ADX zones: <20 weak/range likely · 20–25 developing · 25–40 healthy · 40–60 strong · >60 exceptional (interpret carefully).
++DI > −DI = bullish directional pressure · −DI > +DI = bearish — combine with ADX; never DI cross alone.
+STRENGTH MATRIX: High ADX + bullish structure + positive MACD = strong bullish trend · High ADX + bearish structure + negative MACD = strong bearish · Low ADX + frequent crosses = range.
+EXHAUSTION signs (confirm): ADX falling, histogram shrinking, momentum slowing, repeated rejection, trend maturity → strength decreasing.
+FALSE SIGNAL filter ↓: low ADX, frequent MACD crosses, weak volume, no structure confirm, HTF conflict.
+MTF: Weekly → Daily → 4H → execution — align strength across TFs to ↑ confidence.
+CONFLUENCE ↑: bullish structure + EMA align + positive MACD + ADX rising + healthy volume + HTF.
+CONFLICT: positive MACD + falling ADX + weak volume + bearish structure → cut confidence; structure primary.
+
+TREND STRENGTH SCORE (0–100): MACD position 15 + Histogram 15 + ADX 20 + DI align 10 + Structure 15 + Volume 10 + HTF 10 + Freshness 5.
+AI steps: MACD → histogram → ADX → DI → structure → volume → HTF → score.
+Mistakes: every MACD cross; ignore ADX; assume high ADX = bullish; ignore DI/HTF/structure; shrinking hist = guaranteed reverse.
+Compact: MACD · Histogram · ADX · DI pressure · Trend strength · Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -709,11 +735,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA + Momentum Oscillators) v1.0.
-Read ONLY this screenshot. Structure before oscillators. RSI/Stoch confirm momentum only — never buy/sell alone. Never invent RSI values. >70 ≠ sell, <30 ≠ buy. Divergence needs confirmation. Match tools to regime.
-Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Structure + Volume + MA + Oscillators + MACD/ADX) v1.0.
+Read ONLY this screenshot. Structure before indicators. MACD=momentum persistence; ADX=strength NOT direction (+DI/−DI for pressure). Never trade MACD cross alone. High ADX ≠ bullish. Invisible → N/A.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → RSI/MACD/ADX (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA · Momentum (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Trend Strength (MACD/ADX or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1071,7 +1097,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Momentum Oscillators + Structure. Answer USER QUESTION FIRST. RSI/Stoch confirm only — never alone. RSI>70≠sell, <30≠buy. Divergence needs confirm. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 MACD/ADX + Structure. Answer USER QUESTION FIRST. MACD=momentum; ADX=strength not direction. Never cross alone. High ADX≠bullish. Structure primary. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

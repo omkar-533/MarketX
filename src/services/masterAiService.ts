@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 5 RSI/Stochastic Momentum Engine. Answer USER question FIRST. Oscillators = momentum not direction. Never buy RSI<30 or sell RSI>70 alone. Invisible → N/A.',
-    'Divergence/hidden divergence need structure+trend confirm. Stoch better in ranges. Structure overrides oscillator conflict. HTF alignment raises confidence.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MA · Momentum (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 5 MACD/ADX Trend Strength Engine. Answer USER question FIRST. MACD=momentum persistence; ADX=trend strength NOT direction. Use +DI/−DI for pressure. Invisible → N/A.',
+    'Never trade MACD crossover alone. High ADX ≠ bullish. Histogram shrink ≠ guaranteed reverse. Structure+Volume+HTF required. Conflict → cut confidence.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · MACD/ADX Strength (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
