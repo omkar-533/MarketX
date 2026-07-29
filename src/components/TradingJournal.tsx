@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -20,6 +20,9 @@ import {
   TrendingUp,
   Upload,
   ImageIcon,
+  Zap,
+  AlertTriangle,
+  Crosshair,
 } from 'lucide-react';
 import {
   Area,
@@ -51,6 +54,13 @@ import {
 } from '../services/journalSyncService';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { getJournalCompletenessWarnings } from '../services/masterAiService';
+import {
+  buildAutoCoachTips,
+  buildSessionRecap,
+  computeJournalQuality,
+  computeRiskDrift,
+  queueHunterJournalReview,
+} from '../services/journalAiAssist';
 import TradePsychologyFields, { DEFAULT_TRADE_PSYCHOLOGY } from './trader/TradePsychologyFields';
 import ImageLightbox from './journal/ImageLightbox';
 import JournalCalendar from './journal/JournalCalendar';
@@ -59,6 +69,7 @@ import {
   calculateJournalTradeMetrics,
   getInstrumentLotSize,
 } from '../services/journalTradeCalc';
+import HunterMark from './HunterMark';
 
 type NotificationItem = {
   id: string;
@@ -473,9 +484,11 @@ function parseFormToTradeRecord(form: TradeFormState, user: User, editingId?: st
 export default function TradingJournal({
   user,
   isAdmin,
+  onNavigate,
 }: {
   user: User | null;
   isAdmin: boolean;
+  onNavigate?: (tab: string) => void;
 }) {
   const [tradeStore, setTradeStore] = useState<TradeRecord[]>([]);
   const skipPersistRef = useRef(true);
@@ -667,31 +680,79 @@ export default function TradingJournal({
   const replayTimeline = useMemo(() => buildReplayTimeline(visibleTrades), [visibleTrades]);
   const riskData = useMemo(() => buildRiskData(filteredTrades), [filteredTrades]);
 
-  const coachInsights = useMemo(() => {
-    const insights: string[] = [];
-    const repeatedTags = [...new Set(filteredTrades.flatMap((trade) => tradeTags(trade)))]
-      .map((tag) => ({ tag, count: filteredTrades.filter((trade) => tradeTags(trade).includes(tag)).length }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+  const journalQuality = useMemo(() => computeJournalQuality(filteredTrades), [filteredTrades]);
+  const riskDrift = useMemo(() => computeRiskDrift(filteredTrades), [filteredTrades]);
+  const sessionRecap = useMemo(() => buildSessionRecap(filteredTrades), [filteredTrades]);
 
-    if (metrics.winRate < 50) insights.push('Win rate below target. Focus on cleaner entries and patient execution.');
-    if (metrics.streak > 0 && metrics.streak < 3) insights.push('Momentum is improving. Keep process strict and avoid overtrading.');
-    if (metrics.streak === 0 && metrics.totalTrades > 0) insights.push('Neutral phase detected. Revisit your trade checklist before next setup.');
-    if (metrics.avgRR < 1.5) insights.push('Average reward-to-risk is low. Improve trade quality and preserve edge.');
-    if (disciplineScore < 75) insights.push('Discipline score is below target. Reintroduce stop-loss respect and pre-trade review.');
-    if (repeatedTags.some((item) => item.count >= 2)) insights.push(`Repeat pattern detected: ${repeatedTags[0].tag}. Review recent calls tagged ${repeatedTags[0].tag}.`);
-    if (!insights.length) insights.push('Your process looks clean. Keep consistency and protect your edge.');
-
-    return insights.slice(0, 5);
-  }, [disciplineScore, filteredTrades, metrics]);
+  const coachTips = useMemo(
+    () =>
+      buildAutoCoachTips(filteredTrades, {
+        winRate: metrics.winRate,
+        avgRR: metrics.avgRR,
+        streak: metrics.streak,
+        totalTrades: metrics.totalTrades,
+        disciplineScore,
+      }),
+    [disciplineScore, filteredTrades, metrics],
+  );
 
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
-    if (disciplineScore < 75) items.push({ id: 'disc', title: 'Discipline alert', detail: 'Your recent discipline score is below target. Review your notes before next trade.', tone: 'warning' });
-    if (metrics.winRate < 50) items.push({ id: 'winrate', title: 'Win rate watch', detail: 'Improve entry quality and execution rhythm to raise consistency.', tone: 'info' });
-    if (challengeMode) items.push({ id: 'challenge', title: 'Challenge mode active', detail: 'Daily goal tracking is enabled for consistency and habit building.', tone: 'good' });
-    return items;
-  }, [challengeMode, disciplineScore, metrics.winRate]);
+    if (journalQuality.score > 0 && journalQuality.score < 55) {
+      items.push({
+        id: 'quality',
+        title: 'Journal quality',
+        detail: `Completeness ${journalQuality.score}/100. ${journalQuality.topGaps[0] || ''}`,
+        tone: 'warning',
+      });
+    }
+    if (riskDrift.enoughData && riskDrift.severity === 'elevated') {
+      items.push({
+        id: 'drift',
+        title: riskDrift.title,
+        detail: riskDrift.detail,
+        tone: 'warning',
+      });
+    }
+    if (disciplineScore < 75) {
+      items.push({
+        id: 'disc',
+        title: 'Discipline alert',
+        detail: 'Your recent discipline score is below target. Review your notes before next trade.',
+        tone: 'warning',
+      });
+    }
+    if (metrics.winRate < 50 && metrics.totalTrades >= 5) {
+      items.push({
+        id: 'winrate',
+        title: 'Win rate watch',
+        detail: 'Improve entry quality and execution rhythm to raise consistency.',
+        tone: 'info',
+      });
+    }
+    if (challengeMode) {
+      items.push({
+        id: 'challenge',
+        title: 'Challenge mode active',
+        detail: 'Daily goal tracking is enabled for consistency and habit building.',
+        tone: 'good',
+      });
+    }
+    if (!items.length) {
+      items.push({
+        id: 'ready',
+        title: 'Desk ready',
+        detail: 'No urgent alerts. Keep logging clean trades.',
+        tone: 'good',
+      });
+    }
+    return items.slice(0, 3);
+  }, [challengeMode, disciplineScore, journalQuality, metrics.totalTrades, metrics.winRate, riskDrift]);
+
+  const openHunterReview = () => {
+    queueHunterJournalReview();
+    onNavigate?.('trafi');
+  };
 
   const [selectedSymbolMeta, setSelectedSymbolMeta] = useState<JournalSymbolSelection | null>(null);
 
@@ -963,178 +1024,287 @@ export default function TradingJournal({
   };
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className="tj-page space-y-4 pb-8">
       <ImageLightbox
         src={lightbox?.src ?? null}
         title={lightbox?.title}
         subtitle={lightbox?.subtitle}
         onClose={() => setLightbox(null)}
       />
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-xl border border-[#1a1f2e] bg-gradient-to-br from-[#121520] via-[#0b0e17] to-[#080a12] p-5">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
+
+      <motion.section
+        className="tj-hero"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+      >
+        <div className="tj-hero__orb tj-hero__orb--a" aria-hidden />
+        <div className="tj-hero__orb tj-hero__orb--b" aria-hidden />
+        <div className="tj-hero__mesh" aria-hidden />
+
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-[#d4af37] font-bold">Professional Journal</p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1">Trading Journal</h1>
-            <p className={`${mutedClass} text-sm mt-1 max-w-xl`}>
-              Indian markets only — NSE / BSE stocks &amp; F&amp;O with manual P&amp;L.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-1.5 text-xs font-semibold text-[#d4af37]">
-              {isAdmin ? 'Admin · All Traders' : user.name}
-          </span>
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="tj-hero__mark hidden sm:block">
+              <HunterMark showCaption={false} compact />
+            </div>
+            <div className="min-w-0">
+              <p className="tj-hero__eyebrow">
+                <Sparkles className="w-3 h-3" />
+                Professional Desk Journal
+              </p>
+              <h1 className="tj-hero__title">Trading Journal</h1>
+              <p className={`tj-hero__sub ${mutedClass}`}>
+                Indian markets · NSE / BSE · AI Desk auto-coaches from your logs
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="tj-pill">{isAdmin ? 'Admin · All Traders' : user.name}</span>
+            <button type="button" onClick={openHunterReview} className="tj-btn tj-btn--ghost" title="Open Wolf AI with journal review">
+              <Zap className="w-3.5 h-3.5" />
+              Review with Hunter
+            </button>
             <button
               type="button"
               onClick={() => {
                 setActiveTab('trades');
                 setShowTradeForm(true);
               }}
-              className="flex items-center gap-1.5 rounded-lg bg-[#d4af37] px-4 py-2 text-sm font-bold text-[#0b0e17] hover:bg-[#e8c04a]"
+              className="tj-btn tj-btn--primary"
             >
               <Plus className="w-4 h-4" /> Log Trade
-          </button>
-            <button
-              type="button"
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="rounded-lg border border-[#1a1f2e] px-4 py-2 text-sm text-slate-300 hover:border-[#d4af37]/40 disabled:opacity-50"
-            >
+            </button>
+            <button type="button" onClick={handleSync} disabled={isSyncing} className="tj-btn tj-btn--ghost">
               {isSyncing ? 'Syncing…' : 'Sync now'}
             </button>
-            <button type="button" onClick={handleExportCsv} className="rounded-lg border border-[#1a1f2e] px-3 py-2 text-slate-400 hover:text-[#d4af37]" title="Export CSV">
+            <button type="button" onClick={handleExportCsv} className="tj-btn tj-btn--icon" title="Export CSV">
               <Download className="w-4 h-4" />
             </button>
+          </div>
         </div>
-      </div>
 
-        <div className="relative mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="tj-metrics">
           {[
-            { label: 'Net P&L', value: netPnlDisplay.text, sub: `${metrics.totalTrades} trades`, up: metrics.totalPnl >= 0 },
-            { label: 'Win Rate', value: `${metrics.winRate.toFixed(1)}%`, sub: `${advanced.winCount}W / ${advanced.lossCount}L` },
-            { label: 'Profit Factor', value: advanced.profitFactor >= 99 ? '∞' : advanced.profitFactor.toFixed(2), sub: 'gross P / gross L' },
-            { label: 'Expectancy', value: formatCurrency(advanced.expectancy), sub: 'per trade' },
-            { label: 'Avg R:R', value: `${metrics.avgRR.toFixed(2)}x`, sub: 'risk-reward' },
-            { label: 'Max Drawdown', value: formatCurrency(advanced.maxDrawdown), sub: `${metrics.streak}W streak`, up: false },
-          ].map((s) => (
-            <div key={s.label} className="rounded-lg bg-[#0b0e17]/80 border border-[#1a1f2e] px-3 py-2">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500">{s.label}</div>
-              <div className={`text-base font-bold tabular-nums ${s.up === true ? 'text-emerald-400' : s.up === false && s.label === 'Max Drawdown' ? 'text-red-400' : s.label === 'Net P&L' ? (metrics.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white'}`}>
-                {s.value}
-              </div>
-              <div className="text-[9px] text-slate-600">{s.sub}</div>
-            </div>
+            { label: 'Net P&L', value: netPnlDisplay.text, sub: `${metrics.totalTrades} trades`, tone: metrics.totalPnl >= 0 ? 'up' : 'down' },
+            { label: 'Win Rate', value: `${metrics.winRate.toFixed(1)}%`, sub: `${advanced.winCount}W / ${advanced.lossCount}L`, tone: 'neutral' as const },
+            { label: 'Profit Factor', value: advanced.profitFactor >= 99 ? '∞' : advanced.profitFactor.toFixed(2), sub: 'gross P / gross L', tone: 'neutral' as const },
+            { label: 'Expectancy', value: formatCurrency(advanced.expectancy), sub: 'per trade', tone: advanced.expectancy >= 0 ? 'up' : 'down' },
+            { label: 'Avg R:R', value: `${metrics.avgRR.toFixed(2)}x`, sub: 'risk-reward', tone: 'neutral' as const },
+            { label: 'Max Drawdown', value: formatCurrency(advanced.maxDrawdown), sub: `${metrics.streak}W streak`, tone: 'down' as const },
+          ].map((card, i) => (
+            <motion.div
+              key={card.label}
+              className={`tj-metric tj-metric--${card.tone}`}
+              initial={{ opacity: 0, y: 14, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.06 + i * 0.045, type: 'spring', stiffness: 400, damping: 26 }}
+              whileHover={{ y: -3, scale: 1.02 }}
+            >
+              <span className="tj-metric__label">{card.label}</span>
+              <span className="tj-metric__value">{card.value}</span>
+              <span className="tj-metric__sub">{card.sub}</span>
+            </motion.div>
           ))}
         </div>
+      </motion.section>
+
+      <div className="tj-tabs" role="tablist">
+        {journalTabs.map(({ id, label, icon: Icon }) => {
+          const on = activeTab === id;
+          return (
+            <button key={id} type="button" role="tab" aria-selected={on} className={`tj-tab ${on ? 'tj-tab--on' : ''}`} onClick={() => setActiveTab(id)}>
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+              {on ? <motion.span layoutId="tj-tab-glow" className="tj-tab__glow" /> : null}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0b0e17] border border-[#1a1f2e] overflow-x-auto">
-        {journalTabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              activeTab === id ? 'bg-[#d4af37] text-[#0b0e17]' : 'text-slate-400 hover:text-white'
-            }`}
+      {statusMessage ? (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`tj-status ${
+            statusMessage.toLowerCase().includes('saved') ||
+            statusMessage.toLowerCase().includes('updated') ||
+            statusMessage.toLowerCase().includes('added') ||
+            statusMessage.toLowerCase().includes('success')
+              ? 'tj-status--ok'
+              : ''
+          }`}
+        >
+          {statusMessage}
+        </motion.div>
+      ) : null}
+
+      <AnimatePresence mode="wait">
+        {activeTab === 'overview' ? (
+          <motion.div
+            key="overview"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-4"
           >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="xl:col-span-2 tj-card p-4">
+                <h3 className="tj-card__title">
+                  <TrendingUp className="w-4 h-4" /> Equity Curve
+                </h3>
+                {equityCurve.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <AreaChart data={equityCurve}>
+                      <defs>
+                        <linearGradient id="eqCurve" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#d4af37" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#d4af37" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
+                      <XAxis dataKey="label" stroke="#64748b" fontSize={9} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={9} tickLine={false} width={56} />
+                      <Tooltip contentStyle={chartTheme.tooltip} />
+                      <Area type="monotone" dataKey="equity" stroke="#d4af37" fill="url(#eqCurve)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="tj-empty">
+                    <NotebookPen className="w-8 h-8 text-[#d4af37]/70" />
+                    <p className="tj-empty__title">Your equity story starts here</p>
+                    <p className="tj-empty__sub">Log trades to paint a living curve — every session compounds clarity.</p>
+                    <button
+                      type="button"
+                      className="tj-btn tj-btn--primary mt-3"
+                      onClick={() => {
+                        setActiveTab('trades');
+                        setShowTradeForm(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4" /> Log first trade
+                    </button>
+                  </div>
+                )}
+              </div>
 
-      <div className={`rounded-lg px-4 py-2.5 text-sm border ${
-        statusMessage.includes('success') || statusMessage.includes('updated') || statusMessage.includes('added')
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-          : 'bg-[#121520] border-[#1a1f2e] text-slate-300'
-      }`}>
-        {statusMessage}
-      </div>
+              <div className="space-y-4">
+                <div className="tj-card p-4">
+                  <h3 className="text-xs font-bold text-slate-400 mb-3">Performance Snapshot</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-slate-500">Avg Win</span><span className="text-emerald-400 font-bold">{formatCurrency(advanced.avgWin)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Avg Loss</span><span className="text-red-400 font-bold">{formatCurrency(advanced.avgLoss)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Best Trade</span><span className="text-emerald-400 font-bold">{metrics.best ? formatCurrency(metrics.best.pnl) : '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Worst Trade</span><span className="text-red-400 font-bold">{metrics.worst ? formatCurrency(metrics.worst.pnl) : '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Goal Progress</span><span className="text-[#d4af37] font-bold">{goalProgress.toFixed(0)}%</span></div>
+                  </div>
+                  <input type="range" min={1000} max={50000} step={500} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-3 w-full accent-[#d4af37]" />
+                </div>
 
-      {activeTab === 'overview' && (
-        <>
-          <div className="grid gap-4 xl:grid-cols-3">
-            <div className="xl:col-span-2 app-card p-4">
-              <h3 className="text-sm font-bold text-[#d4af37] mb-3 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> Equity Curve
-              </h3>
-              {equityCurve.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <AreaChart data={equityCurve}>
-                    <defs>
-                      <linearGradient id="eqCurve" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#d4af37" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#d4af37" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-                    <XAxis dataKey="label" stroke="#64748b" fontSize={9} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={9} tickLine={false} width={56} />
-                    <Tooltip contentStyle={chartTheme.tooltip} />
-                    <Area type="monotone" dataKey="equity" stroke="#d4af37" fill="url(#eqCurve)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-slate-500 py-16 text-center">Log trades to build your equity curve.</p>
-              )}
-        </div>
-            <div className="space-y-4">
-              <div className="app-card p-4">
-                <h3 className="text-xs font-bold text-slate-400 mb-3">Performance Snapshot</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-500">Avg Win</span><span className="text-emerald-400 font-bold">{formatCurrency(advanced.avgWin)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Avg Loss</span><span className="text-red-400 font-bold">{formatCurrency(advanced.avgLoss)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Best Trade</span><span className="text-emerald-400 font-bold">{metrics.best ? formatCurrency(metrics.best.pnl) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Worst Trade</span><span className="text-red-400 font-bold">{metrics.worst ? formatCurrency(metrics.worst.pnl) : '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Goal Progress</span><span className="text-[#d4af37] font-bold">{goalProgress.toFixed(0)}%</span></div>
-        </div>
-                <input type="range" min={1000} max={50000} step={500} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-3 w-full accent-[#d4af37]" />
-        </div>
-              <div className="app-card p-4">
-                <h3 className="text-xs font-bold text-[#d4af37] mb-2 flex items-center gap-1"><Brain className="w-3.5 h-3.5" /> Coach</h3>
-                {coachInsights.slice(0, 3).map((insight) => (
-                  <p key={insight} className="text-[11px] text-slate-400 leading-snug mb-2 last:mb-0">• {insight}</p>
-                ))}
-        </div>
-      </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="app-card p-4">
-              <p className="text-sm font-semibold text-white mb-2">Win / Loss Distribution</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={[{ name: 'Win', value: advanced.winCount || 0.1 }, { name: 'Loss', value: advanced.lossCount || 0.1 }]} dataKey="value" innerRadius={40} outerRadius={65}>
-                      <Cell fill="#10b981" /><Cell fill="#f43f5e" />
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="tj-ai-card">
+                  <div className="tj-ai-card__head">
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>AI Coach</span>
+                  </div>
+                  <div className="space-y-2">
+                    {coachTips.slice(0, 3).map((tip, i) => (
+                      <motion.div
+                        key={tip.id}
+                        className={`tj-tip tj-tip--${tip.tone}`}
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.08 + i * 0.06 }}
+                      >
+                        <p className="tj-tip__title">{tip.title}</p>
+                        <p className="tj-tip__detail">{tip.detail}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="app-card p-4">
-              <p className="text-sm font-semibold text-white mb-2">Monthly P&L</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.monthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-                    <XAxis dataKey="label" stroke="#64748b" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                    <Tooltip contentStyle={chartTheme.tooltip} />
-                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                      {metrics.monthly.map((entry, i) => (
-                        <Cell key={i} fill={entry.pnl >= 0 ? '#10b981' : '#f43f5e'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <motion.div className="tj-ai-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                <div className="tj-ai-card__head"><Crosshair className="w-3.5 h-3.5" /><span>Journal Quality</span></div>
+                <div className="tj-quality">
+                  <div className="tj-quality__ring" style={{ background: `conic-gradient(#d4af37 ${journalQuality.score * 3.6}deg, rgba(255,255,255,0.06) 0deg)` }}>
+                    <div className="tj-quality__inner">
+                      <span className="tj-quality__score">{journalQuality.score}</span>
+                      <span className="tj-quality__label">{journalQuality.label}</span>
+                    </div>
+                  </div>
+                  <div className="tj-quality__meta">
+                    <p className="text-xs text-slate-400">{journalQuality.missingFieldHits} soft gaps across {journalQuality.tradeCount} trades</p>
+                    <ul className="tj-quality__gaps">{journalQuality.topGaps.slice(0, 2).map((g) => <li key={g}>{g}</li>)}</ul>
+                    <button type="button" className="tj-btn tj-btn--ghost tj-btn--sm mt-2" onClick={() => { setActiveTab('trades'); setShowTradeForm(true); }}>Improve next log</button>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div className="tj-ai-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <div className="tj-ai-card__head"><Sparkles className="w-3.5 h-3.5" /><span>Session Recap</span></div>
+                <p className="tj-recap__headline">{sessionRecap.headline}</p>
+                <p className="tj-recap__sub">{sessionRecap.subline}</p>
+                <div className="tj-recap__grid">
+                  <div><span>Today</span><strong className={sessionRecap.todayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{sessionRecap.todayCount ? formatCurrency(sessionRecap.todayPnl) : '—'}</strong></div>
+                  <div><span>7-day</span><strong className={sessionRecap.weekPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{sessionRecap.weekCount ? formatCurrency(sessionRecap.weekPnl) : '—'}</strong></div>
+                </div>
+              </motion.div>
+
+              <motion.div className={`tj-ai-card ${riskDrift.severity === 'elevated' ? 'tj-ai-card--warn' : riskDrift.severity === 'mild' ? 'tj-ai-card--mild' : ''}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <div className="tj-ai-card__head"><AlertTriangle className="w-3.5 h-3.5" /><span>Risk Drift</span></div>
+                <p className="tj-recap__headline">{riskDrift.title}</p>
+                <p className="tj-recap__sub">{riskDrift.detail}</p>
+                {riskDrift.enoughData ? <p className="text-[10px] text-slate-500 mt-2">Outliers vs median: {riskDrift.outlierCount} · auto-scanned</p> : null}
+              </motion.div>
+
+              <motion.div className="tj-ai-card tj-ai-card--hunter" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <div className="tj-ai-card__head"><Zap className="w-3.5 h-3.5" /><span>Hunter Review</span></div>
+                <p className="tj-recap__headline">Deep AI pass</p>
+                <p className="tj-recap__sub">Opens Wolf AI with your journal snapshot — patterns, discipline, next focus.</p>
+                <button type="button" className="tj-btn tj-btn--primary tj-btn--sm mt-3 w-full justify-center" onClick={openHunterReview}>
+                  <Zap className="w-3.5 h-3.5" /> Review with Hunter
+                </button>
+              </motion.div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="tj-card p-4">
+                <p className="text-sm font-semibold text-white mb-2">Win / Loss Distribution</p>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={[{ name: 'Win', value: advanced.winCount || 0.1 }, { name: 'Loss', value: advanced.lossCount || 0.1 }]} dataKey="value" innerRadius={40} outerRadius={65}>
+                        <Cell fill="#10b981" /><Cell fill="#f43f5e" />
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="tj-card p-4">
+                <p className="text-sm font-semibold text-white mb-2">Monthly P&L</p>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={metrics.monthly}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
+                      <XAxis dataKey="label" stroke="#64748b" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                      <Tooltip contentStyle={chartTheme.tooltip} />
+                      <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                        {metrics.monthly.map((entry, i) => (
+                          <Cell key={i} fill={entry.pnl >= 0 ? '#10b981' : '#f43f5e'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {activeTab === 'trades' && (
       <>
@@ -1336,22 +1506,31 @@ export default function TradingJournal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="rounded-2xl border border-[#1a1f2e] p-4 tj-card">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">AI Trading Coach</h2>
-                <p className={`${mutedClass} text-sm`}>Behavior and execution insights from your saved trades.</p>
+                <p className={`${mutedClass} text-sm`}>Auto insights from your saved trades — instant, no API wait.</p>
               </div>
               <Brain className="text-[#d4af37]" />
             </div>
             <div className="mt-3 space-y-2">
-              {coachInsights.map((insight, index) => (
-                <motion.div key={insight} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }} className="rounded-xl border border-[#1a1f2e] bg-[#111827]/80 p-3 text-sm text-slate-200">
-                  <span className="mr-2 text-[#d4af37]">•</span>
-                  {insight}
+              {coachTips.map((tip, index) => (
+                <motion.div
+                  key={tip.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  className={`tj-tip tj-tip--${tip.tone}`}
+                >
+                  <p className="tj-tip__title">{tip.title}</p>
+                  <p className="tj-tip__detail">{tip.detail}</p>
                 </motion.div>
               ))}
             </div>
+            <button type="button" className="tj-btn tj-btn--primary tj-btn--sm mt-3" onClick={openHunterReview}>
+              <Zap className="w-3.5 h-3.5" /> Deep review with Hunter
+            </button>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-[#111827] p-3">
                 <p className="text-xs text-slate-500">Discipline (Profile)</p>
@@ -1682,26 +1861,32 @@ export default function TradingJournal({
       </div>
       )}
 
-      <div className="app-card p-4">
+      <div className="tj-card p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-lg font-bold text-white">Alerts & Coach</h2>
-            <p className={`${mutedClass} text-sm`}>Execution reminders from your journal data.</p>
+            <p className={`${mutedClass} text-sm`}>Auto reminders from your journal data.</p>
           </div>
           <Goal className="text-[#d4af37]" />
         </div>
         <div className="grid gap-3 lg:grid-cols-3">
           {notifications.map((note) => (
-            <div key={note.id} className={`rounded-lg p-3 border ${note.tone === 'warning' ? 'border-amber-500/30 bg-amber-500/10' : note.tone === 'good' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-[#1a1f2e] bg-[#121520]'}`}>
+            <motion.div
+              key={note.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-lg p-3 border ${note.tone === 'warning' ? 'border-amber-500/30 bg-amber-500/10' : note.tone === 'good' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-[#1a1f2e] bg-[#121520]'}`}
+            >
               <p className="text-sm font-semibold text-white">{note.title}</p>
               <p className="mt-1 text-xs text-slate-400">{note.detail}</p>
-            </div>
+            </motion.div>
           ))}
-          {coachInsights.slice(0, 2).map((insight) => (
-            <div key={insight} className="rounded-lg p-3 border border-[#d4af37]/20 bg-[#d4af37]/5 text-xs text-slate-300">
+          {coachTips.slice(0, 2).map((tip) => (
+            <motion.div key={tip.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`tj-tip tj-tip--${tip.tone}`}>
               <Brain className="w-3.5 h-3.5 text-[#d4af37] mb-1" />
-              {insight}
-        </div>
+              <p className="tj-tip__title">{tip.title}</p>
+              <p className="tj-tip__detail">{tip.detail}</p>
+            </motion.div>
           ))}
         </div>
         <p className="mt-2 text-[10px] text-slate-600">{syncStatus}</p>

@@ -4,17 +4,19 @@ type HunterMarkProps = {
   className?: string;
   /** Show HUNTER caption under the wolf */
   showCaption?: boolean;
+  /** Smaller mark for journal hero / tight layouts */
+  compact?: boolean;
 };
 
 /**
  * Premium animated Wolf Hunter emblem for Wolf AI empty state.
  * Uses the brand wolf geometry with orbital rings, glow pulse, and shimmer.
  */
-export default function HunterMark({ className = '', showCaption = true }: HunterMarkProps) {
-  const uid = 'hunter';
+export default function HunterMark({ className = '', showCaption = true, compact = false }: HunterMarkProps) {
+  const uid = compact ? 'hunterc' : 'hunter';
 
   return (
-    <div className={`hunter-mark ${className}`} aria-hidden>
+    <div className={`hunter-mark ${compact ? 'hunter-mark--compact' : ''} ${className}`} aria-hidden>
       <div className="hunter-mark__stage">
         <span className="hunter-mark__aura hunter-mark__aura--outer" />
         <span className="hunter-mark__aura hunter-mark__aura--mid" />

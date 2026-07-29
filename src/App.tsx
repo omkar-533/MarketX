@@ -126,7 +126,7 @@ function AppWorkspace() {
       case 'ltpcalc':
         return <LtpCalculator onNavigate={setActiveTab} />;
       case 'tradingjournal':
-        return <TradingJournal user={auth.user} isAdmin={auth.user?.role === 'admin'} />;
+        return <TradingJournal user={auth.user} isAdmin={auth.user?.role === 'admin'} onNavigate={setActiveTab} />;
       case 'optionchain':
         return <TradeXOptionChain />;
       case 'optionsimulator':

@@ -82,6 +82,7 @@ import {
 import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
 import { loadLocalTrades } from '../services/journalSyncService';
+import { consumeHunterPendingPrompt } from '../services/journalAiAssist';
 import { useAuth } from '../hooks/useAuth';
 import { AI_PRODUCT_NAME } from '../constants/brandLabels';
 import {
@@ -736,6 +737,15 @@ export default function MasterAI() {
   handleSendRef.current = (text) => {
     void handleSend(text);
   };
+
+  useEffect(() => {
+    const pending = consumeHunterPendingPrompt();
+    if (!pending) return;
+    const t = window.setTimeout(() => {
+      void handleSendRef.current(pending);
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const onAutoSpeakToggle = () => {
     const next = !autoSpeak;
