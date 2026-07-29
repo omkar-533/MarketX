@@ -275,7 +275,7 @@ Momentum: large body ↑ · large wick ↓ · shrinking bodies ↓ trend strengt
 EXPLANATION OUTPUT (never pattern-only)
 Pattern · Psychology · Location · Volume · Liquidity · Trend · Structure · Confirmation · Risk · Confidence
 Also: Bullish% · Bearish% · Neutral% with brief why.
-Risk engine when giving setup: Entry · Invalidation · Risk · Target · RR · drawdown/volatility note (compact).
+Risk engine (analyst): discuss invalidation conditions · risk factors · volatility/drawdown context as Areas of Interest — never Entry/Stop/Target/RR instructions.
 NO TRADE when: conflicting signals, low volume, poor trend, mid-range, weak structure, high uncertainty, news event, low confidence.
 
 KNOWLEDGE BASE — MODULE 3 PART 1 MARKET STRUCTURE INTELLIGENCE ENGINE v1.0
