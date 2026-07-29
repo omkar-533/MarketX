@@ -285,8 +285,8 @@ export default function MasterAI() {
       const reply = isCasualGreeting(userText)
         ? getHumanGreetingReply(activeLang.code, userText)
         : isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-          ? 'Theek hai bhai — bolte raho.'
-          : 'Got it — I’m here.';
+          ? 'Theek hai. Aage bataiye — chart ya sawal.'
+          : 'Understood. Share the chart or your question whenever you are ready.';
       setMessages((prev) => [
         ...prev,
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
