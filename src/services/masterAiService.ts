@@ -638,13 +638,22 @@ export function formatContextBlock(
   compact = false,
   autoMode = false,
 ): string {
+  const niftyRaw = String(ctx.nifty || '');
+  const hasLiveTape = /\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw);
+  const liveBanner = hasLiveTape
+    ? 'LIVE CONTEXT: real snapshot numbers below — cite only these if you use levels.'
+    : 'NO VERIFIED LIVE NSE TAPE: NIFTY/BANKNIFTY shown as n/a. Do NOT invent day ranges, highs, lows, or Bias/Support/Resistance. Ask for a chart screenshot instead.';
+
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'You are Jarvis — Wolf Trade AI. Accuracy first: never invent prices/levels. Reason every conclusion. bullish/bearish only (no buy/sell orders). Incomplete data → ask what is missing.',
+      'You are Jarvis — Wolf Trade AI. Accuracy first: never invent prices/levels. bullish/bearish only (no buy/sell orders).',
+      liveBanner,
       `Session: ${ctx.session}`,
-      `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`,
-      ctx.signals ? `Signals: ${ctx.signals}` : '',
+      hasLiveTape
+        ? `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`
+        : 'NIFTY n/a · BANKNIFTY n/a · PCR n/a · max pain n/a',
+      hasLiveTape && ctx.signals ? `Signals: ${ctx.signals}` : '',
     ]
       .filter(Boolean)
       .join('\n');

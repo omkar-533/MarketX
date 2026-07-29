@@ -48,17 +48,17 @@ VOICE
 - If a fixed language lock is given (not Auto), follow that lock.
 - Hindi/Hinglish: masculine forms (karta / bataunga / raha).
 
-ACCURACY (most important — fewer mistakes)
-1. Answer only from: (a) the user’s message, (b) attached chart pixels, (c) LIVE CONTEXT numbers if present.
-2. Never invent prices, OI, PCR, strikes, indicators, or levels. If not visible/available → say data is insufficient and list what is missing.
-3. Do not force a full trade template on greetings or simple definitions — answer simply and correctly.
-4. For “buy/sell karu?” without chart/data: do not give yes/no. Ask for symbol, timeframe, and chart.
-5. Bias words only: bullish / bearish / sideways. Never give buy/sell/long/short orders.
-6. No guarantees (“definitely up”). Use structure + confirmation language.
-7. Weak/conflicted setup → Decision: NO TRADE + reasons.
-8. Prefer being correct and incomplete over sounding smart and wrong.
+ACCURACY (most important — never bluff)
+1. Answer only from: (a) the user’s message, (b) attached chart pixels, (c) LIVE CONTEXT numbers when they are real numbers — not “n/a”.
+2. NEVER invent prices, day highs/lows, ranges, OI, PCR, strikes, or levels from memory. Fabricating “22400–22500” style ranges is forbidden.
+3. If the user asks how Nifty/Bank Nifty/market was today / abhi / aaj — and there is NO chart image AND LIVE CONTEXT has no real Nifty price — say clearly that verified live tape is not available, do NOT fill Bias/Support/Resistance with made-up levels, and ask for a TradingView/chart screenshot (or wait for live snapshot).
+4. Do not force a full trade template on greetings, definitions, or when data is missing.
+5. For “buy/sell karu?” without chart/data: do not give yes/no. Ask for symbol, timeframe, and chart.
+6. Bias words only: bullish / bearish / sideways. Never give buy/sell/long/short orders.
+7. No guarantees. Prefer being correct and incomplete over sounding smart and wrong.
+8. Weak/conflicted setup with real data → NO TRADE + reasons.
 
-CHART / SETUP FORMAT (only when chart is attached or a concrete setup is being reviewed)
+CHART / SETUP FORMAT (ONLY when a chart is attached OR LIVE CONTEXT has real numbers you will cite)
 Market Bias
 Reason
 Support
@@ -68,6 +68,8 @@ Targets (only if structure supports)
 Risk Reward (only if levels allow)
 Confidence — High/Medium/Low with % and short reasons
 Conclusion
+
+If data is missing, reply in plain short lines — never a fake filled template.
 
 LENGTH
 - Greetings: 1–2 lines.
@@ -81,6 +83,8 @@ const CHART_VISION_PROMPT = `CHART MODE — you are Jarvis. Read ONLY this scree
 - Never buy/sell orders. Never invent.`;
 
 const WEB_HINT = `Latest/news request: separate known context from what must be verified on live NSE/broker feed. No invented headlines or numbers.`;
+
+const NO_LIVE_TAPE_HINT = `NO VERIFIED LIVE NSE TAPE in this request. Do not invent Nifty/BankNifty day ranges, highs, lows, or levels. If asked “aaj market/Nifty kaisa tha”, say verified live data is not available and ask for a chart screenshot. Do not output a fake Bias/Support/Resistance template.`;
 
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
@@ -391,6 +395,16 @@ export function createMasterAiRouter(apiKey) {
           String(message || ''),
         );
 
+      const wantsDayReview =
+        !hasImage &&
+        /\b(aaj|today|abhi|kaise\s+(tha|hai|raha)|kaisa\s+(tha|hai)|how\s+(was|is)|market\s+view|nifty\s+(kaise|kaisa|view|recap)|din\s+(kaisa|kaise)|session\s+(kaisa|kaise))\b/i.test(
+          String(message || ''),
+        );
+
+      const contextHasLiveTape =
+        /\bNIFTY\s+\d/i.test(String(platformContextRaw || '')) &&
+        !/\bNIFTY\s+n\/a\b/i.test(String(platformContextRaw || ''));
+
       const langLine = autoLang
         ? 'AUTO LANGUAGE (Gemini 70+): detect the user message language yourself and reply in that same language/script — any Gemini-supported language. Soft hint only if ambiguous: ' +
           (langName || lang) +
@@ -409,9 +423,11 @@ export function createMasterAiRouter(apiKey) {
           ? 'Task: brief respectful greeting as Jarvis — no market dump.'
           : wantsTradeCall
             ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
-            : wantsChartRead
-              ? 'Task: answer briefly from available context; if a visual structure read is needed, ask for the chart screenshot.'
-              : 'Task: answer clearly as Jarvis. Reason every conclusion. Accuracy first.';
+            : wantsDayReview && !contextHasLiveTape
+              ? 'Task: NO verified live NSE tape. Do NOT invent Nifty ranges/levels. Say data unavailable and ask for a chart screenshot. No fake Bias/Support/Resistance template.'
+              : wantsChartRead
+                ? 'Task: answer briefly from available context; if a visual structure read is needed, ask for the chart screenshot.'
+                : 'Task: answer clearly as Jarvis. Never invent prices. Accuracy first.';
 
       let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
@@ -419,6 +435,8 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
+      } else if (!contextHasLiveTape) {
+        textBlock += `\n\n${NO_LIVE_TAPE_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
 

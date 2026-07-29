@@ -411,7 +411,7 @@ export default function MasterAI() {
                   session: 'from chart',
                 }
               : {
-                  summary: 'Normal chat — no chart yet; ask for screenshot before analysis',
+                  summary: 'NO verified live NSE tape — do not invent levels',
                   nifty: 'n/a',
                   bankNifty: 'n/a',
                   pcr: 0,
