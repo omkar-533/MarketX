@@ -439,6 +439,32 @@ AI steps: structure → volatility → momentum → range width → ATR trend �
 Mistakes: trend strategies in ranges; sell every expansion; buy every breakout; ignore vol/compression/false breaks/regime.
 Compact output: Regime · Direction · Volatility · Compression/Expansion · Breakout Readiness% · Regime Confidence% · Summary (strategy fit).
 
+KNOWLEDGE BASE — MODULE 3 PART 7 MULTI-TIMEFRAME INTELLIGENCE ENGINE v1.0
+Mission: No TF exists alone. Always TOP-DOWN before Bias / Trade Ideas / Risk / Confidence. Never analyze 5M without understanding 1H/4H/Daily/Weekly structure. HTF = context (“what is happening”); LTF = precision (“when to consider action”) — never reverse roles. HTF defines reality; LTF refines execution. LTF cannot override confirmed HTF without strong structural evidence. No Trade is professional.
+
+HIERARCHY / PURPOSE: Monthly★★★★★ macro · Weekly★★★★★ institutional bias · Daily★★★★ swing · 4H★★★★ setup validation · 1H★★★ trade prep · 15M★★ entry confirm · 5M★ execution · 1M execution-only. Never build long-term bias from LTF.
+
+TOP-DOWN FLOW: Monthly → Weekly → Daily → 4H confirm → 1H setup → 15M trigger → 5M execution. Each inherits prior context.
+ENTRY CHAIN: Bias Weekly → Validate Daily → Setup 4H → Confirm 1H → Execute 15M → Precision 5M.
+
+WEIGHTS (conflict cuts confidence): Monthly 30 · Weekly 25 · Daily 20 · 4H 10 · 1H 8 · 15M 5 · 5M 2.
+ALIGNMENT: All HTF+LTF same = highest confidence. HTF bullish + LTF bearish pullback = healthy correction (medium-high). Weekly bullish vs Daily+4H bearish = low confidence — wait resolution.
+CONFLICT: HTF dominates. LTF may only refine/delay/improve timing — cannot invalidate HTF trend without confirmed structure change.
+OVERRIDE EXAMPLE: Weekly strong bullish + 5M bearish → “short-term pullback inside HTF uptrend” — NOT a bearish market.
+
+SYNCHRONIZATION: score Trend/Structure/Liquidity/Momentum/Volume/S/R/S&D/Regime across active TFs.
+HIGH-QUALITY CONFLUENCE example: Weekly demand + Daily BOS + 4H pullback + 1H confirm + 15M entry + 5M trigger → higher confidence.
+BIAS LAYERS: Long-term · Medium-term · Short-term · Execution (e.g. LT bullish, MT bullish, ST neutral pullback, execution Wait).
+ALIGNMENT MATRIX: All bullish ★★★★★ · Weekly+Daily bullish with 4H pullback ★★★★ · Weekly bullish Daily neutral ★★★ · Weekly bullish Daily bearish ★★ · Weekly bearish Daily bullish ★.
+
+MTF CONFIDENCE (0–100): Weekly align 25 + Daily 20 + 4H 15 + 1H confirm 15 + 15M 10 + 5M 5 + Liquidity 5 + Regime 5.
+
+ENTRY FILTER — permit only if: HTF bias aligned, structure confirmed, liquidity favorable, volume acceptable, RR≥1:2, regime suitable — else Wait / No Trade.
+
+AI steps: Monthly→Weekly→Daily→4H→1H→15M→5M → resolve conflicts → bias → confidence.
+Mistakes: trade 5M against weekly; ignore HTF; bias from execution TF; no top-down; pullback≠reversal; ignore TF conflict.
+Compact output: Monthly · Weekly · Daily · 4H · 1H · 15M · 5M · Overall Bias · MTF Confidence% · Summary (corrective vs structural).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -480,11 +506,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 full Structure stack + Regime/Volatility Engine v1.0.
-Read ONLY this screenshot. FIRST detect regime (trending/range/compression/expansion/transition/chaotic) + volatility. Then structure/trend/BOS/CHOCH/liquidity/S/D. Never strategy before regime. Compression≠direction. Sweep≠reversal without confirm.
-Order: Regime/Volatility → Structure → Trend → BOS/CHOCH → Liquidity → S/D → Volume → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (incl. MTF Top-Down + Regime) v1.0.
+Read ONLY this screenshot. Top-down first: HTF context before LTF timing. If only one TF visible, say so and do not invent other TFs. HTF dominates; LTF pullback ≠ HTF reverse. Regime before strategy.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → LTF timing → Volume → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · Volatility · Structure · Trend · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -842,7 +868,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 Regime+Trend+Structure. Answer USER QUESTION FIRST. Detect regime/volatility BEFORE direction. Compression≠direction. Match strategy to regime. Pullback≠reversal without CHOCH+BOS. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 MTF Top-Down. Answer USER QUESTION FIRST. HTF context before LTF timing. Don’t invent unseen TFs. LTF pullback inside HTF trend ≠ market reverse. Regime first. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
