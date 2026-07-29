@@ -403,3 +403,88 @@ export function consumeHunterPendingPrompt(): string | null {
     return null;
   }
 }
+
+/** Live assist while filling the trade form (client-only). */
+export type FormDraftAssist = {
+  score: number;
+  label: string;
+  gaps: string[];
+  suggestedRr: number | null;
+  checklist: { id: string; label: string; done: boolean }[];
+};
+
+export function computeFormDraftAssist(form: {
+  instrument?: string;
+  date?: string;
+  realizedPnl?: string;
+  entryPrice?: string;
+  exitPrice?: string;
+  stopLoss?: string;
+  target?: string;
+  quantity?: string;
+  strategy?: string;
+  notes?: string;
+  tags?: string;
+  side?: string;
+  type?: string;
+  screenshot?: boolean;
+  beforeEmotion?: string;
+  afterEmotion?: string;
+  psychologyNote?: string;
+}): FormDraftAssist {
+  const checklist = [
+    { id: 'instrument', label: 'Instrument', done: Boolean(String(form.instrument || '').trim()) },
+    { id: 'date', label: 'Date / time', done: Boolean(String(form.date || '').trim()) },
+    { id: 'pnl', label: 'Profit / Loss', done: String(form.realizedPnl || '').trim().length > 0 },
+    { id: 'prices', label: 'Entry & exit', done: Boolean(Number(form.entryPrice)) && Boolean(Number(form.exitPrice)) },
+    { id: 'levels', label: 'SL & target', done: Boolean(Number(form.stopLoss)) && Boolean(Number(form.target)) },
+    { id: 'size', label: 'Quantity', done: Boolean(Number(form.quantity)) },
+    { id: 'strategy', label: 'Strategy', done: Boolean(String(form.strategy || '').trim()) },
+    { id: 'notes', label: 'Notes', done: Boolean(String(form.notes || '').trim()) },
+    { id: 'tags', label: 'Tags', done: Boolean(String(form.tags || '').trim()) },
+    {
+      id: 'psych',
+      label: 'Psychology note',
+      done: Boolean(
+        String(form.psychologyNote || '').trim() ||
+          String(form.beforeEmotion || '').trim() ||
+          String(form.afterEmotion || '').trim(),
+      ),
+    },
+    { id: 'shot', label: 'Screenshot', done: Boolean(form.screenshot) },
+  ];
+  const done = checklist.filter((c) => c.done).length;
+  const score = Math.round((done / checklist.length) * 100);
+  const gaps = checklist.filter((c) => !c.done).map((c) => c.label);
+
+  let suggestedRr: number | null = null;
+  const entry = Number(form.entryPrice);
+  const sl = Number(form.stopLoss);
+  const tg = Number(form.target);
+  const side = form.side === 'Sell' ? 'Sell' : 'Buy';
+  if (entry > 0 && sl > 0 && tg > 0) {
+    const risk = side === 'Buy' ? Math.abs(entry - sl) : Math.abs(sl - entry);
+    const reward = side === 'Buy' ? Math.abs(tg - entry) : Math.abs(entry - tg);
+    if (risk > 0) suggestedRr = Number((reward / risk).toFixed(2));
+  }
+
+  return {
+    score,
+    label: qualityLabel(score),
+    gaps: gaps.slice(0, 4),
+    suggestedRr,
+    checklist,
+  };
+}
+
+export const QUICK_TRADE_TAGS = [
+  'A+ setup',
+  'FOMO',
+  'Revenge',
+  'Rule break',
+  'Partial',
+  'News',
+  'Breakout',
+  'Pullback',
+] as const;
+

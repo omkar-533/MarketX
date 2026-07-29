@@ -57,6 +57,7 @@ import { getJournalCompletenessWarnings } from '../services/masterAiService';
 import {
   buildAutoCoachTips,
   buildSessionRecap,
+  computeFormDraftAssist,
   computeJournalQuality,
   computeRiskDrift,
   queueHunterJournalReview,
@@ -67,6 +68,7 @@ import JournalCalendar from './journal/JournalCalendar';
 import JournalWinLossChart from './journal/JournalWinLossChart';
 import JournalMonthlyPnlChart from './journal/JournalMonthlyPnlChart';
 import JournalAlertsCoach from './journal/JournalAlertsCoach';
+import JournalTradeAssistPanel from './journal/JournalTradeAssistPanel';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
 import {
   calculateJournalTradeMetrics,
@@ -805,6 +807,27 @@ export default function TradingJournal({
     return null;
   }, [form]);
 
+  const formAssist = useMemo(
+    () =>
+      computeFormDraftAssist({
+        ...form,
+        screenshot: Boolean(uploadPreview),
+      }),
+    [form, uploadPreview],
+  );
+
+  const applyQuickTag = (tag: string) => {
+    setForm((prev) => {
+      const parts = prev.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const exists = parts.some((p) => p.toLowerCase() === tag.toLowerCase());
+      const next = exists ? parts.filter((p) => p.toLowerCase() !== tag.toLowerCase()) : [...parts, tag];
+      return { ...prev, tags: next.join(', ') };
+    });
+  };
+
   useAutoRefresh(() => {
     if (activeTab !== 'trades' || !form.instrument) return;
     import('../services/equitySymbolService').then((mod) => {
@@ -1290,16 +1313,24 @@ export default function TradingJournal({
       </AnimatePresence>
 
       {activeTab === 'trades' && (
-      <>
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold">Add / Edit Trade</h2>
-                <p className={`${mutedClass} text-sm`}>Required: symbol, date, profit/loss. Prices & qty — manual only (no auto-fill).</p>
+      <motion.div
+        className="tj-trades space-y-4"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+      <div className="tj-trades__grid">
+        <div className="tj-trades__main space-y-4">
+          <div className="tj-card tj-trade-form p-4 sm:p-5">
+            <div className="tj-trade-form__head">
+              <div className="min-w-0">
+                <p className="tj-chart__eyebrow">Desk entry</p>
+                <h2 className="tj-trade-form__title">{editingId ? 'Edit Trade' : 'Log Trade'}</h2>
+                <p className="tj-trade-form__sub">
+                  Required: symbol · date · P&amp;L. AI rail guides completeness as you type.
+                </p>
               </div>
-              <NotebookPen className="text-[#d4af37]" />
+              <NotebookPen className="w-5 h-5 text-[#d4af37] shrink-0" />
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1451,11 +1482,10 @@ export default function TradingJournal({
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-[#111827] p-3">
-                <p className="text-xs text-slate-500">Real-time Preview</p>
+              <div className="tj-trade-preview">
+                <p className="text-xs text-slate-500">Live P&amp;L preview</p>
                 {preview ? (
                   <div className="mt-2 text-sm space-y-0.5">
-                    <p className="text-xs text-slate-500">Your entered P&amp;L</p>
                     <p className="text-xl font-bold">
                       <span className={preview.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                         {formatCurrency(preview.pnl)}
@@ -1465,22 +1495,22 @@ export default function TradingJournal({
                       </span>
                     </p>
                     {preview.notional > 0 && (
-                      <p className="text-xs text-slate-500">ROI (if entry×qty filled): {preview.roi.toFixed(2)}%</p>
+                      <p className="text-xs text-slate-500">ROI (if entry×qty): {preview.roi.toFixed(2)}%</p>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-slate-400">Enter symbol, date, and profit/loss amount.</p>
+                  <p className="mt-2 text-sm text-slate-400">Enter symbol, date, and profit/loss.</p>
                 )}
               </div>
-              <div className="rounded-xl bg-[#111827] p-3">
-                <p className="text-xs text-slate-500">Save Mode</p>
-                <p className="mt-2 text-sm text-slate-200">{editingId ? 'Update existing trade record' : 'Create a new real trade entry'}</p>
-                <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={handleSaveTrade} className="rounded-xl bg-[#d4af37] px-4 py-2 font-bold text-[#0b0e17] hover:bg-[#e8c04a]">
+              <div className="tj-trade-preview">
+                <p className="text-xs text-slate-500">Save</p>
+                <p className="mt-2 text-sm text-slate-200">{editingId ? 'Update existing record' : 'Create new trade entry'}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={handleSaveTrade} className="tj-btn tj-btn--primary">
                     {editingId ? 'Update Trade' : 'Save Trade'}
                   </button>
                   {editingId && (
-                    <button onClick={resetForm} className="rounded-xl border border-[#1a1f2e] px-4 py-2 text-sm text-slate-200">
+                    <button type="button" onClick={resetForm} className="tj-btn tj-btn--ghost">
                       Cancel
                     </button>
                   )}
@@ -1488,57 +1518,26 @@ export default function TradingJournal({
               </div>
             </div>
           </div>
-
-          <div className="rounded-2xl border border-[#1a1f2e] p-4 tj-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold">AI Trading Coach</h2>
-                <p className={`${mutedClass} text-sm`}>Auto insights from your saved trades — instant, no API wait.</p>
-              </div>
-              <Brain className="text-[#d4af37]" />
-            </div>
-            <div className="mt-3 space-y-2">
-              {coachTips.map((tip, index) => (
-                <motion.div
-                  key={tip.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.08 }}
-                  className={`tj-tip tj-tip--${tip.tone}`}
-                >
-                  <p className="tj-tip__title">{tip.title}</p>
-                  <p className="tj-tip__detail">{tip.detail}</p>
-                </motion.div>
-              ))}
-            </div>
-            <button type="button" className="tj-btn tj-btn--primary tj-btn--sm mt-3" onClick={openHunterReview}>
-              <Zap className="w-3.5 h-3.5" /> Deep review with Hunter
-            </button>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-[#111827] p-3">
-                <p className="text-xs text-slate-500">Discipline (Profile)</p>
-                <p className="mt-1 text-lg font-bold text-[#d4af37]">{disciplineScore}/100</p>
-              </div>
-              <div className="rounded-xl bg-[#111827] p-3">
-                <p className="text-xs text-slate-500">Confidence (Profile)</p>
-                <p className="mt-1 text-lg font-bold text-emerald-400">{emotionAverage}%</p>
-              </div>
-              <div className="rounded-xl bg-[#111827] p-3">
-                <p className="text-xs text-slate-500">Screenshots</p>
-                <p className="mt-1 text-lg font-bold text-[#d4af37]">{totalScreenshots}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+        <aside className="tj-trades__rail space-y-4">
+          <JournalTradeAssistPanel
+            assist={formAssist}
+            previewPnl={preview?.pnl ?? null}
+            formatPnl={formatCurrency}
+            activeTags={form.tags}
+            onApplyTag={applyQuickTag}
+            onApplyStrategy={(s) => setForm((prev) => ({ ...prev, strategy: s }))}
+            onHunterReview={openHunterReview}
+          />
+
+          <div className="tj-card tj-rail-card p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">Filters & Search</h2>
-                <p className={`${mutedClass} text-sm`}>Show only relevant records.</p>
+                <p className="tj-chart__eyebrow">Find</p>
+                <h2 className="text-base font-bold text-white">Filters</h2>
               </div>
-              <Filter className="text-[#d4af37]" />
+              <Filter className="text-[#d4af37] w-4 h-4" />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[200px]">
@@ -1598,37 +1597,81 @@ export default function TradingJournal({
             )}
           </div>
 
-          <div className="rounded-2xl border border-[#1a1f2e] p-4">
+          <div className="tj-card tj-rail-card p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">Premium Features</h2>
-                <p className={`${mutedClass} text-sm`}>Goal tracking and habit support.</p>
+                <p className="tj-chart__eyebrow">Habits</p>
+                <h2 className="text-base font-bold text-white">Goals</h2>
               </div>
-              <Sparkles className="text-[#d4af37]" />
+              <Sparkles className="text-[#d4af37] w-4 h-4" />
             </div>
             <div className="mt-3 grid gap-3">
-              <div className="rounded-xl bg-[#111827] p-3">
+              <div className="tj-trade-preview">
                 <div className="flex items-center justify-between text-sm">
                   <span>Goal Tracking</span>
-                  <span>{goalProgress.toFixed(0)}%</span>
+                  <span className="text-[#d4af37] font-bold">{goalProgress.toFixed(0)}%</span>
+                </div>
+                <div className="tj-goal-track mt-2">
+                  <motion.span
+                    className="tj-goal-track__fill"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(0, Math.min(goalProgress, 100))}%` }}
+                    transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+                  />
                 </div>
                 <input type="range" min={1000} max={20000} step={100} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-2 w-full accent-[#d4af37]" />
               </div>
-              <div className="rounded-xl bg-[#111827] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Challenge Mode</span>
-                  <button onClick={() => setChallengeMode(!challengeMode)} className={`rounded-full px-3 py-1 text-xs ${challengeMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-200'}`}>
-                    {challengeMode ? 'Enabled' : 'Disabled'}
-                  </button>
-                </div>
+              <div className="tj-trade-preview flex items-center justify-between">
+                <span className="text-sm">Challenge Mode</span>
+                <button type="button" onClick={() => setChallengeMode(!challengeMode)} className={`rounded-full px-3 py-1 text-xs font-bold ${challengeMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-200'}`}>
+                  {challengeMode ? 'Enabled' : 'Disabled'}
+                </button>
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="tj-card tj-rail-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="tj-chart__eyebrow">Coach</p>
+                <h2 className="text-base font-bold text-white">Desk tips</h2>
+              </div>
+              <Brain className="text-[#d4af37] w-4 h-4" />
+            </div>
+            <div className="space-y-2">
+              {coachTips.slice(0, 3).map((tip, index) => (
+                <motion.div
+                  key={tip.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06 }}
+                  className={`tj-tip tj-tip--${tip.tone}`}
+                >
+                  <p className="tj-tip__title">{tip.title}</p>
+                  <p className="tj-tip__detail">{tip.detail}</p>
+                </motion.div>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="tj-mini-stat">
+                <span>Discipline</span>
+                <strong>{disciplineScore}</strong>
+              </div>
+              <div className="tj-mini-stat">
+                <span>Confidence</span>
+                <strong>{emotionAverage}%</strong>
+              </div>
+              <div className="tj-mini-stat">
+                <span>Shots</span>
+                <strong>{totalScreenshots}</strong>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <div className="app-card overflow-hidden">
-        <div className="p-4 border-b border-[#1a1f2e] flex flex-wrap items-center justify-between gap-3">
+      <div className="tj-card overflow-hidden">
+        <div className="p-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Table2 className="w-5 h-5 text-[#d4af37]" /> Trade Log
             <span className="text-xs font-normal text-slate-500">({sortedTrades.length})</span>
@@ -1642,7 +1685,11 @@ export default function TradingJournal({
           </div>
         </div>
         {sortedTrades.length === 0 ? (
-          <p className="p-8 text-center text-sm text-slate-500">No trades yet. Use Log Trade to add your first entry.</p>
+          <div className="tj-empty py-12">
+            <Table2 className="w-8 h-8 text-[#d4af37]/70" />
+            <p className="tj-empty__title">No trades yet</p>
+            <p className="tj-empty__sub">Fill the desk form — AI rail tracks completeness until you hit Save.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
@@ -1661,8 +1708,14 @@ export default function TradingJournal({
                 </tr>
               </thead>
               <tbody>
-                {sortedTrades.map((trade) => (
-                  <tr key={trade.id} className="border-t border-[#1a1f2e]/80 hover:bg-[#121520]/60">
+                {sortedTrades.map((trade, i) => (
+                  <motion.tr
+                    key={trade.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                    className="border-t border-[#1a1f2e]/80 hover:bg-[#121520]/60"
+                  >
                     <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{new Date(trade.date).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</td>
                     <td className="px-4 py-3 font-semibold text-white">
                       {trade.instrument}
@@ -1701,14 +1754,14 @@ export default function TradingJournal({
                       <button type="button" onClick={() => handleEditTrade(trade)} className="text-[#d4af37] hover:underline text-xs mr-2">Edit</button>
                       <button type="button" onClick={() => handleDeleteTrade(trade.id)} className="text-red-400 hover:underline text-xs">Del</button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-      </>
+      </motion.div>
       )}
 
       {activeTab === 'analytics' && (
