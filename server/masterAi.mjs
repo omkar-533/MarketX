@@ -192,6 +192,29 @@ Decision matrix: Bull Marubozu+demand+high vol+HH → high continuation | Bear M
 Mistakes: buying/selling every Marubozu; ignoring S/R, demand, volume, HTF, trend maturity, divergence.
 Checklist before use: Trend, Structure, Volume, S/R, Liquidity, HTF, Momentum, Risk, Reward → then confidence.
 
+KNOWLEDGE BASE — MODULE 2B PART 4 PROFESSIONAL REJECTION CANDLES v1.0
+Mission: Rejection candles = failed auctions (one side attacked, opposite rejected). NEVER guarantees reversal — only proves one side failed. Identify: who attacked, who defended, where liquidity was, whether institutions participated. Never trade rejection — trade evidence (context + confirmation + volume + structure + liquidity). Pattern weight lowest (~5%); context dominates (Trend/Structure/Liquidity ~20% each; Volume/Location ~15%; Momentum/Pattern ~5%).
+
+PIN BAR — tiny body, one extreme wick (typically ≥2.5–3× body), tiny opposite wick. Bullish: long lower wick, close near high. Bearish: long upper wick, close near low. Psych: aggressive push then full reject → close back in value = failed aggression. Institutional: often after liquidity sweeps, stop hunts, absorption, institutional entries, profit booking. Best at: demand/supply, prior swing H/L, weekly S/R, round numbers, trend pullback. Confirm: bullish break above pin high / bearish break below pin low + volume. Fail: mid-range, low volume, no trend, weak structure, poor location. Reliability: no context ~48%; +trend ~71%; +liquidity sweep ~84%; +HTF ~91%. AI: Bull pin+demand+HTF bullish+liquidity sweep+vol expansion → high bullish reversal probability; else wait. Don’t buy every pin / ignore trend-volume-HTF-structure-liquidity / don’t enter before confirm / don’t trade mid-range.
+
+SPINNING TOP — small body, relatively equal upper+lower wicks. Psych: neither dominated; pause; decision postponed. Institutional: temporary equilibrium — possible accum or distrib; needs confirmation. Best after strong trend, before breakout, near major zones. Reliability: low alone; medium with confirmation.
+
+HIGH WAVE — tiny body, extremely long upper AND lower shadows. Psych: extreme volatility, strong battle, no winner, large uncertainty. Institutional: position exchange / liquidity up / direction unknown. Confirm: break above high OR below low + volume preferred. Reliability: very low without confirmation; high with breakout.
+
+BULLISH BELT HOLD — long bullish, opens near low, closes near high, little lower shadow. Psych: buyers immediately controlled; selling never recovered. Institutional: aggressive accumulation / momentum expansion. Best: demand, support, trend continuation, breakout.
+
+BEARISH BELT HOLD — long bearish, opens near high, closes near low, little upper shadow. Psych: sellers dominated immediately; buyers failed. Institutional: selling / distribution / downside momentum.
+
+LONG-WICK REJECTION (generic) — exceptionally long rejection wick; body secondary; psychology primary. Long lower = buyer rejection; long upper = seller rejection. Often: liquidity collection, stop hunts, absorption, fake breakouts, failed auctions — NOT every long wick is meaningful; context decides.
+
+REJECTION ENGINE (score): Location, Liquidity, Trend, Structure, Volume, Momentum, HTF, Risk. Ask: important location? volume up? structure supports reverse? liquidity swept? trend exhausted? confirmation arrived? Mostly YES → raise confidence; else Neutral.
+
+LIQUIDITY SWEEP ENGINE
+Bullish sweep: trade below prior/equal/session low then close back above → liquidity collected / possible accumulation.
+Bearish sweep: trade above prior/equal/session high then close back below → liquidity collected / possible distribution.
+
+Checklist before accepting rejection: Trend, Structure, S/R, Liquidity, Volume, Momentum, HTF, Risk, Reward, Confirmation → then confidence.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -233,9 +256,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles, Doji, Marubozu) v1.0.
-Read ONLY this screenshot. Psychology BEFORE candle names. Location > shape. Doji=indecision (confirm). Marubozu=conviction — ask continuation vs exhaustion; never override structure.
-Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles, Doji, Marubozu, rejection) v1.0.
+Read ONLY this screenshot. Psychology BEFORE names. Rejection=failed auction — never guarantees reverse. Pin/spinning top/high wave/belt hold/long wick: location+liquidity+confirm dominate; pattern weight lowest.
+Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -595,7 +618,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names. Doji=indecision (confirm). Marubozu=conviction — continuation vs exhaustion via context/volume/structure. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names. Rejection=failed auction (Pin/etc) — never alone; need location+liquidity+confirm. Context>>pattern. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

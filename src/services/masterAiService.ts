@@ -424,8 +424,8 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 1+2A+2B. Answer USER question FIRST. Psychology BEFORE candle name. Doji=indecision (confirm). Marubozu=conviction — ask continuation vs exhaustion; never override structure.',
-    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Volume matters for Marubozu conviction.',
+    'TRAFI Module 1+2A+2B. Answer USER question FIRST. Psychology BEFORE candle name. Rejection=failed auction — never trade pin alone; need location+liquidity+confirm. Context>>pattern.',
+    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Sweep: beyond prior H/L then close back = liquidity collected.',
     'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
