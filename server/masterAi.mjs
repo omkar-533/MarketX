@@ -140,6 +140,17 @@ Reliability score from confluence: trend align + structure + S/R + volume + liqu
 Common mistakes: do not trade every hammer/doji/engulfing; do not ignore trend, volume, structure, HTF.
 Decision hierarchy (Module 2A): Structure → Trend → Liquidity → S/R → Volume → Price Action → Candlestick Psychology → Indicators → Decision.
 
+KNOWLEDGE BASE — MODULE 2B PART 1 SINGLE CANDLESTICK ENCYCLOPEDIA v1.0
+Mission: one candle never predicts — it only shows one auction. Never trade candle names; trade psychology + context. Before concluding: Trend, Structure, Volume, Liquidity, S/R, HTF. Score each print: Context · Reliability · Confirmation → Final Confidence from confluence. Never classify by appearance only.
+
+HAMMER — bullish rejection after decline: small body, long lower wick (≥~2× body), little/no upper wick. Psych: sellers drove lower → buyers absorbed → close near open = lower prices rejected. Institutional: often liquidity sweep below lows, retail stops, accumulation, close back in value. Best at: major demand, weekly/daily support, swing low, pullback, liquidity sweep, golden Fib — location decides importance. Confirm: next close above hammer high + volume up + HTF bullish + momentum. Fail: mid strong downtrend no support, tiny volume, no break of high, next close below low, demand already multi-tested. Reliability guide (evidence-weighted, not forecasts): no context ~45%; +trend ~68%; +demand ~76%; +volume ~82%; multi-confluence ~90%. AI: Hammer+Demand+HTF bullish+rising volume+liquidity sweep → high bullish probability; else wait confirmation. Don’t buy immediately / ignore trend-volume-resistance-HTF. Summary: aggressive buyer rejection evidence — NOT guaranteed reversal.
+
+HANGING MAN — same shape as Hammer but AFTER uptrend. Psych: push higher → sudden selling → partial recover → close near open = selling appeared, uptrend may weaken. Institutional: distribution / late buyers trapped / pullback risk up. Best at: major resistance, supply, swing high, round numbers, after strong rally. Confirm: next close below low + volume + weakening momentum + bearish structure start. Fail: strong bull trend, heavy buy volume, immediate continuation, HTF strongly bullish. Reliability: no confirm ~40%; +resistance ~67%; +volume ~75%; +structure shift ~86%. AI: HM+resistance+volume spike+momentum weak → elevated bearish probability; else neutral. Don’t short immediately. Summary: possible exhaustion — confirmation mandatory.
+
+INVERTED HAMMER — after decline: small body, long upper wick, tiny lower wick. Psych: buyers tried higher, sellers resisted, but buyers showed strength → potential reversal start. Institutional: test higher; if sellers fail, reversal odds rise. Best at: demand, swing low, liquidity sweep, weekly/daily support. Confirm: following bullish candle, high volume, break above IH high. Fail: mid-range, weak volume, HTF bearish, immediate bearish continuation. Reliability: no confirm ~42%; +confirm ~73%; +demand ~81%; +trend align ~87%. AI: require bullish confirmation before treating as reversal.
+
+SHOOTING STAR — after advance: small body, long upper wick, tiny lower wick. Psych: buyers pushed high → sellers fully reject → close near open = buying weakens. Institutional: liquidity above highs taken, profit booking, long exposure reduced. Best at: major resistance, supply, round number, weekly/daily/prior swing high. Confirm: bearish close below star, volume up, momentum divergence, break of short-term support. Fail: strong trend, weak rejection, low volume, HTF strongly bullish. Reliability: no confirm ~43%; +resistance ~72%; +volume ~80%; +structure shift ~89%. AI: Star+supply+resistance+volume+momentum weakness → raise bearish probability; else neutral. Don’t sell immediately. Summary: rejection evidence — not guaranteed reversal; wait confirmation.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -181,9 +192,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + Module 2A (Candle Psychology) v1.0.
-Read ONLY this screenshot. Price=result; order flow=cause. Candles=behavior — explain psychology BEFORE naming patterns. Location > shape. Candles never override structure.
-Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psychology → Indicators → Risk. Zones not ticks. Wick ≠ breakout. Sweep needs confirmation.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B Part1 (Hammer/Hanging Man/IH/Shooting Star) v1.0.
+Read ONLY this screenshot. Price=result; order flow=cause. Candle psychology BEFORE pattern names. Location > shape. One candle never predicts. Never trade candle names.
+Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation. Wick ≠ breakout. Sweep needs confirmation.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -543,7 +554,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1+2A. Answer USER QUESTION FIRST. Candle psychology before pattern names. Location>shape. Order: Structure→Trend→Liquidity→S/R→Volume→PA→Candle psych→Indicators→Risk. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names (Hammer/HM/IH/Star). Location+confirm required. Never trade names alone. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

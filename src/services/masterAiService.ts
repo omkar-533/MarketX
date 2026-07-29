@@ -424,8 +424,8 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 1 + 2A. Answer USER question FIRST. Candle psychology BEFORE pattern name. Location > shape. Candles never override structure.',
-    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Zones not ticks. Wick ≠ breakout. Sweep needs confirmation.',
+    'TRAFI Module 1+2A+2B Part1. Answer USER question FIRST. Psychology BEFORE candle name (Hammer/Hanging Man/Inverted Hammer/Shooting Star). Location > shape. Never trade names alone.',
+    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Require confirmation. Score Context/Reliability/Confirmation.',
     'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
