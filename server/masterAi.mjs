@@ -1097,6 +1097,17 @@ Explain: Previous · Current · Changed · Unchanged · Confidence change · Sco
 Never say must hold/must close; never invent future behavior; never ignore contradictions; distinguish Current Evidence from Future Expectation.
 Compact: State · Strategic Bias · Structure · Liquidity · Participation · Confidence Δ · Lifecycle Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 9 PART 1 RISK MANAGEMENT FOUNDATIONS / POSITION RISK FRAMEWORK v1.0
+Mission: Long-term success needs risk control, not only high-quality setups. Evaluate whether potential risk is appropriate vs available evidence. Continuous process, not one calculation. Never Confidence → Unlimited Risk. Path: Evidence → Risk → Execution → Monitoring → Review. Never Opportunity → Execution → Risk.
+FOUNDATION: Risk = potential for unfavorable outcomes — understand/measure/manage, don’t eliminate. Every trade has uncertainty. RISK FIRST: Opportunity → Evidence → Risk → Execution → Management.
+TRADE RISK (before execution): max planned loss · entry context · invalidation · volatility · liquidity · participation · HTF. Separate Trade Risk from Account Risk — strong setup can still be excessive account exposure. Planned loss = max acceptable loss defined before execution; check consistency with user’s risk framework — never evaluate risk after outcome. Risk consistency improves comparability; flag meaningful changes in planned risk.
+EXPOSURE: current exposure · open positions · portfolio heat · correlation · available capacity — include existing exposure, not only the new opportunity. MARKET RISK ↑ with high vol, major news, reduced liquidity, gap risk, session transition, changing conditions — technical quality alone insufficient. STRUCTURAL RISK: distance to invalidation, reaction zones, liquidity areas, structure, vol — unclear structure → lower confidence. Always with Trend/Structure/Liquidity/Participation/Vol/Regime/Portfolio.
+CLASSIFY: Very Low / Low / Moderate / Elevated / High / Extreme — observable evidence only.
+POSITION RISK SCORE (0–100): Structure 20 + Invalidation Quality 20 + Volatility 15 + Liquidity 10 + Participation 10 + Regime 10 + Exposure 10 + HTF 5.
+AI steps: market context → trade structure → invalidation → vol → exposure → liquidity → score.
+Never assume future P/L; never invent portfolio data; never say risk-free; distinguish Observed Risk from Future Outcome.
+Compact: Market Context · Structure · Invalidation · Volatility · Liquidity · Exposure · Risk Classification · Position Risk Score% · Summary.
+
 KNOWLEDGE BASE — MODULE 9 PART 2 POSITION SIZING / CAPITAL ALLOCATION ENGINE v1.0
 Mission: Position size = capital exposure — independent from market direction. High-quality setup does NOT auto-justify larger size. Separate Trade Quality from Capital Allocation. Allocation depends on risk, not optimism. Never High Confidence → Maximum Position Size.
 ALLOCATION factors: Defined Risk · Portfolio Exposure · Volatility · Liquidity · Regime · Diversification — no single factor alone.
@@ -1237,8 +1248,8 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Risk COMPLETE + Psychology COMPLETE + Strategy Regime) v1.0.
-Read ONLY this screenshot. Regime → strategy fit first. Unified risk: trade quality never overrides portfolio safety. Psychology only from observable/user-provided behavior — never diagnose emotions/biases as fact. Don’t invent portfolio/journal/stats/unseen TFs.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Module 9 COMPLETE Parts 1–5 + Psychology COMPLETE + Strategy Regime) v1.0.
+Read ONLY this screenshot. Risk before execution. Regime → strategy fit. Planned loss/invalidation before size. Trade quality never overrides portfolio safety. Psychology only from observable/user-provided behavior — never diagnose emotions/biases as fact. Don’t invent portfolio/journal/stats/unseen TFs.
 Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
@@ -1599,7 +1610,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 9 COMPLETE + Module 10 COMPLETE + Module 11 Part 1. Answer USER QUESTION FIRST. Unified risk hierarchy. Behavior=observable only. Strategy fits regime. Don’t invent journal/portfolio. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 9 COMPLETE (Parts 1–5) + Module 10 COMPLETE + Module 11 Part 1. Answer USER QUESTION FIRST. Risk before execution. Planned loss/invalidation first. Behavior=observable only. Don’t invent portfolio/journal. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
