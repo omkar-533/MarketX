@@ -5467,23 +5467,64 @@ input[type="number"] { -moz-appearance: textfield; }
   padding-right: 0;
 }
 
+.lux-lib--desk {
+  perspective: 1200px;
+}
+
 .lux-lib__hero {
+  position: relative;
+  overflow: hidden;
   text-align: center;
-  max-width: 42rem;
+  max-width: 44rem;
   margin: 0 auto 1.75rem;
+  padding: 1.35rem 1.1rem 1.2rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background:
+    linear-gradient(155deg, rgba(36, 30, 16, 0.4), rgba(12, 14, 22, 0.96) 45%, rgba(8, 10, 16, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03) inset,
+    0 18px 48px rgba(0,0,0,0.35),
+    0 0 36px rgba(212,175,55,0.06);
+}
+
+.lux-lib__hero-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: tj-orb 5.5s ease-in-out infinite;
+}
+.lux-lib__hero-orb--a {
+  width: 14rem; height: 14rem; top: -5rem; left: 15%;
+  background: rgba(212, 175, 55, 0.18);
+}
+.lux-lib__hero-orb--b {
+  width: 10rem; height: 10rem; bottom: -4rem; right: 12%;
+  background: rgba(185, 28, 28, 0.12);
+  animation-delay: -2s;
 }
 
 .lux-lib__eyebrow {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #d4af37;
-  margin-bottom: 0.75rem;
+  color: #f0d78c;
+  margin-bottom: 0.65rem;
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.25);
 }
 
 .lux-lib__title {
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  position: relative;
+  z-index: 1;
+  font-size: clamp(1.65rem, 3.8vw, 2.55rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -5492,10 +5533,15 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .lux-lib__lead {
-  margin-top: 0.85rem;
-  font-size: 0.95rem;
-  line-height: 1.55;
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
   color: #94a3b8;
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .lux-lib__toolbar {
@@ -5516,19 +5562,28 @@ input[type="number"] { -moz-appearance: textfield; }
 .lux-lib__chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: #94a3b8;
+  cursor: default;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .lux-lib__chip.is-active {
-  border-color: rgba(212, 175, 55, 0.45);
-  background: rgba(212, 175, 55, 0.12);
-  color: #f0d67a;
+  border-color: rgba(212, 175, 55, 0.5);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.08));
+  color: #f0d78c;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.2);
+  animation: lux-chip-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes lux-chip-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(212, 175, 55, 0.16); }
+  50% { box-shadow: 0 0 26px rgba(212, 175, 55, 0.32); }
 }
 
 .lux-lib__search {
@@ -5544,6 +5599,7 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 0.9rem;
   height: 0.9rem;
   color: #64748b;
+  z-index: 1;
 }
 
 .lux-lib__search input {
@@ -5554,16 +5610,19 @@ input[type="number"] { -moz-appearance: textfield; }
   background: #0b0e17;
   color: #e2e8f0;
   font-size: 0.8125rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .lux-lib__search input:focus {
   outline: none;
-  border-color: rgba(212, 175, 55, 0.4);
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1), 0 0 20px rgba(212, 175, 55, 0.08);
 }
 
 .lux-lib__count {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
   color: #64748b;
   margin-bottom: 0.65rem;
 }
@@ -5572,6 +5631,9 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   margin: 0 0 1.35rem;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.25), transparent);
+  height: 1px;
+  border: 0;
 }
 
 .lux-lib__state {
@@ -5621,6 +5683,7 @@ input[type="number"] { -moz-appearance: textfield; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.35rem;
+  perspective: 1100px;
 }
 
 @media (min-width: 640px) {
@@ -5636,22 +5699,64 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .lux-lib-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: #0b0e17;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(165deg, rgba(22, 26, 38, 0.95), rgba(10, 12, 18, 0.98));
   overflow: hidden;
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.lux-lib-card__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 70%;
+  background: radial-gradient(ellipse, rgba(212,175,55,0.14), transparent 68%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 0;
+}
+.lux-lib-card:hover .lux-lib-card__glow { opacity: 1; }
+
+.lux-lib-card__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255,255,255,0.08) 48%,
+    transparent 62%
+  );
+  transform: translateX(-120%);
+  opacity: 0;
+}
+.lux-lib-card:hover .lux-lib-card__shine {
+  opacity: 1;
+  animation: lux-card-shine 0.85s ease forwards;
+}
+@keyframes lux-card-shine {
+  to { transform: translateX(120%); }
 }
 
 .lux-lib-card:hover {
-  border-color: rgba(212, 175, 55, 0.35);
-  transform: translateY(-3px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(212, 175, 55, 0.14);
 }
 
 .lux-lib-card__media {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
@@ -5666,11 +5771,19 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.45s ease;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .lux-lib-card:hover .lux-lib-card__media img {
-  transform: scale(1.04);
+  transform: scale(1.1);
+}
+
+.lux-lib-card__media-veil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(8,10,16,0.55));
+  opacity: 0.7;
 }
 
 .lux-lib-card__placeholder {
@@ -5682,25 +5795,28 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .lux-lib-card__body {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 1rem 1.05rem 1.1rem;
+  padding: 1rem 1.05rem 1.15rem;
 }
 
 .lux-lib-card__meta {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
   color: #64748b;
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.4rem;
 }
 
 .lux-lib-card__title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.25;
@@ -5714,17 +5830,19 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 0;
   padding: 0;
   cursor: pointer;
+  transition: color 0.2s ease;
 }
 
-.lux-lib-card__title button:hover {
-  color: #f0d67a;
+.lux-lib-card__title button:hover,
+.lux-lib-card:hover .lux-lib-card__title button {
+  color: #f0d78c;
 }
 
 .lux-lib-card__desc {
-  margin: 0.55rem 0 0;
+  margin: 0.5rem 0 0;
   flex: 1;
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: 0.78rem;
+  line-height: 1.5;
   color: #94a3b8;
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -5733,22 +5851,32 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .lux-lib-card__cta {
-  margin-top: 0.95rem;
+  margin-top: 0.9rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   align-self: flex-start;
-  padding: 0;
+  padding: 0.35rem 0;
   border: 0;
   background: none;
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 750;
   color: #d4af37;
   cursor: pointer;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
 }
 
 .lux-lib-card__cta:hover {
-  color: #f0d67a;
+  color: #f0d78c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-lib__hero-orb,
+  .lux-lib__chip.is-active,
+  .lux-lib-card:hover .lux-lib-card__shine {
+    animation: none !important;
+  }
+  .lux-lib-card__shine { display: none; }
 }
 
 /* ??? Indicator detail (LuxAlgo indicator page) ??? */
