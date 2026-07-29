@@ -351,6 +351,34 @@ AI engine steps: major swings → EQH → EQL → untouched liquidity → sweep 
 Mistakes: every sweep≠reversal; ignore trend/HTF/volume/structure; trade immediately after sweep without confirmation.
 Compact output when relevant: Detected liquidity (BSL/SSL) · Location · Status (untouched/swept) · Event · Trend · HTF · Confidence · Summary (monitor vs assume reverse).
 
+KNOWLEDGE BASE — MODULE 3 PART 4 SUPPLY & DEMAND INTELLIGENCE ENGINE v1.0
+Mission: Supply/Demand = areas of prior significant imbalance where participants MAY respond again — NEVER guaranteed reversals. Detect, validate, score, monitor, explain. Never say “price will definitely reverse here.” Prefer: “high-quality historical imbalance; if confirmation appears after price reaches the zone, reaction probability increases.” Evidence first; prediction never.
+
+DEMAND ZONE — area from which price previously expanded UP aggressively: strong bullish expansion, large bodies, high momentum, little time spent, little selling. Institutional: demand > supply; buyers controlled; higher prices accepted. Creation: last bearish candle(s) before strong bullish expansion (needs momentum + volume + structure + min displacement).
+SUPPLY ZONE — area from which price previously declined aggressively: strong bearish expansion, high selling, large bearish candles, momentum up, minimal buyer recovery. Institutional: supply > demand. Creation: last bullish candle(s) before strong bearish expansion (same quality filters).
+
+VALIDATION (without these → cut confidence): strong displacement, BOS, momentum expansion, volume confirmation, limited base candles, HTF support.
+
+ZONE TYPES: Fresh (never revisited — highest) · Tested once (moderate) · Retested multi (quality falls) · Broken (invalid unless role reversal with acceptance+volume+confirm).
+Freshness: Fresh★★★★★ · 1 test★★★★ · 2★★★ · 3★★ · >3★ — each successful test generally lowers reaction odds.
+
+QUALITY SCORE (0–100): displacement 25 + BOS 20 + volume 15 + freshness 15 + HTF 10 + base quality 10 + momentum 5.
+Strength: 95+ Institutional · 85+ Very Strong · 75+ Strong · 65+ Average · <65 Weak.
+Alternate confluence boost: Fresh +20 · HTF align +20 · strong BOS +15 · strong vol +15 · high momentum +10 · clean base +10 · liquidity confluence +10.
+
+BASE QUALITY: ideal 1–4 small, low-vol, clean candles. Poor: many candles, messy overlap, large volatility.
+INVALIDATION: Demand — strong close below + structure fail + momentum confirms breakdown. Supply — strong close above + structure breakout + volume supports continuation.
+ROLE REVERSAL: broken resistance→support / broken support→resistance only after acceptance + volume + confirmation.
+
+MTF priority: Monthly★★★★★ · Weekly★★★★★ · Daily★★★★ · 4H★★★★ · 1H★★★ · 15M★★ · 5M★. HTF zones dominate. Overlapping multi-TF zones (e.g. Weekly+Daily+4H demand) = high confluence → raise confidence.
+
+REACTION ENGINE when price enters zone: check Trend, Structure, Volume, Momentum, Liquidity, candle confirmation, HTF, RR — then probability.
+FALSE REACTION filter (ignore): low volume, no confirmation, against major trend, weak structure, immediate failure, poor RR.
+
+AI steps: locate zone → displacement → base → freshness → BOS → volume → HTF → confidence → report.
+Mistakes: drawing every candle as a zone; ignore freshness/HTF/structure/trend; blind first-touch; no confirmation.
+Compact output: Zone type · TF · Freshness · Displacement · BOS · HTF · Strength% · Summary (elevated reaction probability subject to confirmation).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -392,11 +420,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity) v1.0.
-Read ONLY this screenshot. Structure PRIMARY. Mark BSL/SSL, EQH/EQL, sweeps vs true breakouts. Liquidity = probability not certainty. Sweep ≠ reversal without confirmation. HTF liquidity > LTF.
-Order: Structure → Trend → BOS/CHOCH → Liquidity → S/R → Volume → PA → Candle → Risk. Wick≠BOS. Candle ≤10%.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity + Supply/Demand) v1.0.
+Read ONLY this screenshot. Structure PRIMARY. S/D zones = imbalance interest, not guaranteed reverses. Fresh>tested>broken. Validate with displacement+BOS+volume+HTF. Sweep≠reversal without confirm.
+Order: Structure → Trend → BOS/CHOCH → Liquidity → Supply/Demand → S/R → Volume → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Liquidity (BSL/SSL/sweep) · S/R · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Liquidity · Supply/Demand · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -754,7 +782,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 Liquidity+BOS+Structure. Answer USER QUESTION FIRST. BSL/SSL/EQH/EQL/sweeps as probability only. Sweep≠reversal without confirm. True breakout needs acceptance+volume. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 S/D+Liquidity+Structure. Answer USER QUESTION FIRST. Supply/Demand=interest zones not guaranteed reverses. Fresh>tested; need displacement+BOS+volume+confirm. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

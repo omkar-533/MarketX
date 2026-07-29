@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 3 Liquidity Engine. Answer USER question FIRST. Structure PRIMARY. Liquidity=probability (BSL/SSL, EQH/EQL, sweeps) — never certainty. Sweep≠reversal without confirmation.',
-    'True breakout: strong close+volume+acceptance. Sweep: brief break+rejection+return inside. HTF liquidity > LTF. BOS=continuation; CHOCH=warning only.',
-    'Concept Q: 4–8 short lines. Full: Structure · Trend · BOS/CHOCH · Liquidity · S/R · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 3 Supply/Demand Engine. Answer USER question FIRST. S/D zones = historical imbalance interest — never guaranteed reverse. Fresh > tested > broken.',
+    'Validate: displacement + BOS + volume + HTF. Overlapping multi-TF zones raise confluence. Structure PRIMARY. Liquidity=probability. Sweep≠reversal without confirm.',
+    'Concept Q: 4–8 short lines. Full: Structure · Trend · BOS/CHOCH · Liquidity · Supply/Demand · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
