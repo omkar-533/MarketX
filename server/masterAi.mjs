@@ -288,6 +288,39 @@ MTF STRUCTURE: Weekly → Daily → 4H → 1H → 15M → 5M → 1M. LTF cannot 
 AI STRUCTURE ENGINE steps: detect SH → detect SL → classify HH/HL/LH/LL → determine trend → measure impulse → measure correction → trend strength → check HTF → structure report.
 Mistakes: EMA-only trend, ignoring swings, calling every pullback a reversal, ignoring HTF, trading against structure, ignoring impulse quality / correction depth.
 
+KNOWLEDGE BASE — MODULE 3 PART 2 BOS & CHOCH v1.0
+Mission: Markets move because structure changes. Never call trend reversal from candles, indicators, or emotion — only from structure change. Detect, validate, score, and explain every structural event. CHOCH asks a question; BOS answers it. Never reverse on CHOCH alone. Reverse only after CHOCH + structure validation + BOS + volume + HTF confirmation. Structure = evidence; everything else supports.
+
+BREAK OF STRUCTURE (BOS) — continues the EXISTING trend; NOT a reversal.
+Bullish BOS: current high > prior confirmed swing high AND close above that SH.
+Bearish BOS: current low < prior confirmed swing low AND close below that SL.
+Psych: bullish BOS = buyers accept higher prices, supply failed, demand dominant; bearish BOS = sellers accept lower, demand failed, supply dominates.
+Institutional: usually continuation, expansion, trend strength, participation, momentum confirm — not every breakout is genuine BOS.
+VALID only if: confirmed prior swing, strong close beyond level, volume supports, no immediate rejection, structure intact, HTF agrees.
+INVALID / ignore: wick-only break, very low volume, immediate rejection, false breakout, news spike no follow-through, range manipulation.
+BOS confidence (0–100): structure quality 30 + volume 20 + close strength 15 + HTF 15 + momentum 10 + liquidity 10.
+90+ Institutional · 80+ Strong · 70+ Healthy · 60+ Weak · <60 Ignore.
+Highest quality BOS: liquidity sweep + strong close + high volume + trend align + HTF confirm → raise confidence.
+Major BOS: breaks external swing / changes HTF structure (highest importance). Minor BOS: internal swing (entries; lower importance).
+
+CHANGE OF CHARACTER (CHOCH) — first meaningful early WARNING that trend MAY change. NOT confirmation.
+Bullish CHOCH: in bearish trend, fails another LL, then breaks prior LH → seller control weakens, buyers gaining, possible transition.
+Bearish CHOCH: in bullish trend, fails another HH, then breaks prior HL → buyer control weakens, sellers stronger, possible reverse start.
+CHOCH vs BOS: CHOCH = early warning / possible change / medium confidence / needs confirmation. BOS = trend confirmation / continuation / high confidence / already achieved.
+
+STRUCTURE SHIFT PATHS
+Bullish: LL → LH → CHOCH → HL → Bullish BOS → bullish trend confirmed.
+Bearish: HH → HL → CHOCH → LH → Bearish BOS → bearish trend confirmed.
+False CHOCH ignore: wick-only, weak volume, HTF opposes, structure immediately fails, price returns inside range.
+
+EXTERNAL vs INTERNAL
+External: major SH/SL — defines primary trend — highest priority. Internal: minor pullbacks/small swings — timing only — never override external.
+Priority: External Structure → HTF BOS → HTF CHOCH → Internal BOS → Internal CHOCH → Candlestick.
+
+AI decision tree: identify trend → mark confirmed swings → detect BOS → detect CHOCH → liquidity → volume → validate HTF → confidence → explain.
+Mistakes: every breakout≠BOS, every pullback≠CHOCH, ignore HTF, wick breaks, ignore volume/liquidity, trade against external structure.
+When reporting BOS/CHOCH (compact): Current Trend · Event (BOS/CHOCH) · Swing broken · Break quality · Volume · Liquidity · HTF · Confidence · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -329,11 +362,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure PRIMARY + candles Decision Engine) v1.0.
-Read ONLY this screenshot. Market Structure first (HH/HL/LH/LL, impulse vs correction, cycle phase). If structure conflicts with candles/indicators/patterns → trust STRUCTURE. Candle pattern ≤10% weight.
-Order: Structure → Trend → HTF → Liquidity → S/R → S/D → Volume → Momentum → PA → Candle → Risk. Never EMA-only trend. Never confuse correction with reversal.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH) v1.0.
+Read ONLY this screenshot. Structure PRIMARY. BOS = trend continuation (strong close beyond confirmed swing + volume; wick≠BOS). CHOCH = early warning only — never reverse on CHOCH alone. External > internal. HTF > LTF.
+Order: Structure → Trend → BOS/CHOCH → HTF → Liquidity → S/R → Volume → PA → Candle → Risk. Candle pattern ≤10%.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Structure · Trend · Impulse/Correction · S/R · Liquidity · Volume · Candle story · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Structure · Trend · BOS/CHOCH · Impulse/Correction · S/R · Liquidity · Volume · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -691,7 +724,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 Structure Engine + 2B. Answer USER QUESTION FIRST. Structure PRIMARY (HH/HL/LH/LL). Trust structure over candles/indicators. Never EMA-only trend. Correction≠reversal. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 BOS/CHOCH + Structure. Answer USER QUESTION FIRST. BOS=continuation (close beyond confirmed swing). CHOCH=warning only — reverse only after CHOCH+BOS+volume+HTF. Wick≠BOS. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

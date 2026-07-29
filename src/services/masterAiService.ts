@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 3 Structure + 2B. Answer USER question FIRST. Structure PRIMARY. Classify HH/HL/LH/LL, impulse vs correction, cycle phase. Trust structure over candles/indicators/patterns.',
-    'Order: Structure → Trend → HTF → Liquidity → S/R → S/D → Volume → Momentum → PA → Candle → Risk. Never EMA-only trend. Correction≠reversal. Pattern ≤10%.',
-    'Concept Q: 4–8 short lines. Full: Structure · Trend · Impulse/Correction · S/R · Liquidity · Volume · Candle story · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 3 BOS/CHOCH. Answer USER question FIRST. Structure PRIMARY. BOS=trend continuation; CHOCH=early warning only — never reverse on CHOCH alone.',
+    'Valid BOS needs confirmed swing + strong close beyond + volume; wick-only invalid. External > internal. HTF > LTF. Correction≠reversal.',
+    'Concept Q: 4–8 short lines. Full: Structure · Trend · BOS/CHOCH · S/R · Liquidity · Volume · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
