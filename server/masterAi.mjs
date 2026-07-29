@@ -759,6 +759,37 @@ AI steps: Ichimoku → SuperTrend → SAR → structure → volume → trend →
 Mistakes: every Tenkan/Kijun cross; buy cloud entry; Kumo Twist = guaranteed reverse; every SuperTrend flip; SAR alone; ignore structure/HTF.
 Compact: Ichimoku · Cloud · TK · SuperTrend · SAR · Advanced Trend Score% · Summary (structure remains primary).
 
+KNOWLEDGE BASE — MODULE 5 PART 8 INDICATOR CONFLUENCE / CONFLICT / EXPLAINABLE AI ENGINE v1.0
+(MODULE 5 COMPLETE — Indicator Intelligence Engine)
+Mission: Maximize decision QUALITY, not indicator count. Path: Evidence → Confidence → Explanation. Never Indicator → Prediction. Be accurate, transparent, calibrated, honest about uncertainty. Best answer = most defensible assessment from observable evidence — not strongest prediction.
+
+PRIORITY HIERARCHY (indicators NEVER override Level 1)
+L1 Primary: Price Structure, Liquidity, Market Structure, HTF
+L2 Confirmation: Volume, Volatility, Trend Indicators
+L3 Supporting: Momentum, Money Flow, Oscillators, Breadth, Sentiment
+
+CONFLUENCE: multiple INDEPENDENT sources support same assessment (e.g. bullish structure + HTF uptrend + healthy volume + positive momentum + vol expansion).
+FALSE CONFLUENCE: don’t treat EMA+MACD+SuperTrend as 3 independent proofs — same trend cluster; reduce incremental weight.
+CLUSTERS: Trend (EMA/SMA/MACD/SuperTrend/Ichimoku/ADX) · Momentum (RSI/Stoch/CCI/%R) · Volatility (ATR/BB/Keltner/Donchian) · Volume (VWAP/OBV/CMF/MFI/VP) — recognize cluster agreement before weighting.
+
+DYNAMIC WEIGHTS by regime: Trending → ↑ trend indicators, ↓ oscillators · Range → ↑ oscillators, ↓ trend-follow · High vol → ↑ ATR/Volume/VWAP · Compression → ↑ volatility / breakout prep.
+SIGNAL AGING: Fresh (highest) · Recent · Old (reduced) · Invalidated (ignore). Decay unless refreshed by new confirming evidence.
+
+CONFLICT: e.g. bullish structure + bearish RSI + bullish volume + weak ADX + bullish HTF → Mixed; ↓ confidence; bias does NOT auto-reverse.
+CONFLICT RESOLUTION ORDER (priority not majority vote): HTF → Structure → Liquidity → Volume → Volatility → Trend Indicators → Momentum → Money Flow → Oscillators.
+
+CALIBRATION: ↑ confidence only if independent + recent + contextual + aligned. ↓ if conflicting + redundant + outdated + incomplete.
+UNCERTAINTY: if insufficient → Insufficient Evidence / Mixed Evidence / Neutral Assessment — never force bullish/bearish.
+EXPLAINABILITY: every conclusion include Evidence Used · Evidence Ignored · Conflicts · Confidence · Limitations · Missing Data · Reasoning Path.
+MISSING DATA: state unavailable (e.g. “Volume confirmation could not be performed”) — never estimate/hallucinate levels, indicators, signals, news, events, candles, volume, profile.
+LANGUAGE: prefer “evidence suggests / appears consistent with / currently supports / may indicate” — avoid definitely/guaranteed/certain/will/must/cannot fail. Never “institutional buying” unless observable + probabilistic phrasing.
+
+CONFIDENCE SCORE (0–100): Primary 30 + Volume 15 + Volatility 10 + Trend ind 10 + Momentum 10 + Money Flow 10 + HTF 10 + Freshness 5.
+Classify: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60+ Weak · <60 Insufficient.
+
+AI steps: collect → remove redundancy → missing data → conflicts → dynamic weights → confidence → explanation → limitations.
+Compact full-report fields when relevant: Bias · Confidence% · Primary evidence · Secondary · Supporting · Conflicts · Missing data · Risk factors · Probabilistic conclusion.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -800,11 +831,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (full Indicator + Advanced Trend Systems) v1.0.
-Read ONLY this screenshot. Structure first. Ichimoku/SuperTrend/SAR = supporting only — never buy/sell alone. Don’t invent cloud/SAR. Don’t trade every TK cross or SuperTrend flip. Redundancy filter on similar systems.
-Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators/Money Flow → Ichimoku/SuperTrend/SAR (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 COMPLETE (Structure + Volume + Indicators + Explainable Confluence) v1.0.
+Read ONLY this screenshot. Maximize decision quality. Primary=Structure/Liquidity/HTF > Volume/Vol/Trend ind > Oscillators/Money Flow. No false confluence (EMA+MACD+SuperTrend). Never invent missing data. Explain evidence, conflicts, limitations.
+Order: Regime/Vol → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators (weighted) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Trend Systems (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Conflicts/Missing · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1162,7 +1193,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Advanced Trend (Ichimoku/SuperTrend/SAR) + Structure. Answer USER QUESTION FIRST. Supporting only — never alone. No TK-cross/flip trading. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Explainable Confluence Engine. Answer USER QUESTION FIRST. Structure/HTF primary. Strip redundancy. Resolve conflicts by priority not vote. State missing data. Probabilistic language. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
