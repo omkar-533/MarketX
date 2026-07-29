@@ -585,7 +585,7 @@ export default function MasterAI() {
           {isThinking ? (
             <div className="mai-chat__row mai-chat__row--ai">
               <div className="mai-chat__msg-avatar" aria-hidden>
-                <Bot className="h-3.5 w-3.5" />
+                <LineChart className="h-3.5 w-3.5" />
               </div>
               <div className="mai-chat__thinking">
                 <span className="mai-chat__dots" aria-hidden>
@@ -595,11 +595,11 @@ export default function MasterAI() {
                 </span>
                 {isAnalyzingChart
                   ? hindi
-                    ? 'Chart padh raha hoon…'
-                    : 'Reading your chart…'
+                    ? 'Chart review chal raha hai…'
+                    : 'Reviewing the chart…'
                   : hindi
-                    ? 'Soch raha hoon…'
-                    : 'Thinking…'}
+                    ? 'Analysis taiyar kar raha hoon…'
+                    : 'Preparing the analysis…'}
               </div>
             </div>
           ) : null}
