@@ -408,6 +408,37 @@ AI steps: primary → secondary → minor → strength → maturity → pullback
 Mistakes: EMA-only buy/sell; ignore structure/HTF; buy exhausted trends; sell healthy pullbacks; confuse pullback with reversal.
 Compact output: Primary · Secondary · Minor · Strength% · Stage · Continuation% · Exhaustion · Summary.
 
+KNOWLEDGE BASE — MODULE 3 PART 6 VOLATILITY & MARKET REGIME INTELLIGENCE ENGINE v1.0
+Mission: Before direction analysis, detect the MARKET REGIME (environment). Same bullish/bearish label can be trending, ranging, exhausting, compressing, or expanding — classify Direction + Environment. Never recommend a strategy before regime detection. Regime → context → probability → decisions. Markets don’t behave the same every day; adapt.
+
+PRIMARY REGIME (assign only one): Strong Trending · Healthy Trending · Weak Trending · Sideways Range · Compression · Expansion · Transition · Chaotic · Unknown.
+
+TRENDING: clear HH-HL or LL-LH, healthy impulses, controlled corrections, directional momentum, structure aligned → trend-following generally fits better.
+RANGING: repeated rejection at upper bound + support at lower, mixed structure, low directional commitment → breakout odds may rise as range matures but confirmation essential. Mark Range High / Mid / Low when valid (repeated upper rejection, lower support, no confirmed BOS, balanced swings, stable vol).
+COMPRESSION: volatility contracts, smaller range, falling momentum. Signs: ATR↓, bodies shrink, volume contracts, swings shrink. Often precedes expansion — NEVER assume direction. Raises Breakout Readiness (potential energy), not direction.
+EXPANSION: rising volatility + directional commitment — large candles, momentum↑, participation↑, ATR↑, volume↑. Confirms increased participation; can raise continuation odds when breakout confirmed.
+TRANSITION: regime shifting (trend↔range, bull↔bear) — mixed signals, conflicted structure, higher uncertainty, lower confidence.
+CHAOTIC: violent reversals, large wicks, poor follow-through, frequent false breaks, news-driven → extreme caution / capital preservation / No Trade / cut size.
+
+VOLATILITY ENGINE — measure avg range, ATR trend, impulse/correction size, body size, wick ratio, gaps, volume → Low / Moderate / High / Extreme.
+Expansion signals: ATR↑, bodies↑, volume↑, impulse length↑, confirmed breakout → ↑ continuation probability.
+Compression signals: ATR↓, small bodies, reduced range, low momentum, contracting swings → ↑ breakout readiness 0–100 (energy only — no direction call).
+Breakout readiness factors: compression duration, range width, ATR compression, volume behavior, liquidity clusters, structure pressure, HTF context.
+FALSE BREAKOUT filter (cut confidence): weak close, low volume, immediate rejection, return to range, no structure confirm, weak momentum.
+
+TREND VS RANGE matrix: Trending = high structure/momentum/direction; Range = weak structure/momentum/direction, moderate volatility.
+REGIME CONFIDENCE (0–100): Structure 30 + Volatility 20 + Momentum 15 + Volume 10 + HTF 10 + Liquidity 10 + Confirmation 5.
+
+STRATEGY SUITABILITY (explain why):
+Strong/healthy trend → trend-follow, momentum, pullback continuation.
+Range → range trade, mean reversion, S/R.
+Compression → breakout monitoring / wait-and-watch.
+Chaotic → capital preservation, reduced size, No Trade.
+
+AI steps: structure → volatility → momentum → range width → ATR trend → liquidity → regime → confidence → explain.
+Mistakes: trend strategies in ranges; sell every expansion; buy every breakout; ignore vol/compression/false breaks/regime.
+Compact output: Regime · Direction · Volatility · Compression/Expansion · Breakout Readiness% · Regime Confidence% · Summary (strategy fit).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -449,11 +480,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 (Structure + BOS/CHOCH + Liquidity + S/D + Trend Engine) v1.0.
-Read ONLY this screenshot. Structure defines trend — never EMA alone. Classify Primary/Secondary/Minor, strength, maturity (early→exhausted). Pullback≠reversal (need CHOCH+BOS+vol+HTF). S/D & liquidity = probability.
-Order: Structure → Trend → BOS/CHOCH → Liquidity → Supply/Demand → Volume → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1–3 full Structure stack + Regime/Volatility Engine v1.0.
+Read ONLY this screenshot. FIRST detect regime (trending/range/compression/expansion/transition/chaotic) + volatility. Then structure/trend/BOS/CHOCH/liquidity/S/D. Never strategy before regime. Compression≠direction. Sweep≠reversal without confirm.
+Order: Regime/Volatility → Structure → Trend → BOS/CHOCH → Liquidity → S/D → Volume → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Structure · Primary/Secondary/Minor Trend · Strength/Stage · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · Volatility · Structure · Trend · BOS/CHOCH · Liquidity · S/D · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -811,7 +842,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 3 Trend+Structure Engine. Answer USER QUESTION FIRST. Trend from structure not EMA. Primary/Secondary/Minor + strength + maturity. Pullback≠reversal without CHOCH+BOS+vol+HTF. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 3 Regime+Trend+Structure. Answer USER QUESTION FIRST. Detect regime/volatility BEFORE direction. Compression≠direction. Match strategy to regime. Pullback≠reversal without CHOCH+BOS. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

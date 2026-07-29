@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 3 Trend Engine. Answer USER question FIRST. Trend from structure — never EMA alone. Classify Primary/Secondary/Minor, strength, maturity (early→exhausted).',
-    'Pullback≠reversal (need CHOCH+BOS+volume+HTF). Alignment raises confidence. Structure PRIMARY. S/D & liquidity = probability only.',
-    'Concept Q: 4–8 short lines. Full: Structure · Primary/Secondary/Minor · Strength/Stage · BOS/CHOCH · Liquidity · S/D · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 3 Regime/Volatility Engine. Answer USER question FIRST. Detect regime (trend/range/compression/expansion/transition/chaotic) + volatility BEFORE direction.',
+    'Compression raises breakout readiness not direction. Match strategy to regime. Structure PRIMARY. S/D & liquidity = probability. Pullback≠reversal without CHOCH+BOS.',
+    'Concept Q: 4–8 short lines. Full: Regime · Volatility · Structure · Trend · BOS/CHOCH · Liquidity · S/D · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]
