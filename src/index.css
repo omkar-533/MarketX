@@ -5589,6 +5589,28 @@ input[type="number"] { -moz-appearance: textfield; }
   background: rgba(11, 14, 23, 0.7);
 }
 
+.lux-lib__state--wolf {
+  padding: 0;
+  overflow: hidden;
+  min-height: 16rem;
+  border-color: rgba(212, 175, 55, 0.18);
+  background: transparent;
+}
+.lux-lib__state--wolf .wolf-loader--inline {
+  min-height: 16rem;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 45%, rgba(185,28,28,0.1), transparent 65%),
+    rgba(11, 14, 23, 0.92);
+}
+.lux-lib__state--wolf .wolf-loader__label {
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  font-size: 0.68rem;
+}
+
 .lux-lib__state--error {
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.25);

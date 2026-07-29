@@ -13,6 +13,7 @@ import {
 import { listIndicators, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
+import WolfLoader from './WolfLoader';
 
 function formatDate(value?: string) {
   if (!value) return '';
@@ -374,9 +375,8 @@ export default function Indicators() {
       <hr className="lux-lib__rule" />
 
       {loading ? (
-        <div className="lux-lib__state">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          Loading library…
+        <div className="lux-lib__state lux-lib__state--wolf">
+          <WolfLoader fullscreen={false} label="Loading Wolf Library" />
         </div>
       ) : error ? (
         <div className="lux-lib__state lux-lib__state--error">{error}</div>
