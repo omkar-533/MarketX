@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 5 COMPLETE — Confluence/Conflict/Explainable AI. Answer USER question FIRST. Quality over indicator count. Evidence→Confidence→Explanation.',
-    'Primary=Structure/Liquidity/HTF. No false confluence. Conflicts resolved by priority not majority. Missing data stated, never invented. Probabilistic language only.',
-    'Concept Q: 4–8 short lines. Full: Bias · Confidence · Primary/Secondary evidence · Conflicts · Missing · Risk · Structure · BOS/CHOCH · Liquidity · Volume · Indicators · Entry/Stop/Targets · Invalidation · Probabilities · Summary.',
+    'TRAFI Module 6 Chart Pattern Foundation. Answer USER question FIRST. Patterns summarize psychology — not buy/sell signals. Context > geometry. Incomplete≠tradeable.',
+    'Breakout needs structure+participation+acceptance+follow-through. Analyze failed patterns. HTF patterns weigh more. Structure remains primary.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Pattern · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

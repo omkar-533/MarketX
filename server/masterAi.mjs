@@ -790,6 +790,29 @@ Classify: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60
 AI steps: collect → remove redundancy → missing data → conflicts → dynamic weights → confidence → explanation → limitations.
 Compact full-report fields when relevant: Bias · Confidence% · Primary evidence · Secondary · Supporting · Conflicts · Missing data · Risk factors · Probabilistic conclusion.
 
+KNOWLEDGE BASE — MODULE 6 PART 1 CHART PATTERN FOUNDATION & MARKET PSYCHOLOGY v1.0
+Mission: Chart patterns = visual summaries of buyer/seller/liquidity/momentum/participation/structure interaction — NOT signals. Never shape alone; always context. Patterns don’t move markets — participants create patterns. Analyze WHY the pattern exists, not only what shape it resembles. Evidence of behavior, never proof of future direction. Imperfect geometry is normal — don’t reject solely for imperfect symmetry.
+
+PRICE ACTION: direct price observation — Price, Structure, Volume, Volatility, Liquidity, Time. Indicators = secondary confirmation.
+HOW PATTERNS FORM: Accumulation · Expansion · Consolidation · Distribution · Continuation · Reversal · Transition — identify current phase.
+PSYCHOLOGY: describe observed behavior (optimism/pessimism/uncertainty/profit-taking/risk reduction/renewed participation) — not emotional certainty.
+
+LIFE CYCLE: Formation → Development → Confirmation → Continuation/Failure → Completion — confidence differs by stage.
+COMPLETENESS: Incomplete = recognition only, no trade conclusion · Developing = monitor · Confirmed = evidence strengthened · Failed = invalidated but informative (changing participation/momentum/liquidity/structure) — analyze failures.
+CONTEXT > GEOMETRY: Trend, Structure, Liquidity, Volume, Volatility, HTF, Session.
+BREAKOUT: meaningful only with Structure + Participation + Acceptance + Follow-through — leave pattern alone ≠ confirmed breakout.
+FALSE BREAKOUT clues: brief break, weak participation, rapid rejection, return inside, limited follow-through — confirm.
+SYMMETRY: evaluate swing balance, proportion, time development, structural consistency — real markets rarely perfect.
+TIME: rapid breakout after long consolidation ≠ slow breakout after short consolidation — time affects quality.
+MTF: HTF patterns generally higher weight; execution TF align with HTF when possible; conflicting patterns ↓ confidence.
+CLASSIFY: Continuation · Reversal · Neutral · Transition · Complex · Hybrid · Unknown (if insufficient confidence).
+
+PATTERN QUALITY (0–100): Structure 20 + Volume 15 + Trend align 15 + Liquidity 10 + Volatility 10 + HTF 10 + Symmetry 10 + Confirmation 10.
+Reliability: 95+ Exceptional · 90+ Very Strong · 80+ Strong · 70+ Moderate · 60+ Weak · <60 Insufficient — based on CURRENT evidence, not historical reputation.
+AI steps: swings → geometry → symmetry → trend → liquidity → volume → volatility → HTF → score.
+Mistakes: every triangle; ignore trend/volume/liquidity; draw after breakout; force patterns; ignore failures; expect perfect symmetry.
+Compact: Pattern status · Type · Trend · Volume · Structure · Score% · Summary (unconfirmed until valid breakout+follow-through).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -831,11 +854,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 COMPLETE (Structure + Volume + Indicators + Explainable Confluence) v1.0.
-Read ONLY this screenshot. Maximize decision quality. Primary=Structure/Liquidity/HTF > Volume/Vol/Trend ind > Oscillators/Money Flow. No false confluence (EMA+MACD+SuperTrend). Never invent missing data. Explain evidence, conflicts, limitations.
-Order: Regime/Vol → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators (weighted) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Structure + Indicators + Chart Pattern Foundation) v1.0.
+Read ONLY this screenshot. Patterns = psychology/context, not signals. Shape alone never enough. Breakout needs structure+participation+acceptance+follow-through. Failed patterns are informative. Don’t invent perfect geometry.
+Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Pattern (if clear) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Conflicts/Missing · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Pattern status · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1193,7 +1216,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Explainable Confluence Engine. Answer USER QUESTION FIRST. Structure/HTF primary. Strip redundancy. Resolve conflicts by priority not vote. State missing data. Probabilistic language. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 6 Pattern Foundation + Structure. Answer USER QUESTION FIRST. Patterns≠signals. Context>shape. Breakout needs acceptance+follow-through. Failed patterns matter. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
