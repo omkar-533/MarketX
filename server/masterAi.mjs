@@ -393,9 +393,9 @@ export function createMasterAiRouter(apiKey) {
       const langTag = hinglish
         ? '[OUTPUT LANGUAGE: natural Hinglish — Roman mix, simple desk talk]\n'
         : hindi
-          ? '[OUTPUT LANGUAGE: simple Hindi Devanagari — short male trader tone]\n'
+          ? '[OUTPUT LANGUAGE: simple Hindi Devanagari — short trader tone]\n'
           : lang.startsWith('en')
-            ? '[OUTPUT LANGUAGE: simple Indian English — short male desk tone]\n'
+            ? '[OUTPUT LANGUAGE: simple Indian English — short desk tone]\n'
             : `[OUTPUT LANGUAGE: short natural ${langName || lang}. Keep Nifty/CE/PE/SL terms.]\n`;
 
       const qualityTag = hasImage
