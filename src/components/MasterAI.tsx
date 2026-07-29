@@ -508,7 +508,7 @@ export default function MasterAI() {
               : continuingThread && !journalContext
                 ? `${userText}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
                 : journalContext
-                  ? `${userText}\n\n[JOURNAL REVIEW: Use PLATFORM TRADING JOURNAL context only. Under ~200 words.]`
+                  ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
                   : userText;
           const result = await askMasterAi(
             {

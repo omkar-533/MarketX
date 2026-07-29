@@ -50,6 +50,7 @@ import {
   hydrateJournalFromCloud,
 } from '../services/journalSyncService';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { getJournalCompletenessWarnings } from '../services/masterAiService';
 import TradePsychologyFields, { DEFAULT_TRADE_PSYCHOLOGY } from './trader/TradePsychologyFields';
 import ImageLightbox from './journal/ImageLightbox';
 import JournalCalendar from './journal/JournalCalendar';
@@ -807,6 +808,13 @@ export default function TradingJournal({
       setStatusMessage('Trade saved successfully. View it in the Trades tab.');
     }
 
+    const softWarnings = getJournalCompletenessWarnings(nextRecord);
+    if (softWarnings.length > 0) {
+      setStatusMessage(
+        `${editingId ? 'Trade updated' : 'Trade saved'}. Completeness tips (not blocking): ${softWarnings.slice(0, 4).join('; ')}.`,
+      );
+    }
+
     setTradeStore(nextStore);
     skipPersistRef.current = false;
     autoSyncJournal(user, nextStore).then((result) => {
@@ -966,17 +974,17 @@ export default function TradingJournal({
       <div className="relative overflow-hidden rounded-xl border border-[#1a1f2e] bg-gradient-to-br from-[#121520] via-[#0b0e17] to-[#080a12] p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
+        <div>
             <p className="text-[10px] uppercase tracking-[0.25em] text-[#d4af37] font-bold">Professional Journal</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1">Trading Journal</h1>
             <p className={`${mutedClass} text-sm mt-1 max-w-xl`}>
               Indian markets only — NSE / BSE stocks &amp; F&amp;O with manual P&amp;L.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-1.5 text-xs font-semibold text-[#d4af37]">
               {isAdmin ? 'Admin · All Traders' : user.name}
-            </span>
+          </span>
             <button
               type="button"
               onClick={() => {
@@ -986,7 +994,7 @@ export default function TradingJournal({
               className="flex items-center gap-1.5 rounded-lg bg-[#d4af37] px-4 py-2 text-sm font-bold text-[#0b0e17] hover:bg-[#e8c04a]"
             >
               <Plus className="w-4 h-4" /> Log Trade
-            </button>
+          </button>
             <button
               type="button"
               onClick={handleSync}
@@ -998,8 +1006,8 @@ export default function TradingJournal({
             <button type="button" onClick={handleExportCsv} className="rounded-lg border border-[#1a1f2e] px-3 py-2 text-slate-400 hover:text-[#d4af37]" title="Export CSV">
               <Download className="w-4 h-4" />
             </button>
-          </div>
         </div>
+      </div>
 
         <div className="relative mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
@@ -1071,7 +1079,7 @@ export default function TradingJournal({
               ) : (
                 <p className="text-sm text-slate-500 py-16 text-center">Log trades to build your equity curve.</p>
               )}
-            </div>
+        </div>
             <div className="space-y-4">
               <div className="app-card p-4">
                 <h3 className="text-xs font-bold text-slate-400 mb-3">Performance Snapshot</h3>
@@ -1081,16 +1089,16 @@ export default function TradingJournal({
                   <div className="flex justify-between"><span className="text-slate-500">Best Trade</span><span className="text-emerald-400 font-bold">{metrics.best ? formatCurrency(metrics.best.pnl) : '—'}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Worst Trade</span><span className="text-red-400 font-bold">{metrics.worst ? formatCurrency(metrics.worst.pnl) : '—'}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Goal Progress</span><span className="text-[#d4af37] font-bold">{goalProgress.toFixed(0)}%</span></div>
-                </div>
+        </div>
                 <input type="range" min={1000} max={50000} step={500} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-3 w-full accent-[#d4af37]" />
-              </div>
+        </div>
               <div className="app-card p-4">
                 <h3 className="text-xs font-bold text-[#d4af37] mb-2 flex items-center gap-1"><Brain className="w-3.5 h-3.5" /> Coach</h3>
                 {coachInsights.slice(0, 3).map((insight) => (
                   <p key={insight} className="text-[11px] text-slate-400 leading-snug mb-2 last:mb-0">• {insight}</p>
                 ))}
-              </div>
-            </div>
+        </div>
+      </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="app-card p-4">
@@ -1603,7 +1611,7 @@ export default function TradingJournal({
             </div>
           </div>
         </div>
-      </div>
+            </div>
       </>
       )}
 
@@ -1612,7 +1620,7 @@ export default function TradingJournal({
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="app-card p-4">
           <JournalCalendar trades={visibleTrades} mutedClass={mutedClass} />
-        </div>
+            </div>
         <div className="space-y-4">
           <div className="app-card p-4">
             <h3 className="text-sm font-bold text-white mb-3">Weekday P&L</h3>
@@ -1621,26 +1629,26 @@ export default function TradingJournal({
                 <div key={item.day} className="rounded-lg border border-[#1a1f2e] p-3 text-center">
                   <p className="text-[10px] uppercase text-slate-500">{item.day}</p>
                   <p className="mt-1 text-sm font-bold" style={{ color: getTradeColor(item.pnl) }}>{formatCurrency(item.pnl)}</p>
-                </div>
-              ))}
-            </div>
           </div>
+                        ))}
+                      </div>
+                    </div>
           <div className="app-card p-4">
             <h3 className="text-sm font-bold text-white mb-3">Replay Timeline</h3>
             <div className="space-y-2 max-h-[280px] overflow-y-auto">
               {replayTimeline.map((trade) => (
                 <div key={trade.id} className="flex justify-between rounded-lg bg-[#121520] p-2.5 text-sm">
-                  <div>
+            <div>
                     <p className="font-semibold text-white">{trade.instrument}</p>
                     <p className="text-[10px] text-slate-500">{new Date(trade.date).toLocaleDateString()}</p>
-                  </div>
-                  <p className={trade.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>{formatCurrency(trade.pnl)}</p>
-                </div>
-              ))}
             </div>
+                  <p className={trade.pnl >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>{formatCurrency(trade.pnl)}</p>
           </div>
-        </div>
-      </div>
+                ))}
+              </div>
+          </div>
+                    </div>
+                  </div>
       </>
       )}
 
@@ -1693,7 +1701,7 @@ export default function TradingJournal({
             <div key={insight} className="rounded-lg p-3 border border-[#d4af37]/20 bg-[#d4af37]/5 text-xs text-slate-300">
               <Brain className="w-3.5 h-3.5 text-[#d4af37] mb-1" />
               {insight}
-            </div>
+        </div>
           ))}
         </div>
         <p className="mt-2 text-[10px] text-slate-600">{syncStatus}</p>

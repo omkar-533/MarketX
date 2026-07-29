@@ -557,9 +557,97 @@ export function isDayMarketReviewQuestion(input: string): boolean {
 export function isJournalReviewQuestion(input: string): boolean {
   const n = String(input || '').toLowerCase().trim();
   if (!n) return false;
-  return /\b(journal|trading\s*journal|trade\s*review|my\s*trades|meri\s*(trades?|journal)|journal\s*(review|padh|analyse|analyze|check|dekho)|review\s*my\s*(journal|trades)|trades?\s*(review|analyse|analyze)|win\s*rate|expectancy|profit\s*factor|rule\s*compliance|discipline\s*(score|review)|mera\s*journal)\b/i.test(
+  return /\b(journal|trading\s*journal|trade\s*review|my\s*trades|meri\s*(trades?|journal)|journal\s*(review|padh|analyse|analyze|check|dekho|quality|completeness)|review\s*my\s*(journal|trades)|trades?\s*(review|analyse|analyze)|win\s*rate|expectancy|profit\s*factor|rule\s*compliance|discipline\s*(score|review)|mera\s*journal|risk\s*drift|outlier|pattern\s*discovery|trade\s*quality|completeness)\b/i.test(
     n,
   );
+}
+
+/** Soft completeness warnings — never block save; never invent missing data. */
+export function getJournalCompletenessWarnings(
+  trade: {
+    instrument?: string;
+    entryPrice?: number;
+    exitPrice?: number;
+    stopLoss?: number;
+    target?: number;
+    quantity?: number;
+    strategy?: string;
+    notes?: string;
+    screenshot?: string;
+    beforeEmotion?: string;
+    afterEmotion?: string;
+    psychologyNote?: string;
+    tags?: string[];
+    type?: string;
+    side?: string;
+  },
+): string[] {
+  const warnings: string[] = [];
+  if (!Number(trade.entryPrice)) warnings.push('Entry price missing/zero');
+  if (!Number(trade.exitPrice)) warnings.push('Exit price missing/zero');
+  if (!Number(trade.stopLoss)) warnings.push('Stop loss missing/zero');
+  if (!Number(trade.target)) warnings.push('Target missing/zero');
+  if (!Number(trade.quantity)) warnings.push('Position size missing/zero');
+  if (!String(trade.strategy || '').trim() || trade.strategy === 'Manual') {
+    warnings.push('Strategy not specified');
+  }
+  if (!String(trade.type || '').trim()) warnings.push('Timeframe/type missing');
+  if (!String(trade.side || '').trim()) warnings.push('Direction missing');
+  if (!String(trade.notes || '').trim()) warnings.push('Trade notes empty');
+  if (!trade.screenshot) warnings.push('No screenshot attached');
+  if (![trade.beforeEmotion, trade.afterEmotion, trade.psychologyNote].some((x) => String(x || '').trim())) {
+    warnings.push('Emotion notes empty');
+  }
+  if (!Array.isArray(trade.tags) || trade.tags.length === 0) warnings.push('No trade tags');
+  return warnings;
+}
+
+function median(nums: number[]): number {
+  if (!nums.length) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function scoreTradeCompleteness(t: {
+  instrument?: string;
+  entryPrice?: number;
+  exitPrice?: number;
+  stopLoss?: number;
+  target?: number;
+  quantity?: number;
+  strategy?: string;
+  notes?: string;
+  screenshot?: string;
+  beforeEmotion?: string;
+  afterEmotion?: string;
+  psychologyNote?: string;
+  tags?: string[];
+  type?: string;
+  side?: string;
+  pnl?: number;
+}): { score: number; label: string } {
+  let pts = 0;
+  const max = 10;
+  if (t.instrument) pts += 1;
+  if (Number(t.entryPrice) && Number(t.exitPrice)) pts += 1;
+  if (Number(t.stopLoss) && Number(t.target)) pts += 1;
+  if (Number(t.quantity)) pts += 1;
+  if (t.strategy && t.strategy !== 'Manual') pts += 1;
+  if (t.type && t.side) pts += 1;
+  if (Number.isFinite(Number(t.pnl))) pts += 1;
+  if (String(t.notes || '').trim()) pts += 1;
+  if (t.screenshot) pts += 1;
+  if (
+    [t.beforeEmotion, t.afterEmotion, t.psychologyNote].some((x) => String(x || '').trim()) ||
+    (Array.isArray(t.tags) && t.tags.length > 0)
+  ) {
+    pts += 1;
+  }
+  const score = Math.round((pts / max) * 100);
+  const label =
+    score >= 90 ? 'Excellent' : score >= 75 ? 'Good' : score >= 55 ? 'Average' : score >= 35 ? 'Incomplete' : 'Poor';
+  return { score, label };
 }
 
 /** Compact snapshot from platform journal — no screenshots, no invented fields. */
@@ -587,12 +675,14 @@ export function buildJournalContextForAi(
     market?: string;
     discipline?: number;
     confidence?: number;
+    screenshot?: string;
+    positionSize?: number;
   }>,
 ): string {
   const list = Array.isArray(trades) ? trades : [];
   if (!list.length) {
     return [
-      'PLATFORM TRADING JOURNAL (single source of truth):',
+      'PLATFORM TRADING JOURNAL v3.0 (ONLY source of truth):',
       'Trade count: 0',
       'Insufficient journal evidence — do not invent trades. User should log trades in the platform Trading Journal.',
     ].join('\n');
@@ -610,11 +700,61 @@ export function buildJournalContextForAi(
   const winRate = list.length ? (wins.length / list.length) * 100 : 0;
   const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : 0;
   const expectancy = list.length ? net / list.length : 0;
-  const avgRr =
-    list.filter((t) => Number.isFinite(Number(t.rr))).reduce((s, t) => s + Number(t.rr || 0), 0) /
-    Math.max(1, list.filter((t) => Number.isFinite(Number(t.rr))).length);
+  const rrVals = list.map((t) => Number(t.rr)).filter((n) => Number.isFinite(n));
+  const avgRr = rrVals.length ? rrVals.reduce((a, b) => a + b, 0) / rrVals.length : 0;
+  const sizes = list.map((t) => Number(t.quantity || t.positionSize || 0)).filter((n) => n > 0);
+  const absPnls = list.map((t) => Math.abs(Number(t.pnl || 0)));
+  const medSize = median(sizes);
+  const medAbsPnl = median(absPnls);
+  const medRr = median(rrVals.map((n) => Math.abs(n)));
+
+  const completeness = list.map((t) => scoreTradeCompleteness(t));
+  const avgCompleteness =
+    completeness.reduce((s, c) => s + c.score, 0) / Math.max(1, completeness.length);
+  const completenessLabel =
+    avgCompleteness >= 90
+      ? 'Excellent'
+      : avgCompleteness >= 75
+        ? 'Good'
+        : avgCompleteness >= 55
+          ? 'Average'
+          : avgCompleteness >= 35
+            ? 'Incomplete'
+            : 'Poor';
+
+  const integrity: string[] = [];
+  const ids = new Set<string>();
+  for (const t of list) {
+    if (t.id) {
+      if (ids.has(t.id)) integrity.push(`Duplicate ID ${t.id}`);
+      ids.add(t.id);
+    }
+    if (!t.instrument) integrity.push('Missing symbol');
+    if (Number(t.quantity) < 0) integrity.push(`Negative qty ${t.instrument || t.id}`);
+    if (Number(t.entryPrice) < 0 || Number(t.exitPrice) < 0) {
+      integrity.push(`Impossible price ${t.instrument || t.id}`);
+    }
+  }
+
+  const outliers = list
+    .filter((t) => {
+      const size = Number(t.quantity || t.positionSize || 0);
+      const ap = Math.abs(Number(t.pnl || 0));
+      const rr = Math.abs(Number(t.rr || 0));
+      return (
+        (medSize > 0 && size > medSize * 3) ||
+        (medAbsPnl > 0 && ap > medAbsPnl * 4) ||
+        (medRr > 0 && rr > medRr * 4)
+      );
+    })
+    .slice(0, 8)
+    .map(
+      (t) =>
+        `${t.date || '?'} ${t.instrument || '?'} pnl=${Number(t.pnl || 0).toFixed(2)} rr=${Number(t.rr || 0).toFixed(2)} qty=${t.quantity ?? '?'}`,
+    );
 
   const byStrategy = new Map<string, { n: number; pnl: number; wins: number }>();
+  const byType = new Map<string, { n: number; pnl: number; wins: number }>();
   for (const t of list) {
     const key = (t.strategy || 'Unspecified').trim() || 'Unspecified';
     const row = byStrategy.get(key) || { n: 0, pnl: 0, wins: 0 };
@@ -622,6 +762,12 @@ export function buildJournalContextForAi(
     row.pnl += Number(t.pnl || 0);
     if (Number(t.pnl) > 0) row.wins += 1;
     byStrategy.set(key, row);
+    const tk = (t.type || 'Unspecified').trim() || 'Unspecified';
+    const tr = byType.get(tk) || { n: 0, pnl: 0, wins: 0 };
+    tr.n += 1;
+    tr.pnl += Number(t.pnl || 0);
+    if (Number(t.pnl) > 0) tr.wins += 1;
+    byType.set(tk, tr);
   }
   const strategyLines = [...byStrategy.entries()]
     .sort((a, b) => b[1].n - a[1].n)
@@ -630,6 +776,31 @@ export function buildJournalContextForAi(
       ([name, s]) =>
         `${name}: n=${s.n} win%=${((s.wins / s.n) * 100).toFixed(0)} net=${s.pnl.toFixed(2)}`,
     );
+  const typeLines = [...byType.entries()]
+    .sort((a, b) => b[1].pnl - a[1].pnl)
+    .slice(0, 6)
+    .map(([name, s]) => `${name}: n=${s.n} net=${s.pnl.toFixed(2)}`);
+
+  // Simple risk-drift cue: compare first half vs second half avg |pnl| and |rr|
+  const chrono = [...list].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  const mid = Math.floor(chrono.length / 2);
+  const halfStats = (slice: typeof chrono) => {
+    const pnls = slice.map((t) => Math.abs(Number(t.pnl || 0)));
+    const rrs = slice.map((t) => Math.abs(Number(t.rr || 0))).filter((n) => n > 0);
+    return {
+      avgAbsPnl: pnls.length ? pnls.reduce((a, b) => a + b, 0) / pnls.length : 0,
+      avgAbsRr: rrs.length ? rrs.reduce((a, b) => a + b, 0) / rrs.length : 0,
+      avgSize:
+        slice.map((t) => Number(t.quantity || 0)).filter((n) => n > 0).reduce((a, b) => a + b, 0) /
+        Math.max(1, slice.filter((t) => Number(t.quantity) > 0).length),
+    };
+  };
+  const early = halfStats(chrono.slice(0, mid || 1));
+  const late = halfStats(chrono.slice(mid));
+  const riskDriftNote =
+    chrono.length >= 6
+      ? `Risk drift cue (early→late half): |PnL| ${early.avgAbsPnl.toFixed(1)}→${late.avgAbsPnl.toFixed(1)} · |RR| ${early.avgAbsRr.toFixed(2)}→${late.avgAbsRr.toFixed(2)} · size ${early.avgSize.toFixed(1)}→${late.avgSize.toFixed(1)} (descriptive only — not a diagnosis)`
+      : 'Risk drift: Insufficient journal evidence (need more trades)';
 
   const recent = [...list]
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
@@ -638,6 +809,8 @@ export function buildJournalContextForAi(
       const emo = [t.beforeEmotion, t.afterEmotion, t.psychologyNote].filter(Boolean).join('|');
       const tags = Array.isArray(t.tags) && t.tags.length ? t.tags.slice(0, 4).join('+') : '';
       const note = String(t.notes || '').replace(/\s+/g, ' ').slice(0, 80);
+      const comp = scoreTradeCompleteness(t);
+      const soft = getJournalCompletenessWarnings(t).slice(0, 3).join(';');
       return [
         t.date || '?',
         t.instrument || '?',
@@ -649,25 +822,36 @@ export function buildJournalContextForAi(
         `qty${t.quantity ?? '?'}`,
         `pnl=${Number(t.pnl || 0).toFixed(2)}`,
         `rr=${Number(t.rr || 0).toFixed(2)}`,
+        `complete=${comp.score}/${comp.label}`,
         tags ? `tags:${tags}` : '',
         emo ? `emo:${emo.slice(0, 60)}` : '',
         note ? `note:${note}` : '',
+        soft ? `warn:${soft}` : '',
+        t.screenshot ? 'shot:yes' : 'shot:no',
       ]
         .filter(Boolean)
         .join(' · ');
     });
 
   return [
-    'PLATFORM TRADING JOURNAL (single source of truth — analyze ONLY these records):',
+    'PLATFORM TRADING JOURNAL v3.0 (ONLY source of truth — analyze ONLY these records; never modify):',
     `Trade count: ${list.length} | Wins: ${wins.length} | Losses: ${losses.length} | Flat: ${flat.length}`,
+    `Journal Completeness: ${avgCompleteness.toFixed(0)}/100 (${completenessLabel})`,
     `WinRate: ${winRate.toFixed(1)}% | NetP/L: ${net.toFixed(2)} | Fees: ${fees.toFixed(2)} | Expectancy/trade: ${expectancy.toFixed(2)}`,
     `AvgWin: ${avgWin.toFixed(2)} | AvgLoss: ${avgLoss.toFixed(2)} | ProfitFactor: ${
       Number.isFinite(profitFactor) ? profitFactor.toFixed(2) : 'n/a'
     } | AvgRR: ${avgRr.toFixed(2)}`,
     strategyLines.length ? `By strategy: ${strategyLines.join(' | ')}` : '',
-    'Recent trades (no screenshots; missing fields ignored):',
+    typeLines.length ? `By timeframe/type: ${typeLines.join(' | ')}` : '',
+    riskDriftNote,
+    outliers.length ? `Outliers (not assumed mistakes): ${outliers.join(' || ')}` : 'Outliers: none flagged vs median',
+    integrity.length
+      ? `Integrity flags (do not change data): ${[...new Set(integrity)].slice(0, 8).join(' | ')}`
+      : 'Integrity flags: none observed',
+    'Recent trades (screenshots not embedded; missing fields ignored):',
     ...recent,
-    'Rules: Never invent trades/emotions/reasons. Separate Good Decision from Good Result. Small samples → low confidence. Insufficient fields → say Insufficient journal evidence for that claim.',
+    'Output focus: Journal Quality · Trade Quality · Compliance · Behavior · Risk · Execution · Pattern · Similarity · Primary Insight · Recommended Focus · Confidence.',
+    'Rules: Never invent trades/emotions/reasons/performance. Separate Good Decision from Good Result; Bad Result from Bad Process. Small samples → low confidence / Insufficient journal evidence.',
   ]
     .filter(Boolean)
     .join('\n');
