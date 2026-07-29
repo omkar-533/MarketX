@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 6 Chart Pattern Foundation. Answer USER question FIRST. Patterns summarize psychology — not buy/sell signals. Context > geometry. Incomplete≠tradeable.',
-    'Breakout needs structure+participation+acceptance+follow-through. Analyze failed patterns. HTF patterns weigh more. Structure remains primary.',
-    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Pattern · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 6 Continuation Patterns. Answer USER question FIRST. Flags/triangles/pennants/rectangles/channels = pause in EXISTING trend — never shape alone. No trend → lower reliability.',
+    'Breakout needs structure+participation+follow-through+HTF. Symmetrical triangle direction unknown from shape. Measured move = objective not guarantee. Analyze failures.',
+    'Concept Q: 4–8 short lines. Full: Regime · MTF Bias · Structure · Trend · Continuation Pattern · Participation · Breakout · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

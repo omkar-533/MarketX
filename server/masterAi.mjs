@@ -813,6 +813,30 @@ AI steps: swings → geometry → symmetry → trend → liquidity → volume �
 Mistakes: every triangle; ignore trend/volume/liquidity; draw after breakout; force patterns; ignore failures; expect perfect symmetry.
 Compact: Pattern status · Type · Trend · Volume · Structure · Score% · Summary (unconfirmed until valid breakout+follow-through).
 
+KNOWLEDGE BASE — MODULE 6 PART 2 TREND CONTINUATION PATTERNS ENGINE v1.0
+Mission: Continuation patterns = temporary pauses inside an EXISTING trend (Trend → Pause → Decision → Continuation or Failure). Without established trend, reliability falls. Geometry alone never enough. Never “the trend will continue.” Prefer: structure is consistent with continuation IF breakout confirmation + participation + HTF remain supportive. Evidence → Probability → Assessment. Never Pattern → Certainty.
+
+ASCENDING TRIANGLE: flat upper bound + rising swing lows → buyers accept higher prices; resistance active until confirmed breakout (structure break + healthy participation + follow-through).
+DESCENDING TRIANGLE: flat lower bound + falling swing highs → sellers accept lower; support active until confirmed breakdown.
+SYMMETRICAL TRIANGLE: LH + HL + compression + participation ↓ → balance / uncertainty — direction NOT from shape alone.
+BULL FLAG: strong up impulse + controlled pullback in parallel channel + reduced participation on retrace → pause in uptrend — confirm.
+BEAR FLAG: strong down impulse + controlled up retrace in parallel rising channel + reduced participation → pause in downtrend — confirm.
+PENNANT: strong impulse + small converging range + short duration + reduced vol → momentum pause; continuation possible — confirm.
+RECTANGLE: horizontal S/R + balanced oscillation → auction balance; continuation OR reverse depends on confirmed resolution.
+CHANNELS: Ascending = controlled uptrend · Descending = controlled downtrend · Horizontal = range — describe quality, not certainty.
+MEASURED MOVE: analytical objective from preceding impulse reference — NOT guaranteed target.
+
+BREAKOUT VALIDATION ↑: structure break + strong close + healthy participation + follow-through + HTF agree + vol expansion.
+FALSE BREAKOUT ↓: weak close, immediate rejection, low participation, return inside, no follow-through.
+FAILURE: expected continuation doesn’t develop → changing participation / liquidity / trend weakening / transition — analyze, don’t ignore.
+MTF: HTF continuation patterns weigh more; execution TF preferably align with HTF; conflict ↓ confidence.
+MATURITY: Early (recognize only) · Developing (monitor) · Near resolution (high attention) · Confirmed · Failed (invalidate).
+
+CONTINUATION SCORE (0–100): Existing trend 20 + Pattern structure 20 + Volume behavior 15 + Breakout quality 15 + Liquidity 10 + HTF 10 + Volatility 10.
+AI steps: confirm trend → identify type → symmetry → participation → volatility → validate breakout → HTF → score.
+Mistakes: buy/sell before confirm; ignore volume/trend; all triangles bullish; measured moves as guaranteed targets; ignore maturity.
+Compact: Pattern · Status · Trend · Participation · Breakout · HTF · Continuation Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -854,11 +878,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Structure + Indicators + Chart Pattern Foundation) v1.0.
-Read ONLY this screenshot. Patterns = psychology/context, not signals. Shape alone never enough. Breakout needs structure+participation+acceptance+follow-through. Failed patterns are informative. Don’t invent perfect geometry.
-Order: Regime → HTF Structure → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Pattern (if clear) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–6 (Structure + Patterns: Continuation Engine) v1.0.
+Read ONLY this screenshot. Continuation patterns need existing trend. Shape alone ≠ direction (esp. symmetrical triangle). Breakout needs structure+participation+follow-through. Measured move ≠ guaranteed target. Failed patterns informative.
+Order: Regime → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators → Continuation pattern (if clear) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Pattern status · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators · Continuation Pattern · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1216,7 +1240,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 6 Pattern Foundation + Structure. Answer USER QUESTION FIRST. Patterns≠signals. Context>shape. Breakout needs acceptance+follow-through. Failed patterns matter. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 6 Continuation Patterns + Structure. Answer USER QUESTION FIRST. Need existing trend. Shape≠direction. Breakout needs confirm+follow-through. Measured move≠guaranteed target. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
