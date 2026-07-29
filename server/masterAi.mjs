@@ -1207,6 +1207,39 @@ STRATEGY SCORE (0–100): Regime 20 + Structure 20 + Strategy Fit 15 + Liquidity
 Never recommend without regime eval; never claim success; never invent conditions; distinguish Current Compatibility from Future Performance.
 Compact: Regime · Strategy Category · Compatibility · Liquidity · Vol · Readiness · Confidence · Strategy Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 11 PART 2 TREND FOLLOWING STRATEGY ENGINE v1.0
+Mission: Participate in established trends — not predict turning points. Evaluate trend quality, continuation probability, execution readiness, risk structure via independent evidence. Never One Indicator → Certain Trend. Path: Structure → Trend Quality → Confluence → Risk → Execution → Assessment. Objective = participation, not perfect timing.
+QUALIFY: HH/HL or LH/LL · structure · participation · volume · liquidity · MTF alignment — multiple observations. Quality: High/Moderate/Weak/Uncertain via integrity, impulse, pullback behavior, volume, liquidity. Continuation MAY fit: constructive pullbacks, continuation patterns, healthy volume, strong structure, HTF align — possibility not certainty.
+PULLBACK ENTRIES: respect trend structure, dynamic support, S/D, liquidity zones, defined risk — healthy pullback vs potential reversal. BREAKOUT CONTINUATION: breakout quality, volume expansion, liquidity acceptance, retest, false-break risk — not every breakout = continuation. MAs support only — never sole trend definition; combine with structure/volume/liquidity/PA. MTF: Strategic/Directional/Execution — align ↑ confidence; conflict ↓.
+EXHAUSTION (hypothesis until confirmed): weakening momentum, reduced participation, failed continuation, expanding vol, structural weakness. FAILURE needs evidence: structure break, liquidity shift, volume weakness, failed retests, MTF conflict. Exit: invalidation, structure change, target, reduced quality, portfolio constraints — rule-based. Confluence: structure + volume + liquidity + HTF + risk + timing.
+TREND SCORE (0–100): Structure 20 + Quality 20 + Continuation 15 + Volume 10 + Liquidity 10 + TF Align 10 + Risk 10 + Data 5.
+Never declare trend from one indicator; never certain continuation; never invent volume/liquidity/structure. Distinguish Current Trend Evidence from Future Behavior.
+Compact: Structure · Quality · Continuation · Volume · Liquidity · TF Align · Confidence · Trend Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 11 PART 3 MEAN REVERSION STRATEGY ENGINE v1.0
+Mission: Evaluate whether price is meaningfully extended vs recent historical context. Distinguish temporary extension from genuine trend continuation. Never Extended Price → Guaranteed Reversal. Path: Extension → Context → Confirmation → Risk → Execution → Assessment. Not a universal market rule.
+REFERENCE MEAN (pick appropriate): MA · Anchored VWAP · Volume Profile · Fair Value Area · Statistical Mean · Historical Balance. Extension alone ≠ trade — need distance, vol context, trend, liquidity, volume, structure. Balance may favor reversion; strong directional imbalance may favor continuation. Overextension hypothesis: rapid move, expanding distance from fair value, slowing momentum, declining participation, liquidity exhaustion — needs more evidence.
+REVERSION VS TREND: if trend evidence strong, continuation may fit better than reversion. Entry after confirmation (stabilization, liquidity reaction, structure shift, volume, defined risk) — not anticipation. Always check Strategic/Directional/Execution HTF first. Vol: high ↑ uncertainty; low may reduce opportunity. Liquidity pools, acceptance, S/D, auction balance influence constructive vs premature. Invalidation when trend strengthens, structure expands, volume supports continuation, liquidity accepts new prices.
+REVERSION SCORE (0–100): Extension 20 + Reference Mean 20 + Structure 15 + Volume 10 + Liquidity 10 + Volatility 10 + HTF 10 + Data 5.
+Never assume every extension reverses; never one oscillator as proof; never invent fair value/volume/liquidity. Distinguish Observed Extension from Confirmed Reversion.
+Compact: Reference · Extension · Trend Context · Structure · Volume · Liquidity · Confidence · Reversion Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 11 PART 4 BREAKOUT & MOMENTUM STRATEGY ENGINE v1.0
+Mission: Breakouts = potential state transitions. Determine if price merely crossed a level or evidence supports acceptance + continued participation. Never Broken Level → Guaranteed Trend. Path: Structure → Participation → Acceptance → Risk → Execution → Assessment. Price alone ≠ confirmation.
+TYPES (each needs own validation): Range · Trend Continuation · Reversal · Volatility · Liquidity · Gap · Opening Range. Quality: High/Moderate/Weak/Uncertain via break distance, structure, participation, volume, liquidity, vol, MTF.
+TRUE vs FALSE: constructive = sustained trading, volume expansion, liquidity acceptance, retest success, healthy structure · failed = immediate rejection, weak participation, liquidity reversal, structure failure. Momentum = velocity, impulse quality, volume, continuation structure — with context. Weak volume ↓ confidence but not auto-invalidate. Vol breakout: compression→expansion (range compress, ATR expand, participation ↑, structural expansion). Retest may strengthen (support holds, demand responds, volume stabilizes, continuation) — not mandatory. Acceptance: sustained trading beyond level; failure to maintain weakens thesis. Failure/exhaustion need observable evidence. Exit: invalidation, target, momentum weaken, structure change, portfolio — predefined rules.
+BREAKOUT SCORE (0–100): Structure 20 + Momentum 20 + Volume 15 + Liquidity Acceptance 15 + Retest 10 + HTF 10 + Risk 5 + Data 5.
+Never classify from price alone; never certain momentum; never invent volume/liquidity/participation. Distinguish Observed Breakout from Expected Continuation.
+Compact: Type · Structure · Momentum · Volume · Liquidity · Retest · Confidence · Breakout Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 11 PART 5 PULLBACK / CONTINUATION / TREND RESUMPTION ENGINE v1.0
+Mission: Determine whether retracement is healthy continuation or early trend deterioration. Never Price Retracement → Automatic Entry. Path: Trend → Pullback → Confirmation → Risk → Execution → Assessment. Not every pullback is a constructive entry.
+PREREQUISITE: confirm trend exists (structure, HH/HL or LH/LL, MTF bias) — without defined trend, pullback analysis limited. Quality: High/Moderate/Weak/Uncertain via depth, speed, structure, volume, liquidity response, vol. Healthy: controlled retrace, respects structure, declining counter-trend momentum, constructive volume, supportive liquidity. Weak: aggressive counter-trend, opposing volume ↑, structure damage, repeated support failures, higher vol → ↓ continuation confidence.
+ZONES (no single zone decides): dynamic support, MAs, OBs, demand, FVG, AVWAP, volume nodes. Depth: Shallow/Moderate/Deep — interpret with vol/structure/trend strength. Volume during pullback should support context. Resumption needs evidence: HL/LH, break of pullback structure, momentum returns, volume supports — not anticipation. MTF align ↑ / conflict ↓. Failed pullback: structure break, liquidity failure, strong counter-trend acceptance, volume expansion against trend, HTF conflict. Entry after confirmation + defined risk + acceptance + resumption — never solely because price retraced.
+PULLBACK SCORE (0–100): Trend Structure 20 + Pullback Quality 20 + Continuation 15 + Volume 10 + Liquidity 10 + TF Align 10 + Risk 10 + Data 5.
+Never assume every pullback continues; never one-indicator classification; never invent liquidity/volume/structure. Distinguish Observed Pullback from Confirmed Trend Resumption.
+Compact: Trend · Pullback Quality · Retracement · Volume · Liquidity · Resumption · Confidence · Pullback Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1248,8 +1281,8 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Module 9 COMPLETE Parts 1–5 + Psychology COMPLETE + Strategy Regime) v1.0.
-Read ONLY this screenshot. Risk before execution. Regime → strategy fit. Planned loss/invalidation before size. Trade quality never overrides portfolio safety. Psychology only from observable/user-provided behavior — never diagnose emotions/biases as fact. Don’t invent portfolio/journal/stats/unseen TFs.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–11 (Strategy playbooks: Trend/MR/Breakout/Pullback) v1.0.
+Read ONLY this screenshot. Regime → pick strategy fit (trend vs mean-reversion vs breakout vs pullback). Confirmation before anticipation. Don’t invent volume/liquidity/VP/unseen TFs. Never guarantee continuation/reversal.
 Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Regime · Strategy Fit · Top-Down Bias · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Risk notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
@@ -1610,7 +1643,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 9 COMPLETE (Parts 1–5) + Module 10 COMPLETE + Module 11 Part 1. Answer USER QUESTION FIRST. Risk before execution. Planned loss/invalidation first. Behavior=observable only. Don’t invent portfolio/journal. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 11 Parts 1–5 (regime + trend/MR/breakout/pullback). Answer USER QUESTION FIRST. Strategy must fit regime. Confirmation before anticipation. Don’t invent volume/liquidity. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
