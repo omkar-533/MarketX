@@ -320,16 +320,13 @@ export default function MasterAI() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const processChartFile = async (file: File, autoAnalyze = true) => {
+  const processChartFile = async (file: File) => {
     if (analyzingRef.current) return;
     setImageError(null);
     try {
       const { dataUrl, fileName } = await prepareChartImageForAi(file);
       setSelectedImage(dataUrl);
       setSelectedImageName(fileName);
-      if (autoAnalyze) {
-        await handleSend(undefined, { imageDataUrl: dataUrl, imageName: fileName });
-      }
     } catch {
       setImageError(getMasterAiSorryMessage(selectedLang.code, 'image'));
       clearSelectedImage();
@@ -339,7 +336,7 @@ export default function MasterAI() {
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    void processChartFile(file, true);
+    void processChartFile(file);
   };
 
   const handlePaste = (event: React.ClipboardEvent) => {
@@ -350,7 +347,7 @@ export default function MasterAI() {
         const file = item.getAsFile();
         if (file) {
           event.preventDefault();
-          void processChartFile(file, true);
+          void processChartFile(file);
         }
         break;
       }
@@ -360,7 +357,7 @@ export default function MasterAI() {
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const file = event.dataTransfer.files?.[0];
-    if (file) void processChartFile(file, true);
+    if (file) void processChartFile(file);
   };
 
   const handleSend = async (
@@ -883,11 +880,9 @@ export default function MasterAI() {
             <div className="mai-chat__attach">
               <img src={selectedImage} alt="" />
               <span>
-                {isAnalyzingChart
-                  ? hindi
-                    ? 'Chart analyze ho raha hai…'
-                    : 'Analyzing chart…'
-                  : selectedImageName}
+                {hindi
+                  ? `${selectedImageName || 'Chart'} · prompt likho, phir Send`
+                  : `${selectedImageName || 'Chart'} · add a prompt, then Send`}
               </span>
               <button
                 type="button"
@@ -896,8 +891,8 @@ export default function MasterAI() {
                 disabled={isAnalyzingChart}
               >
                 <X className="h-4 w-4" />
-                    </button>
-                </div>
+              </button>
+            </div>
           ) : null}
 
           <div className="mai-chat__input-row">
@@ -930,9 +925,13 @@ export default function MasterAI() {
                   ? hindi
                     ? 'सुन रहा हूँ…'
                     : 'Listening…'
-                  : hindi
-                    ? 'Analyse AI se poochho…'
-                    : 'Message Analyse AI…'
+                  : selectedImage
+                    ? hindi
+                      ? 'Chart ke saath apna sawal likho…'
+                      : 'Write your question with this chart…'
+                    : hindi
+                      ? 'Analyse AI se poochho…'
+                      : 'Message Analyse AI…'
               }
               className="mai-chat__textarea"
             disabled={isListening}
