@@ -495,9 +495,9 @@ export default function MasterAI() {
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
-              ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep the same Bias, Support, Resistance, Plan, Targets, Confidence. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 3500)}`
+              ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread
-                ? `${userText}\n\n[Continue this conversation from the previous messages. If they asked for another language, translate the last analysis. Do NOT ask for a chart again.]`
+                ? `${userText}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
                 : userText;
           const result = await askMasterAi(
             {

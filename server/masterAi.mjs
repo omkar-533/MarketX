@@ -68,26 +68,18 @@ ACCURACY (most important — never bluff)
 8. Weak/conflicted chart setup → NO TRADE + reasons.
 
 CHART / SETUP FORMAT (ONLY when a chart image is attached, or continuing a chart thread with known levels)
-Market Bias
-Reason
-Support
-Resistance
-Plan (bullish above / bearish below + invalidation)
-Targets (only if structure supports)
-Risk Reward (only if levels allow)
-Confidence — High/Medium/Low with % and short reasons
-Conclusion
+Keep it SHORT — max 8–12 lines total:
+Bias (1 line) · Reason (1–2 lines) · Support (1–2 levels) · Resistance (1–2 levels) · Plan (1–2 lines) · Invalidation (1 line) · Confidence (1 line)
 
-LENGTH
+LENGTH (strict)
 - Greetings: 1–2 lines.
-- Normal answers: clear, usually under ~200 words.
-- Chart analysis: structured, tight, no filler.`;
+- Normal answers: 3–6 short lines, under ~80 words.
+- Chart / setup: under ~100 words. No essays, no repeated sections, no long bullet walls.
+- Language switch / follow-up: same length as original — do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — you are Jarvis. Read ONLY this screenshot.
-- Copy numbers exactly as shown. If a level is unclear/blurry, say unclear — do not invent.
-- Format: Market Bias · Reason · Support · Resistance · Plan (bullish above / bearish below) · Invalidation · Targets · Risk Reward · Confidence · Conclusion.
-- Weak/conflicted → NO TRADE with reasons.
-- Never buy/sell orders. Never invent.`;
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis. Read ONLY this screenshot. Keep reply SHORT (under ~100 words).
+Cover only: Bias · Reason (1–2 lines) · Support (max 2) · Resistance (max 2) · Plan + invalidation · Confidence.
+No long essays. Never invent. Never buy/sell orders.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
@@ -208,7 +200,7 @@ function geminiGenerationConfigs(hasImage, shortChat) {
   const base = {
     temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
     topP: hasImage ? 0.8 : 0.9,
-    maxOutputTokens: hasImage ? 1000 : shortChat ? 220 : 700,
+    maxOutputTokens: hasImage ? 420 : shortChat ? 120 : 280,
   };
   return [
     { ...base, thinkingConfig: { thinkingBudget: 0 } },
@@ -444,20 +436,20 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: full chart desk analysis from the image only.'
+        ? 'Task: SHORT chart read only — Bias, Reason, 2 supports, 2 resistances, Plan, Confidence. Under ~100 words.'
         : shortChat
-          ? 'Task: brief respectful greeting as Jarvis — no market dump.'
+          ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
-            ? 'Task: CONTINUE prior analysis from chat history. Translate/restate/extend as asked. Do NOT ask for a chart again.'
+            ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same levels. Under ~100 words. Do NOT ask for a chart again.'
             : wantsTradeCall
-              ? 'Task: no yes/no trade order. Ask for symbol, timeframe, and chart before a structured plan. Stay professional.'
+              ? 'Task: no yes/no trade order. Ask for chart in 2 short lines.'
               : wantsDayReview && !contextHasLiveTape
-                ? 'Task: Ask only for a TradingView chart screenshot in 2 short lines. Do not invent levels.'
+                ? 'Task: Ask only for a chart screenshot in 2 short lines.'
                 : wantsChartRead
-                  ? 'Task: answer briefly; if visual read needed, ask only for a chart screenshot.'
-                  : 'Task: answer clearly as Jarvis. Never invent prices. Accuracy first.';
+                  ? 'Task: answer in 3–5 short lines; if visual read needed, ask for chart.'
+                  : 'Task: answer in 3–6 short lines. Under ~80 words. No essays.';
 
-      let textBlock = `[You are Jarvis. ${langLine} Accuracy first: never invent numbers. bullish/bearish only — no buy/sell orders.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Jarvis. ${langLine} Keep replies SHORT. Never invent numbers. bullish/bearish only.]\n[${taskLine}]\n\n${userTextBase}`;
       if (hasImage) {
         textBlock +=
           hinglish || hindi
@@ -499,7 +491,7 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 1000 : shortChat ? 220 : 700,
+            max_tokens: hasImage ? 420 : shortChat ? 120 : 280,
             temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
             top_p: 0.9,
             messages,
