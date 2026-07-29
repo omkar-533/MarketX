@@ -151,6 +151,27 @@ INVERTED HAMMER — after decline: small body, long upper wick, tiny lower wick.
 
 SHOOTING STAR — after advance: small body, long upper wick, tiny lower wick. Psych: buyers pushed high → sellers fully reject → close near open = buying weakens. Institutional: liquidity above highs taken, profit booking, long exposure reduced. Best at: major resistance, supply, round number, weekly/daily/prior swing high. Confirm: bearish close below star, volume up, momentum divergence, break of short-term support. Fail: strong trend, weak rejection, low volume, HTF strongly bullish. Reliability: no confirm ~43%; +resistance ~72%; +volume ~80%; +structure shift ~89%. AI: Star+supply+resistance+volume+momentum weakness → raise bearish probability; else neutral. Don’t sell immediately. Summary: rejection evidence — not guaranteed reversal; wait confirmation.
 
+KNOWLEDGE BASE — MODULE 2B PART 2 DOJI FAMILY v1.0
+Mission: Doji = uncertainty / temporary equilibrium — NOT a reversal or continuation by itself. Market paused; next candles decide. Never trade a Doji alone. Never by appearance. Always combine Trend, Structure, Liquidity, S/R, Volume, HTF, Momentum + confirmation candle → then confidence. Pattern alone never dominates (reliability weight: trend/volume/S/R/liquidity/HTF ★★★★★; momentum ★★★★; candle pattern ★★★).
+
+STANDARD DOJI — Open≈Close, tiny body; wicks vary. Psych: both sides pushed, neither kept control = hesitation. Institutional pause before news/breakout/continuation/reversal; may be absorption, liquidity collection, or position building — never assume reverse. Best at weekly S/R, demand/supply, swing H/L, after strong trend. Confirm: next close above high (bullish) or below low (bearish). Fail: noisy range, low volume, no breakout, weak momentum. Reliability: no context ~30%; +support ~58%; +resistance ~60%; +volume ~72%; +trend exhaustion ~82%. AI: Doji+strong uptrend+resistance+volume climax → potential exhaustion, require confirmation; else neutral. Summary: indecision — confirmation mandatory.
+
+DRAGONFLY DOJI — Open≈Close≈High, very long lower shadow, tiny upper. Psych: sellers collapsed price → strong buyers recovered → close near highs = lower prices rejected. Institutional: liquidity below lows taken, retail stops, accumulation. Best at: demand, weekly/daily support, liquidity sweep, end of pullback. Confirm: bullish follow + volume up + break above high. Fail: weak volume, mid-range, strong bear trend, LTF-only. Reliability: no confirm ~48%; +support ~75%; +liquidity sweep ~84%; +HTF trend ~90%. AI: Dragonfly+demand+bullish trend+volume → raise bullish probability; else wait. Summary: strong buyer rejection after temporary selling.
+
+GRAVESTONE DOJI — Open≈Close≈Low, very long upper shadow, tiny lower. Psych: buyers pushed high → sellers fully reject → close near open = buying weakens. Institutional: liquidity above highs, late buyers trapped, distribution, possible exhaustion. Best at: supply, resistance, swing/weekly high, round numbers. Confirm: bearish close below low + volume expand + momentum weak. Fail: strong bull trend, weak rejection, no volume, HTF bullish. Reliability: no confirm ~46%; +resistance ~74%; +volume ~82%; +structure shift ~90%. AI: Gravestone+resistance+supply+weak momentum → raise bearish probability; require confirmation. Summary: rejection of higher prices — confirmation mandatory.
+
+LONG-LEGGED DOJI — tiny body, long upper + lower shadows, high volatility. Psych: aggressive fight, neither controls = large uncertainty; market deciding. Institutional: large two-way exchange; major move often follows. Best at: major breakout zones, before news, range H/L, trend exhaustion. Confirm: breakout above high OR breakdown below low + volume expansion. Fail: low vol, weak volume, small range. Reliability: no confirm ~35%; +breakout ~72%; +volume ~83%; +HTF align ~88%. AI: NEVER trade inside the long-legged Doji — only after breakout.
+
+FOUR-PRICE DOJI — Open=High=Low=Close, almost no movement, rare. Psych: no participation/conviction. Institutional: very low liquidity / waiting. Reliability very low. AI: IGNORE — no trade setup unless special stated circumstances.
+
+DOJI DECISION MATRIX
+- At support → bullish bias, require confirmation
+- At resistance → bearish bias, require confirmation
+- During strong trend → usually continuation unless confirmed otherwise
+- Inside range → neutral
+- After liquidity sweep → higher probability (still confirm)
+- Before major news → expect volatility expansion
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -192,9 +213,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B Part1 (Hammer/Hanging Man/IH/Shooting Star) v1.0.
-Read ONLY this screenshot. Price=result; order flow=cause. Candle psychology BEFORE pattern names. Location > shape. One candle never predicts. Never trade candle names.
-Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation. Wick ≠ breakout. Sweep needs confirmation.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Module 1 + 2A + 2B (candles + Doji family) v1.0.
+Read ONLY this screenshot. Candle psychology BEFORE names. Location > shape. Doji = indecision — never trade alone; confirmation candle required. Never trade inside Long-Legged Doji.
+Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Score Context/Reliability/Confirmation. Wick ≠ breakout.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -554,7 +575,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle names (Hammer/HM/IH/Star). Location+confirm required. Never trade names alone. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 1+2A+2B. Answer USER QUESTION FIRST. Psychology before candle/Doji names. Doji=indecision — never alone; confirm next candle. Never trade inside Long-Legged Doji. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

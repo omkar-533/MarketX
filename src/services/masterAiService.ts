@@ -424,8 +424,8 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 1+2A+2B Part1. Answer USER question FIRST. Psychology BEFORE candle name (Hammer/Hanging Man/Inverted Hammer/Shooting Star). Location > shape. Never trade names alone.',
-    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Require confirmation. Score Context/Reliability/Confirmation.',
+    'TRAFI Module 1+2A+2B. Answer USER question FIRST. Psychology BEFORE candle/Doji name. Location > shape. Doji=indecision — never trade alone; need confirmation.',
+    'Order: Structure → Trend → Liquidity → S/R → Volume → PA → Candle psych → Indicators → Risk. Never trade inside Long-Legged Doji. Ignore Four-Price Doji.',
     'Concept Q: 4–8 short lines. Full: Trend · Structure · S/R · Liquidity · Volume · Candle story · Pattern · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
