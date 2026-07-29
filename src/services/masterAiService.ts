@@ -424,9 +424,9 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 5 VWAP/OBV/CMF/MFI Money Flow Engine. Answer USER question FIRST. Estimate participation — never attribute to institutions/smart money. Invisible → N/A.',
-    'Above VWAP ≠ buy. OBV/CMF/MFI divergences need structure confirm. Use multiple tools together. Structure+Volume+HTF required.',
-    'Concept Q: 4–8 short lines. Full: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Money Flow (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
+    'TRAFI Module 5 Ichimoku/SuperTrend/SAR Engine. Answer USER question FIRST. Advanced trend systems support only — never standalone signals. Invisible → N/A.',
+    'Evaluate full Ichimoku together. Cloud/TK/SuperTrend/SAR need Structure+Volume+HTF. Avoid double-counting. Kumo Twist ≠ guaranteed reverse.',
+    'Concept Q: 4–8 short lines. Full: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Trend Systems (or N/A) · Confirmation · Risk/Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
   ]

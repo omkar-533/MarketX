@@ -735,6 +735,30 @@ AI steps: VWAP → OBV → CMF → MFI → structure → volume → trend → HT
 Mistakes: buy/sell only vs VWAP; CMF guarantees continuation; OBV divergence = auto reverse; ignore structure/trend/HTF; assume tools identify institutions.
 Compact: VWAP · OBV · CMF · MFI · Participation estimate · Score% · Summary (no participant attribution).
 
+KNOWLEDGE BASE — MODULE 5 PART 7 ICHIMOKU / SUPERTREND / SAR ADVANCED TREND SYSTEMS v1.0
+Mission: Advanced trend systems combine Trend, Momentum, Dynamic S/R, Volatility into one framework — SUPPORTING evidence only, never standalone buy/sell. Priority: Price → Structure → Liquidity → Volume → Volatility → Trend Systems. They increase confidence; never create certainty. Invisible systems → N/A, never invent. Avoid double-counting similar price-based systems (redundancy filter).
+
+ICHIMOKU — evaluate ALL components together, never one alone.
+Components: Tenkan (conversion, short-term eq) · Kijun (base, intermediate eq) · Senkou A/B (leading cloud bounds) · Chikou (lagging confirmation).
+Kumo: Price above cloud = bullish env · Below = bearish · Inside = neutral/transition/balance — evidence not certainty.
+Thickness: Thin = weaker projected barrier / easier transitions · Thick = larger balance area / stronger dynamic barriers — NEVER guaranteed S/R.
+Tenkan/Kijun: Tenkan>Kijun = short-term bullish momentum bias · reverse = bearish — crosses need Cloud+Structure+Volume confirm.
+Kumo Twist: future cloud bounds cross → possible projected balance change — NOT a reverse signal; confirm.
+Chikou: historical confirmation only — support or conflict with structure as supporting evidence.
+
+SUPERTREND: ATR + price trend estimate (ATR length + multiplier configurable). Above = bullish estimate · Below = bearish · Frequent flips → possible range.
+PARABOLIC SAR: continuation / trailing-stop style. Dots below = bullish · Above = bearish · Rapid flips ↓ confidence.
+
+AGREEMENT ↑: Price above cloud + Tenkan>Kijun + SuperTrend bullish + positive MACD + ADX rising + healthy structure.
+CONFLICT: Bullish Ichimoku + bearish SuperTrend + weak ADX + bearish structure → mixed; cut confidence; primary evidence wins.
+TRANSITION signs (confirm): price enters cloud, flattening Kijun, ADX weakening, MACD hist shrinking, vol compression.
+MTF: Weekly → Daily → 4H → execution — HTF must support observed trend to ↑ confidence.
+
+ADVANCED TREND SCORE (0–100): Ichimoku 20 + SuperTrend 15 + SAR 10 + Structure 20 + Volume 10 + Trend 10 + HTF 10 + Freshness 5.
+AI steps: Ichimoku → SuperTrend → SAR → structure → volume → trend → HTF → redundancy filter → score.
+Mistakes: every Tenkan/Kijun cross; buy cloud entry; Kumo Twist = guaranteed reverse; every SuperTrend flip; SAR alone; ignore structure/HTF.
+Compact: Ichimoku · Cloud · TK · SuperTrend · SAR · Advanced Trend Score% · Summary (structure remains primary).
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -776,11 +800,11 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (Indicators + Volatility + Money Flow) v1.0.
-Read ONLY this screenshot. Structure first. VWAP/OBV/CMF/MFI = participation estimates — never “smart money bought.” Never invent values. Above VWAP ≠ buy. Divergence needs structure confirm.
-Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → MA → Oscillators/MACD/ADX → VWAP/Money Flow (if visible) → PA → Candle → Risk.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–5 (full Indicator + Advanced Trend Systems) v1.0.
+Read ONLY this screenshot. Structure first. Ichimoku/SuperTrend/SAR = supporting only — never buy/sell alone. Don’t invent cloud/SAR. Don’t trade every TK cross or SuperTrend flip. Redundancy filter on similar systems.
+Order: Regime/Vol → HTF Structure/Trend → BOS/CHOCH → Liquidity → S/D → Volume → Indicators/Money Flow → Ichimoku/SuperTrend/SAR (if visible) → PA → Candle → Risk.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Indicators/Money Flow (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
+Full analysis → Risk first, then: Regime · Volatility · MTF Bias · Structure · BOS/CHOCH · Liquidity · S/D · Volume · Trend Systems (or N/A) · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
@@ -1138,7 +1162,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 5 Money Flow (VWAP/OBV/CMF/MFI) + Structure. Answer USER QUESTION FIRST. Participation estimates only — never “smart money.” Above VWAP≠buy. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 5 Advanced Trend (Ichimoku/SuperTrend/SAR) + Structure. Answer USER QUESTION FIRST. Supporting only — never alone. No TK-cross/flip trading. Invisible→N/A. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch
