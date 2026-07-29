@@ -77,10 +77,15 @@ function loadChatMemory(fallbackWelcome: Message): Message[] {
       .map((m) => ({
         id: m.id || `${Date.now()}-${Math.random()}`,
         role: m.role,
-        text: m.text.slice(0, 4000),
+        text: String(m.text)
+          .replace(/\bGemini(?:’s|'s)?\b/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+          .slice(0, 4000),
         timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
         // skip heavy image persistence
-      }));
+      }))
+      .filter((m) => m.text.length > 0);
     return restored.length ? restored : [fallbackWelcome];
   } catch {
     return [fallbackWelcome];
@@ -115,7 +120,7 @@ export default function MasterAI() {
   const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
   const welcomeText =
     initialMode === 'auto'
-      ? 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
+      ? 'Auto language on — type in any language and Jarvis replies in the same one. Share a chart for structure analysis.'
       : getMasterAiWelcome(initialLang.code);
   const [messages, setMessages] = useState<Message[]>(() =>
     loadChatMemory({
@@ -235,7 +240,7 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — Gemini’s 70+ languages. Type in any language and Jarvis replies in the same one. Share a chart for structure analysis.',
+                text: 'Auto language on — type in any language and Jarvis replies in the same one. Share a chart for structure analysis.',
               }
             : m,
         ),
@@ -598,9 +603,9 @@ export default function MasterAI() {
               value={langMode}
               onChange={(e) => onLanguageChange(e.target.value)}
               aria-label="Reply language"
-              title="Auto uses full Gemini multilingual (70+). Or lock a language."
+              title="Auto detects language from your message, or lock a language"
             >
-              <option value="auto">Auto · Gemini 70+ · {selectedLang.nativeLabel}</option>
+              <option value="auto">Auto · {selectedLang.nativeLabel}</option>
               <optgroup label="Popular">
                 {MASTER_AI_LANGUAGES.filter((l) => l.group === 'popular').map((l) => (
                   <option key={l.code} value={l.code}>
@@ -615,7 +620,7 @@ export default function MasterAI() {
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="World (Gemini)">
+              <optgroup label="World">
                 {MASTER_AI_LANGUAGES.filter((l) => l.group === 'world').map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.nativeLabel} · {l.name}

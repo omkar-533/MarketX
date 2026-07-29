@@ -363,9 +363,9 @@ function buildLanguageDirective(langCode: string, autoMode = false): string {
   const lang = getMasterAiLanguage(langCode);
   if (autoMode) {
     return [
-      'AUTO LANGUAGE (full Gemini multilingual — 70+ languages):',
+      'AUTO LANGUAGE (70+ languages):',
       'Detect the user’s latest message language yourself and reply in that exact language/script.',
-      'Works for Hinglish, Hindi, Tamil, Telugu, Gujarati, Arabic, Spanish, French, Chinese, Japanese, and any other Gemini-supported language.',
+      'Works for Hinglish, Hindi, Tamil, Telugu, Gujarati, Arabic, Spanish, French, Chinese, Japanese, and other supported languages.',
       'Switch every turn if the user switches. Do not stay stuck in a previous language.',
       `Soft UI hint only (ignore if it conflicts with the message): ${lang.nativeLabel}.`,
     ].join(' ');
@@ -461,11 +461,11 @@ export function shouldUseWebSearch(input: string): boolean {
 }
 
 export const MASTER_AI_MODELS: MasterAiModel[] = [
-  { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', description: 'Smart default — Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', description: 'Best quality / cost for trading chat + charts' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google', description: 'Cheapest — lighter answers' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', description: 'Fast multilingual fallback' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', description: 'Deepest analysis (uses more credits)' },
+  { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', description: 'Smart default — fast trading chat + charts' },
+  { id: 'gemini-2.5-flash', name: 'Flash', provider: 'Google', description: 'Best quality / cost for trading chat + charts' },
+  { id: 'gemini-2.5-flash-lite', name: 'Flash Lite', provider: 'Google', description: 'Cheapest — lighter answers' },
+  { id: 'gemini-2.0-flash', name: 'Flash 2.0', provider: 'Google', description: 'Fast multilingual fallback' },
+  { id: 'gemini-2.5-pro', name: 'Pro', provider: 'Google', description: 'Deepest analysis (uses more credits)' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', description: 'Deeper analysis & charts' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', description: 'Fast, clear trading explanations' },
@@ -740,7 +740,7 @@ export async function fetchMasterAiStatus(): Promise<{
         ? keySource === 'server'
           ? 'Analyse AI ready (server key)'
           : 'Live intelligence ready'
-        : 'Add Gemini API key (aistudio.google.com) in Profile',
+        : 'Add an AI API key (aistudio.google.com) in Profile',
     };
   } catch {
     return {

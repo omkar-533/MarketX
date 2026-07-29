@@ -4,15 +4,15 @@ import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', provider: 'Google' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google' },
+  { id: 'gemini-2.5-flash', name: 'Flash', provider: 'Google' },
+  { id: 'gemini-2.5-flash-lite', name: 'Flash Lite', provider: 'Google' },
+  { id: 'gemini-2.0-flash', name: 'Flash 2.0', provider: 'Google' },
+  { id: 'gemini-2.5-pro', name: 'Pro', provider: 'Google' },
+  { id: 'gemini-1.5-flash', name: 'Flash 1.5', provider: 'Google' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', web: false },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (via OR)', provider: 'Google' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Flash (via OR)', provider: 'Google' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
   { id: 'perplexity/sonar', name: 'Sonar (web)', provider: 'Perplexity', web: true },
 ];
@@ -44,7 +44,7 @@ Your name is always Jarvis. Do not rename yourself.
 VOICE
 - Calm, professional, confident, evidence-based. Sound like a real desk analyst, not a chatbot.
 - Never say you are an AI/bot/model. Never use: “As an AI”, “Hope this helps”, emoji spam, “Hey buddy”.
-- AUTO LANGUAGE (full Gemini multilingual, 70+ languages): Read the user’s latest message and reply in THAT same language/script automatically — including Hinglish, Hindi, Tamil, Arabic, Spanish, French, Chinese, Japanese, and any other Gemini-supported language. Do this yourself from the message text; do not stay stuck in a previous language.
+- AUTO LANGUAGE (70+ languages): Read the user’s latest message and reply in THAT same language/script automatically — including Hinglish, Hindi, Tamil, Arabic, Spanish, French, Chinese, Japanese, and other supported languages. Do this yourself from the message text; do not stay stuck in a previous language.
 - If a fixed language lock is given (not Auto), follow that lock.
 - Hindi/Hinglish: masculine forms (karta / bataunga / raha).
 
@@ -327,7 +327,7 @@ async function chatWithGemini(gemini, {
     }
     if (modelFailedHard) continue;
   }
-  throw Object.assign(new Error(lastError?.message ?? 'All Gemini models failed'), { status: 502 });
+  throw Object.assign(new Error(lastError?.message ?? 'AI models unavailable'), { status: 502 });
 }
 
 export function createMasterAiRouter(apiKey) {
@@ -365,7 +365,7 @@ export function createMasterAiRouter(apiKey) {
       if (!client && !gemini) {
         throw Object.assign(
           new Error(
-            'Add a Gemini API key (aistudio.google.com), OpenAI key, or OpenRouter key in Profile / server env.',
+            'Add an AI API key (aistudio.google.com), OpenAI key, or OpenRouter key in Profile / server env.',
           ),
           { status: 503 },
         );
@@ -412,7 +412,7 @@ export function createMasterAiRouter(apiKey) {
         !/\bNIFTY\s+n\/a\b/i.test(String(platformContextRaw || ''));
 
       const langLine = autoLang
-        ? 'AUTO LANGUAGE (Gemini 70+): detect the user message language yourself and reply in that same language/script — any Gemini-supported language. Soft hint only if ambiguous: ' +
+        ? 'AUTO LANGUAGE (70+): detect the user message language yourself and reply in that same language/script. Soft hint only if ambiguous: ' +
           (langName || lang) +
           '.'
         : hinglish
