@@ -11,6 +11,9 @@ import {
   ChevronDown,
   Check,
   Sparkles,
+  Plus,
+  History,
+  Trash2,
 } from 'lucide-react';
 import {
   MASTER_AI_LANGUAGES,
@@ -48,6 +51,16 @@ import {
   type MasterAiLangMode,
   type MasterAiLanguage,
 } from '../services/masterAiService';
+import {
+  deleteChat,
+  formatChatTime,
+  loadActiveChat,
+  persistActiveChat,
+  startNewChat,
+  switchChat,
+  type ChatMessage,
+  type ChatSessionMeta,
+} from '../services/masterAiChatStore';
 import ChatMarkdown from './ChatMarkdown';
 import {
   MASTER_AI_IMAGE_ACCEPT,
@@ -57,69 +70,9 @@ import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
 import { loadLocalTrades } from '../services/journalSyncService';
 import { useAuth } from '../hooks/useAuth';
+import { AI_PRODUCT_NAME } from '../constants/brandLabels';
 
-interface Message {
-  id: string;
-  role: 'user' | 'trafi';
-  text: string;
-  timestamp: Date;
-  imageUrl?: string;
-}
-
-const CHAT_MEMORY_KEY = 'master_ai_chat_memory_v1';
-const CHAT_MEMORY_MAX = 40;
-
-function loadChatMemory(fallbackWelcome: Message): Message[] {
-  if (typeof window === 'undefined') return [fallbackWelcome];
-  try {
-    const raw = window.localStorage.getItem(CHAT_MEMORY_KEY);
-    if (!raw) return [fallbackWelcome];
-    const parsed = JSON.parse(raw) as Array<{
-      id: string;
-      role: 'user' | 'trafi';
-      text: string;
-      timestamp?: string;
-      imageUrl?: string;
-    }>;
-    if (!Array.isArray(parsed) || parsed.length === 0) return [fallbackWelcome];
-    const restored = parsed
-      .filter((m) => m && (m.role === 'user' || m.role === 'trafi') && typeof m.text === 'string')
-      .slice(-CHAT_MEMORY_MAX)
-      .map((m) => ({
-        id: m.id || `${Date.now()}-${Math.random()}`,
-        role: m.role,
-        text: String(m.text)
-          .replace(/\bGemini(?:’s|'s)?\b/gi, '')
-          .replace(/\s{2,}/g, ' ')
-          .trim()
-          .slice(0, 4000),
-        timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-        // skip heavy image persistence
-      }))
-      .filter((m) => m.text.length > 0);
-    return restored.length ? restored : [fallbackWelcome];
-  } catch {
-    return [fallbackWelcome];
-  }
-}
-
-function saveChatMemory(msgs: Message[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    const slim = msgs
-      .filter((m) => m.id !== 'welcome')
-      .slice(-CHAT_MEMORY_MAX)
-      .map((m) => ({
-        id: m.id,
-        role: m.role,
-        text: m.text.slice(0, 4000),
-        timestamp: m.timestamp.toISOString(),
-      }));
-    window.localStorage.setItem(CHAT_MEMORY_KEY, JSON.stringify(slim));
-  } catch {
-    /* quota / private mode */
-  }
-}
+type Message = ChatMessage;
 
 export default function MasterAI() {
   const { user } = useAuth();
@@ -133,18 +86,16 @@ export default function MasterAI() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [langQuery, setLangQuery] = useState('');
   const langMenuRef = useRef<HTMLDivElement>(null);
+  const historyMenuRef = useRef<HTMLDivElement>(null);
   const welcomeText =
     initialMode === 'auto'
       ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
       : getMasterAiWelcome(initialLang.code);
-  const [messages, setMessages] = useState<Message[]>(() =>
-    loadChatMemory({
-      id: 'welcome',
-      role: 'trafi',
-      text: welcomeText,
-      timestamp: new Date(),
-    }),
-  );
+  const [boot] = useState(() => loadActiveChat(welcomeText));
+  const [activeChatId, setActiveChatId] = useState(boot.activeId);
+  const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>(boot.sessions);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>(boot.messages);
   const [inputText, setInputText] = useState('');
   const hindi = isHindiLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
@@ -163,6 +114,13 @@ export default function MasterAI() {
   const handleSendRef = useRef<(text?: string) => void>(() => {});
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeChatIdRef = useRef(activeChatId);
+  activeChatIdRef.current = activeChatId;
+
+  const currentWelcomeText = () =>
+    langMode === 'auto'
+      ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
+      : getMasterAiWelcome(selectedLang.code);
 
   useEffect(() => {
     const refresh = () => void fetchMasterAiStatus().then(setAiStatus);
@@ -218,8 +176,26 @@ export default function MasterAI() {
   }, [messages, isThinking]);
 
   useEffect(() => {
-    saveChatMemory(messages);
+    setChatSessions(persistActiveChat(activeChatIdRef.current, messages));
   }, [messages]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!historyMenuRef.current?.contains(e.target as Node)) {
+        setHistoryOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHistoryOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [historyOpen]);
 
   const speakText = useCallback(
     (text: string) => {
@@ -318,6 +294,53 @@ export default function MasterAI() {
     setSelectedImageName('');
     setImageError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleNewChat = () => {
+    if (isThinking) return;
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+    clearSelectedImage();
+    setInputText('');
+    setHistoryOpen(false);
+    const next = startNewChat(activeChatId, messages, currentWelcomeText());
+    setActiveChatId(next.activeId);
+    setMessages(next.messages);
+    setChatSessions(next.sessions);
+  };
+
+  const handleOpenChat = (id: string) => {
+    if (id === activeChatId || isThinking) {
+      setHistoryOpen(false);
+      return;
+    }
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+    clearSelectedImage();
+    setInputText('');
+    const next = switchChat(activeChatId, messages, id, currentWelcomeText());
+    if (!next) return;
+    setActiveChatId(next.activeId);
+    setMessages(next.messages);
+    setChatSessions(next.sessions);
+    setHistoryOpen(false);
+  };
+
+  const handleDeleteChat = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isThinking) return;
+    const next = deleteChat(activeChatId, id, currentWelcomeText());
+    setActiveChatId(next.activeId);
+    setMessages(next.messages);
+    setChatSessions(next.sessions);
+    if (id === activeChatId) {
+      clearSelectedImage();
+      setInputText('');
+    }
   };
 
   const processChartFile = async (file: File) => {
@@ -652,7 +675,7 @@ export default function MasterAI() {
           </div>
           <div className="min-w-0">
             <div className="mai-chat__title-row">
-              <h1 className="mai-chat__title">Analyse AI</h1>
+              <h1 className="mai-chat__title">{AI_PRODUCT_NAME}</h1>
               <span className="mai-chat__badge">Hunter</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
@@ -668,6 +691,88 @@ export default function MasterAI() {
         <div className="mai-chat__controls">
           <button
             type="button"
+            onClick={handleNewChat}
+            className="mai-chat__chip mai-chat__chip--accent"
+            title={hindi ? 'Nayi chat — purani se link nahi' : 'New chat — fresh context'}
+            disabled={isThinking}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">New Chat</span>
+          </button>
+
+          <div className={`mai-chat__history ${historyOpen ? 'mai-chat__history--open' : ''}`} ref={historyMenuRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setLangMenuOpen(false);
+                setHistoryOpen((o) => !o);
+              }}
+              className={`mai-chat__chip ${historyOpen ? 'mai-chat__chip--active' : ''}`}
+              title={hindi ? 'Purani chats' : 'Chat history'}
+              aria-expanded={historyOpen}
+              aria-haspopup="listbox"
+            >
+              <History className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+
+            <AnimatePresence>
+              {historyOpen ? (
+                <motion.div
+                  className="mai-chat__history-menu"
+                  role="listbox"
+                  aria-label="Chat history"
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                >
+                  <div className="mai-chat__history-head">
+                    <span>Previous chats</span>
+                    <button type="button" className="mai-chat__history-new" onClick={handleNewChat}>
+                      <Plus className="h-3.5 w-3.5" />
+                      New
+                    </button>
+                  </div>
+                  <div className="mai-chat__history-scroll">
+                    {chatSessions.length === 0 ? (
+                      <p className="mai-chat__history-empty">No saved chats yet</p>
+                    ) : (
+                      chatSessions.map((s) => {
+                        const on = s.id === activeChatId;
+                        return (
+                          <div
+                            key={s.id}
+                            role="option"
+                            aria-selected={on}
+                            className={`mai-chat__history-item ${on ? 'mai-chat__history-item--on' : ''}`}
+                            onClick={() => handleOpenChat(s.id)}
+                          >
+                            <div className="mai-chat__history-item-main">
+                              <span className="mai-chat__history-item-title">{s.title}</span>
+                              <span className="mai-chat__history-item-time">{formatChatTime(s.updatedAt)}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="mai-chat__history-del"
+                              aria-label="Delete chat"
+                              title="Delete"
+                              onClick={(e) => handleDeleteChat(s.id, e)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          <button
+            type="button"
             onClick={onAutoSpeakToggle}
             className={`mai-chat__chip ${autoSpeak ? 'mai-chat__chip--on' : ''}`}
             title={autoSpeak ? 'Auto-speak on' : 'Speak only when you tap Speak'}
@@ -680,7 +785,10 @@ export default function MasterAI() {
             <button
               type="button"
               className={`mai-chat__chip mai-chat__lang-trigger ${langMenuOpen ? 'mai-chat__chip--active' : ''}`}
-              onClick={() => setLangMenuOpen((o) => !o)}
+              onClick={() => {
+                setHistoryOpen(false);
+                setLangMenuOpen((o) => !o);
+              }}
               aria-label="Reply language"
               aria-expanded={langMenuOpen}
               aria-haspopup="listbox"
@@ -930,8 +1038,8 @@ export default function MasterAI() {
                       ? 'Chart ke saath apna sawal likho…'
                       : 'Write your question with this chart…'
                     : hindi
-                      ? 'Analyse AI se poochho…'
-                      : 'Message Analyse AI…'
+                      ? 'Wolf AI se poochho…'
+                      : `Message ${AI_PRODUCT_NAME}…`
               }
               className="mai-chat__textarea"
             disabled={isListening}
@@ -960,8 +1068,8 @@ export default function MasterAI() {
         {imageError ? <p className="mai-chat__error">{imageError}</p> : null}
         <p className="mai-chat__footnote">
           {hindi
-            ? 'Educational only · Chart drop/paste · Enter = send'
-            : 'Educational only · Drop or paste charts · Enter to send'}
+            ? 'Educational only · Image attach ke baad prompt likho · Enter = send'
+            : 'Educational only · Attach image, write prompt, then Enter to send'}
         </p>
       </div>
     </div>

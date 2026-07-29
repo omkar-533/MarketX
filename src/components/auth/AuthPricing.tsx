@@ -95,7 +95,7 @@ function PlanCard({
               {plan.save ? <b>{plan.save}</b> : null}
             </p>
           ) : (
-            <p className="plan__meta plan__meta--empty">Analyse AI · Indicators · Journal</p>
+            <p className="plan__meta plan__meta--empty">Wolf AI · Indicators · Journal</p>
           )}
 
           <p className="plan__tagline">{plan.tagline}</p>
@@ -150,7 +150,7 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
               Features grow with each plan — Trial → Monthly → 3 Months → Yearly. Prices stay the
-              same; pick the term that matches how deep you want Analyse AI, Indicators, and Journal.
+              same; pick the term that matches how deep you want Wolf AI, Indicators, and Journal.
             </p>
           </Reveal>
         </div>

@@ -266,7 +266,7 @@ export default function AuthSignupForm({
         <p className="auth-subtitle">
           {isPaidIntent
             ? `Your ${plan.name.toLowerCase()} plan starts with ${TRIAL_DAYS} free days — the desk activates billing after that.`
-            : `Full access to Analyse AI, Indicators, and Trading Journal for ${TRIAL_DAYS} days. No card, no commitment.`}
+            : `Full access to Wolf AI, Indicators, and Trading Journal for ${TRIAL_DAYS} days. No card, no commitment.`}
         </p>
       </motion.div>
 

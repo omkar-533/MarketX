@@ -14,7 +14,7 @@ export const SERVER_OFFLINE_MSG = `${BRAND} server starting — please wait…`;
 export const CONNECT_PATH = '/fyers-login';
 
 /** Chat / copilot product name shown in nav and UI */
-export const AI_PRODUCT_NAME = 'Analyse AI';
+export const AI_PRODUCT_NAME = 'Wolf AI';
 
 /** Tab id → human page name (for document.title + UI) */
 export const PAGE_NAMES: Record<string, string> = {
@@ -73,6 +73,7 @@ export function masterAiOfflineMessage(): string {
 /** Strip vendor names and developer commands from messages shown in UI */
 export function sanitizeDisplayMessage(msg: string): string {
   return String(msg || '')
+    .replace(/\bAnalyse AI\b/gi, AI_PRODUCT_NAME)
     .replace(/AI Powered Market Intelligent/gi, BRAND)
     .replace(/\bAPMI\b/gi, BRAND_SHORT)
     .replace(/opstra/gi, BRAND_SHORT)

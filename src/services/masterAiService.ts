@@ -483,7 +483,7 @@ Wolf Trade AI platform (answer using this when user asks about the app):
 - Futures Analytics: OI vs price, delivery
 - Trading Journal: trades, analytics, calendar
 - Heatmap, Footprint, Signals, Watchlist, Alerts, News
-- Hunter (Analyse AI): senior market analyst voice for Wolf Trade AI — human desk tone, chart analysis, never chatbot phrasing
+- Hunter (Wolf AI): senior market analyst voice for Wolf Trade AI — human desk tone, chart analysis, never chatbot phrasing
 - Owner teachings: when admin uploads PDFs/notes, Hunter follows that house method first
 Live market data comes from the connected live feed in Profile.
 `;
@@ -1115,7 +1115,7 @@ export async function fetchMasterAiStatus(): Promise<{
       keySource,
       message: data?.configured
         ? keySource === 'server'
-          ? 'Analyse AI ready (server key)'
+          ? 'Wolf AI ready (server key)'
           : 'Live intelligence ready'
         : 'Add an AI API key (aistudio.google.com) in Profile',
     };

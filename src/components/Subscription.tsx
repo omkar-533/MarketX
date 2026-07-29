@@ -55,7 +55,7 @@ export default function Subscription({
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan covers Analyse AI, Indicators, and Trading Journal — higher plans unlock more.
+          Every plan covers Wolf AI, Indicators, and Trading Journal — higher plans unlock more.
         </p>
       </div>
 

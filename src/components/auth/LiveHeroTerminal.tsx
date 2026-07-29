@@ -133,7 +133,7 @@ function MasterAiChat({ running }: { running: boolean }) {
     <div className="hero-ai">
       <p className="hero-ai__head">
         <Sparkles className="w-3.5 h-3.5" aria-hidden />
-        Analyse AI
+        Wolf AI
         <span>· live market context</span>
       </p>
 
@@ -160,7 +160,7 @@ function MasterAiChat({ running }: { running: boolean }) {
       </div>
 
       <div className="hero-ai__input">
-        <span>Ask Analyse AI anything…</span>
+        <span>Ask Wolf AI anything…</span>
         <i className="hero-ai__send" />
       </div>
     </div>
@@ -168,7 +168,7 @@ function MasterAiChat({ running }: { running: boolean }) {
 }
 
 /**
- * Animated stand-in for the product UI: streaming candles, a Analyse AI thread and
+ * Animated stand-in for the product UI: streaming candles, a Wolf AI thread and
  * an option ladder. Pauses when offscreen or hidden so it costs nothing idle.
  */
 export default function LiveHeroTerminal() {
@@ -415,7 +415,7 @@ export default function LiveHeroTerminal() {
         <span>
           Max Pain <b>{view.atm}</b>
         </span>
-        <span className="hero-term__foot-ai">Analyse AI · streaming</span>
+        <span className="hero-term__foot-ai">Wolf AI · streaming</span>
       </div>
     </div>
   );

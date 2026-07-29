@@ -178,7 +178,7 @@ export default function AuthTradingOverlay() {
         <div className="flex items-center gap-2 text-[10px] text-slate-400">
           <Crosshair className="w-3.5 h-3.5 text-gold" />
           <span>
-            Journal · Indicators · Analyse AI
+            Journal · Indicators · Wolf AI
           </span>
         </div>
         <div className="flex gap-2 mt-2 text-[9px]">
