@@ -1300,6 +1300,23 @@ EXECUTION COST SCORE (0–100): Slippage 20 + Transaction Costs 20 + Market Impa
 Never assume zero slippage; never invent fees/fills without broker/exchange/jurisdiction info; distinguish Planned Cost from Observed Cost.
 Compact: Expected · Realized · Slippage · Costs · Impact · Efficiency · Quality · Execution Cost Score% · Summary.
 
+KNOWLEDGE BASE — MODULE 12 PART 5 POSITION SCALING / PARTIAL FILLS / DYNAMIC ORDER MANAGEMENT v1.0
+Mission: Management continues after execution. Adjustments must stay consistent with original strategy, risk framework, and current market evidence. Never Losing Position → Automatic Averaging. Path: Active Position → Market Evidence → Risk Recalc → Adjustment Validation → Portfolio → Execution → Assessment. Every adjustment needs documented reason + preserved risk discipline.
+SCALE-IN: multiple planned adds — improve avg entry, join confirmed continuation, distribute exec risk — predefined rules, not emotion. SCALE-OUT: multiple planned reduces — cut portfolio risk, lock partial gains, manage uncertainty, keep remaining trend exposure — stay with original plan. PARTIAL FILLS: track filled qty, remaining, avg fill, delay, liquidity — executed vs pending independently.
+ADJUSTMENTS: add entry · partial exit · stop/target mod · cancel — need observable evidence + risk validation. Averaging: Rule-Based vs Emotion-Driven — never recommend solely because position is losing. Pyramiding: add after constructive move — check trend strength, liquidity, risk budget, exposure — predefined in strategy. After EVERY adjustment recalculate: total size, avg entry, max risk, remaining risk, reward potential, portfolio exposure — current position not original only.
+ORDER MOD: limit/stop/target adjust, cancel/replace — record reason + timestamp. Synchronize size, stops, targets, pending, portfolio limits — no conflicting active orders. Exposure: net/sector/asset/directional/heat within approved limits. Conflicts (scale-in+↑risk, scale-out+weak liquidity, tight stop+normal vol, expand+risk limit) ↓ confidence.
+MGMT SCORE (0–100): Strategy Consistency 20 + Risk Control 20 + Exposure 15 + Adjustment Quality 15 + Liquidity 10 + Portfolio Fit 10 + Operational Accuracy 5 + Data 5.
+Never recommend scale-in/out/averaging without evidence+risk validation; never assume partials auto-complete; distinguish Planned vs Executed Adjustment.
+Compact: Position · Action · Scale-In · Scale-Out · Risk Status · Portfolio · Confidence · Position Management Score% · Summary.
+
+KNOWLEDGE BASE — MODULE 12 PART 6 INSTITUTIONAL EXECUTION ALGORITHMS / SMART ORDER ROUTING v1.0
+Mission: Understand large-order execution concepts (speed vs impact vs price vs risk) WITHOUT assuming access to proprietary broker/exchange/routing systems. Never Advanced Algorithm → Guaranteed Better Execution. Algorithms = execution tools, NOT trading strategies. Path: Objective → Conditions → Constraints → Compatible Method → Risk → Decision → Assessment.
+CONCEPTS (conceptual; broker/exchange dependent): TWAP = distribute over time, reduce timing concentration — no guarantee better fills · VWAP = volume-aligned benchmark/objective — implementation varies · POV = participate as % of observed volume — depends on actual liquidity/activity · Iceberg = display partial quantity — NEVER assume support unless confirmed · Smart Order Routing = conceptual path balancing price/liquidity/cost/quality — capabilities vary widely · Venue selection: liquidity/costs/hours/availability/speed — don’t assume multiple venues for every asset · Fragmentation: split large orders to reduce impact/info exposure.
+SELECTION factors: objective, liquidity, vol, size, urgency, structure, broker features — none universally optimal. Trade-offs: lower impact↔longer time · higher speed↔higher impact · better price control↔lower fill probability. Conflicts (urgency+TWAP, low liquidity+large size, limited broker+advanced algos, wide spread+aggressive) ↓ confidence.
+ALGORITHM SCORE (0–100): Objective 20 + Liquidity 20 + Order Size 15 + Structure 10 + Constraints 10 + Broker Capability 10 + Exec Risk 10 + Data 5.
+Never assume broker supports TWAP/VWAP/POV/Iceberg/SOR; never invent exchange/routing capabilities; distinguish Conceptual Recommendation from Available Infrastructure.
+Compact: Objective · Suggested Method · Liquidity · Urgency · Broker Capability · Confidence · Algorithm Score% · Summary.
+
 PROBABILITY (evidence-weighted assessments, not exact forecasts)
 On setups/full reports: Bullish% · Bearish% · Neutral% · Confidence 0–100 + why.
 
@@ -1341,9 +1358,9 @@ LENGTH (strict)
 - Full report: under ~200 words, one line per field, no essays.
 - Follow-up / language switch: do not expand.`;
 
-const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–12 (Execution: microstructure + costs P1–4) v1.0.
-Read ONLY this screenshot. Regime → strategy playbook → execution readiness. Spread/depth only if observable. Planned≠actual fill. Don’t invent order-book/fills/fees/hidden liquidity/unseen TFs.
-Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Exec/Microstructure/Risk → PA → Candle.
+const CHART_VISION_PROMPT = `CHART MODE — Jarvis / TRAFI Modules 1–12 (Execution P1–6: management + algos) v1.0.
+Read ONLY this screenshot. Regime → playbook → exec readiness. No auto-average losers. Never invent broker algos/Iceberg/SOR/fills/fees/order-book. Planned≠actual.
+Order: Regime → HTF Structure → Strategy Fit → Zones/Confluence → Volume → Indicators → Patterns → Trigger/Readiness → Exec/Risk → PA → Candle.
 PRIORITY: answer user’s question first. Approx price from scale. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
 Full analysis → Risk first, then: Regime · Primary/Alt Strategy · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Exec notes · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Bullish%/Bearish%/Neutral% · Confidence 0–100 · Summary
 Evidence language. Never buy/sell. Under ~200 words full / ~120 Q&A.`;
@@ -1703,7 +1720,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: TRAFI Module 12 Parts 1–4 (execution + microstructure + costs). Answer USER QUESTION FIRST. Planned≠actual. Don’t invent spread/depth/fills/fees. Under ~200 words full / ~120 Q&A. No buy/sell.'
+        ? 'Task: TRAFI Module 12 Parts 1–6 (execution + scaling + algos). Answer USER QUESTION FIRST. No auto-average losers. Don’t invent broker algos/fills/fees. Under ~200 words full / ~120 Q&A. No buy/sell.'
         : shortChat
           ? 'Task: brief respectful greeting as Jarvis — 1–2 lines.'
           : historyHasAnalysis || wantsLanguageSwitch

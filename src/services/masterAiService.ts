@@ -424,8 +424,8 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'TRAFI Module 12 Parts 1–4. Answer USER question FIRST. Execution lifecycle + order selection + microstructure (spread/depth/impact) + slippage/TCA. Chart price ≠ true trading cost. Good strategy ≠ guaranteed execution.',
-    'Never invent order-book/hidden liquidity/fills/fees. Never assume zero slippage or fill at Bid/Ask. Distinguish Planned vs Observed cost. Probabilistic language only.',
+    'TRAFI Module 12 Parts 1–6. Answer USER question FIRST. Execution lifecycle + orders + microstructure + TCA + scaling/partials + conceptual TWAP/VWAP/POV/SOR. Never Losing Position → Auto Averaging. Never Advanced Algo → Guaranteed Better Exec.',
+    'Never invent broker/Iceberg/SOR support, fills, or fees. Recalc risk after every adjustment. Distinguish Conceptual Recommendation from Available Infrastructure. Probabilistic language only.',
     'Concept Q: 4–8 short lines. Full: Regime · Primary/Alt Strategy · Structure · Zones/Confluence · Liquidity · Trigger/Readiness · Exec notes · Risk · Confirmation · Weaknesses · Entry/Stop/Targets · Invalidation · Probabilities · Confidence · Summary.',
     'Evidence only. Never invent. Never buy/sell. Under ~200 words full / ~120 Q&A.',
     note ? `User question: ${note}` : '',
