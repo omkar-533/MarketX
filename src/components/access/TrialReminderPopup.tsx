@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clock, Hourglass, X } from 'lucide-react';
 import AccessProofUpload from './AccessProofUpload';
@@ -16,8 +16,8 @@ type TrialReminderPopupProps = {
 
 const SESSION_KEY_PREFIX = 'tradeflow_trial_nudge_session_';
 const LAST_SHOWN_PREFIX = 'tradeflow_trial_nudge_last_';
-/** First nudge after login */
-const SHOW_DELAY_MS = 2800;
+/** First nudge after login — short delay so the desk can settle. */
+const SHOW_DELAY_MS = 1800;
 /** Occasional re-show while they stay logged in (~3.5 hours) */
 const RESHOW_EVERY_MS = 3.5 * 60 * 60 * 1000;
 
@@ -49,8 +49,8 @@ function formatCountdown(daysLeft: number | null, hoursLeft: number | null) {
 }
 
 /**
- * Occasional trial countdown for free-trial members: once per login session,
- * then again every few hours so expiry timing stays visible.
+ * Trial countdown popup. Once opened it stays until the member dismisses it —
+ * access polling / backdrop taps must not wipe it away on first login.
  */
 export default function TrialReminderPopup({
   access,
@@ -63,14 +63,21 @@ export default function TrialReminderPopup({
 }: TrialReminderPopupProps) {
   const [open, setOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const openRef = useRef(false);
 
   const daysLeft = access?.daysLeft ?? null;
   const hoursLeft = access?.hoursLeft ?? null;
   const expiresAt = access?.expiresAt ?? null;
   const eligible = Boolean(access?.unlocked && access.isTrial && userId);
 
+  const markSessionShown = () => {
+    if (!userId) return;
+    sessionStorage.setItem(`${SESSION_KEY_PREFIX}${userId}`, '1');
+    localStorage.setItem(`${LAST_SHOWN_PREFIX}${userId}`, String(Date.now()));
+  };
+
   const tryShow = (reason: 'session' | 'interval') => {
-    if (!eligible || !userId) return;
+    if (!eligible || !userId || openRef.current) return;
     const sessionKey = `${SESSION_KEY_PREFIX}${userId}`;
     const lastKey = `${LAST_SHOWN_PREFIX}${userId}`;
     const last = Number(localStorage.getItem(lastKey) || 0);
@@ -82,26 +89,34 @@ export default function TrialReminderPopup({
       return;
     }
 
+    openRef.current = true;
     setOpen(true);
-    sessionStorage.setItem(sessionKey, '1');
-    localStorage.setItem(lastKey, String(now));
+    // Mark only after it is actually showing — not before — so a failed flash can retry.
+    markSessionShown();
   };
 
   useEffect(() => {
     if (!eligible || !userId) return;
 
     const timer = window.setTimeout(() => tryShow('session'), SHOW_DELAY_MS);
-    const interval = window.setInterval(() => tryShow('interval'), Math.min(RESHOW_EVERY_MS, 15 * 60 * 1000));
+    const interval = window.setInterval(
+      () => tryShow('interval'),
+      Math.min(RESHOW_EVERY_MS, 15 * 60 * 1000),
+    );
 
     return () => {
       window.clearTimeout(timer);
       window.clearInterval(interval);
     };
-  }, [eligible, userId, daysLeft, hoursLeft, expiresAt]);
+    // Intentionally not depending on daysLeft/hoursLeft — access polling must not remount this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligible, userId]);
 
   const close = () => {
+    openRef.current = false;
     setOpen(false);
     setShowUpload(false);
+    markSessionShown();
   };
 
   const expiryLabel = formatExpiry(expiresAt);
@@ -113,7 +128,7 @@ export default function TrialReminderPopup({
 
   return (
     <AnimatePresence>
-      {open && eligible ? (
+      {open ? (
         <motion.div
           className="trial-nudge-overlay"
           initial={{ opacity: 0 }}
@@ -121,12 +136,8 @@ export default function TrialReminderPopup({
           exit={{ opacity: 0 }}
           role="presentation"
         >
-          <button
-            type="button"
-            className="trial-nudge-overlay__backdrop"
-            aria-label="Dismiss"
-            onClick={close}
-          />
+          {/* Backdrop does not dismiss — first-login popup must stay until a real action. */}
+          <div className="trial-nudge-overlay__backdrop" aria-hidden />
           <motion.aside
             className="trial-nudge"
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
