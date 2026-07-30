@@ -453,7 +453,7 @@ export default function Indicators({
                       className="lux-ind__btn lux-ind__btn--primary"
                       style={{ textDecoration: 'none', justifyContent: 'center' }}
                     >
-                      Open invite
+                      {tvStatus === 'granted' ? 'Open indicator' : 'Open invite'}
                       <ArrowRight className="w-4 h-4" />
                     </a>
                     <button
