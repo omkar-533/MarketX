@@ -10,11 +10,10 @@ import {
   KeyRound,
   Loader2,
   Lock,
-  Mail,
+  Phone,
   ShieldCheck,
 } from 'lucide-react';
 import AuthField from './AuthField';
-import { isValidEmail } from './authUtils';
 import type { ResetChallenge } from '../../services/appInviteAuth';
 
 export type AuthForgotFormProps = {
@@ -26,13 +25,12 @@ export type AuthForgotFormProps = {
 
 const RESEND_SECONDS = 45;
 
-function isValidIdentifier(value: string) {
-  return isValidEmail(value) || /^[6-9]\d{9}$/.test(value.replace(/\D/g, '').slice(-10));
+function isValidMobile(value: string) {
+  return /^[6-9]\d{9}$/.test(value.replace(/\D/g, '').slice(-10));
 }
 
 /**
- * Reset runs on the mobile number saved with the account: identify → OTP → new
- * password. A cleared code signs the user straight back in.
+ * Reset runs on the mobile number only: identify → SMS OTP → new password.
  */
 export default function AuthForgotForm({
   onResetStart,
@@ -53,7 +51,7 @@ export default function AuthForgotForm({
   const [isLoading, setIsLoading] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  const identifierValid = isValidIdentifier(identifier);
+  const identifierValid = isValidMobile(identifier);
   const showIdentifierError = identifierTouched && identifier.length > 0 && !identifierValid;
 
   useEffect(() => {
@@ -71,7 +69,7 @@ export default function AuthForgotForm({
     setErrorMessage('');
 
     if (!identifierValid) {
-      setErrorMessage('Enter the email or mobile number on your account.');
+      setErrorMessage('Enter the 10-digit mobile number on your account.');
       return;
     }
 
@@ -286,24 +284,26 @@ export default function AuthForgotForm({
           Forgot your <span>password</span>
         </h1>
         <p className="auth-subtitle">
-          Enter your email or mobile number. We text a code to the mobile number saved on the
-          account, and you pick a new password yourself.
+          Enter your registered mobile number. We text a 6-digit code there, then you set a new
+          password.
         </p>
       </motion.div>
 
       <form onSubmit={(e) => void handleIdentify(e)} className="mt-7 space-y-5">
         <AuthField
-          label="Email or mobile"
-          type="text"
-          placeholder="name@company.com or 9876543210"
+          label="Mobile number"
+          type="tel"
+          inputMode="numeric"
+          placeholder="10-digit mobile number"
           value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
+          onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, '').slice(0, 10))}
           onBlur={() => setIdentifierTouched(true)}
           required
-          autoComplete="username"
+          autoComplete="tel"
+          maxLength={10}
           valid={identifier.length > 0 && identifierValid}
-          error={showIdentifierError ? 'Enter a valid email or 10-digit mobile number' : undefined}
-          icon={<Mail className="w-4 h-4" />}
+          error={showIdentifierError ? 'Enter a valid 10-digit Indian mobile number' : undefined}
+          icon={<Phone className="w-4 h-4" />}
         />
 
         {errorBanner}

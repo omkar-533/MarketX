@@ -373,19 +373,25 @@ function maskPhone(phone) {
 async function resolveResetTarget(identifier) {
   const raw = String(identifier || '').trim();
   if (!raw) {
-    throw Object.assign(new Error('Enter your email or mobile number'), { status: 400 });
+    throw Object.assign(new Error('Enter your 10-digit mobile number'), { status: 400 });
   }
 
-  const user = await findAppUserByIdentifier(raw);
+  // Password reset is mobile-only (SMS OTP). Reject email identifiers.
+  if (raw.includes('@')) {
+    throw Object.assign(
+      new Error('Use your registered mobile number only — email cannot reset the password.'),
+      { status: 400 },
+    );
+  }
+
+  const phone = normalizePhone(raw);
+  if (!phone) {
+    throw Object.assign(new Error('Enter a valid 10-digit Indian mobile number'), { status: 400 });
+  }
+
+  const user = await findAppUserByPhone(phone);
   if (!user) {
-    if (raw.toLowerCase() === ADMIN_EMAIL) {
-      throw Object.assign(new Error('The desk admin login cannot be reset from here.'), {
-        status: 400,
-      });
-    }
-    throw Object.assign(new Error('No account found with this email or mobile number.'), {
-      status: 404,
-    });
+    throw Object.assign(new Error('No account found with this mobile number.'), { status: 404 });
   }
   if (user.active === false) {
     throw Object.assign(new Error('This account is disabled. Contact the desk to reopen it.'), {

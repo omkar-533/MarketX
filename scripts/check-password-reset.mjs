@@ -62,13 +62,23 @@ async function main() {
 
   const unknown = await call('/api/app-auth/password/forgot', {
     method: 'POST',
-    body: { identifier: `nobody_${stamp}@example.com` },
+    body: { identifier: '9999999999' },
   });
-  log(unknown.status === 404, 'unknown account is rejected', unknown.data.error);
+  log(unknown.status === 404, 'unknown mobile is rejected', unknown.data.error);
+
+  const emailBlocked = await call('/api/app-auth/password/forgot', {
+    method: 'POST',
+    body: { identifier: user.email },
+  });
+  log(
+    emailBlocked.status === 400,
+    'email identifier is rejected',
+    emailBlocked.data.error,
+  );
 
   const forgot = await call('/api/app-auth/password/forgot', {
     method: 'POST',
-    body: { identifier: user.email },
+    body: { identifier: user.phone },
   });
   log(forgot.status === 200 && Boolean(forgot.data.devCode), 'forgot sends a code', forgot.data.error);
   log(
@@ -81,26 +91,26 @@ async function main() {
 
   const wrong = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.email, code: '000000', password: NEW_PASSWORD },
+    body: { identifier: user.phone, code: '000000', password: NEW_PASSWORD },
   });
   log(wrong.status === 400, 'wrong code is rejected', wrong.data.error);
 
   const short = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.email, code: forgot.data.devCode, password: 'abc' },
+    body: { identifier: user.phone, code: forgot.data.devCode, password: 'abc' },
   });
   log(short.status === 400, 'short password is rejected', short.data.error);
 
   const reset = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.email, code: forgot.data.devCode, password: NEW_PASSWORD },
+    body: { identifier: user.phone, code: forgot.data.devCode, password: NEW_PASSWORD },
   });
   log(reset.status === 200 && Boolean(reset.data.token), 'reset succeeds', reset.data.error);
   log(Boolean(reset.data?.access), 'reset returns the access snapshot', reset.data?.access?.status);
 
   const replay = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.email, code: forgot.data.devCode, password: 'another123' },
+    body: { identifier: user.phone, code: forgot.data.devCode, password: 'another123' },
   });
   log(replay.status === 400, 'the same code cannot be reused', replay.data.error);
 
@@ -128,7 +138,7 @@ async function main() {
   });
   log(
     byMobile.status === 200 || byMobile.status === 429,
-    'forgot also accepts the mobile number',
+    'forgot accepts the mobile number again',
     byMobile.data.error,
   );
 
@@ -136,7 +146,11 @@ async function main() {
     method: 'POST',
     body: { identifier: adminEmail },
   });
-  log(adminReset.status === 400 || adminReset.status === 404, 'desk admin login cannot be reset', adminReset.data.error);
+  log(
+    adminReset.status === 400,
+    'email (desk admin) cannot start password reset',
+    adminReset.data.error,
+  );
 
   const users = await call('/api/app-auth/admin/users', { admin: true });
   const row = (users.data.users || []).find((u) => u.email === user.email);
