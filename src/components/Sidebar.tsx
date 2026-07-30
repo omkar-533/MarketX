@@ -21,8 +21,8 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 },
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
+  { id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 },
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 

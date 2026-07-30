@@ -47,7 +47,7 @@ function PageLoader() {
 }
 
 function AppWorkspace() {
-  const [activeTab, setActiveTab] = useState('indicators');
+  const [activeTab, setActiveTab] = useState('trafi');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -67,7 +67,7 @@ function AppWorkspace() {
 
   useEffect(() => {
     const hidden = new Set(['papertrading', 'dashboard', 'oiintelligence', 'heatmap', 'scanner']);
-    if (hidden.has(activeTab)) setActiveTab('indicators');
+    if (hidden.has(activeTab)) setActiveTab('trafi');
   }, [activeTab]);
   useEffect(() => {
     document.title = auth.isLoggedIn ? pageDocumentTitle(activeTab) : BRAND;
@@ -265,11 +265,11 @@ function AppWorkspace() {
                 />
               </Suspense>
             ) : (
-              <AppErrorBoundary onReset={() => handleTabChange('indicators')}>
+              <AppErrorBoundary onReset={() => handleTabChange('trafi')}>
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>
-                    <button type="button" onClick={() => handleTabChange('indicators')}>
+                    <button type="button" onClick={() => handleTabChange('trafi')}>
                       Unlock access
                     </button>
                   </div>
