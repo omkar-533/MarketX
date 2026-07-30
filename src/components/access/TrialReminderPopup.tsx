@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clock, Hourglass, X } from 'lucide-react';
 import AccessProofUpload from './AccessProofUpload';
@@ -16,8 +16,11 @@ type TrialReminderPopupProps = {
 
 const SESSION_KEY_PREFIX = 'tradeflow_trial_nudge_session_';
 const LAST_SHOWN_PREFIX = 'tradeflow_trial_nudge_last_';
-/** First nudge after login — short delay so the desk can settle. */
-const SHOW_DELAY_MS = 1800;
+/**
+ * Do NOT interrupt right after login — give the member time on the desk first.
+ * First nudge ~12 minutes after they land (same session only once).
+ */
+const SHOW_DELAY_MS = 12 * 60 * 1000;
 /** Occasional re-show while they stay logged in (~3.5 hours) */
 const RESHOW_EVERY_MS = 3.5 * 60 * 60 * 1000;
 
@@ -49,8 +52,8 @@ function formatCountdown(daysLeft: number | null, hoursLeft: number | null) {
 }
 
 /**
- * Trial countdown popup. Once opened it stays until the member dismisses it —
- * access polling / backdrop taps must not wipe it away on first login.
+ * Occasional trial countdown for free-trial members.
+ * Skips the moment of login so the popup does not appear immediately.
  */
 export default function TrialReminderPopup({
   access,
@@ -63,21 +66,14 @@ export default function TrialReminderPopup({
 }: TrialReminderPopupProps) {
   const [open, setOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const openRef = useRef(false);
 
   const daysLeft = access?.daysLeft ?? null;
   const hoursLeft = access?.hoursLeft ?? null;
   const expiresAt = access?.expiresAt ?? null;
   const eligible = Boolean(access?.unlocked && access.isTrial && userId);
 
-  const markSessionShown = () => {
-    if (!userId) return;
-    sessionStorage.setItem(`${SESSION_KEY_PREFIX}${userId}`, '1');
-    localStorage.setItem(`${LAST_SHOWN_PREFIX}${userId}`, String(Date.now()));
-  };
-
   const tryShow = (reason: 'session' | 'interval') => {
-    if (!eligible || !userId || openRef.current) return;
+    if (!eligible || !userId) return;
     const sessionKey = `${SESSION_KEY_PREFIX}${userId}`;
     const lastKey = `${LAST_SHOWN_PREFIX}${userId}`;
     const last = Number(localStorage.getItem(lastKey) || 0);
@@ -89,10 +85,9 @@ export default function TrialReminderPopup({
       return;
     }
 
-    openRef.current = true;
     setOpen(true);
-    // Mark only after it is actually showing — not before — so a failed flash can retry.
-    markSessionShown();
+    sessionStorage.setItem(sessionKey, '1');
+    localStorage.setItem(lastKey, String(now));
   };
 
   useEffect(() => {
@@ -108,15 +103,12 @@ export default function TrialReminderPopup({
       window.clearTimeout(timer);
       window.clearInterval(interval);
     };
-    // Intentionally not depending on daysLeft/hoursLeft — access polling must not remount this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eligible, userId]);
 
   const close = () => {
-    openRef.current = false;
     setOpen(false);
     setShowUpload(false);
-    markSessionShown();
   };
 
   const expiryLabel = formatExpiry(expiresAt);
@@ -128,7 +120,7 @@ export default function TrialReminderPopup({
 
   return (
     <AnimatePresence>
-      {open ? (
+      {open && eligible ? (
         <motion.div
           className="trial-nudge-overlay"
           initial={{ opacity: 0 }}
@@ -136,8 +128,12 @@ export default function TrialReminderPopup({
           exit={{ opacity: 0 }}
           role="presentation"
         >
-          {/* Backdrop does not dismiss — first-login popup must stay until a real action. */}
-          <div className="trial-nudge-overlay__backdrop" aria-hidden />
+          <button
+            type="button"
+            className="trial-nudge-overlay__backdrop"
+            aria-label="Dismiss"
+            onClick={close}
+          />
           <motion.aside
             className="trial-nudge"
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
