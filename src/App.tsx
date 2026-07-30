@@ -46,8 +46,72 @@ function PageLoader() {
   return <WolfLoader />;
 }
 
+const HIDDEN_TABS = new Set(['papertrading', 'dashboard', 'oiintelligence', 'heatmap', 'scanner']);
+const DEFAULT_TAB = 'trafi';
+const TAB_STORAGE_KEY = 'wolf_active_tab';
+const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
+const VALID_TABS = new Set([
+  'dashboard',
+  'ltpcalc',
+  'tradingjournal',
+  'optionchain',
+  'optionsimulator',
+  'strategy',
+  'futures',
+  'oiintelligence',
+  'footprint',
+  'trafi',
+  'indicators',
+  'papertrading',
+  'backtesting',
+  'heatmap',
+  'signals',
+  'scanner',
+  'master-tx',
+  'watchlist',
+  'alerts',
+  'news',
+  'global',
+  'admin',
+  'subscription',
+]);
+
+function tabFromHash(): string | null {
+  const raw = window.location.hash.replace(/^#\/?/, '').split(/[?&]/)[0]?.trim() || '';
+  if (!raw || AUTH_HASHES.has(raw.toLowerCase())) return null;
+  if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
+  return raw;
+}
+
+function tabFromStorage(): string | null {
+  try {
+    const raw = localStorage.getItem(TAB_STORAGE_KEY) || '';
+    if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function initialActiveTab() {
+  return tabFromHash() || tabFromStorage() || DEFAULT_TAB;
+}
+
+function persistTab(tab: string) {
+  try {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  } catch {
+    /* ignore */
+  }
+  const search = window.location.search || '';
+  const next = `/${search}#${tab}`;
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
+    window.history.replaceState({}, '', next);
+  }
+}
+
 function AppWorkspace() {
-  const [activeTab, setActiveTab] = useState('trafi');
+  const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -66,9 +130,12 @@ function AppWorkspace() {
   }, [activeTab]);
 
   useEffect(() => {
-    const hidden = new Set(['papertrading', 'dashboard', 'oiintelligence', 'heatmap', 'scanner']);
-    if (hidden.has(activeTab)) setActiveTab('trafi');
+    if (HIDDEN_TABS.has(activeTab)) {
+      setActiveTab(DEFAULT_TAB);
+      persistTab(DEFAULT_TAB);
+    }
   }, [activeTab]);
+
   useEffect(() => {
     document.title = auth.isLoggedIn ? pageDocumentTitle(activeTab) : BRAND;
   }, [auth.isLoggedIn, activeTab]);
@@ -78,13 +145,31 @@ function AppWorkspace() {
     const params = new URLSearchParams(window.location.search);
     if (normalizeFyersAuthInput(window.location.href)) return;
     if (path !== '/' && path !== '' && !path.includes('fyers')) {
-      const next = `/${window.location.search}${window.location.hash}`;
+      const hash = window.location.hash || (auth.isLoggedIn ? `#${activeTab}` : '');
+      const next = `/${window.location.search}${hash}`;
       window.history.replaceState({}, '', next);
     }
     if (params.get('fyers') === 'reconnect') {
-      window.history.replaceState({}, '', '/');
+      const hash = auth.isLoggedIn ? `#${activeTab}` : '';
+      window.history.replaceState({}, '', `/${hash}`);
     }
-  }, [auth.isLoggedIn]);
+  }, [auth.isLoggedIn, activeTab]);
+
+  /** Keep the open page across refresh via hash + localStorage. */
+  useEffect(() => {
+    if (!auth.isLoggedIn) return;
+    persistTab(activeTab);
+  }, [auth.isLoggedIn, activeTab]);
+
+  useEffect(() => {
+    if (!auth.isLoggedIn) return;
+    const onHash = () => {
+      const fromHash = tabFromHash();
+      if (fromHash && fromHash !== activeTab) setActiveTab(fromHash);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [auth.isLoggedIn, activeTab]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
@@ -108,8 +193,10 @@ function AppWorkspace() {
   }, [auth.isLoggedIn]);
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+    const next = HIDDEN_TABS.has(tab) ? DEFAULT_TAB : tab;
+    setActiveTab(next);
     setMobileMenuOpen(false);
+    persistTab(next);
   };
 
   const openGrantedIndicator = (indicatorId: string) => {
@@ -126,21 +213,27 @@ function AppWorkspace() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={handleTabChange} />;
       case 'ltpcalc':
-        return <LtpCalculator onNavigate={setActiveTab} />;
+        return <LtpCalculator onNavigate={handleTabChange} />;
       case 'tradingjournal':
-        return <TradingJournal user={auth.user} isAdmin={auth.user?.role === 'admin'} onNavigate={setActiveTab} />;
+        return (
+          <TradingJournal
+            user={auth.user}
+            isAdmin={auth.user?.role === 'admin'}
+            onNavigate={handleTabChange}
+          />
+        );
       case 'optionchain':
         return <TradeXOptionChain />;
       case 'optionsimulator':
         return <OptionSimulator />;
       case 'strategy':
-        return <StrategyBuilder onNavigate={setActiveTab} />;
+        return <StrategyBuilder onNavigate={handleTabChange} />;
       case 'futures':
         return <FuturesAnalytics />;
       case 'oiintelligence':
-        return <OIIntelligence onNavigate={setActiveTab} />;
+        return <OIIntelligence onNavigate={handleTabChange} />;
       case 'footprint':
         return <FootprintChart />;
       case 'trafi':
@@ -153,7 +246,7 @@ function AppWorkspace() {
           />
         );
       case 'papertrading':
-        return <PaperTrading user={auth.user} onNavigate={setActiveTab} />;
+        return <PaperTrading user={auth.user} onNavigate={handleTabChange} />;
       case 'backtesting':
         return <Backtesting />;
       case 'heatmap':
@@ -184,7 +277,7 @@ function AppWorkspace() {
           />
         );
       default:
-        return <Dashboard onNavigate={setActiveTab} />;
+        return <Dashboard onNavigate={handleTabChange} />;
     }
   };
 
