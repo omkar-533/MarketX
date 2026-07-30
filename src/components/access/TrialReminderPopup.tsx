@@ -114,65 +114,93 @@ export default function TrialReminderPopup({
   return (
     <AnimatePresence>
       {open && eligible ? (
-        <motion.aside
-          className="trial-nudge"
-          initial={{ opacity: 0, y: 28, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.98 }}
-          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-          role="dialog"
-          aria-label="Trial reminder"
+        <motion.div
+          className="trial-nudge-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="presentation"
         >
-          <button type="button" className="trial-nudge__close" onClick={close} aria-label="Dismiss">
-            <X className="w-3.5 h-3.5" />
-          </button>
-
-          <div className="trial-nudge__badge">
-            <Hourglass className="w-3 h-3" />
-            Free trial
-          </div>
-
-          <p className="trial-nudge__title">{headline}</p>
-
-          <div className="trial-nudge__timing">
-            <div className="trial-nudge__countdown">
-              <Clock className="w-4 h-4" />
-              <span>{countdown}</span>
-            </div>
-            {expiryLabel ? (
-              <p className="trial-nudge__expires">
-                Expires: <strong>{expiryLabel}</strong>
-              </p>
-            ) : null}
-          </div>
-
-          <p className="trial-nudge__body">
-            {popup?.message?.trim() ||
-              'Fill in your details to request longer access. Our team will get back to you within 24 hours.'}
-          </p>
-
-          {showUpload ? (
-            <AccessProofUpload
-              request={access?.request ?? null}
-              defaults={{ name: userName, phone: userPhone, email: userEmail }}
-              onSubmitted={async () => {
-                await onRefresh();
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className="trial-nudge__cta"
-              onClick={() => setShowUpload(true)}
-            >
-              Request access
+          <button
+            type="button"
+            className="trial-nudge-overlay__backdrop"
+            aria-label="Dismiss"
+            onClick={close}
+          />
+          <motion.aside
+            className="trial-nudge"
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Trial reminder"
+          >
+            <button type="button" className="trial-nudge__close" onClick={close} aria-label="Dismiss">
+              <X className="w-3.5 h-3.5" />
             </button>
-          )}
 
-          <button type="button" className="trial-nudge__later" onClick={close}>
-            Remind me later
-          </button>
-        </motion.aside>
+            <div className="trial-nudge__badge">
+              <Hourglass className="w-3 h-3" />
+              Free trial
+            </div>
+
+            <p className="trial-nudge__title">{headline}</p>
+
+            <div className="trial-nudge__timing">
+              <div className="trial-nudge__countdown">
+                <Clock className="w-4 h-4" />
+                <span>{countdown}</span>
+              </div>
+              {expiryLabel ? (
+                <p className="trial-nudge__expires">
+                  Expires: <strong>{expiryLabel}</strong>
+                </p>
+              ) : null}
+            </div>
+
+            <p className="trial-nudge__body">
+              {popup?.message?.trim() ||
+                'Fill in your details to request longer access. Our team will get back to you within 24 hours.'}
+            </p>
+
+            <div className="trial-nudge__scroll">
+              {showUpload ? (
+                <AccessProofUpload
+                  request={access?.request ?? null}
+                  defaults={{ name: userName, phone: userPhone, email: userEmail }}
+                  onSubmitted={async () => {
+                    await onRefresh();
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="trial-nudge__cta"
+                  onClick={() => setShowUpload(true)}
+                >
+                  Request access
+                </button>
+              )}
+            </div>
+
+            <div className="trial-nudge__footer">
+              <button type="button" className="trial-nudge__dismiss" onClick={close}>
+                Dismiss
+              </button>
+              {!showUpload ? (
+                <button type="button" className="trial-nudge__later" onClick={close}>
+                  Remind me later
+                </button>
+              ) : (
+                <button type="button" className="trial-nudge__later" onClick={() => setShowUpload(false)}>
+                  Back
+                </button>
+              )}
+            </div>
+          </motion.aside>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   );
