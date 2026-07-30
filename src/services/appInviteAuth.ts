@@ -567,6 +567,20 @@ export async function adminReviewTvAccessRequest(
   return true;
 }
 
+export async function adminDeleteTvAccessRequest(
+  id: string,
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch(`/api/app-auth/admin/tv-access-requests/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(adminEmail, adminPassword),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not delete the request');
+  return true;
+}
+
 export async function adminGetSettings(
   adminEmail?: string | null,
   adminPassword?: string | null,

@@ -47,6 +47,7 @@ import {
 import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessSheet.mjs';
 import {
   createTvAccessRequest,
+  deleteTvAccessRequest,
   latestPendingTvAccessRequest,
   listTvAccessRequests,
   pendingTvAccessRequestCount,
@@ -935,6 +936,16 @@ router.post('/admin/tv-access-requests/:id/dismiss', requireAdmin, async (req, r
     return res.json(result);
   } catch (err) {
     return failed(res, err, 'Could not dismiss request');
+  }
+});
+
+/** DELETE /api/app-auth/admin/tv-access-requests/:id */
+router.delete('/admin/tv-access-requests/:id', requireAdmin, async (req, res) => {
+  try {
+    const result = await deleteTvAccessRequest(req.params.id);
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Could not delete request');
   }
 });
 

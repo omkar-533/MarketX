@@ -142,6 +142,14 @@ export async function reviewTvAccessRequest(id, { status, adminNote = '', review
   return { ok: true, request: fromRow({ ...row, ...patch }) };
 }
 
+export async function deleteTvAccessRequest(id) {
+  const rows = await loadRows();
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw Object.assign(new Error('Request not found'), { status: 404 });
+  await saveRows(rows.filter((r) => r.id !== id));
+  return { ok: true, id };
+}
+
 export async function pendingTvAccessRequestCount() {
   return (await loadRows()).filter((row) => row.status === 'pending').length;
 }

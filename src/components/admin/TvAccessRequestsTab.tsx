@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, RefreshCw, X } from 'lucide-react';
+import { Check, RefreshCw, Trash2, X } from 'lucide-react';
 import {
+  adminDeleteTvAccessRequest,
   adminListTvAccessRequests,
   adminReviewTvAccessRequest,
   type AdminTvAccessRequest,
@@ -52,6 +53,23 @@ export default function TvAccessRequestsTab({
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : `Could not ${action === 'granted' ? 'approve' : 'dismiss'}`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (row: AdminTvAccessRequest) => {
+    const ok = window.confirm(
+      `Delete TV access request for @${row.tradingViewId}? This cannot be undone.`,
+    );
+    if (!ok) return;
+    setBusyId(row.id);
+    setError('');
+    try {
+      await adminDeleteTvAccessRequest(row.id, adminEmail, adminPassword);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete request');
     } finally {
       setBusyId(null);
     }
@@ -133,30 +151,40 @@ export default function TvAccessRequestsTab({
                     {formatDate(row.createdAt)}
                   </td>
                   <td className="px-3 py-2.5">
-                    {row.status === 'pending' ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={busyId === row.id}
-                          onClick={() => void review(row, 'granted')}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50"
-                        >
-                          <Check className="w-3 h-3" />
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === row.id}
-                          onClick={() => void review(row, 'dismiss')}
-                          className="inline-flex items-center gap-1 rounded-lg bg-slate-500/10 border border-slate-500/20 px-2.5 py-1.5 text-[10px] font-bold text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
-                        >
-                          <X className="w-3 h-3" />
-                          Dismiss
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-slate-600">—</span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {row.status === 'pending' ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={busyId === row.id}
+                            onClick={() => void review(row, 'granted')}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50"
+                          >
+                            <Check className="w-3 h-3" />
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === row.id}
+                            onClick={() => void review(row, 'dismiss')}
+                            className="inline-flex items-center gap-1 rounded-lg bg-slate-500/10 border border-slate-500/20 px-2.5 py-1.5 text-[10px] font-bold text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
+                          >
+                            <X className="w-3 h-3" />
+                            Dismiss
+                          </button>
+                        </>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busyId === row.id}
+                        onClick={() => void remove(row)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 border border-red-500/25 px-2.5 py-1.5 text-[10px] font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                        title="Delete request"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}
