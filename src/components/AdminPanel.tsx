@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -17,7 +17,10 @@ import {
   Code2,
   Link2,
   BookOpen,
+  Download,
+  CalendarRange,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   AreaChart,
   Area,
@@ -108,6 +111,67 @@ function isUnseenNewUser(u: InviteUserRow): boolean {
   return u.role !== 'admin' && !u.adminSeenAt;
 }
 
+function startOfLocalDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfLocalDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function parseCreatedMs(u: InviteUserRow) {
+  const t = Date.parse(u.createdAt || '');
+  return Number.isFinite(t) ? t : 0;
+}
+
+function countUsersSince(users: InviteUserRow[], sinceMs: number) {
+  return users.filter((u) => u.role !== 'admin' && parseCreatedMs(u) >= sinceMs).length;
+}
+
+function countUsersInRange(users: InviteUserRow[], fromMs: number, toMs: number) {
+  return users.filter((u) => {
+    if (u.role === 'admin') return false;
+    const t = parseCreatedMs(u);
+    return t >= fromMs && t <= toMs;
+  }).length;
+}
+
+function toInputDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function exportUsersExcel(users: InviteUserRow[], filename: string) {
+  const rows = users
+    .filter((u) => u.role !== 'admin')
+    .map((u) => {
+      const badge = accessLabel(u);
+      return {
+        Name: u.name || '',
+        Email: u.email || '',
+        Mobile: u.phone || '',
+        Plan: u.plan || '',
+        Active: u.active ? 'Yes' : 'No',
+        Access: badge.text,
+        'Created at': u.createdAt ? new Date(u.createdAt).toLocaleString('en-IN') : '',
+        'First login': u.firstLoginAt ? new Date(u.firstLoginAt).toLocaleString('en-IN') : '',
+        'Last login': u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('en-IN') : '',
+        'Login count': u.loginCount ?? 0,
+      };
+    });
+
+  const sheet = XLSX.utils.json_to_sheet(rows);
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, sheet, 'Users');
+  XLSX.writeFile(book, filename);
+}
+
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('requests');
   const [rows, setRows] = useState<InviteUserRow[]>([]);
@@ -125,10 +189,61 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [defaultGrantDays, setDefaultGrantDays] = useState(30);
   const [tvPendingCount, setTvPendingCount] = useState(0);
   const [tvAlert, setTvAlert] = useState<AdminTvAccessRequest | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const tvPendingRef = useRef(-1);
 
   const adminEmail = user?.email ?? null;
   const newUserCount = rows.filter((r) => isUnseenNewUser(r)).length;
+
+  const memberRows = useMemo(() => rows.filter((r) => r.role !== 'admin'), [rows]);
+
+  const userStats = useMemo(() => {
+    const now = new Date();
+    const todayStart = startOfLocalDay(now).getTime();
+    const weekStart = startOfLocalDay(new Date(now.getTime() - 6 * 86_400_000)).getTime();
+    const monthStart = startOfLocalDay(new Date(now.getFullYear(), now.getMonth(), 1)).getTime();
+    return {
+      today: countUsersSince(memberRows, todayStart),
+      weekly: countUsersSince(memberRows, weekStart),
+      monthly: countUsersSince(memberRows, monthStart),
+      total: memberRows.length,
+    };
+  }, [memberRows]);
+
+  const rangeFilterActive = Boolean(dateFrom || dateTo);
+
+  const filteredRows = useMemo(() => {
+    if (!rangeFilterActive) return rows;
+    const fromMs = dateFrom ? startOfLocalDay(new Date(`${dateFrom}T00:00:00`)).getTime() : 0;
+    const toMs = dateTo
+      ? endOfLocalDay(new Date(`${dateTo}T00:00:00`)).getTime()
+      : Number.POSITIVE_INFINITY;
+    return rows.filter((u) => {
+      if (u.role === 'admin') return true;
+      const t = parseCreatedMs(u);
+      return t >= fromMs && t <= toMs;
+    });
+  }, [rows, dateFrom, dateTo, rangeFilterActive]);
+
+  const rangeCount = useMemo(() => {
+    if (!rangeFilterActive) return null;
+    const fromMs = dateFrom ? startOfLocalDay(new Date(`${dateFrom}T00:00:00`)).getTime() : 0;
+    const toMs = dateTo
+      ? endOfLocalDay(new Date(`${dateTo}T00:00:00`)).getTime()
+      : Number.POSITIVE_INFINITY;
+    return countUsersInRange(memberRows, fromMs, toMs);
+  }, [memberRows, dateFrom, dateTo, rangeFilterActive]);
+
+  const exportVisible = () => {
+    const list = filteredRows.filter((u) => u.role !== 'admin');
+    const stamp = toInputDate(new Date());
+    const suffix =
+      rangeFilterActive && (dateFrom || dateTo)
+        ? `_${dateFrom || 'start'}_to_${dateTo || stamp}`
+        : `_${stamp}`;
+    exportUsersExcel(list, `wolf-trade-users${suffix}.xlsx`);
+  };
 
   const refreshTvPending = useCallback(async () => {
     try {
@@ -396,10 +511,89 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             ) : null}
           </div>
 
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            {[
+              { label: 'Today', value: userStats.today, hint: 'Joined today' },
+              { label: 'Weekly', value: userStats.weekly, hint: 'Last 7 days' },
+              { label: 'Monthly', value: userStats.monthly, hint: 'This calendar month' },
+              { label: 'Total', value: userStats.total, hint: 'All members' },
+            ].map((card) => (
+              <div
+                key={card.label}
+                className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl px-3 py-3"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                  {card.label}
+                </p>
+                <p className="text-2xl font-black text-[#d4af37] mt-1 tabular-nums">{card.value}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">{card.hint}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <CalendarRange className="w-4 h-4 text-[#d4af37]" />
+                Date filter
+              </h3>
+              {rangeCount !== null ? (
+                <span className="text-[11px] text-emerald-400 font-bold">
+                  {rangeCount} user{rangeCount === 1 ? '' : 's'} in range
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-[10px] text-slate-500 space-y-1">
+                <span className="block uppercase tracking-wider font-bold">From</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
+                />
+              </label>
+              <label className="text-[10px] text-slate-500 space-y-1">
+                <span className="block uppercase tracking-wider font-bold">To</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className="px-3 py-2 rounded-lg border border-[#1a1f2e] text-[10px] font-bold text-slate-400 hover:text-gold"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={exportVisible}
+                disabled={filteredRows.filter((u) => u.role !== 'admin').length === 0}
+                className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/25 disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export Excel
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-600">
+              Filter by signup date. Export downloads the currently visible members (Excel .xlsx).
+            </p>
+          </div>
+
           <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#1a1f2e]">
               <h3 className="text-sm font-bold text-white">
-                Users ({rows.length})
+                Users ({filteredRows.length}
+                {rangeFilterActive ? ` filtered · ${rows.length} total` : ''})
                 {newUserCount ? (
                   <span className="ml-2 text-[10px] font-bold text-[#d4af37]">
                     {newUserCount} new
@@ -434,20 +628,25 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                     <th className="py-3 px-4 text-left">User</th>
                     <th className="py-3 px-4 text-left">Mobile</th>
                     <th className="py-3 px-4 text-left">Access</th>
+                    <th className="py-3 px-4 text-left">Joined</th>
                     <th className="py-3 px-4 text-left">First login</th>
                     <th className="py-3 px-4 text-left">Last login</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.length === 0 ? (
+                  {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
-                        {loading ? 'Loading…' : 'No users yet.'}
+                      <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                        {loading
+                          ? 'Loading…'
+                          : rangeFilterActive
+                            ? 'No users in this date range.'
+                            : 'No users yet.'}
                       </td>
                     </tr>
                   ) : (
-                    rows.map((u, idx) => {
+                    filteredRows.map((u, idx) => {
                       const badge = accessLabel(u);
                       const isNew = isUnseenNewUser(u);
                       return (
@@ -495,6 +694,9 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                             >
                               {badge.text}
                             </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                            {formatDateTime(u.createdAt)}
                           </td>
                           <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                             {formatDateTime(u.firstLoginAt)}
