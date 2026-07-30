@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ChevronDown,
   Copy,
-  Globe,
   ImageOff,
   Loader2,
   Search,
@@ -76,9 +74,6 @@ export default function Indicators({
   const [tvDone, setTvDone] = useState(false);
   const [tvStatus, setTvStatus] = useState<'pending' | 'granted' | 'dismissed' | null>(null);
   const [inviteLink, setInviteLink] = useState('');
-  const [openTargetMenu, setOpenTargetMenu] = useState(false);
-  const [openHint, setOpenHint] = useState('');
-  const openMenuRef = useRef<HTMLDivElement>(null);
 
   const openDetail = useCallback((item: IndicatorItem) => {
     setCopied(false);
@@ -195,27 +190,6 @@ export default function Indicators({
 
   const effectiveLink = inviteLink || active?.link || '';
 
-  useEffect(() => {
-    if (!openTargetMenu) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!openMenuRef.current?.contains(e.target as Node)) setOpenTargetMenu(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenTargetMenu(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [openTargetMenu]);
-
-  useEffect(() => {
-    setOpenTargetMenu(false);
-    setOpenHint('');
-  }, [active?.id]);
-
   const copyLink = async () => {
     if (!effectiveLink) return;
     try {
@@ -225,29 +199,6 @@ export default function Indicators({
     } catch {
       setCopied(false);
     }
-  };
-
-  const openInBrowser = () => {
-    if (!effectiveLink) return;
-    window.open(effectiveLink, '_blank', 'noopener,noreferrer');
-    setOpenTargetMenu(false);
-    setOpenHint('');
-  };
-
-  const openInTradingView = async () => {
-    if (!effectiveLink) return;
-    try {
-      await navigator.clipboard.writeText(effectiveLink);
-    } catch {
-      /* clipboard optional */
-    }
-    // Same https URL — Windows “Apps for websites” may hand it to TradingView Desktop.
-    window.open(effectiveLink, '_blank', 'noopener,noreferrer');
-    setOpenTargetMenu(false);
-    setOpenHint(
-      'Link copied. If the desktop app did not open, in TradingView use Open link from clipboard.',
-    );
-    window.setTimeout(() => setOpenHint(''), 8000);
   };
 
   const submitTvAccess = async () => {
@@ -495,61 +446,16 @@ export default function Indicators({
                         : 'lux-ind__access-actions--secondary'
                     }`}
                   >
-                    <div className="lux-ind__open-wrap" ref={openMenuRef}>
-                      <div className="lux-ind__open-split">
-                        <button
-                          type="button"
-                          className="lux-ind__btn lux-ind__btn--primary lux-ind__open-main"
-                          onClick={() => setOpenTargetMenu((v) => !v)}
-                          aria-expanded={openTargetMenu}
-                          aria-haspopup="menu"
-                        >
-                          {tvStatus === 'granted' ? 'Open indicator' : 'Open invite'}
-                          <ChevronDown
-                            className={`w-4 h-4 lux-ind__open-chevron ${openTargetMenu ? 'is-open' : ''}`}
-                          />
-                        </button>
-                      </div>
-                      <AnimatePresence>
-                        {openTargetMenu ? (
-                          <motion.div
-                            className="lux-ind__open-menu"
-                            role="menu"
-                            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                            transition={{ duration: 0.16 }}
-                          >
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="lux-ind__open-option"
-                              onClick={openInBrowser}
-                            >
-                              <Globe className="w-4 h-4" />
-                              <span>
-                                <strong>Browser</strong>
-                                <small>Open in a new tab</small>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="lux-ind__open-option"
-                              onClick={() => void openInTradingView()}
-                            >
-                              <Sparkles className="w-4 h-4" />
-                              <span>
-                                <strong>TradingView</strong>
-                                <small>Desktop / app (link also copied)</small>
-                              </span>
-                              <ArrowRight className="w-3.5 h-3.5 lux-ind__open-option-arrow" />
-                            </button>
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
-                    </div>
-                    {openHint ? <p className="lux-ind__open-hint">{openHint}</p> : null}
+                    <a
+                      href={effectiveLink}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="lux-ind__btn lux-ind__btn--primary"
+                      style={{ textDecoration: 'none', justifyContent: 'center' }}
+                    >
+                      {tvStatus === 'granted' ? 'Open indicator' : 'Open invite'}
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
                     <button
                       type="button"
                       className="lux-ind__btn lux-ind__btn--ghost"
