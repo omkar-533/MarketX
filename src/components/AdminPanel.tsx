@@ -245,7 +245,12 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     exportUsersExcel(list, `wolf-trade-users${suffix}.xlsx`);
   };
 
-  const applyPresetRange = (preset: 'today' | 'weekly' | 'monthly') => {
+  const applyPresetRange = (preset: 'all' | 'today' | 'weekly' | 'monthly') => {
+    if (preset === 'all') {
+      setDateFrom('');
+      setDateTo('');
+      return;
+    }
     const now = new Date();
     const to = toInputDate(now);
     if (preset === 'today') {
@@ -263,6 +268,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   };
 
   const activePreset = useMemo(() => {
+    if (!dateFrom && !dateTo) return 'all';
     if (!dateFrom || !dateTo) return null;
     const now = new Date();
     const today = toInputDate(now);
@@ -606,6 +612,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               <div className="flex items-center gap-1.5">
                 {(
                   [
+                    { id: 'all' as const, label: 'All' },
                     { id: 'today' as const, label: 'Today' },
                     { id: 'weekly' as const, label: 'Weekly' },
                     { id: 'monthly' as const, label: 'Monthly' },
