@@ -49,6 +49,7 @@ function PageLoader() {
 const HIDDEN_TABS = new Set(['papertrading', 'dashboard', 'oiintelligence', 'heatmap', 'scanner']);
 const DEFAULT_TAB = 'trafi';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
+const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
 const VALID_TABS = new Set([
   'dashboard',
@@ -93,7 +94,44 @@ function tabFromStorage(): string | null {
   }
 }
 
+function shouldForceHome() {
+  try {
+    return sessionStorage.getItem(FORCE_HOME_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function clearForceHome() {
+  try {
+    sessionStorage.removeItem(FORCE_HOME_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function markForceHome() {
+  try {
+    sessionStorage.setItem(FORCE_HOME_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearPersistedTab() {
+  try {
+    localStorage.removeItem(TAB_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  const hash = window.location.hash.replace(/^#\/?/, '').split(/[?&]/)[0]?.trim() || '';
+  if (hash && VALID_TABS.has(hash)) {
+    window.history.replaceState({}, '', `/${window.location.search}`);
+  }
+}
+
 function initialActiveTab() {
+  if (shouldForceHome()) return DEFAULT_TAB;
   return tabFromHash() || tabFromStorage() || DEFAULT_TAB;
 }
 
@@ -158,12 +196,19 @@ function AppWorkspace() {
   /** Keep the open page across refresh via hash + localStorage. */
   useEffect(() => {
     if (!auth.isLoggedIn) return;
+    if (shouldForceHome()) {
+      clearForceHome();
+      setActiveTab(DEFAULT_TAB);
+      persistTab(DEFAULT_TAB);
+      return;
+    }
     persistTab(activeTab);
   }, [auth.isLoggedIn, activeTab]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
     const onHash = () => {
+      if (shouldForceHome()) return;
       const fromHash = tabFromHash();
       if (fromHash && fromHash !== activeTab) setActiveTab(fromHash);
     };
@@ -197,6 +242,13 @@ function AppWorkspace() {
     setActiveTab(next);
     setMobileMenuOpen(false);
     persistTab(next);
+  };
+
+  const handleLogout = () => {
+    clearPersistedTab();
+    markForceHome();
+    setActiveTab(DEFAULT_TAB);
+    void auth.logout();
   };
 
   const openGrantedIndicator = (indicatorId: string) => {
@@ -313,7 +365,7 @@ function AppWorkspace() {
                 mobileOpen={mobileMenuOpen}
                 onMobileClose={() => setMobileMenuOpen(false)}
                 user={auth.user}
-                onLogout={auth.logout}
+                onLogout={handleLogout}
                 onProfile={() => setShowProfile(true)}
               />
               <Header
@@ -379,7 +431,7 @@ function AppWorkspace() {
               isOpen={showProfile}
               onClose={() => setShowProfile(false)}
               user={auth.user}
-              onLogout={auth.logout}
+              onLogout={handleLogout}
               onUpgrade={() => handleTabChange('subscription')}
             />
             <AuthModal
@@ -427,7 +479,7 @@ function AppWorkspace() {
             userPhone={auth.user?.phone}
             userEmail={auth.user?.email}
             onRefresh={auth.refreshAccess}
-            onLogout={() => void auth.logout()}
+            onLogout={handleLogout}
             onSeePlans={() => handleTabChange('subscription')}
           />
         </Suspense>
