@@ -88,14 +88,41 @@ export async function createTvAccessRequest({
   indicatorTitle,
   user,
 }) {
+  const rows = await loadRows();
+  const userId = user?.id ?? null;
+  const indId = String(indicatorId || '').trim();
+  const tvId = String(tradingViewId || '').trim().replace(/^@/, '');
+
+  if (userId && indId) {
+    const existing = rows
+      .filter((r) => r.user_id === userId && r.indicator_id === indId)
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+    const latest = existing[0];
+    if (latest?.status === 'granted') {
+      return fromRow({ ...latest, trading_view_id: tvId || latest.trading_view_id });
+    }
+    if (latest?.status === 'pending') {
+      const patched = {
+        ...latest,
+        trading_view_id: tvId || latest.trading_view_id,
+        name: user?.name ?? latest.name,
+        email: user?.email ?? latest.email,
+        phone: user?.phone ?? latest.phone,
+        indicator_title: String(indicatorTitle || '').trim() || latest.indicator_title,
+      };
+      await saveRows(rows.map((r) => (r.id === latest.id ? patched : r)));
+      return fromRow(patched);
+    }
+  }
+
   const id = `tvreq_${randomBytes(9).toString('hex')}`;
   const createdAt = new Date().toISOString();
   const row = {
     id,
-    trading_view_id: String(tradingViewId || '').trim(),
-    indicator_id: String(indicatorId || '').trim(),
+    trading_view_id: tvId,
+    indicator_id: indId,
     indicator_title: String(indicatorTitle || '').trim() || null,
-    user_id: user?.id ?? null,
+    user_id: userId,
     name: user?.name ?? null,
     email: user?.email ?? null,
     phone: user?.phone ?? null,
@@ -106,7 +133,6 @@ export async function createTvAccessRequest({
     created_at: createdAt,
   };
 
-  const rows = await loadRows();
   await saveRows([row, ...rows]);
   return fromRow(row);
 }
@@ -119,8 +145,45 @@ export async function listTvAccessRequests({ status = 'pending', limit = 100 } =
   return rows.map((row) => fromRow(row));
 }
 
-async function findRequest(id) {
-  return (await loadRows()).find((row) => row.id === id) ?? null;
+export async function getLatestTvAccessForUserIndicator(userId, indicatorId) {
+  if (!userId || !indicatorId) return null;
+  const row = (await loadRows())
+    .filter((r) => r.user_id === userId && r.indicator_id === indicatorId)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  return row ? fromRow(row) : null;
+}
+
+/** Indicator IDs this user was granted invite unlock for. */
+export async function listGrantedIndicatorIdsForUser(userId) {
+  if (!userId) return new Set();
+  const ids = new Set();
+  for (const row of await loadRows()) {
+    if (row.user_id === userId && row.status === 'granted') ids.add(row.indicator_id);
+  }
+  return ids;
+}
+
+/** Indicator IDs where user has any TV request (pending / granted / dismissed). */
+export async function listRequestedIndicatorIdsForUser(userId) {
+  if (!userId) return new Set();
+  const ids = new Set();
+  for (const row of await loadRows()) {
+    if (row.user_id === userId) ids.add(row.indicator_id);
+  }
+  return ids;
+}
+
+/** Latest TV access status per indicator for a user. */
+export async function mapLatestTvAccessStatusByIndicator(userId) {
+  const map = new Map();
+  if (!userId) return map;
+  const rows = (await loadRows())
+    .filter((r) => r.user_id === userId)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  for (const row of rows) {
+    if (!map.has(row.indicator_id)) map.set(row.indicator_id, row.status);
+  }
+  return map;
 }
 
 export async function reviewTvAccessRequest(id, { status, adminNote = '', reviewedBy }) {
@@ -140,6 +203,27 @@ export async function reviewTvAccessRequest(id, { status, adminNote = '', review
   const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
   await saveRows(next);
   return { ok: true, request: fromRow({ ...row, ...patch }) };
+}
+
+export async function reviewAllPendingTvAccessRequests({ status = 'granted', reviewedBy } = {}) {
+  if (!['granted', 'dismissed'].includes(status)) {
+    throw Object.assign(new Error('Invalid status'), { status: 400 });
+  }
+  const rows = await loadRows();
+  const now = new Date().toISOString();
+  let count = 0;
+  const next = rows.map((r) => {
+    if (r.status !== 'pending') return r;
+    count += 1;
+    return {
+      ...r,
+      status,
+      reviewed_by: reviewedBy ?? null,
+      reviewed_at: now,
+    };
+  });
+  if (count) await saveRows(next);
+  return { ok: true, updated: count };
 }
 
 export async function deleteTvAccessRequest(id) {

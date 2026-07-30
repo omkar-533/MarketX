@@ -5,13 +5,28 @@ export type IndicatorItem = {
   id: string;
   title: string;
   description: string;
-  /** Invite / share URL — only present when access is unlocked. */
+  /** Invite / share URL — only present when access + TV grant allow it. */
   link: string;
   sortOrder: number;
   published: boolean;
   createdAt: string;
   updatedAt?: string;
   imageUrl: string | null;
+  /** Latest TV access request status for this user, if any. */
+  tvAccessStatus?: 'pending' | 'granted' | 'dismissed' | null;
+};
+
+export type TvAccessStatusPayload = {
+  ok: boolean;
+  status: 'pending' | 'granted' | 'dismissed' | null;
+  inviteUnlocked: boolean;
+  inviteLink: string;
+  request: {
+    id: string;
+    tradingViewId: string;
+    status: 'pending' | 'granted' | 'dismissed';
+    createdAt: string;
+  } | null;
 };
 
 function sessionHeaders(): HeadersInit {
@@ -123,11 +138,11 @@ export async function adminDeleteIndicator(
   await readJson(res, 'Could not delete indicator');
 }
 
-/** Submit TradingView username for manual invite — stored in admin Google Sheet. */
+/** Submit TradingView username for manual invite — admin Approves to unlock invite link. */
 export async function submitTradingViewAccess(
   indicatorId: string,
   tradingViewId: string,
-): Promise<{ ok: boolean; message: string }> {
+): Promise<{ ok: boolean; message: string; inviteLink: string; status: string | null }> {
   const res = await apiFetch(
     `/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/tv-access`,
     {
@@ -137,8 +152,29 @@ export async function submitTradingViewAccess(
     },
   );
   const data = await readJson(res, 'Could not submit TradingView ID');
+  const request = data.request as { status?: string } | undefined;
   return {
     ok: true,
     message: typeof data.message === 'string' ? data.message : 'Submitted',
+    inviteLink: typeof data.inviteLink === 'string' ? data.inviteLink : '',
+    status: request?.status || null,
+  };
+}
+
+/** Poll TV access / invite unlock status for an indicator. */
+export async function getTradingViewAccessStatus(
+  indicatorId: string,
+): Promise<TvAccessStatusPayload> {
+  const res = await apiFetch(
+    `/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/tv-access`,
+    { headers: sessionHeaders() },
+  );
+  const data = await readJson(res, 'Could not load TradingView access status');
+  return {
+    ok: true,
+    status: (data.status as TvAccessStatusPayload['status']) || null,
+    inviteUnlocked: Boolean(data.inviteUnlocked),
+    inviteLink: typeof data.inviteLink === 'string' ? data.inviteLink : '',
+    request: (data.request as TvAccessStatusPayload['request']) || null,
   };
 }

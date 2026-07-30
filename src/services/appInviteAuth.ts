@@ -564,7 +564,25 @@ export async function adminReviewTvAccessRequest(
   );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || `Could not ${action} the request`);
-  return true;
+  return {
+    ok: true as const,
+    inviteLink: typeof data.inviteLink === 'string' ? data.inviteLink : '',
+    request: (data.request || null) as AdminTvAccessRequest | null,
+  };
+}
+
+export async function adminApproveAllTvAccessRequests(
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+) {
+  const res = await apiFetch('/api/app-auth/admin/tv-access-requests/approve-all', {
+    method: 'POST',
+    headers: authHeaders(adminEmail, adminPassword),
+    body: JSON.stringify({}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not approve all requests');
+  return { ok: true as const, updated: Number(data.updated || 0) };
 }
 
 export async function adminDeleteTvAccessRequest(

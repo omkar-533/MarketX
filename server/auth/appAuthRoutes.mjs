@@ -48,9 +48,12 @@ import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessShee
 import {
   createTvAccessRequest,
   deleteTvAccessRequest,
+  getLatestTvAccessForUserIndicator,
   latestPendingTvAccessRequest,
   listTvAccessRequests,
+  mapLatestTvAccessStatusByIndicator,
   pendingTvAccessRequestCount,
+  reviewAllPendingTvAccessRequests,
   reviewTvAccessRequest,
 } from './tvAccessRequests.mjs';
 import {
@@ -517,15 +520,38 @@ function publicIndicator(row) {
   };
 }
 
+/**
+ * Invite link visibility:
+ * - Admin: always
+ * - Unlocked + never requested TV access: show (legacy / browse)
+ * - Unlocked + granted: show (after admin Approve)
+ * - Pending / dismissed / locked workspace: hide
+ */
+function withInviteGate(pub, { isAdmin, unlocked, tvStatus }) {
+  const next = { ...pub, tvAccessStatus: tvStatus || null };
+  if (isAdmin) return next;
+  const showLink = unlocked && (tvStatus === 'granted' || !tvStatus);
+  if (!showLink) next.link = '';
+  return next;
+}
+
 /** GET /api/app-auth/indicators — published library for signed-in members */
 router.get('/indicators', requireUser, async (req, res) => {
   try {
     const access = accessStateFor(req.appUser);
+    const isAdmin = req.appUser?.role === 'admin';
+    const statusMap = isAdmin
+      ? new Map()
+      : await mapLatestTvAccessStatusByIndicator(req.appUser?.id);
     const indicators = await listPublishedIndicators();
     const rows = indicators.map((row) => {
       const pub = publicIndicator(row);
-      if (!access.unlocked) pub.link = '';
-      return pub;
+      const tvStatus = statusMap.get(row.id) || null;
+      return withInviteGate(pub, {
+        isAdmin,
+        unlocked: access.unlocked,
+        tvStatus,
+      });
     });
     return res.json({
       indicators: rows,
@@ -545,11 +571,19 @@ router.get('/indicators', requireUser, async (req, res) => {
 router.get('/indicators/:id', requireUser, async (req, res) => {
   try {
     const access = accessStateFor(req.appUser);
+    const isAdmin = req.appUser?.role === 'admin';
     const row = await getIndicatorById(req.params.id, { publishedOnly: true });
     if (!row) return res.status(404).json({ error: 'Indicator not found' });
-    const pub = publicIndicator(row);
-    if (!access.unlocked) {
-      pub.link = '';
+    const latest = isAdmin
+      ? null
+      : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
+    const tvStatus = latest?.status || null;
+    const pub = withInviteGate(publicIndicator(row), {
+      isAdmin,
+      unlocked: access.unlocked,
+      tvStatus,
+    });
+    if (!access.unlocked && !isAdmin) {
       return res.status(403).json({
         error: 'Your demo ended — get access approved to open indicator links',
         indicator: pub,
@@ -561,9 +595,44 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
         },
       });
     }
-    return res.json({ indicator: pub });
+    return res.json({ indicator: pub, tvAccess: latest });
   } catch (err) {
     return failed(res, err, 'Could not load indicator');
+  }
+});
+
+/**
+ * GET /api/app-auth/indicators/:id/tv-access
+ * Member: current TV invite unlock status for this indicator.
+ */
+router.get('/indicators/:id/tv-access', requireUser, async (req, res) => {
+  try {
+    const access = accessStateFor(req.appUser);
+    const isAdmin = req.appUser?.role === 'admin';
+    const row = await getIndicatorById(req.params.id, { publishedOnly: true });
+    if (!row) return res.status(404).json({ error: 'Indicator not found' });
+
+    const latest = isAdmin
+      ? null
+      : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
+    const tvStatus = latest?.status || null;
+    const showLink = isAdmin || (access.unlocked && (tvStatus === 'granted' || !tvStatus));
+
+    return res.json({
+      ok: true,
+      status: tvStatus,
+      request: latest,
+      inviteUnlocked: Boolean(showLink && row.link),
+      inviteLink: showLink ? row.link || '' : '',
+      access: {
+        unlocked: access.unlocked,
+        isTrial: access.isTrial,
+        daysLeft: access.daysLeft,
+        reason: access.reason,
+      },
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not load TradingView access status');
   }
 });
 
@@ -619,11 +688,14 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
       }
     }
 
+    const alreadyGranted = request?.status === 'granted';
     return res.json({
       ok: true,
       request,
-      message:
-        'Your request has been received. Our support team will contact you within 24 hours.',
+      inviteLink: alreadyGranted ? row.link || '' : '',
+      message: alreadyGranted
+        ? 'Access already approved — open the invite link below.'
+        : 'Request received. After the desk adds you on TradingView, your invite link unlocks here.',
       sheetConfigured: isTvAccessSheetConfigured(),
       sheetOk,
       sheetError,
@@ -919,7 +991,12 @@ router.post('/admin/tv-access-requests/:id/granted', requireAdmin, async (req, r
       adminNote: req.body?.adminNote,
       reviewedBy: req.adminActor || 'admin',
     });
-    return res.json(result);
+    const indicatorId = result?.request?.indicatorId;
+    const indicator = indicatorId ? await getIndicatorById(indicatorId) : null;
+    return res.json({
+      ...result,
+      inviteLink: indicator?.link || '',
+    });
   } catch (err) {
     return failed(res, err, 'Could not mark as granted');
   }
@@ -936,6 +1013,19 @@ router.post('/admin/tv-access-requests/:id/dismiss', requireAdmin, async (req, r
     return res.json(result);
   } catch (err) {
     return failed(res, err, 'Could not dismiss request');
+  }
+});
+
+/** POST /api/app-auth/admin/tv-access-requests/approve-all — unlock all pending */
+router.post('/admin/tv-access-requests/approve-all', requireAdmin, async (req, res) => {
+  try {
+    const result = await reviewAllPendingTvAccessRequests({
+      status: 'granted',
+      reviewedBy: req.adminActor || 'admin',
+    });
+    return res.json(result);
+  } catch (err) {
+    return failed(res, err, 'Could not approve all requests');
   }
 });
 
