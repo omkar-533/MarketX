@@ -235,39 +235,44 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      const normalizedEmail = email.trim().toLowerCase();
-      const supabase = getSupabase();
+    async (identifier: string, password: string) => {
+      const raw = identifier.trim();
+      const digits = raw.replace(/\D/g, '').slice(-10);
+      const isMobile = /^[6-9]\d{9}$/.test(digits);
+      const loginId = isMobile ? digits : raw.toLowerCase();
 
-      if (supabase) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
-        });
-        if (!error) {
-          await hydrateSession();
-          return;
+      // Supabase email auth only — skip when the member signs in with a mobile number.
+      if (!isMobile) {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: loginId,
+            password,
+          });
+          if (!error) {
+            await hydrateSession();
+            return;
+          }
         }
       }
 
       try {
-        const session = await loginWithInvite(normalizedEmail, password);
+        const session = await loginWithInvite(loginId, password);
         setUser(session.user);
         setAccess(session.snapshot);
         setIsLoggedIn(true);
         setShowAuth(false);
         if (session.user.role === 'admin') setAdminPassword(password);
         return;
-      } catch {
-        /* fall through */
+      } catch (err) {
+        if (isAdminCredentials(loginId, password)) {
+          setAdminFallbackSession(password);
+          return;
+        }
+        throw new Error(
+          err instanceof Error ? err.message : 'Invalid mobile number or password',
+        );
       }
-
-      if (isAdminCredentials(normalizedEmail, password)) {
-        setAdminFallbackSession(password);
-        return;
-      }
-
-      throw new Error('Invalid email or password');
     },
     [hydrateSession, setAdminFallbackSession],
   );

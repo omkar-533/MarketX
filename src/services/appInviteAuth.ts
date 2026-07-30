@@ -127,9 +127,9 @@ export async function loginWithInvite(
   const res = await apiFetch('/api/app-auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier, email: identifier, password }),
+    body: JSON.stringify({ identifier, password }),
   });
-  const data = await readJson(res, 'Invalid credentials');
+  const data = await readJson(res, 'Invalid mobile number or password');
   const session = toSession(data);
   saveAppSession(session);
   return { ...session, snapshot: snapshotOf(data) };
