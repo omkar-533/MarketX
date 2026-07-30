@@ -1,46 +1,65 @@
-# Wolf Trade AI — Android App
+# Wolf Trade AI — Android / Play Store
 
-Native Android shell (Capacitor) that loads the live website: **https://wolftradeai.in**
-
-## Install (phone)
-
-1. Copy this file to your phone:
-   - `release/android/WolfTradeAI-debug.apk`
-2. On Android: allow **Install unknown apps** for Files / Chrome
-3. Open the APK → Install → open **Wolf Trade AI**
+Native Capacitor app that loads **https://wolftradeai.in**
 
 Package id: `com.mastertradex.app`
 
-## Rebuild APK (Windows)
+## Play Store upload file (AAB)
 
-```bash
-# Needs Android SDK + Android Studio JBR
+Signed Android App Bundle (required by Play Console):
+
+- Desktop: `WolfTradeAI-PlayStore.aab`
+- Project: `release/android/WolfTradeAI-PlayStore.aab`
+
+Also signed release APK (sideload / testing):
+
+- Desktop: `WolfTradeAI-release.apk`
+
+### Upload steps
+
+1. Open [Google Play Console](https://play.google.com/console)
+2. Create app → **Wolf Trade AI**
+3. Complete store listing (title, short/full description, screenshots, icon 512×512)
+4. Add a **Privacy Policy** URL (required)
+5. **Production** (or Internal testing) → Create release → Upload the `.aab`
+6. Review → Roll out
+
+### Keystore (CRITICAL)
+
+Backup file on Desktop:
+
+`WolfTradeAI-PlayStore-KEYSTORE-BACKUP.txt`
+
++ keystore:
+
+`android/keystore/wolftradeai-release.jks`
+
+**Back these up offline.** Lost keystore = you cannot update this Play Store listing with new versions.
+
+Never commit `.jks` / `keystore.properties` / the backup txt to Git.
+
+## Rebuild Play Store bundle
+
+```bat
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
 set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
 
 npm run app:android:sync
 cd android
-gradlew.bat assembleDebug
+gradlew.bat bundleRelease
+gradlew.bat assembleRelease
 ```
 
-APK output:
-`android/app/build/outputs/apk/debug/app-debug.apk`
+Outputs:
 
-Or open Android Studio:
+- `android/app/build/outputs/bundle/release/app-release.aab`
+- `android/app/build/outputs/apk/release/app-release.apk`
 
-```bash
-npm run app:android:open
-```
+## Debug APK (direct phone install)
 
-Then: **Build → Build Bundle(s) / APK(s) → Build APK(s)**
-
-## Release / Play Store
-
-Use Android Studio → **Generate Signed Bundle / APK** with your keystore.
-`assembleRelease` needs a signing config in `android/app/build.gradle`.
+`WolfTradeAI-debug.apk` on Desktop / `release/android/`
 
 ## Notes
 
-- App always opens the live site (not a frozen offline build). Website updates appear after refresh / relaunch.
-- Internet required.
-- API host: `market-api-t9co.onrender.com` (allowed in Capacitor navigation).
+- App needs internet; it opens the live website.
+- Each Play Store update: bump `versionCode` + `versionName` in `android/app/build.gradle`

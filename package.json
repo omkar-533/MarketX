@@ -23,6 +23,7 @@
     "app:android:sync": "npm run build && npx cap sync android",
     "app:android:open": "npx cap open android",
     "app:android:apk": "npm run app:android:sync && cd android && gradlew.bat assembleDebug",
+    "app:android:bundle": "npm run app:android:sync && cd android && gradlew.bat bundleRelease",
     "app:android:apk:release": "npm run app:android:sync && cd android && gradlew.bat assembleRelease",
     "app:ios:sync": "npm run build && npx cap sync ios",
     "app:ios:open": "npx cap open ios",

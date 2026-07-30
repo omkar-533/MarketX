@@ -26,9 +26,14 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
+android/keystore.properties
+android/keystore/
 ios/App/Pods/
 *.apk
 *.ipa
+*.aab
+*.jks
+*.keystore
 electron/dist/
 
 # Local AI upscale tooling / temp frames
