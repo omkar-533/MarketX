@@ -214,7 +214,7 @@ const router = Router();
 
 /* ────────────────────────── login ────────────────────────── */
 
-/** POST /api/app-auth/login — mobile + password for members; desk admin may still use email */
+/** POST /api/app-auth/login — strict mobile + password for every member (desk admin email still allowed) */
 router.post('/login', async (req, res) => {
   const identifier = String(req.body?.identifier || req.body?.email || '').trim();
   const password = String(req.body?.password || '');
@@ -233,12 +233,12 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  // Member login is mobile-only (email sign-in disabled).
   if (identifier.includes('@')) {
     return res.status(400).json({
       error: 'Sign in with your registered mobile number only.',
     });
   }
+
   const phone = normalizePhone(identifier);
   if (!phone) {
     return res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number' });
@@ -247,7 +247,10 @@ router.post('/login', async (req, res) => {
   try {
     const authed = await authenticateAppUser(phone, password);
     if (!authed) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Wrong mobile number or password' });
+    }
+    if (authed.active === false) {
+      return res.status(403).json({ error: 'This account is disabled. Contact the desk.' });
     }
     const user = (await recordLogin(authed.id)) || authed;
     return res.json({
@@ -257,7 +260,7 @@ router.post('/login', async (req, res) => {
       ...(await accessPayloadFor(user)),
     });
   } catch (err) {
-    return failed(res, err, 'Login failed');
+    return failed(res, err, 'Login failed — try again in a moment');
   }
 });
 

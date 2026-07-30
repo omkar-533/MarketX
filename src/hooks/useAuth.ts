@@ -234,47 +234,41 @@ export function useAuth() {
     if (password) setAdminPassword(password);
   }, []);
 
+  /** Strict mobile + password login for every member. No email / Supabase side path. */
   const login = useCallback(
     async (identifier: string, password: string) => {
-      const raw = identifier.trim();
-      const digits = raw.replace(/\D/g, '').slice(-10);
-      const isMobile = /^[6-9]\d{9}$/.test(digits);
-      const loginId = isMobile ? digits : raw.toLowerCase();
+      const digits = String(identifier || '')
+        .replace(/\D/g, '')
+        .slice(-10);
 
-      // Supabase email auth only — skip when the member signs in with a mobile number.
-      if (!isMobile) {
-        const supabase = getSupabase();
-        if (supabase) {
-          const { error } = await supabase.auth.signInWithPassword({
-            email: loginId,
-            password,
-          });
-          if (!error) {
-            await hydrateSession();
-            return;
-          }
-        }
+      if (!/^[6-9]\d{9}$/.test(digits)) {
+        throw new Error('Enter a valid 10-digit mobile number');
+      }
+      if (!password) {
+        throw new Error('Enter your password');
       }
 
       try {
-        const session = await loginWithInvite(loginId, password);
+        const session = await loginWithInvite(digits, password);
         setUser(session.user);
         setAccess(session.snapshot);
         setIsLoggedIn(true);
         setShowAuth(false);
         if (session.user.role === 'admin') setAdminPassword(password);
+        void refreshAccess();
         return;
       } catch (err) {
-        if (isAdminCredentials(loginId, password)) {
-          setAdminFallbackSession(password);
-          return;
+        const raw = err instanceof Error ? err.message : '';
+        if (/email/i.test(raw)) {
+          throw new Error('Wrong mobile number or password');
         }
-        throw new Error(
-          err instanceof Error ? err.message : 'Invalid mobile number or password',
-        );
+        if (/abort|network|failed to fetch|timeout|Load failed/i.test(raw)) {
+          throw new Error('Server is waking up — wait a few seconds and try again');
+        }
+        throw new Error(raw || 'Wrong mobile number or password');
       }
     },
-    [hydrateSession, setAdminFallbackSession],
+    [refreshAccess],
   );
 
   /** Step 1 of the trial sign-up: sends an OTP, creates nothing yet. */

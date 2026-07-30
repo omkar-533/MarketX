@@ -124,12 +124,16 @@ export async function loginWithInvite(
   identifier: string,
   password: string,
 ): Promise<AppSession & { snapshot: AccessSnapshot | null }> {
-  const res = await apiFetch('/api/app-auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier, password }),
-  });
-  const data = await readJson(res, 'Invalid mobile number or password');
+  const res = await apiFetch(
+    '/api/app-auth/login',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password }),
+    },
+    { retries: 3, timeoutMs: 25_000 },
+  );
+  const data = await readJson(res, 'Wrong mobile number or password');
   const session = toSession(data);
   saveAppSession(session);
   return { ...session, snapshot: snapshotOf(data) };

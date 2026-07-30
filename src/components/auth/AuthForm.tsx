@@ -78,7 +78,8 @@ export default function AuthForm({
         /* session already persisted by auth hook */
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Login failed.');
+      const raw = error instanceof Error ? error.message : 'Login failed.';
+      setErrorMessage(/email/i.test(raw) ? 'Wrong mobile number or password' : raw);
     } finally {
       setIsLoading(false);
     }
