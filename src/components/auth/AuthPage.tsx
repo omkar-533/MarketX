@@ -647,7 +647,7 @@ export default function AuthPage(props: AuthPageProps) {
                   onSwitchToSignIn={openSignIn}
                 />
               ) : (
-                <AuthForm {...formProps} onForgotClick={openForgot} />
+                <AuthForm {...formProps} onForgotClick={openForgot} onSignUpClick={() => openSignUp()} />
               )}
             </motion.div>
           </motion.div>

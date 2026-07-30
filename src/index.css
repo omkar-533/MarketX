@@ -327,6 +327,52 @@ input[type="number"] { -moz-appearance: textfield; }
   transform: translateY(-1px);
 }
 
+.auth-form-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(26, 31, 46, 0.95);
+}
+
+.auth-form-switch__label {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.auth-form-switch__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #475569;
+}
+
+.auth-signup-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: #f0d78c;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.08);
+  transition: all 0.25s ease;
+}
+
+.auth-signup-btn:hover {
+  color: #0b0e17;
+  border-color: rgba(212, 175, 55, 0.7);
+  background: linear-gradient(135deg, #d4af37 0%, #c9a227 100%);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.22);
+  transform: translateY(-1px);
+}
+
 .auth-card-shine {
   position: relative;
   overflow: hidden;

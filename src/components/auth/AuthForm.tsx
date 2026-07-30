@@ -11,6 +11,7 @@ import {
   AlertCircle,
   LogIn,
   ShieldCheck,
+  UserPlus,
 } from 'lucide-react';
 import AuthField from './AuthField';
 import { isValidEmail } from './authUtils';
@@ -26,14 +27,17 @@ export interface AuthFormProps {
   headerExtra?: ReactNode;
   /** Opens the reset flow. Omitted where there is nowhere to switch to. */
   onForgotClick?: () => void;
+  /** Opens the sign-up / free-trial flow from this sign-in panel. */
+  onSignUpClick?: () => void;
 }
 
 /** Email or mobile + the password the member chose at sign-up. */
 export default function AuthForm({
   onLogin,
-  onSwitchMode: _onSwitchMode,
+  onSwitchMode,
   headerExtra,
   onForgotClick,
+  onSignUpClick,
 }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,6 +52,11 @@ export default function AuthForm({
   const identifierValid =
     isValidEmail(email) || /^[6-9]\d{9}$/.test(email.replace(/\D/g, '').slice(-10));
   const showEmailError = emailTouched && email.length > 0 && !identifierValid;
+
+  const goSignUp = () => {
+    if (onSignUpClick) onSignUpClick();
+    else onSwitchMode('signup');
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -170,9 +179,15 @@ export default function AuthForm({
         </button>
       </form>
 
-      <p className="mt-6 text-center text-[11px] text-slate-500 leading-relaxed">
-        No account yet? Start the free trial from the pricing section.
-      </p>
+      <div className="auth-form-switch mt-5">
+        <p className="auth-form-switch__label">No account yet?</p>
+        <button type="button" className="auth-signup-btn w-full" onClick={goSignUp}>
+          <UserPlus className="w-4 h-4" />
+          Sign up
+          <ArrowRight className="w-4 h-4" />
+        </button>
+        <p className="auth-form-switch__hint">Start the free trial — takes under a minute.</p>
+      </div>
     </div>
   );
 }
