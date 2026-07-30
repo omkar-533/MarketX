@@ -245,6 +245,35 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     exportUsersExcel(list, `wolf-trade-users${suffix}.xlsx`);
   };
 
+  const applyPresetRange = (preset: 'today' | 'weekly' | 'monthly') => {
+    const now = new Date();
+    const to = toInputDate(now);
+    if (preset === 'today') {
+      setDateFrom(to);
+      setDateTo(to);
+      return;
+    }
+    if (preset === 'weekly') {
+      setDateFrom(toInputDate(new Date(now.getTime() - 6 * 86_400_000)));
+      setDateTo(to);
+      return;
+    }
+    setDateFrom(toInputDate(new Date(now.getFullYear(), now.getMonth(), 1)));
+    setDateTo(to);
+  };
+
+  const activePreset = useMemo(() => {
+    if (!dateFrom || !dateTo) return null;
+    const now = new Date();
+    const today = toInputDate(now);
+    if (dateFrom === today && dateTo === today) return 'today';
+    const weekFrom = toInputDate(new Date(now.getTime() - 6 * 86_400_000));
+    if (dateFrom === weekFrom && dateTo === today) return 'weekly';
+    const monthFrom = toInputDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    if (dateFrom === monthFrom && dateTo === today) return 'monthly';
+    return null;
+  }, [dateFrom, dateTo]);
+
   const refreshTvPending = useCallback(async () => {
     try {
       const data = await adminListTvAccessRequests('pending', adminEmail, adminPassword);
@@ -574,6 +603,31 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               >
                 Clear
               </button>
+              <div className="flex items-center gap-1.5">
+                {(
+                  [
+                    { id: 'today' as const, label: 'Today' },
+                    { id: 'weekly' as const, label: 'Weekly' },
+                    { id: 'monthly' as const, label: 'Monthly' },
+                  ] as const
+                ).map((p) => {
+                  const on = activePreset === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => applyPresetRange(p.id)}
+                      className={`px-3 py-2 rounded-lg border text-[10px] font-bold transition-colors ${
+                        on
+                          ? 'bg-[#d4af37]/15 border-[#d4af37]/40 text-[#d4af37]'
+                          : 'border-[#1a1f2e] text-slate-400 hover:text-gold hover:border-gold/30'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
               <button
                 type="button"
                 onClick={exportVisible}
