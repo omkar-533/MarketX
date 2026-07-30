@@ -104,15 +104,8 @@ const TONE_CLASS = {
   muted: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
 };
 
-/** NEW badge only for truly recent signups (24h), not forever until "Mark seen". */
-const NEW_USER_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-function isFreshNewUser(u: InviteUserRow): boolean {
-  if (u.role === 'admin') return false;
-  if (u.adminSeenAt) return false;
-  const stamped = Date.parse(u.createdAt || u.firstLoginAt || '');
-  if (!Number.isFinite(stamped)) return false;
-  return Date.now() - stamped < NEW_USER_WINDOW_MS;
+function isUnseenNewUser(u: InviteUserRow): boolean {
+  return u.role !== 'admin' && !u.adminSeenAt;
 }
 
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
@@ -135,7 +128,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const tvPendingRef = useRef(-1);
 
   const adminEmail = user?.email ?? null;
-  const newUserCount = rows.filter((r) => isFreshNewUser(r)).length;
+  const newUserCount = rows.filter((r) => isUnseenNewUser(r)).length;
 
   const refreshTvPending = useCallback(async () => {
     try {
@@ -156,25 +149,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     setLoading(true);
     setErr('');
     try {
-      let list = await adminListUsers(adminEmail, adminPassword);
-      const expiredUnseen = list.filter((u) => {
-        if (u.role === 'admin' || u.adminSeenAt) return false;
-        const stamped = Date.parse(u.createdAt || u.firstLoginAt || '');
-        if (!Number.isFinite(stamped)) return true;
-        return Date.now() - stamped >= NEW_USER_WINDOW_MS;
-      });
-      if (expiredUnseen.length) {
-        try {
-          await adminMarkUsersSeen(
-            expiredUnseen.map((u) => u.id),
-            adminEmail,
-            adminPassword,
-          );
-          list = await adminListUsers(adminEmail, adminPassword);
-        } catch {
-          /* display still uses isFreshNewUser */
-        }
-      }
+      const list = await adminListUsers(adminEmail, adminPassword);
       setRows(list);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not load users');
@@ -244,6 +219,17 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const markAllSeen = async () => {
     await adminMarkUsersSeen(null, adminEmail, adminPassword);
     await refresh();
+  };
+
+  const markUserSeen = async (row: InviteUserRow) => {
+    if (!isUnseenNewUser(row)) return;
+    const seenAt = new Date().toISOString();
+    setRows((prev) => prev.map((u) => (u.id === row.id ? { ...u, adminSeenAt: seenAt } : u)));
+    try {
+      await adminMarkUsersSeen([row.id], adminEmail, adminPassword);
+    } catch {
+      setRows((prev) => prev.map((u) => (u.id === row.id ? { ...u, adminSeenAt: null } : u)));
+    }
   };
 
   return (
@@ -463,14 +449,16 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                   ) : (
                     rows.map((u, idx) => {
                       const badge = accessLabel(u);
-                      const isNew = isFreshNewUser(u);
+                      const isNew = isUnseenNewUser(u);
                       return (
                         <motion.tr
                           key={u.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: idx * 0.02 }}
-                          className="border-b border-[#1a1f2e]/40 hover:bg-[#121520]"
+                          className={`border-b border-[#1a1f2e]/40 hover:bg-[#121520] ${isNew ? 'cursor-pointer' : ''}`}
+                          onClick={() => void markUserSeen(u)}
+                          title={isNew ? 'Click to clear NEW' : undefined}
                         >
                           <td className="py-2.5 px-4">
                             <div className="flex items-center gap-2">
@@ -519,7 +507,10 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                               </span>
                             ) : null}
                           </td>
-                          <td className="py-2.5 px-4">
+                          <td
+                            className="py-2.5 px-4"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
                               <input
                                 type="number"
