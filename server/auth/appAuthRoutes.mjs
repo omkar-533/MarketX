@@ -15,6 +15,7 @@ import {
   publicUser,
   recordLogin,
   setAppUserActive,
+  setAppUserRole,
   setPhoneVerified,
   setUserAccess,
   setUserPassword,
@@ -940,10 +941,20 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
   }
 });
 
-/** PATCH /api/app-auth/admin/users/:id — activate / deactivate */
+/** PATCH /api/app-auth/admin/users/:id — activate / deactivate / set role */
 router.patch('/admin/users/:id', requireAdmin, async (req, res) => {
   try {
-    const user = await setAppUserActive(req.params.id, req.body?.active !== false);
+    let user = null;
+    if (typeof req.body?.role === 'string') {
+      user = await setAppUserRole(req.params.id, req.body.role);
+    }
+    if (typeof req.body?.active === 'boolean') {
+      user = await setAppUserActive(req.params.id, req.body.active);
+    }
+    if (!user) {
+      // Default: keep previous activate behaviour when body only has active-ish fields.
+      user = await setAppUserActive(req.params.id, req.body?.active !== false);
+    }
     return res.json({ user: { ...user, access: accessStateFor(user) } });
   } catch (err) {
     return failed(res, err, 'Update failed');

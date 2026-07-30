@@ -350,6 +350,12 @@ export async function setAppUserActive(id, active) {
   return patchUser(id, { active: Boolean(active) }, { active: Boolean(active) });
 }
 
+/** Promote / demote desk access (user ↔ admin). */
+export async function setAppUserRole(id, role) {
+  const next = role === 'admin' ? 'admin' : 'user';
+  return patchUser(id, { role: next }, { role: next });
+}
+
 /** Admin grant / revoke. `days` of 0 (or null) means lifetime access. */
 export async function setUserAccess(id, { status = 'granted', days = null, planId = null } = {}) {
   const expiresAt =
