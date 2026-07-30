@@ -104,6 +104,17 @@ const TONE_CLASS = {
   muted: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
 };
 
+/** NEW badge only for truly recent signups (24h), not forever until "Mark seen". */
+const NEW_USER_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isFreshNewUser(u: InviteUserRow): boolean {
+  if (u.role === 'admin') return false;
+  if (u.adminSeenAt) return false;
+  const stamped = Date.parse(u.createdAt || u.firstLoginAt || '');
+  if (!Number.isFinite(stamped)) return false;
+  return Date.now() - stamped < NEW_USER_WINDOW_MS;
+}
+
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('requests');
   const [rows, setRows] = useState<InviteUserRow[]>([]);
@@ -124,7 +135,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const tvPendingRef = useRef(-1);
 
   const adminEmail = user?.email ?? null;
-  const newUserCount = rows.filter((r) => !r.adminSeenAt && r.role !== 'admin').length;
+  const newUserCount = rows.filter((r) => isFreshNewUser(r)).length;
 
   const refreshTvPending = useCallback(async () => {
     try {
@@ -145,7 +156,25 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     setLoading(true);
     setErr('');
     try {
-      const list = await adminListUsers(adminEmail, adminPassword);
+      let list = await adminListUsers(adminEmail, adminPassword);
+      const expiredUnseen = list.filter((u) => {
+        if (u.role === 'admin' || u.adminSeenAt) return false;
+        const stamped = Date.parse(u.createdAt || u.firstLoginAt || '');
+        if (!Number.isFinite(stamped)) return true;
+        return Date.now() - stamped >= NEW_USER_WINDOW_MS;
+      });
+      if (expiredUnseen.length) {
+        try {
+          await adminMarkUsersSeen(
+            expiredUnseen.map((u) => u.id),
+            adminEmail,
+            adminPassword,
+          );
+          list = await adminListUsers(adminEmail, adminPassword);
+        } catch {
+          /* display still uses isFreshNewUser */
+        }
+      }
       setRows(list);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not load users');
@@ -434,7 +463,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                   ) : (
                     rows.map((u, idx) => {
                       const badge = accessLabel(u);
-                      const isNew = !u.adminSeenAt && u.role !== 'admin';
+                      const isNew = isFreshNewUser(u);
                       return (
                         <motion.tr
                           key={u.id}
