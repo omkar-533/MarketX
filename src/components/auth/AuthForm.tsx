@@ -1,7 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Mail,
   Lock,
   Eye,
   EyeOff,
@@ -12,9 +11,9 @@ import {
   LogIn,
   ShieldCheck,
   UserPlus,
+  Phone,
 } from 'lucide-react';
 import AuthField from './AuthField';
-import { isValidEmail } from './authUtils';
 
 export interface AuthFormProps {
   mode: 'login' | 'signup' | 'forgot' | 'otp';
@@ -31,7 +30,11 @@ export interface AuthFormProps {
   onSignUpClick?: () => void;
 }
 
-/** Email or mobile + the password the member chose at sign-up. */
+function isValidMobile(value: string) {
+  return /^[6-9]\d{9}$/.test(value.replace(/\D/g, '').slice(-10));
+}
+
+/** Mobile number + the password the member chose at sign-up. */
 export default function AuthForm({
   onLogin,
   onSwitchMode,
@@ -39,19 +42,17 @@ export default function AuthForm({
   onForgotClick,
   onSignUpClick,
 }: AuthFormProps) {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
-  /** Trial accounts verify a mobile number, so either identifier signs in. */
-  const identifierValid =
-    isValidEmail(email) || /^[6-9]\d{9}$/.test(email.replace(/\D/g, '').slice(-10));
-  const showEmailError = emailTouched && email.length > 0 && !identifierValid;
+  const phoneValid = isValidMobile(phone);
+  const showPhoneError = phoneTouched && phone.length > 0 && !phoneValid;
 
   const goSignUp = () => {
     if (onSignUpClick) onSignUpClick();
@@ -62,8 +63,8 @@ export default function AuthForm({
     e.preventDefault();
     setErrorMessage('');
     setStatusMessage('');
-    if (!identifierValid) {
-      setErrorMessage('Enter your email or 10-digit mobile number.');
+    if (!phoneValid) {
+      setErrorMessage('Enter your 10-digit mobile number.');
       return;
     }
     if (!password) {
@@ -72,7 +73,7 @@ export default function AuthForm({
     }
     setIsLoading(true);
     try {
-      await onLogin(email, password);
+      await onLogin(phone.replace(/\D/g, '').slice(-10), password);
       if (rememberMe) {
         /* session already persisted by auth hook */
       }
@@ -100,24 +101,24 @@ export default function AuthForm({
         <h1 className="auth-title auth-title-gold">
           Sign <span>in</span>
         </h1>
-        <p className="auth-subtitle">
-          Sign in with your email or mobile number and password.
-        </p>
+        <p className="auth-subtitle">Sign in with your mobile number and password.</p>
       </motion.div>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-5">
         <AuthField
-          label="Email or mobile"
-          type="text"
-          placeholder="name@company.com or 9876543210"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => setEmailTouched(true)}
+          label="Mobile number"
+          type="tel"
+          inputMode="numeric"
+          placeholder="10-digit mobile number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+          onBlur={() => setPhoneTouched(true)}
           required
-          autoComplete="username"
-          valid={email.length > 0 && identifierValid}
-          error={showEmailError ? 'Enter a valid email or 10-digit mobile number' : undefined}
-          icon={<Mail className="w-4 h-4" />}
+          autoComplete="tel"
+          maxLength={10}
+          valid={phone.length > 0 && phoneValid}
+          error={showPhoneError ? 'Enter a valid 10-digit Indian mobile number' : undefined}
+          icon={<Phone className="w-4 h-4" />}
         />
 
         <AuthField

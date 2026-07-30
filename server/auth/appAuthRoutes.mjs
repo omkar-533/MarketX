@@ -213,13 +213,13 @@ const router = Router();
 
 /* ────────────────────────── login ────────────────────────── */
 
-/** POST /api/app-auth/login — email or mobile + password, plus the local admin */
+/** POST /api/app-auth/login — mobile + password for members; desk admin may still use email */
 router.post('/login', async (req, res) => {
   const identifier = String(req.body?.identifier || req.body?.email || '').trim();
   const password = String(req.body?.password || '');
 
   if (!identifier || !password) {
-    return res.status(400).json({ error: 'Email or mobile and password required' });
+    return res.status(400).json({ error: 'Mobile number and password required' });
   }
 
   if (isAdminPair(identifier, password)) {
@@ -232,8 +232,19 @@ router.post('/login', async (req, res) => {
     });
   }
 
+  // Member login is mobile-only (email sign-in disabled).
+  if (identifier.includes('@')) {
+    return res.status(400).json({
+      error: 'Sign in with your registered mobile number only.',
+    });
+  }
+  const phone = normalizePhone(identifier);
+  if (!phone) {
+    return res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number' });
+  }
+
   try {
-    const authed = await authenticateAppUser(identifier, password);
+    const authed = await authenticateAppUser(phone, password);
     if (!authed) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
