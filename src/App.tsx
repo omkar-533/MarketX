@@ -12,8 +12,9 @@ const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
-const AccessGate = lazy(() => import('./components/access/AccessGate'));
 const TrialReminderPopup = lazy(() => import('./components/access/TrialReminderPopup'));
+const TvAccessGrantedPopup = lazy(() => import('./components/access/TvAccessGrantedPopup'));
+const AccessGate = lazy(() => import('./components/access/AccessGate'));
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -51,6 +52,7 @@ function AppWorkspace() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [pendingIndicatorId, setPendingIndicatorId] = useState<string | null>(null);
   const auth = useAuth();
 
   useEffect(() => {
@@ -110,6 +112,11 @@ function AppWorkspace() {
     setMobileMenuOpen(false);
   };
 
+  const openGrantedIndicator = (indicatorId: string) => {
+    setPendingIndicatorId(indicatorId);
+    handleTabChange('indicators');
+  };
+
   /** Locked accounts may still read the pricing page, nothing else. */
   const locked = Boolean(auth.access && !auth.access.unlocked);
   const planPeek = locked && activeTab === 'subscription';
@@ -139,7 +146,12 @@ function AppWorkspace() {
       case 'trafi':
         return <MasterAI />;
       case 'indicators':
-        return <Indicators />;
+        return (
+          <Indicators
+            openIndicatorId={pendingIndicatorId}
+            onOpenIndicatorConsumed={() => setPendingIndicatorId(null)}
+          />
+        );
       case 'papertrading':
         return <PaperTrading user={auth.user} onNavigate={setActiveTab} />;
       case 'backtesting':
@@ -309,6 +321,10 @@ function AppWorkspace() {
             userPhone={auth.user?.phone}
             userEmail={auth.user?.email}
             onRefresh={auth.refreshAccess}
+          />
+          <TvAccessGrantedPopup
+            userId={auth.user?.role === 'admin' ? null : auth.user?.id}
+            onOpenIndicator={openGrantedIndicator}
           />
           <AccessGate
             access={planPeek ? null : auth.access}

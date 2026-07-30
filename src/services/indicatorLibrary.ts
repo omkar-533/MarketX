@@ -178,3 +178,22 @@ export async function getTradingViewAccessStatus(
     request: (data.request as TvAccessStatusPayload['request']) || null,
   };
 }
+
+export type TvAccessGrant = {
+  id: string;
+  indicatorId: string;
+  indicatorTitle: string;
+  tradingViewId: string;
+  inviteLink: string;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
+/** Approved TV invites for the signed-in member (popup / notification inbox). */
+export async function listTvAccessGrants(): Promise<TvAccessGrant[]> {
+  const res = await apiFetch('/api/app-auth/tv-access/grants', {
+    headers: sessionHeaders(),
+  });
+  const data = await readJson(res, 'Could not load TradingView grants');
+  return (data.grants || []) as TvAccessGrant[];
+}

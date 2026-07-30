@@ -50,6 +50,7 @@ import {
   deleteTvAccessRequest,
   getLatestTvAccessForUserIndicator,
   latestPendingTvAccessRequest,
+  listGrantedTvAccessForUser,
   listTvAccessRequests,
   mapLatestTvAccessStatusByIndicator,
   pendingTvAccessRequestCount,
@@ -598,6 +599,39 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
     return res.json({ indicator: pub, tvAccess: latest });
   } catch (err) {
     return failed(res, err, 'Could not load indicator');
+  }
+});
+
+/**
+ * GET /api/app-auth/tv-access/grants
+ * Member inbox: approved TV invites with unlock links (for popup / notification).
+ */
+router.get('/tv-access/grants', requireUser, async (req, res) => {
+  try {
+    if (req.appUser?.role === 'admin') {
+      return res.json({ grants: [] });
+    }
+    const access = accessStateFor(req.appUser);
+    const requests = await listGrantedTvAccessForUser(req.appUser?.id, { limit: 30 });
+    const grants = [];
+    for (const request of requests) {
+      const indicator = request.indicatorId
+        ? await getIndicatorById(request.indicatorId, { publishedOnly: true })
+        : null;
+      const inviteLink = access.unlocked && indicator?.link ? indicator.link : '';
+      grants.push({
+        id: request.id,
+        indicatorId: request.indicatorId,
+        indicatorTitle: request.indicatorTitle || indicator?.title || 'Indicator',
+        tradingViewId: request.tradingViewId,
+        inviteLink,
+        reviewedAt: request.reviewedAt,
+        createdAt: request.createdAt,
+      });
+    }
+    return res.json({ grants });
+  } catch (err) {
+    return failed(res, err, 'Could not load TradingView grants');
   }
 });
 

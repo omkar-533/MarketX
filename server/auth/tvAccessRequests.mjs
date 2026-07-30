@@ -186,6 +186,19 @@ export async function mapLatestTvAccessStatusByIndicator(userId) {
   return map;
 }
 
+/** Granted TV access rows for a member (newest first). */
+export async function listGrantedTvAccessForUser(userId, { limit = 20 } = {}) {
+  if (!userId) return [];
+  return (await loadRows())
+    .filter((r) => r.user_id === userId && r.status === 'granted')
+    .sort(
+      (a, b) =>
+        Date.parse(b.reviewed_at || b.created_at) - Date.parse(a.reviewed_at || a.created_at),
+    )
+    .slice(0, limit)
+    .map((row) => fromRow(row));
+}
+
 export async function reviewTvAccessRequest(id, { status, adminNote = '', reviewedBy }) {
   if (!['granted', 'dismissed'].includes(status)) {
     throw Object.assign(new Error('Invalid status'), { status: 400 });

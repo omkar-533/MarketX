@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -52,7 +52,15 @@ function splitDescription(raw: string) {
 const spring = { type: 'spring' as const, stiffness: 380, damping: 26 };
 const softSpring = { type: 'spring' as const, stiffness: 280, damping: 22 };
 
-export default function Indicators() {
+type IndicatorsProps = {
+  openIndicatorId?: string | null;
+  onOpenIndicatorConsumed?: () => void;
+};
+
+export default function Indicators({
+  openIndicatorId = null,
+  onOpenIndicatorConsumed,
+}: IndicatorsProps) {
   const [items, setItems] = useState<IndicatorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,6 +74,17 @@ export default function Indicators() {
   const [tvDone, setTvDone] = useState(false);
   const [tvStatus, setTvStatus] = useState<'pending' | 'granted' | 'dismissed' | null>(null);
   const [inviteLink, setInviteLink] = useState('');
+
+  const openDetail = useCallback((item: IndicatorItem) => {
+    setCopied(false);
+    setTvId('');
+    setTvMsg('');
+    setTvErr('');
+    setTvDone(false);
+    setTvStatus(item.tvAccessStatus || null);
+    setInviteLink(item.link || '');
+    setActive(item);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +106,25 @@ export default function Indicators() {
       cancelled = true;
     };
   }, []);
+
+  /** Deep-open from Approve popup / browser notification. */
+  useEffect(() => {
+    if (!openIndicatorId || loading || items.length === 0) return;
+    const hit = items.find((item) => item.id === openIndicatorId);
+    if (hit) openDetail(hit);
+    onOpenIndicatorConsumed?.();
+  }, [openIndicatorId, loading, items, onOpenIndicatorConsumed, openDetail]);
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      const hit = items.find((item) => item.id === id);
+      if (hit) openDetail(hit);
+    };
+    window.addEventListener('wolf:open-indicator', onOpen);
+    return () => window.removeEventListener('wolf:open-indicator', onOpen);
+  }, [items, openDetail]);
 
   /** Load + poll TV access while detail is open and status is pending. */
   useEffect(() => {
@@ -163,23 +201,15 @@ export default function Indicators() {
     }
   };
 
-  const openDetail = (item: IndicatorItem) => {
-    setCopied(false);
-    setTvId('');
-    setTvMsg('');
-    setTvErr('');
-    setTvDone(false);
-    setTvStatus(item.tvAccessStatus || null);
-    setInviteLink(item.link || '');
-    setActive(item);
-  };
-
   const submitTvAccess = async () => {
     if (!active) return;
     setTvBusy(true);
     setTvErr('');
     setTvMsg('');
     try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        void Notification.requestPermission().catch(() => {});
+      }
       const result = await submitTradingViewAccess(active.id, tvId);
       setTvDone(true);
       setTvMsg(result.message);
