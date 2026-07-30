@@ -8,15 +8,19 @@ const config: CapacitorConfig = {
   appName: 'Wolf Trade AI',
   webDir: 'dist',
   server: {
+    // Loads the live website inside the native shell (full product = same as web).
     url: LIVE_APP_URL,
     androidScheme: 'https',
     iosScheme: 'https',
+    cleartext: false,
     allowNavigation: [
       'wolftradeai.in',
       'www.wolftradeai.in',
       'omkar-533.github.io',
       'mmtt-flame.vercel.app',
+      '*.vercel.app',
       'market-api-t9co.onrender.com',
+      '*.onrender.com',
       '*.supabase.co',
       'localhost',
       '127.0.0.1',
@@ -26,6 +30,7 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    backgroundColor: '#0a0e17',
   },
   ios: {
     contentInset: 'automatic',
@@ -33,9 +38,14 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1200,
+      launchShowDuration: 1600,
+      launchAutoHide: true,
       backgroundColor: '#0a0e17',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
       showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
     },
     StatusBar: {
       style: 'DARK',

@@ -22,6 +22,8 @@
     "app:desktop:pack": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --publish never",
     "app:android:sync": "npm run build && npx cap sync android",
     "app:android:open": "npx cap open android",
+    "app:android:apk": "npm run app:android:sync && cd android && gradlew.bat assembleDebug",
+    "app:android:apk:release": "npm run app:android:sync && cd android && gradlew.bat assembleRelease",
     "app:ios:sync": "npm run build && npx cap sync ios",
     "app:ios:open": "npx cap open ios",
     "app:setup": "node scripts/setup-app.mjs"
