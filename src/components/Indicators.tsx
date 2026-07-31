@@ -16,13 +16,6 @@ import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
 import WolfLoader from './WolfLoader';
 
-function formatDate(value?: string) {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 /** Split admin description into overview + optional ## sections (Usage / Details / FAQ). */
 function splitDescription(raw: string) {
   const text = String(raw || '').trim();
@@ -257,11 +250,7 @@ export default function Indicators({
             transition={{ delay: 0.05, ...softSpring }}
           >
             <h1 className="lux-ind__title">{active.title}</h1>
-            <p className="lux-ind__byline">
-              By {BRAND}
-              <span aria-hidden>·</span>
-              <time dateTime={active.createdAt}>{formatDate(active.createdAt)}</time>
-            </p>
+            <p className="lux-ind__byline">By {BRAND}</p>
           </motion.header>
 
           <div className="lux-ind__layout">
@@ -632,8 +621,6 @@ export default function Indicators({
                   <div className="lux-lib-card__body">
                     <p className="lux-lib-card__meta">
                       <span>{BRAND}</span>
-                      <span aria-hidden>·</span>
-                      <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
                     </p>
                     <h2 className="lux-lib-card__title">
                       <button type="button" onClick={() => openDetail(item)}>
