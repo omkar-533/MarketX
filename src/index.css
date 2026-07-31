@@ -6712,6 +6712,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.65rem 1rem;
   border-bottom: 1px solid var(--tf-border);
   background: var(--tf-bg);
+  overflow: visible;
 }
 
 .mai-chat__brand {
@@ -7196,6 +7197,7 @@ input[type="number"] { -moz-appearance: textfield; }
     align-items: flex-start;
     gap: 0.55rem 0.65rem;
     padding: 0.55rem 0.75rem;
+    z-index: 60;
   }
 
   .mai-chat__brand {
@@ -7212,6 +7214,7 @@ input[type="number"] { -moz-appearance: textfield; }
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 0.35rem;
+    position: relative;
   }
 
   .mai-chat__chip {
@@ -7221,6 +7224,31 @@ input[type="number"] { -moz-appearance: textfield; }
 
   .mai-chat__lang-label {
     display: none;
+  }
+
+  /* History / lang menus: full width under topbar (avoid clip off-screen) */
+  .mai-chat__history,
+  .mai-chat__lang {
+    position: static;
+  }
+
+  .mai-chat__history-menu,
+  .mai-chat__lang-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0.65rem;
+    right: 0.65rem;
+    width: auto;
+    max-width: none;
+    max-height: min(58dvh, 24rem);
+    z-index: 70;
+    box-sizing: border-box;
+  }
+
+  .mai-chat__history-scroll,
+  .mai-chat__lang-scroll {
+    max-height: min(48dvh, 18rem);
+    -webkit-overflow-scrolling: touch;
   }
 
   .mai-chat__column {
