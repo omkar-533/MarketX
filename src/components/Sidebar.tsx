@@ -163,8 +163,12 @@ export default function Sidebar({
             onClick={onProfile}
             className={`app-sidebar__link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${navIdle} hover:text-gold`}
           >
-            <div className="w-[18px] h-[18px] rounded-full bg-gold/20 flex items-center justify-center shrink-0">
-              <span className="text-[10px] font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+            <div className="w-[18px] h-[18px] rounded-full bg-gold/20 flex items-center justify-center shrink-0 overflow-hidden">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[10px] font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+              )}
             </div>
             <AnimatePresence>
               {!collapsed && (

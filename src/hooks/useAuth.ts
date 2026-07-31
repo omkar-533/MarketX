@@ -9,6 +9,7 @@ import {
   loginWithInvite,
   resendPasswordResetOtp,
   resendSignupOtp,
+  saveAppSession,
   startPasswordReset,
   startSignup,
   verifySignupOtp,
@@ -17,6 +18,12 @@ import {
   type OtpChallenge,
   type ResetChallenge,
 } from '../services/appInviteAuth';
+import {
+  clearProfileAvatar,
+  compressProfileImage,
+  loadProfileAvatar,
+  saveProfileAvatar,
+} from '../services/profileAvatar';
 
 export interface User {
   id: string;
@@ -116,12 +123,16 @@ function mapSupabaseUser(user: SupabaseUser | null): User | null {
     name,
     email,
     phone: user.phone ?? userMeta.phone,
-    avatar: userMeta.avatar_url,
+    avatar: loadProfileAvatar(user.id) || userMeta.avatar_url,
     role: isAdminAccount ? 'admin' : appMeta.role ?? 'user',
     plan: isAdminAccount ? 'premium' : appMeta.plan ?? 'free',
     verified: Boolean(user.email_confirmed_at || user.phone_confirmed_at),
     createdAt: user.created_at ?? new Date().toISOString(),
   };
+}
+
+function withStoredAvatar(u: User): User {
+  return { ...u, avatar: loadProfileAvatar(u.id) || u.avatar };
 }
 
 export function useAuth() {
@@ -170,7 +181,7 @@ export function useAuth() {
 
     const invite = loadAppSession();
     if (invite?.user) {
-      setUser(invite.user);
+      setUser(withStoredAvatar(invite.user));
       setIsLoggedIn(true);
       setShowAuth(false);
       void refreshAccess();
@@ -182,7 +193,7 @@ export function useAuth() {
       return false;
     }
 
-    setUser(fallbackUser);
+    setUser(withStoredAvatar(fallbackUser));
     setIsLoggedIn(true);
     setShowAuth(false);
     return true;
@@ -206,14 +217,14 @@ export function useAuth() {
       }
       const invite = loadAppSession();
       if (invite?.user) {
-        setUser(invite.user);
+        setUser(withStoredAvatar(invite.user));
         setIsLoggedIn(true);
         setShowAuth(false);
         return;
       }
       const fallbackUser = restoreAdminSession();
       if (fallbackUser) {
-        setUser(fallbackUser);
+        setUser(withStoredAvatar(fallbackUser));
         setIsLoggedIn(true);
         setShowAuth(false);
         return;
@@ -226,13 +237,47 @@ export function useAuth() {
   }, [hydrateSession]);
 
   const setAdminFallbackSession = useCallback((password?: string) => {
-    const adminUser = createAdminUser();
+    const adminUser = withStoredAvatar(createAdminUser());
     persistAdminSession(adminUser);
     setUser(adminUser);
     setIsLoggedIn(true);
     setShowAuth(false);
     if (password) setAdminPassword(password);
   }, []);
+
+  const applyAvatarToUser = useCallback((nextAvatar: string | undefined) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, avatar: nextAvatar };
+      const invite = loadAppSession();
+      if (invite?.user?.id === prev.id) {
+        saveAppSession({ ...invite, user: next });
+      }
+      if (prev.role === 'admin' && prev.email === ADMIN_EMAIL) {
+        persistAdminSession(next);
+      }
+      return next;
+    });
+  }, []);
+
+  const updateAvatar = useCallback(
+    async (file: File) => {
+      const current = user;
+      if (!current) throw new Error('Sign in to set a profile photo');
+      const dataUrl = await compressProfileImage(file);
+      saveProfileAvatar(current.id, dataUrl);
+      applyAvatarToUser(dataUrl);
+      return dataUrl;
+    },
+    [applyAvatarToUser, user],
+  );
+
+  const removeAvatar = useCallback(() => {
+    const current = user;
+    if (!current) return;
+    clearProfileAvatar(current.id);
+    applyAvatarToUser(undefined);
+  }, [applyAvatarToUser, user]);
 
   /** Strict mobile + password login for every member. No email / Supabase side path. */
   const login = useCallback(
@@ -250,7 +295,7 @@ export function useAuth() {
 
       try {
         const session = await loginWithInvite(digits, password);
-        setUser(session.user);
+        setUser(withStoredAvatar(session.user));
         setAccess(session.snapshot);
         setIsLoggedIn(true);
         setShowAuth(false);
@@ -296,7 +341,7 @@ export function useAuth() {
   /** Step 2: the verified account is signed in with the free trial already live. */
   const signupVerify = useCallback(async (phone: string, code: string) => {
     const session = await verifySignupOtp(phone, code);
-    setUser(session.user);
+    setUser(withStoredAvatar(session.user));
     setAccess(session.snapshot);
     setIsLoggedIn(true);
     setShowAuth(false);
@@ -345,7 +390,7 @@ export function useAuth() {
   const resetComplete = useCallback(
     async (identifier: string, code: string, password: string) => {
       const session = await completePasswordReset(identifier.trim(), code, password);
-      setUser(session.user);
+      setUser(withStoredAvatar(session.user));
       setAccess(session.snapshot);
       setIsLoggedIn(true);
       setShowAuth(false);
@@ -402,5 +447,7 @@ export function useAuth() {
     access: access?.access ?? null,
     accessPopup: access?.popup ?? null,
     refreshAccess,
+    updateAvatar,
+    removeAvatar,
   };
 }

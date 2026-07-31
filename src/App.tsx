@@ -433,6 +433,8 @@ function AppWorkspace() {
               user={auth.user}
               onLogout={handleLogout}
               onUpgrade={() => handleTabChange('subscription')}
+              onUpdateAvatar={auth.updateAvatar}
+              onRemoveAvatar={auth.removeAvatar}
             />
             <AuthModal
               isOpen={auth.showAuth}

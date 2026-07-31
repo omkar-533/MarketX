@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Crown, Shield, LogOut, KeyRound } from 'lucide-react';
+import { X, Mail, Crown, Shield, LogOut, KeyRound, Camera, Trash2 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
@@ -14,26 +14,39 @@ import {
   detectMasterAiKeyProvider,
 } from '../services/openRouterKey';
 
-
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User | null;
   onLogout: () => void;
   onUpgrade?: () => void;
+  onUpdateAvatar?: (file: File) => Promise<string>;
+  onRemoveAvatar?: () => void;
 }
 
-export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrade }: ProfileModalProps) {
+export default function ProfileModal({
+  isOpen,
+  onClose,
+  user,
+  onLogout,
+  onUpgrade,
+  onUpdateAvatar,
+  onRemoveAvatar,
+}: ProfileModalProps) {
   const { theme } = useTheme();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [openRouterInput, setOpenRouterInput] = useState('');
   const [openRouterSaved, setOpenRouterSaved] = useState(() => loadOpenRouterApiKey());
   const [openRouterMsg, setOpenRouterMsg] = useState('');
   const [serverAiReady, setServerAiReady] = useState(false);
   const [showKeyOverride, setShowKeyOverride] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     setOpenRouterSaved(loadOpenRouterApiKey());
+    setAvatarMsg('');
     void fetchMasterAiStatus().then((s) => {
       setServerAiReady(s.configured && s.keySource === 'server');
       if (!s.configured && !loadOpenRouterApiKey()) setShowKeyOverride(true);
@@ -69,6 +82,21 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
     );
   };
 
+  const handlePickAvatar = async (file: File | undefined) => {
+    if (!file || !onUpdateAvatar) return;
+    setAvatarBusy(true);
+    setAvatarMsg('');
+    try {
+      await onUpdateAvatar(file);
+      setAvatarMsg('Profile photo updated.');
+    } catch (err) {
+      setAvatarMsg(err instanceof Error ? err.message : 'Could not update photo');
+    } finally {
+      setAvatarBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -96,19 +124,73 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
             </button>
 
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gold/15 border border-gold/30 flex items-center justify-center">
-                <span className="text-xl font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+              <div className="relative shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-gold/15 border border-gold/30 overflow-hidden flex items-center justify-center">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+                  )}
+                </div>
+                {onUpdateAvatar ? (
+                  <button
+                    type="button"
+                    disabled={avatarBusy}
+                    onClick={() => fileRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gold text-dark-surface flex items-center justify-center shadow-lg border-2 border-[var(--tf-surface)] hover:bg-gold-light disabled:opacity-60"
+                    title="Upload profile photo"
+                    aria-label="Upload profile photo"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+                ) : null}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => void handlePickAvatar(e.target.files?.[0])}
+                />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-100">Trader Profile</h2>
-                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3 h-3" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-bold text-[var(--tf-text)]">{user.name}</h2>
+                <p className="text-xs text-[var(--tf-text-muted)] flex items-center gap-1 mt-0.5 truncate">
+                  <Mail className="w-3 h-3 shrink-0" />
                   {user.email}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {onUpdateAvatar ? (
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() => fileRef.current?.click()}
+                      className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-60"
+                    >
+                      {avatarBusy ? 'Uploading…' : user.avatar ? 'Change photo' : 'Add photo'}
+                    </button>
+                  ) : null}
+                  {user.avatar && onRemoveAvatar ? (
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() => {
+                        onRemoveAvatar();
+                        setAvatarMsg('Profile photo removed.');
+                      }}
+                      className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-dark-border text-[var(--tf-text-secondary)] hover:text-red-400 hover:border-red-400/30 inline-flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                {avatarMsg ? (
+                  <p className="mt-1.5 text-[10px] text-[var(--tf-text-muted)]">{avatarMsg}</p>
+                ) : null}
               </div>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-[var(--tf-text-muted)] mb-4">
               Trading psychology is recorded when you save each trade in the journal.
             </p>
 
@@ -131,8 +213,8 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                   ) : null}
                   {!serverAiReady && !hasLocalKey ? (
                     <p className="text-[10px] text-slate-500">
-                      Server pe key nahi — aistudio.google.com se AI Studio key (AQ.… / AIza…), OpenAI (sk-…), ya OpenRouter (sk-or-…) paste karo.
-                      ChatGPT Plus/Premium website login API key nahi hota.
+                      Server pe key nahi — aistudio.google.com se AI Studio key (AQ.… / AIza…), OpenAI (sk-…), ya OpenRouter
+                      (sk-or-…) paste karo. ChatGPT Plus/Premium website login API key nahi hota.
                     </p>
                   ) : null}
                   {showPasteUi ? (
@@ -174,9 +256,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout, onUpgrad
                       </div>
                     </>
                   ) : null}
-                  {openRouterMsg ? (
-                    <p className="text-[10px] text-slate-400">{openRouterMsg}</p>
-                  ) : null}
+                  {openRouterMsg ? <p className="text-[10px] text-slate-400">{openRouterMsg}</p> : null}
                 </div>
               ) : null}
               <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border gap-3">

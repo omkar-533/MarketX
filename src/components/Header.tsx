@@ -70,8 +70,12 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
             onClick={onProfile}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--tf-elevated)] transition-colors"
           >
-            <div className="w-7 h-7 bg-gold/20 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+            <div className="w-7 h-7 bg-gold/20 rounded-full flex items-center justify-center shrink-0 overflow-hidden">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
+              )}
             </div>
             <span className="hidden lg:block text-xs text-[var(--tf-text)] font-medium max-w-[100px] truncate">
               {user.name}
