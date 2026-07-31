@@ -7643,7 +7643,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 750;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #f0d78c;
+  color: var(--tj-gold);
 }
 
 .mai-md__p {
@@ -7715,7 +7715,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-md__strong {
-  color: #f5e6b8;
+  color: var(--tj-gold);
   font-weight: 700;
 }
 

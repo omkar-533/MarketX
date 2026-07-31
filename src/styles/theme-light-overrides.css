@@ -458,6 +458,14 @@ html[data-theme="light"] .mai-md__ol li {
   color: var(--tf-text) !important;
 }
 
+/* Chat bold/headings: pale gold is unreadable on white */
+html[data-theme="light"] .mai-md__strong,
+html[data-theme="light"] .mai-md__h,
+html[data-theme="light"] .mai-chat__bubble--ai .mai-md__strong,
+html[data-theme="light"] .mai-chat__bubble--ai .mai-md__h {
+  color: #92400e !important;
+}
+
 /* ── Indicators library ────────────────────────────────────── */
 html[data-theme="light"] .lux-lib,
 html[data-theme="light"] .lux-ind {
