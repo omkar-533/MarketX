@@ -4563,7 +4563,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.35rem 0.65rem;
   border-radius: 0.5rem;
   border: 1px solid #1a1f2e;
-  background: #080a12;
+  background: var(--tf-bg);
 }
 
 .auth-title {
@@ -4700,7 +4700,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border: none;
   outline: none;
   background: transparent;
-  color: #f1f5f9;
+  color: var(--tf-text);
   font-size: 0.95rem;
   font-weight: 500;
   line-height: normal;
@@ -4732,8 +4732,8 @@ input[type="number"] { -moz-appearance: textfield; }
 .auth-field-input:-webkit-autofill,
 .auth-field-input:-webkit-autofill:hover,
 .auth-field-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #f1f5f9;
-  caret-color: #f1f5f9;
+  -webkit-text-fill-color: var(--tf-text);
+  caret-color: var(--tf-text);
   box-shadow: 0 0 0 1000px #0e121c inset;
   transition: background-color 99999s ease-in-out 0s;
 }
@@ -5114,7 +5114,7 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  background: rgba(4, 6, 12, 0.86);
+  background: var(--tf-overlay);
   backdrop-filter: blur(14px);
   overflow-y: auto;
 }
@@ -5127,7 +5127,7 @@ input[type="number"] { -moz-appearance: textfield; }
   -webkit-overflow-scrolling: touch;
   border-radius: 1.25rem;
   border: 1px solid rgba(212, 175, 55, 0.22);
-  background: linear-gradient(180deg, rgba(18, 21, 32, 0.98), rgba(10, 12, 20, 0.98));
+  background: var(--tf-surface);
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.02) inset;
@@ -5165,7 +5165,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   margin-right: auto;
 }
 
@@ -5189,7 +5189,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 1.35rem;
   font-weight: 700;
   line-height: 1.25;
-  color: #f1f5f9;
+  color: var(--tf-text);
 }
 
 .access-gate__body {
@@ -5210,8 +5210,8 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.75rem;
   padding: 0.9rem;
   border-radius: 0.9rem;
-  border: 1px solid #1a1f2e;
-  background: rgba(12, 15, 24, 0.7);
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
 }
 
 .access-gate__step-num {
@@ -5231,7 +5231,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .access-gate__step-title {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .access-gate__step-body {
@@ -5278,7 +5278,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 0.6rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
   border: 1px solid #232a3b;
   background: rgba(20, 24, 36, 0.7);
   transition:
@@ -5288,7 +5288,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .access-gate__ghost:hover {
   border-color: rgba(212, 175, 55, 0.35);
-  color: #f1f5f9;
+  color: var(--tf-text);
 }
 
 .access-peek-bar {
@@ -5334,7 +5334,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .access-proof__title {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .access-proof__hint {
@@ -5411,7 +5411,7 @@ input[type="number"] { -moz-appearance: textfield; }
   display: flex;
   padding: 0.3rem;
   border-radius: 999px;
-  color: #f1f5f9;
+  color: var(--tf-text);
   background: rgba(4, 6, 12, 0.75);
   border: 1px solid #232a3b;
 }
@@ -5455,7 +5455,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.55rem 0.75rem;
   border-radius: 0.6rem;
   font-size: 0.75rem;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   background: rgba(10, 13, 21, 0.7);
   border: 1px solid #232a3b;
 }
@@ -5543,7 +5543,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.95rem 0.95rem 0.85rem;
   border-radius: 1rem;
   border: 1px solid rgba(212, 175, 55, 0.28);
-  background: linear-gradient(180deg, rgba(18, 21, 32, 0.99), rgba(10, 12, 20, 0.99));
+  background: var(--tf-surface);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
   overflow: hidden;
 }
@@ -5571,7 +5571,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .trial-nudge__close:hover {
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   border-color: rgba(212, 175, 55, 0.35);
 }
 
@@ -5595,7 +5595,7 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-right: 1.75rem;
   font-size: 0.88rem;
   font-weight: 750;
-  color: #f1f5f9;
+  color: var(--tf-text);
   line-height: 1.25;
 }
 
@@ -5614,7 +5614,7 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.35rem;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #f0d67a;
+  color: var(--tj-gold);
 }
 
 .trial-nudge__expires {
@@ -5624,7 +5624,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .trial-nudge__expires strong {
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   font-weight: 600;
 }
 
@@ -5696,12 +5696,12 @@ input[type="number"] { -moz-appearance: textfield; }
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.72rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .trial-nudge__dismiss:hover {
   border-color: rgba(212, 175, 55, 0.35);
-  color: #f0d78c;
+  color: var(--tj-gold);
 }
 
 .trial-nudge__later {
@@ -5712,7 +5712,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .trial-nudge__later:hover {
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
 }
 
 /* TV access granted popup */
@@ -5742,9 +5742,9 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 1.1rem;
   border: 1px solid rgba(212, 175, 55, 0.28);
   background:
-    radial-gradient(120% 80% at 10% -10%, rgba(212, 175, 55, 0.16), transparent 55%),
-    linear-gradient(165deg, #121826 0%, #0b0f18 100%);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    radial-gradient(120% 80% at 10% -10%, rgba(212, 175, 55, 0.12), transparent 55%),
+    var(--tf-surface);
+  box-shadow: 0 24px 60px var(--tf-shadow);
   text-align: center;
 }
 
@@ -5763,7 +5763,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .tv-grant__close:hover {
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   border-color: rgba(212, 175, 55, 0.35);
 }
 
@@ -5794,7 +5794,7 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0 0 0.45rem;
   font-size: 1.15rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: var(--tf-text);
   line-height: 1.25;
 }
 
@@ -5834,7 +5834,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.55rem 0.75rem;
   border-radius: 0.65rem;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
   font-size: 0.72rem;
   font-weight: 600;
   text-decoration: none;
@@ -5842,7 +5842,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .tv-grant__invite:hover {
   border-color: rgba(212, 175, 55, 0.35);
-  color: #f0d78c;
+  color: var(--tj-gold);
 }
 
 .tv-grant__later {
@@ -5857,7 +5857,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .tv-grant__later:hover {
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
 }
 
 /* ??? Indicator library (LuxAlgo-style gallery) ??? */
@@ -5937,7 +5937,7 @@ input[type="number"] { -moz-appearance: textfield; }
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin: 0;
-  color: #f8fafc;
+  color: var(--tf-text);
 }
 
 .lux-lib__lead {
@@ -6015,8 +6015,8 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.55rem 0.75rem 0.55rem 2.15rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #0b0e17;
-  color: #e2e8f0;
+  background: var(--tf-surface);
+  color: var(--tf-text-secondary);
   font-size: 0.8125rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -6168,7 +6168,7 @@ input[type="number"] { -moz-appearance: textfield; }
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
-  background: #121520;
+  background: var(--tf-elevated);
   overflow: hidden;
   padding: 0;
   border: 0;
@@ -6228,7 +6228,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: #f1f5f9;
+  color: var(--tf-text);
 }
 
 .lux-lib-card__title button {
@@ -6350,7 +6350,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: #f8fafc;
+  color: var(--tf-text);
 }
 
 .lux-ind__byline {
@@ -6369,7 +6369,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 1rem;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #080a12;
+  background: var(--tf-bg);
   width: 100%;
   aspect-ratio: 16 / 9;
   min-height: 240px;
@@ -6409,7 +6409,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.7rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   backdrop-filter: blur(8px);
 }
 
@@ -6458,7 +6458,7 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0 0 0.35rem;
   font-size: 1rem;
   font-weight: 750;
-  color: #f8fafc;
+  color: var(--tf-text);
 }
 
 .lux-ind__access-copy p {
@@ -6499,8 +6499,8 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.7rem 0.85rem;
   border-radius: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #121520;
-  color: #f1f5f9;
+  background: var(--tf-elevated);
+  color: var(--tf-text);
   font-size: 0.875rem;
 }
 
@@ -6536,7 +6536,7 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .lux-ind__tv-done-body {
@@ -6598,13 +6598,13 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 0.65rem 0.8rem;
   border-radius: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #0b0e17;
+  background: var(--tf-surface);
 }
 
 .lux-ind__platform-label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
 }
 
 .lux-ind__platform-cta {
@@ -6640,7 +6640,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #f1f5f9;
+  color: var(--tf-text);
 }
 
 .lux-ind__overview,
@@ -6665,7 +6665,7 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
   font-weight: 750;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .lux-ind__faq-item p {
@@ -6884,7 +6884,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 0.75rem;
   font-weight: 650;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
 }
 
 .mai-chat__history-new {
@@ -6951,7 +6951,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .mai-chat__history-item-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7067,7 +7067,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
-  color: #e8edf5;
+  color: var(--tf-text);
   font-size: 0.8125rem;
   padding: 0.55rem 0.7rem;
   outline: none;
@@ -7670,7 +7670,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 0.65rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   font-size: 0.875rem;
   line-height: 1.55;
   animation: mai-md-in 0.35s ease both;
@@ -7720,7 +7720,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-md__em {
-  color: #cbd5e1;
+  color: var(--tf-text-secondary);
   font-style: italic;
 }
 
@@ -7870,7 +7870,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .mai-chat__attach-name {
   font-size: 0.75rem;
   font-weight: 650;
-  color: #e8edf5;
+  color: var(--tf-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7888,7 +7888,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-chat__attach-x:hover {
-  color: #f1f5f9;
+  color: var(--tf-text);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -7907,7 +7907,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 1px solid rgba(212, 175, 55, 0.28);
   background:
     linear-gradient(135deg, rgba(212, 175, 55, 0.14) 0%, rgba(20, 24, 34, 0.95) 42%, rgba(14, 16, 24, 0.98) 100%);
-  color: #e8edf5;
+  color: var(--tf-text);
   cursor: pointer;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03) inset,
@@ -8098,7 +8098,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .mai-chat__prompt-item-name {
   font-size: 0.8125rem;
   font-weight: 650;
-  color: #f1f5f9;
+  color: var(--tf-text);
 }
 
 .mai-chat__prompt-item-hint {
@@ -9069,14 +9069,12 @@ input[type="number"] { -moz-appearance: textfield; }
   position: relative;
   overflow: hidden;
   border-radius: 1.25rem;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  background:
-    linear-gradient(145deg, rgba(28, 32, 44, 0.96) 0%, rgba(11, 14, 23, 0.98) 55%, rgba(8, 10, 16, 0.99) 100%);
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  background: var(--tf-surface);
   padding: 1.15rem 1.15rem 1rem;
   box-shadow:
-    0 0 0 1px rgba(255,255,255,0.03) inset,
-    0 18px 48px rgba(0,0,0,0.4),
-    0 0 40px rgba(212, 175, 55, 0.07);
+    0 0 0 1px color-mix(in srgb, var(--tf-border) 40%, transparent) inset,
+    0 18px 48px var(--tf-shadow);
 }
 .tj-alerts__orb {
   pointer-events: none;
@@ -9595,14 +9593,13 @@ input[type="number"] { -moz-appearance: textfield; }
   min-height: 2.05rem;
   padding: 0.4rem 0.65rem;
   border-radius: 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    linear-gradient(160deg, rgba(28, 32, 44, 0.95), rgba(10, 12, 18, 0.98));
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
   color: var(--tf-text);
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tf-text) 4%, transparent);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
 }
 .lux-select__trigger:hover {
