@@ -29,19 +29,19 @@ html[data-theme="dark"] {
 }
 
 html[data-theme="light"] {
-  --tf-bg: #e9eef5;
+  --tf-bg: #f0f3f8;
   --tf-surface: #ffffff;
-  --tf-elevated: #f4f7fb;
-  --tf-border: #c8d4e3;
-  --tf-border-soft: #dce4ef;
+  --tf-elevated: #f7f9fc;
+  --tf-border: #d5dee9;
+  --tf-border-soft: #e6edf5;
   --tf-text: #0f172a;
   --tf-text-secondary: #334155;
   --tf-text-muted: #64748b;
-  --tf-glass: rgba(255, 255, 255, 0.94);
-  --tf-overlay: rgba(15, 23, 42, 0.35);
+  --tf-glass: rgba(255, 255, 255, 0.92);
+  --tf-overlay: rgba(15, 23, 42, 0.4);
   --tf-input-bg: #ffffff;
   --tf-chart-bg: #ffffff;
-  --tf-shadow: rgba(15, 23, 42, 0.08);
+  --tf-shadow: rgba(15, 23, 42, 0.07);
   color-scheme: light;
 }
 

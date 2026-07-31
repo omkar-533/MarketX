@@ -1,5 +1,33 @@
-/* Light mode: override hardcoded dark hex utilities used across pages */
+/* Light mode: professional surfaces, readable text, fix dark leftovers */
 
+/* ── Tokens polish ─────────────────────────────────────────── */
+html[data-theme="light"] {
+  --tf-bg: #f0f3f8;
+  --tf-surface: #ffffff;
+  --tf-elevated: #f7f9fc;
+  --tf-border: #d5dee9;
+  --tf-border-soft: #e6edf5;
+  --tf-text: #0f172a;
+  --tf-text-secondary: #334155;
+  --tf-text-muted: #64748b;
+  --tf-glass: rgba(255, 255, 255, 0.92);
+  --tf-overlay: rgba(15, 23, 42, 0.4);
+  --tf-input-bg: #ffffff;
+  --tf-chart-bg: #ffffff;
+  --tf-shadow: rgba(15, 23, 42, 0.07);
+  --app-text: var(--tf-text);
+  --app-text-secondary: var(--tf-text-secondary);
+  --app-text-muted: var(--tf-text-muted);
+  --glass-bg: var(--tf-glass);
+  --overlay-bg: var(--tf-overlay);
+  --color-dark-bg: var(--tf-bg);
+  --color-dark-surface: var(--tf-surface);
+  --color-dark-elevated: var(--tf-elevated);
+  --color-dark-border: var(--tf-border);
+  --color-dark-muted: var(--tf-text-muted);
+}
+
+/* ── Text: dark-theme utilities → readable on light ───────── */
 html[data-theme="light"] .text-white,
 html[data-theme="light"] .text-slate-100 {
   color: var(--tf-text) !important;
@@ -17,29 +45,74 @@ html[data-theme="light"] .text-slate-400 {
   color: #475569 !important;
 }
 
-html[data-theme="light"] .text-slate-500,
-html[data-theme="light"] .text-slate-600 {
+html[data-theme="light"] .text-slate-500 {
   color: #64748b !important;
 }
 
+html[data-theme="light"] .text-slate-600,
 html[data-theme="light"] .text-slate-700 {
   color: #475569 !important;
 }
 
 html[data-theme="light"] .hover\:text-white:hover,
-html[data-theme="light"] .hover\:text-slate-200:hover {
+html[data-theme="light"] .hover\:text-slate-200:hover,
+html[data-theme="light"] .hover\:text-slate-100:hover {
   color: var(--tf-text) !important;
 }
 
-/* Surfaces */
+/* Keep contrast on solid gold / brand CTAs */
+html[data-theme="light"] .bg-gold,
+html[data-theme="light"] .bg-gold .text-white,
+html[data-theme="light"] .auth-submit-btn,
+html[data-theme="light"] .auth-reveal-btn:hover {
+  color: #0b0e17 !important;
+}
+
+html[data-theme="light"] .text-gold,
+html[data-theme="light"] .hover\:text-gold:hover {
+  color: #b45309 !important;
+}
+
+/* Soft gold accents stay gold-ish, not washed out */
+html[data-theme="light"] .text-\[\#d4af37\],
+html[data-theme="light"] .text-\[\#e8c547\],
+html[data-theme="light"] .text-\[\#f0d78c\] {
+  color: #a16207 !important;
+}
+
+/* ── Surfaces: hardcoded dark hex → light tokens ───────────── */
+html[data-theme="light"] .bg-\[\#030408\],
+html[data-theme="light"] .bg-\[\#050505\],
 html[data-theme="light"] .bg-\[\#050608\],
+html[data-theme="light"] .bg-\[\#05070d\],
+html[data-theme="light"] .bg-\[\#06080f\],
 html[data-theme="light"] .bg-\[\#080a12\],
+html[data-theme="light"] .bg-\[\#0a0a0a\],
+html[data-theme="light"] .bg-\[\#0a0a0c\],
+html[data-theme="light"] .bg-\[\#0a0a0d\],
+html[data-theme="light"] .bg-\[\#0a0c12\],
 html[data-theme="light"] .bg-\[\#0a0c14\],
+html[data-theme="light"] .bg-\[\#0a0e14\],
+html[data-theme="light"] .bg-\[\#0a0e17\],
 html[data-theme="light"] .bg-\[\#0a0f1a\],
 html[data-theme="light"] .bg-\[\#0b0e17\],
+html[data-theme="light"] .bg-\[\#0d0c0a\],
+html[data-theme="light"] .bg-\[\#0d111c\],
+html[data-theme="light"] .bg-\[\#0d1220\],
 html[data-theme="light"] .bg-\[\#0d1728\],
+html[data-theme="light"] .bg-\[\#0e121c\],
+html[data-theme="light"] .bg-\[\#0f1219\],
+html[data-theme="light"] .bg-\[\#101420\],
+html[data-theme="light"] .bg-\[\#10213b\],
+html[data-theme="light"] .bg-\[\#111827\],
+html[data-theme="light"] .bg-\[\#121520\],
+html[data-theme="light"] .bg-\[\#141820\],
 html[data-theme="light"] .bg-\[\#141822\],
-html[data-theme="light"] .bg-\[\#06080f\] {
+html[data-theme="light"] .bg-\[\#151a26\],
+html[data-theme="light"] .bg-\[\#172033\],
+html[data-theme="light"] .bg-\[\#1a1f2e\],
+html[data-theme="light"] .bg-\[\#1e2538\],
+html[data-theme="light"] .bg-\[\#1e293b\] {
   background-color: var(--tf-surface) !important;
 }
 
@@ -51,50 +124,54 @@ html[data-theme="light"] .bg-dark-surface {
   background-color: var(--tf-surface) !important;
 }
 
-html[data-theme="light"] .bg-dark-elevated {
+html[data-theme="light"] .bg-dark-elevated,
+html[data-theme="light"] .bg-\[\#121520\],
+html[data-theme="light"] .bg-\[\#141820\],
+html[data-theme="light"] .bg-\[\#172033\] {
+  background-color: var(--tf-elevated) !important;
+}
+
+/* Opacity / translucent panels */
+html[data-theme="light"] .bg-\[\#0b0e17\]\/80,
+html[data-theme="light"] .bg-\[\#0b0e17\]\/90,
+html[data-theme="light"] .bg-\[\#0b0e17\]\/50,
+html[data-theme="light"] .bg-\[\#111827\]\/80,
+html[data-theme="light"] .bg-\[\#0a0e14\]\/80,
+html[data-theme="light"] .bg-\[\#0a0f1a\]\/80,
+html[data-theme="light"] .bg-\[\#080a12\]\/80,
+html[data-theme="light"] .bg-\[\#0d111c\]\/80,
+html[data-theme="light"] .bg-\[\#0d1728\]\/80,
+html[data-theme="light"] .bg-\[\#0d1728\]\/60,
+html[data-theme="light"] .bg-\[\#121520\]\/50,
+html[data-theme="light"] .bg-\[\#121520\]\/70,
+html[data-theme="light"] .bg-\[\#121520\]\/80,
+html[data-theme="light"] .bg-\[\#121520\]\/90 {
+  background-color: color-mix(in srgb, var(--tf-surface) 92%, transparent) !important;
+}
+
+html[data-theme="light"] .hover\:bg-\[\#121520\]:hover,
+html[data-theme="light"] .hover\:bg-\[\#121520\]\/60:hover,
+html[data-theme="light"] .hover\:bg-\[\#111b2d\]:hover,
+html[data-theme="light"] .hover\:bg-\[\#1a1f2e\]:hover,
+html[data-theme="light"] .hover\:bg-\[\#1e293b\]\/30:hover,
+html[data-theme="light"] .hover\:bg-dark-border\/60:hover {
   background-color: var(--tf-elevated) !important;
 }
 
 html[data-theme="light"] .border-dark-border,
-html[data-theme="light"] .border-dark-border\/60 {
-  border-color: var(--tf-border) !important;
-}
-
-html[data-theme="light"] .bg-\[\#121520\],
-html[data-theme="light"] .bg-\[\#111827\],
-html[data-theme="light"] .bg-\[\#172033\],
-html[data-theme="light"] .bg-\[\#1e2538\] {
-  background-color: var(--tf-elevated) !important;
-}
-
-html[data-theme="light"] .bg-\[\#0b0e17\]\/80,
-html[data-theme="light"] .bg-\[\#111827\]\/80,
-html[data-theme="light"] .bg-\[\#0a0e14\]\/80 {
-  background-color: color-mix(in srgb, var(--tf-surface) 88%, transparent) !important;
-}
-
-html[data-theme="light"] .hover\:bg-\[\#121520\]:hover,
-html[data-theme="light"] .hover\:bg-\[\#121520\]\/60:hover {
-  background-color: var(--tf-elevated) !important;
-}
-
-/* Borders */
+html[data-theme="light"] .border-dark-border\/60,
 html[data-theme="light"] .border-\[\#1a1f2e\],
 html[data-theme="light"] .border-\[\#172033\],
-html[data-theme="light"] .border-\[\#1e2538\] {
-  border-color: var(--tf-border) !important;
-}
-
-html[data-theme="light"] .border-\[\#24324b\] {
-  border-color: var(--tf-border-soft) !important;
-}
-
+html[data-theme="light"] .border-\[\#1e2538\],
+html[data-theme="light"] .border-\[\#1e293b\],
+html[data-theme="light"] .border-\[\#24324b\],
 html[data-theme="light"] .border-t.border-\[\#1a1f2e\],
-html[data-theme="light"] .border-t.border-\[\#1a1f2e\]\/80 {
+html[data-theme="light"] .border-t.border-\[\#1a1f2e\]\/80,
+html[data-theme="light"] .border-b.border-\[\#1a1f2e\],
+html[data-theme="light"] .border-b.border-\[\#1a1f2e\]\/40 {
   border-color: var(--tf-border) !important;
 }
 
-/* Gradients (hero cards, journal header) */
 html[data-theme="light"] .from-\[\#121520\] {
   --tw-gradient-from: var(--tf-elevated) !important;
 }
@@ -116,7 +193,18 @@ html[data-theme="light"] .bg-gradient-to-br.from-\[\#121520\] {
   ) !important;
 }
 
-/* Form controls */
+/* ── Glass / shell ─────────────────────────────────────────── */
+html[data-theme="light"] .glass {
+  background: var(--tf-glass);
+  border-color: var(--tf-border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 24px var(--tf-shadow);
+}
+
+html[data-theme="light"] .glass-light {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+/* ── Forms ─────────────────────────────────────────────────── */
 html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 html[data-theme="light"] select,
 html[data-theme="light"] textarea {
@@ -134,7 +222,7 @@ html[data-theme="light"] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
-/* Auth page */
+/* ── Auth form fields ──────────────────────────────────────── */
 html[data-theme="light"] .auth-page {
   background: var(--tf-bg);
 }
@@ -143,16 +231,14 @@ html[data-theme="light"] .auth-label {
   color: var(--tf-text-muted);
 }
 
-html[data-theme="light"] .auth-input-icon {
-  color: #64748b;
-}
-
 html[data-theme="light"] .auth-title {
   color: var(--tf-text);
 }
 
 html[data-theme="light"] .auth-subtitle,
-html[data-theme="light"] .auth-tab:not(.auth-tab--active) {
+html[data-theme="light"] .auth-tab:not(.auth-tab--active),
+html[data-theme="light"] .auth-form-switch__label,
+html[data-theme="light"] .auth-form-switch__hint {
   color: var(--tf-text-muted);
 }
 
@@ -165,22 +251,31 @@ html[data-theme="light"] .auth-field,
 html[data-theme="light"] .auth-social-btn,
 html[data-theme="light"] .auth-otp-digit,
 html[data-theme="light"] .auth-version-badge {
-  background: var(--tf-input-bg);
-  border-color: var(--tf-border);
+  background: var(--tf-input-bg) !important;
+  border-color: var(--tf-border) !important;
 }
 
 html[data-theme="light"] .auth-field-input {
-  color: var(--tf-text);
+  color: var(--tf-text) !important;
 }
 
 html[data-theme="light"] .auth-field-input::placeholder {
-  color: var(--tf-text-muted);
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] .auth-field-input:-webkit-autofill,
+html[data-theme="light"] .auth-field-input:-webkit-autofill:hover,
+html[data-theme="light"] .auth-field-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--tf-text) !important;
+  caret-color: var(--tf-text) !important;
+  box-shadow: 0 0 0 1000px var(--tf-input-bg) inset !important;
 }
 
 html[data-theme="light"] .auth-field-prefix,
-html[data-theme="light"] .auth-field-icon {
-  color: var(--tf-text-muted);
-  border-color: var(--tf-border);
+html[data-theme="light"] .auth-field-icon,
+html[data-theme="light"] .auth-input-icon {
+  color: var(--tf-text-muted) !important;
+  border-color: var(--tf-border) !important;
 }
 
 html[data-theme="light"] .auth-social-btn {
@@ -188,8 +283,8 @@ html[data-theme="light"] .auth-social-btn {
 }
 
 html[data-theme="light"] .auth-social-btn:hover:not(:disabled) {
-  background: var(--tf-elevated);
-  border-color: var(--tf-border-soft);
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
 }
 
 html[data-theme="light"] .auth-divider::before,
@@ -202,33 +297,256 @@ html[data-theme="light"] .auth-divider::after {
 }
 
 html[data-theme="light"] .auth-stat-card,
-html[data-theme="light"] .auth-dashboard-preview {
-  background: var(--tf-surface);
-  border-color: var(--tf-border);
+html[data-theme="light"] .auth-dashboard-preview,
+html[data-theme="light"] .auth-feature-card,
+html[data-theme="light"] .auth-form-card {
+  background: var(--tf-surface) !important;
+  border-color: var(--tf-border) !important;
+  box-shadow: 0 12px 32px var(--tf-shadow);
 }
 
-html[data-theme="light"] .auth-dashboard-preview-header {
-  border-color: var(--tf-border);
+html[data-theme="light"] .auth-feature-card__title,
+html[data-theme="light"] .auth-ai-headline,
+html[data-theme="light"] .auth-kicker {
+  color: var(--tf-text) !important;
 }
 
-html[data-theme="light"] .auth-footer {
-  border-color: var(--tf-border);
+html[data-theme="light"] .auth-dashboard-preview-header,
+html[data-theme="light"] .auth-footer,
+html[data-theme="light"] .auth-form-switch {
+  border-color: var(--tf-border) !important;
 }
 
-html[data-theme="light"] .glass-light {
-  background: rgba(255, 255, 255, 0.85);
+html[data-theme="light"] .auth-signup-btn {
+  color: #92400e !important;
+  background: rgba(212, 175, 55, 0.12) !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
 }
 
-/* Scrollbar */
-html[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #b8c5d6;
+/* ── Auth lux marketing page ───────────────────────────────── */
+html[data-theme="light"] .auth-lux {
+  --lux-bg: var(--tf-bg);
+  --lux-surface: var(--tf-surface);
+  --lux-ink: var(--tf-text);
+  --lux-muted: var(--tf-text-muted);
+  --lux-line: var(--tf-border);
+  --lux-gold: #b45309;
+  --lux-gold-soft: #a16207;
+  background: var(--tf-bg);
+  color: var(--tf-text);
 }
 
-html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+html[data-theme="light"] .auth-lux__bg {
+  background: var(--tf-bg) !important;
 }
 
-/* Recharts default grid lines */
+html[data-theme="light"] .auth-lux__nav {
+  background: color-mix(in srgb, var(--tf-surface) 92%, transparent) !important;
+  border-color: var(--tf-border) !important;
+  backdrop-filter: blur(12px);
+}
+
+html[data-theme="light"] .auth-lux__aurora {
+  opacity: 0.28;
+}
+
+html[data-theme="light"] .auth-lux__fx--stroke,
+html[data-theme="light"] .auth-lux__fx--glow {
+  opacity: 0.22;
+  mix-blend-mode: normal;
+}
+
+/* ── Master AI / Wolf AI chat ──────────────────────────────── */
+html[data-theme="light"] .mai-chat,
+html[data-theme="light"] .mai-chat__topbar,
+html[data-theme="light"] .mai-chat__composer-wrap {
+  background: var(--tf-bg) !important;
+  color: var(--tf-text) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .mai-chat__composer,
+html[data-theme="light"] .mai-chat__history-menu,
+html[data-theme="light"] .mai-chat__lang-menu,
+html[data-theme="light"] .mai-chat__prompt-menu {
+  background: var(--tf-surface) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+  box-shadow: 0 12px 28px var(--tf-shadow);
+}
+
+html[data-theme="light"] .mai-chat__bubble--ai {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .mai-chat__bubble--ai .mai-chat__text,
+html[data-theme="light"] .mai-chat__textarea,
+html[data-theme="light"] .mai-md__p,
+html[data-theme="light"] .mai-md__li,
+html[data-theme="light"] .mai-chat__suggest-label,
+html[data-theme="light"] .mai-chat__prompt-item-name,
+html[data-theme="light"] .mai-chat__history-title,
+html[data-theme="light"] .mai-chat__brand,
+html[data-theme="light"] .mai-chat__title {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .mai-chat__meta,
+html[data-theme="light"] .mai-chat__hint,
+html[data-theme="light"] .mai-md__muted {
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] .mai-chat__suggest,
+html[data-theme="light"] .mai-chat__prompt-item,
+html[data-theme="light"] .mai-chat__history-item {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .mai-chat__suggest:hover,
+html[data-theme="light"] .mai-chat__prompt-item:hover,
+html[data-theme="light"] .mai-chat__history-item:hover {
+  background: #eef2f7 !important;
+  border-color: #c5d0de !important;
+}
+
+/* ── Indicators library ────────────────────────────────────── */
+html[data-theme="light"] .lux-lib,
+html[data-theme="light"] .lux-ind {
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .lux-lib__hero,
+html[data-theme="light"] .lux-lib-card,
+html[data-theme="light"] .lux-ind__access,
+html[data-theme="light"] .lux-ind__aside,
+html[data-theme="light"] .lux-ind__section {
+  background: var(--tf-surface) !important;
+  border-color: var(--tf-border) !important;
+  box-shadow: 0 8px 24px var(--tf-shadow);
+}
+
+html[data-theme="light"] .lux-lib__title,
+html[data-theme="light"] .lux-lib-card__title,
+html[data-theme="light"] .lux-lib-card__title button,
+html[data-theme="light"] .lux-ind__title,
+html[data-theme="light"] .lux-ind__access-copy h2,
+html[data-theme="light"] .lux-ind__section h2,
+html[data-theme="light"] .lux-ind__faq-item h3,
+html[data-theme="light"] .lux-ind__tv-done-title {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .lux-lib__lead,
+html[data-theme="light"] .lux-lib-card__desc,
+html[data-theme="light"] .lux-ind__byline,
+html[data-theme="light"] .lux-ind__access-copy p,
+html[data-theme="light"] .lux-ind__overview,
+html[data-theme="light"] .lux-ind__prose,
+html[data-theme="light"] .lux-ind__faq-item p,
+html[data-theme="light"] .lux-ind__tv-hint,
+html[data-theme="light"] .lux-ind__footer-note,
+html[data-theme="light"] .lux-lib__count,
+html[data-theme="light"] .lux-lib__eyebrow {
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] .lux-lib__search input,
+html[data-theme="light"] .lux-ind__tv-input {
+  background: var(--tf-input-bg) !important;
+  color: var(--tf-text) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .lux-lib__chip,
+html[data-theme="light"] .lux-ind__tag,
+html[data-theme="light"] .lux-ind__btn--ghost,
+html[data-theme="light"] .lux-ind__back {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text-secondary) !important;
+}
+
+html[data-theme="light"] .lux-lib__chip.is-active {
+  background: rgba(212, 175, 55, 0.15) !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .lux-ind__chart {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .lux-ind__chart-badge {
+  background: color-mix(in srgb, var(--tf-surface) 90%, transparent) !important;
+  color: var(--tf-text) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .lux-ind__btn--primary {
+  color: #0b0e17 !important;
+}
+
+/* ── Trading Journal ───────────────────────────────────────── */
+html[data-theme="light"] .tj-hero,
+html[data-theme="light"] .tj-card,
+html[data-theme="light"] .tj-ai-card,
+html[data-theme="light"] .tj-status,
+html[data-theme="light"] .tj-quality__inner,
+html[data-theme="light"] .tj-empty,
+html[data-theme="light"] .tj-tip {
+  background: var(--tf-surface) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+  box-shadow: 0 6px 20px var(--tf-shadow);
+}
+
+html[data-theme="light"] .tj-hero {
+  background: linear-gradient(135deg, #ffffff, #f4f7fb 55%, #eef2f7) !important;
+}
+
+html[data-theme="light"] .tj-empty__title,
+html[data-theme="light"] .tj-tip__title,
+html[data-theme="light"] .tj-card__title,
+html[data-theme="light"] .tj-hero__title {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .tj-empty__body,
+html[data-theme="light"] .tj-tip__body,
+html[data-theme="light"] .tj-hero__lead,
+html[data-theme="light"] .tj-meta,
+html[data-theme="light"] .tj-status {
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] .tj-cal__cell,
+html[data-theme="light"] .tj-bars,
+html[data-theme="light"] .tj-chart {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+}
+
+/* ── Admin tables polish ───────────────────────────────────── */
+html[data-theme="light"] table thead,
+html[data-theme="light"] thead tr {
+  background-color: var(--tf-elevated) !important;
+}
+
+html[data-theme="light"] tbody tr {
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] tbody tr:hover {
+  background-color: #f3f6fa !important;
+}
+
+/* ── Charts / tooltips ─────────────────────────────────────── */
 html[data-theme="light"] .recharts-cartesian-grid line {
   stroke: #dce4ef !important;
 }
@@ -247,4 +565,19 @@ html[data-theme="light"] .recharts-tooltip-wrapper {
 html[data-theme="light"] .recharts-tooltip-label,
 html[data-theme="light"] .recharts-tooltip-item {
   color: #0f172a !important;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #b8c5d6;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Soft page elevation so light mode feels finished */
+html[data-theme="light"] .app-card,
+html[data-theme="light"] .app-card-elevated {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
 }
