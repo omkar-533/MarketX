@@ -1361,10 +1361,10 @@ export default function TradingJournal({
                 </div>
 
                 {selectedSymbolMeta && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#24324b] bg-[#0d1728] px-3 py-2 text-xs text-slate-500">
-                    <span className="font-bold text-slate-300">{selectedSymbolMeta.symbol}</span>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-2 text-xs text-[var(--tf-text-secondary)]">
+                    <span className="font-bold text-[var(--tf-text)]">{selectedSymbolMeta.symbol}</span>
                     <span>{selectedSymbolMeta.name}</span>
-                    <span className="rounded bg-[#172033] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
+                    <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
                     <span className="text-[10px]">Matched from list · prices ab bhi manual</span>
                   </div>
                 )}
