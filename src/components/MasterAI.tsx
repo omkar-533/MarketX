@@ -796,7 +796,7 @@ export default function MasterAI() {
             disabled={isThinking}
           >
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">New Chat</span>
+            <span>New Chat</span>
           </button>
 
           <div className={`mai-chat__history ${historyOpen ? 'mai-chat__history--open' : ''}`} ref={historyMenuRef}>
@@ -830,7 +830,7 @@ export default function MasterAI() {
                     <span>Previous chats</span>
                     <button type="button" className="mai-chat__history-new" onClick={handleNewChat}>
                       <Plus className="h-3.5 w-3.5" />
-                      New
+                      New Chat
                     </button>
                   </div>
                   <div className="mai-chat__history-scroll">
