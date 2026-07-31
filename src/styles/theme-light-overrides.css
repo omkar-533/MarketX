@@ -357,12 +357,12 @@ html[data-theme="light"] .auth-lux__fx--glow {
 }
 
 /* ── Master AI / Wolf AI chat ──────────────────────────────── */
-html[data-theme="light"] .mai-chat,
-html[data-theme="light"] .mai-chat__topbar,
-html[data-theme="light"] .mai-chat__composer-wrap {
-  background: var(--tf-bg) !important;
-  color: var(--tf-text) !important;
-  border-color: var(--tf-border) !important;
+html[data-theme="light"] .mai-chat__pulse {
+  border-color: var(--tf-bg) !important;
+}
+
+html[data-theme="light"] .mai-chat__topbar {
+  border-bottom-color: var(--tf-border) !important;
 }
 
 html[data-theme="light"] .mai-chat__composer,
