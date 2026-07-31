@@ -1458,7 +1458,7 @@ export default function TradingJournal({
                 onChange={(patch) => setForm({ ...form, ...patch })}
                 inputClass={inputClass}
               />
-              <label className={`flex items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-3 md:col-span-2 ${inputClass}`}>
+              <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--tf-border)] bg-[var(--tf-elevated)] text-[var(--tf-text)] px-3 py-3 md:col-span-2 cursor-pointer hover:border-[#d4af37]/50 transition-colors">
                 <Upload className="w-4 h-4" />
                 Upload Screenshot
                 <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />

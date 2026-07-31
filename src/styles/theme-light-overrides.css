@@ -994,3 +994,36 @@ html[data-theme="light"] .text-amber-400,
 html[data-theme="light"] .text-yellow-400 {
   color: #b45309 !important;
 }
+
+/* Journal form psych / fields / upload — never stay black in light */
+html[data-theme="light"] .tj-psych,
+html[data-theme="light"] .tj-psych-desk,
+html[data-theme="light"] .tj-trade-preview,
+html[data-theme="light"] .tj-mini-stat {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .tj-psych {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .tj-field,
+html[data-theme="light"] label.tj-field {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych__title,
+html[data-theme="light"] .tj-psych__slider-label,
+html[data-theme="light"] .tj-psych__hint,
+html[data-theme="light"] .lux-select__label {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych__slider-label em {
+  color: var(--tj-gold) !important;
+}
