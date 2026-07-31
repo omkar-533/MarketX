@@ -6852,7 +6852,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .mai-chat__history {
   position: relative;
-  z-index: 41;
+  z-index: 5;
 }
 
 .mai-chat__history-menu {
@@ -6987,7 +6987,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .mai-chat__lang {
   position: relative;
-  z-index: 40;
+  z-index: 5;
 }
 
 .mai-chat__lang-trigger {
@@ -7985,7 +7985,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .mai-chat__prompt-dd {
   position: relative;
-  z-index: 30;
+  z-index: 5;
 }
 
 .mai-chat__prompt-trigger {
@@ -9395,11 +9395,10 @@ input[type="number"] { -moz-appearance: textfield; }
   position: relative;
   overflow: hidden;
   border-radius: 1.15rem;
-  border: 1px solid rgba(212, 175, 55, 0.28);
-  background:
-    linear-gradient(155deg, rgba(40, 34, 18, 0.55) 0%, rgba(14, 16, 24, 0.97) 42%, rgba(10, 12, 18, 0.99) 100%);
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  background: var(--tf-elevated);
   padding: 1rem;
-  box-shadow: 0 0 32px rgba(212, 175, 55, 0.08), 0 14px 36px rgba(0,0,0,0.35);
+  box-shadow: 0 0 32px rgba(212, 175, 55, 0.08), 0 14px 36px var(--tf-shadow);
 }
 .tj-assist__orb {
   pointer-events: none;
@@ -10522,4 +10521,9 @@ html[data-theme="light"] .mai-chat__chip--accent,
 html[data-theme="light"] .mai-chat__chip--active,
 html[data-theme="light"] .mai-chat__badge {
   color: #78350f !important;
+}
+
+html:not([data-theme="light"]) .tj-assist {
+  background:
+    linear-gradient(155deg, rgba(40, 34, 18, 0.55) 0%, rgba(14, 16, 24, 0.97) 42%, rgba(10, 12, 18, 0.99) 100%);
 }
