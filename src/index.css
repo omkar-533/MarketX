@@ -7197,7 +7197,8 @@ input[type="number"] { -moz-appearance: textfield; }
     align-items: flex-start;
     gap: 0.55rem 0.65rem;
     padding: 0.55rem 0.75rem;
-    z-index: 60;
+    /* Stay below sidebar (z-50) and overlay (z-45) */
+    z-index: 4;
   }
 
   .mai-chat__brand {
@@ -7241,7 +7242,7 @@ input[type="number"] { -moz-appearance: textfield; }
     width: auto;
     max-width: none;
     max-height: min(58dvh, 24rem);
-    z-index: 70;
+    z-index: 5;
     box-sizing: border-box;
   }
 
