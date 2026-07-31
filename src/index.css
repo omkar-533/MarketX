@@ -6697,8 +6697,8 @@ input[type="number"] { -moz-appearance: textfield; }
   min-height: 0;
   width: 100%;
   overflow: hidden;
-  background: #0a0c12;
-  color: #e8eaed;
+  background: var(--tf-bg);
+  color: var(--tf-text);
 }
 
 .mai-chat__topbar {
@@ -6710,8 +6710,8 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.75rem;
   flex-shrink: 0;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: #0a0c12;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-bg);
 }
 
 .mai-chat__brand {
@@ -6741,7 +6741,7 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 0.55rem;
   width: 0.55rem;
   border-radius: 999px;
-  border: 2px solid #0a0c12;
+  border: 2px solid var(--tf-bg);
 }
 
 .mai-chat__pulse--ok { background: #22c55e; }
@@ -6768,7 +6768,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 0.95rem;
   font-weight: 650;
   letter-spacing: -0.02em;
-  color: #f8fafc;
+  color: var(--tf-text);
 }
 
 .mai-chat__badge {
@@ -6806,17 +6806,18 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.35rem;
   padding: 0.4rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: #94a3b8;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text-muted);
   font-size: 0.6875rem;
   font-weight: 600;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
 .mai-chat__chip:hover {
-  color: #e2e8f0;
-  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--tf-text);
+  border-color: color-mix(in srgb, var(--tf-border) 70%, #d4af37);
+  background: var(--tf-surface);
 }
 
 .mai-chat__chip--on {
@@ -7427,7 +7428,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: clamp(1.45rem, 3.5vw, 1.85rem);
   font-weight: 650;
   letter-spacing: -0.03em;
-  color: #f8fafc;
+  color: var(--tf-text);
 }
 
 .mai-chat__empty-sub {
@@ -7435,7 +7436,7 @@ input[type="number"] { -moz-appearance: textfield; }
   max-width: 26rem;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: #94a3b8;
+  color: var(--tf-text-muted);
 }
 
 .mai-chat__suggestions {
@@ -7460,13 +7461,12 @@ input[type="number"] { -moz-appearance: textfield; }
   text-align: left;
   padding: 0.95rem 1rem;
   border-radius: 1.05rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(155deg, rgba(28, 32, 44, 0.88) 0%, rgba(14, 16, 24, 0.92) 100%);
-  color: #cbd5e1;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  color: var(--tf-text-secondary);
   overflow: hidden;
   cursor: pointer;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 28px var(--tf-shadow);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -7482,8 +7482,8 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-chat__suggest:hover {
-  border-color: rgba(212, 175, 55, 0.4);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4), 0 0 28px rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 14px 36px var(--tf-shadow), 0 0 28px rgba(212, 175, 55, 0.1);
 }
 
 .mai-chat__suggest:hover .mai-chat__suggest-glow {
@@ -7523,13 +7523,13 @@ input[type="number"] { -moz-appearance: textfield; }
 .mai-chat__suggest-label {
   font-size: 0.8125rem;
   font-weight: 650;
-  color: #f1f5f9;
+  color: var(--tf-text);
   letter-spacing: -0.01em;
 }
 
 .mai-chat__suggest-hint {
   font-size: 0.6875rem;
-  color: #7c8799;
+  color: var(--tf-text-muted);
 }
 
 .mai-chat__suggest-spark {
@@ -7587,13 +7587,11 @@ input[type="number"] { -moz-appearance: textfield; }
   min-width: 0;
   padding: 0.95rem 1.05rem 0.75rem;
   border-radius: 1.05rem 1.05rem 1.05rem 0.4rem;
-  border: 1px solid rgba(212, 175, 55, 0.18);
-  background:
-    linear-gradient(155deg, rgba(28, 32, 44, 0.95) 0%, rgba(14, 16, 24, 0.92) 55%, rgba(10, 12, 18, 0.96) 100%);
+  border: 1px solid color-mix(in srgb, #d4af37 22%, var(--tf-border));
+  background: var(--tf-elevated);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 12px 36px rgba(0, 0, 0, 0.35),
-    0 0 28px rgba(212, 175, 55, 0.05);
+    0 0 0 1px color-mix(in srgb, var(--tf-border) 50%, transparent) inset,
+    0 12px 36px var(--tf-shadow);
   overflow: hidden;
 }
 
@@ -7629,7 +7627,7 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .mai-chat__bubble--ai .mai-chat__text {
-  color: #e8edf5;
+  color: var(--tf-text);
   white-space: normal;
 }
 
@@ -7650,7 +7648,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .mai-md__p {
   margin: 0;
-  color: #e2e8f0;
+  color: var(--tf-text-secondary);
   font-size: 0.9375rem;
   line-height: 1.7;
 }
@@ -7810,8 +7808,8 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-shrink: 0;
   margin-top: auto;
   padding: 0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: #0a0c12;
+  border-top: 1px solid var(--tf-border);
+  background: var(--tf-bg);
 }
 
 .mai-chat__composer {
@@ -7821,9 +7819,9 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0 auto;
   padding: 0.7rem 0.8rem;
   border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #141820;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  box-shadow: 0 10px 40px var(--tf-shadow);
   transition: border-color 0.15s ease;
   overflow: visible;
 }
@@ -8129,27 +8127,27 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 0;
   outline: none;
   background: transparent;
-  color: #f8fafc;
+  color: var(--tf-text);
   font-size: 0.95rem;
   line-height: 1.45;
   padding: 0.55rem 0.35rem;
 }
 
 .mai-chat__textarea::placeholder {
-  color: #64748b;
+  color: var(--tf-text-muted);
 }
 
 .mai-chat__icon-btn {
   display: inline-flex;
   padding: 0.55rem;
   border-radius: 0.75rem;
-  color: #64748b;
+  color: var(--tf-text-muted);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .mai-chat__icon-btn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--tf-text);
+  background: var(--tf-elevated);
 }
 
 .mai-chat__icon-btn--mic-on {
@@ -8191,7 +8189,7 @@ input[type="number"] { -moz-appearance: textfield; }
   width: min(48rem, 100%);
   text-align: center;
   font-size: 0.65rem;
-  color: #475569;
+  color: var(--tf-text-muted);
 }
 
 @media (min-width: 640px) {

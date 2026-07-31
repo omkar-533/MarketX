@@ -357,12 +357,34 @@ html[data-theme="light"] .auth-lux__fx--glow {
 }
 
 /* ── Master AI / Wolf AI chat ──────────────────────────────── */
+html[data-theme="light"] .mai-chat,
+html[data-theme="light"] .mai-chat__topbar,
+html[data-theme="light"] .mai-chat__composer-wrap,
+html[data-theme="light"] .mai-chat__scroll {
+  background: var(--tf-bg) !important;
+  color: var(--tf-text) !important;
+  border-color: var(--tf-border) !important;
+}
+
 html[data-theme="light"] .mai-chat__pulse {
   border-color: var(--tf-bg) !important;
 }
 
 html[data-theme="light"] .mai-chat__topbar {
   border-bottom-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .mai-chat__empty-title,
+html[data-theme="light"] .mai-chat__suggest-label,
+html[data-theme="light"] .mai-chat__title {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .mai-chat__empty-sub,
+html[data-theme="light"] .mai-chat__suggest-hint,
+html[data-theme="light"] .mai-chat__footnote,
+html[data-theme="light"] .mai-chat__status {
+  color: var(--tf-text-muted) !important;
 }
 
 html[data-theme="light"] .mai-chat__composer,
@@ -385,11 +407,9 @@ html[data-theme="light"] .mai-chat__bubble--ai .mai-chat__text,
 html[data-theme="light"] .mai-chat__textarea,
 html[data-theme="light"] .mai-md__p,
 html[data-theme="light"] .mai-md__li,
-html[data-theme="light"] .mai-chat__suggest-label,
 html[data-theme="light"] .mai-chat__prompt-item-name,
 html[data-theme="light"] .mai-chat__history-title,
-html[data-theme="light"] .mai-chat__brand,
-html[data-theme="light"] .mai-chat__title {
+html[data-theme="light"] .mai-chat__brand {
   color: var(--tf-text) !important;
 }
 
@@ -402,9 +422,10 @@ html[data-theme="light"] .mai-md__muted {
 html[data-theme="light"] .mai-chat__suggest,
 html[data-theme="light"] .mai-chat__prompt-item,
 html[data-theme="light"] .mai-chat__history-item {
-  background: var(--tf-elevated) !important;
+  background: var(--tf-surface) !important;
   border-color: var(--tf-border) !important;
   color: var(--tf-text) !important;
+  box-shadow: 0 6px 18px var(--tf-shadow);
 }
 
 html[data-theme="light"] .mai-chat__suggest:hover,
@@ -412,6 +433,31 @@ html[data-theme="light"] .mai-chat__prompt-item:hover,
 html[data-theme="light"] .mai-chat__history-item:hover {
   background: #eef2f7 !important;
   border-color: #c5d0de !important;
+}
+
+html[data-theme="light"] .mai-chat__chip {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text-secondary) !important;
+}
+
+html[data-theme="light"] .mai-chat__chip:hover {
+  color: var(--tf-text) !important;
+  background: var(--tf-surface) !important;
+}
+
+html[data-theme="light"] .mai-chat__chip--accent,
+html[data-theme="light"] .mai-chat__chip--active {
+  color: #92400e !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+  background: rgba(212, 175, 55, 0.14) !important;
+}
+
+html[data-theme="light"] .mai-md__ul li,
+html[data-theme="light"] .mai-md__ol li {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
 }
 
 /* ── Indicators library ────────────────────────────────────── */
