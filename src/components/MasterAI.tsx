@@ -218,7 +218,18 @@ export default function MasterAI() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: isThinking ? 'auto' : 'smooth' });
+    const pane = chatAreaRef.current;
+    if (!pane) return;
+    // Empty / New Chat desk: keep Hunter logo at top (scrollIntoView was yanking mobile)
+    const emptyDesk = messages.length <= 1 && !isThinking;
+    if (emptyDesk) {
+      pane.scrollTop = 0;
+      return;
+    }
+    pane.scrollTo({
+      top: pane.scrollHeight,
+      behavior: isThinking ? 'auto' : 'smooth',
+    });
   }, [messages, isThinking]);
 
   useEffect(() => {
@@ -399,6 +410,9 @@ export default function MasterAI() {
     setActiveChatId(next.activeId);
     setMessages(next.messages);
     setChatSessions(next.sessions);
+    requestAnimationFrame(() => {
+      if (chatAreaRef.current) chatAreaRef.current.scrollTop = 0;
+    });
   };
 
   const handleOpenChat = (id: string) => {
