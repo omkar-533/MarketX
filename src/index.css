@@ -6787,7 +6787,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .mai-chat__status {
   margin: 0.1rem 0 0;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: var(--tf-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6809,7 +6809,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border-radius: 999px;
   border: 1px solid var(--tf-border);
   background: var(--tf-elevated);
-  color: var(--tf-text-muted);
+  color: var(--tf-text);
   font-size: 0.6875rem;
   font-weight: 600;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
@@ -10526,4 +10526,27 @@ html[data-theme="light"] .mai-chat__badge {
 html:not([data-theme="light"]) .tj-assist {
   background:
     linear-gradient(155deg, rgba(40, 34, 18, 0.55) 0%, rgba(14, 16, 24, 0.97) 42%, rgba(10, 12, 18, 0.99) 100%);
+}
+
+/* FINAL: Wolf AI topbar dark-mode contrast */
+html[data-theme="dark"] .mai-chat__title,
+html:not([data-theme="light"]) .mai-chat__title,
+html[data-theme="dark"] .mai-chat__status,
+html:not([data-theme="light"]) .mai-chat__status,
+html[data-theme="dark"] .mai-chat__chip,
+html:not([data-theme="light"]) .mai-chat__chip,
+html[data-theme="dark"] .mai-chat__lang-label,
+html:not([data-theme="light"]) .mai-chat__lang-label {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .mai-chat__chip--accent,
+html:not([data-theme="light"]) .mai-chat__chip--accent,
+html[data-theme="dark"] .mai-chat__chip--active,
+html:not([data-theme="light"]) .mai-chat__chip--active,
+html[data-theme="dark"] .mai-chat__chip--on,
+html:not([data-theme="light"]) .mai-chat__chip--on,
+html[data-theme="dark"] .mai-chat__badge,
+html:not([data-theme="light"]) .mai-chat__badge {
+  color: #f0d78c !important;
 }

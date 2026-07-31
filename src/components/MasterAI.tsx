@@ -891,7 +891,7 @@ export default function MasterAI() {
             title={autoSpeak ? 'Auto-speak on' : 'Speak only when you tap Speak'}
           >
             {autoSpeak ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">Voice</span>
+            <span>Voice</span>
           </button>
 
           <div className={`mai-chat__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>

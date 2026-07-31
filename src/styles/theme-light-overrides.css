@@ -1345,3 +1345,37 @@ html[data-theme="dark"] .app-sidebar__link.text-gold svg,
 html:not([data-theme="light"]) .app-sidebar__link.text-gold svg {
   color: var(--tj-gold-strong, #d4af37) !important;
 }
+
+/* Wolf AI topbar — dark mode readable white labels */
+html[data-theme="dark"] .mai-chat__title,
+html:not([data-theme="light"]) .mai-chat__title,
+html[data-theme="dark"] .mai-chat__status,
+html:not([data-theme="light"]) .mai-chat__status,
+html[data-theme="dark"] .mai-chat__chip,
+html:not([data-theme="light"]) .mai-chat__chip,
+html[data-theme="dark"] .mai-chat__lang-label,
+html:not([data-theme="light"]) .mai-chat__lang-label {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .mai-chat__chip svg,
+html:not([data-theme="light"]) .mai-chat__chip svg {
+  color: inherit !important;
+}
+
+html[data-theme="dark"] .mai-chat__chip--accent,
+html:not([data-theme="light"]) .mai-chat__chip--accent,
+html[data-theme="dark"] .mai-chat__chip--active,
+html:not([data-theme="light"]) .mai-chat__chip--active,
+html[data-theme="dark"] .mai-chat__badge,
+html:not([data-theme="light"]) .mai-chat__badge,
+html[data-theme="dark"] .mai-chat__chip--on,
+html:not([data-theme="light"]) .mai-chat__chip--on {
+  color: #f0d78c !important;
+}
+
+html[data-theme="light"] .mai-chat__status,
+html[data-theme="light"] .mai-chat__chip:not(.mai-chat__chip--accent):not(.mai-chat__chip--active):not(.mai-chat__chip--on),
+html[data-theme="light"] .mai-chat__lang-label {
+  color: #0a0a0a !important;
+}
