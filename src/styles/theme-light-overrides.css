@@ -1300,3 +1300,48 @@ html[data-theme="dark"] .header-clock svg,
 html:not([data-theme="light"]) .header-clock svg {
   color: #94a3b8 !important;
 }
+
+/* Sidebar labels — dark = white, light = black */
+html[data-theme="dark"] .app-sidebar,
+html:not([data-theme="light"]) .app-sidebar {
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .app-sidebar__link:not(.text-gold),
+html:not([data-theme="light"]) .app-sidebar__link:not(.text-gold),
+html[data-theme="dark"] .app-sidebar__section,
+html:not([data-theme="light"]) .app-sidebar__section,
+html[data-theme="dark"] .app-sidebar__tip,
+html:not([data-theme="light"]) .app-sidebar__tip {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .app-sidebar__link:not(.text-gold) svg,
+html:not([data-theme="light"]) .app-sidebar__link:not(.text-gold) svg {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .app-sidebar {
+  color: #0a0a0a;
+}
+
+html[data-theme="light"] .app-sidebar__link:not(.text-gold),
+html[data-theme="light"] .app-sidebar__section,
+html[data-theme="light"] .app-sidebar__tip,
+html[data-theme="light"] .app-sidebar .brand-lockup__name,
+html[data-theme="light"] .app-sidebar__brand {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .app-sidebar__link:not(.text-gold) svg {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .app-sidebar__link.text-gold,
+html[data-theme="light"] .app-sidebar__link.text-gold svg,
+html[data-theme="dark"] .app-sidebar__link.text-gold,
+html:not([data-theme="light"]) .app-sidebar__link.text-gold,
+html[data-theme="dark"] .app-sidebar__link.text-gold svg,
+html:not([data-theme="light"]) .app-sidebar__link.text-gold svg {
+  color: var(--tj-gold-strong, #d4af37) !important;
+}
