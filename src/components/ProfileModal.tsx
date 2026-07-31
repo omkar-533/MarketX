@@ -13,6 +13,8 @@ import {
   isValidMasterAiKey,
   detectMasterAiKeyProvider,
 } from '../services/openRouterKey';
+import { fileToEditorSrc } from '../services/profileAvatar';
+import ProfileAvatarEditor from './ProfileAvatarEditor';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -20,7 +22,7 @@ interface ProfileModalProps {
   user: User | null;
   onLogout: () => void;
   onUpgrade?: () => void;
-  onUpdateAvatar?: (file: File) => Promise<string>;
+  onUpdateAvatar?: (input: File | string) => Promise<string>;
   onRemoveAvatar?: () => void;
 }
 
@@ -42,11 +44,13 @@ export default function ProfileModal({
   const [showKeyOverride, setShowKeyOverride] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarMsg, setAvatarMsg] = useState('');
+  const [editorSrc, setEditorSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setOpenRouterSaved(loadOpenRouterApiKey());
     setAvatarMsg('');
+    setEditorSrc(null);
     void fetchMasterAiStatus().then((s) => {
       setServerAiReady(s.configured && s.keySource === 'server');
       if (!s.configured && !loadOpenRouterApiKey()) setShowKeyOverride(true);
@@ -87,13 +91,27 @@ export default function ProfileModal({
     setAvatarBusy(true);
     setAvatarMsg('');
     try {
-      await onUpdateAvatar(file);
+      const src = await fileToEditorSrc(file);
+      setEditorSrc(src);
+    } catch (err) {
+      setAvatarMsg(err instanceof Error ? err.message : 'Could not open photo');
+    } finally {
+      setAvatarBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const handleEditorSave = async (dataUrl: string) => {
+    if (!onUpdateAvatar) return;
+    setAvatarBusy(true);
+    try {
+      await onUpdateAvatar(dataUrl);
+      setEditorSrc(null);
       setAvatarMsg('Profile photo updated.');
     } catch (err) {
       setAvatarMsg(err instanceof Error ? err.message : 'Could not update photo');
     } finally {
       setAvatarBusy(false);
-      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -166,7 +184,7 @@ export default function ProfileModal({
                       onClick={() => fileRef.current?.click()}
                       className="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-60"
                     >
-                      {avatarBusy ? 'Uploading…' : user.avatar ? 'Change photo' : 'Add photo'}
+                      {avatarBusy ? 'Opening…' : user.avatar ? 'Change photo' : 'Add photo'}
                     </button>
                   ) : null}
                   {user.avatar && onRemoveAvatar ? (
@@ -186,7 +204,11 @@ export default function ProfileModal({
                 </div>
                 {avatarMsg ? (
                   <p className="mt-1.5 text-[10px] text-[var(--tf-text-muted)]">{avatarMsg}</p>
-                ) : null}
+                ) : (
+                  <p className="mt-1.5 text-[10px] text-[var(--tf-text-muted)]">
+                    Crop, zoom, aur filters photo choose karne ke baad milenge.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -310,6 +332,16 @@ export default function ProfileModal({
               </button>
             </div>
           </motion.div>
+
+          <AnimatePresence>
+            {editorSrc ? (
+              <ProfileAvatarEditor
+                src={editorSrc}
+                onCancel={() => setEditorSrc(null)}
+                onSave={handleEditorSave}
+              />
+            ) : null}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>

@@ -261,10 +261,13 @@ export function useAuth() {
   }, []);
 
   const updateAvatar = useCallback(
-    async (file: File) => {
+    async (input: File | string) => {
       const current = user;
       if (!current) throw new Error('Sign in to set a profile photo');
-      const dataUrl = await compressProfileImage(file);
+      const dataUrl = typeof input === 'string' ? input : await compressProfileImage(input);
+      if (!dataUrl.startsWith('data:image/')) {
+        throw new Error('Could not process photo');
+      }
       saveProfileAvatar(current.id, dataUrl);
       applyAvatarToUser(dataUrl);
       return dataUrl;
