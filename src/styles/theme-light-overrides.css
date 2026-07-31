@@ -15,6 +15,10 @@ html[data-theme="light"] {
   --tf-input-bg: #ffffff;
   --tf-chart-bg: #ffffff;
   --tf-shadow: rgba(15, 23, 42, 0.07);
+  --tj-gold: #b45309;
+  --tj-gold-strong: #92400e;
+  --tj-up: #059669;
+  --tj-down: #e11d48;
   --app-text: var(--tf-text);
   --app-text-secondary: var(--tf-text-secondary);
   --app-text-muted: var(--tf-text-muted);
@@ -539,13 +543,25 @@ html[data-theme="light"] .lux-ind__btn--primary {
 }
 
 /* ── Trading Journal ───────────────────────────────────────── */
+html[data-theme="light"] .tj-page {
+  color: var(--tf-text);
+}
+
 html[data-theme="light"] .tj-hero,
 html[data-theme="light"] .tj-card,
 html[data-theme="light"] .tj-ai-card,
 html[data-theme="light"] .tj-status,
 html[data-theme="light"] .tj-quality__inner,
 html[data-theme="light"] .tj-empty,
-html[data-theme="light"] .tj-tip {
+html[data-theme="light"] .tj-tip,
+html[data-theme="light"] .tj-metric,
+html[data-theme="light"] .tj-tabs,
+html[data-theme="light"] .tj-recap__grid div,
+html[data-theme="light"] .tj-cal,
+html[data-theme="light"] .tj-cal__panel,
+html[data-theme="light"] .tj-assist,
+html[data-theme="light"] .tj-analytics,
+html[data-theme="light"] .lux-select__menu {
   background: var(--tf-surface) !important;
   border-color: var(--tf-border) !important;
   color: var(--tf-text) !important;
@@ -556,25 +572,106 @@ html[data-theme="light"] .tj-hero {
   background: linear-gradient(135deg, #ffffff, #f4f7fb 55%, #eef2f7) !important;
 }
 
-html[data-theme="light"] .tj-empty__title,
-html[data-theme="light"] .tj-tip__title,
-html[data-theme="light"] .tj-card__title,
-html[data-theme="light"] .tj-hero__title {
-  color: var(--tf-text) !important;
-}
-
-html[data-theme="light"] .tj-empty__body,
-html[data-theme="light"] .tj-tip__body,
-html[data-theme="light"] .tj-hero__lead,
-html[data-theme="light"] .tj-meta,
-html[data-theme="light"] .tj-status {
-  color: var(--tf-text-muted) !important;
-}
-
+html[data-theme="light"] .tj-metric,
+html[data-theme="light"] .tj-tabs,
+html[data-theme="light"] .tj-status,
+html[data-theme="light"] .tj-tip,
+html[data-theme="light"] .tj-quality__inner,
+html[data-theme="light"] .tj-recap__grid div,
 html[data-theme="light"] .tj-cal__cell,
 html[data-theme="light"] .tj-bars,
 html[data-theme="light"] .tj-chart {
   background: var(--tf-elevated) !important;
+}
+
+html[data-theme="light"] .tj-hero__title,
+html[data-theme="light"] .tj-empty__title,
+html[data-theme="light"] .tj-tip__title,
+html[data-theme="light"] .tj-card__title,
+html[data-theme="light"] .tj-metric__value,
+html[data-theme="light"] .tj-recap__headline,
+html[data-theme="light"] .tj-recap__grid strong,
+html[data-theme="light"] .tj-chart__title,
+html[data-theme="light"] .tj-cal__title,
+html[data-theme="light"] .tj-cal__month,
+html[data-theme="light"] .tj-cal__day,
+html[data-theme="light"] .tj-analytics__kpi strong,
+html[data-theme="light"] .tj-assist__title,
+html[data-theme="light"] .lux-select__label,
+html[data-theme="light"] .lux-select__value,
+html[data-theme="light"] .lux-select__option {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .tj-hero__sub,
+html[data-theme="light"] .tj-empty__sub,
+html[data-theme="light"] .tj-tip__detail,
+html[data-theme="light"] .tj-metric__label,
+html[data-theme="light"] .tj-metric__sub,
+html[data-theme="light"] .tj-recap__sub,
+html[data-theme="light"] .tj-recap__grid span,
+html[data-theme="light"] .tj-chart__hint,
+html[data-theme="light"] .tj-tab:not(.tj-tab--on),
+html[data-theme="light"] .tj-btn--ghost,
+html[data-theme="light"] .tj-btn--icon,
+html[data-theme="light"] .tj-status:not(.tj-status--ok),
+html[data-theme="light"] .tj-quality__label,
+html[data-theme="light"] .tj-quality__gaps {
+  color: var(--tf-text-muted) !important;
+}
+
+html[data-theme="light"] .tj-hero__eyebrow,
+html[data-theme="light"] .tj-pill,
+html[data-theme="light"] .tj-ai-card__head,
+html[data-theme="light"] .tj-quality__score,
+html[data-theme="light"] .tj-chart__eyebrow,
+html[data-theme="light"] .tj-card__title {
+  color: var(--tj-gold) !important;
+}
+
+html[data-theme="light"] .tj-metric--up .tj-metric__value,
+html[data-theme="light"] .text-emerald-400 {
+  color: var(--tj-up) !important;
+}
+
+html[data-theme="light"] .tj-metric--down .tj-metric__value,
+html[data-theme="light"] .text-red-400 {
+  color: var(--tj-down) !important;
+}
+
+html[data-theme="light"] .tj-tab--on {
+  color: #0b0e17 !important;
+  background: #d4af37 !important;
+}
+
+html[data-theme="light"] .tj-btn--ghost:hover {
+  color: var(--tj-gold-strong) !important;
+}
+
+html[data-theme="light"] .tj-cal__nav-btn,
+html[data-theme="light"] .tj-cal__stat,
+html[data-theme="light"] .tj-cal__weekday {
+  color: var(--tf-text-secondary) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .tj-cal__cell {
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .tj-cal__pnl.is-up {
+  color: var(--tj-up) !important;
+}
+
+html[data-theme="light"] .tj-cal__pnl.is-down {
+  color: var(--tj-down) !important;
+}
+
+html[data-theme="light"] .tj-page input,
+html[data-theme="light"] .tj-page select,
+html[data-theme="light"] .tj-page textarea {
+  background: var(--tf-input-bg) !important;
+  color: var(--tf-text) !important;
   border-color: var(--tf-border) !important;
 }
 

@@ -15,6 +15,10 @@ html[data-theme="dark"] {
   --tf-input-bg: #121520;
   --tf-chart-bg: #0b0e17;
   --tf-shadow: rgba(0, 0, 0, 0.35);
+  --tj-gold: #f0d78c;
+  --tj-gold-strong: #d4af37;
+  --tj-up: #34d399;
+  --tj-down: #fb7185;
 
   /* Legacy aliases used in custom CSS */
   --color-dark-bg: var(--tf-bg);
@@ -42,6 +46,10 @@ html[data-theme="light"] {
   --tf-input-bg: #ffffff;
   --tf-chart-bg: #ffffff;
   --tf-shadow: rgba(15, 23, 42, 0.07);
+  --tj-gold: #b45309;
+  --tj-gold-strong: #92400e;
+  --tj-up: #059669;
+  --tj-down: #e11d48;
   color-scheme: light;
 }
 
