@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, CheckCheck, Copy, RefreshCw, Trash2, X } from 'lucide-react';
+import { CalendarRange, Check, CheckCheck, Copy, RefreshCw, Trash2, X } from 'lucide-react';
 import {
   adminApproveAllTvAccessRequests,
   adminDeleteTvAccessRequest,
@@ -17,6 +17,30 @@ type TvAccessRequestsTabProps = {
 function formatDate(value: string | null) {
   if (!value) return '—';
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function startOfLocalDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfLocalDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function toInputDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseCreatedMs(row: AdminTvAccessRequest) {
+  const t = Date.parse(row.createdAt || '');
+  return Number.isFinite(t) ? t : 0;
 }
 
 async function copyUsername(tvId: string) {
@@ -36,11 +60,64 @@ export default function TvAccessRequestsTab({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const rangeFilterActive = Boolean(dateFrom || dateTo);
+
+  const filteredRows = useMemo(() => {
+    if (!rangeFilterActive) return rows;
+    const fromMs = dateFrom ? startOfLocalDay(new Date(`${dateFrom}T00:00:00`)).getTime() : 0;
+    const toMs = dateTo
+      ? endOfLocalDay(new Date(`${dateTo}T00:00:00`)).getTime()
+      : Number.POSITIVE_INFINITY;
+    return rows.filter((r) => {
+      const t = parseCreatedMs(r);
+      return t >= fromMs && t <= toMs;
+    });
+  }, [rows, dateFrom, dateTo, rangeFilterActive]);
 
   const pendingCount = useMemo(
-    () => rows.filter((r) => r.status === 'pending').length,
-    [rows],
+    () => filteredRows.filter((r) => r.status === 'pending').length,
+    [filteredRows],
   );
+
+  const rangeCount = rangeFilterActive ? filteredRows.length : null;
+
+  const applyPresetRange = (preset: 'all' | 'today' | 'weekly' | 'monthly') => {
+    if (preset === 'all') {
+      setDateFrom('');
+      setDateTo('');
+      return;
+    }
+    const now = new Date();
+    const to = toInputDate(now);
+    if (preset === 'today') {
+      setDateFrom(to);
+      setDateTo(to);
+      return;
+    }
+    if (preset === 'weekly') {
+      setDateFrom(toInputDate(new Date(now.getTime() - 6 * 86_400_000)));
+      setDateTo(to);
+      return;
+    }
+    setDateFrom(toInputDate(new Date(now.getFullYear(), now.getMonth(), 1)));
+    setDateTo(to);
+  };
+
+  const activePreset = useMemo(() => {
+    if (!dateFrom && !dateTo) return 'all';
+    if (!dateFrom || !dateTo) return null;
+    const now = new Date();
+    const today = toInputDate(now);
+    if (dateFrom === today && dateTo === today) return 'today';
+    const weekFrom = toInputDate(new Date(now.getTime() - 6 * 86_400_000));
+    if (dateFrom === weekFrom && dateTo === today) return 'weekly';
+    const monthFrom = toInputDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    if (dateFrom === monthFrom && dateTo === today) return 'monthly';
+    return null;
+  }, [dateFrom, dateTo]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -105,14 +182,22 @@ export default function TvAccessRequestsTab({
   const approveAll = async () => {
     if (!pendingCount) return;
     const ok = window.confirm(
-      `Approve all ${pendingCount} pending request(s)?\n\nOnly do this after adding them on TradingView — this unlocks invite links for users.`,
+      `Approve all ${pendingCount} pending request(s)${rangeFilterActive ? ' in this date range' : ''}?\n\nOnly do this after adding them on TradingView — this unlocks invite links for users.`,
     );
     if (!ok) return;
     setBusyId('all');
     setError('');
     try {
-      const result = await adminApproveAllTvAccessRequests(adminEmail, adminPassword);
-      flash(`Approved ${result.updated} request(s)`);
+      if (rangeFilterActive) {
+        const pending = filteredRows.filter((r) => r.status === 'pending');
+        for (const row of pending) {
+          await adminReviewTvAccessRequest(row.id, 'granted', {}, adminEmail, adminPassword);
+        }
+        flash(`Approved ${pending.length} request(s)`);
+      } else {
+        const result = await adminApproveAllTvAccessRequests(adminEmail, adminPassword);
+        flash(`Approved ${result.updated} request(s)`);
+      }
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not approve all');
@@ -169,18 +254,101 @@ export default function TvAccessRequestsTab({
         </div>
       </div>
 
+      <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <CalendarRange className="w-4 h-4 text-[#d4af37]" />
+            Date filter
+          </h3>
+          {rangeCount !== null ? (
+            <span className="text-[11px] text-emerald-400 font-bold">
+              {rangeCount} request{rangeCount === 1 ? '' : 's'} in range
+            </span>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-[10px] text-slate-500 space-y-1">
+            <span className="block uppercase tracking-wider font-bold">From</span>
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
+            />
+          </label>
+          <label className="text-[10px] text-slate-500 space-y-1">
+            <span className="block uppercase tracking-wider font-bold">To</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+            }}
+            className="px-3 py-2 rounded-lg border border-[#1a1f2e] text-[10px] font-bold text-slate-400 hover:text-gold"
+          >
+            Clear
+          </button>
+          <div className="flex items-center gap-1.5">
+            {(
+              [
+                { id: 'all' as const, label: 'All' },
+                { id: 'today' as const, label: 'Today' },
+                { id: 'weekly' as const, label: 'Weekly' },
+                { id: 'monthly' as const, label: 'Monthly' },
+              ] as const
+            ).map((p) => {
+              const on = activePreset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPresetRange(p.id)}
+                  className={`px-3 py-2 rounded-lg border text-[10px] font-bold transition-colors ${
+                    on
+                      ? 'bg-[#d4af37]/15 border-[#d4af37]/40 text-[#d4af37]'
+                      : 'border-[#1a1f2e] text-slate-400 hover:text-gold hover:border-gold/30'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-600">
+          Filter by submitted date.
+          {rangeFilterActive ? ` Showing ${filteredRows.length} of ${rows.length} total.` : ''}
+        </p>
+      </div>
+
       {toast ? <p className="text-[11px] text-emerald-400">{toast}</p> : null}
       {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
 
-      {rows.length === 0 ? (
+      {filteredRows.length === 0 ? (
         <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-8 text-center text-xs text-slate-500 space-y-2">
-          <p>{loading ? 'Loading…' : 'No TradingView submissions yet.'}</p>
+          <p>
+            {loading
+              ? 'Loading…'
+              : rangeFilterActive
+                ? 'No TradingView submissions in this date range.'
+                : 'No TradingView submissions yet.'}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-[#1a1f2e]">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#0b0e17] text-[10px] uppercase tracking-wider text-slate-500">
               <tr>
+                <th className="px-3 py-2 font-bold w-10">#</th>
                 <th className="px-3 py-2 font-bold">TradingView ID</th>
                 <th className="px-3 py-2 font-bold">Indicator</th>
                 <th className="px-3 py-2 font-bold">User</th>
@@ -190,7 +358,7 @@ export default function TvAccessRequestsTab({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => (
+              {filteredRows.map((row, idx) => (
                 <motion.tr
                   key={row.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -198,6 +366,7 @@ export default function TvAccessRequestsTab({
                   transition={{ delay: idx * 0.03 }}
                   className="border-t border-[#1a1f2e] bg-[#0d111c]"
                 >
+                  <td className="px-3 py-2.5 text-slate-500 tabular-nums font-bold">{idx + 1}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-gold">@{row.tradingViewId}</span>

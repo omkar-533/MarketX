@@ -686,6 +686,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#080a12] text-slate-600 text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-3 text-left w-10">#</th>
                     <th className="py-3 px-4 text-left">User</th>
                     <th className="py-3 px-4 text-left">Mobile</th>
                     <th className="py-3 px-4 text-left">Access</th>
@@ -698,7 +699,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                      <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
                         {loading
                           ? 'Loading…'
                           : rangeFilterActive
@@ -720,6 +721,9 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                           onClick={() => void markUserSeen(u)}
                           title={isNew ? 'Click to clear NEW' : undefined}
                         >
+                          <td className="py-2.5 px-3 text-slate-500 text-xs tabular-nums font-bold">
+                            {idx + 1}
+                          </td>
                           <td className="py-2.5 px-4">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 bg-[#d4af37]/10 rounded-full flex items-center justify-center shrink-0">
