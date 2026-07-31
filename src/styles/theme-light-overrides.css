@@ -462,8 +462,30 @@ html[data-theme="light"] .mai-md__ol li {
 html[data-theme="light"] .mai-md__strong,
 html[data-theme="light"] .mai-md__h,
 html[data-theme="light"] .mai-chat__bubble--ai .mai-md__strong,
-html[data-theme="light"] .mai-chat__bubble--ai .mai-md__h {
-  color: #92400e !important;
+html[data-theme="light"] .mai-chat__bubble--ai .mai-md__h,
+html[data-theme="light"] .mai-md__ul li .mai-md__strong,
+html[data-theme="light"] .mai-md__ol li .mai-md__strong,
+html[data-theme="light"] .mai-md__p .mai-md__strong,
+html[data-theme="light"] .mai-chat .mai-md__strong,
+html[data-theme="light"] .mai-chat .mai-md__h {
+  color: #78350f !important;
+  -webkit-text-fill-color: #78350f !important;
+}
+
+html[data-theme="light"] .mai-chat__badge,
+html[data-theme="light"] .mai-chat__chip--accent,
+html[data-theme="light"] .mai-chat__chip--active,
+html[data-theme="light"] .mai-chat__prompt-chevron,
+html[data-theme="light"] .mai-chat__prompt-menu-head,
+html[data-theme="light"] .mai-chat__prompt-item-icon,
+html[data-theme="light"] .mai-chat__prompt-check,
+html[data-theme="light"] .mai-chat__lang-head-title,
+html[data-theme="light"] .mai-chat__lang-check,
+html[data-theme="light"] .mai-chat__history-new,
+html[data-theme="light"] .mai-chat__suggest-label,
+html[data-theme="light"] .mai-chat__suggest-spark,
+html[data-theme="light"] .mai-chat__suggest-icon {
+  color: #78350f !important;
 }
 
 /* ── Indicators library ────────────────────────────────────── */

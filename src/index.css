@@ -7190,6 +7190,68 @@ input[type="number"] { -moz-appearance: textfield; }
   .mai-chat__lang-label {
     max-width: 5.5rem;
   }
+
+  .mai-chat__topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.55rem 0.65rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .mai-chat__brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .mai-chat__status {
+    max-width: min(14rem, 55vw);
+  }
+
+  .mai-chat__controls {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .mai-chat__chip {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .mai-chat__lang-label {
+    display: none;
+  }
+
+  .mai-chat__column {
+    padding: 0.85rem 0.75rem 1.1rem;
+    gap: 0.9rem;
+  }
+
+  .mai-chat__bubble--ai,
+  .mai-chat__bubble--user {
+    padding: 0.75rem 0.8rem 0.65rem;
+  }
+
+  .mai-chat__text {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .mai-md__strong,
+  .mai-md__h {
+    font-weight: 800;
+  }
+
+  .mai-md__ul li,
+  .mai-md__ol li {
+    padding: 0.55rem 0.6rem 0.55rem 1.35rem;
+    font-size: 0.8125rem;
+  }
+
+  .mai-chat__composer-wrap {
+    padding: 0.55rem 0.75rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .mai-chat__scroll {
@@ -10416,4 +10478,19 @@ html:not([data-theme="light"]) .tj-donut__core {
 }
 html:not([data-theme="light"]) .tj-alert-card {
   background: linear-gradient(155deg, rgba(22,26,38,0.95), rgba(10,12,18,0.98));
+}
+
+/* FINAL: Wolf AI chat light gold contrast (mobile + desktop) */
+html[data-theme="light"] .mai-chat .mai-md__strong,
+html[data-theme="light"] .mai-chat .mai-md__h,
+html[data-theme="light"] .mai-chat .mai-md__ul li .mai-md__strong,
+html[data-theme="light"] .mai-chat .mai-md__ol li .mai-md__strong {
+  color: #78350f !important;
+  -webkit-text-fill-color: #78350f !important;
+}
+
+html[data-theme="light"] .mai-chat__chip--accent,
+html[data-theme="light"] .mai-chat__chip--active,
+html[data-theme="light"] .mai-chat__badge {
+  color: #78350f !important;
 }
