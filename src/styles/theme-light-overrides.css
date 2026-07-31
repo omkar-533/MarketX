@@ -1027,3 +1027,23 @@ html[data-theme="light"] .lux-select__label {
 html[data-theme="light"] .tj-psych__slider-label em {
   color: var(--tj-gold) !important;
 }
+
+html[data-theme="light"] .tj-psych-out__card,
+html[data-theme="light"] .tj-psych-out__spark,
+html[data-theme="light"] .tj-analytics__snap-grid div,
+html[data-theme="light"] .tj-rank__track {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .tj-psych-out__tier,
+html[data-theme="light"] .tj-psych-out__meta,
+html[data-theme="light"] .tj-psych-out__tl-label,
+html[data-theme="light"] .tj-psych-out__col span,
+html[data-theme="light"] .tj-psych-out__wr {
+  color: var(--tf-text) !important;
+}
+
+html[data-theme="light"] .tj-psych-out__wr {
+  color: var(--tj-gold) !important;
+}
