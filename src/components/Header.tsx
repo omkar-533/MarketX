@@ -20,18 +20,23 @@ function HeaderClock() {
   useEffect(() => {
     const tick = () => {
       if (ref.current) {
-        ref.current.textContent = new Date().toLocaleTimeString('en-IN');
+        ref.current.textContent = new Date().toLocaleTimeString('en-IN', {
+          hour: 'numeric',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
       }
     };
     tick();
-    const id = window.setInterval(tick, 30_000);
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, []);
 
   return (
-    <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
-      <Clock className="w-3.5 h-3.5" />
-      <span ref={ref} className="tabular-nums" />
+    <div className="header-clock flex items-center gap-1.5 text-xs text-[var(--tf-text-secondary)]">
+      <Clock className="w-3.5 h-3.5 shrink-0 text-[var(--tf-text-muted)]" aria-hidden />
+      <span ref={ref} className="tabular-nums font-medium tracking-wide" />
     </div>
   );
 }
@@ -40,12 +45,12 @@ function HeaderClock() {
 export default function Header({ user, onProfile, onMenuClick, className = '' }: HeaderProps) {
   return (
     <header
-      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-dark-border/60 ${className}`}
+      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-[var(--tf-border)] ${className}`}
     >
       <button
         type="button"
         onClick={onMenuClick}
-        className="lg:hidden p-2 -ml-1 text-slate-400 hover:text-gold rounded-lg hover:bg-dark-border/60 shrink-0"
+        className="lg:hidden p-2 -ml-1 text-[var(--tf-text-secondary)] hover:text-[var(--tj-gold-strong)] rounded-lg hover:bg-[var(--tf-elevated)] shrink-0"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5" />
@@ -63,12 +68,12 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
           <button
             type="button"
             onClick={onProfile}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-dark-border/60 transition-colors"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--tf-elevated)] transition-colors"
           >
             <div className="w-7 h-7 bg-gold/20 rounded-full flex items-center justify-center shrink-0">
               <span className="text-xs font-bold text-gold">{user.name[0]?.toUpperCase()}</span>
             </div>
-            <span className="hidden lg:block text-xs text-slate-300 font-medium max-w-[100px] truncate">
+            <span className="hidden lg:block text-xs text-[var(--tf-text)] font-medium max-w-[100px] truncate">
               {user.name}
             </span>
           </button>

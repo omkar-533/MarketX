@@ -46,7 +46,7 @@ export default function ThemeToggle({ variant = 'icon', className = '' }: ThemeT
     <button
       type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className={`p-2 rounded-lg text-slate-500 hover:text-gold hover:bg-dark-border/60 transition-colors ${className}`}
+      className={`p-2 rounded-lg text-[var(--tf-text-secondary)] hover:text-[var(--tj-gold-strong)] hover:bg-[var(--tf-elevated)] transition-colors ${className}`}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Light mode' : 'Dark mode'}
     >

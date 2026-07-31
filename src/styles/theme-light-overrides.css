@@ -1278,3 +1278,25 @@ html:not([data-theme="light"]) .tj-assist {
   background:
     linear-gradient(155deg, rgba(40, 34, 18, 0.55) 0%, rgba(14, 16, 24, 0.97) 42%, rgba(10, 12, 18, 0.99) 100%);
 }
+
+/* Header clock — always readable in both themes */
+html[data-theme="light"] .header-clock,
+html[data-theme="light"] .header-clock span {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .header-clock svg {
+  color: #404040 !important;
+}
+
+html[data-theme="dark"] .header-clock,
+html:not([data-theme="light"]) .header-clock,
+html[data-theme="dark"] .header-clock span,
+html:not([data-theme="light"]) .header-clock span {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .header-clock svg,
+html:not([data-theme="light"]) .header-clock svg {
+  color: #94a3b8 !important;
+}
