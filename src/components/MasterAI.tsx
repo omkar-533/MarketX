@@ -812,7 +812,7 @@ export default function MasterAI() {
               aria-haspopup="listbox"
             >
               <History className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">History</span>
+              <span>History</span>
             </button>
 
             <AnimatePresence>
