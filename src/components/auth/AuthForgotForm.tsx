@@ -4,8 +4,6 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  Eye,
-  EyeOff,
   HelpCircle,
   KeyRound,
   Loader2,
@@ -14,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import AuthField from './AuthField';
+import PasswordRevealButton from './PasswordRevealButton';
 import type { ResetChallenge } from '../../services/appInviteAuth';
 
 export type AuthForgotFormProps = {
@@ -202,14 +201,10 @@ export default function AuthForgotForm({
             autoComplete="new-password"
             icon={<Lock className="w-4 h-4" />}
             suffix={
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-slate-500 hover:text-slate-200 transition-colors"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+              <PasswordRevealButton
+                show={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+              />
             }
           />
 
@@ -224,6 +219,12 @@ export default function AuthForgotForm({
             icon={<Lock className="w-4 h-4" />}
             valid={confirm.length > 0 && confirm === password}
             error={confirm.length > 0 && confirm !== password ? 'Passwords do not match' : undefined}
+            suffix={
+              <PasswordRevealButton
+                show={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+              />
+            }
           />
 
           {errorBanner}

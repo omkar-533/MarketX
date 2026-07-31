@@ -2,9 +2,6 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   Lock,
-  Eye,
-  EyeOff,
-  ArrowRight,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -14,6 +11,7 @@ import {
   Phone,
 } from 'lucide-react';
 import AuthField from './AuthField';
+import PasswordRevealButton from './PasswordRevealButton';
 
 export interface AuthFormProps {
   mode: 'login' | 'signup' | 'forgot' | 'otp';
@@ -132,14 +130,10 @@ export default function AuthForm({
           autoComplete="current-password"
           icon={<Lock className="w-4 h-4" />}
           suffix={
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-slate-500 hover:text-slate-200 transition-colors"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+            <PasswordRevealButton
+              show={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
+            />
           }
         />
 
@@ -175,7 +169,6 @@ export default function AuthForm({
             <>
               <LogIn className="w-4 h-4" />
               Sign in
-              <ArrowRight className="w-4 h-4" />
             </>
           )}
         </button>
@@ -186,7 +179,6 @@ export default function AuthForm({
         <button type="button" className="auth-signup-btn w-full" onClick={goSignUp}>
           <UserPlus className="w-4 h-4" />
           Sign up
-          <ArrowRight className="w-4 h-4" />
         </button>
         <p className="auth-form-switch__hint">Start the free trial — takes under a minute.</p>
       </div>

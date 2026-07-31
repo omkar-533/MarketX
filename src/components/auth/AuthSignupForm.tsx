@@ -5,8 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Eye,
-  EyeOff,
   Loader2,
   Lock,
   Mail,
@@ -16,6 +14,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import AuthField from './AuthField';
+import PasswordRevealButton from './PasswordRevealButton';
 import { isValidEmail } from './authUtils';
 import { TRIAL_DAYS, planById, type PlanId } from '../../constants/plans';
 import type { OtpChallenge } from '../../services/appInviteAuth';
@@ -325,14 +324,10 @@ export default function AuthSignupForm({
           icon={<Lock className="w-4 h-4" />}
           hint="Sign in later with this email or mobile number."
           suffix={
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-slate-500 hover:text-slate-200 transition-colors"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+            <PasswordRevealButton
+              show={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
+            />
           }
         />
 

@@ -29,7 +29,7 @@ const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(function AuthFiel
         <input
           ref={ref}
           id={fieldId}
-          className={`auth-field-input ${suffix ? '!pr-12' : ''} ${className}`}
+          className={`auth-field-input ${className}`.trim()}
           {...props}
         />
         {suffix && <span className="auth-field-suffix">{suffix}</span>}
