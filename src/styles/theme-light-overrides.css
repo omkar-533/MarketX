@@ -1047,3 +1047,174 @@ html[data-theme="light"] .tj-psych-out__wr {
 html[data-theme="light"] .tj-psych-out__wr {
   color: var(--tj-gold) !important;
 }
+
+/* Calendar desk — no dark hero / board / cells in light */
+html[data-theme="light"] .tj-cal__hero,
+html[data-theme="light"] .tj-cal__board,
+html[data-theme="light"] .tj-cal__detail {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
+}
+
+html[data-theme="light"] .tj-cal__stat,
+html[data-theme="light"] .tj-cal-weekcell,
+html[data-theme="light"] .tj-cal-replay__row,
+html[data-theme="light"] .tj-cal__trade,
+html[data-theme="light"] .tj-cal__weekdays {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .tj-cal__cell {
+  background: #ffffff !important;
+  border-color: #e6edf5 !important;
+}
+
+html[data-theme="light"] .tj-cal__cell--muted,
+html[data-theme="light"] .tj-cal__cell--future,
+html[data-theme="light"] .tj-cal__cell--empty:hover {
+  background: #f7f9fc !important;
+}
+
+html[data-theme="light"] .tj-cal__title,
+html[data-theme="light"] .tj-cal__month,
+html[data-theme="light"] .tj-cal__stat strong,
+html[data-theme="light"] .tj-cal__day,
+html[data-theme="light"] .tj-cal-weekcell strong,
+html[data-theme="light"] .tj-cal__detail-title {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-cal__sub,
+html[data-theme="light"] .tj-cal__stat span,
+html[data-theme="light"] .tj-cal__weekday,
+html[data-theme="light"] .tj-cal__detail-sub,
+html[data-theme="light"] .tj-cal__empty-note,
+html[data-theme="light"] .tj-cal-weekcell p,
+html[data-theme="light"] .tj-cal-replay__meta {
+  color: #171717 !important;
+}
+
+html[data-theme="light"] .tj-cal__pnl.is-up,
+html[data-theme="light"] .tj-cal__stat--up strong,
+html[data-theme="light"] .tj-cal-weekcell strong.is-up {
+  color: #059669 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] .tj-cal__pnl.is-down,
+html[data-theme="light"] .tj-cal__stat--down strong,
+html[data-theme="light"] .tj-cal-weekcell strong.is-down {
+  color: #dc2626 !important;
+  text-shadow: none !important;
+}
+
+/* ═══ Journal Analytics + Calendar — force light surfaces (no black islands) ═══ */
+html[data-theme="light"] .tj-analytics__hero,
+html[data-theme="light"] .tj-cal__hero,
+html[data-theme="light"] .tj-cal__board,
+html[data-theme="light"] .tj-cal__detail,
+html[data-theme="light"] .tj-alert-card,
+html[data-theme="light"] .tj-psych-desk,
+html[data-theme="light"] .tj-bars-stage,
+html[data-theme="light"] .tj-card,
+html[data-theme="light"] .tj-card--chart {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych-out__card,
+html[data-theme="light"] .tj-psych-out__spark,
+html[data-theme="light"] .tj-analytics__kpi,
+html[data-theme="light"] .tj-analytics__snap-grid div,
+html[data-theme="light"] .tj-cal__stat,
+html[data-theme="light"] .tj-cal-weekcell,
+html[data-theme="light"] .tj-cal-replay__row,
+html[data-theme="light"] .tj-cal__trade,
+html[data-theme="light"] .tj-cal__weekdays,
+html[data-theme="light"] .tj-mini-stat,
+html[data-theme="light"] .tj-rank__row,
+html[data-theme="light"] .tj-emotion__row {
+  background: #f7f9fc !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-cal__cell {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #e6edf5 !important;
+}
+
+html[data-theme="light"] .tj-cal__cell--muted,
+html[data-theme="light"] .tj-cal__cell--future,
+html[data-theme="light"] .tj-cal__cell--empty:hover {
+  background: #f3f6fa !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .tj-donut__core,
+html[data-theme="light"] .tj-pg__core {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  box-shadow: none !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych-out__tier,
+html[data-theme="light"] .tj-psych-out__meta,
+html[data-theme="light"] .tj-psych-out__tl-label,
+html[data-theme="light"] .tj-psych-out__col span,
+html[data-theme="light"] .tj-analytics__title,
+html[data-theme="light"] .tj-analytics__kpi strong,
+html[data-theme="light"] .tj-cal__title,
+html[data-theme="light"] .tj-cal__month,
+html[data-theme="light"] .tj-cal__stat strong,
+html[data-theme="light"] .tj-cal__day,
+html[data-theme="light"] .tj-cal-weekcell strong,
+html[data-theme="light"] .tj-chart__title,
+html[data-theme="light"] .tj-donut__pct,
+html[data-theme="light"] .tj-pg__val {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-analytics__sub,
+html[data-theme="light"] .tj-cal__sub,
+html[data-theme="light"] .tj-cal__stat span,
+html[data-theme="light"] .tj-cal__weekday,
+html[data-theme="light"] .tj-analytics__kpi span,
+html[data-theme="light"] .tj-cal__empty-note,
+html[data-theme="light"] .tj-cal-weekcell p,
+html[data-theme="light"] .tj-pg__label,
+html[data-theme="light"] .tj-pg__hint,
+html[data-theme="light"] .tj-donut__label {
+  color: #171717 !important;
+}
+
+html[data-theme="light"] .tj-psych-out__wr {
+  color: #92400e !important;
+}
+
+/* Dark-only luxury washes so dark mode stays rich */
+html:not([data-theme="light"]) .tj-analytics__hero {
+  background:
+    linear-gradient(145deg, rgba(32, 28, 18, 0.45), rgba(12, 14, 22, 0.96) 42%, rgba(8, 10, 16, 0.98));
+}
+html:not([data-theme="light"]) .tj-bars-stage {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%),
+    rgba(0,0,0,0.22);
+}
+html:not([data-theme="light"]) .tj-pg__core,
+html:not([data-theme="light"]) .tj-donut__core {
+  background: radial-gradient(circle at 35% 30%, rgba(40,44,58,0.98), rgba(8,10,16,0.98));
+}
+html:not([data-theme="light"]) .tj-alert-card {
+  background: linear-gradient(155deg, rgba(22,26,38,0.95), rgba(10,12,18,0.98));
+}

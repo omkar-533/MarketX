@@ -8525,9 +8525,9 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 35% 30%, rgba(40, 44, 58, 0.98), rgba(8, 10, 16, 0.98));
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  box-shadow: inset 0 0 24px rgba(0,0,0,0.45);
+  background: var(--tf-surface);
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  box-shadow: inset 0 0 12px var(--tf-shadow);
 }
 .tj-donut__pct {
   font-size: 1.35rem;
@@ -8549,10 +8549,8 @@ input[type="number"] { -moz-appearance: textfield; }
   height: 13.5rem;
   border-radius: 0.9rem;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%),
-    rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: var(--tf-elevated);
+  border: 1px solid var(--tf-border);
   perspective: 800px;
 }
 .tj-bars-stage__grid {
@@ -8684,10 +8682,9 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.85rem;
   padding: 0.95rem 1rem;
   border-radius: 1.1rem;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  background:
-    linear-gradient(145deg, rgba(32, 28, 18, 0.45), rgba(12, 14, 22, 0.96) 42%, rgba(8, 10, 16, 0.98));
-  box-shadow: 0 14px 36px rgba(0,0,0,0.32), 0 0 28px rgba(212,175,55,0.06);
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  background: var(--tf-elevated);
+  box-shadow: 0 14px 36px var(--tf-shadow), 0 0 28px rgba(212,175,55,0.06);
 }
 .tj-analytics__title {
   margin: 0.15rem 0 0;
@@ -8699,7 +8696,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .tj-analytics__sub {
   margin: 0.25rem 0 0;
   font-size: 0.7rem;
-  color: #7c8799;
+  color: var(--tf-text-secondary);
   max-width: 26rem;
   line-height: 1.4;
 }
@@ -8817,8 +8814,8 @@ input[type="number"] { -moz-appearance: textfield; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 35% 30%, rgba(40,44,58,0.98), rgba(8,10,16,0.98));
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--tf-surface);
+  border: 1px solid var(--tf-border);
 }
 .tj-pg__val {
   font-size: 0.95rem;
@@ -9130,11 +9127,11 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: flex-start;
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(155deg, rgba(22,26,38,0.95), rgba(10,12,18,0.98));
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
   padding: 0.9rem 0.95rem;
   transform-style: preserve-3d;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+  box-shadow: 0 10px 28px var(--tf-shadow);
 }
 .tj-alert-card--good { border-color: rgba(16, 185, 129, 0.3); }
 .tj-alert-card--warning { border-color: rgba(245, 158, 11, 0.35); }
@@ -9723,10 +9720,9 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-bottom: 0.85rem;
   padding: 0.9rem 1rem;
   border-radius: 1rem;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  background:
-    linear-gradient(145deg, rgba(36, 30, 16, 0.42), rgba(12, 14, 22, 0.96) 45%, rgba(8, 10, 16, 0.98));
-  box-shadow: 0 12px 32px rgba(0,0,0,0.28), 0 0 28px rgba(212,175,55,0.06);
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  background: var(--tf-elevated);
+  box-shadow: 0 12px 32px var(--tf-shadow), 0 0 28px rgba(212,175,55,0.06);
 }
 .tj-cal__hero-orb {
   pointer-events: none;
@@ -9750,7 +9746,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .tj-cal__sub {
   margin: 0.25rem 0 0;
   font-size: 0.7rem;
-  color: #7c8799;
+  color: var(--tf-text-secondary);
   line-height: 1.4;
 }
 
@@ -9768,9 +9764,9 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 2rem;
   height: 2rem;
   border-radius: 0.65rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: var(--tf-elevated);
-  color: #94a3b8;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  color: var(--tf-text-secondary);
 }
 .tj-cal__nav-btn:hover { color: var(--tj-gold); border-color: rgba(212,175,55,0.4); }
 .tj-cal__today {
@@ -9828,15 +9824,14 @@ input[type="number"] { -moz-appearance: textfield; }
 .tj-cal__board {
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid rgba(255,255,255,0.08);
-  background:
-    linear-gradient(180deg, rgba(20,24,34,0.9), rgba(8,10,16,0.98));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 16px 40px rgba(0,0,0,0.3);
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  box-shadow: 0 16px 40px var(--tf-shadow);
 }
 .tj-cal__weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--tf-border);
   background: var(--tf-elevated);
 }
 .tj-cal__weekday {
@@ -9858,9 +9853,9 @@ input[type="number"] { -moz-appearance: textfield; }
   min-height: 4.75rem;
   padding: 0.45rem 0.4rem 0.4rem;
   text-align: left;
-  border-right: 1px solid rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  background: rgba(11, 14, 23, 0.85);
+  border-right: 1px solid var(--tf-border);
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-surface);
   overflow: hidden;
   cursor: pointer;
 }
@@ -9873,8 +9868,8 @@ input[type="number"] { -moz-appearance: textfield; }
   background: var(--tf-elevated);
   cursor: default;
 }
-.tj-cal__cell--empty:hover { background: rgba(18, 21, 32, 0.95); }
-.tj-cal__cell--future { background: rgba(11, 14, 23, 0.55); }
+.tj-cal__cell--empty:hover { background: var(--tf-elevated); }
+.tj-cal__cell--future { background: var(--tf-elevated); }
 .tj-cal__cell--today {
   box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.45);
   background: rgba(212, 175, 55, 0.06);
@@ -9925,7 +9920,7 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--tf-text-secondary);
 }
 .tj-cal__day.is-today { color: var(--tj-gold); }
-.tj-cal__cell--muted .tj-cal__day { color: #475569; }
+.tj-cal__cell--muted .tj-cal__day { color: var(--tf-text-muted); }
 .tj-cal__trades {
   font-size: 0.5rem;
   font-weight: 700;
@@ -9959,7 +9954,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .tj-cal__dash {
   margin: 0.55rem 0 0;
   font-size: 0.65rem;
-  color: #334155;
+  color: var(--tf-text-muted);
 }
 
 .tj-cal__legend {
@@ -9996,11 +9991,10 @@ input[type="number"] { -moz-appearance: textfield; }
   overflow: hidden;
   margin-top: 0.85rem;
   border-radius: 1rem;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  background:
-    linear-gradient(155deg, rgba(36, 30, 16, 0.35), rgba(12, 14, 22, 0.97) 40%, rgba(8, 10, 16, 0.98));
+  border: 1px solid color-mix(in srgb, #d4af37 28%, var(--tf-border));
+  background: var(--tf-elevated);
   padding: 0.9rem;
-  box-shadow: 0 14px 36px rgba(0,0,0,0.32), 0 0 24px rgba(212,175,55,0.06);
+  box-shadow: 0 14px 36px var(--tf-shadow), 0 0 24px rgba(212,175,55,0.06);
 }
 .tj-cal__detail-glow {
   pointer-events: none;
@@ -10029,7 +10023,7 @@ input[type="number"] { -moz-appearance: textfield; }
 .tj-cal__detail-sub {
   margin: 0.25rem 0 0;
   font-size: 0.65rem;
-  color: #7c8799;
+  color: var(--tf-text-secondary);
 }
 .tj-cal__detail-sub .is-up { color: #34d399; font-weight: 750; }
 .tj-cal__detail-sub .is-down { color: #fb7185; font-weight: 750; }
@@ -10040,9 +10034,9 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.55rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: var(--tf-elevated);
-  color: #94a3b8;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  color: var(--tf-text-secondary);
 }
 .tj-cal__tape {
   position: relative;
@@ -10299,4 +10293,127 @@ input[type="number"] { -moz-appearance: textfield; }
   .wolf-loader__orb,
   .wolf-loader__label,
   .wolf-loader__bar > span { animation: none !important; }
+}
+
+/* Calendar luxury wash — dark theme only */
+html:not([data-theme="light"]) .tj-cal__hero {
+  background:
+    linear-gradient(145deg, rgba(36, 30, 16, 0.42), rgba(12, 14, 22, 0.96) 45%, rgba(8, 10, 16, 0.98));
+}
+html:not([data-theme="light"]) .tj-cal__board {
+  background: linear-gradient(180deg, rgba(20,24,34,0.9), rgba(8,10,16,0.98));
+}
+html:not([data-theme="light"]) .tj-cal__detail {
+  background:
+    linear-gradient(155deg, rgba(36, 30, 16, 0.35), rgba(12, 14, 22, 0.97) 40%, rgba(8, 10, 16, 0.98));
+}
+html:not([data-theme="light"]) .tj-cal__cell {
+  background: rgba(11, 14, 23, 0.85);
+}
+html:not([data-theme="light"]) .tj-cal__cell--empty:hover {
+  background: rgba(18, 21, 32, 0.95);
+}
+html:not([data-theme="light"]) .tj-cal__cell--future {
+  background: rgba(11, 14, 23, 0.55);
+}
+
+/* ═══ FINAL: Journal light surfaces — last in cascade, always wins ═══ */
+html[data-theme="light"] .tj-analytics__hero,
+html[data-theme="light"] .tj-cal__hero,
+html[data-theme="light"] .tj-cal__board,
+html[data-theme="light"] .tj-cal__detail,
+html[data-theme="light"] .tj-alert-card,
+html[data-theme="light"] .tj-psych-desk,
+html[data-theme="light"] .tj-bars-stage,
+html[data-theme="light"] .tj-card,
+html[data-theme="light"] .tj-card--chart {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych-out__card,
+html[data-theme="light"] .tj-psych-out__spark,
+html[data-theme="light"] .tj-analytics__kpi,
+html[data-theme="light"] .tj-cal__stat,
+html[data-theme="light"] .tj-cal-weekcell,
+html[data-theme="light"] .tj-cal-replay__row,
+html[data-theme="light"] .tj-cal__weekdays,
+html[data-theme="light"] .tj-emotion__row,
+html[data-theme="light"] .tj-rank__row {
+  background: #f7f9fc !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-cal__cell {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #e6edf5 !important;
+}
+
+html[data-theme="light"] .tj-cal__cell--muted,
+html[data-theme="light"] .tj-cal__cell--future,
+html[data-theme="light"] .tj-cal__cell--empty:hover {
+  background: #f3f6fa !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .tj-donut__core,
+html[data-theme="light"] .tj-pg__core {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #d5dee9 !important;
+  box-shadow: none !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-psych-out__tier,
+html[data-theme="light"] .tj-psych-out__meta,
+html[data-theme="light"] .tj-psych-out__tl-label,
+html[data-theme="light"] .tj-psych-out__col span,
+html[data-theme="light"] .tj-analytics__title,
+html[data-theme="light"] .tj-cal__title,
+html[data-theme="light"] .tj-cal__month,
+html[data-theme="light"] .tj-cal__day,
+html[data-theme="light"] .tj-cal__stat strong,
+html[data-theme="light"] .tj-cal-weekcell strong,
+html[data-theme="light"] .tj-chart__title,
+html[data-theme="light"] .tj-donut__pct,
+html[data-theme="light"] .tj-pg__val,
+html[data-theme="light"] .tj-analytics__kpi strong {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .tj-analytics__sub,
+html[data-theme="light"] .tj-cal__sub,
+html[data-theme="light"] .tj-cal__stat span,
+html[data-theme="light"] .tj-cal__weekday,
+html[data-theme="light"] .tj-analytics__kpi span,
+html[data-theme="light"] .tj-cal__empty-note,
+html[data-theme="light"] .tj-cal-weekcell p {
+  color: #171717 !important;
+}
+
+html[data-theme="light"] .tj-psych-out__wr {
+  color: #92400e !important;
+}
+
+html:not([data-theme="light"]) .tj-analytics__hero {
+  background:
+    linear-gradient(145deg, rgba(32, 28, 18, 0.45), rgba(12, 14, 22, 0.96) 42%, rgba(8, 10, 16, 0.98));
+}
+html:not([data-theme="light"]) .tj-bars-stage {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%),
+    rgba(0,0,0,0.22);
+}
+html:not([data-theme="light"]) .tj-pg__core,
+html:not([data-theme="light"]) .tj-donut__core {
+  background: radial-gradient(circle at 35% 30%, rgba(40,44,58,0.98), rgba(8,10,16,0.98));
+}
+html:not([data-theme="light"]) .tj-alert-card {
+  background: linear-gradient(155deg, rgba(22,26,38,0.95), rgba(10,12,18,0.98));
 }
