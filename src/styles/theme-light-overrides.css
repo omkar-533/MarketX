@@ -7,18 +7,20 @@ html[data-theme="light"] {
   --tf-elevated: #f7f9fc;
   --tf-border: #d5dee9;
   --tf-border-soft: #e6edf5;
-  --tf-text: #0f172a;
-  --tf-text-secondary: #334155;
-  --tf-text-muted: #64748b;
+  /* Near-black primary text — grey only for tiny captions */
+  --tf-text: #0a0a0a;
+  --tf-text-secondary: #171717;
+  --tf-text-muted: #404040;
+  --tf-placeholder: #737373;
   --tf-glass: rgba(255, 255, 255, 0.92);
   --tf-overlay: rgba(15, 23, 42, 0.4);
   --tf-input-bg: #ffffff;
   --tf-chart-bg: #ffffff;
   --tf-shadow: rgba(15, 23, 42, 0.07);
-  --tj-gold: #b45309;
-  --tj-gold-strong: #92400e;
-  --tj-up: #059669;
-  --tj-down: #e11d48;
+  --tj-gold: #92400e;
+  --tj-gold-strong: #78350f;
+  --tj-up: #047857;
+  --tj-down: #be123c;
   --app-text: var(--tf-text);
   --app-text-secondary: var(--tf-text-secondary);
   --app-text-muted: var(--tf-text-muted);
@@ -31,37 +33,29 @@ html[data-theme="light"] {
   --color-dark-muted: var(--tf-text-muted);
 }
 
-/* ── Text: dark-theme utilities → readable on light ───────── */
+/* ── Text: dark-theme utilities → black/near-black on light ─ */
 html[data-theme="light"] .text-white,
-html[data-theme="light"] .text-slate-100 {
-  color: var(--tf-text) !important;
-}
-
-html[data-theme="light"] .text-slate-200 {
-  color: #1e293b !important;
-}
-
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200,
 html[data-theme="light"] .text-slate-300 {
-  color: #334155 !important;
+  color: #0a0a0a !important;
 }
 
-html[data-theme="light"] .text-slate-400 {
-  color: #475569 !important;
-}
-
+html[data-theme="light"] .text-slate-400,
 html[data-theme="light"] .text-slate-500 {
-  color: #64748b !important;
+  color: #171717 !important;
 }
 
 html[data-theme="light"] .text-slate-600,
 html[data-theme="light"] .text-slate-700 {
-  color: #475569 !important;
+  color: #0a0a0a !important;
 }
 
 html[data-theme="light"] .hover\:text-white:hover,
 html[data-theme="light"] .hover\:text-slate-200:hover,
-html[data-theme="light"] .hover\:text-slate-100:hover {
-  color: var(--tf-text) !important;
+html[data-theme="light"] .hover\:text-slate-100:hover,
+html[data-theme="light"] .hover\:text-slate-300:hover {
+  color: #0a0a0a !important;
 }
 
 /* Keep contrast on solid gold / brand CTAs */
@@ -219,7 +213,7 @@ html[data-theme="light"] textarea {
 
 html[data-theme="light"] input::placeholder,
 html[data-theme="light"] textarea::placeholder {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-placeholder) !important;
 }
 
 html[data-theme="light"] select {
@@ -243,7 +237,7 @@ html[data-theme="light"] .auth-subtitle,
 html[data-theme="light"] .auth-tab:not(.auth-tab--active),
 html[data-theme="light"] .auth-form-switch__label,
 html[data-theme="light"] .auth-form-switch__hint {
-  color: var(--tf-text-muted);
+  color: var(--tf-text-secondary);
 }
 
 html[data-theme="light"] .auth-tabs {
@@ -264,7 +258,7 @@ html[data-theme="light"] .auth-field-input {
 }
 
 html[data-theme="light"] .auth-field-input::placeholder {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-placeholder) !important;
 }
 
 html[data-theme="light"] .auth-field-input:-webkit-autofill,
@@ -388,7 +382,7 @@ html[data-theme="light"] .mai-chat__empty-sub,
 html[data-theme="light"] .mai-chat__suggest-hint,
 html[data-theme="light"] .mai-chat__footnote,
 html[data-theme="light"] .mai-chat__status {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-text-secondary) !important;
 }
 
 html[data-theme="light"] .mai-chat__composer,
@@ -502,7 +496,7 @@ html[data-theme="light"] .lux-ind__tv-hint,
 html[data-theme="light"] .lux-ind__footer-note,
 html[data-theme="light"] .lux-lib__count,
 html[data-theme="light"] .lux-lib__eyebrow {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-text-secondary) !important;
 }
 
 html[data-theme="light"] .lux-lib__search input,
@@ -617,7 +611,7 @@ html[data-theme="light"] .tj-btn--icon,
 html[data-theme="light"] .tj-status:not(.tj-status--ok),
 html[data-theme="light"] .tj-quality__label,
 html[data-theme="light"] .tj-quality__gaps {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-text-secondary) !important;
 }
 
 html[data-theme="light"] .tj-hero__eyebrow,
@@ -695,7 +689,7 @@ html[data-theme="light"] .recharts-cartesian-grid line {
 }
 
 html[data-theme="light"] .recharts-text {
-  fill: #64748b !important;
+  fill: #404040 !important;
 }
 
 html[data-theme="light"] .recharts-default-tooltip,
@@ -799,7 +793,7 @@ html[data-theme="light"] .access-proof__title {
 html[data-theme="light"] .access-gate__body,
 html[data-theme="light"] .access-gate__step-body,
 html[data-theme="light"] .access-proof__hint {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-text-secondary) !important;
 }
 
 html[data-theme="light"] .access-gate__step,
@@ -834,7 +828,7 @@ html[data-theme="light"] .trial-nudge__body,
 html[data-theme="light"] .trial-nudge__expires,
 html[data-theme="light"] .tv-grant__body,
 html[data-theme="light"] .tv-grant__later {
-  color: var(--tf-text-muted) !important;
+  color: var(--tf-text-secondary) !important;
 }
 
 html[data-theme="light"] .trial-nudge__countdown,

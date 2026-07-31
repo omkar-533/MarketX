@@ -38,18 +38,19 @@ html[data-theme="light"] {
   --tf-elevated: #f7f9fc;
   --tf-border: #d5dee9;
   --tf-border-soft: #e6edf5;
-  --tf-text: #0f172a;
-  --tf-text-secondary: #334155;
-  --tf-text-muted: #64748b;
+  --tf-text: #0a0a0a;
+  --tf-text-secondary: #171717;
+  --tf-text-muted: #404040;
+  --tf-placeholder: #737373;
   --tf-glass: rgba(255, 255, 255, 0.92);
   --tf-overlay: rgba(15, 23, 42, 0.4);
   --tf-input-bg: #ffffff;
   --tf-chart-bg: #ffffff;
   --tf-shadow: rgba(15, 23, 42, 0.07);
-  --tj-gold: #b45309;
-  --tj-gold-strong: #92400e;
-  --tj-up: #059669;
-  --tj-down: #e11d48;
+  --tj-gold: #92400e;
+  --tj-gold-strong: #78350f;
+  --tj-up: #047857;
+  --tj-down: #be123c;
   color-scheme: light;
 }
 
