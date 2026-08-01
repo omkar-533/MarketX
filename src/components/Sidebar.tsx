@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
+import { SHOW_INDICATORS } from '../constants/featureFlags';
 import BrandMark from './BrandMark';
 
 interface SidebarProps {
@@ -22,7 +23,9 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
-  { id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 },
+  ...(SHOW_INDICATORS
+    ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
+    : []),
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 

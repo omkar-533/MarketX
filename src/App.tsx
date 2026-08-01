@@ -7,6 +7,7 @@ import WolfLoader from './components/WolfLoader';
 import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
 import { connectFyersAuthCode } from './services/fyersApiService';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
+import { SHOW_INDICATORS } from './constants/featureFlags';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -46,7 +47,14 @@ function PageLoader() {
   return <WolfLoader />;
 }
 
-const HIDDEN_TABS = new Set(['papertrading', 'dashboard', 'oiintelligence', 'heatmap', 'scanner']);
+const HIDDEN_TABS = new Set([
+  'papertrading',
+  'dashboard',
+  'oiintelligence',
+  'heatmap',
+  'scanner',
+  ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
+]);
 const DEFAULT_TAB = 'trafi';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';

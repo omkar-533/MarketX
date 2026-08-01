@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Command, ArrowRight } from 'lucide-react';
+import { SHOW_INDICATORS } from '../constants/featureFlags';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ const commands = [
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },
   { id: 'strategy', label: 'Strategy Builder', shortcut: 'S' },
   { id: 'futures', label: 'Futures Analytics', shortcut: 'F' },
-  { id: 'indicators', label: 'Open Indicators', shortcut: 'C' },
+  ...(SHOW_INDICATORS ? [{ id: 'indicators', label: 'Open Indicators', shortcut: 'C' }] : []),
 ];
 
 export default function CommandPalette({ isOpen, onClose, onNavigate }: CommandPaletteProps) {

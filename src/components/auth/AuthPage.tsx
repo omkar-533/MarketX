@@ -16,6 +16,7 @@ import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './A
 import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
+import { SHOW_INDICATORS } from '../../constants/featureFlags';
 import { TRIAL_DAYS, type PlanId } from '../../constants/plans';
 import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
@@ -29,12 +30,12 @@ type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
   onResetComplete: ForgotFormProps['onResetComplete'];
 };
 
-const STORY_BANDS = [
+const STORY_BANDS_ALL = [
   {
     id: 'master-ai',
     kicker: 'Wolf AI',
     title: 'Build your own edge with AI',
-    body: 'Ask market questions and get context-aware answers � bias, structure, and session context in one copilot.',
+    body: 'Ask market questions and get context-aware answers — bias, structure, and session context in one copilot.',
     cta: 'Get started now',
     image: `${import.meta.env.BASE_URL}landing/band-ai-copilot.jpg`,
   },
@@ -42,7 +43,7 @@ const STORY_BANDS = [
     id: 'indicators',
     kicker: 'Indicators',
     title: 'A library built for serious charts',
-    body: 'Browse published indicators, open the invite link, and use them during your demo � longer access after the desk approves.',
+    body: 'Browse published indicators, open the invite link, and use them during your demo — longer access after the desk approves.',
     cta: 'Get access now',
     image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=4`,
   },
@@ -55,6 +56,8 @@ const STORY_BANDS = [
     image: `${import.meta.env.BASE_URL}landing/band-autopilot.jpg`,
   },
 ] as const;
+
+const STORY_BANDS = STORY_BANDS_ALL.filter((b) => SHOW_INDICATORS || b.id !== 'indicators');
 
 const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader-${n}.jpg?v=3`;
 
@@ -125,6 +128,10 @@ const REVIEWS = [
   },
 ] as const;
 
+const VISIBLE_REVIEWS = REVIEWS.filter(
+  (r) => SHOW_INDICATORS || !/indicator/i.test(r.quote),
+);
+
 const TICKER = [
   ['NIFTY', '+0.62%', true],
   ['BANKNIFTY', '+0.94%', true],
@@ -140,12 +147,19 @@ const TICKER = [
   ['LT', '+0.49%', true],
 ] as const;
 
-const STATS = [
-  { to: 3, suffix: '', label: 'core modules' },
-  { to: 1, suffix: '', label: 'AI copilot desk' },
-  { to: 1, suffix: '', label: 'indicators library' },
-  { to: 1, suffix: '', label: 'trading journal' },
-] as const;
+const STATS = SHOW_INDICATORS
+  ? ([
+      { to: 3, suffix: '', label: 'core modules' },
+      { to: 1, suffix: '', label: 'AI copilot desk' },
+      { to: 1, suffix: '', label: 'indicators library' },
+      { to: 1, suffix: '', label: 'trading journal' },
+    ] as const)
+  : ([
+      { to: 2, suffix: '', label: 'core modules' },
+      { to: 1, suffix: '', label: 'AI copilot desk' },
+      { to: 1, suffix: '', label: 'trading journal' },
+      { to: TRIAL_DAYS, suffix: '', label: 'day free trial' },
+    ] as const);
 
 const ease = EASE;
 
@@ -337,7 +351,7 @@ export default function AuthPage(props: AuthPageProps) {
           <nav className="auth-lux__nav-links" aria-label="Primary">
             <a href="#platform">Features</a>
             <a href="#reviews">Reviews</a>
-            <a href="#modules">Library</a>
+            {SHOW_INDICATORS ? <a href="#modules">Library</a> : <a href="#modules">Modules</a>}
             <a href="#pricing">Pricing</a>
           </nav>
           <div className="auth-lux__nav-actions">
@@ -377,8 +391,8 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55, ease }}
             >
-              The AI platform for serious Indian traders � Wolf AI, Indicators, and Trading
-              Journal in one invite-only workspace.
+              The AI platform for serious Indian traders — Wolf AI and Trading Journal in one
+              invite-only workspace.
             </motion.p>
             <motion.div
               className="auth-lux__hero-actions"
@@ -490,12 +504,12 @@ export default function AuthPage(props: AuthPageProps) {
           </div>
 
           <Marquee duration={58}>
-            {REVIEWS.slice(0, 4).map((r) => (
+            {VISIBLE_REVIEWS.slice(0, 4).map((r) => (
               <ReviewCard key={r.name} review={r} />
             ))}
           </Marquee>
           <Marquee duration={72} reverse>
-            {REVIEWS.slice(4).map((r) => (
+            {VISIBLE_REVIEWS.slice(4).map((r) => (
               <ReviewCard key={r.name} review={r} />
             ))}
           </Marquee>
@@ -515,7 +529,9 @@ export default function AuthPage(props: AuthPageProps) {
               </h2>
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
-                  Three core modules � Wolf AI, Indicators, and Trading Journal in one luxury workspace.
+                  {SHOW_INDICATORS
+                    ? 'Three core modules — Wolf AI, Indicators, and Trading Journal in one luxury workspace.'
+                    : 'Core modules — Wolf AI and Trading Journal in one luxury workspace.'}
                 </p>
               </Reveal>
             </div>
@@ -576,7 +592,7 @@ export default function AuthPage(props: AuthPageProps) {
             <div className="auth-lux__footer-links">
               <a href="#platform">Features</a>
               <a href="#reviews">Reviews</a>
-              <a href="#modules">Library</a>
+              <a href="#modules">{SHOW_INDICATORS ? 'Library' : 'Modules'}</a>
               <a href="#pricing">Pricing</a>
               <button type="button" onClick={openSignIn}>
                 Sign In

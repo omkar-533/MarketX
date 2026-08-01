@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { PAGE_NAMES } from '../../constants/brandLabels';
+import { SHOW_INDICATORS } from '../../constants/featureFlags';
 
 type VizKind = 'bars' | 'line' | 'ladder' | 'tiles' | 'scan' | 'chat';
 
@@ -29,14 +30,19 @@ const LOGIN_FEATURES: Feature[] = [
     icon: Bot,
     viz: 'chat',
   },
-  {
-    id: 'indicators',
-    title: PAGE_NAMES.indicators,
-    detail: 'Invite links',
-    description: 'Browse published indicators, open invite links, and use them during your demo.',
-    icon: Link2,
-    viz: 'scan',
-  },
+  ...(SHOW_INDICATORS
+    ? [
+        {
+          id: 'indicators',
+          title: PAGE_NAMES.indicators,
+          detail: 'Invite links',
+          description:
+            'Browse published indicators, open invite links, and use them during your demo.',
+          icon: Link2,
+          viz: 'scan' as const,
+        },
+      ]
+    : []),
   {
     id: 'tradingjournal',
     title: PAGE_NAMES.tradingjournal,

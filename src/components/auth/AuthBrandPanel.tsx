@@ -9,10 +9,11 @@ import {
   BRAND_SHORT,
   BRAND_TAGLINE_FULL,
 } from '../../constants/brandLabels';
+import { SHOW_INDICATORS } from '../../constants/featureFlags';
 
 const capabilities = [
   { icon: Sparkles, text: 'Wolf AI copilots' },
-  { icon: Bot, text: 'Indicators library' },
+  ...(SHOW_INDICATORS ? [{ icon: Bot, text: 'Indicators library' }] : []),
   { icon: Zap, text: 'Trading journal' },
   { icon: Cpu, text: 'Invite-only desk' },
 ];

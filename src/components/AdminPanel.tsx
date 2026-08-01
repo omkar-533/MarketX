@@ -51,6 +51,7 @@ import IndicatorsTab from './admin/IndicatorsTab';
 import KnowledgeTab from './admin/KnowledgeTab';
 import PlansTab from './admin/PlansTab';
 import TvAccessRequestsTab from './admin/TvAccessRequestsTab';
+import { SHOW_INDICATORS } from '../constants/featureFlags';
 
 const trafficData = Array.from({ length: 14 }, (_, i) => ({
   date: `Day ${i + 1}`,
@@ -399,8 +400,12 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         {(
           [
             { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
-            { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
-            { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
+            ...(SHOW_INDICATORS
+              ? [
+                  { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
+                  { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
+                ]
+              : []),
             { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
             { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
@@ -440,11 +445,11 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         />
       )}
 
-      {activeTab === 'tv' && (
+      {SHOW_INDICATORS && activeTab === 'tv' && (
         <TvAccessRequestsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
-      {activeTab === 'indicators' && (
+      {SHOW_INDICATORS && activeTab === 'indicators' && (
         <IndicatorsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
