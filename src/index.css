@@ -5720,7 +5720,8 @@ input[type="number"] { -moz-appearance: textfield; }
 .tv-grant-overlay {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  /* Above trial nudge (120) / access gate (130) so invite clicks are not blocked */
+  z-index: 140;
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -5839,6 +5840,8 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 0.72rem;
   font-weight: 600;
   text-decoration: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .tv-grant__invite:hover {

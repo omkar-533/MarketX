@@ -14,6 +14,7 @@ import {
 import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
+import { openExternalUrl } from '../utils/openExternalUrl';
 import WolfLoader from './WolfLoader';
 
 /** Split admin description into overview + optional ## sections (Usage / Details / FAQ). */
@@ -435,16 +436,15 @@ export default function Indicators({
                         : 'lux-ind__access-actions--secondary'
                     }`}
                   >
-                    <a
-                      href={effectiveLink}
-                      target="_blank"
-                      rel="noreferrer noopener"
+                    <button
+                      type="button"
                       className="lux-ind__btn lux-ind__btn--primary"
-                      style={{ textDecoration: 'none', justifyContent: 'center' }}
+                      style={{ justifyContent: 'center' }}
+                      onClick={() => openExternalUrl(effectiveLink)}
                     >
                       {tvStatus === 'granted' ? 'Open indicator' : 'Open invite'}
                       <ArrowRight className="w-4 h-4" />
-                    </a>
+                    </button>
                     <button
                       type="button"
                       className="lux-ind__btn lux-ind__btn--ghost"

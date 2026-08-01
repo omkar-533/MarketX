@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Bell, CheckCircle2, ExternalLink, X } from 'lucide-react';
 import { listTvAccessGrants, type TvAccessGrant } from '../../services/indicatorLibrary';
 import { BRAND } from '../../constants/brandLabels';
+import { normalizeExternalUrl, openExternalUrl } from '../../utils/openExternalUrl';
 
 const SEEN_KEY_PREFIX = 'wolf_tv_grant_seen_';
 const POLL_MS = 12_000;
@@ -201,17 +202,19 @@ export default function TvAccessGrantedPopup({
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {grant.inviteLink ? (
-              <a
-                href={grant.inviteLink}
-                target="_blank"
-                rel="noreferrer noopener"
+            {normalizeExternalUrl(grant.inviteLink) ? (
+              <button
+                type="button"
                 className="tv-grant__invite"
-                onClick={() => markSeen(grant.id)}
+                onClick={() => {
+                  const ok = openExternalUrl(grant.inviteLink);
+                  markSeen(grant.id);
+                  if (ok) setGrant(null);
+                }}
               >
                 Open invite on TradingView
                 <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              </button>
             ) : null}
 
             <button type="button" className="tv-grant__later" onClick={dismiss}>

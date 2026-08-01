@@ -637,14 +637,14 @@ router.get('/tv-access/grants', requireUser, async (req, res) => {
     if (req.appUser?.role === 'admin') {
       return res.json({ grants: [] });
     }
-    const access = accessStateFor(req.appUser);
     const requests = await listGrantedTvAccessForUser(req.appUser?.id, { limit: 30 });
     const grants = [];
     for (const request of requests) {
       const indicator = request.indicatorId
         ? await getIndicatorById(request.indicatorId, { publishedOnly: true })
         : null;
-      const inviteLink = access.unlocked && indicator?.link ? indicator.link : '';
+      // TV Approve means the invite is unlocked for this member — always return the link.
+      const inviteLink = indicator?.link || '';
       grants.push({
         id: request.id,
         indicatorId: request.indicatorId,
