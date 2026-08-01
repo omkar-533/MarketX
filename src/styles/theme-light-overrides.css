@@ -321,6 +321,104 @@ html[data-theme="light"] .auth-signup-btn {
   border-color: rgba(180, 83, 9, 0.35) !important;
 }
 
+/* Landing auth modal (Sign in / Sign up / Forgot) */
+html[data-theme="light"] .auth-lux-modal__backdrop {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel {
+  background: #ffffff !important;
+  border-color: rgba(180, 83, 9, 0.28) !important;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18) !important;
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__close {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #404040 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__close:hover {
+  color: #0a0a0a !important;
+  border-color: rgba(180, 83, 9, 0.45) !important;
+  background: #ffffff !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-title,
+html[data-theme="light"] .auth-form-panel .auth-title-gold {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-title-gold span {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-subtitle,
+html[data-theme="light"] .auth-form-panel .auth-label,
+html[data-theme="light"] .auth-form-panel .auth-checkbox,
+html[data-theme="light"] .auth-form-panel .auth-form-switch__label,
+html[data-theme="light"] .auth-form-panel .auth-form-switch__hint,
+html[data-theme="light"] .auth-form-panel .auth-forgot-note {
+  color: #404040 !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-field {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-field-input {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-kicker {
+  color: #92400e !important;
+  background: rgba(180, 83, 9, 0.08) !important;
+  border-color: rgba(180, 83, 9, 0.28) !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-inline-link,
+html[data-theme="light"] .auth-form-panel .auth-link {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-form-switch {
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-signup-btn {
+  color: #78350f !important;
+  border-color: rgba(180, 83, 9, 0.45) !important;
+  background: rgba(180, 83, 9, 0.08) !important;
+}
+
+html[data-theme="light"] .auth-form-panel .auth-signup-btn:hover {
+  color: #0a0a0a !important;
+  background: rgba(212, 175, 55, 0.35) !important;
+}
+
+html[data-theme="light"] .auth-app-modal__backdrop {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+html[data-theme="light"] .auth-app-modal__panel {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.16) !important;
+}
+
+html[data-theme="light"] .auth-app-modal__close {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #404040 !important;
+}
+
+html[data-theme="light"] .auth-app-modal__close:hover {
+  color: #0a0a0a !important;
+  background: #ffffff !important;
+}
+
 /* ── Auth lux marketing / landing page (full light pass) ───── */
 html[data-theme="light"] .auth-lux {
   --lux-bg: #f0f3f8;
