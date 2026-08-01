@@ -290,7 +290,7 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--tf-text-muted);
   margin-bottom: 0.45rem;
   margin-left: 0.15rem;
 }
@@ -340,14 +340,14 @@ input[type="number"] { -moz-appearance: textfield; }
   margin: 0.35rem 0 0;
   text-align: center;
   font-size: 0.7rem;
-  color: #64748b;
+  color: var(--tf-text-muted);
 }
 
 .auth-form-switch__hint {
   margin: 0;
   text-align: center;
   font-size: 0.65rem;
-  color: #475569;
+  color: var(--tf-text-muted);
 }
 
 .auth-signup-btn {
@@ -4390,9 +4390,10 @@ input[type="number"] { -moz-appearance: textfield; }
   overflow-y: auto;
   padding: 1.55rem 1.4rem 1.8rem;
   border-radius: 1.35rem;
-  background: rgba(12, 12, 14, 0.98);
-  border: 1px solid rgba(201, 162, 39, 0.28);
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.6);
+  background: var(--tf-surface);
+  color: var(--tf-text);
+  border: 1px solid color-mix(in srgb, var(--tj-gold-strong) 35%, var(--tf-border));
+  box-shadow: 0 32px 90px var(--tf-shadow);
 }
 
 @media (min-width: 640px) {
@@ -4412,15 +4413,15 @@ input[type="number"] { -moz-appearance: textfield; }
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(20, 20, 24, 0.95);
-  color: #a1a1aa;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text-muted);
   cursor: pointer;
 }
 
 .auth-lux-modal__close:hover {
-  color: #fff;
-  border-color: rgba(201, 162, 39, 0.4);
+  color: var(--tf-text);
+  border-color: color-mix(in srgb, var(--tj-gold-strong) 45%, var(--tf-border));
 }
 
 
@@ -4629,8 +4630,8 @@ input[type="number"] { -moz-appearance: textfield; }
   display: flex;
   align-items: center;
   height: 3.25rem;
-  background: #0e121c;
-  border: 1px solid #232a3b;
+  background: var(--tf-input-bg);
+  border: 1px solid var(--tf-border);
   border-radius: 0.85rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -4883,7 +4884,7 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--tf-text-muted);
 }
 
 .auth-checkbox input {
@@ -5092,9 +5093,9 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-top: 1.25rem;
   font-size: 0.6875rem;
   line-height: 1.6;
-  color: rgba(148, 163, 184, 0.9);
-  background: rgba(148, 163, 184, 0.07);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--tf-text-muted);
+  background: var(--tf-elevated);
+  border: 1px solid var(--tf-border);
   border-radius: 0.6rem;
   padding: 0.6rem 0.75rem;
 }
@@ -10549,4 +10550,70 @@ html:not([data-theme="light"]) .mai-chat__chip--on,
 html[data-theme="dark"] .mai-chat__badge,
 html:not([data-theme="light"]) .mai-chat__badge {
   color: #f0d78c !important;
+}
+
+/* FINAL: landing auth modal (sign in / signup / forgot) — theme tokens must win */
+html[data-theme="light"] .auth-lux-modal__panel {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0a0a0a !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.16) !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-title,
+html[data-theme="light"] .auth-lux-modal__panel .auth-title-gold {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-title-gold span {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-subtitle,
+html[data-theme="light"] .auth-lux-modal__panel .auth-label,
+html[data-theme="light"] .auth-lux-modal__panel .auth-checkbox,
+html[data-theme="light"] .auth-lux-modal__panel .auth-form-switch__label,
+html[data-theme="light"] .auth-lux-modal__panel .auth-form-switch__hint,
+html[data-theme="light"] .auth-lux-modal__panel .auth-forgot-note,
+html[data-theme="light"] .auth-lux-modal__panel .text-slate-200,
+html[data-theme="light"] .auth-lux-modal__panel .text-slate-300,
+html[data-theme="light"] .auth-lux-modal__panel .text-slate-400,
+html[data-theme="light"] .auth-lux-modal__panel .text-slate-500 {
+  color: #404040 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-forgot-note {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-field {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-field-input {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-kicker {
+  color: #92400e !important;
+  background: rgba(180, 83, 9, 0.1) !important;
+  border-color: rgba(180, 83, 9, 0.3) !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__panel .auth-inline-link,
+html[data-theme="light"] .auth-lux-modal__panel .auth-link {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__close {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #404040 !important;
+}
+
+html[data-theme="light"] .auth-lux-modal__backdrop {
+  background: rgba(15, 23, 42, 0.42) !important;
 }
