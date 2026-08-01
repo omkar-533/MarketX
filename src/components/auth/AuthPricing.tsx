@@ -1,7 +1,8 @@
 import type { MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { ArrowRight, Check, Sparkles, Zap } from 'lucide-react';
-import { PLANS, TRIAL_DAYS, type Plan, type PlanId } from '../../constants/plans';
+import type { Plan, PlanId } from '../../constants/plans';
+import { usePlansCatalog } from '../../hooks/usePlansCatalog';
 import { Counter, EASE, GradientLine, Reveal, Words } from './scrollFx';
 
 type AuthPricingProps = {
@@ -12,10 +13,12 @@ type AuthPricingProps = {
 function PlanCard({
   plan,
   index,
+  trialDays,
   onSelect,
 }: {
   plan: Plan;
   index: number;
+  trialDays: number;
   onSelect: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -76,7 +79,7 @@ function PlanCard({
             {plan.price === 0 ? (
               <>
                 <span className="plan__amount plan__amount--free">Free</span>
-                <span className="plan__period">for {TRIAL_DAYS} days</span>
+                <span className="plan__period">for {trialDays} days</span>
               </>
             ) : (
               <>
@@ -133,8 +136,10 @@ function PlanCard({
   );
 }
 
-/** Pricing wall — one trial plus three billing durations, all with the same features. */
+/** Pricing wall — catalog from admin (fallback to defaults). */
 export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingProps) {
+  const { plans, trialDays } = usePlansCatalog();
+
   return (
     <section id="pricing" className="auth-lux__pricing">
       <div className="auth-lux__pricing-inner">
@@ -156,11 +161,12 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
         </div>
 
         <div className="auth-lux__plans">
-          {PLANS.map((plan, i) => (
+          {plans.map((plan, i) => (
             <PlanCard
               key={plan.id}
               plan={plan}
               index={i}
+              trialDays={trialDays}
               onSelect={() => (plan.id === 'trial' ? onStartTrial() : onChoosePlan(plan.id))}
             />
           ))}

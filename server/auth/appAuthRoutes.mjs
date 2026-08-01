@@ -26,9 +26,14 @@ import { consumeOtp, issueOtp, pendingOtpPayload } from './otpStore.mjs';
 import { isDevSmsMode, sendOtpSms, smsProviderName } from './smsProvider.mjs';
 import {
   DEFAULT_ACCESS_POPUP,
+  DEFAULT_SUBSCRIPTION_CATALOG,
   getAccessPopup,
+  getConfiguredTrialDays,
+  getSubscriptionCatalog,
   publicAccessPopup,
+  publicSubscriptionCatalog,
   setAccessPopup,
+  setSubscriptionCatalog,
 } from './appSettingsStore.mjs';
 import {
   createAccessRequest,
@@ -71,8 +76,6 @@ const JWT_SECRET =
   process.env.APP_AUTH_JWT_SECRET ||
   process.env.JWT_SECRET ||
   'apmi-invite-auth-change-me-in-production';
-
-const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 3);
 
 const LOCAL_ADMIN = {
   id: 'admin_local_omkar',
@@ -188,15 +191,16 @@ function validateSignup({ name, email, phone, password }) {
 
 async function accessPayloadFor(user) {
   const state = accessStateFor(user);
-  const [popup, request] = await Promise.all([
+  const [popup, request, trialDays] = await Promise.all([
     getAccessPopup(),
     user.role === 'admin' ? Promise.resolve(null) : latestRequestForUser(user.id),
+    getConfiguredTrialDays(),
   ]);
 
   return {
     access: {
       ...state,
-      trialDays: TRIAL_DAYS,
+      trialDays,
       request: request
         ? {
             id: request.id,
@@ -333,7 +337,7 @@ router.post('/signup/resend', async (req, res) => {
   }
 });
 
-/** POST /api/app-auth/signup/verify — creates the account + 3-day full trial */
+/** POST /api/app-auth/signup/verify — creates the account + full trial */
 router.post('/signup/verify', async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   const code = String(req.body?.code || '').trim();
@@ -348,6 +352,7 @@ router.post('/signup/verify', async (req, res) => {
       return res.status(400).json({ error: 'Signup expired. Please start again.' });
     }
 
+    const trialDays = await getConfiguredTrialDays();
     const created = await createAppUser({
       email: payload.email,
       passwordHash: payload.passwordHash,
@@ -357,7 +362,7 @@ router.post('/signup/verify', async (req, res) => {
       plan: 'free',
       role: 'user',
       createdBy: 'self-signup',
-      trialDays: TRIAL_DAYS,
+      trialDays,
       planId: 'trial',
     });
 
@@ -365,7 +370,7 @@ router.post('/signup/verify', async (req, res) => {
     return res.status(201).json({
       token: signAppToken(user),
       user,
-      trialDays: TRIAL_DAYS,
+      trialDays,
       source: 'trial',
       ...(await accessPayloadFor(user)),
     });
@@ -1144,11 +1149,12 @@ router.post('/admin/access-requests/:id/reject', requireAdmin, async (req, res) 
 /** GET /api/app-auth/admin/settings */
 router.get('/admin/settings', requireAdmin, async (_req, res) => {
   try {
+    const trialDays = await getConfiguredTrialDays();
     return res.json({
       popup: await getAccessPopup(),
       defaults: DEFAULT_ACCESS_POPUP,
       sms: { provider: smsProviderName(), devMode: isDevSmsMode() },
-      trialDays: TRIAL_DAYS,
+      trialDays,
     });
   } catch (err) {
     return failed(res, err, 'Could not load settings');
@@ -1162,6 +1168,44 @@ router.put('/admin/settings', requireAdmin, async (req, res) => {
     return res.json({ popup });
   } catch (err) {
     return failed(res, err, 'Save failed');
+  }
+});
+
+/* ────────────────────────── subscription plans catalog ────────────────────────── */
+
+/** GET /api/app-auth/plans — public catalog (enabled plans only) */
+router.get('/plans', async (_req, res) => {
+  try {
+    const catalog = await getSubscriptionCatalog();
+    return res.json(publicSubscriptionCatalog(catalog));
+  } catch (err) {
+    return failed(res, err, 'Could not load plans');
+  }
+});
+
+/** GET /api/app-auth/admin/plans — full catalog including disabled */
+router.get('/admin/plans', requireAdmin, async (_req, res) => {
+  try {
+    const catalog = await getSubscriptionCatalog();
+    return res.json({
+      ...catalog,
+      defaults: DEFAULT_SUBSCRIPTION_CATALOG,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not load plans');
+  }
+});
+
+/** PUT /api/app-auth/admin/plans — save full catalog */
+router.put('/admin/plans', requireAdmin, async (req, res) => {
+  try {
+    const catalog = await setSubscriptionCatalog(
+      req.body?.catalog || req.body,
+      req.adminActor || 'admin',
+    );
+    return res.json(catalog);
+  } catch (err) {
+    return failed(res, err, 'Could not save plans');
   }
 });
 

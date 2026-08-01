@@ -1,4 +1,4 @@
-/** Subscription plans shown on the landing page. Features scale with price; amounts stay fixed. */
+/** Subscription plans shown on the landing page and in-app. Defaults until admin overrides via API. */
 
 export type PlanId = 'trial' | 'monthly' | 'quarterly' | 'yearly';
 
@@ -16,6 +16,8 @@ export type Plan = {
   cta: string;
   note: string;
   featured?: boolean;
+  /** When false, plan is hidden from public pricing. */
+  enabled?: boolean;
   /** Feature bullets for this plan only — higher price = more included. */
   features: readonly string[];
 };
@@ -29,7 +31,7 @@ export const PLAN_FEATURES = [
   'Trading Journal — log trades, review P&L & discipline',
 ] as const;
 
-export const PLANS: readonly Plan[] = [
+export const DEFAULT_PLANS: readonly Plan[] = [
   {
     id: 'trial',
     name: 'Free Trial',
@@ -40,6 +42,7 @@ export const PLANS: readonly Plan[] = [
     cta: 'Start 3-day free trial',
     note: 'No card required · instant access',
     featured: true,
+    enabled: true,
     features: [
       'Wolf AI — limited daily questions',
       'Indicators — browse & open invite links',
@@ -56,6 +59,7 @@ export const PLANS: readonly Plan[] = [
     tagline: 'Full access to Wolf AI, Indicators, and Trading Journal — cancel anytime.',
     cta: 'Choose monthly',
     note: 'Cancel anytime from profile',
+    enabled: true,
     features: [
       'Wolf AI — full copilot access',
       'Indicators — browse & open invite links',
@@ -75,6 +79,7 @@ export const PLANS: readonly Plan[] = [
     save: 'Save ₹2,998',
     cta: 'Choose 3 months',
     note: 'Billed once for 3 months',
+    enabled: true,
     features: [
       'Everything in Monthly',
       'Wolf AI — higher daily limit',
@@ -94,6 +99,7 @@ export const PLANS: readonly Plan[] = [
     save: 'Save ₹20,989',
     cta: 'Choose yearly',
     note: 'Billed once for 12 months',
+    enabled: true,
     features: [
       'Everything in 3 Months',
       'Wolf AI — highest limits + priority replies',
@@ -104,10 +110,13 @@ export const PLANS: readonly Plan[] = [
   },
 ] as const;
 
-export function planById(id: PlanId): Plan {
-  return PLANS.find((p) => p.id === id) ?? PLANS[0];
+/** @deprecated Prefer DEFAULT_PLANS / fetchPublicPlans — alias for backwards compat. */
+export const PLANS = DEFAULT_PLANS;
+
+export function planById(id: PlanId, plans: readonly Plan[] = DEFAULT_PLANS): Plan {
+  return plans.find((p) => p.id === id) ?? plans[0] ?? DEFAULT_PLANS[0];
 }
 
-export function featuresForPlan(id: PlanId): readonly string[] {
-  return planById(id).features;
+export function featuresForPlan(id: PlanId, plans: readonly Plan[] = DEFAULT_PLANS): readonly string[] {
+  return planById(id, plans).features;
 }

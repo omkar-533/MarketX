@@ -16,7 +16,8 @@ import {
 import AuthField from './AuthField';
 import PasswordRevealButton from './PasswordRevealButton';
 import { isValidEmail } from './authUtils';
-import { TRIAL_DAYS, planById, type PlanId } from '../../constants/plans';
+import { planById, type PlanId } from '../../constants/plans';
+import { usePlansCatalog } from '../../hooks/usePlansCatalog';
 import type { OtpChallenge } from '../../services/appInviteAuth';
 
 export type AuthSignupFormProps = {
@@ -63,7 +64,8 @@ export default function AuthSignupForm({
   const [cooldown, setCooldown] = useState(0);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  const plan = planById(selectedPlan);
+  const { plans, trialDays } = usePlansCatalog();
+  const plan = planById(selectedPlan, plans);
   const isPaidIntent = plan.price > 0;
   const emailValid = isValidEmail(email);
   const mobileValid = isValidMobile(mobile);
@@ -215,7 +217,7 @@ export default function AuthSignupForm({
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Verify & start my {TRIAL_DAYS}-day trial
+                Verify & start my {trialDays}-day trial
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -251,7 +253,7 @@ export default function AuthSignupForm({
     <div className="auth-form-panel relative z-[1]">
       <div className="auth-kicker auth-kicker--ai mb-5">
         <Sparkles className="w-3 h-3" />
-        {TRIAL_DAYS}-day free trial
+        {trialDays}-day free trial
       </div>
 
       <motion.div
@@ -264,8 +266,8 @@ export default function AuthSignupForm({
         </h1>
         <p className="auth-subtitle">
           {isPaidIntent
-            ? `Your ${plan.name.toLowerCase()} plan starts with ${TRIAL_DAYS} free days — the desk activates billing after that.`
-            : `Full access to Wolf AI, Indicators, and Trading Journal for ${TRIAL_DAYS} days. No card, no commitment.`}
+            ? `Your ${plan.name.toLowerCase()} plan starts with ${trialDays} free days — the desk activates billing after that.`
+            : `Full access to Wolf AI, Indicators, and Trading Journal for ${trialDays} days. No card, no commitment.`}
         </p>
       </motion.div>
 

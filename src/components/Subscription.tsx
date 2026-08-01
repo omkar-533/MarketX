@@ -7,8 +7,8 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react';
-import { PLANS, TRIAL_DAYS } from '../constants/plans';
 import type { User } from '../hooks/useAuth';
+import { usePlansCatalog } from '../hooks/usePlansCatalog';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
 import AccessProofUpload from './access/AccessProofUpload';
 
@@ -43,6 +43,7 @@ export default function Subscription({
   popup,
   onAccessSubmitted,
 }: SubscriptionProps) {
+  const { plans, trialDays } = usePlansCatalog();
   const whatsapp = popup?.whatsapp?.trim();
   const isTrialUser = access?.isTrial ?? Boolean(user?.trialEndsAt);
   const needsForm = Boolean(access && !access.unlocked && access.status !== 'blocked');
@@ -97,7 +98,7 @@ export default function Subscription({
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
-        {PLANS.map((plan, idx) => {
+        {plans.map((plan, idx) => {
           const isTrial = plan.id === 'trial';
           return (
             <motion.div
@@ -153,7 +154,7 @@ export default function Subscription({
                 {isTrial ? (
                   <div className="w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <ShieldCheck className="w-4 h-4" />
-                    {isTrialUser ? 'Your current trial' : `${TRIAL_DAYS} days, already used`}
+                    {isTrialUser ? 'Your current trial' : `${trialDays} days, already used`}
                   </div>
                 ) : whatsapp ? (
                   <a
