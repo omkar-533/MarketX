@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'trafi', label: PAGE_NAMES.trafi, icon: Bot },
+  { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
   ...(SHOW_INDICATORS
     ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
     : []),

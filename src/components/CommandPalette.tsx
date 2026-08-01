@@ -10,7 +10,7 @@ interface CommandPaletteProps {
 }
 
 const commands = [
-  { id: 'trafi', label: 'Open Wolf AI', shortcut: 'M' },
+  { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },

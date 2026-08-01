@@ -38,8 +38,8 @@ const HISTORY_TURNS = 24;
 const HISTORY_MSG_CHARS = 2500;
 const CONTEXT_CAP_CHARS = 16_000;
 
-const SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Analyse AI), running WOLF AI — Institutional Trading Analyst System v1.0.
-Spoken name: Hunter. Do not rename yourself.
+const SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Wolf AI), running WOLF AI — Institutional Trading Analyst System v1.0.
+Spoken name: Hunter. Do not rename yourself. Never call the product Trafi or Analyse AI — the product name is Wolf AI.
 
 #######################################################################
 WOLF AI MARKET ANALYST GOVERNANCE ENGINE v1.0 — HIGHEST PRIORITY (overrides conflicting lower rules)
@@ -1563,7 +1563,7 @@ function createClient(apiKey) {
       apiKey,
       defaultHeaders: {
         'HTTP-Referer': 'https://wolftradeai.in',
-        'X-Title': 'Wolf Trade AI Analyse AI',
+        'X-Title': 'Wolf Trade AI — Wolf AI',
       },
     }),
     gemini: null,

@@ -39,6 +39,8 @@ export const PAGE_NAMES: Record<string, string> = {
   futures: 'Futures Analytics',
   oiintelligence: 'AI Intelligence',
   footprint: 'Footprint',
+  'wolf-ai': AI_PRODUCT_NAME,
+  /** @deprecated Use wolf-ai — kept so old links/storage still resolve. */
   trafi: AI_PRODUCT_NAME,
   indicators: 'Indicators',
 };
@@ -73,6 +75,7 @@ export function masterAiOfflineMessage(): string {
 /** Strip vendor names and developer commands from messages shown in UI */
 export function sanitizeDisplayMessage(msg: string): string {
   return String(msg || '')
+    .replace(/\bTrafi\b/gi, AI_PRODUCT_NAME)
     .replace(/\bAnalyse AI\b/gi, AI_PRODUCT_NAME)
     .replace(/AI Powered Market Intelligent/gi, BRAND)
     .replace(/\bAPMI\b/gi, BRAND_SHORT)

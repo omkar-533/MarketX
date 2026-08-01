@@ -55,7 +55,7 @@ const HIDDEN_TABS = new Set([
   'scanner',
   ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
 ]);
-const DEFAULT_TAB = 'trafi';
+const DEFAULT_TAB = 'wolf-ai';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
@@ -69,7 +69,8 @@ const VALID_TABS = new Set([
   'futures',
   'oiintelligence',
   'footprint',
-  'trafi',
+  'wolf-ai',
+  'trafi', // legacy alias → normalized to wolf-ai
   'indicators',
   'papertrading',
   'backtesting',
@@ -85,18 +86,22 @@ const VALID_TABS = new Set([
   'subscription',
 ]);
 
+function normalizeTabId(raw: string): string {
+  return raw === 'trafi' ? 'wolf-ai' : raw;
+}
+
 function tabFromHash(): string | null {
   const raw = window.location.hash.replace(/^#\/?/, '').split(/[?&]/)[0]?.trim() || '';
   if (!raw || AUTH_HASHES.has(raw.toLowerCase())) return null;
   if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
-  return raw;
+  return normalizeTabId(raw);
 }
 
 function tabFromStorage(): string | null {
   try {
     const raw = localStorage.getItem(TAB_STORAGE_KEY) || '';
     if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
-    return raw;
+    return normalizeTabId(raw);
   } catch {
     return null;
   }
@@ -246,7 +251,8 @@ function AppWorkspace() {
   }, [auth.isLoggedIn]);
 
   const handleTabChange = (tab: string) => {
-    const next = HIDDEN_TABS.has(tab) ? DEFAULT_TAB : tab;
+    const resolved = normalizeTabId(tab);
+    const next = HIDDEN_TABS.has(resolved) ? DEFAULT_TAB : resolved;
     setActiveTab(next);
     setMobileMenuOpen(false);
     persistTab(next);
@@ -296,7 +302,7 @@ function AppWorkspace() {
         return <OIIntelligence onNavigate={handleTabChange} />;
       case 'footprint':
         return <FootprintChart />;
-      case 'trafi':
+      case 'wolf-ai':
         return <MasterAI />;
       case 'indicators':
         return (
@@ -343,7 +349,7 @@ function AppWorkspace() {
 
   const mainClass = auth.isLoggedIn
     ? `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}${
-        activeTab === 'trafi' ? ' app-main--chat' : ''
+        activeTab === 'wolf-ai' ? ' app-main--chat' : ''
       }`
     : 'app-main';
 
@@ -393,7 +399,7 @@ function AppWorkspace() {
               auth.isLoggedIn
                 ? activeTab === 'master-tx'
                   ? 'page-content page-content--screener'
-                  : activeTab === 'trafi'
+                  : activeTab === 'wolf-ai'
                     ? 'page-content page-content--chat'
                     : 'page-content page-content--full'
                 : ''
@@ -418,11 +424,11 @@ function AppWorkspace() {
                 />
               </Suspense>
             ) : (
-              <AppErrorBoundary onReset={() => handleTabChange('trafi')}>
+              <AppErrorBoundary onReset={() => handleTabChange('wolf-ai')}>
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>
-                    <button type="button" onClick={() => handleTabChange('trafi')}>
+                    <button type="button" onClick={() => handleTabChange('wolf-ai')}>
                       Unlock access
                     </button>
                   </div>

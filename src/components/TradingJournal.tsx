@@ -752,7 +752,7 @@ export default function TradingJournal({
 
   const openHunterReview = () => {
     queueHunterJournalReview();
-    onNavigate?.('trafi');
+    onNavigate?.('wolf-ai');
   };
 
   const [selectedSymbolMeta, setSelectedSymbolMeta] = useState<JournalSymbolSelection | null>(null);

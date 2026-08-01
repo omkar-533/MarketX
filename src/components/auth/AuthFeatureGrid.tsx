@@ -23,8 +23,8 @@ type Feature = {
 /** Matches the live sidebar — same card UI, only active modules. */
 const LOGIN_FEATURES: Feature[] = [
   {
-    id: 'trafi',
-    title: PAGE_NAMES.trafi,
+    id: 'wolf-ai',
+    title: PAGE_NAMES['wolf-ai'],
     detail: 'AI copilot',
     description: 'Ask market questions and get context-aware answers across your workspace.',
     icon: Bot,
