@@ -882,6 +882,7 @@ html[data-theme="light"] .mai-chat__suggest-icon {
 html[data-theme="light"] .lux-lib,
 html[data-theme="light"] .lux-ind {
   color: var(--tf-text);
+  background-color: var(--tf-bg);
 }
 
 html[data-theme="light"] .lux-lib__hero,
@@ -894,6 +895,12 @@ html[data-theme="light"] .lux-ind__section {
   box-shadow: 0 8px 24px var(--tf-shadow);
 }
 
+html[data-theme="light"] .lux-ind__access {
+  background: linear-gradient(180deg, #fffbeb, #ffffff 55%) !important;
+  border-color: rgba(180, 83, 9, 0.28) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
 html[data-theme="light"] .lux-lib__title,
 html[data-theme="light"] .lux-lib-card__title,
 html[data-theme="light"] .lux-lib-card__title button,
@@ -901,7 +908,8 @@ html[data-theme="light"] .lux-ind__title,
 html[data-theme="light"] .lux-ind__access-copy h2,
 html[data-theme="light"] .lux-ind__section h2,
 html[data-theme="light"] .lux-ind__faq-item h3,
-html[data-theme="light"] .lux-ind__tv-done-title {
+html[data-theme="light"] .lux-ind__tv-done-title,
+html[data-theme="light"] .lux-ind__platform-label {
   color: var(--tf-text) !important;
 }
 
@@ -913,10 +921,13 @@ html[data-theme="light"] .lux-ind__overview,
 html[data-theme="light"] .lux-ind__prose,
 html[data-theme="light"] .lux-ind__faq-item p,
 html[data-theme="light"] .lux-ind__tv-hint,
+html[data-theme="light"] .lux-ind__tv-label,
+html[data-theme="light"] .lux-ind__tv-done-body,
 html[data-theme="light"] .lux-ind__footer-note,
 html[data-theme="light"] .lux-lib__count,
-html[data-theme="light"] .lux-lib__eyebrow {
-  color: var(--tf-text-secondary) !important;
+html[data-theme="light"] .lux-lib__eyebrow,
+html[data-theme="light"] .lux-ind__chart-empty {
+  color: var(--tf-text-muted) !important;
 }
 
 html[data-theme="light"] .lux-lib__search input,
@@ -928,7 +939,6 @@ html[data-theme="light"] .lux-ind__tv-input {
 
 html[data-theme="light"] .lux-lib__chip,
 html[data-theme="light"] .lux-ind__tag,
-html[data-theme="light"] .lux-ind__btn--ghost,
 html[data-theme="light"] .lux-ind__back {
   background: var(--tf-elevated) !important;
   border-color: var(--tf-border) !important;
@@ -947,13 +957,61 @@ html[data-theme="light"] .lux-ind__chart {
 }
 
 html[data-theme="light"] .lux-ind__chart-badge {
-  background: color-mix(in srgb, var(--tf-surface) 90%, transparent) !important;
+  background: color-mix(in srgb, var(--tf-surface) 92%, transparent) !important;
   color: var(--tf-text) !important;
   border-color: var(--tf-border) !important;
 }
 
 html[data-theme="light"] .lux-ind__btn--primary {
   color: #0b0e17 !important;
+  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.22);
+}
+
+html[data-theme="light"] .lux-ind__btn--ghost {
+  background: #fffbeb !important;
+  border: 1px solid rgba(180, 83, 9, 0.4) !important;
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .lux-ind__btn--ghost:hover {
+  background: #fef3c7 !important;
+  border-color: rgba(146, 64, 14, 0.5) !important;
+}
+
+html[data-theme="light"] .lux-ind__access-actions--secondary,
+html[data-theme="light"] .lux-ind__faq-item,
+html[data-theme="light"] .lux-ind__faq-item:last-child,
+html[data-theme="light"] .lux-ind__footer-note {
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .lux-ind__platform {
+  background: var(--tf-elevated) !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .lux-ind__platform-cta,
+html[data-theme="light"] .lux-ind__tv-again {
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .lux-ind__locked {
+  background: #fffbeb !important;
+  border-color: rgba(180, 83, 9, 0.35) !important;
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .lux-ind__tv-done {
+  background: #ecfdf5 !important;
+  border-color: rgba(4, 120, 87, 0.28) !important;
+}
+
+html[data-theme="light"] .lux-ind__tv-error {
+  color: #be123c !important;
+}
+
+html[data-theme="light"] .lux-lib__hero-orb {
+  opacity: 0.35;
 }
 
 /* ── Trading Journal ───────────────────────────────────────── */
@@ -1153,6 +1211,16 @@ html[data-theme="light"] .app-main {
 html[data-theme="light"] .app-header.glass {
   background: var(--tf-glass) !important;
   border-color: var(--tf-border) !important;
+}
+
+/* Header / any brand wordmark — pale gold is unreadable on white */
+html[data-theme="light"] .brand-lockup__name {
+  color: #0a0a0a !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] .app-header .brand-logo {
+  filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.12));
 }
 
 html[data-theme="light"] .bg-slate-800,
