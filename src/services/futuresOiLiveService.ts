@@ -10,9 +10,9 @@ import { prepareOiSeries } from './optionOiTimeframe';
 export type FuturesPeriod = 'daily' | 'weekly';
 
 export type FuturesDataMeta = {
-  priceSource: 'fyers' | 'none';
+  priceSource: 'tradingview' | 'fyers' | 'none';
   oiSource: 'fyers' | 'chain' | 'none';
-  volumeSource: 'fyers' | 'none';
+  volumeSource: 'tradingview' | 'fyers' | 'none';
   live: boolean;
   message: string;
 };
@@ -192,7 +192,7 @@ export async function loadFuturesAnalyticsSeries(
 
   const enriched = enrichBarsWithBuildup(dailyBars);
   const priceSource = priceSourceFromMarket(ohlcRes.source);
-  const live = priceSource === 'fyers';
+  const live = priceSource === 'tradingview' || priceSource === 'fyers';
 
   const msg =
     oiSource === 'fyers'
