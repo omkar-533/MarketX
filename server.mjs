@@ -10,11 +10,8 @@ import { getServerConfig } from './server/config/env.mjs';
 import { createCorsMiddleware } from './server/middleware/cors.mjs';
 import marketRoutes from './server/market/routes.mjs';
 import { initMarketProvider } from './server/market/provider.mjs';
-import { bootFyersAutoConnect, startFyersAutoConnectWatch } from './server/market/fyersAutoConnect.mjs';
 import { attachMarketWebSocket } from './server/market/liveWebSocket.mjs';
 import { attachSocketIo } from './server/market/socketIoServer.mjs';
-import fyersRoutes from './server/fyers/routes.mjs';
-import fyersAuthRoutes from './server/auth/fyersAuthRoutes.mjs';
 import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
 import {
   hasAccessSchema,
@@ -23,8 +20,7 @@ import {
 } from './server/auth/appUserStore.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
 import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
-import { getFyersWsStatus } from './server/market/fyersWsManager.mjs';
-import { getFyersAccessToken, isFyersConfigured } from './server/market/fyersSession.mjs';
+import { getTvWsStatus } from './server/market/tradingview/tvWsManager.mjs';
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)));
 
@@ -41,8 +37,6 @@ app.use(createCorsMiddleware());
 app.use(cookieParser());
 app.use(express.json({ limit: '12mb' }));
 app.use('/api/market', marketRoutes);
-app.use('/api/fyers', fyersRoutes);
-app.use('/api/auth', fyersAuthRoutes);
 app.use('/api/app-auth', appAuthRoutes);
 
 const envOpenRouterKey = getMasterAiApiKey() || getOpenRouterApiKey();
@@ -54,15 +48,16 @@ if (!envOpenRouterKey) {
 }
 
 app.get('/api/health', (_req, res) => {
-  const ws = getFyersWsStatus();
+  const ws = getTvWsStatus();
   res.json({
     status: 'ok',
     env: config.nodeEnv,
     live: {
-      fyersConfigured: isFyersConfigured(),
-      hasToken: Boolean(getFyersAccessToken()),
+      provider: 'tradingview',
+      configured: true,
       wsStatus: ws.status,
       wsConnected: ws.connected,
+      hasTicks: ws.hasTicks,
     },
   });
 });
@@ -133,16 +128,12 @@ httpServer.on('error', (err) => {
 httpServer.listen(config.port, () => {
   attachMarketWebSocket(httpServer);
   attachSocketIo(httpServer);
-  startFyersAutoConnectWatch();
-  void bootFyersAutoConnect();
   void ensureSeedTeachings()
     .then((r) => console.log(`[Hunter Teach] seed imported=${r.imported} total=${r.total}`))
     .catch((err) => console.warn('[Hunter Teach] seed import failed:', err?.message || err));
   console.log(`Wolf Trade AI API on port ${config.port} (${config.nodeEnv})`);
   console.log(`  Frontend: ${config.frontendUrl}`);
-  console.log(`  Fyers redirect: ${config.fyersRedirect}`);
-  console.log(`  Auth: GET /api/auth/fyers/login · GET /api/auth/session`);
-  console.log(`  Market: Socket.IO /socket.io (${marketProvider})`);
+  console.log(`  Market: TradingView · Socket.IO /socket.io (${marketProvider})`);
 
   if (!isCloudUserStore()) {
     console.log('  Logins: local file store — set SUPABASE_SERVICE_ROLE_KEY to persist in Supabase');

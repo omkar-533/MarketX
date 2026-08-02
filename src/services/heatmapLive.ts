@@ -34,7 +34,7 @@ function isLiveFeed(
   const sectorsLive = sectors.some((s) => s.stockCount > 0 && Math.abs(s.changePercent) > 0);
   const oiLive = oi.strikes.some((s) => s.totalOi > 0);
   return Boolean(
-    conn.fyersConnected &&
+    (conn.liveConnected || conn.fyersConnected) &&
       conn.serverOk &&
       (conn.streamActive || quotesLive || sectorsLive || oiLive),
   );

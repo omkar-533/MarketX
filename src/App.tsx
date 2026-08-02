@@ -1,11 +1,8 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
-import { FYERS_TOKEN_INVALID_EVENT } from './constants/fyersEvents';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import WolfLoader from './components/WolfLoader';
-import { normalizeFyersAuthInput, clearFyersAuthFromUrl } from './utils/fyersAuthUrl';
-import { connectFyersAuthCode } from './services/fyersApiService';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 import { SHOW_INDICATORS } from './constants/featureFlags';
 
@@ -41,7 +38,6 @@ const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
-const FyersLoginPage = lazy(() => import('./components/FyersLoginPage'));
 
 function PageLoader() {
   return <WolfLoader />;
@@ -171,12 +167,6 @@ function AppWorkspace() {
   const auth = useAuth();
 
   useEffect(() => {
-    const code = normalizeFyersAuthInput(window.location.href);
-    if (!code) return;
-    void connectFyersAuthCode(code).then(() => clearFyersAuthFromUrl());
-  }, []);
-
-  useEffect(() => {
     setMobileMenuOpen(false);
   }, [activeTab]);
 
@@ -193,16 +183,10 @@ function AppWorkspace() {
 
   useEffect(() => {
     const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    if (normalizeFyersAuthInput(window.location.href)) return;
-    if (path !== '/' && path !== '' && !path.includes('fyers')) {
+    if (path !== '/' && path !== '') {
       const hash = window.location.hash || (auth.isLoggedIn ? `#${activeTab}` : '');
       const next = `/${window.location.search}${hash}`;
       window.history.replaceState({}, '', next);
-    }
-    if (params.get('fyers') === 'reconnect') {
-      const hash = auth.isLoggedIn ? `#${activeTab}` : '';
-      window.history.replaceState({}, '', `/${hash}`);
     }
   }, [auth.isLoggedIn, activeTab]);
 
@@ -228,15 +212,6 @@ function AppWorkspace() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [auth.isLoggedIn, activeTab]);
-
-  useEffect(() => {
-    if (!auth.isLoggedIn) return;
-    const onTokenInvalid = () => {
-      window.dispatchEvent(new CustomEvent('fyers:token-invalid'));
-    };
-    window.addEventListener(FYERS_TOKEN_INVALID_EVENT, onTokenInvalid);
-    return () => window.removeEventListener(FYERS_TOKEN_INVALID_EVENT, onTokenInvalid);
-  }, [auth.isLoggedIn]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
@@ -505,12 +480,5 @@ function AppWorkspace() {
 }
 
 export default function App() {
-  if (window.location.pathname === '/fyers-login') {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <FyersLoginPage />
-      </Suspense>
-    );
-  }
   return <AppWorkspace />;
 }

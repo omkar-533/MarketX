@@ -1,67 +1,52 @@
-import * as fyersProvider from './fyersProvider.mjs';
-import { isFyersConfigured } from './fyersSession.mjs';
-import { ensureFyersSocket, resetFyersSocket } from './fyersSocket.mjs';
-import { getFnoSymbolList } from './fyersUniverse.mjs';
+import * as tvProvider from './tradingview/tvProvider.mjs';
+import {
+  ensureTvSocket,
+  resetTvSocket,
+  subscribeTvSymbols,
+} from './tradingview/tvWsManager.mjs';
+import { getFnoSymbolList } from './universe.mjs';
 
-const BOOT_SYMBOLS_MAX = Math.max(8, Number(process.env.FYERS_BOOT_SYMBOLS_MAX || 24));
+const BOOT_SYMBOLS_MAX = Math.max(8, Number(process.env.TV_BOOT_SYMBOLS_MAX || 24));
 
 function getBootSymbols() {
   return getFnoSymbolList().slice(0, BOOT_SYMBOLS_MAX);
 }
 
-/** Platform market data — Fyers API only */
+/** Platform market data — TradingView quote stream only */
 export function getActiveMarketProvider() {
-  if (!isFyersConfigured()) return 'fyers-offline';
-  return 'fyers';
+  return 'tradingview';
 }
 
 export function initMarketProvider() {
-  if (!isFyersConfigured()) {
-    console.warn('[Market] Fyers offline — save token (one-time OAuth) then restart API');
-    return 'fyers-offline';
-  }
   const symbols = getFnoSymbolList();
   const bootSymbols = getBootSymbols();
-  ensureFyersSocket(bootSymbols);
-  console.log(`[Market] Provider: Fyers API (${bootSymbols.length} boot symbols, ${symbols.length} total)`);
-  return 'fyers';
+  ensureTvSocket(bootSymbols);
+  console.log(
+    `[Market] Provider: TradingView (${bootSymbols.length} boot symbols, ${symbols.length} total)`,
+  );
+  return 'tradingview';
 }
 
+export function restartMarketStream() {
+  resetTvSocket();
+  ensureTvSocket(getBootSymbols());
+}
+
+/** @deprecated */
 export function restartFyersMarketStream() {
-  if (!isFyersConfigured()) return;
-  resetFyersSocket();
-  ensureFyersSocket(getBootSymbols());
+  restartMarketStream();
 }
 
 export async function fetchQuotes(symbols) {
-  requireFyers();
-  const { subscribeFyersSymbols } = await import('./fyersSocket.mjs');
-  subscribeFyersSymbols(symbols);
-  return fyersProvider.fetchQuotes(symbols);
+  subscribeTvSymbols(symbols);
+  return tvProvider.fetchQuotes(symbols);
 }
 
 export async function fetchOhlc(symbol, timeframe, range) {
-  requireFyers();
-  const { subscribeFyersSymbols } = await import('./fyersSocket.mjs');
-  subscribeFyersSymbols([symbol]);
-  return fyersProvider.fetchOhlc(symbol, timeframe, range);
+  subscribeTvSymbols([symbol]);
+  return tvProvider.fetchOhlc(symbol, timeframe, range);
 }
 
 export function getMarketHealth() {
-  if (!isFyersConfigured()) {
-    return {
-      status: 'degraded',
-      provider: 'fyers',
-      configured: false,
-      websocket: false,
-      message: 'Connect TradeX Live in Profile',
-    };
-  }
-  return { status: 'ok', ...fyersProvider.getMarketHealth() };
-}
-
-function requireFyers() {
-  if (!isFyersConfigured()) {
-    throw new Error('TradeX Live not connected — Profile → Connect');
-  }
+  return { status: 'ok', ...tvProvider.getMarketHealth() };
 }

@@ -166,7 +166,12 @@ export async function fetchOptionChainLive(
         error: sanitizeDisplayMessage(data?.error ?? `HTTP ${res.status}`),
       };
     }
-    if (data.source && data.source !== 'fyers' && data.source !== 'fyers-cached') {
+    if (
+      data.source &&
+      data.source !== 'fyers' &&
+      data.source !== 'fyers-cached' &&
+      data.source !== 'tradingview'
+    ) {
       return {
         symbol: sym,
         spot: 0,
@@ -203,7 +208,7 @@ export async function fetchOptionChainLive(
       expiry: exp,
       expiries: data.expiries ?? [],
       rows,
-      source: data.source ?? 'fyers',
+      source: data.source ?? 'tradingview',
       expiryIso: data.expiryIso,
       expiryTimestamp: data.expiryTimestamp,
       fetchedAt: data.fetchedAt ?? new Date().toISOString(),

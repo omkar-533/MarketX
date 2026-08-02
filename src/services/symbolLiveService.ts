@@ -307,7 +307,7 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
         setMarketLiveError(serverOfflineMessage());
         return liveCache;
       }
-      setMarketProvider(health.provider || 'fyers');
+      setMarketProvider(health.provider || 'tradingview');
       const hasLive = liveCache.length > 0;
       if (isLiveFeedActive() && isMarketStreamActive() && hasLive) {
         publishLiveSnapshot(liveCache);

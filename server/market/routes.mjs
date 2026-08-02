@@ -1,20 +1,18 @@
 import { Router } from 'express';
-import { fetchFyersFnoHistory } from './fyersFnoHistory.mjs';
-import { fetchOptionChain } from './optionChainProvider.mjs';
-import { fetchFyersFnoOiBatch } from './fyersFnoOi.mjs';
-import { isFyersOptionChainAvailable } from './fyersOptionChain.mjs';
 import { fetchGlobalIndexQuotes } from './globalQuotes.mjs';
-import { fetchFyersFiiDii } from './fyersFiiDii.mjs';
 import { fetchOhlc, fetchQuotes, getMarketHealth } from './provider.mjs';
 import { registerLiveStreamRoutes } from './liveStream.mjs';
-import { getFyersWsStatus } from './fyersWsManager.mjs';
+import { getTvWsStatus } from './tradingview/tvWsManager.mjs';
 
 const router = Router();
 registerLiveStreamRoutes(router);
 
+const UNAVAILABLE =
+  'TradingView feed does not provide option chain / FII-DII — this endpoint is unavailable';
+
 router.get('/health', (_req, res) => {
   const health = getMarketHealth();
-  const ws = getFyersWsStatus();
+  const ws = getTvWsStatus();
   res.json({
     status: 'ok',
     ...health,
@@ -26,7 +24,7 @@ router.get('/health', (_req, res) => {
 });
 
 router.get('/ws-status', (_req, res) => {
-  res.json(getFyersWsStatus());
+  res.json(getTvWsStatus());
 });
 
 router.get('/quotes', async (req, res) => {
@@ -34,7 +32,11 @@ router.get('/quotes', async (req, res) => {
   if (!raw) {
     return res.status(400).json({ error: 'symbols query required (comma-separated)' });
   }
-  const symbols = raw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean).slice(0, 200);
+  const symbols = raw
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean)
+    .slice(0, 200);
   try {
     const data = await fetchQuotes(symbols);
     return res.json(data);
@@ -60,48 +62,21 @@ router.get('/ohlc', async (req, res) => {
   }
 });
 
-router.get('/option-chain', async (req, res) => {
+router.get('/option-chain', (req, res) => {
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
-  const expiry = String(req.query.expiry || '').trim() || undefined;
-  if (!symbol) {
-    return res.status(400).json({ error: 'symbol query required' });
-  }
-  try {
-    const data = await fetchOptionChain(symbol, expiry);
-    return res.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Option chain fetch failed';
-    return res.status(502).json({ error: msg, symbol, rows: [] });
-  }
+  return res.status(503).json({
+    error: UNAVAILABLE,
+    symbol,
+    rows: [],
+  });
 });
 
-router.get('/fno-oi', async (req, res) => {
-  const raw = String(req.query.symbols || '').trim();
-  if (!raw) {
-    return res.status(400).json({ error: 'symbols query required (comma-separated)' });
-  }
-  const symbols = raw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean).slice(0, 40);
-  if (!isFyersOptionChainAvailable()) {
-    return res.status(503).json({ error: 'Fyers not connected', snapshots: [] });
-  }
-  try {
-    const data = await fetchFyersFnoOiBatch(symbols);
-    return res.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'FNO OI fetch failed';
-    return res.status(502).json({ error: msg, snapshots: [] });
-  }
+router.get('/fno-oi', (_req, res) => {
+  return res.status(503).json({ error: UNAVAILABLE, snapshots: [] });
 });
 
-router.get('/fii-dii', async (req, res) => {
-  const days = Math.min(60, Number(req.query.days) || 30);
-  try {
-    const data = await fetchFyersFiiDii(days);
-    return res.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'FII/DII fetch failed';
-    return res.status(502).json({ error: msg, rows: [] });
-  }
+router.get('/fii-dii', (_req, res) => {
+  return res.status(503).json({ error: UNAVAILABLE, rows: [] });
 });
 
 router.get('/global-quotes', async (_req, res) => {
@@ -114,20 +89,8 @@ router.get('/global-quotes', async (_req, res) => {
   }
 });
 
-router.get('/fno-history', async (req, res) => {
-  const symbol = String(req.query.symbol || '').trim().toUpperCase();
-  const from = String(req.query.from || '').trim();
-  const to = String(req.query.to || '').trim();
-  if (!symbol) {
-    return res.status(400).json({ error: 'symbol query required' });
-  }
-  try {
-    const data = await fetchFyersFnoHistory(symbol, from, to);
-    return res.json(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'FNO history failed';
-    return res.status(502).json({ error: msg });
-  }
+router.get('/fno-history', (_req, res) => {
+  return res.status(503).json({ error: UNAVAILABLE });
 });
 
 export default router;

@@ -1,14 +1,18 @@
 /**
- * Live market tick stream — intentionally disabled.
- * Product tabs (Indicators / Analyse AI / Journal) do not consume live quotes.
+ * Live market tick helpers — Socket.IO client talks to TradingView-backed API.
  */
 
-export { FYERS_TOKEN_INVALID_EVENT } from '../constants/fyersEvents';
+export const MARKET_TOKEN_INVALID_EVENT = 'market:feed-invalid';
+/** @deprecated */
+export const FYERS_TOKEN_INVALID_EVENT = MARKET_TOKEN_INVALID_EVENT;
 
-/** No-op: live websocket ticks are off. */
-export function subscribeLiveSymbols(_symbols: string[]): void {}
+/** Subscribe symbols on the browser Socket.IO client. */
+export function subscribeLiveSymbols(symbols: string[]): void {
+  void import('./fyersSocketClient')
+    .then((m) => m.subscribeFyersMarketSymbols(symbols))
+    .catch(() => {});
+}
 
-/** No-op stop/start — keeps call sites safe without opening Fyers WS. */
 export function startMarketTickStream(): () => void {
   return stopMarketTickStream;
 }

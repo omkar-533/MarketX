@@ -1,5 +1,5 @@
 import { fetchMarketHealth, isMarketLiveEnabled } from './marketApiService';
-import type { FyersWsConnectionStatus } from '../types/fyersMarket';
+import type { MarketWsConnectionStatus } from '../types/marketLive';
 import { sanitizeDisplayMessage } from '../constants/brandLabels';
 import { setMarketProvider } from './marketLiveStore';
 
@@ -20,19 +20,23 @@ export function subscribeMarketConnection(fn: () => void): () => void {
 type ConnectionState = {
   provider: string;
   serverOk: boolean;
-  fyersConnected: boolean;
+  /** True when TradingView WS reports connected / has recent ticks */
+  liveConnected: boolean;
   streamActive: boolean;
-  wsStatus: FyersWsConnectionStatus;
+  wsStatus: MarketWsConnectionStatus;
   wsLastError: string;
+  /** @deprecated use liveConnected */
+  fyersConnected: boolean;
 };
 
 const state: ConnectionState = {
   provider: '',
   serverOk: false,
-  fyersConnected: false,
+  liveConnected: false,
   streamActive: false,
   wsStatus: 'disconnected',
   wsLastError: '',
+  fyersConnected: false,
 };
 
 export function getMarketConnectionState(): Readonly<ConnectionState> {
@@ -43,13 +47,18 @@ export function isStrictLiveMode(): boolean {
   return isMarketLiveEnabled() && state.serverOk;
 }
 
-export function isFyersLiveActive(): boolean {
+export function isMarketLiveActive(): boolean {
   return (
     state.serverOk &&
-    state.provider === 'fyers' &&
-    state.fyersConnected &&
+    (state.provider === 'tradingview' || state.provider.startsWith('tradingview')) &&
+    state.liveConnected &&
     (state.streamActive || state.wsStatus === 'connected')
   );
+}
+
+/** @deprecated */
+export function isFyersLiveActive(): boolean {
+  return isMarketLiveActive();
 }
 
 export function setMarketStreamActive(active: boolean) {
@@ -60,14 +69,26 @@ export function isMarketStreamActive(): boolean {
   return state.streamActive;
 }
 
-export function setFyersWsStatus(status: FyersWsConnectionStatus, lastError?: string) {
+export function setMarketWsStatus(status: MarketWsConnectionStatus, lastError?: string) {
   state.wsStatus = status;
   if (lastError !== undefined) state.wsLastError = sanitizeDisplayMessage(lastError);
   state.streamActive = status === 'connected';
+  state.liveConnected = status === 'connected';
+  state.fyersConnected = state.liveConnected;
   notifyConnectionListeners();
 }
 
-export function getFyersWsStatus(): FyersWsConnectionStatus {
+/** @deprecated */
+export function setFyersWsStatus(status: MarketWsConnectionStatus, lastError?: string) {
+  setMarketWsStatus(status, lastError);
+}
+
+export function getMarketWsStatus(): MarketWsConnectionStatus {
+  return state.wsStatus;
+}
+
+/** @deprecated */
+export function getFyersWsStatus(): MarketWsConnectionStatus {
   return state.wsStatus;
 }
 
@@ -79,7 +100,6 @@ export function resetMarketConnectionCache(): void {
   lastHealthAt = 0;
 }
 
-/** Fast path after /api/health — full market health loads in background */
 export function markServerReachable(): void {
   state.serverOk = true;
   lastHealthAt = Date.now();
@@ -87,30 +107,26 @@ export function markServerReachable(): void {
 }
 
 export function applyServerLiveFromHealth(live?: {
+  provider?: string;
+  configured?: boolean;
   fyersConfigured?: boolean;
   hasToken?: boolean;
   wsStatus?: string;
   wsConnected?: boolean;
+  hasTicks?: boolean;
 }): void {
   markServerReachable();
   if (!live) return;
 
-  if (live.fyersConfigured && live.hasToken) {
-    state.provider = 'fyers';
-    setMarketProvider('fyers');
-    state.fyersConnected = Boolean(live.wsConnected || live.wsStatus === 'connected');
-  } else if (live.fyersConfigured) {
-    state.provider = 'fyers-offline';
-    setMarketProvider('fyers-offline');
-    state.fyersConnected = false;
-  } else {
-    state.provider = 'fyers-offline';
-    setMarketProvider('fyers-offline');
-    state.fyersConnected = false;
-  }
+  state.provider = live.provider || 'tradingview';
+  setMarketProvider(state.provider);
+  state.liveConnected = Boolean(
+    live.wsConnected || live.wsStatus === 'connected' || live.hasTicks,
+  );
+  state.fyersConnected = state.liveConnected;
 
   if (live.wsStatus) {
-    state.wsStatus = live.wsStatus as FyersWsConnectionStatus;
+    state.wsStatus = live.wsStatus as MarketWsConnectionStatus;
     state.streamActive = live.wsConnected === true || live.wsStatus === 'connected';
   }
   notifyConnectionListeners();
@@ -120,6 +136,7 @@ export async function refreshMarketConnection(force = false): Promise<Connection
   if (!isMarketLiveEnabled()) {
     state.serverOk = false;
     state.provider = '';
+    state.liveConnected = false;
     state.fyersConnected = false;
     return state;
   }
@@ -129,12 +146,14 @@ export async function refreshMarketConnection(force = false): Promise<Connection
   try {
     const health = await fetchMarketHealth();
     state.serverOk = Boolean(health?.status);
-    state.provider = health?.provider || '';
-    state.fyersConnected = Boolean(
-      health?.configured && (health?.websocket || health?.wsStatus === 'connected'),
+    state.provider = health?.provider || 'tradingview';
+    state.liveConnected = Boolean(
+      health?.configured !== false &&
+        (health?.websocket || health?.wsStatus === 'connected'),
     );
+    state.fyersConnected = state.liveConnected;
     if (health?.wsStatus) {
-      state.wsStatus = health.wsStatus as FyersWsConnectionStatus;
+      state.wsStatus = health.wsStatus as MarketWsConnectionStatus;
     }
     lastHealthAt = Date.now();
     if (state.provider) setMarketProvider(state.provider);
@@ -144,6 +163,7 @@ export async function refreshMarketConnection(force = false): Promise<Connection
       return state;
     }
     state.serverOk = false;
+    state.liveConnected = false;
     state.fyersConnected = false;
     notifyConnectionListeners();
   }

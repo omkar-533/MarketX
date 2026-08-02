@@ -34,7 +34,7 @@ function run(name, script) {
 console.log('\nStarting API server (port 5000) + Vite (port 5173)…\n');
 console.log('  App:  http://localhost:5173');
 console.log('  API:  http://localhost:5000');
-console.log('  Fyers: Profile → Connect (if not connected)');
+console.log('  Market: TradingView live feed (auto)');
 console.log('  Press Ctrl+C to stop both.\n');
 
 run('server', 'server');

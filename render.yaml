@@ -20,15 +20,6 @@ services:
       - key: PORT
         value: "10000"
       
-      # === Fyers API Configuration ===
-      # ⚠️ USER MUST SET THESE in Render Dashboard:
-      - key: FYERS_APP_ID
-        sync: false
-      - key: FYERS_SECRET_KEY
-        sync: false
-      - key: FYERS_REDIRECT_URI
-        sync: false  # https://YOUR-SERVICE.onrender.com/api/auth/fyers/callback
-      
       # === URLs (single Render deploy: use same URL for all three) ===
       - key: FRONTEND_URL
         sync: false  # https://YOUR-SERVICE.onrender.com
@@ -41,17 +32,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
       
-      # === Market Data ===
+      # === Market Data (TradingView unofficial quote socket — no broker OAuth) ===
       - key: MARKET_PROVIDER
-        value: fyers
+        value: tradingview
       - key: MARKET_LIVE
         value: "true"
-      
-      # === Fyers Auto-Connect (Optional) ===
-      # After first login: run `node scripts/extract-fyers-token.mjs` locally
-      # Then paste token here for auto-connect without manual login
-      - key: FYERS_ACCESS_TOKEN
-        sync: false
       
       # === Optional: AI Services ===
       - key: OPENROUTER_API_KEY
@@ -60,5 +45,3 @@ services:
       # === Logging ===
       - key: LOG_LEVEL
         value: info
-
-    # Token persistence: set FYERS_ACCESS_TOKEN after first OAuth login, or mount a disk at /opt/render/project/src/data.

@@ -7,11 +7,11 @@ export const BRAND_LINE2 = 'AI';
 export const BRAND_TAGLINE = 'The Future of Intelligent Trading';
 export const BRAND_TAGLINE_FULL = `${BRAND_TAGLINE}.`;
 export const LIVE_DATA_LABEL = 'Live Data';
-export const CONNECT_LIVE_LABEL = 'Connect Live Data';
-export const LIVE_FEED_LABEL = 'AI live market feed';
-export const DATA_OFFLINE_MSG = 'Live data offline — refresh or reconnect in Profile';
+export const CONNECT_LIVE_LABEL = 'Live Market Data';
+export const LIVE_FEED_LABEL = 'TradingView live market feed';
+export const DATA_OFFLINE_MSG = 'Live data offline — refresh shortly';
 export const SERVER_OFFLINE_MSG = `${BRAND} server starting — please wait…`;
-export const CONNECT_PATH = '/fyers-login';
+export const CONNECT_PATH = '/';
 
 /** Chat / copilot product name shown in nav and UI */
 export const AI_PRODUCT_NAME = 'Wolf AI';

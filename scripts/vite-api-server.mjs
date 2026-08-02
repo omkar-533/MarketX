@@ -83,7 +83,7 @@ async function ensureApiRunning() {
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500));
     if (await isApiUp()) {
-      console.log('[vite-api] API ready ✓ (Fyers login will work)');
+      console.log('[vite-api] API ready ✓ (TradingView market feed)');
       return true;
     }
   }

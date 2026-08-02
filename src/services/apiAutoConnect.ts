@@ -7,7 +7,10 @@ import {
 
 export const API_SERVER_READY_EVENT = 'api-server-ready';
 export const API_CONNECT_STATUS_EVENT = 'api-connect-status';
-export const FYERS_MARKET_LIVE_EVENT = 'fyers-market-live';
+/** Fired when TradingView market feed handshake completes */
+export const MARKET_LIVE_EVENT = 'market-live-ready';
+/** @deprecated use MARKET_LIVE_EVENT */
+export const FYERS_MARKET_LIVE_EVENT = MARKET_LIVE_EVENT;
 
 /** Keep wake light — Render free tier sleeps; hammering makes the UI feel hung. */
 const MAX_BOOT_ATTEMPTS = 8;
@@ -37,10 +40,11 @@ function emitStatus() {
 type HealthPayload = {
   status?: string;
   live?: {
-    fyersConfigured?: boolean;
-    hasToken?: boolean;
+    provider?: string;
+    configured?: boolean;
     wsStatus?: string;
     wsConnected?: boolean;
+    hasTicks?: boolean;
   };
 };
 
@@ -58,10 +62,10 @@ async function pingHealthOnce(): Promise<HealthPayload | null> {
 }
 
 async function finishMarketHandshake(): Promise<void> {
-  // Live ticks are off for product tabs — skip unless explicitly enabled.
   if (String(import.meta.env.VITE_MARKET_LIVE || '').toLowerCase() !== 'true') return;
   resetMarketConnectionCache();
   await refreshMarketConnection(true);
+  window.dispatchEvent(new CustomEvent(MARKET_LIVE_EVENT));
 }
 
 async function onHealthOk(payload: HealthPayload): Promise<boolean> {

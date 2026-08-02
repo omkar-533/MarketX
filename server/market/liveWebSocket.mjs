@@ -4,10 +4,8 @@ import {
   getTickSnapshot,
   subscribeTickBroadcast,
   subscribeWsStatus,
-  subscribeFyersSymbols,
-  emitTickBroadcast,
-} from './fyersWsManager.mjs';
-import { getFnoSymbolList } from './fyersUniverse.mjs';
+  subscribeTvSymbols,
+} from './tradingview/tvWsManager.mjs';
 
 function buildPayload() {
   return {
@@ -18,7 +16,7 @@ function buildPayload() {
   };
 }
 
-/** Legacy raw WS — relays Fyers ticks (Socket.IO is primary) */
+/** Legacy raw WS — relays TradingView ticks (Socket.IO is primary) */
 export function attachMarketWebSocket(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/api/market/ws' });
 
@@ -56,7 +54,7 @@ export function attachMarketWebSocket(httpServer) {
       try {
         const msg = JSON.parse(String(raw));
         if (msg?.type === 'subscribe' && Array.isArray(msg.symbols)) {
-          subscribeFyersSymbols(msg.symbols);
+          subscribeTvSymbols(msg.symbols);
           send();
         }
       } catch {
@@ -71,6 +69,5 @@ export function attachMarketWebSocket(httpServer) {
     });
   });
 
-  console.log('[Market WS] ws://localhost:5000/api/market/ws (Fyers relay)');
   return wss;
 }

@@ -1,4 +1,4 @@
-import { getTickSnapshot, subscribeTickBroadcast } from './fyersSocket.mjs';
+import { getTickSnapshot, subscribeTickBroadcast } from './tradingview/tvWsManager.mjs';
 import { getActiveMarketProvider } from './provider.mjs';
 
 export function registerLiveStreamRoutes(router) {

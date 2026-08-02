@@ -1,16 +1,16 @@
 /**
- * Socket.IO bridge: browser clients ↔ centralized Fyers WS manager (Fyers only).
+ * Socket.IO bridge: browser clients ↔ TradingView quote WS manager.
  */
 import { Server } from 'socket.io';
 import { getActiveMarketProvider } from './provider.mjs';
 import {
-  subscribeFyersSymbols,
-  unsubscribeFyersSymbols,
+  subscribeTvSymbols,
+  unsubscribeTvSymbols,
   subscribeTickBroadcast,
   getTickSnapshot,
-  getFyersWsStatus,
+  getTvWsStatus,
   subscribeWsStatus,
-} from './fyersWsManager.mjs';
+} from './tradingview/tvWsManager.mjs';
 import { getLatestCandle } from './quoteMeta.mjs';
 
 const clientSymbols = new Map();
@@ -66,7 +66,7 @@ export function attachSocketIo(httpServer) {
 
   io.on('connection', (socket) => {
     clientSymbols.set(socket.id, new Set());
-    socket.emit('market:status', getFyersWsStatus());
+    socket.emit('market:status', getTvWsStatus());
     socket.emit('market:tick', buildTickPayload([]));
 
     socket.on('market:subscribe', (msg) => {
@@ -76,7 +76,7 @@ export function attachSocketIo(httpServer) {
       for (const sym of normalized) {
         set.add(sym);
       }
-      subscribeFyersSymbols(normalized);
+      subscribeTvSymbols(normalized);
       socket.emit('market:tick', buildTickPayload(normalized));
     });
 
@@ -87,7 +87,7 @@ export function attachSocketIo(httpServer) {
         const s = String(sym).trim().toUpperCase();
         set.delete(s);
       }
-      unsubscribeFyersSymbols(symbols);
+      unsubscribeTvSymbols(symbols);
     });
 
     socket.on('market:ping', () => {
@@ -96,15 +96,15 @@ export function attachSocketIo(httpServer) {
 
     socket.on('disconnect', () => {
       const set = symbolsForSocket(socket.id);
-      if (set.size) unsubscribeFyersSymbols([...set]);
+      if (set.size) unsubscribeTvSymbols([...set]);
       clientSymbols.delete(socket.id);
     });
   });
 
-  console.log('[Socket.IO] /socket.io — Fyers-only market bridge');
-  return { io };
-}
+  io.engine.on('close', () => {
+    unsubTicks();
+    unsubStatus();
+  });
 
-export function getSocketIo() {
   return io;
 }

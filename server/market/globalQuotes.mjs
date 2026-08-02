@@ -1,7 +1,6 @@
-import { fetchQuotes } from './fyersProvider.mjs';
-import { isFyersConfigured } from './fyersSession.mjs';
+import { fetchQuotes } from './tradingview/tvProvider.mjs';
 
-/** Indian indices via Fyers (platform does not use Yahoo / external feeds) */
+/** Indian indices via TradingView */
 const INDIA_GLOBAL = {
   NIFTY: { name: 'Nifty 50', country: 'India', openTime: '09:15', closeTime: '15:30', currency: 'INR' },
   BANKNIFTY: { name: 'Bank Nifty', country: 'India', openTime: '09:15', closeTime: '15:30', currency: 'INR' },
@@ -22,17 +21,7 @@ function sessionStatus() {
   return 'Closed';
 }
 
-/** Global page: Indian indices from Fyers only */
 export async function fetchGlobalIndexQuotes() {
-  if (!isFyersConfigured()) {
-    return {
-      indices: [],
-      source: 'fyers',
-      error: 'TradeX Live not connected',
-      fetchedAt: new Date().toISOString(),
-    };
-  }
-
   if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data;
 
   const ids = Object.keys(INDIA_GLOBAL);
@@ -53,14 +42,14 @@ export async function fetchGlobalIndexQuotes() {
       openTime: meta.openTime,
       closeTime: meta.closeTime,
       currency: meta.currency,
-      source: 'fyers',
+      source: 'tradingview',
     };
   });
 
   const payload = {
     indices,
-    source: 'fyers',
-    note: 'US/EU indices removed — platform uses Fyers API only (India)',
+    source: 'tradingview',
+    note: 'Indian indices via TradingView live feed',
     fetchedAt: new Date().toISOString(),
   };
   cache.data = payload;
