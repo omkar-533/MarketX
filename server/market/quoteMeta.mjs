@@ -87,7 +87,7 @@ export function mergeTickIntoMeta(symbol, tick) {
     askQty: askQty || prev?.askQty || 0,
     oi: oi || prev?.oi || 0,
     oiChange: oiChange || prev?.oiChange || 0,
-    source: 'fyers-ws',
+    source: 'tradingview',
     lastUpdated: new Date().toISOString(),
     at: Date.now(),
   };

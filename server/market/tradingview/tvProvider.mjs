@@ -1,4 +1,4 @@
-import { toTvSymbol } from './symbolMap.mjs';
+import { fromTvSymbol, toTvSymbol } from './symbolMap.mjs';
 import {
   getTickQuotes,
   getTvWsStatus,
@@ -16,6 +16,23 @@ function round(n) {
   return Math.round(Number(n) * 100) / 100;
 }
 
+function lookupTick(sym) {
+  const tv = toTvSymbol(sym);
+  const keys = new Set([sym]);
+  if (tv) {
+    keys.add(tv);
+    const asRequested = fromTvSymbol(tv, [sym]);
+    const asDefault = fromTvSymbol(tv, []);
+    if (asRequested) keys.add(asRequested);
+    if (asDefault) keys.add(asDefault);
+  }
+  for (const key of keys) {
+    const hit = getTickQuotes([key]).get(key);
+    if (hit?.data?.price) return hit;
+  }
+  return null;
+}
+
 export async function fetchQuotes(symbols) {
   const unique = [
     ...new Set(symbols.map((s) => String(s).trim().toUpperCase()).filter(Boolean)),
@@ -26,14 +43,16 @@ export async function fetchQuotes(symbols) {
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  // Wait briefly for first ticks when cache is cold.
-  if (!isTvSocketActive()) {
-    await new Promise((r) => setTimeout(r, 800));
+  // Wait for first ticks — new symbols (e.g. BTC) need a short subscribe delay.
+  const deadline = Date.now() + (isTvSocketActive() ? 2500 : 4000);
+  while (Date.now() < deadline) {
+    const ready = unique.every((sym) => Boolean(lookupTick(sym)?.data?.price));
+    if (ready) break;
+    await new Promise((r) => setTimeout(r, 350));
   }
 
   const errors = [];
   const quoteMap = new Map();
-  const wsTicks = getTickQuotes(unique);
   const now = Date.now();
 
   for (const sym of unique) {
@@ -41,10 +60,10 @@ export async function fetchQuotes(symbols) {
       errors.push({ symbol: sym, error: 'Unknown TradingView symbol' });
       continue;
     }
-    const tick = wsTicks.get(sym);
+    const tick = lookupTick(sym);
     if (tick?.data?.price && now - (tick.at ?? 0) < 60_000) {
       const { at, ...rest } = tick.data;
-      const quote = { ...rest, source: 'tradingview' };
+      const quote = { ...rest, source: 'tradingview', symbol: sym };
       setQuoteMeta(quote);
       quoteMap.set(sym, quote);
     } else {
