@@ -133,7 +133,7 @@ export default function MasterAI() {
   const chartPromptRef = useRef<HTMLDivElement>(null);
   const welcomeText =
     initialMode === 'auto'
-      ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
+      ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
       : getMasterAiWelcome(initialLang.code);
   const [boot] = useState(() => loadActiveChat(welcomeText));
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
@@ -695,7 +695,7 @@ export default function MasterAI() {
             },
             hasImage
               ? {
-                  summary: 'Chart screenshot analysis only',
+                  summary: 'Chart screenshot + server live tape cross-check',
                   nifty: 'from chart',
                   bankNifty: 'from chart',
                   pcr: 0,
@@ -710,19 +710,20 @@ export default function MasterAI() {
                   session: 'from chart',
                 }
               : {
-                  summary: 'NO verified live NSE tape — do not invent levels',
-                  nifty: 'n/a',
-                  bankNifty: 'n/a',
+                  // Server injects LIVE MARKET DATA from TradingView — do not send n/a stubs.
+                  summary: 'Server will inject live TradingView tape',
+                  nifty: 'live',
+                  bankNifty: 'live',
                   pcr: 0,
                   maxPain: 0,
-                  signals: 'n/a',
+                  signals: 'live tape',
                   news: 'n/a',
                   gainers: 'n/a',
                   losers: 'n/a',
                   active: 'n/a',
                   breadth: 'n/a',
                   futures: 'n/a',
-                  session: 'n/a',
+                  session: 'live',
                 },
           );
           if (result.reply) responseText = result.reply;
