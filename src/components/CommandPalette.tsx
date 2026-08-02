@@ -13,6 +13,7 @@ const commands = [
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
+  { id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' },
   { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },
   { id: 'strategy', label: 'Strategy Builder', shortcut: 'S' },

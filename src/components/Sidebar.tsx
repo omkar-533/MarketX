@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
-  NotebookPen, Code2,
+  NotebookPen, Code2, Wallet,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
@@ -26,6 +26,7 @@ const navItems = [
   ...(SHOW_INDICATORS
     ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
     : []),
+  { id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet },
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 

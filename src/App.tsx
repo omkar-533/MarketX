@@ -44,7 +44,6 @@ function PageLoader() {
 }
 
 const HIDDEN_TABS = new Set([
-  'papertrading',
   'dashboard',
   'oiintelligence',
   'heatmap',
