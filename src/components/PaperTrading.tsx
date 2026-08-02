@@ -281,7 +281,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     if (!persistReadyRef.current) return;
     const symbols = paperState.watchlist.map((w) => w.symbol);
     void refreshPaperTradingLiveQuotes(symbols).then(applyLiveQuotesToState);
-  }, [user]);
+  }, [user, paperState.watchlist.length]);
 
   useEffect(() => {
     if (!persistReadyRef.current) return;

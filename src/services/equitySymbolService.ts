@@ -143,6 +143,22 @@ export function getJournalSymbolSelection(
     };
   }
 
+  const fno = getFnoInstrument(sym);
+  if (fno) {
+    return {
+      symbol: fno.symbol,
+      name: fno.name,
+      exchange: fno.type === 'index' ? 'INDEX' : 'FNO',
+      type: fno.type,
+      price: fno.basePrice,
+      change: 0,
+      changePercent: 0,
+      lotSize: fno.lotSize,
+      sector: fno.sector,
+      isFno: true,
+    };
+  }
+
   const nseEntry = nseBySymbol.get(sym);
   if (nseEntry) return staticListing(nseEntry);
   const bseEntry = bseBySymbol.get(sym);

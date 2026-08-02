@@ -351,7 +351,21 @@ export function normalizeWatchlist(items: MarketItem[]): MarketItem[] {
     }
     const sel = getJournalSymbolSelection(item.symbol, item.exchange);
     if (!sel) return item;
-    return journalToMarketItem(sel);
+    const next = journalToMarketItem(sel);
+    // Keep row LTP when seed is empty/static-zero (live overlay applied next).
+    if (item.price > 0 && (!sel.price || sel.price <= 0)) {
+      return {
+        ...next,
+        price: item.price,
+        change: item.change,
+        changePercent: item.changePercent,
+        open: item.open || item.price,
+        high: item.high || item.price,
+        low: item.low || item.price,
+        volume: item.volume,
+      };
+    }
+    return next;
   });
 }
 

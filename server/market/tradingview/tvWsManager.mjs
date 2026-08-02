@@ -160,17 +160,35 @@ function send(func, args) {
   }
 }
 
+function resolveAppSymbol(raw) {
+  const n = String(raw || '').trim();
+  if (!n) return null;
+  // TV sometimes sends "NSE:NIFTY" or "NSE:NIFTY@..." / status suffixes
+  const cleaned = n.split(/[~@]/)[0].trim().toUpperCase();
+  const app = fromTvSymbol(cleaned, []) || fromTvSymbol(n, []);
+  if (app) return app;
+  // Already an app ticker (no exchange prefix)
+  if (/^[A-Z0-9][A-Z0-9.&-]{0,20}$/.test(cleaned) && !cleaned.includes(':')) {
+    return cleaned;
+  }
+  return null;
+}
+
 function ingestQuotePacket(payload) {
   if (!payload || typeof payload !== 'object') return;
   const n = payload.n || payload.symbol;
   const v = payload.v || payload;
   if (!n || !v) return;
-  const app = fromTvSymbol(n, []);
+  const app = resolveAppSymbol(n);
   if (!app) return;
 
+  const lp = Number(v.lp ?? v.ltp ?? v.last_price ?? 0);
+  // Full snapshot may omit lp on some deltas — keep prior via mergeTickIntoMeta when possible
+  if (!lp && v.lp == null && v.ch == null && v.volume == null) return;
+
   const tick = {
-    lp: v.lp,
-    ltp: v.lp,
+    lp: lp || undefined,
+    ltp: lp || undefined,
     ch: v.ch,
     chp: v.chp,
     volume: v.volume,
@@ -188,6 +206,9 @@ function ingestQuotePacket(payload) {
     hasTicks = true;
     lastTickAt = Date.now();
     updateCandleFromTick(app, merged);
+    // Also index under TV pro name so lookups by either key work
+    const tv = toTvSymbol(app);
+    if (tv && tv !== app) mergeTickIntoMeta(tv, tick);
     notifyTickListeners();
   }
 }

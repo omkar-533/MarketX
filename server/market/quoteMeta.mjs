@@ -24,10 +24,12 @@ export function setQuoteMeta(quote) {
 
 export function mergeTickIntoMeta(symbol, tick) {
   const sym = String(symbol || '').trim().toUpperCase();
-  const ltp = Number(tick?.ltp ?? tick?.lp ?? tick?.last_price ?? 0);
+  const prev = meta.get(sym);
+  let ltp = Number(tick?.ltp ?? tick?.lp ?? tick?.last_price ?? 0);
+  // Quote deltas may omit lp — keep prior LTP so the print does not go stale.
+  if (!ltp && prev?.price) ltp = prev.price;
   if (!sym || !ltp) return null;
 
-  const prev = meta.get(sym);
   const prevClose = Number(
     tick?.prev_close_price ?? tick?.prev_close ?? prev?.prevClose ?? 0,
   );
@@ -146,15 +148,20 @@ export function getQuoteMeta(symbol) {
   return meta.get(String(symbol || '').trim().toUpperCase()) ?? null;
 }
 
-export function getQuoteMetaSnapshot(symbols) {
+/** Keep last print through market close / quiet sessions (NSE does not tick overnight). */
+const SNAPSHOT_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+
+export function getQuoteMetaSnapshot(symbols, opts = {}) {
+  const maxAge = Number(opts.maxAgeMs) > 0 ? Number(opts.maxAgeMs) : SNAPSHOT_MAX_AGE_MS;
   const list = symbols?.length ? symbols : [...meta.keys()];
   const out = [];
   const now = Date.now();
   for (const sym of list) {
-    const hit = meta.get(sym);
-    if (!hit || now - hit.at > 120_000) continue;
+    const key = String(sym || '').trim().toUpperCase();
+    const hit = meta.get(key) || meta.get(sym);
+    if (!hit || now - hit.at > maxAge) continue;
     const { at, ...data } = hit;
-    const candle = getLatestCandle(sym);
+    const candle = getLatestCandle(key) || getLatestCandle(data.symbol);
     out.push(candle ? { ...data, candle } : data);
   }
   return out;

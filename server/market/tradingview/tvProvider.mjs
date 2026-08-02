@@ -33,6 +33,40 @@ function lookupTick(sym) {
   return null;
 }
 
+async function quoteFromOhlcFallback(sym) {
+  try {
+    const { bars } = await fetchTvOhlcBars(sym, '15m');
+    const last = bars?.[bars.length - 1];
+    if (!last?.close) return null;
+    const prev = bars.length > 1 ? bars[bars.length - 2].close : last.open;
+    const price = round(last.close);
+    const prevClose = round(prev || last.open || price);
+    const change = round(price - prevClose);
+    const changePercent = prevClose ? round((change / prevClose) * 100) : 0;
+    return {
+      symbol: sym,
+      price,
+      change,
+      changePercent,
+      open: round(last.open || price),
+      high: round(last.high || price),
+      low: round(last.low || price),
+      prevClose,
+      volume: Math.floor(Number(last.volume) || 0),
+      bid: 0,
+      ask: 0,
+      bidQty: 0,
+      askQty: 0,
+      oi: 0,
+      oiChange: 0,
+      source: 'tradingview-ohlc',
+      lastUpdated: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchQuotes(symbols) {
   const unique = [
     ...new Set(symbols.map((s) => String(s).trim().toUpperCase()).filter(Boolean)),
@@ -44,7 +78,7 @@ export async function fetchQuotes(symbols) {
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
   // Wait for first ticks — new symbols (e.g. BTC) need a short subscribe delay.
-  const deadline = Date.now() + (isTvSocketActive() ? 2500 : 4000);
+  const deadline = Date.now() + (isTvSocketActive() ? 4500 : 7000);
   while (Date.now() < deadline) {
     const ready = unique.every((sym) => Boolean(lookupTick(sym)?.data?.price));
     if (ready) break;
@@ -53,7 +87,7 @@ export async function fetchQuotes(symbols) {
 
   const errors = [];
   const quoteMap = new Map();
-  const now = Date.now();
+  const missing = [];
 
   for (const sym of unique) {
     if (!toTvSymbol(sym)) {
@@ -61,12 +95,30 @@ export async function fetchQuotes(symbols) {
       continue;
     }
     const tick = lookupTick(sym);
-    if (tick?.data?.price && now - (tick.at ?? 0) < 60_000) {
-      const { at, ...rest } = tick.data;
+    if (tick?.data?.price) {
+      const { at: _at, ...rest } = tick.data;
       const quote = { ...rest, source: 'tradingview', symbol: sym };
       setQuoteMeta(quote);
       quoteMap.set(sym, quote);
     } else {
+      missing.push(sym);
+    }
+  }
+
+  // Market closed / quiet session: last WS print may be gone after restart — use OHLC.
+  if (missing.length) {
+    const settled = await Promise.all(
+      missing.slice(0, 12).map(async (sym) => [sym, await quoteFromOhlcFallback(sym)]),
+    );
+    for (const [sym, quote] of settled) {
+      if (quote?.price) {
+        setQuoteMeta(quote);
+        quoteMap.set(sym, quote);
+      } else {
+        errors.push({ symbol: sym, error: 'Waiting for TradingView tick' });
+      }
+    }
+    for (const sym of missing.slice(12)) {
       errors.push({ symbol: sym, error: 'Waiting for TradingView tick' });
     }
   }
