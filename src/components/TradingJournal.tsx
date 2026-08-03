@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowDownRight,
@@ -36,10 +36,13 @@ import type { User } from '../hooks/useAuth';
 import { useChartTheme } from '../hooks/useChartTheme';
 import type { JournalMarket, PnlCurrency, TradeRecord, TradeSide, TradeType } from '../types/journal';
 import {
+  createManualGlobalInstrument,
+  defaultPnlCurrency,
   formatPnlAmount,
   pnlFieldLabel,
   tradeMarket,
   tradePnlCurrency,
+  type GlobalInstrumentSelection,
 } from '../services/globalInstrumentService';
 import {
   autoSyncJournal,
@@ -71,6 +74,8 @@ import {
 } from '../services/journalTradeCalc';
 import HunterMark from './HunterMark';
 import LuxSelect from './ui/LuxSelect';
+
+const GlobalInstrumentPicker = lazy(() => import('./journal/GlobalInstrumentPicker'));
 
 type NotificationItem = {
   id: string;
@@ -108,6 +113,12 @@ type TradeFormState = {
 
 const AUTO_SYNC_MS = 800;
 const CLOUD_PULL_MS = 45_000;
+
+const MARKET_OPTIONS: { id: JournalMarket; label: string; hint: string }[] = [
+  { id: 'equity', label: 'Indian Equity', hint: 'NSE / BSE stocks & F&O' },
+  { id: 'crypto', label: 'Crypto', hint: 'BTC, ETH, altcoins' },
+  { id: 'forex', label: 'Forex', hint: 'FX pairs & gold' },
+];
 
 const EMPTY_FORM: TradeFormState = {
   market: 'equity',
@@ -378,10 +389,11 @@ function normalizeFormForSave(form: TradeFormState): TradeFormState {
     parseNumber(form.target) ??
     (isBuy ? Math.round(entry * 1.02 * 100) / 100 : Math.round(entry * 0.98 * 100) / 100);
 
+  const market = form.market || 'equity';
   return {
     ...form,
-    market: 'equity',
-    pnlCurrency: 'INR',
+    market,
+    pnlCurrency: form.pnlCurrency || defaultPnlCurrency(market),
     broker: sanitizeString(form.broker) || 'Not specified',
     strategy: sanitizeString(form.strategy) || 'Manual',
     stopLoss: form.stopLoss.trim() || String(defaultSl),
@@ -756,9 +768,10 @@ export default function TradingJournal({
   };
 
   const [selectedSymbolMeta, setSelectedSymbolMeta] = useState<JournalSymbolSelection | null>(null);
+  const [selectedGlobalMeta, setSelectedGlobalMeta] = useState<GlobalInstrumentSelection | null>(null);
 
   useEffect(() => {
-    if (!form.instrument) {
+    if (form.market !== 'equity' || !form.instrument) {
       setSelectedSymbolMeta(null);
       return;
     }
@@ -771,15 +784,19 @@ export default function TradingJournal({
     return () => {
       cancelled = true;
     };
-  }, [form.instrument]);
+  }, [form.instrument, form.market]);
 
   const activeLotSize = useMemo(() => {
+    if (form.market === 'crypto') return 1;
+    if (form.market === 'forex') {
+      return form.quantityIsLots ? 100_000 : 1;
+    }
     if (selectedSymbolMeta?.isFno) return selectedSymbolMeta.lotSize;
     return getInstrumentLotSize(form.instrument || 'NIFTY', 'equity');
-  }, [form.instrument, selectedSymbolMeta]);
+  }, [form.instrument, form.market, form.quantityIsLots, selectedSymbolMeta]);
 
   const preview = useMemo(() => {
-    const normalized = normalizeFormForSave({ ...form, market: 'equity', pnlCurrency: 'INR' });
+    const normalized = normalizeFormForSave(form);
     const manual = parseManualPnl(normalized.realizedPnl);
 
     if (manual !== null) {
@@ -794,7 +811,11 @@ export default function TradingJournal({
         roi: invested > 0 ? Number(((manual / invested) * 100).toFixed(2)) : 0,
         positionSize: quantity,
         lots: quantity,
-        lotSize: getInstrumentLotSize(normalized.instrument, 'equity', false),
+        lotSize: getInstrumentLotSize(
+          normalized.instrument,
+          normalized.market,
+          normalized.market === 'forex' && normalized.quantityIsLots,
+        ),
         notional: invested,
         isManual: true,
       };
@@ -825,12 +846,41 @@ export default function TradingJournal({
   };
 
   useAutoRefresh(() => {
-    if (activeTab !== 'trades' || !form.instrument) return;
+    if (activeTab !== 'trades' || form.market !== 'equity' || !form.instrument) return;
     import('../services/equitySymbolService').then((mod) => {
       mod.refreshMarketSymbols();
       setSelectedSymbolMeta(mod.getJournalSymbolSelection(form.instrument));
     });
-  }, activeTab === 'trades');
+  }, activeTab === 'trades' && form.market === 'equity');
+
+  const handleMarketChange = (market: JournalMarket) => {
+    setSelectedSymbolMeta(null);
+    setSelectedGlobalMeta(null);
+    setForm((prev) => ({
+      ...prev,
+      market,
+      instrument: '',
+      pnlCurrency: defaultPnlCurrency(market),
+      quantityIsLots: market === 'forex',
+      type: market === 'equity' ? prev.type : 'Intraday',
+    }));
+  };
+
+  const handleGlobalInstrumentSelect = (sel: GlobalInstrumentSelection) => {
+    let pnlCurrency: PnlCurrency = defaultPnlCurrency(sel.market);
+    if (sel.quoteCurrency === 'INR') pnlCurrency = 'INR';
+    else if (sel.quoteCurrency === 'EUR') pnlCurrency = 'EUR';
+    else if (sel.market === 'crypto') pnlCurrency = 'USDT';
+    else pnlCurrency = 'USD';
+
+    setSelectedGlobalMeta(sel);
+    setForm((prev) => ({
+      ...prev,
+      instrument: sel.symbol,
+      pnlCurrency,
+      quantityIsLots: sel.market === 'forex',
+    }));
+  };
 
   const totalScreenshots = filteredTrades.filter((trade) => trade.screenshot).length;
   const goalProgress = Math.min((metrics.totalPnl / goalTarget) * 100, 100);
@@ -850,6 +900,8 @@ export default function TradingJournal({
     setForm(EMPTY_FORM);
     setEditingId(null);
     setUploadPreview('');
+    setSelectedSymbolMeta(null);
+    setSelectedGlobalMeta(null);
   };
 
   const handleSaveTrade = () => {
@@ -916,14 +968,19 @@ export default function TradingJournal({
     if (!user) return;
     if (!isAdmin && trade.ownerId !== user.id) return;
 
-    // Journal is Indian-market only — edit legacy crypto/forex as equity + free-text symbol
-    const mkt: JournalMarket = 'equity';
-    const lotSize = getInstrumentLotSize(trade.instrument, mkt, false);
-    const isLots = lotSize > 1 && Math.abs(trade.quantity * lotSize - trade.positionSize) < 1;
+    const mkt = tradeMarket(trade);
+    const lotSize = getInstrumentLotSize(
+      trade.instrument,
+      mkt,
+      mkt === 'forex' && trade.positionSize >= 1000,
+    );
+    const isLots =
+      mkt === 'forex' ||
+      (lotSize > 1 && Math.abs(trade.quantity * lotSize - trade.positionSize) < 1);
 
     setForm({
       market: mkt,
-      pnlCurrency: 'INR',
+      pnlCurrency: tradePnlCurrency(trade),
       instrument: trade.instrument,
       entryPrice: String(trade.entryPrice),
       exitPrice: String(trade.exitPrice),
@@ -948,6 +1005,12 @@ export default function TradingJournal({
     });
     setEditingId(trade.id);
     setUploadPreview(trade.screenshot || '');
+    if (mkt === 'crypto' || mkt === 'forex') {
+      setSelectedGlobalMeta(createManualGlobalInstrument(mkt, trade.instrument));
+      setSelectedSymbolMeta(null);
+    } else {
+      setSelectedGlobalMeta(null);
+    }
     setStatusMessage('Editing trade — click Update Trade to save changes.');
   };
 
@@ -1076,7 +1139,7 @@ export default function TradingJournal({
               </p>
               <h1 className="tj-hero__title">Trading Journal</h1>
               <p className={`tj-hero__sub ${mutedClass}`}>
-                Indian markets · NSE / BSE · AI Desk auto-coaches from your logs
+                NSE/BSE, crypto &amp; forex · AI Desk auto-coaches from your logs
               </p>
             </div>
           </div>
@@ -1332,40 +1395,127 @@ export default function TradingJournal({
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2 space-y-3">
                 <div>
-                  <p className="text-xs text-slate-500 mb-2">Market — Indian Equity (NSE / BSE)</p>
+                  <p className="text-xs text-slate-500 mb-2">Market * — choose where you traded</p>
+                  <div className="flex flex-wrap gap-2">
+                    {MARKET_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleMarketChange(opt.id)}
+                        className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                          form.market === opt.id
+                            ? 'border-[#d4af37] bg-[#d4af37]/15 text-[#d4af37]'
+                            : 'border-[var(--tf-border)] bg-[var(--tf-elevated)] text-[var(--tf-text-secondary)] hover:border-[#d4af37]/40'
+                        }`}
+                      >
+                        <span className="block text-xs font-bold">{opt.label}</span>
+                        <span className="block text-[10px] opacity-80">{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Instrument * — company / index / symbol</p>
-                  <input
-                    value={form.instrument}
-                    onChange={(e) => {
-                      const instrument = e.target.value;
-                      setForm((prev) => ({
-                        ...prev,
-                        market: 'equity',
-                        pnlCurrency: 'INR',
-                        instrument,
-                        quantityIsLots:
-                          prev.quantityIsLots &&
-                          (prev.type === 'Futures' || prev.type === 'Options'),
-                      }));
-                    }}
-                    className={`w-full rounded-xl border px-2.5 py-1.5 tj-field ${inputClass}`}
-                    placeholder="RELIANCE, NIFTY, Bank Nifty…"
-                    autoComplete="off"
-                  />
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    Free text — company / index / symbol.
-                  </p>
-                </div>
+                <p className="text-xs text-slate-500">
+                  Instrument * —{' '}
+                  {form.market === 'equity'
+                    ? 'NSE / BSE stocks & indices'
+                    : form.market === 'crypto'
+                      ? 'crypto pair (search or type e.g. BTC/USDT)'
+                      : 'forex pair (EUR/USD, XAU/USD, USD/INR…)'}
+                </p>
 
-                {selectedSymbolMeta && (
+                {form.market === 'equity' ? (
+                  <div>
+                    <input
+                      value={form.instrument}
+                      onChange={(e) => {
+                        const instrument = e.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          market: 'equity',
+                          pnlCurrency: prev.pnlCurrency || 'INR',
+                          instrument,
+                          quantityIsLots:
+                            prev.quantityIsLots &&
+                            (prev.type === 'Futures' || prev.type === 'Options'),
+                        }));
+                      }}
+                      className={`w-full rounded-xl border px-2.5 py-1.5 tj-field ${inputClass}`}
+                      placeholder="RELIANCE, NIFTY, Bank Nifty…"
+                      autoComplete="off"
+                    />
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Free text — company / index / symbol.
+                    </p>
+                  </div>
+                ) : (
+                  <Suspense
+                    fallback={
+                      <div className="rounded-lg border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-4 text-xs text-slate-500">
+                        Loading {form.market} instruments…
+                      </div>
+                    }
+                  >
+                    <GlobalInstrumentPicker
+                      market={form.market === 'forex' ? 'forex' : 'crypto'}
+                      selectedSymbol={form.instrument}
+                      onSelect={handleGlobalInstrumentSelect}
+                    />
+                  </Suspense>
+                )}
+
+                {form.market === 'equity' && selectedSymbolMeta && (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-2 text-xs text-[var(--tf-text-secondary)]">
                     <span className="font-bold text-[var(--tf-text)]">{selectedSymbolMeta.symbol}</span>
                     <span>{selectedSymbolMeta.name}</span>
                     <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
                     <span className="text-[10px]">Matched from list · prices ab bhi manual</span>
+                  </div>
+                )}
+                {form.market !== 'equity' && selectedGlobalMeta && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-2 text-xs text-[var(--tf-text-secondary)]">
+                    <span className="font-bold text-[var(--tf-text)]">{selectedGlobalMeta.symbol}</span>
+                    <span>{selectedGlobalMeta.name}</span>
+                    <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px] uppercase">{form.market}</span>
+                    <span className="text-[10px]">Quote: {selectedGlobalMeta.quoteCurrency}</span>
+                  </div>
+                )}
+
+                {form.market !== 'equity' && (
+                  <input
+                    value={form.instrument}
+                    onChange={(e) => setForm({ ...form, instrument: e.target.value })}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                    placeholder={
+                      form.market === 'crypto'
+                        ? 'Or type pair: BTC/USDT, ETHUSDT…'
+                        : 'Or type pair: EUR/USD, XAUUSD, USDINR…'
+                    }
+                  />
+                )}
+
+                {form.market !== 'equity' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-[10px] text-slate-500">P&amp;L currency</label>
+                    <select
+                      value={form.pnlCurrency}
+                      onChange={(e) => setForm({ ...form, pnlCurrency: e.target.value as PnlCurrency })}
+                      className={`rounded-lg border px-2 py-1 text-xs ${inputClass}`}
+                    >
+                      {form.market === 'crypto' ? (
+                        <>
+                          <option value="USDT">USDT</option>
+                          <option value="USD">USD</option>
+                          <option value="INR">INR</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="INR">INR</option>
+                        </>
+                      )}
+                    </select>
                   </div>
                 )}
               </div>
@@ -1378,7 +1528,11 @@ export default function TradingJournal({
                   value={form.realizedPnl}
                   onChange={(e) => setForm({ ...form, realizedPnl: e.target.value })}
                   className={`w-full rounded-xl border px-2.5 py-2 tj-field tj-field--pnl ${inputClass}`}
-                  placeholder="Profit: 2500  or  Loss: -1200"
+                  placeholder={
+                    form.market === 'equity'
+                      ? 'Profit: 2500  or  Loss: -1200'
+                      : 'Profit: 150  or  Loss: -80'
+                  }
                   inputMode="decimal"
                 />
                 <p className="text-[10px] text-slate-500">Positive = profit, negative (-) = loss. This is saved as your trade P&amp;L.</p>
@@ -1391,13 +1545,30 @@ export default function TradingJournal({
                   onChange={(e) => setForm({ ...form, quantity: e.target.value })}
                   className={`w-full rounded-xl border px-3 py-2 ${inputClass}`}
                   placeholder={
-                    form.quantityIsLots
-                      ? `Lots (manual) · 1 lot = ${activeLotSize} shares`
-                      : 'Quantity / Qty (shares) — optional'
+                    form.market === 'crypto'
+                      ? 'Quantity (coins / units) — optional'
+                      : form.market === 'forex'
+                        ? form.quantityIsLots
+                          ? `Lots · 1 standard lot = ${activeLotSize.toLocaleString()} units`
+                          : 'Units (optional) — or enable standard lots below'
+                        : form.quantityIsLots
+                          ? `Lots (manual) · 1 lot = ${activeLotSize} shares`
+                          : 'Quantity / Qty (shares) — optional'
                   }
                   inputMode="numeric"
                 />
-                {selectedSymbolMeta?.isFno && (
+                {form.market === 'forex' && (
+                  <label className="flex items-center gap-2 text-[10px] text-slate-500 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.quantityIsLots}
+                      onChange={(e) => setForm({ ...form, quantityIsLots: e.target.checked })}
+                      className="rounded"
+                    />
+                    Standard forex lots (1 lot = 100,000 units)
+                  </label>
+                )}
+                {form.market === 'equity' && selectedSymbolMeta?.isFno && (
                   <label className="flex items-center gap-2 text-[10px] text-slate-500 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1424,21 +1595,32 @@ export default function TradingJournal({
               />
               <LuxSelect
                 value={form.type}
-                options={[
-                  { value: 'Intraday', label: 'Intraday' },
-                  { value: 'Swing', label: 'Swing' },
-                  { value: 'Options', label: 'Options' },
-                  { value: 'Futures', label: 'Futures' },
-                ]}
+                options={
+                  form.market === 'equity'
+                    ? [
+                        { value: 'Intraday', label: 'Intraday' },
+                        { value: 'Swing', label: 'Swing' },
+                        { value: 'Options', label: 'Options' },
+                        { value: 'Futures', label: 'Futures' },
+                      ]
+                    : [
+                        { value: 'Intraday', label: 'Intraday' },
+                        { value: 'Swing', label: 'Swing' },
+                      ]
+                }
                 onChange={(v) => {
                   const type = v as TradeType;
                   setForm({
                     ...form,
                     type,
                     quantityIsLots:
-                      (type === 'Futures' || type === 'Options') && Boolean(selectedSymbolMeta?.isFno)
+                      form.market === 'equity' &&
+                      (type === 'Futures' || type === 'Options') &&
+                      Boolean(selectedSymbolMeta?.isFno)
                         ? true
-                        : form.quantityIsLots && Boolean(selectedSymbolMeta?.isFno),
+                        : form.market === 'forex'
+                          ? form.quantityIsLots
+                          : form.quantityIsLots && Boolean(selectedSymbolMeta?.isFno),
                   });
                 }}
               />
@@ -1567,10 +1749,12 @@ export default function TradingJournal({
                 placeholder="All Tags"
               />
               <LuxSelect
-                value={filters.market === 'crypto' || filters.market === 'forex' ? 'equity' : filters.market}
+                value={filters.market}
                 options={[
                   { value: 'all', label: 'All Trades' },
                   { value: 'equity', label: 'Indian Equity' },
+                  { value: 'crypto', label: 'Crypto' },
+                  { value: 'forex', label: 'Forex' },
                 ]}
                 onChange={(v) => setFilters({ ...filters, market: v as 'all' | JournalMarket })}
               />
