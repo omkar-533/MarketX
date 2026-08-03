@@ -42,7 +42,8 @@ import {
   isTradingRelated,
   isCasualGreeting,
   isPoliteAck,
-  isConversationFollowUp,
+  shouldUseWebSearch,
+  buildMasterMarketContext,
   detectExplicitLanguageRequest,
   hasActiveDeskThread,
   getHumanGreetingReply,
@@ -488,6 +489,8 @@ export default function MasterAI() {
     textOverride?: string,
     opts?: { imageDataUrl?: string | null; imageName?: string },
   ) => {
+    // One request at a time — parallel sends interleave replies out of order.
+    if (analyzingRef.current) return;
     const text = textOverride ?? inputText;
     const imageDataUrl = opts?.imageDataUrl ?? selectedImage;
     const imageName = opts?.imageName ?? selectedImageName;
@@ -653,7 +656,7 @@ export default function MasterAI() {
               langMode: explicitLang ? explicitLang : langMode,
               imageDataUrl: hasImage ? imageDataUrl : null,
               history,
-              needsWeb: false,
+              needsWeb: !hasImage && shouldUseWebSearch(userText),
               journalContext,
             },
             hasImage
@@ -672,22 +675,8 @@ export default function MasterAI() {
                   futures: 'n/a',
                   session: 'from chart',
                 }
-              : {
-                  // Server injects LIVE MARKET DATA from TradingView — do not send n/a stubs.
-                  summary: 'Server will inject live TradingView tape',
-                  nifty: 'live',
-                  bankNifty: 'live',
-                  pcr: 0,
-                  maxPain: 0,
-                  signals: 'live tape',
-                  news: 'n/a',
-                  gainers: 'n/a',
-                  losers: 'n/a',
-                  active: 'n/a',
-                  breadth: 'n/a',
-                  futures: 'n/a',
-                  session: 'live',
-                },
+              : // Real local snapshot; the server still overlays its own live TradingView tape.
+                buildMasterMarketContext(),
           );
           responseText =
             (result.reply || '').trim() ||
@@ -1241,7 +1230,7 @@ export default function MasterAI() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  void handleSend();
+                  if (!isThinking && !isAnalyzingChart) void handleSend();
                 }
               }}
               rows={1}
@@ -1265,7 +1254,7 @@ export default function MasterAI() {
             <button
               type="button"
               onClick={() => void handleSend()}
-              disabled={!inputText.trim() || isListening || isThinking}
+              disabled={(!inputText.trim() && !selectedImage) || isListening || isThinking}
               className="mai-chat__send"
               aria-label="Send"
             >

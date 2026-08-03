@@ -147,7 +147,9 @@ export function applyLiveQuoteToMarketItem(item: MarketItem): MarketItem {
     return tickGlobalPaperQuote(item);
   }
 
-  const sel = getJournalSymbolSelection(item.symbol, item.exchange);
+  const exchange =
+    item.exchange === 'CRYPTO' || item.exchange === 'FX' ? undefined : item.exchange;
+  const sel = getJournalSymbolSelection(item.symbol, exchange);
   if (!sel?.price) return item;
   return selectionToMarketItem(sel, item);
 }

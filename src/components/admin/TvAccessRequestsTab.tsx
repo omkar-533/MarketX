@@ -124,7 +124,7 @@ export default function TvAccessRequestsTab({
     setError('');
     try {
       const data = await adminListTvAccessRequests('all', adminEmail, adminPassword);
-      setRows(data.requests);
+      setRows(Array.isArray(data.requests) ? data.requests : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load list');
     } finally {
@@ -190,18 +190,21 @@ export default function TvAccessRequestsTab({
     try {
       if (rangeFilterActive) {
         const pending = filteredRows.filter((r) => r.status === 'pending');
+        let done = 0;
         for (const row of pending) {
           await adminReviewTvAccessRequest(row.id, 'granted', {}, adminEmail, adminPassword);
+          done += 1;
         }
-        flash(`Approved ${pending.length} request(s)`);
+        flash(`Approved ${done} request(s)`);
       } else {
         const result = await adminApproveAllTvAccessRequests(adminEmail, adminPassword);
         flash(`Approved ${result.updated} request(s)`);
       }
-      await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not approve all');
     } finally {
+      // Always resync — a partial run must still reflect whatever was approved.
+      await refresh();
       setBusyId(null);
     }
   };
@@ -414,7 +417,7 @@ export default function TvAccessRequestsTab({
                         <>
                           <button
                             type="button"
-                            disabled={busyId === row.id}
+                            disabled={busyId !== null}
                             onClick={() => void review(row, 'granted')}
                             className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50"
                             title="Copies @username, then unlocks invite for user"
@@ -424,7 +427,7 @@ export default function TvAccessRequestsTab({
                           </button>
                           <button
                             type="button"
-                            disabled={busyId === row.id}
+                            disabled={busyId !== null}
                             onClick={() => void review(row, 'dismiss')}
                             className="inline-flex items-center gap-1 rounded-lg bg-slate-500/10 border border-slate-500/20 px-2.5 py-1.5 text-[10px] font-bold text-slate-400 hover:bg-slate-500/20 disabled:opacity-50"
                           >
@@ -435,7 +438,7 @@ export default function TvAccessRequestsTab({
                       ) : null}
                       <button
                         type="button"
-                        disabled={busyId === row.id}
+                        disabled={busyId !== null}
                         onClick={() => void remove(row)}
                         className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 border border-red-500/25 px-2.5 py-1.5 text-[10px] font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50"
                         title="Delete request"

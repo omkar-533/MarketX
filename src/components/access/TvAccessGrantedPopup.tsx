@@ -208,8 +208,9 @@ export default function TvAccessGrantedPopup({
                 className="tv-grant__invite"
                 onClick={() => {
                   const ok = openExternalUrl(grant.inviteLink);
+                  if (!ok) return;
                   markSeen(grant.id);
-                  if (ok) setGrant(null);
+                  setGrant(null);
                 }}
               >
                 Open invite on TradingView

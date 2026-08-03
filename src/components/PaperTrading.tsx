@@ -14,8 +14,9 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '../hooks/useAuth';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
@@ -39,6 +40,7 @@ import {
   legsToPositions,
   marginForLeg,
   marginForPosition,
+  markPriceForOrder,
   markPriceForPosition,
   normalizeWatchlist,
   orderFillsImmediately,
@@ -131,7 +133,12 @@ function loadStoredState(user?: User | null): PaperState | null {
     const usedMargin = Number(parsed.usedMargin ?? 0);
     const available = Number(parsed.available ?? INITIAL_CAPITAL);
     let balance = Number(parsed.balance ?? INITIAL_CAPITAL);
-    const pendingReserve = (Array.isArray(parsed.orders) ? parsed.orders : [])
+    // Older sessions saved pending orders without a reserve — cancelling them would have
+    // released nothing, so drop the stale ones instead of leaking blocked margin.
+    const orders = (Array.isArray(parsed.orders) ? parsed.orders : []).filter(
+      (o: PaperOrder) => !(o?.status === 'PENDING' && !Number(o?.reservedMargin)),
+    );
+    const pendingReserve = orders
       .filter((o: PaperOrder) => o?.status === 'PENDING')
       .reduce((sum: number, o: PaperOrder) => sum + Number(o.reservedMargin ?? 0), 0);
     // Repair older sessions that wrongly burned margin out of balance.
@@ -145,7 +152,7 @@ function loadStoredState(user?: User | null): PaperState | null {
       available,
       totalCharges: Number(parsed.totalCharges ?? 0),
       positions: Array.isArray(parsed.positions) ? parsed.positions : [],
-      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
+      orders,
       history: Array.isArray(parsed.history) ? parsed.history : [],
       watchlist: watchlist.length ? watchlist : defaultWatchlist(),
       strategyGroups: Array.isArray(parsed.strategyGroups) ? parsed.strategyGroups : [],
@@ -184,6 +191,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   const [selectedSymbol, setSelectedSymbol] = useState<MarketItem | null>(null);
   const [pickerSymbol, setPickerSymbol] = useState('NIFTY');
   const [statusMessage, setStatusMessage] = useState('Paper trading ready. Use live snapshots and save your trades.');
+  const isStatusError = /insufficient|rejected|not supported|require|invalid|Enter a valid|Select a|failed|cancelled/i.test(
+    statusMessage,
+  );
   const [pendingStrategy, setPendingStrategy] = useState<StrategyBuilderPaperPayload | null>(null);
   const [showAddWatchlist, setShowAddWatchlist] = useState(false);
   const [showResetCapital, setShowResetCapital] = useState(false);
@@ -302,7 +312,11 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
   useEffect(() => {
     if (!persistReadyRef.current) return;
-    localStorage.setItem(getStorageKey(user), JSON.stringify(paperState));
+    try {
+      localStorage.setItem(getStorageKey(user), JSON.stringify(paperState));
+    } catch {
+      setStatusMessage('Browser storage is full — this session will not be saved.');
+    }
   }, [paperState, user]);
 
   const filteredWatchlist = useMemo(
@@ -323,6 +337,19 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
   const quoteMap = useMemo(
     () => Object.fromEntries(paperState.watchlist.map((item) => [item.symbol, item.price])),
+    [paperState.watchlist],
+  );
+
+  /** Format a price/P&L in the instrument's own currency (USDT for crypto, USD for FX, else ₹). */
+  const px = useCallback(
+    (symbol: string | undefined, value: number, signed = false) => {
+      const base = symbol ? symbol.split(' ')[0] : '';
+      const item =
+        paperState.watchlist.find((w) => w.symbol === symbol || w.symbol === base) ?? null;
+      const text = formatPaperPrice(item, Math.abs(value));
+      if (!signed) return value < 0 ? `-${text}` : text;
+      return `${value >= 0 ? '+' : '-'}${text}`;
+    },
     [paperState.watchlist],
   );
 
@@ -355,7 +382,16 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     : 0;
   const currentPriceForSelection = currentSymbol ? (quoteMap[currentSymbol.symbol] ?? currentSymbol.price) : 0;
   const pendingOrders = paperState.orders.filter((order) => order.status === 'PENDING').length;
-  const openPositionsValue = positionsWithLive.reduce((sum, position) => sum + position.currentPrice * position.quantity, 0);
+  const openPositionsValue = positionsWithLive.reduce(
+    (sum, position) =>
+      sum +
+      position.currentPrice *
+        position.quantity *
+        (position.instrumentType && position.instrumentType !== 'EQUITY'
+          ? position.lotSize ?? 1
+          : 1),
+    0,
+  );
   const openPositionStats = positionsWithLive.reduce(
     (stats, position) => {
       if (position.pnl >= 0) {
@@ -520,7 +556,14 @@ export default function PaperTrading({ user }: PaperTradingProps) {
       }
 
       if (completes) {
-        const position = buildPositionFromOrder(orderId, draft, currentSymbol, effectivePrice, spot);
+        const position = buildPositionFromOrder(
+          orderId,
+          draft,
+          currentSymbol,
+          effectivePrice,
+          spot,
+          marginRequired,
+        );
         const historyEntry: PaperTradeRecord = {
           id: orderId,
           symbol: position.symbol,
@@ -553,7 +596,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
         lastSync: new Date().toISOString(),
       };
 
-      const instantFill = checkOrderFill(newOrder, spot);
+      const instantFill = checkOrderFill(newOrder, markPriceForOrder(newOrder, spot));
       if (instantFill !== null) {
         next = applyOrderFill(next, newOrder, currentSymbol, instantFill);
       }
@@ -885,6 +928,26 @@ export default function PaperTrading({ user }: PaperTradingProps) {
           </div>
         </div>
       </div>
+
+      {statusMessage ? (
+        <div
+          className={`shrink-0 flex items-start gap-2 px-3 sm:px-4 py-2 border-b text-[11px] sm:text-xs ${
+            isStatusError
+              ? 'bg-red-500/10 border-red-500/25 text-red-300'
+              : 'bg-[#0b0e17] border-[#1a1f2e] text-slate-300'
+          }`}
+        >
+          <span className="flex-1 leading-relaxed">{statusMessage}</span>
+          <button
+            type="button"
+            onClick={() => setStatusMessage('')}
+            className="p-0.5 text-slate-500 hover:text-slate-200 shrink-0"
+            aria-label="Dismiss message"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         <div className="w-64 sm:w-72 bg-[#0b0e17] border-r border-[#1a1f2e] flex flex-col min-h-0 shrink-0">
@@ -1221,9 +1284,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                           <td className="py-3 px-4 text-slate-400 text-xs">{position.notes ?? '—'}</td>
                           <td className="py-3 px-4"><span className={`text-[10px] px-1.5 py-0.5 rounded ${position.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{position.side}</span></td>
                           <td className="py-3 px-4 text-right font-mono text-slate-300">{position.quantity}</td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-400">₹{position.avgPrice.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-200">₹{position.currentPrice.toFixed(2)}</td>
-                          <td className={`py-3 px-4 text-right font-bold font-mono ${position.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{position.pnl >= 0 ? '+' : ''}₹{position.pnl.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-400">{px(position.underlying ?? position.symbol, position.avgPrice)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-200">{px(position.underlying ?? position.symbol, position.currentPrice)}</td>
+                          <td className={`py-3 px-4 text-right font-bold font-mono ${position.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{px(position.underlying ?? position.symbol, position.pnl, true)}</td>
                           <td className="py-3 px-4 text-center">
                             <button onClick={() => squareOff(position.id)} className="px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded text-xs font-bold hover:bg-red-500/20 transition-colors">Close</button>
                           </td>
@@ -1262,12 +1325,12 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                           <td className="py-3 px-4 text-right font-mono text-slate-300">{order.quantity}</td>
                           <td className="py-3 px-4 text-right text-slate-200">{orderTypeLabel(order.orderType)}</td>
                           <td className="py-3 px-4 text-right font-mono text-slate-300 text-xs">
-                            <div>₹{order.price.toFixed(2)}</div>
+                            <div>{px(order.underlying ?? order.symbol, order.price)}</div>
                             {order.triggerPrice != null && (
-                              <div className="text-slate-500">Trig ₹{order.triggerPrice.toFixed(2)}</div>
+                              <div className="text-slate-500">Trig {px(order.underlying ?? order.symbol, order.triggerPrice)}</div>
                             )}
                             {order.fillPrice != null && order.status === 'COMPLETE' && (
-                              <div className="text-emerald-400/80">Fill ₹{order.fillPrice.toFixed(2)}</div>
+                              <div className="text-emerald-400/80">Fill {px(order.underlying ?? order.symbol, order.fillPrice)}</div>
                             )}
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -1307,8 +1370,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                         <tr key={trade.id} className="border-b border-[#1a1f2e]/40 hover:bg-[#121520]">
                           <td className="py-3 px-4 font-bold text-white">{trade.symbol}</td>
                           <td className="py-3 px-4"><span className={`text-[10px] px-1.5 py-0.5 rounded ${trade.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{trade.side}</span></td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-300">₹{trade.entryPrice.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-slate-300">{trade.exitPrice ? `₹${trade.exitPrice.toFixed(2)}` : 'Open'}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-300">{px(trade.symbol, trade.entryPrice)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-300">{trade.exitPrice ? px(trade.symbol, trade.exitPrice) : 'Open'}</td>
                           <td
                             className={`py-3 px-4 text-right font-bold font-mono ${
                               trade.status === 'CLOSED' && trade.pnl != null
@@ -1319,7 +1382,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                             }`}
                           >
                             {trade.status === 'CLOSED' && trade.pnl != null
-                              ? `${trade.pnl > 0 ? '+' : ''}₹${trade.pnl.toFixed(2)}`
+                              ? trade.pnl === 0
+                                ? px(trade.symbol, 0)
+                                : px(trade.symbol, trade.pnl, true)
                               : trade.status === 'OPEN'
                                 ? 'Open'
                                 : '—'}
@@ -1340,7 +1405,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span className="text-slate-500">Total closed trades</span><span className="font-bold text-white">{closedTrades.length}</span></div>
                     <div className="flex justify-between"><span className="text-slate-500">Winning trades</span><span className="font-bold text-emerald-400">{winningTrades}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Average win/loss</span><span className="font-bold text-white">₹{averageWin.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Average per closed trade</span><span className="font-bold text-white">₹{averageWin.toFixed(2)}</span></div>
                     <div className="flex justify-between"><span className="text-slate-500">Current open risk</span><span className="font-bold text-red-400">₹{Math.max(0, -openPositionStats.totalPnl).toFixed(2)}</span></div>
                   </div>
                 </div>

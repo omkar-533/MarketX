@@ -98,10 +98,12 @@ export interface PaperPosition {
   strike?: number;
   expiry?: string;
   lotSize?: number;
-  exchange?: JournalSymbolSelection['exchange'];
+  exchange?: MarketItem['exchange'];
   underlying?: string;
   segment?: PaperSegment;
   assetMarket?: PaperAssetMarket;
+  /** Exact margin blocked when this position opened — released untouched on square-off. */
+  marginUsed?: number;
 }
 
 export interface PaperOrder {
@@ -429,7 +431,7 @@ export function normalizeWatchlist(items: MarketItem[]): MarketItem[] {
         low: safeNum(item.low, safeNum(item.price)),
       };
     }
-    const sel = getJournalSymbolSelection(item.symbol, item.exchange);
+    const sel = getJournalSymbolSelection(item.symbol, equityExchange(item));
     if (!sel) {
       return {
         ...item,
@@ -457,6 +459,15 @@ export function normalizeWatchlist(items: MarketItem[]): MarketItem[] {
     }
     return next;
   });
+}
+
+/** Exchange id usable for the Indian equity lookup — undefined for crypto/forex rows. */
+export function equityExchange(
+  item: Pick<MarketItem, 'exchange' | 'assetMarket'>,
+): JournalSymbolSelection['exchange'] | undefined {
+  if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') return undefined;
+  if (item.exchange === 'CRYPTO' || item.exchange === 'FX') return undefined;
+  return item.exchange;
 }
 
 export function watchlistKey(item: Pick<MarketItem, 'symbol' | 'exchange' | 'assetMarket'>) {
@@ -531,6 +542,21 @@ export function effectiveOrderPrice(
   return draft.price;
 }
 
+/**
+ * Price a pending order should be marked against. Option orders carry a premium in
+ * `order.price`, so comparing them to the underlying spot would fill instantly (or never).
+ */
+export function markPriceForOrder(order: PaperOrder, spot: number): number {
+  if (order.instrumentType !== 'CE' && order.instrumentType !== 'PE') return spot;
+  const underlying = order.underlying ?? order.symbol;
+  const premium = getChainPremium(
+    getMarketSnapshot(underlying).chain,
+    order.strike ?? spot,
+    order.instrumentType,
+  );
+  return premium ?? order.price;
+}
+
 /** LTP at which a pending order should execute, or null if conditions not met */
 export function checkOrderFill(order: PaperOrder, ltp: number): number | null {
   const { orderType, side, price } = order;
@@ -602,7 +628,7 @@ export function applyOrderFill(
   const spot = item.price;
   const margin = order.reservedMargin ?? marginForOrderDraft(draft, item, fillPrice);
   const charges = calculateChargesForDraft(draft, item, fillPrice);
-  const position = buildPositionFromOrder(order.id, draft, item, fillPrice, spot);
+  const position = buildPositionFromOrder(order.id, draft, item, fillPrice, spot, margin);
   const historyEntry: PaperTradeRecord = {
     id: order.id,
     symbol: position.symbol,
@@ -649,10 +675,10 @@ export function processPendingPaperOrders(
 
   for (const order of state.orders.filter((o) => o.status === 'PENDING')) {
 
-    const ltp = quoteMap[order.symbol];
-    if (ltp === undefined) continue;
+    const spot = quoteMap[order.symbol];
+    if (spot === undefined) continue;
 
-    const fillPrice = checkOrderFill(order, ltp);
+    const fillPrice = checkOrderFill(order, markPriceForOrder(order, spot));
     if (fillPrice === null) continue;
 
     const item = findWatchlistItem(watchlist, order.symbol);
@@ -660,7 +686,7 @@ export function processPendingPaperOrders(
 
     next = applyOrderFill(next, order, item, fillPrice);
     messages.push(
-      `${orderTypeLabel(order.orderType)} ${order.side} ${order.symbol} executed @ ₹${fillPrice.toFixed(2)}`,
+      `${orderTypeLabel(order.orderType)} ${order.side} ${order.symbol} executed @ ${formatPaperPrice(item, fillPrice)}`,
     );
   }
 
@@ -704,7 +730,12 @@ export function positionDisplaySymbol(
 
 export function markPriceForPosition(pos: PaperPosition, quoteMap: Record<string, number>): number {
   const und = pos.underlying ?? pos.symbol.split(' ')[0];
-  const spot = quoteMap[und] ?? pos.avgPrice;
+  // Never fall back to avgPrice for derivatives — that is a premium, not the underlying spot.
+  const spot =
+    quoteMap[und] ??
+    (pos.instrumentType && pos.instrumentType !== 'EQUITY'
+      ? getMarketSnapshot(und).spot || pos.avgPrice
+      : pos.avgPrice);
   if (pos.instrumentType === 'CE' || pos.instrumentType === 'PE') {
     const prem = getChainPremium(
       getMarketSnapshot(und).chain,
@@ -723,6 +754,7 @@ export function buildPositionFromOrder(
   item: MarketItem,
   effectivePrice: number,
   spot: number,
+  marginUsed?: number,
 ): PaperPosition {
   const instrument = instrumentFromDraft(draft);
   const underlying = item.symbol;
@@ -762,6 +794,9 @@ export function buildPositionFromOrder(
     exchange: item.exchange,
     segment: draft.segment,
     assetMarket: item.assetMarket || 'equity',
+    marginUsed: roundInr(
+      marginUsed ?? marginForOrderDraft(draft, item, effectivePrice),
+    ),
   };
   return createPositionSnapshot(base, px, spot);
 }
@@ -810,14 +845,23 @@ export function createPositionSnapshot(
 }
 
 export function marginForLeg(leg: PaperLeg, product: Product = 'MIS'): number {
+  const lot = leg.lotSize || 1;
   if (leg.instrumentType === 'CE' || leg.instrumentType === 'PE') {
-    return leg.avgPrice * leg.quantity * leg.lotSize;
+    const base = leg.avgPrice * leg.quantity * lot;
+    return leg.action === 'SELL' ? base * 1.5 : base;
+  }
+  if (leg.instrumentType === 'FUT') {
+    return leg.avgPrice * leg.quantity * lot * 0.12;
   }
   const notional = leg.avgPrice * leg.quantity;
   return notional * (product === 'MIS' ? 0.2 : 1);
 }
 
 export function marginForPosition(position: PaperPosition): number {
+  // Always give back exactly what was blocked; the estimates below are only for legacy rows.
+  if (typeof position.marginUsed === 'number' && Number.isFinite(position.marginUsed)) {
+    return Math.max(0, position.marginUsed);
+  }
   if (position.instrumentType === 'CE' || position.instrumentType === 'PE') {
     const base = position.avgPrice * position.quantity * (position.lotSize ?? 1);
     return position.side === 'SELL' ? base * 1.5 : base;
@@ -1034,6 +1078,7 @@ export function legsToPositions(
       exchange: leg.exchange,
       notes: group.name,
       underlying: leg.symbol,
+      marginUsed: roundInr(marginForLeg(leg)),
       segment:
         leg.instrumentType === 'FUT'
           ? 'FUTURES'

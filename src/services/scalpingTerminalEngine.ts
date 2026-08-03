@@ -13,6 +13,8 @@ export type AlertType =
   | 'Breakdown'
   | 'OI Spike'
   | 'VWAP Cross'
+  | 'EMA Cross'
+  | 'Fake Breakout'
   | 'Premium Explosion'
   | 'Smart Money'
   | 'Strong Buy'
@@ -449,7 +451,10 @@ export function analyzeScalpingTerminal(
   const priceChg = opts?.changePct ?? last.changePct;
   const oiBuildup = classifyOiBuildup(priceChg, ctx.oiDelta);
 
-  const m1 = timeframeBias(buildCandles(ctx.ticks, 60_000));
+  const m1Candles = buildCandles(ctx.ticks, 60_000);
+  const lastCandle = m1Candles[m1Candles.length - 1];
+  const premiumPhase = detectPremiumPhase(ctx.premiumSeries);
+  const m1 = timeframeBias(m1Candles);
   const m3 = timeframeBias(buildCandles(ctx.ticks, 180_000));
   const m5 = timeframeBias(buildCandles(ctx.ticks, 300_000));
   const mtfAligned =

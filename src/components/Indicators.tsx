@@ -74,9 +74,9 @@ export default function Indicators({
     setTvErr('');
     setTvDone(false);
     setTvStatus(item.tvAccessStatus || null);
-    // Never seed invite from list payload unless already granted (server may still send empty).
-    setInviteLink(item.tvAccessStatus === 'granted' ? item.link || '' : '');
-    setActive(item);
+    // The list payload can be stale; the invite only comes from the live status poll below.
+    setInviteLink('');
+    setActive({ ...item, link: '' });
   }, []);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function Indicators({
         if (status.inviteLink) {
           setInviteLink(status.inviteLink);
           setActive((prev) => (prev ? { ...prev, link: status.inviteLink } : prev));
-        } else if (status.status === 'pending' || status.status === 'dismissed') {
+        } else {
           setInviteLink('');
           setActive((prev) => (prev ? { ...prev, link: '' } : prev));
         }
@@ -143,10 +143,15 @@ export default function Indicators({
           timer = window.setTimeout(() => void pull(), 8000);
         } else if (status.status === 'granted') {
           setTvDone(true);
-          setTvMsg('Access approved — open the invite link below.');
+          setTvMsg(
+            status.inviteLink
+              ? 'Access approved — open the invite link below.'
+              : 'Approved on TradingView. The invite unlocks once your plan access is active.',
+          );
         }
       } catch {
-        /* ignore poll errors */
+        // Keep polling so an approval is never missed because of a dropped request.
+        if (!cancelled) timer = window.setTimeout(() => void pull(), 15000);
       }
     };
 
@@ -184,6 +189,7 @@ export default function Indicators({
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
       setCopied(false);
+      setTvErr('Could not copy — select the link and copy it manually.');
     }
   };
 
@@ -333,8 +339,10 @@ export default function Indicators({
                 <div className="lux-ind__access-copy">
                   <h2>Get access</h2>
                   <p>
-                    {tvStatus === 'granted'
+                    {tvStatus === 'granted' && effectiveLink
                       ? 'Your invite is unlocked. Open it on TradingView to add the indicator.'
+                      : tvStatus === 'granted'
+                      ? 'Approved on TradingView. The invite appears here once your plan access is active.'
                       : tvStatus === 'pending'
                         ? 'Request is with the desk. Invite unlocks here as soon as they Approve.'
                         : 'Submit your TradingView username. After desk approval, the invite link unlocks here — no WhatsApp needed.'}
@@ -424,7 +432,11 @@ export default function Indicators({
                       type="button"
                       className="lux-ind__btn lux-ind__btn--primary"
                       style={{ justifyContent: 'center' }}
-                      onClick={() => openExternalUrl(effectiveLink)}
+                      onClick={() => {
+                        if (!openExternalUrl(effectiveLink)) {
+                          setTvErr('Could not open the invite — copy the link and paste it in a new tab.');
+                        }
+                      }}
                     >
                       Open indicator
                       <ArrowRight className="w-4 h-4" />
@@ -443,9 +455,11 @@ export default function Indicators({
                   </div>
                 ) : (
                   <div className="lux-ind__locked">
-                    {tvStatus === 'pending'
-                      ? 'Invite locked until the desk Approves your request.'
-                      : 'Submit your TradingView ID above. Invite unlocks after desk approval.'}
+                    {tvStatus === 'granted'
+                      ? 'Approved — the invite unlocks here once your plan access is active.'
+                      : tvStatus === 'pending'
+                        ? 'Invite locked until the desk Approves your request.'
+                        : 'Submit your TradingView ID above. Invite unlocks after desk approval.'}
                   </div>
                 )}
               </section>

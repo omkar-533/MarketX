@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Download,
   Filter,
-  Goal,
   LayoutGrid,
   LineChart,
   NotebookPen,
@@ -236,19 +235,19 @@ function buildCalcInput(
 
 function buildTradeMetrics(trades: TradeRecord[]) {
   const totalTrades = trades.length;
-  const winningTrades = trades.filter((trade) => trade.pnl > 0);
-  const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const winningTrades = trades.filter((trade) => safePnl(trade) > 0);
+  const totalPnl = trades.reduce((sum, trade) => sum + safePnl(trade), 0);
   const avgRR = totalTrades
     ? trades.reduce((sum, trade) => sum + Number(trade.rr ?? 0), 0) / totalTrades
     : 0;
   const winRate = totalTrades ? (winningTrades.length / totalTrades) * 100 : 0;
-  const best = trades.reduce((best, trade) => (trade.pnl > best.pnl ? trade : best), trades[0] ?? { pnl: 0 } as TradeRecord);
-  const worst = trades.reduce((worst, trade) => (trade.pnl < worst.pnl ? trade : worst), trades[0] ?? { pnl: 0 } as TradeRecord);
+  const best = trades.reduce((best, trade) => (safePnl(trade) > safePnl(best) ? trade : best), trades[0] ?? { pnl: 0 } as TradeRecord);
+  const worst = trades.reduce((worst, trade) => (safePnl(trade) < safePnl(worst) ? trade : worst), trades[0] ?? { pnl: 0 } as TradeRecord);
 
   const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let streak = 0;
   for (let i = sorted.length - 1; i >= 0; i -= 1) {
-    if (sorted[i].pnl > 0) streak += 1;
+    if (safePnl(sorted[i]) > 0) streak += 1;
     else break;
   }
 
@@ -257,29 +256,35 @@ function buildTradeMetrics(trades: TradeRecord[]) {
     start.setMonth(start.getMonth() - (5 - index));
     const monthLabel = start.toLocaleString('en-US', { month: 'short' });
     const monthTrades = trades.filter((trade) => new Date(trade.date).getMonth() === start.getMonth() && new Date(trade.date).getFullYear() === start.getFullYear());
-    const monthPnl = monthTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+    const monthPnl = monthTrades.reduce((sum, trade) => sum + safePnl(trade), 0);
     return { label: monthLabel, pnl: monthPnl, trades: monthTrades.length };
   });
 
   return { totalTrades, totalPnl, avgRR, winRate, best, worst, streak, monthly };
 }
 
+/** Legacy/imported rows can carry a null or non-numeric pnl — never let it poison an aggregate. */
+function safePnl(trade: Pick<TradeRecord, 'pnl'>) {
+  const n = Number(trade.pnl);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function buildAdvancedMetrics(trades: TradeRecord[]) {
-  const wins = trades.filter((t) => t.pnl > 0);
-  const losses = trades.filter((t) => t.pnl < 0);
-  const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
-  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
+  const wins = trades.filter((t) => safePnl(t) > 0);
+  const losses = trades.filter((t) => safePnl(t) < 0);
+  const grossProfit = wins.reduce((s, t) => s + safePnl(t), 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + safePnl(t), 0));
   const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 99 : 0;
   const avgWin = wins.length ? grossProfit / wins.length : 0;
   const avgLoss = losses.length ? grossLoss / losses.length : 0;
-  const expectancy = trades.length ? trades.reduce((s, t) => s + t.pnl, 0) / trades.length : 0;
+  const expectancy = trades.length ? trades.reduce((s, t) => s + safePnl(t), 0) / trades.length : 0;
 
   const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let peak = 0;
   let cum = 0;
   let maxDrawdown = 0;
   sorted.forEach((t) => {
-    cum += t.pnl;
+    cum += safePnl(t);
     if (cum > peak) peak = cum;
     const dd = peak - cum;
     if (dd > maxDrawdown) maxDrawdown = dd;
@@ -302,7 +307,7 @@ function buildEquityCurve(trades: TradeRecord[]) {
   const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let cum = 0;
   return sorted.map((t, i) => {
-    cum += t.pnl;
+    cum += safePnl(t);
     return {
       label: new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
       equity: Math.round(cum * 100) / 100,
@@ -317,10 +322,11 @@ type TradeSortKey = 'date' | 'pnl' | 'rr' | 'instrument';
 function buildStrategyData(trades: TradeRecord[]) {
   const map = new Map<string, { pnl: number; trades: number }>();
   trades.forEach((trade) => {
-    const existing = map.get(trade.strategy) ?? { pnl: 0, trades: 0 };
-    existing.pnl += trade.pnl;
+    const key = trade.strategy || 'Unlabelled';
+    const existing = map.get(key) ?? { pnl: 0, trades: 0 };
+    existing.pnl += safePnl(trade);
     existing.trades += 1;
-    map.set(trade.strategy, existing);
+    map.set(key, existing);
   });
 
   return Array.from(map.entries()).map(([strategy, value]) => ({ strategy, pnl: value.pnl, trades: value.trades }));
@@ -329,7 +335,8 @@ function buildStrategyData(trades: TradeRecord[]) {
 function buildInstrumentData(trades: TradeRecord[]) {
   const map = new Map<string, number>();
   trades.forEach((trade) => {
-    map.set(trade.instrument, (map.get(trade.instrument) ?? 0) + trade.pnl);
+    const key = trade.instrument || 'Unknown';
+    map.set(key, (map.get(key) ?? 0) + safePnl(trade));
   });
   return Array.from(map.entries()).map(([instrument, pnl]) => ({ instrument, pnl }));
 }
@@ -346,18 +353,22 @@ function buildRiskData(trades: TradeRecord[]) {
 }
 
 function buildHeatmap(trades: TradeRecord[]) {
+  // Mon–Sun: crypto and forex trade on weekends too, so every weekday needs a bucket.
   const data = [
     { day: 'Mon', pnl: 0 },
     { day: 'Tue', pnl: 0 },
     { day: 'Wed', pnl: 0 },
     { day: 'Thu', pnl: 0 },
     { day: 'Fri', pnl: 0 },
+    { day: 'Sat', pnl: 0 },
+    { day: 'Sun', pnl: 0 },
   ];
 
   trades.forEach((trade) => {
     const dayIndex = new Date(trade.date).getDay();
-    const mappedIndex = dayIndex === 0 ? 5 : dayIndex - 1;
-    data[mappedIndex].pnl += trade.pnl;
+    if (Number.isNaN(dayIndex)) return;
+    const mappedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+    data[mappedIndex].pnl += safePnl(trade);
   });
 
   return data;
@@ -384,6 +395,8 @@ function downloadFile(filename: string, content: string, type: string) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+const GOAL_TARGET_KEY = 'wolf_journal_goal_target';
 
 function tradeBelongsToUser(trade: TradeRecord, user: User) {
   const email = user.email?.toLowerCase();
@@ -553,7 +566,14 @@ export default function TradingJournal({
     market: 'all' as 'all' | JournalMarket,
     pnl: 'all' as 'all' | 'win' | 'loss',
   });
-  const [goalTarget, setGoalTarget] = useState(5000);
+  const [goalTarget, setGoalTarget] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(GOAL_TARGET_KEY));
+      return Number.isFinite(saved) && saved > 0 ? saved : 5000;
+    } catch {
+      return 5000;
+    }
+  });
   const [challengeMode, setChallengeMode] = useState(true);
   const [syncStatus, setSyncStatus] = useState('Ready');
   const [statusMessage, setStatusMessage] = useState('Add a completed trade to start your journal.');
@@ -565,6 +585,14 @@ export default function TradingJournal({
   const [, setShowTradeForm] = useState(true);
   const [sortKey, setSortKey] = useState<TradeSortKey>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(GOAL_TARGET_KEY, String(goalTarget));
+    } catch {
+      /* storage full or blocked — goal stays session-only */
+    }
+  }, [goalTarget]);
 
   useEffect(() => {
     if (!user) {
@@ -673,24 +701,24 @@ export default function TradingJournal({
     const marketFilter = filters.market;
 
     return visibleTrades.filter((trade) => {
-      const matchesSearch = `${trade.instrument} ${trade.strategy} ${trade.broker} ${tradeTags(trade).join(' ')}`
+      const matchesSearch = `${trade.instrument ?? ''} ${trade.strategy ?? ''} ${trade.broker ?? ''} ${tradeTags(trade).join(' ')}`
         .toLowerCase()
         .includes(search.toLowerCase());
       const matchesStrategy = strategyQuery
-        ? trade.strategy.toLowerCase().includes(strategyQuery)
+        ? (trade.strategy ?? '').toLowerCase().includes(strategyQuery)
         : true;
       const matchesBroker = brokerQuery
-        ? trade.broker.toLowerCase().includes(brokerQuery)
+        ? (trade.broker ?? '').toLowerCase().includes(brokerQuery)
         : true;
       const matchesInstrument = instrumentQuery
-        ? trade.instrument.toLowerCase().includes(instrumentQuery)
+        ? (trade.instrument ?? '').toLowerCase().includes(instrumentQuery)
         : true;
       const matchesTag = filters.tag ? tradeTags(trade).includes(filters.tag) : true;
       const matchesPnl = filters.pnl === 'all'
         ? true
         : filters.pnl === 'win'
-          ? trade.pnl > 0
-          : trade.pnl < 0;
+          ? safePnl(trade) > 0
+          : safePnl(trade) < 0;
       const matchesMarket =
         marketFilter === 'all' ? true : tradeMarket(trade) === marketFilter;
 
@@ -714,10 +742,10 @@ export default function TradingJournal({
     const list = [...filteredTrades];
     list.sort((a, b) => {
       let cmp = 0;
-      if (sortKey === 'date') cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
-      else if (sortKey === 'pnl') cmp = a.pnl - b.pnl;
-      else if (sortKey === 'rr') cmp = a.rr - b.rr;
-      else cmp = a.instrument.localeCompare(b.instrument);
+      if (sortKey === 'date') cmp = (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0);
+      else if (sortKey === 'pnl') cmp = safePnl(a) - safePnl(b);
+      else if (sortKey === 'rr') cmp = Number(a.rr ?? 0) - Number(b.rr ?? 0);
+      else cmp = (a.instrument ?? '').localeCompare(b.instrument ?? '');
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return list;
@@ -950,7 +978,9 @@ export default function TradingJournal({
   };
 
   const totalScreenshots = filteredTrades.filter((trade) => trade.screenshot).length;
-  const goalProgress = Math.min((metrics.totalPnl / goalTarget) * 100, 100);
+  const goalProgress = goalTarget > 0
+    ? Math.max(0, Math.min((metrics.totalPnl / goalTarget) * 100, 100))
+    : 0;
 
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1030,16 +1060,18 @@ export default function TradingJournal({
       : [nextRecord, ...tradeStore];
 
     // Persist immediately so cloud hydrate cannot wipe the new trade.
-    persistLocalTrades(user, nextStore);
+    const stored = persistLocalTrades(user, nextStore);
     skipPersistRef.current = false;
     hydrateGenRef.current += 1;
     setTradeStore(nextStore);
 
     const softWarnings = getJournalCompletenessWarnings(nextRecord);
     setStatusMessage(
-      softWarnings.length
-        ? `${editingId ? 'Trade updated' : 'Trade saved'} ✓ Completeness tips: ${softWarnings.slice(0, 3).join('; ')}.`
-        : `${editingId ? 'Trade updated' : 'Trade saved'} ✓ See Trade Log below.`,
+      !stored
+        ? 'Saved in this session only — browser storage is full or blocked.'
+        : softWarnings.length
+          ? `${editingId ? 'Trade updated' : 'Trade saved'} ✓ Completeness tips: ${softWarnings.slice(0, 3).join('; ')}.`
+          : `${editingId ? 'Trade updated' : 'Trade saved'} ✓ See Trade Log below.`,
     );
 
     void autoSyncJournal(user, nextStore).then((result) => {
@@ -1060,7 +1092,7 @@ export default function TradingJournal({
 
   const handleEditTrade = (trade: TradeRecord) => {
     if (!user) return;
-    if (!isAdmin && trade.ownerId !== user.id) return;
+    if (!isAdmin && !tradeBelongsToUser(trade, user)) return;
 
     const mkt = tradeMarket(trade);
     const lotSize = getInstrumentLotSize(
@@ -1113,17 +1145,29 @@ export default function TradingJournal({
 
     const target = tradeStore.find((trade) => trade.id === tradeId);
     if (!target) return;
-    if (!isAdmin && target.ownerId !== user.id) {
+    if (!isAdmin && !tradeBelongsToUser(target, user)) {
       setStatusMessage('You can only delete your own trades.');
       return;
     }
 
-    setTradeStore((prev) => prev.filter((trade) => trade.id !== tradeId));
+    const nextStore = tradeStore.filter((trade) => trade.id !== tradeId);
+    // Persist before the cloud pull runs, otherwise the merge restores the deleted row.
+    persistLocalTrades(user, nextStore);
+    skipPersistRef.current = false;
+    hydrateGenRef.current += 1;
+    setTradeStore(nextStore);
     if (editingId === tradeId) resetForm();
     setStatusMessage('Trade deleted successfully.');
+    void autoSyncJournal(user, nextStore).then((result) => {
+      setSyncStatus(result.message);
+    });
   };
 
   const handleExportCsv = () => {
+    const csvCell = (value: unknown) => {
+      const text = value === null || value === undefined ? '' : String(value);
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
     const rows = filteredTrades.map((trade) => [
       trade.date,
       trade.instrument,
@@ -1137,10 +1181,12 @@ export default function TradingJournal({
       trade.rr,
       trade.brokerage,
       trade.strategy,
+      trade.notes,
+      trade.broker,
       trade.ownerEmail,
-    ].join(','));
+    ].map(csvCell).join(','));
 
-    downloadFile('trading-journal.csv', ['date,instrument,side,entryPrice,exitPrice,stopLoss,target,quantity,pnl,rr,brokerage,strategy,ownerEmail', ...rows].join('\n'), 'text/csv');
+    downloadFile('trading-journal.csv', ['date,instrument,side,entryPrice,exitPrice,stopLoss,target,quantity,pnl,rr,brokerage,strategy,notes,broker,ownerEmail', ...rows].join('\n'), 'text/csv');
   };
 
   const handleExportJson = () => {
@@ -1152,10 +1198,13 @@ export default function TradingJournal({
     setIsSyncing(true);
     setSyncStatus('Syncing…');
     skipPersistRef.current = true;
-    const merged = await hydrateJournalFromCloud(user);
+    const cloud = await hydrateJournalFromCloud(user);
+    // Fold in anything edited during the debounce window so a manual sync never drops it.
+    const merged = mergeTradeLists(tradeStore, cloud);
     setTradeStore(merged);
     const result = await autoSyncJournal(user, merged);
     setSyncStatus(result.message);
+    if (!result.ok) setStatusMessage('Cloud sync failed — your trades are still saved on this device.');
     skipPersistRef.current = false;
     setIsSyncing(false);
   };
@@ -1937,7 +1986,7 @@ export default function TradingJournal({
                     transition={{ type: 'spring', stiffness: 120, damping: 20 }}
                   />
                 </div>
-                <input type="range" min={1000} max={20000} step={100} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-2 w-full accent-[#d4af37]" />
+                  <input type="range" min={1000} max={50000} step={500} value={goalTarget} onChange={(e) => setGoalTarget(Number(e.target.value))} className="mt-2 w-full accent-[#d4af37]" />
               </div>
               <div className="tj-trade-preview flex items-center justify-between">
                 <span className="text-sm">Challenge Mode</span>
