@@ -25,6 +25,7 @@ import {
   Split,
   Box,
   Eye,
+  CandlestickChart,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -73,6 +74,12 @@ import {
 } from '../services/masterAiChatStore';
 import ChatMarkdown from './ChatMarkdown';
 import HunterMark from './HunterMark';
+import TradingViewChatChart from './masterai/TradingViewChatChart';
+import {
+  detectChartRequest,
+  tradingViewSymbolLabel,
+  type TvInterval,
+} from '../utils/tradingViewSymbols';
 import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
@@ -151,6 +158,10 @@ export default function MasterAI() {
   const [selectedImageName, setSelectedImageName] = useState('');
   const [imageError, setImageError] = useState<string | null>(null);
   const [isAnalyzingChart, setIsAnalyzingChart] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
+  const [chartSymbol, setChartSymbol] = useState('NSE:NIFTY');
+  const [chartInterval, setChartInterval] = useState<TvInterval>('15');
+  const [chartStudy, setChartStudy] = useState('none');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const analyzingRef = useRef(false);
@@ -506,6 +517,17 @@ export default function MasterAI() {
 
     if (!userText && !hasImage) return;
 
+    // "NIFTY ka 5 min chart dikha" — retune the live panel, then answer as usual.
+    if (!hasImage) {
+      const chartReq = detectChartRequest(userText);
+      if (chartReq) {
+        if (chartReq.tvSymbol) setChartSymbol(chartReq.tvSymbol);
+        if (chartReq.interval) setChartInterval(chartReq.interval);
+        if (chartReq.study) setChartStudy(chartReq.study);
+        setChartOpen(true);
+      }
+    }
+
     // Greetings / short thanks — no chart needed
     if (!hasImage && (isCasualGreeting(userText) || isPoliteAck(userText))) {
       const recentUser = messages
@@ -760,6 +782,21 @@ export default function MasterAI() {
         <div className="mai-chat__controls">
           <button
             type="button"
+            onClick={() => setChartOpen((v) => !v)}
+            className={`mai-chat__chip ${chartOpen ? 'mai-chat__chip--active' : ''}`}
+            title={
+              hindi
+                ? 'Live chart — "NIFTY ka 5 min chart dikha" bhi likh sakte ho'
+                : 'Live chart — you can also type "show NIFTY 5 min chart"'
+            }
+            aria-pressed={chartOpen}
+          >
+            <CandlestickChart className="h-3.5 w-3.5" />
+            <span>{chartOpen ? tradingViewSymbolLabel(chartSymbol) : 'Chart'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleNewChat}
             className="mai-chat__chip mai-chat__chip--accent"
             title={hindi ? 'Nayi chat — purani se link nahi' : 'New chat — fresh context'}
@@ -947,6 +984,29 @@ export default function MasterAI() {
           </div>
         </div>
       </header>
+
+      <AnimatePresence initial={false}>
+        {chartOpen ? (
+          <motion.div
+            key="mai-tv-panel"
+            className="mai-chat__chart"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <TradingViewChatChart
+              symbol={chartSymbol}
+              interval={chartInterval}
+              study={chartStudy}
+              onSymbolChange={setChartSymbol}
+              onIntervalChange={setChartInterval}
+              onStudyChange={setChartStudy}
+              onClose={() => setChartOpen(false)}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <div
         ref={chatAreaRef}

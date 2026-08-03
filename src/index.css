@@ -7359,6 +7359,189 @@ input[type="number"] { -moz-appearance: textfield; }
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Wolf AI: inline TradingView chart ─────────────────────────────── */
+
+.mai-chat__chart {
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+}
+
+.mai-tv {
+  display: flex;
+  flex-direction: column;
+  height: 21rem;
+  transition: height 0.22s ease;
+}
+
+.mai-tv--tall {
+  height: min(34rem, 62vh);
+}
+
+.mai-tv__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+}
+
+.mai-tv__symbol {
+  flex: 0 0 auto;
+}
+
+.mai-tv__symbol-input {
+  width: 8.5rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-bg);
+  color: var(--tf-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mai-tv__symbol-input:focus {
+  outline: none;
+  border-color: var(--tj-gold-strong);
+}
+
+.mai-tv__tfs {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.mai-tv__tf {
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.mai-tv__tf:hover {
+  color: var(--tf-text);
+  background: var(--tf-bg);
+}
+
+.mai-tv__tf--on {
+  color: #0b0e17;
+  background: var(--tj-gold-strong);
+  border-color: var(--tj-gold-strong);
+}
+
+.mai-tv__selects {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mai-tv__select {
+  padding: 0.28rem 0.45rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-bg);
+  color: var(--tf-text);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.mai-tv__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.mai-tv__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-bg);
+  color: var(--tf-text-muted);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.mai-tv__icon:hover {
+  color: var(--tj-gold-strong);
+  border-color: var(--tj-gold-strong);
+}
+
+.mai-tv__frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mai-tv__host {
+  height: 100%;
+  width: 100%;
+}
+
+.mai-tv__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: var(--tf-chart-bg);
+  color: var(--tf-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .mai-tv {
+    height: 16rem;
+  }
+
+  .mai-tv--tall {
+    height: min(26rem, 58vh);
+  }
+
+  .mai-tv__bar {
+    gap: 0.35rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .mai-tv__symbol-input {
+    width: 6.5rem;
+  }
+
+  /* Timeframes scroll horizontally instead of wrapping into a tall bar */
+  .mai-tv__tfs {
+    flex: 1 1 100%;
+    order: 3;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .mai-tv__tfs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mai-tv__selects {
+    display: none;
+  }
+}
+
 .mai-chat__column {
   width: min(48rem, 100%);
   margin: 0 auto;
