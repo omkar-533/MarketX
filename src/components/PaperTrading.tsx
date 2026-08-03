@@ -123,15 +123,24 @@ function loadStoredState(user?: User | null): PaperState | null {
       return null;
     }
 
+    const watchlist = normalizeWatchlist(parsed.watchlist as MarketItem[]);
+    const usedMargin = Number(parsed.usedMargin ?? 0);
+    const available = Number(parsed.available ?? INITIAL_CAPITAL);
+    let balance = Number(parsed.balance ?? INITIAL_CAPITAL);
+    // Repair older sessions that wrongly burned margin out of balance.
+    const cashBook = Number((available + usedMargin).toFixed(2));
+    if (Number.isFinite(cashBook) && Math.abs(balance - cashBook) > 1) {
+      balance = cashBook;
+    }
     return {
-      balance: Number(parsed.balance ?? INITIAL_CAPITAL),
-      usedMargin: Number(parsed.usedMargin ?? 0),
-      available: Number(parsed.available ?? INITIAL_CAPITAL),
+      balance,
+      usedMargin,
+      available,
       totalCharges: Number(parsed.totalCharges ?? 0),
       positions: Array.isArray(parsed.positions) ? parsed.positions : [],
       orders: Array.isArray(parsed.orders) ? parsed.orders : [],
       history: Array.isArray(parsed.history) ? parsed.history : [],
-      watchlist: normalizeWatchlist(parsed.watchlist as MarketItem[]),
+      watchlist: watchlist.length ? watchlist : defaultWatchlist(),
       strategyGroups: Array.isArray(parsed.strategyGroups) ? parsed.strategyGroups : [],
       strategy: typeof parsed.strategy === 'string' ? parsed.strategy : DEFAULT_STRATEGY,
       lastSync: typeof parsed.lastSync === 'string' ? parsed.lastSync : new Date().toISOString(),
@@ -312,7 +321,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
   const totalUnrealized = positionsWithLive.reduce((sum, position) => sum + position.pnl, 0);
   const closedTrades = paperState.history.filter((trade) => trade.status === 'CLOSED');
-  const netEquity = paperState.balance + totalUnrealized;
+  // Equity = free cash + locked margin + open PnL (balance already excludes only charges/realized).
+  const netEquity = paperState.available + paperState.usedMargin + totalUnrealized;
   const winningTrades = closedTrades.filter((trade) => (trade.pnl ?? 0) >= 0).length;
   const averageWin = closedTrades.length > 0
     ? closedTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0) / closedTrades.length
@@ -335,7 +345,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   );
   const totalPnl = totalUnrealized + closedTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0);
   const highLowRange = currentSymbol
-    ? `${currentSymbol.low.toFixed(2)} - ${currentSymbol.high.toFixed(2)}`
+    ? `${Number(currentSymbol.low ?? 0).toFixed(2)} - ${Number(currentSymbol.high ?? 0).toFixed(2)}`
     : '0.00 - 0.00';
 
   const openOrderModal = (symbol: MarketItem, side: Side) => {
@@ -396,6 +406,19 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     );
     const completes = orderFillsImmediately(draft.orderType);
     const chargeOnFill = completes ? entryCharges.total : 0;
+    if (!completes && marginRequired > paperState.available) {
+      setStatusMessage(
+        `Order rejected — insufficient available funds (need ₹${marginRequired.toLocaleString('en-IN')}).`,
+      );
+      return;
+    }
+    if (completes && marginRequired + chargeOnFill > paperState.available) {
+      setStatusMessage(
+        `Order rejected — insufficient available funds (need ₹${(marginRequired + chargeOnFill).toLocaleString('en-IN')}).`,
+      );
+      return;
+    }
+
     const orderId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const instrument = instrumentFromDraft(draft);
     const orderPrice =
@@ -445,9 +468,10 @@ export default function PaperTrading({ user }: PaperTradingProps) {
           strategy: position.notes ?? prev.strategy,
           status: 'OPEN',
         };
+        // Margin locks into usedMargin; balance only pays charges (not margin).
         return {
           ...prev,
-          balance: Number((prev.balance - marginRequired - chargeOnFill).toFixed(2)),
+          balance: Number((prev.balance - chargeOnFill).toFixed(2)),
           available: Number((prev.available - marginRequired - chargeOnFill).toFixed(2)),
           usedMargin: Number((prev.usedMargin + marginRequired).toFixed(2)),
           totalCharges: Number((prev.totalCharges + chargeOnFill).toFixed(2)),
@@ -852,9 +876,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     <div className="font-mono text-sm font-bold text-slate-200">
                       {formatPaperPrice(item, item.price)}
                     </div>
-                    <div className={`text-[10px] font-bold flex items-center justify-end gap-1 ${item.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {item.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {Math.abs(item.changePercent).toFixed(2)}%
+                    <div className={`text-[10px] font-bold flex items-center justify-end gap-1 ${Number(item.change ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {Number(item.change ?? 0) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {Math.abs(Number(item.changePercent ?? 0)).toFixed(2)}%
                     </div>
                   </div>
                 </div>
@@ -904,7 +928,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                         : currentSymbol?.exchange ?? currentSymbol?.type ?? 'MARKET'}
                   </span>
                   {currentSymbol?.isFno && <span className="text-[10px] text-blue-300">F&O lot {currentSymbol.lotSize}</span>}
-                  {(currentSymbol?.assetMarket === 'crypto' || currentSymbol?.assetMarket === 'forex') && (
+                  {(currentSymbol?.assetMarket === 'crypto' || currentSymbol?.assetMarket === 'forex') &&
+                    quoteFeed.mode !== 'live' && (
                     <span className="text-[10px] text-amber-300/90">Simulated quotes</span>
                   )}
                 </h3>
@@ -913,8 +938,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     {formatPaperPrice(currentSymbol, currentPriceForSelection)}
                   </span>
                   {currentSymbol && (
-                    <span className={`text-sm font-bold flex items-center gap-1 ${currentSymbol.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {currentSymbol.change >= 0 ? '+' : ''}{currentSymbol.change.toFixed(2)} ({currentSymbol.changePercent.toFixed(2)}%)
+                    <span className={`text-sm font-bold flex items-center gap-1 ${Number(currentSymbol.change ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {Number(currentSymbol.change ?? 0) >= 0 ? '+' : ''}{Number(currentSymbol.change ?? 0).toFixed(2)} ({Number(currentSymbol.changePercent ?? 0).toFixed(2)}%)
                     </span>
                   )}
                 </div>

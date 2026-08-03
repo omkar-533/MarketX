@@ -206,16 +206,7 @@ export async function refreshPaperTradingLiveQuotes(
     serverOk = false;
   }
 
-  if (!serverOk) {
-    return {
-      mode: 'offline',
-      liveSymbolCount: 0,
-      serverOk: false,
-      message: serverOfflineMessage(),
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
+  // Always try quotes — health can time out on Render cold start while quotes still work.
   const quotes = await fetchQuotesWithRetry(toFetch);
   for (const q of quotes) {
     const aliases = [...(apiToOriginals.get(q.symbol.toUpperCase()) ?? new Set([q.symbol]))];
@@ -264,17 +255,20 @@ export async function refreshPaperTradingLiveQuotes(
 
   const totalLive = originals.filter((s) => Boolean(liveRowFor(s)?.price)).length;
   const ws = getMarketConnectionState().streamActive;
+  const ok = serverOk || totalLive > 0;
 
   return {
     mode: totalLive > 0 ? 'live' : 'offline',
     liveSymbolCount: totalLive,
-    serverOk: true,
+    serverOk: ok,
     message:
       totalLive > 0
         ? `Live TradingView · ${totalLive} symbol${totalLive === 1 ? '' : 's'}`
-        : ws
-          ? 'WebSocket connected — waiting for ticks'
-          : 'Server OK — retrying live tape…',
+        : !ok
+          ? serverOfflineMessage()
+          : ws
+            ? 'WebSocket connected — waiting for ticks'
+            : 'Server OK — retrying live tape…',
     updatedAt: new Date().toISOString(),
   };
 }

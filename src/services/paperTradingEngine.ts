@@ -4,7 +4,7 @@ import type { GlobalInstrumentSelection } from './globalInstrumentService';
 import { getGlobalInstrument } from './globalInstrumentService';
 import type { JournalSymbolSelection } from './equitySymbolService';
 import { getJournalSymbolSelection } from './equitySymbolService';
-import { getGlobalPaperBasePrice, tickGlobalPaperQuote } from './paperTradingGlobalQuotes';
+import { getGlobalPaperBasePrice } from './paperTradingGlobalQuotes';
 import { applyLiveQuoteToMarketItem } from './paperTradingLiveService';
 import {
   applyStrategyTemplate,
@@ -331,6 +331,26 @@ export function formatPaperPrice(item: MarketItem | null | undefined, value: num
   return cur === 'USDT' ? `${n} USDT` : `${n} ${cur}`;
 }
 
+function fallbackWatchlistSeed(symbol: string, name: string, price: number, lotSize: number): MarketItem {
+  return {
+    symbol,
+    name,
+    price,
+    change: 0,
+    changePercent: 0,
+    open: price,
+    high: price,
+    low: price,
+    volume: 0,
+    type: lotSize > 1 ? 'INDEX' : 'STOCK',
+    exchange: lotSize > 1 ? 'INDEX' : 'NSE',
+    isFno: lotSize > 1,
+    lotSize,
+    assetMarket: 'equity',
+    quoteCurrency: 'INR',
+  };
+}
+
 export function defaultWatchlist(): MarketItem[] {
   const seeds = ['NIFTY', 'BANKNIFTY', 'RELIANCE', 'TCS', 'HDFCBANK', 'INFY'];
   const out: MarketItem[] = [];
@@ -338,31 +358,71 @@ export function defaultWatchlist(): MarketItem[] {
     const sel = getJournalSymbolSelection(sym);
     if (sel) out.push(journalToMarketItem(sel));
   }
-  return out.length ? out : [];
+  if (out.length) return out;
+  // Hard fallback if universe/circular-import leaves selections empty.
+  return [
+    fallbackWatchlistSeed('NIFTY', 'Nifty 50', 24500, 25),
+    fallbackWatchlistSeed('BANKNIFTY', 'Bank Nifty', 52000, 15),
+    fallbackWatchlistSeed('RELIANCE', 'Reliance Industries', 1400, 250),
+    fallbackWatchlistSeed('TCS', 'Tata Consultancy Services', 3200, 150),
+  ];
 }
 
 /** Backfill exchange/lotSize for watchlists saved before full universe support */
 export function normalizeWatchlist(items: MarketItem[]): MarketItem[] {
   return items.map((item) => {
+    const safeNum = (v: unknown, fallback = 0) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    };
     if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
       const g = getGlobalInstrument(item.assetMarket, item.symbol);
-      if (g) return globalToMarketItem(g, item.price);
-      return item;
+      if (g) {
+        const next = globalToMarketItem(g, item.price);
+        return {
+          ...next,
+          price: safeNum(item.price, next.price),
+          change: safeNum(item.change, next.change),
+          changePercent: safeNum(item.changePercent, next.changePercent),
+          open: safeNum(item.open, next.open),
+          high: safeNum(item.high, next.high),
+          low: safeNum(item.low, next.low),
+        };
+      }
+      return {
+        ...item,
+        price: safeNum(item.price),
+        change: safeNum(item.change),
+        changePercent: safeNum(item.changePercent),
+        open: safeNum(item.open, safeNum(item.price)),
+        high: safeNum(item.high, safeNum(item.price)),
+        low: safeNum(item.low, safeNum(item.price)),
+      };
     }
     const sel = getJournalSymbolSelection(item.symbol, item.exchange);
-    if (!sel) return item;
+    if (!sel) {
+      return {
+        ...item,
+        price: safeNum(item.price),
+        change: safeNum(item.change),
+        changePercent: safeNum(item.changePercent),
+        open: safeNum(item.open, safeNum(item.price)),
+        high: safeNum(item.high, safeNum(item.price)),
+        low: safeNum(item.low, safeNum(item.price)),
+      };
+    }
     const next = journalToMarketItem(sel);
-    // Keep row LTP when seed is empty/static-zero (live overlay applied next).
-    if (item.price > 0 && (!sel.price || sel.price <= 0)) {
+    // Always keep existing LTP/OHLC when present — never wipe live tape with static seeds.
+    if (safeNum(item.price) > 0) {
       return {
         ...next,
-        price: item.price,
-        change: item.change,
-        changePercent: item.changePercent,
-        open: item.open || item.price,
-        high: item.high || item.price,
-        low: item.low || item.price,
-        volume: item.volume,
+        price: safeNum(item.price),
+        change: safeNum(item.change, next.change),
+        changePercent: safeNum(item.changePercent, next.changePercent),
+        open: safeNum(item.open, safeNum(item.price)),
+        high: safeNum(item.high, safeNum(item.price)),
+        low: safeNum(item.low, safeNum(item.price)),
+        volume: safeNum(item.volume, next.volume),
       };
     }
     return next;
@@ -533,9 +593,12 @@ export function applyOrderFill(
     price: fillPrice,
   };
 
+  // Margin was already reserved from available when the pending order was placed.
+  // Only deduct charges from balance/available; lock margin into usedMargin.
   return {
     ...state,
     balance: Number((state.balance - charges.total).toFixed(2)),
+    available: Number((state.available - charges.total).toFixed(2)),
     usedMargin: Number((state.usedMargin + margin).toFixed(2)),
     totalCharges: Number((state.totalCharges + charges.total).toFixed(2)),
     orders: state.orders.map((o) => (o.id === order.id ? filledOrder : o)),
@@ -674,12 +737,8 @@ export function buildPositionFromOrder(
 
 export function refreshWatchlistQuotes(watchlist: MarketItem[]): MarketItem[] {
   const base = watchlist.length ? normalizeWatchlist(watchlist) : defaultWatchlist();
-  return base.map((item) => {
-    if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
-      return tickGlobalPaperQuote(item);
-    }
-    return applyLiveQuoteToMarketItem(item);
-  });
+  // Live first for all markets; applyLiveQuoteToMarketItem falls back to demo ticks if needed.
+  return base.map((item) => applyLiveQuoteToMarketItem(item));
 }
 
 export function computePnL(
