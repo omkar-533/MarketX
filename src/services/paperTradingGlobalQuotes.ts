@@ -4,8 +4,8 @@ import type { MarketItem } from './paperTradingEngine';
 
 /** Demo base prices for crypto / forex paper trading (no Fyers feed) */
 const BASE_PRICES: Record<string, number> = {
-  'BTC/USDT': 94_250,
-  'ETH/USDT': 3_420,
+  'BTC/USDT': 63_000,
+  'ETH/USDT': 1_860,
   'SOL/USDT': 178,
   'BNB/USDT': 612,
   'XRP/USDT': 0.62,

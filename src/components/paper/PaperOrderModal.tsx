@@ -4,6 +4,7 @@ import {
   canTradeFno,
   defaultOrderDraft,
   effectiveOrderPrice,
+  formatPaperPrice,
   instrumentFromDraft,
   orderFillsImmediately,
   orderTypeLabel,
@@ -130,7 +131,7 @@ export default function PaperOrderModal({
               {side} {symbol.symbol} · {segmentLabel(draft.segment)}
             </h3>
             <p className="text-xs text-slate-500">
-              Spot ₹{spot.toLocaleString('en-IN')} · {instrument}
+              Spot {formatPaperPrice(symbol, spot)} · {instrument}
               {fnoEnabled ? ` · F&O lot ${symbol.lotSize || meta.lotSize}` : ''}
             </p>
           </div>

@@ -65,10 +65,14 @@ import {
   type StrategyBuilderPaperPayload,
 } from '../services/paperTradingBridge';
 import {
+  getPaperEquityLiveQuote,
   refreshPaperTradingLiveQuotes,
   type PaperQuoteFeedStatus,
 } from '../services/paperTradingLiveService';
-import type { GlobalInstrumentSelection } from '../services/globalInstrumentService';
+import {
+  getGlobalInstrument,
+  type GlobalInstrumentSelection,
+} from '../services/globalInstrumentService';
 import GlobalInstrumentPicker from './journal/GlobalInstrumentPicker';
 import JournalSymbolPicker from './journal/JournalSymbolPicker';
 import PaperOrderModal from './paper/PaperOrderModal';
@@ -127,8 +131,11 @@ function loadStoredState(user?: User | null): PaperState | null {
     const usedMargin = Number(parsed.usedMargin ?? 0);
     const available = Number(parsed.available ?? INITIAL_CAPITAL);
     let balance = Number(parsed.balance ?? INITIAL_CAPITAL);
+    const pendingReserve = (Array.isArray(parsed.orders) ? parsed.orders : [])
+      .filter((o: PaperOrder) => o?.status === 'PENDING')
+      .reduce((sum: number, o: PaperOrder) => sum + Number(o.reservedMargin ?? 0), 0);
     // Repair older sessions that wrongly burned margin out of balance.
-    const cashBook = Number((available + usedMargin).toFixed(2));
+    const cashBook = Number((available + usedMargin + pendingReserve).toFixed(2));
     if (Number.isFinite(cashBook) && Math.abs(balance - cashBook) > 1) {
       balance = cashBook;
     }
@@ -271,7 +278,10 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   /** Only apply quotes AFTER live REST returns — never paint stale/demo first. */
   const syncPaperQuotes = () => {
     refreshEquity();
-    const symbols = watchlistSymbolsRef.current;
+    const symbols = [
+      ...watchlistSymbolsRef.current,
+      ...(selectedSymbol?.symbol ? [selectedSymbol.symbol] : []),
+    ];
     if (!symbols.length) return;
     void refreshPaperTradingLiveQuotes(symbols).then(applyLiveQuotesToState);
   };
@@ -302,10 +312,29 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     localStorage.setItem(getStorageKey(user), JSON.stringify(paperState));
   }, [paperState, user]);
 
-  const currentSymbol = selectedSymbol ?? paperState.watchlist[0] ?? null;
+  const filteredWatchlist = useMemo(
+    () =>
+      paperState.watchlist.filter((item) => (item.assetMarket || 'equity') === instrumentMarket),
+    [paperState.watchlist, instrumentMarket],
+  );
+
+  const currentSymbol = useMemo(() => {
+    if (selectedSymbol && (selectedSymbol.assetMarket || 'equity') === instrumentMarket) {
+      const live = paperState.watchlist.find(
+        (w) => watchlistKey(w) === watchlistKey(selectedSymbol),
+      );
+      return live ?? selectedSymbol;
+    }
+    return filteredWatchlist[0] ?? null;
+  }, [selectedSymbol, paperState.watchlist, instrumentMarket, filteredWatchlist]);
+
   const quoteMap = useMemo(
     () => Object.fromEntries(paperState.watchlist.map((item) => [item.symbol, item.price])),
     [paperState.watchlist],
+  );
+
+  const selectedIsLive = Boolean(
+    currentSymbol && getPaperEquityLiveQuote(currentSymbol.symbol)?.price,
   );
   const positionsWithLive = useMemo(
     () =>
@@ -321,8 +350,12 @@ export default function PaperTrading({ user }: PaperTradingProps) {
 
   const totalUnrealized = positionsWithLive.reduce((sum, position) => sum + position.pnl, 0);
   const closedTrades = paperState.history.filter((trade) => trade.status === 'CLOSED');
-  // Equity = free cash + locked margin + open PnL (balance already excludes only charges/realized).
-  const netEquity = paperState.available + paperState.usedMargin + totalUnrealized;
+  const pendingReserved = paperState.orders
+    .filter((o) => o.status === 'PENDING')
+    .reduce((sum, o) => sum + (o.reservedMargin ?? 0), 0);
+  // Equity = free cash + locked margin + pending reserves + open PnL.
+  const netEquity =
+    paperState.available + paperState.usedMargin + pendingReserved + totalUnrealized;
   const winningTrades = closedTrades.filter((trade) => (trade.pnl ?? 0) >= 0).length;
   const averageWin = closedTrades.length > 0
     ? closedTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0) / closedTrades.length
@@ -345,8 +378,46 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   );
   const totalPnl = totalUnrealized + closedTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0);
   const highLowRange = currentSymbol
-    ? `${Number(currentSymbol.low ?? 0).toFixed(2)} - ${Number(currentSymbol.high ?? 0).toFixed(2)}`
-    : '0.00 - 0.00';
+    ? `${formatPaperPrice(currentSymbol, Number(currentSymbol.low ?? 0))} - ${formatPaperPrice(currentSymbol, Number(currentSymbol.high ?? 0))}`
+    : '—';
+
+  const ensureMarketSeeds = (market: PaperAssetMarket) => {
+    if (market === 'equity') return;
+    const seeds =
+      market === 'crypto' ? ['BTC/USDT', 'ETH/USDT'] : ['EUR/USD', 'USD/INR', 'XAU/USD'];
+    setPaperState((prev) => {
+      let list = [...prev.watchlist];
+      let changed = false;
+      for (const sym of seeds) {
+        const g = getGlobalInstrument(market, sym);
+        if (!g) continue;
+        const item = globalToMarketItem(g);
+        if (!list.some((w) => watchlistKey(w) === watchlistKey(item))) {
+          list = [item, ...list];
+          changed = true;
+        }
+      }
+      return changed ? { ...prev, watchlist: list, lastSync: new Date().toISOString() } : prev;
+    });
+  };
+
+  const switchInstrumentMarket = (market: PaperAssetMarket) => {
+    setInstrumentMarket(market);
+    setPickerSymbol(market === 'equity' ? 'NIFTY' : market === 'crypto' ? 'BTC/USDT' : 'EUR/USD');
+    ensureMarketSeeds(market);
+    const first = paperState.watchlist.find((w) => (w.assetMarket || 'equity') === market);
+    if (first) {
+      setSelectedSymbol(first);
+      return;
+    }
+    if (market === 'equity') {
+      setSelectedSymbol(null);
+      return;
+    }
+    const seedSym = market === 'crypto' ? 'BTC/USDT' : 'EUR/USD';
+    const g = getGlobalInstrument(market, seedSym);
+    if (g) setSelectedSymbol(globalToMarketItem(g));
+  };
 
   const openOrderModal = (symbol: MarketItem, side: Side) => {
     setSelectedSymbol(symbol);
@@ -564,8 +635,12 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   const addMarketItemToWatchlist = (item: MarketItem): boolean => {
     let added = false;
     setPaperState((prev) => {
-      if (prev.watchlist.some((w) => watchlistKey(w) === watchlistKey(item))) {
-        return prev;
+      const key = watchlistKey(item);
+      const idx = prev.watchlist.findIndex((w) => watchlistKey(w) === key);
+      if (idx >= 0) {
+        const next = [...prev.watchlist];
+        next[idx] = { ...next[idx], ...item, price: item.price || next[idx].price };
+        return { ...prev, watchlist: next, lastSync: new Date().toISOString() };
       }
       added = true;
       return { ...prev, watchlist: [item, ...prev.watchlist], lastSync: new Date().toISOString() };
@@ -575,7 +650,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     const tag =
       item.assetMarket === 'crypto' ? 'Crypto' : item.assetMarket === 'forex' ? 'Forex' : item.exchange;
     setStatusMessage(
-      added ? `${item.symbol} (${tag}) added to watchlist.` : `${item.symbol} is already in watchlist.`,
+      added ? `${item.symbol} (${tag}) added to watchlist.` : `${item.symbol} ready on watchlist.`,
     );
     return added;
   };
@@ -758,8 +833,8 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col bg-[#080a12] text-slate-200 min-h-0">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 sm:px-4 py-2.5 bg-[#0b0e17] border-b border-[#1a1f2e]">
+    <div className="h-[calc(100dvh-3.5rem)] flex flex-col bg-[#080a12] text-slate-200 min-h-0 overflow-hidden">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 sm:px-4 py-2.5 bg-[#0b0e17] border-b border-[#1a1f2e] shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="p-1.5 bg-[#d4af37]/10 rounded-lg border border-[#d4af37]/20 shrink-0">
             <Wallet className="w-4 h-4 text-[#d4af37]" />
@@ -769,7 +844,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
               <h2 className="text-base sm:text-lg font-bold text-white leading-tight">Paper Trading</h2>
               <span
                 className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-                  quoteFeed.mode === 'live'
+                  quoteFeed.mode === 'live' && (instrumentMarket === 'equity' || selectedIsLive)
                     ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
                     : quoteFeed.mode === 'loading'
                       ? 'border-slate-600 bg-slate-800 text-slate-400'
@@ -777,7 +852,11 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                 }`}
                 title={quoteFeed.message}
               >
-                {quoteFeed.mode === 'live' ? '● REAL' : quoteFeed.mode === 'loading' ? '…' : 'DEMO'}
+                {quoteFeed.mode === 'live' && (instrumentMarket === 'equity' || selectedIsLive)
+                  ? '● REAL'
+                  : quoteFeed.mode === 'loading'
+                    ? '…'
+                    : 'DEMO'}
               </span>
             </div>
             <p className="text-[10px] text-slate-500 truncate">
@@ -826,14 +905,20 @@ export default function PaperTrading({ user }: PaperTradingProps) {
         </p>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-72 bg-[#0b0e17] border-r border-[#1a1f2e] flex flex-col">
-          <div className="p-3 border-b border-[#1a1f2e] flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Market Watch</span>
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="w-64 sm:w-72 bg-[#0b0e17] border-r border-[#1a1f2e] flex flex-col min-h-0 shrink-0">
+          <div className="p-3 border-b border-[#1a1f2e] flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Market Watch
+              <span className="ml-1 text-[9px] text-slate-600 normal-case tracking-normal">
+                · {instrumentMarket === 'equity' ? 'Indian' : instrumentMarket === 'crypto' ? 'Crypto' : 'Forex'}
+              </span>
+            </span>
             <button
               type="button"
               title="Add symbol to watchlist"
               onClick={() => {
+                setAddWatchMarket(instrumentMarket);
                 setAddWatchEquity(null);
                 setAddWatchGlobal(null);
                 setShowAddWatchlist(true);
@@ -843,23 +928,31 @@ export default function PaperTrading({ user }: PaperTradingProps) {
               <Plus className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {paperState.watchlist.length === 0 && (
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {filteredWatchlist.length === 0 && (
               <div className="p-4 text-center text-xs text-slate-500">
-                Watchlist empty. Use + above to add symbols.
+                No {instrumentMarket === 'equity' ? 'Indian' : instrumentMarket} symbols yet. Pick one
+                or tap +.
               </div>
             )}
-            {paperState.watchlist.map((item) => (
+            {filteredWatchlist.map((item) => (
               <div
                 key={watchlistKey(item)}
                 onClick={() => setSelectedSymbol(item)}
-                className={`p-3 border-b border-[#1a1f2e]/50 cursor-pointer hover:bg-[#121520] transition-colors ${currentSymbol?.symbol === item.symbol ? 'bg-[#121520] border-l-2 border-l-[#d4af37]' : ''}`}
+                className={`p-3 border-b border-[#1a1f2e]/50 cursor-pointer hover:bg-[#121520] transition-colors ${currentSymbol && watchlistKey(currentSymbol) === watchlistKey(item) ? 'bg-[#121520] border-l-2 border-l-[#d4af37]' : ''}`}
               >
                 <div className="flex justify-between items-start mb-1">
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-sm text-white">{item.symbol}</div>
                     <div className="text-[10px] text-slate-500 truncate">{item.name}</div>
-                    <div className="text-[9px] text-slate-600">{item.exchange}{item.isFno ? ' · F&O' : ''}</div>
+                    <div className="text-[9px] text-slate-600">
+                      {item.assetMarket === 'crypto'
+                        ? 'CRYPTO'
+                        : item.assetMarket === 'forex'
+                          ? 'FX'
+                          : item.exchange}
+                      {item.isFno && (item.assetMarket || 'equity') === 'equity' ? ' · F&O' : ''}
+                    </div>
                   </div>
                   <div className="text-right flex flex-col items-end gap-1 shrink-0">
                     <button
@@ -895,14 +988,13 @@ export default function PaperTrading({ user }: PaperTradingProps) {
           <div className="p-4 border-b border-[#1a1f2e] flex flex-wrap items-center justify-between gap-3 bg-[#0b0e17]">
             <div className="flex flex-wrap items-center gap-4 flex-1 min-w-0">
               <div className="min-w-[220px] max-w-[360px]">
-                {renderInstrumentMarketTabs(instrumentMarket, setInstrumentMarket)}
+                {renderInstrumentMarketTabs(instrumentMarket, switchInstrumentMarket)}
                 {instrumentMarket === 'equity' ? (
                   <JournalSymbolPicker
                     selectedSymbol={pickerSymbol}
                     onSelect={(sel) => {
                       const item = journalToMarketItem(sel);
-                      setPickerSymbol(sel.symbol);
-                      setSelectedSymbol(item);
+                      addMarketItemToWatchlist(item);
                     }}
                   />
                 ) : (
@@ -911,8 +1003,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     selectedSymbol={pickerSymbol}
                     onSelect={(sel) => {
                       const item = globalToMarketItem(sel);
-                      setPickerSymbol(sel.symbol);
-                      setSelectedSymbol(item);
+                      addMarketItemToWatchlist(item);
                     }}
                   />
                 )}
@@ -927,10 +1018,16 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                         ? 'Forex'
                         : currentSymbol?.exchange ?? currentSymbol?.type ?? 'MARKET'}
                   </span>
-                  {currentSymbol?.isFno && <span className="text-[10px] text-blue-300">F&O lot {currentSymbol.lotSize}</span>}
+                  {currentSymbol?.isFno && (currentSymbol.assetMarket || 'equity') === 'equity' && (
+                    <span className="text-[10px] text-blue-300">F&O lot {currentSymbol.lotSize}</span>
+                  )}
                   {(currentSymbol?.assetMarket === 'crypto' || currentSymbol?.assetMarket === 'forex') &&
-                    quoteFeed.mode !== 'live' && (
+                    !selectedIsLive && (
                     <span className="text-[10px] text-amber-300/90">Simulated quotes</span>
+                  )}
+                  {(currentSymbol?.assetMarket === 'crypto' || currentSymbol?.assetMarket === 'forex') &&
+                    selectedIsLive && (
+                    <span className="text-[10px] text-emerald-300/90">Live tape</span>
                   )}
                 </h3>
                 <div className="flex items-center gap-3 mt-1">

@@ -313,7 +313,7 @@ export function globalToMarketItem(sel: GlobalInstrumentSelection, existingPrice
     low: price * 0.998,
     volume: 0,
     type: 'STOCK',
-    exchange: 'NSE',
+    exchange: sel.market === 'crypto' ? 'CRYPTO' : 'FX',
     isFno: false,
     lotSize: sel.lotSize,
     assetMarket: sel.market,
