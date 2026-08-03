@@ -172,6 +172,23 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Prices / qty — digits + optional single decimal only (no letters). */
+function sanitizeDecimalInput(raw: string): string {
+  const cleaned = String(raw ?? '').replace(/[^\d.]/g, '');
+  const dot = cleaned.indexOf('.');
+  if (dot === -1) return cleaned;
+  return cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
+}
+
+/** P&L — optional leading minus + digits + optional single decimal. */
+function sanitizeSignedDecimalInput(raw: string): string {
+  const text = String(raw ?? '');
+  const neg = text.trimStart().startsWith('-');
+  const body = sanitizeDecimalInput(text);
+  if (!body && neg) return '-';
+  return neg ? `-${body}` : body;
+}
+
 function buildCalcInput(
   normalized: TradeFormState,
   entryPrice: number,
@@ -1524,29 +1541,74 @@ export default function TradingJournal({
                 )}
               </div>
               <input type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} />
-              <input value={form.entryPrice} onChange={(e) => setForm({ ...form, entryPrice: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Entry Price" inputMode="decimal" />
-              <input value={form.exitPrice} onChange={(e) => setForm({ ...form, exitPrice: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Exit Price" inputMode="decimal" />
+              <input
+                value={form.entryPrice}
+                onChange={(e) => setForm({ ...form, entryPrice: sanitizeDecimalInput(e.target.value) })}
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Entry Price"
+                inputMode="decimal"
+                autoComplete="off"
+              />
+              <input
+                value={form.exitPrice}
+                onChange={(e) => setForm({ ...form, exitPrice: sanitizeDecimalInput(e.target.value) })}
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Exit Price"
+                inputMode="decimal"
+                autoComplete="off"
+              />
               <div className="md:col-span-2 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/5 p-3 space-y-1">
                 <label className="text-xs font-bold text-[#d4af37]">{pnlFieldLabel(form.pnlCurrency)}</label>
                 <input
                   value={form.realizedPnl}
-                  onChange={(e) => setForm({ ...form, realizedPnl: e.target.value })}
+                  onChange={(e) => setForm({ ...form, realizedPnl: sanitizeSignedDecimalInput(e.target.value) })}
+                  onKeyDown={(e) => {
+                    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                  }}
                   className={`w-full rounded-xl border px-2.5 py-2 tj-field tj-field--pnl ${inputClass}`}
                   placeholder={
-                    form.market === 'equity'
-                      ? 'Profit: 2500  or  Loss: -1200'
-                      : 'Profit: 150  or  Loss: -80'
+                    form.market === 'equity' ? '2500  or  -1200' : '150  or  -80'
                   }
                   inputMode="decimal"
+                  autoComplete="off"
                 />
-                <p className="text-[10px] text-slate-500">Positive = profit, negative (-) = loss. This is saved as your trade P&amp;L.</p>
+                <p className="text-[10px] text-slate-500">Numbers only. Positive = profit, negative (-) = loss.</p>
               </div>
-              <input value={form.stopLoss} onChange={(e) => setForm({ ...form, stopLoss: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Stop Loss (optional)" inputMode="decimal" />
-              <input value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} placeholder="Target (optional)" inputMode="decimal" />
+              <input
+                value={form.stopLoss}
+                onChange={(e) => setForm({ ...form, stopLoss: sanitizeDecimalInput(e.target.value) })}
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Stop Loss (optional)"
+                inputMode="decimal"
+                autoComplete="off"
+              />
+              <input
+                value={form.target}
+                onChange={(e) => setForm({ ...form, target: sanitizeDecimalInput(e.target.value) })}
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Target (optional)"
+                inputMode="decimal"
+                autoComplete="off"
+              />
               <div className="space-y-1">
                 <input
                   value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                  onChange={(e) => setForm({ ...form, quantity: sanitizeDecimalInput(e.target.value) })}
+                  onKeyDown={(e) => {
+                    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                  }}
                   className={`w-full rounded-xl border px-3 py-2 ${inputClass}`}
                   placeholder={
                     form.market === 'crypto'
@@ -1559,7 +1621,8 @@ export default function TradingJournal({
                           ? `Lots (manual) · 1 lot = ${activeLotSize} shares`
                           : 'Quantity / Qty (shares) — optional'
                   }
-                  inputMode="numeric"
+                  inputMode="decimal"
+                  autoComplete="off"
                 />
                 {form.market === 'forex' && (
                   <label className="flex items-center gap-2 text-[10px] text-slate-500 cursor-pointer">
