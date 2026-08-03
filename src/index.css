@@ -6039,6 +6039,14 @@ input[type="number"] { -moz-appearance: textfield; }
   animation: lux-chip-pulse 2.4s ease-in-out infinite;
 }
 
+.lux-lib__chip--brand {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 0.55rem 1.15rem;
+  line-height: 1.25;
+}
+
 @keyframes lux-chip-pulse {
   0%, 100% { box-shadow: 0 0 14px rgba(212, 175, 55, 0.16); }
   50% { box-shadow: 0 0 26px rgba(212, 175, 55, 0.32); }
