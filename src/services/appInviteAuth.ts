@@ -268,17 +268,18 @@ export async function fetchAccessState(): Promise<AccessSnapshot | null> {
 export async function submitAccessRequest(input: {
   fullName: string;
   phone: string;
-  tradingViewId: string;
+  dematAccountNumber: string;
   email?: string;
   message?: string;
   screenshot?: string;
 }) {
+  const demat = input.dematAccountNumber.trim();
   const note = [
-    `TradingView ID: ${input.tradingViewId.trim()}`,
-    input.message?.trim() ? `Additional details: ${input.message.trim()}` : null,
+    `Demat Account Number: ${demat}`,
     `Name: ${input.fullName.trim()}`,
-    `Phone: ${input.phone.trim()}`,
+    `Registered Mobile: ${input.phone.trim()}`,
     input.email?.trim() ? `Email: ${input.email.trim()}` : null,
+    input.message?.trim() ? `Additional details: ${input.message.trim()}` : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -289,27 +290,13 @@ export async function submitAccessRequest(input: {
     body: JSON.stringify({
       fullName: input.fullName,
       phone: input.phone,
-      tradingViewId: input.tradingViewId,
+      dematAccountNumber: demat,
+      // Reuse tradingViewId slot on older API builds for demat storage/display.
+      tradingViewId: demat,
       email: input.email || undefined,
       message: input.message || undefined,
-      // Backward compatible with older API builds that only read note/screenshot.
       note,
       screenshot: input.screenshot || undefined,
-    }),
-  });
-  const data = await readJson(res, 'Could not submit access request');
-  return snapshotOf(data);
-}
-
-/** @deprecated Prefer submitAccessRequest with full member details. */
-export async function submitAccessProof(screenshot: string, note?: string) {
-  const res = await apiFetch('/api/app-auth/access/request', {
-    method: 'POST',
-    headers: sessionHeaders(),
-    body: JSON.stringify({
-      message: note || undefined,
-      note: note || undefined,
-      screenshot: screenshot || undefined,
     }),
   });
   const data = await readJson(res, 'Could not submit access request');
@@ -424,6 +411,7 @@ export type AdminAccessRequest = {
   name: string | null;
   email: string | null;
   phone: string | null;
+  dematAccountNumber?: string | null;
   tradingViewId?: string | null;
   note: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'superseded';

@@ -508,13 +508,14 @@ router.get('/access', requireUser, async (req, res) => {
   }
 });
 
-/** POST /api/app-auth/access/request — screenshot proof (+ optional note) for admin review */
+/** POST /api/app-auth/access/request — name, mobile, demat + F&O screenshot for admin review */
 router.post('/access/request', requireUser, async (req, res) => {
   try {
     const request = await createAccessRequest({
       user: req.appUser,
       fullName: req.body?.fullName ?? req.body?.name,
       phone: req.body?.phone,
+      dematAccountNumber: req.body?.dematAccountNumber ?? req.body?.demat,
       tradingViewId: req.body?.tradingViewId,
       email: req.body?.email,
       message: req.body?.message,

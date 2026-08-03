@@ -452,6 +452,8 @@ function AppWorkspace() {
             access={auth.access}
             popup={auth.accessPopup}
             userId={auth.user?.id}
+            userName={auth.user?.name}
+            userPhone={auth.user?.phone}
             onRefresh={auth.refreshAccess}
           />
           <TvAccessGrantedPopup
@@ -462,6 +464,8 @@ function AppWorkspace() {
             access={planPeek ? null : auth.access}
             popup={auth.accessPopup}
             userName={auth.user?.name?.split(' ')[0]}
+            userFullName={auth.user?.name}
+            userPhone={auth.user?.phone}
             onRefresh={auth.refreshAccess}
             onLogout={handleLogout}
             onSeePlans={() => handleTabChange('subscription')}

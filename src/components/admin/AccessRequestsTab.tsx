@@ -160,14 +160,20 @@ export default function AccessRequestsTab({
                     Form details
                   </p>
                   <p className="text-[11px] text-slate-300">
-                    TradingView ID:{' '}
+                    Demat Account Number:{' '}
                     <span className="font-mono text-[#d4af37]">
-                      {row.tradingViewId || '—'}
+                      {row.dematAccountNumber || row.tradingViewId || '—'}
                     </span>
                   </p>
                   {row.note
                     ?.split('\n')
-                    .filter((line) => !/^TradingView ID:/i.test(line))
+                    .filter(
+                      (line) =>
+                        !/^Demat Account Number:/i.test(line) &&
+                        !/^TradingView ID:/i.test(line) &&
+                        !/^Name:/i.test(line) &&
+                        !/^Registered Mobile:/i.test(line),
+                    )
                     .map((line) => (
                       <p key={line} className="text-[11px] text-slate-400">
                         {line}

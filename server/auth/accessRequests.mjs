@@ -47,28 +47,32 @@ function writeRows(requests) {
 
 /* ────────────────────────── mapping ────────────────────────── */
 
-function parseTradingViewId(note) {
-  const match = /^TradingView ID:\s*(.+)$/im.exec(String(note || ''));
-  return match?.[1]?.trim() || null;
+function parseDematNumber(note) {
+  const match = /^Demat Account Number:\s*(.+)$/im.exec(String(note || ''));
+  if (match?.[1]?.trim()) return match[1].trim();
+  const legacy = /^TradingView ID:\s*(.+)$/im.exec(String(note || ''));
+  return legacy?.[1]?.trim() || null;
 }
 
-function buildAccessNote({ tradingViewId, message }) {
+function buildAccessNote({ dematAccountNumber, message }) {
   const lines = [];
-  if (tradingViewId) lines.push(`TradingView ID: ${tradingViewId}`);
-  if (message) lines.push(tradingViewId ? `Additional details: ${message}` : message);
+  if (dematAccountNumber) lines.push(`Demat Account Number: ${dematAccountNumber}`);
+  if (message) lines.push(dematAccountNumber ? `Additional details: ${message}` : message);
   return lines.join('\n').slice(0, 500);
 }
 
 function fromRow(row, signedUrl = null) {
   if (!row) return null;
   const note = row.note ?? null;
+  const demat = row.trading_view_id ?? parseDematNumber(note);
   return {
     id: row.id,
     userId: row.user_id,
     name: row.name ?? null,
     email: row.email ?? null,
     phone: row.phone ?? null,
-    tradingViewId: row.trading_view_id ?? parseTradingViewId(note),
+    dematAccountNumber: demat,
+    tradingViewId: demat,
     note,
     status: row.status,
     adminNote: row.admin_note ?? null,
@@ -114,23 +118,49 @@ export async function createAccessRequest({
   user,
   fullName = '',
   phone = '',
+  dematAccountNumber = '',
   tradingViewId = '',
   email = '',
   message = '',
   note = '',
   screenshot = '',
 }) {
+  const name = String(fullName || user?.name || '').trim().slice(0, 80);
+  const mobile = String(phone || user?.phone || '').trim().slice(0, 20);
+  const demat = String(dematAccountNumber || tradingViewId || '').trim().slice(0, 80);
+  const cleanEmail = String(email || user?.email || '').trim().slice(0, 120) || null;
+  const extra = String(message || note || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line &&
+        !/^(Demat Account Number|Name|Registered Mobile|TradingView ID|Email|Phone)\s*:/i.test(
+          line,
+        ),
+    )
+    .map((line) => line.replace(/^Additional details:\s*/i, ''))
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 500);
+
+  if (name.length < 2) {
+    throw Object.assign(new Error('Please enter your name'), { status: 400 });
+  }
+  if (mobile.replace(/\D/g, '').length < 10) {
+    throw Object.assign(new Error('Please enter a valid registered mobile number'), { status: 400 });
+  }
+  if (demat.length < 4) {
+    throw Object.assign(new Error('Please enter your demat account number'), { status: 400 });
+  }
   if (!String(screenshot || '').trim()) {
-    throw Object.assign(new Error('Attach a screenshot first'), { status: 400 });
+    throw Object.assign(new Error('Upload your first F&O trade screenshot'), { status: 400 });
   }
 
   const { buffer, mime, ext } = decodeDataUrl(screenshot);
-  const name = String(fullName || user?.name || '').trim().slice(0, 80) || null;
-  const mobile = String(phone || user?.phone || '').trim().slice(0, 20) || null;
-  const tvId = String(tradingViewId || '').trim().slice(0, 80);
-  const cleanEmail = String(email || user?.email || '').trim().slice(0, 120) || null;
-  const extra = String(message || note || '').trim().slice(0, 500);
-  const cleanNote = buildAccessNote({ tradingViewId: tvId || null, message: extra || null });
+  const cleanNote =
+    buildAccessNote({ dematAccountNumber: demat, message: extra || null }) ||
+    `Demat Account Number: ${demat}`;
 
   const id = `req_${randomBytes(9).toString('hex')}`;
   const createdAt = new Date().toISOString();
@@ -143,7 +173,7 @@ export async function createAccessRequest({
     name,
     email: cleanEmail,
     phone: mobile,
-    note: cleanNote || null,
+    note: cleanNote,
     status: 'pending',
     admin_note: null,
     reviewed_by: null,
@@ -155,7 +185,7 @@ export async function createAccessRequest({
   if (!db) {
     const row = {
       ...base,
-      trading_view_id: tvId || null,
+      trading_view_id: demat,
       screenshot_path: null,
       screenshot_data: screenshot,
     };
@@ -173,7 +203,7 @@ export async function createAccessRequest({
 
   const row = {
     ...base,
-    trading_view_id: tvId || null,
+    trading_view_id: demat,
     screenshot_path: path,
     screenshot_data: null,
   };

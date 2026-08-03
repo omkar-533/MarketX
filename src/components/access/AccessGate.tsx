@@ -7,6 +7,8 @@ type AccessGateProps = {
   access: AccessState | null;
   popup: AccessPopup | null;
   userName?: string;
+  userFullName?: string | null;
+  userPhone?: string | null;
   onRefresh: () => unknown | Promise<unknown>;
   onLogout: () => void;
   onSeePlans: () => void;
@@ -52,6 +54,8 @@ function stepsFromMessage(message: string | undefined | null, whatsapp: string):
 export default function AccessGate({
   access,
   popup,
+  userFullName,
+  userPhone,
   onRefresh,
   onLogout,
   onSeePlans,
@@ -96,9 +100,7 @@ export default function AccessGate({
                 </h2>
 
                 <div className="access-gate__link-row">
-                  <span className="access-gate__link-label">
-                    {title.replace(/\s*account\s*$/i, '').trim() || title} Opening Link:
-                  </span>
+                  <span className="access-gate__link-label">{linkRowLabel(title)}</span>
                   {link ? (
                     <a
                       className="access-gate__click"
@@ -125,9 +127,13 @@ export default function AccessGate({
                 {popup?.enabled !== false ? (
                   <div className="access-gate__proof">
                     <p className="access-gate__proof-title">
-                      {pending ? 'Proof under review' : 'Upload proof for verification'}
+                      {pending ? 'Verification under review' : 'Submit details for verification'}
                     </p>
-                    <AccessProofUpload request={access?.request ?? null} onSubmitted={onRefresh} />
+                    <AccessProofUpload
+                      request={access?.request ?? null}
+                      onSubmitted={onRefresh}
+                      defaults={{ name: userFullName, phone: userPhone }}
+                    />
                   </div>
                 ) : null}
               </>

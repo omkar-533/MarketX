@@ -8,6 +8,8 @@ type TrialReminderPopupProps = {
   access: AccessState | null;
   popup: AccessPopup | null;
   userId?: string;
+  userName?: string | null;
+  userPhone?: string | null;
   onRefresh: () => unknown | Promise<unknown>;
 };
 
@@ -56,6 +58,8 @@ export default function TrialReminderPopup({
   access,
   popup,
   userId,
+  userName,
+  userPhone,
   onRefresh,
 }: TrialReminderPopupProps) {
   const [open, setOpen] = useState(false);
@@ -182,6 +186,7 @@ export default function TrialReminderPopup({
               {showUpload ? (
                 <AccessProofUpload
                   request={access?.request ?? null}
+                  defaults={{ name: userName, phone: userPhone }}
                   onSubmitted={async () => {
                     await onRefresh();
                   }}
@@ -192,7 +197,7 @@ export default function TrialReminderPopup({
                   className="trial-nudge__cta"
                   onClick={() => setShowUpload(true)}
                 >
-                  Upload screenshot
+                  Submit verification
                 </button>
               )}
             </div>
