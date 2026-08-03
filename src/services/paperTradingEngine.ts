@@ -48,7 +48,7 @@ export interface MarketItem {
   low: number;
   volume: number;
   type: 'INDEX' | 'STOCK';
-  exchange: JournalSymbolSelection['exchange'];
+  exchange: JournalSymbolSelection['exchange'] | 'CRYPTO' | 'FX';
   isFno: boolean;
   lotSize: number;
   assetMarket?: PaperAssetMarket;
@@ -101,6 +101,7 @@ export interface PaperPosition {
   exchange?: JournalSymbolSelection['exchange'];
   underlying?: string;
   segment?: PaperSegment;
+  assetMarket?: PaperAssetMarket;
 }
 
 export interface PaperOrder {
@@ -205,8 +206,24 @@ export function calculatePaperCharges(
   product: Product,
   side: Side,
   turnover: number,
+  assetMarket: PaperAssetMarket = 'equity',
 ): PaperCharges {
   const t = Math.max(0, turnover);
+
+  // Crypto / forex: flat demo fee only — no Indian STT / SEBI / GST stack.
+  if (assetMarket === 'crypto' || assetMarket === 'forex') {
+    const brokerage = roundInr(Math.max(t * 0.0002, 1));
+    return {
+      turnover: roundInr(t),
+      brokerage,
+      stt: 0,
+      exchangeCharges: 0,
+      sebiFees: 0,
+      gst: 0,
+      total: brokerage,
+    };
+  }
+
   const brokerage = roundInr(Math.max(t * BROKERAGE_RATE[segment], PAPER_MIN_BROKERAGE));
 
   let stt = 0;
@@ -236,7 +253,13 @@ export function calculateChargesForDraft(
   const lot = item.lotSize || getSymbolMeta(item.symbol).lotSize || 1;
   const turnover = orderTurnover(draft.segment, effectivePrice, draft.quantity, lot);
   const product = draft.segment === 'EQUITY' ? draft.product : 'MIS';
-  return calculatePaperCharges(draft.segment, product, draft.side, turnover);
+  return calculatePaperCharges(
+    draft.segment,
+    product,
+    draft.side,
+    turnover,
+    item.assetMarket || 'equity',
+  );
 }
 
 export function calculateChargesForPosition(
@@ -248,7 +271,14 @@ export function calculateChargesForPosition(
   const side: Side = closing ? (position.side === 'BUY' ? 'SELL' : 'BUY') : position.side;
   const lot = position.lotSize ?? 1;
   const turnover = orderTurnover(segment, price, position.quantity, lot);
-  return calculatePaperCharges(segment, position.product, side, turnover);
+  const market: PaperAssetMarket =
+    position.assetMarket ||
+    (position.symbol.includes('USDT')
+      ? 'crypto'
+      : /EUR\/|GBP\/|USD\/|XAU|XAG/i.test(position.symbol)
+        ? 'forex'
+        : 'equity');
+  return calculatePaperCharges(segment, position.product, side, turnover, market);
 }
 
 export function calculateChargesForLeg(leg: PaperLeg): PaperCharges {
@@ -261,7 +291,7 @@ export function calculateChargesForLeg(leg: PaperLeg): PaperCharges {
     leg.quantity,
     leg.instrumentType === 'EQUITY' ? 1 : leg.lotSize,
   );
-  return calculatePaperCharges(segment, product, leg.action, turnover);
+  return calculatePaperCharges(segment, product, leg.action, turnover, 'equity');
 }
 
 export const HEDGE_PRESETS = [
@@ -731,6 +761,7 @@ export function buildPositionFromOrder(
     lotSize: instrument === 'EQUITY' ? 1 : lot,
     exchange: item.exchange,
     segment: draft.segment,
+    assetMarket: item.assetMarket || 'equity',
   };
   return createPositionSnapshot(base, px, spot);
 }

@@ -244,14 +244,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   watchlistSymbolsRef.current = paperState.watchlist.map((w) => w.symbol);
 
   const applyLiveQuotesToState = (feed: PaperQuoteFeedStatus) => {
-    setQuoteFeed((prev) => {
-      if (prev.mode !== 'live' && feed.mode === 'live') {
-        queueMicrotask(() =>
-          setStatusMessage(`Live market tape · ${feed.liveSymbolCount} symbols`),
-        );
-      }
-      return feed;
-    });
+    setQuoteFeed(feed);
     setPaperState((prev) => {
       const nextWatchlist = refreshWatchlistQuotes(prev.watchlist);
       const quoteMap = Object.fromEntries(nextWatchlist.map((item) => [item.symbol, item.price]));
@@ -739,9 +732,10 @@ export default function PaperTrading({ user }: PaperTradingProps) {
       }));
 
       result = { ok: true, message: 'OK' };
+      // Margin locks into usedMargin; balance only pays charges (same as market fills).
       return {
         ...prev,
-        balance: Number((prev.balance - marginRequired - entryBrokerage).toFixed(2)),
+        balance: Number((prev.balance - entryBrokerage).toFixed(2)),
         available: Number((prev.available - marginRequired - entryBrokerage).toFixed(2)),
         usedMargin: Number((prev.usedMargin + marginRequired).toFixed(2)),
         totalCharges: Number((prev.totalCharges + entryBrokerage).toFixed(2)),
@@ -890,9 +884,6 @@ export default function PaperTrading({ user }: PaperTradingProps) {
             </div>
           </div>
         </div>
-        <p className="md:hidden w-full text-[11px] text-slate-400 truncate border-t border-[#1a1f2e]/60 pt-2">
-          {statusMessage}
-        </p>
       </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -1318,7 +1309,21 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                           <td className="py-3 px-4"><span className={`text-[10px] px-1.5 py-0.5 rounded ${trade.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{trade.side}</span></td>
                           <td className="py-3 px-4 text-right font-mono text-slate-300">₹{trade.entryPrice.toFixed(2)}</td>
                           <td className="py-3 px-4 text-right font-mono text-slate-300">{trade.exitPrice ? `₹${trade.exitPrice.toFixed(2)}` : 'Open'}</td>
-                          <td className={`py-3 px-4 text-right font-bold font-mono ${trade.pnl && trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{trade.pnl ? `${trade.pnl >= 0 ? '+' : ''}₹${trade.pnl.toFixed(2)}` : 'Pending'}</td>
+                          <td
+                            className={`py-3 px-4 text-right font-bold font-mono ${
+                              trade.status === 'CLOSED' && trade.pnl != null
+                                ? trade.pnl >= 0
+                                  ? 'text-emerald-400'
+                                  : 'text-red-400'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            {trade.status === 'CLOSED' && trade.pnl != null
+                              ? `${trade.pnl > 0 ? '+' : ''}₹${trade.pnl.toFixed(2)}`
+                              : trade.status === 'OPEN'
+                                ? 'Open'
+                                : '—'}
+                          </td>
                           <td className="py-3 px-4 text-slate-300">{trade.status}</td>
                         </tr>
                       ))

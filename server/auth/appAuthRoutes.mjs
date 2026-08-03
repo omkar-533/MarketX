@@ -558,7 +558,8 @@ function publicIndicator(row) {
 function withInviteGate(pub, { isAdmin, unlocked, tvStatus }) {
   const next = { ...pub, tvAccessStatus: tvStatus || null };
   if (isAdmin) return next;
-  const showLink = unlocked && (tvStatus === 'granted' || !tvStatus);
+  // Invite URL only after desk Approves — never leak for users with no TV request yet.
+  const showLink = unlocked && tvStatus === 'granted';
   if (!showLink) next.link = '';
   return next;
 }
@@ -677,7 +678,7 @@ router.get('/indicators/:id/tv-access', requireUser, async (req, res) => {
       ? null
       : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
     const tvStatus = latest?.status || null;
-    const showLink = isAdmin || (access.unlocked && (tvStatus === 'granted' || !tvStatus));
+    const showLink = isAdmin || (access.unlocked && tvStatus === 'granted');
 
     return res.json({
       ok: true,

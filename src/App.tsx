@@ -15,7 +15,6 @@ const TvAccessGrantedPopup = lazy(() => import('./components/access/TvAccessGran
 const AccessGate = lazy(() => import('./components/access/AccessGate'));
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
 const TradingJournal = lazy(() => import('./components/TradingJournal'));
 const TradeXOptionChain = lazy(() => import('./components/TradeXOptionChain'));
 const OptionSimulator = lazy(() => import('./components/OptionSimulator'));
@@ -252,8 +251,6 @@ function AppWorkspace() {
     if (locked && !planPeek) return null;
 
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard onNavigate={handleTabChange} />;
       case 'ltpcalc':
         return <LtpCalculator onNavigate={handleTabChange} />;
       case 'tradingjournal':
@@ -317,7 +314,7 @@ function AppWorkspace() {
           />
         );
       default:
-        return <Dashboard onNavigate={handleTabChange} />;
+        return <MasterAI />;
     }
   };
 
@@ -450,7 +447,6 @@ function AppWorkspace() {
         <Suspense fallback={null}>
           <TrialReminderPopup
             access={auth.access}
-            popup={auth.accessPopup}
             userId={auth.user?.id}
             userName={auth.user?.name}
             userPhone={auth.user?.phone}

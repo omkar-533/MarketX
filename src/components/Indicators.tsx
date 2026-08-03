@@ -74,7 +74,8 @@ export default function Indicators({
     setTvErr('');
     setTvDone(false);
     setTvStatus(item.tvAccessStatus || null);
-    setInviteLink(item.link || '');
+    // Never seed invite from list payload unless already granted (server may still send empty).
+    setInviteLink(item.tvAccessStatus === 'granted' ? item.link || '' : '');
     setActive(item);
   }, []);
 
@@ -417,21 +418,15 @@ export default function Indicators({
                   </form>
                 )}
 
-                {effectiveLink ? (
-                  <div
-                    className={`lux-ind__access-actions ${
-                      tvStatus === 'granted'
-                        ? ''
-                        : 'lux-ind__access-actions--secondary'
-                    }`}
-                  >
+                {tvStatus === 'granted' && effectiveLink ? (
+                  <div className="lux-ind__access-actions">
                     <button
                       type="button"
                       className="lux-ind__btn lux-ind__btn--primary"
                       style={{ justifyContent: 'center' }}
                       onClick={() => openExternalUrl(effectiveLink)}
                     >
-                      {tvStatus === 'granted' ? 'Open indicator' : 'Open invite'}
+                      Open indicator
                       <ArrowRight className="w-4 h-4" />
                     </button>
                     <button
@@ -527,7 +522,7 @@ export default function Indicators({
             <div className="lux-lib__state">
               {items.length === 0
                 ? 'No indicators published yet. Add invite links from Admin → Indicators.'
-                : 'No matches for that search.'}
+                : 'No indicators to show.'}
             </div>
           ) : (
             <motion.div

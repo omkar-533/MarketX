@@ -6496,6 +6496,15 @@ input[type="number"] { -moz-appearance: textfield; }
   color: #94a3b8;
 }
 
+.lux-ind__tag--brand {
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0.5rem 1rem;
+  border-color: rgba(212, 175, 55, 0.45);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.06));
+  color: #f0d78c;
+}
+
 .lux-ind__access {
   display: grid;
   gap: 1rem;

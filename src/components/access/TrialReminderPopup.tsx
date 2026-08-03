@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clock, Hourglass, X } from 'lucide-react';
 import AccessProofUpload from './AccessProofUpload';
-import type { AccessPopup, AccessState } from '../../services/appInviteAuth';
+import type { AccessState } from '../../services/appInviteAuth';
 
 type TrialReminderPopupProps = {
   access: AccessState | null;
-  popup: AccessPopup | null;
   userId?: string;
   userName?: string | null;
   userPhone?: string | null;
@@ -56,7 +55,6 @@ function formatCountdown(daysLeft: number | null, hoursLeft: number | null) {
  */
 export default function TrialReminderPopup({
   access,
-  popup,
   userId,
   userName,
   userPhone,
@@ -166,21 +164,9 @@ export default function TrialReminderPopup({
             </div>
 
             <p className="trial-nudge__body">
-              {popup?.message?.trim() ||
-                'Open the access link when ready, then upload a screenshot so the desk can extend your access.'}
+              Your free trial is active. Submit verification details anytime so the desk can extend
+              access before it ends.
             </p>
-
-            {popup?.url?.trim() ? (
-              <a
-                className="trial-nudge__cta"
-                href={popup.url.trim()}
-                target="_blank"
-                rel="noreferrer noopener"
-                style={{ display: 'inline-flex', textAlign: 'center', textDecoration: 'none' }}
-              >
-                {popup.buttonLabel?.trim() || 'Open link'}
-              </a>
-            ) : null}
 
             <div className="trial-nudge__scroll">
               {showUpload ? (

@@ -239,7 +239,7 @@ function buildTradeMetrics(trades: TradeRecord[]) {
   const winningTrades = trades.filter((trade) => trade.pnl > 0);
   const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
   const avgRR = totalTrades
-    ? trades.reduce((sum, trade) => sum + trade.rr, 0) / totalTrades
+    ? trades.reduce((sum, trade) => sum + Number(trade.rr ?? 0), 0) / totalTrades
     : 0;
   const winRate = totalTrades ? (winningTrades.length / totalTrades) * 100 : 0;
   const best = trades.reduce((best, trade) => (trade.pnl > best.pnl ? trade : best), trades[0] ?? { pnl: 0 } as TradeRecord);
@@ -336,9 +336,12 @@ function buildInstrumentData(trades: TradeRecord[]) {
 
 function buildRiskData(trades: TradeRecord[]) {
   return [
-    { name: 'Low Risk', value: trades.filter((trade) => trade.rr >= 1.5).length },
-    { name: 'Medium Risk', value: trades.filter((trade) => trade.rr >= 1 && trade.rr < 1.5).length },
-    { name: 'High Risk', value: trades.filter((trade) => trade.rr < 1).length },
+    { name: 'Low Risk', value: trades.filter((trade) => Number(trade.rr ?? 0) >= 1.5).length },
+    { name: 'Medium Risk', value: trades.filter((trade) => {
+      const rr = Number(trade.rr ?? 0);
+      return rr >= 1 && rr < 1.5;
+    }).length },
+    { name: 'High Risk', value: trades.filter((trade) => Number(trade.rr ?? 0) < 1).length },
   ];
 }
 
@@ -2050,7 +2053,9 @@ export default function TradingJournal({
                     <td className="px-4 py-3 text-slate-300 text-xs">{trade.strategy}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-300">{trade.entryPrice}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-300">{trade.exitPrice}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[#d4af37]">{trade.rr.toFixed(2)}x</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[#d4af37]">
+                      {Number(trade.rr ?? 0).toFixed(2)}x
+                    </td>
                     <td className={`px-4 py-3 text-right font-bold tabular-nums ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       <span className="inline-flex items-center gap-0.5 justify-end">{trade.pnl >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}{formatPnlAmount(trade.pnl, tradePnlCurrency(trade))}</span>
                     </td>
