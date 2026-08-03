@@ -1,6 +1,12 @@
 import nseEquityData from '../data/nseEquity.json';
 import bseEquityData from '../data/bseEquity.json';
-import { getFnoInstrument } from '../data/fnoUniverse';
+import {
+  FNO_INDICES,
+  FNO_STOCKS_ALL,
+  FNO_UNIVERSE,
+  getFnoInstrument,
+  type FnoInstrument,
+} from '../data/fnoUniverse';
 import { fetchMarketQuotes } from './marketApiService';
 import { getPaperEquityLiveQuote } from './paperTradingLiveService';
 import { getMarketConnectionState } from './marketConnection';
@@ -48,8 +54,25 @@ function fnoQuoteToSelection(q: LiveSymbolQuote): JournalSymbolSelection {
     changePercent: q.changePercent,
     lotSize: q.lotSize,
     sector: q.sector,
-    isFno: q.type === 'stock',
+    isFno: q.type === 'index' || q.type === 'stock',
     volume: q.volume,
+  };
+}
+
+function fnoInstrumentToSelection(inst: FnoInstrument): JournalSymbolSelection {
+  const live = getLiveQuote(inst.symbol);
+  if (live) return fnoQuoteToSelection(live);
+  return {
+    symbol: inst.symbol,
+    name: inst.name,
+    exchange: inst.type === 'index' ? 'INDEX' : 'FNO',
+    type: inst.type,
+    price: inst.basePrice,
+    change: 0,
+    changePercent: 0,
+    lotSize: inst.lotSize,
+    sector: inst.sector,
+    isFno: true,
   };
 }
 
@@ -173,7 +196,6 @@ export function searchJournalSymbols(
   limit = 80,
 ): JournalSymbolSelection[] {
   const q = query.trim().toLowerCase();
-  const fnoQuotes = getFnoLiveQuotes();
   const results: JournalSymbolSelection[] = [];
   const seen = new Set<string>();
 
@@ -185,31 +207,19 @@ export function searchJournalSymbols(
   };
 
   const matches = (symbol: string, name: string) =>
-    symbol.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+    !q || symbol.toLowerCase().includes(q) || name.toLowerCase().includes(q);
 
-  if (!q) {
-    if (tab === 'index' || tab === 'all') {
-      for (const quote of fnoQuotes) {
-        if (quote.type !== 'index') continue;
-        push(fnoQuoteToSelection(quote));
-      }
-    }
-    if (tab === 'fno' || tab === 'all') {
-      for (const quote of fnoQuotes) {
-        if (quote.type !== 'stock') continue;
-        push(fnoQuoteToSelection(quote));
-        if (results.length >= limit) return results;
-      }
-    }
-    return results;
-  }
-
+  // Always use full static F&O universe (live quotes overlay when available).
   if (tab === 'all' || tab === 'index' || tab === 'fno') {
-    for (const quote of fnoQuotes) {
-      if (tab === 'index' && quote.type !== 'index') continue;
-      if (tab === 'fno' && quote.type !== 'stock') continue;
-      if (!matches(quote.symbol, quote.name)) continue;
-      push(fnoQuoteToSelection(quote));
+    const pool =
+      tab === 'index'
+        ? FNO_INDICES
+        : tab === 'fno'
+          ? FNO_STOCKS_ALL
+          : FNO_UNIVERSE;
+    for (const inst of pool) {
+      if (!matches(inst.symbol, inst.name)) continue;
+      push(fnoInstrumentToSelection(inst));
       if (results.length >= limit) return results;
     }
   }
@@ -217,10 +227,13 @@ export function searchJournalSymbols(
   if (tab === 'all' || tab === 'nse') {
     for (const entry of NSE_EQUITY) {
       if (!matches(entry.s, entry.n)) continue;
+      // Prefer F&O row if already pushed
+      if (seen.has(`FNO:${entry.s}`) || seen.has(`INDEX:${entry.s}`)) continue;
       const live = getLiveQuote(entry.s) ?? equityQuoteCache.get(entry.s);
       if (live && 'dataSource' in live) push(fnoQuoteToSelection(live as LiveSymbolQuote));
-      else if (live) push(live as JournalSymbolSelection);
-      else {
+      else if (live && 'symbol' in live && (live as JournalSymbolSelection).price) {
+        push(live as JournalSymbolSelection);
+      } else {
         const row = staticListing(entry);
         if (row) push(row);
       }
@@ -231,6 +244,7 @@ export function searchJournalSymbols(
   if (tab === 'all' || tab === 'bse') {
     for (const entry of BSE_EQUITY) {
       if (!matches(entry.s, entry.n)) continue;
+      if (seen.has(`FNO:${entry.s}`) || seen.has(`NSE:${entry.s}`)) continue;
       const cached = equityQuoteCache.get(entry.s);
       if (cached?.price) push(cached);
       else {
@@ -248,9 +262,28 @@ export function getUniverseCounts() {
   return {
     nse: NSE_EQUITY.length,
     bse: BSE_EQUITY.length,
-    fno: getFnoLiveQuotes().filter((x) => x.type === 'stock').length,
-    indices: getFnoLiveQuotes().filter((x) => x.type === 'index').length,
-    total: NSE_EQUITY.length + BSE_EQUITY.length,
+    fno: FNO_STOCKS_ALL.length,
+    indices: FNO_INDICES.length,
+    total: NSE_EQUITY.length + BSE_EQUITY.length + FNO_UNIVERSE.length,
+  };
+}
+
+/** Manual free-text equity symbol when not in lists */
+export function createManualEquityInstrument(symbol: string): JournalSymbolSelection {
+  const sym = symbol.trim().toUpperCase();
+  const known = getJournalSymbolSelection(sym);
+  if (known) return known;
+  return {
+    symbol: sym,
+    name: sym,
+    exchange: 'NSE',
+    type: 'stock',
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    lotSize: 1,
+    sector: 'Equity',
+    isFno: Boolean(getFnoInstrument(sym)),
   };
 }
 

@@ -76,6 +76,7 @@ import HunterMark from './HunterMark';
 import LuxSelect from './ui/LuxSelect';
 
 const GlobalInstrumentPicker = lazy(() => import('./journal/GlobalInstrumentPicker'));
+const JournalSymbolPicker = lazy(() => import('./journal/JournalSymbolPicker'));
 
 type NotificationItem = {
   id: string;
@@ -882,6 +883,20 @@ export default function TradingJournal({
     }));
   };
 
+  const handleSymbolSelect = (sel: JournalSymbolSelection) => {
+    const useLots =
+      sel.isFno && (form.type === 'Futures' || form.type === 'Options' || sel.type === 'index');
+    setSelectedSymbolMeta(sel);
+    setSelectedGlobalMeta(null);
+    setForm((prev) => ({
+      ...prev,
+      market: 'equity',
+      pnlCurrency: 'INR',
+      instrument: sel.symbol,
+      quantityIsLots: useLots || (sel.isFno && (prev.type === 'Futures' || prev.type === 'Options')),
+    }));
+  };
+
   const totalScreenshots = filteredTrades.filter((trade) => trade.screenshot).length;
   const goalProgress = Math.min((metrics.totalPnl / goalTarget) * 100, 100);
 
@@ -1425,29 +1440,18 @@ export default function TradingJournal({
                 </p>
 
                 {form.market === 'equity' ? (
-                  <div>
-                    <input
-                      value={form.instrument}
-                      onChange={(e) => {
-                        const instrument = e.target.value;
-                        setForm((prev) => ({
-                          ...prev,
-                          market: 'equity',
-                          pnlCurrency: prev.pnlCurrency || 'INR',
-                          instrument,
-                          quantityIsLots:
-                            prev.quantityIsLots &&
-                            (prev.type === 'Futures' || prev.type === 'Options'),
-                        }));
-                      }}
-                      className={`w-full rounded-xl border px-2.5 py-1.5 tj-field ${inputClass}`}
-                      placeholder="RELIANCE, NIFTY, Bank Nifty…"
-                      autoComplete="off"
+                  <Suspense
+                    fallback={
+                      <div className="rounded-lg border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-4 text-xs text-slate-500">
+                        Loading indices &amp; F&amp;O list…
+                      </div>
+                    }
+                  >
+                    <JournalSymbolPicker
+                      selectedSymbol={form.instrument || 'NIFTY'}
+                      onSelect={handleSymbolSelect}
                     />
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      Free text — company / index / symbol.
-                    </p>
-                  </div>
+                  </Suspense>
                 ) : (
                   <Suspense
                     fallback={
