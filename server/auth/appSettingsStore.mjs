@@ -8,11 +8,17 @@ export const ACCESS_POPUP_KEY = 'access_popup';
 
 export const DEFAULT_ACCESS_POPUP = {
   enabled: true,
-  title: 'Request access',
-  message:
-    'Open the link below, then upload a clear screenshot for the desk. After approval, your workspace unlocks automatically.',
+  title: 'Unlock premium access',
+  message: [
+    'Open the account using our above referral link',
+    'Take any small trade in F&O segment',
+    'Send your account details on WhatsApp',
+    'Our team will verify and give you access',
+    'Make sure first you take a trade & then send details',
+    'Hurrey !!! You are done.',
+  ].join('\n'),
   url: '',
-  buttonLabel: 'Open link',
+  buttonLabel: 'click here',
   whatsapp: '',
   defaultGrantDays: 30,
 };

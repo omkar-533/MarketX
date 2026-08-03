@@ -132,7 +132,11 @@ export default function AccessSettingsTab({
             className={`${FIELD} min-h-[5rem] resize-y`}
             value={popup.message}
             onChange={(e) => patch({ message: e.target.value })}
+            placeholder={'Open account using the link above\nTake a small F&O trade\nSend details on WhatsApp\n…'}
           />
+          <p className="text-[10px] text-slate-600 mt-1">
+            One step per line — shown as bullets under “Follow the steps below…”.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
