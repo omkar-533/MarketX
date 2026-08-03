@@ -42,7 +42,6 @@ import {
   isTradingRelated,
   isCasualGreeting,
   isPoliteAck,
-  getChartImageRequiredMessage,
   isConversationFollowUp,
   detectExplicitLanguageRequest,
   hasActiveDeskThread,
@@ -621,15 +620,14 @@ export default function MasterAI() {
         ? getChartVisionPrompt(activeLang.code, userNote || undefined, langMode === 'auto')
         : userText;
 
-      let responseText = hasImage
-        ? isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-          ? 'Chart abhi complete nahi padha ja saka. Thodi der baad dubara bhejiye.'
-          : 'The chart could not be completed just now. Please send it again shortly.'
-        : continuingThread
-          ? getMasterAiSorryMessage(activeLang.code, 'chat')
-          : getChartImageRequiredMessage(activeLang.code);
+      let responseText = '';
 
-      if (aiStatus.configured) {
+      if (!aiStatus.configured) {
+        responseText =
+          isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
+            ? 'Wolf AI key ready nahi hai. Profile mein AI key add karke phir try kijiye.'
+            : 'Wolf AI is not configured yet. Add an AI key in Profile and try again.';
+      } else {
         try {
           const lastAi = [...messages]
             .reverse()
@@ -691,8 +689,11 @@ export default function MasterAI() {
                   session: 'live',
                 },
           );
-          if (result.reply) responseText = result.reply;
-      } catch {
+          responseText =
+            (result.reply || '').trim() ||
+            getMasterAiSorryMessage(activeLang.code, hasImage ? 'chart' : 'chat');
+        } catch (err) {
+          console.warn('[Wolf AI] chat failed:', err);
           responseText = getMasterAiSorryMessage(
             activeLang.code,
             hasImage ? 'chart' : 'chat',

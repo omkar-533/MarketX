@@ -37,9 +37,9 @@ export function restartFyersMarketStream() {
   restartMarketStream();
 }
 
-export async function fetchQuotes(symbols) {
+export async function fetchQuotes(symbols, opts) {
   subscribeTvSymbols(symbols);
-  return tvProvider.fetchQuotes(symbols);
+  return tvProvider.fetchQuotes(symbols, opts);
 }
 
 export async function fetchOhlc(symbol, timeframe, range) {

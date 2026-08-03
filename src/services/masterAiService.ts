@@ -1198,21 +1198,26 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
     .filter(Boolean)
     .join('\n\n');
 
-  const res = await apiFetch('/api/chat', {
-    method: 'POST',
-    headers: { ...openRouterRequestHeaders() },
-    body: JSON.stringify({
-      message: req.message,
-      model: req.model,
-      lang: req.lang,
-      langName: req.langName,
-      langMode: autoMode ? 'auto' : req.langMode,
-      imageDataUrl: req.imageDataUrl ?? null,
-      history,
-      needsWeb: req.needsWeb ?? false,
-      platformContext,
-    }),
-  });
+  // Chat + live tape + LLM often needs >18s on cold Render; do not abort early.
+  const res = await apiFetch(
+    '/api/chat',
+    {
+      method: 'POST',
+      headers: { ...openRouterRequestHeaders() },
+      body: JSON.stringify({
+        message: req.message,
+        model: req.model,
+        lang: req.lang,
+        langName: req.langName,
+        langMode: autoMode ? 'auto' : req.langMode,
+        imageDataUrl: req.imageDataUrl ?? null,
+        history,
+        needsWeb: req.needsWeb ?? false,
+        platformContext,
+      }),
+    },
+    { retries: 0, timeoutMs: 75_000 },
+  );
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -67,22 +67,34 @@ async function quoteFromOhlcFallback(sym) {
   }
 }
 
-export async function fetchQuotes(symbols) {
+/**
+ * @param {string[]} symbols
+ * @param {{ fast?: boolean }} [opts] fast=true → short wait, limited OHLC (for Wolf AI chat latency)
+ */
+export async function fetchQuotes(symbols, opts = {}) {
+  const fast = Boolean(opts.fast);
   const unique = [
     ...new Set(symbols.map((s) => String(s).trim().toUpperCase()).filter(Boolean)),
   ];
   subscribeTvSymbols(unique);
 
-  const cacheKey = `q:${unique.slice().sort().join(',')}`;
+  const cacheKey = `q:${fast ? 'f:' : ''}${unique.slice().sort().join(',')}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  // Wait for first ticks — new symbols (e.g. BTC) need a short subscribe delay.
-  const deadline = Date.now() + (isTvSocketActive() ? 4500 : 7000);
+  // Wait for first ticks — keep Wolf AI chat under browser timeout.
+  const waitMs = fast
+    ? isTvSocketActive()
+      ? 1200
+      : 2200
+    : isTvSocketActive()
+      ? 4500
+      : 7000;
+  const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
     const ready = unique.every((sym) => Boolean(lookupTick(sym)?.data?.price));
     if (ready) break;
-    await new Promise((r) => setTimeout(r, 350));
+    await new Promise((r) => setTimeout(r, fast ? 200 : 350));
   }
 
   const errors = [];
@@ -106,9 +118,11 @@ export async function fetchQuotes(symbols) {
   }
 
   // Market closed / quiet session: last WS print may be gone after restart — use OHLC.
+  // Fast path: at most 2 OHLC fallbacks so /api/chat stays under ~client timeout.
   if (missing.length) {
+    const ohlcLimit = fast ? 2 : 12;
     const settled = await Promise.all(
-      missing.slice(0, 12).map(async (sym) => [sym, await quoteFromOhlcFallback(sym)]),
+      missing.slice(0, ohlcLimit).map(async (sym) => [sym, await quoteFromOhlcFallback(sym)]),
     );
     for (const [sym, quote] of settled) {
       if (quote?.price) {
@@ -118,7 +132,7 @@ export async function fetchQuotes(symbols) {
         errors.push({ symbol: sym, error: 'Waiting for TradingView tick' });
       }
     }
-    for (const sym of missing.slice(12)) {
+    for (const sym of missing.slice(ohlcLimit)) {
       errors.push({ symbol: sym, error: 'Waiting for TradingView tick' });
     }
   }

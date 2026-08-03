@@ -5,7 +5,8 @@
 import { fetchQuotes } from '../market/provider.mjs';
 import { toTvSymbol } from '../market/tradingview/symbolMap.mjs';
 
-const DEFAULT_WATCHLIST = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'BTC', 'ETH'];
+/** Keep AI path lean — full watchlist made /api/chat exceed browser timeout. */
+const CORE_WATCHLIST = ['NIFTY', 'BANKNIFTY'];
 
 const SYMBOL_ALIASES = [
   [/bank\s*nifty|banknifty|nifty\s*bank/gi, 'BANKNIFTY'],
@@ -30,16 +31,18 @@ function extractSymbols(text) {
     re.lastIndex = 0;
     if (re.test(raw)) found.add(sym);
   }
-  // Explicit EXCHANGE:SYMBOL or UPPERCASE tickers
   for (const m of raw.matchAll(/\b([A-Z]{2,12}:[A-Z0-9.&-]{1,20})\b/g)) {
     found.add(m[1].toUpperCase());
   }
   for (const m of raw.matchAll(/\b([A-Z]{2,12})\b/g)) {
     const tok = m[1];
     if (toTvSymbol(tok) && tok.length >= 2 && tok.length <= 12) {
-      // Avoid common English words
-      if (!/^(THE|AND|FOR|ARE|WAS|HAS|NOT|YOU|ALL|CAN|HOW|WHY|WHAT|WITH|FROM|THIS|THAT|WILL|JUST|LIKE|VIEW|CHART|LIVE|DATA|TODAY|NOW)$/i.test(tok)) {
-        if (DEFAULT_WATCHLIST.includes(tok) || tok.length >= 3) found.add(tok);
+      if (
+        !/^(THE|AND|FOR|ARE|WAS|HAS|NOT|YOU|ALL|CAN|HOW|WHY|WHAT|WITH|FROM|THIS|THAT|WILL|JUST|LIKE|VIEW|CHART|LIVE|DATA|TODAY|NOW|KABHI|ABHI|KAHA|PE|HAI)$/i.test(
+          tok,
+        )
+      ) {
+        if (CORE_WATCHLIST.includes(tok) || tok.length >= 3) found.add(tok);
       }
     }
   }
@@ -70,15 +73,17 @@ export async function buildLiveQuotesContext(message, history = [], opts = {}) {
     .map((h) => String(h?.content || ''))
     .join('\n');
   const mentioned = extractSymbols(`${message}\n${historyText}`);
+
+  // Prefer asked symbols + NIFTY/BANKNIFTY only — keeps chat latency low.
   const symbols = [
     ...new Set([
       ...(mentioned.length ? mentioned : []),
-      ...DEFAULT_WATCHLIST,
+      ...CORE_WATCHLIST,
     ]),
-  ].slice(0, compact ? 8 : 14);
+  ].slice(0, compact ? 4 : 6);
 
   try {
-    const data = await fetchQuotes(symbols);
+    const data = await fetchQuotes(symbols, { fast: true });
     const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
     if (!quotes.length) {
       return {
@@ -88,7 +93,6 @@ export async function buildLiveQuotesContext(message, history = [], opts = {}) {
       };
     }
 
-    // Prefer mentioned symbols first in the block
     const order = new Map(symbols.map((s, i) => [s, i]));
     quotes.sort((a, b) => (order.get(a.symbol) ?? 99) - (order.get(b.symbol) ?? 99));
 
