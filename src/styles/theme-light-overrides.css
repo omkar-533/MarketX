@@ -1260,37 +1260,116 @@ html[data-theme="light"] .to-\[\#0b0e17\] {
   --tw-gradient-to: var(--tf-bg) !important;
 }
 
+/* AccessGate neon modal — light theme: keep green accents, force dark readable text */
 html[data-theme="light"] .access-gate {
-  background: rgba(15, 23, 42, 0.32) !important;
+  --ag-neon: #0f9f4a;
+  --ag-neon-soft: #0b7a38;
+  --ag-neon-dim: rgba(15, 159, 74, 0.16);
+  --ag-card: #ffffff;
+  --ag-card-edge: rgba(15, 159, 74, 0.45);
+  background: rgba(15, 23, 42, 0.4) !important;
 }
 
 html[data-theme="light"] .access-gate__card {
-  background: var(--tf-surface) !important;
-  border-color: var(--tf-border) !important;
-  box-shadow: 0 24px 64px var(--tf-shadow) !important;
-  color: var(--tf-text) !important;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(15, 159, 74, 0.08), transparent 55%),
+    linear-gradient(180deg, #f7fff9 0%, #ffffff 48%, #f3faf5 100%) !important;
+  border-color: var(--ag-card-edge) !important;
+  box-shadow:
+    0 0 0 1px rgba(15, 159, 74, 0.06) inset,
+    0 0 24px rgba(15, 159, 74, 0.12),
+    0 24px 64px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a !important;
 }
 
-html[data-theme="light"] .access-gate__brand,
-html[data-theme="light"] .access-gate__title,
-html[data-theme="light"] .access-gate__step-title,
+html[data-theme="light"] .access-gate__title {
+  color: #0b7a38 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] .access-gate__link-label,
+html[data-theme="light"] .access-gate__steps-heading {
+  color: #14532d !important;
+}
+
+html[data-theme="light"] .access-gate__bullets li {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .access-gate__bullets li::marker {
+  color: #166534 !important;
+}
+
+html[data-theme="light"] .access-gate__link-missing {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .access-gate__click {
+  color: #052e16 !important;
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #16a34a 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+    0 4px 14px rgba(22, 163, 74, 0.28) !important;
+}
+
+html[data-theme="light"] .access-gate__proof {
+  background: rgba(15, 159, 74, 0.06) !important;
+  border-color: rgba(15, 159, 74, 0.22) !important;
+}
+
+html[data-theme="light"] .access-gate__proof-title,
 html[data-theme="light"] .access-proof__title {
-  color: var(--tf-text) !important;
+  color: #14532d !important;
 }
 
-html[data-theme="light"] .access-gate__body,
-html[data-theme="light"] .access-gate__step-body,
-html[data-theme="light"] .access-proof__hint {
-  color: var(--tf-text-secondary) !important;
+html[data-theme="light"] .access-proof__hint,
+html[data-theme="light"] .access-proof__field-hint,
+html[data-theme="light"] .access-proof__label {
+  color: #475569 !important;
 }
 
-html[data-theme="light"] .access-gate__step,
-html[data-theme="light"] .access-gate__ghost,
+html[data-theme="light"] .access-gate__proof .access-proof__drop,
+html[data-theme="light"] .access-proof__drop {
+  background: #ffffff !important;
+  border-color: rgba(15, 159, 74, 0.35) !important;
+  color: #0b7a38 !important;
+}
+
+html[data-theme="light"] .access-gate__ghost {
+  background: #ffffff !important;
+  border-color: rgba(15, 159, 74, 0.28) !important;
+  color: #14532d !important;
+}
+
+html[data-theme="light"] .access-gate__ghost:hover {
+  background: rgba(15, 159, 74, 0.08) !important;
+  color: #052e16 !important;
+}
+
+html[data-theme="light"] .access-gate__ghost--wa,
+html[data-theme="light"] .access-gate__ghost--wa:hover {
+  color: #052e16 !important;
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%) !important;
+}
+
+html[data-theme="light"] .access-gate__blocked {
+  color: #991b1b !important;
+  background: rgba(254, 226, 226, 0.85) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
 html[data-theme="light"] .access-proof input,
-html[data-theme="light"] .access-proof textarea {
-  background: var(--tf-elevated) !important;
-  border-color: var(--tf-border) !important;
-  color: var(--tf-text) !important;
+html[data-theme="light"] .access-proof textarea,
+html[data-theme="light"] .access-proof__note {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .access-proof__submit,
+html[data-theme="light"] .access-gate__proof .access-proof__submit {
+  color: #052e16 !important;
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%) !important;
 }
 
 html[data-theme="light"] .trial-nudge-overlay__backdrop,
