@@ -162,6 +162,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     () => loadStoredState(user) ?? createInitialState(),
   );
   const persistReadyRef = useRef(false);
+  const watchlistSymbolsRef = useRef<string[]>([]);
   const [activeTab, setActiveTab] = useState<PaperTab>('overview');
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<MarketItem | null>(null);
@@ -224,8 +225,17 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     }
   }, [user]);
 
+  watchlistSymbolsRef.current = paperState.watchlist.map((w) => w.symbol);
+
   const applyLiveQuotesToState = (feed: PaperQuoteFeedStatus) => {
-    setQuoteFeed(feed);
+    setQuoteFeed((prev) => {
+      if (prev.mode !== 'live' && feed.mode === 'live') {
+        queueMicrotask(() =>
+          setStatusMessage(`Live market tape · ${feed.liveSymbolCount} symbols`),
+        );
+      }
+      return feed;
+    });
     setPaperState((prev) => {
       const nextWatchlist = refreshWatchlistQuotes(prev.watchlist);
       const quoteMap = Object.fromEntries(nextWatchlist.map((item) => [item.symbol, item.price]));
@@ -249,39 +259,34 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     });
   };
 
+  /** Only apply quotes AFTER live REST returns — never paint stale/demo first. */
   const syncPaperQuotes = () => {
     refreshEquity();
-    setPaperState((prev) => {
-      const symbols = prev.watchlist.map((w) => w.symbol);
-      void refreshPaperTradingLiveQuotes(symbols).then(applyLiveQuotesToState);
-      const nextWatchlist = refreshWatchlistQuotes(prev.watchlist);
-      const quoteMap = Object.fromEntries(nextWatchlist.map((item) => [item.symbol, item.price]));
-      const nextPositions = prev.positions.map((position) => {
-        const und = position.underlying ?? position.symbol.split(' ')[0];
-        const px = markPriceForPosition(position, quoteMap);
-        return createPositionSnapshot(position, px, quoteMap[und]);
-      });
-      const base = {
-        ...prev,
-        watchlist: nextWatchlist,
-        positions: nextPositions,
-        lastSync: new Date().toISOString(),
-      };
-      const { state: afterOrders, messages } = processPendingPaperOrders(base, nextWatchlist);
-      if (messages.length > 0) {
-        queueMicrotask(() => setStatusMessage(messages[messages.length - 1]));
-      }
-      return afterOrders;
-    });
+    const symbols = watchlistSymbolsRef.current;
+    if (!symbols.length) return;
+    void refreshPaperTradingLiveQuotes(symbols).then(applyLiveQuotesToState);
   };
 
   useAutoRefresh(syncPaperQuotes);
 
+  // Fast live poll (hub is 60s — too slow for paper LTP).
   useEffect(() => {
-    if (!persistReadyRef.current) return;
-    const symbols = paperState.watchlist.map((w) => w.symbol);
-    void refreshPaperTradingLiveQuotes(symbols).then(applyLiveQuotesToState);
-  }, [user, paperState.watchlist.length]);
+    let cancelled = false;
+    const pull = () => {
+      if (!persistReadyRef.current) return;
+      const symbols = watchlistSymbolsRef.current;
+      if (!symbols.length) return;
+      void refreshPaperTradingLiveQuotes(symbols).then((feed) => {
+        if (!cancelled) applyLiveQuotesToState(feed);
+      });
+    };
+    pull();
+    const id = window.setInterval(pull, 5_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [user, paperState.watchlist.map((w) => w.symbol).join(',')]);
 
   useEffect(() => {
     if (!persistReadyRef.current) return;

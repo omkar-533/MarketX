@@ -20,8 +20,19 @@ export interface PaperQuoteFeedStatus {
 const equityQuoteCache = new Map<string, MarketQuoteDto>();
 const registeredSymbols = new Set<string>();
 
-/** Symbols that TradingView can price live (not local sim). */
-const TV_GLOBAL_SYMBOLS = new Set(['BTC', 'ETH', 'BITCOIN', 'ETHEREUM', 'BTCUSDT', 'ETHUSDT']);
+/** Map UI / watchlist symbols → TradingView API tickers. */
+const API_ALIAS: Record<string, string> = {
+  BTC: 'BTC',
+  BITCOIN: 'BTC',
+  BTCUSDT: 'BTC',
+  'BTC/USDT': 'BTC',
+  'BTC/USD': 'BTC',
+  ETH: 'ETH',
+  ETHEREUM: 'ETH',
+  ETHUSDT: 'ETH',
+  'ETH/USDT': 'ETH',
+  'ETH/USD': 'ETH',
+};
 
 export function isPaperTradingLiveMode(): boolean {
   return import.meta.env.VITE_PAPER_TRADING_LIVE !== 'false';
@@ -35,7 +46,31 @@ export function registerPaperTradingSymbols(symbols: string[]): void {
 }
 
 export function getPaperEquityLiveQuote(symbol: string): MarketQuoteDto | null {
-  return equityQuoteCache.get(symbol.trim().toUpperCase()) ?? null;
+  const raw = symbol.trim().toUpperCase();
+  if (!raw) return null;
+  return (
+    equityQuoteCache.get(raw) ??
+    equityQuoteCache.get(toApiSymbol(raw)) ??
+    equityQuoteCache.get(raw.replace('/', '')) ??
+    null
+  );
+}
+
+/** Normalize journal/paper symbols to API-friendly tickers. */
+export function toApiSymbol(symbol: string): string {
+  const raw = String(symbol || '').trim().toUpperCase();
+  if (!raw) return '';
+  if (API_ALIAS[raw]) return API_ALIAS[raw];
+  const noslash = raw.replace(/\s+/g, '');
+  if (API_ALIAS[noslash]) return API_ALIAS[noslash];
+  // BTC/USDT → try BTCUSDT then BTC
+  if (noslash.includes('/')) {
+    const compact = noslash.replace(/\//g, '');
+    if (API_ALIAS[compact]) return API_ALIAS[compact];
+    if (compact.endsWith('USDT')) return compact.slice(0, -4) || compact;
+    if (compact.endsWith('USD') && compact.length > 3) return compact.slice(0, -3) || compact;
+  }
+  return noslash.replace(/\//g, '');
 }
 
 function selectionToMarketItem(
@@ -60,58 +95,56 @@ function selectionToMarketItem(
   };
 }
 
-function cacheQuote(q: MarketQuoteDto): void {
+function cacheQuote(q: MarketQuoteDto, aliases: string[] = []): void {
   const sym = q.symbol.trim().toUpperCase();
-  equityQuoteCache.set(sym, { ...q, symbol: sym });
+  const row = { ...q, symbol: sym };
+  equityQuoteCache.set(sym, row);
+  for (const a of aliases) {
+    const key = a.trim().toUpperCase();
+    if (key) equityQuoteCache.set(key, { ...row, symbol: key });
+  }
+}
+
+function liveRowFor(symbol: string): MarketQuoteDto | null {
+  const sym = symbol.trim().toUpperCase();
+  const api = toApiSymbol(sym);
+  const fromCache = getPaperEquityLiveQuote(sym) || getPaperEquityLiveQuote(api);
+  if (fromCache?.price) return fromCache;
+  const live = getLiveQuote(sym) || getLiveQuote(api);
+  if (!live?.price) return null;
+  return {
+    symbol: sym,
+    price: live.price,
+    change: live.change,
+    changePercent: live.changePercent,
+    open: live.open,
+    high: live.high,
+    low: live.low,
+    prevClose: live.prevClose,
+    volume: live.volume,
+    source: 'tradingview',
+    lastUpdated: live.lastUpdated,
+  };
 }
 
 export function applyLiveQuoteToMarketItem(item: MarketItem): MarketItem {
-  const sym = item.symbol.trim().toUpperCase();
+  const live = liveRowFor(item.symbol);
+  if (live?.price) {
+    return {
+      ...item,
+      price: live.price,
+      change: live.change,
+      changePercent: live.changePercent,
+      open: live.open || item.open,
+      high: live.high || item.high,
+      low: live.low || item.low,
+      volume: live.volume,
+    };
+  }
 
-  // Crypto/forex: prefer live TV tape when available (BTC/ETH), else local sim tick.
+  // Only simulate when no live tape at all (forex pairs without TV map, etc.).
   if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
-    const live = getLiveQuote(sym) || getPaperEquityLiveQuote(sym);
-    if (live?.price) {
-      return {
-        ...item,
-        price: live.price,
-        change: live.change,
-        changePercent: live.changePercent,
-        open: live.open,
-        high: live.high,
-        low: live.low,
-        volume: live.volume,
-      };
-    }
     return tickGlobalPaperQuote(item);
-  }
-
-  const fno = getLiveQuote(sym);
-  if (fno?.price) {
-    return {
-      ...item,
-      price: fno.price,
-      change: fno.change,
-      changePercent: fno.changePercent,
-      open: fno.open,
-      high: fno.high,
-      low: fno.low,
-      volume: fno.volume,
-    };
-  }
-
-  const eq = getPaperEquityLiveQuote(sym);
-  if (eq?.price) {
-    return {
-      ...item,
-      price: eq.price,
-      change: eq.change,
-      changePercent: eq.changePercent,
-      open: eq.open,
-      high: eq.high,
-      low: eq.low,
-      volume: eq.volume,
-    };
   }
 
   const sel = getJournalSymbolSelection(item.symbol, item.exchange);
@@ -123,8 +156,8 @@ async function fetchQuotesWithRetry(symbols: string[]): Promise<MarketQuoteDto[]
   if (!symbols.length) return [];
   let res = await fetchMarketQuotes(symbols);
   let quotes = res?.quotes?.filter((q) => q?.price) ?? [];
-  if (quotes.length < symbols.length) {
-    await new Promise((r) => setTimeout(r, 900));
+  if (quotes.length < Math.min(symbols.length, 1)) {
+    await new Promise((r) => setTimeout(r, 700));
     res = await fetchMarketQuotes(symbols);
     const again = res?.quotes?.filter((q) => q?.price) ?? [];
     const map = new Map(quotes.map((q) => [q.symbol.toUpperCase(), q]));
@@ -137,10 +170,31 @@ async function fetchQuotesWithRetry(symbols: string[]): Promise<MarketQuoteDto[]
 export async function refreshPaperTradingLiveQuotes(
   watchlistSymbols: string[],
 ): Promise<PaperQuoteFeedStatus> {
+  if (import.meta.env.VITE_PAPER_TRADING_LIVE === 'false') {
+    return {
+      mode: 'offline',
+      liveSymbolCount: 0,
+      serverOk: false,
+      message: 'Paper live feed disabled',
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
   registerPaperTradingSymbols(watchlistSymbols);
-  const toFetch = [...new Set([...watchlistSymbols, ...registeredSymbols])]
+  const originals = [...new Set([...watchlistSymbols, ...registeredSymbols])]
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean);
+
+  // Build API list + reverse alias map so BTC quote updates BTC/USDT rows too.
+  const apiToOriginals = new Map<string, Set<string>>();
+  for (const orig of originals) {
+    const api = toApiSymbol(orig);
+    if (!api) continue;
+    if (!apiToOriginals.has(api)) apiToOriginals.set(api, new Set());
+    apiToOriginals.get(api)!.add(orig);
+    apiToOriginals.get(api)!.add(api);
+  }
+  const toFetch = [...apiToOriginals.keys()].slice(0, 40);
 
   subscribeLiveSymbols(toFetch);
 
@@ -162,9 +216,11 @@ export async function refreshPaperTradingLiveQuotes(
     };
   }
 
-  // Always REST-refresh — do not rely only on WS (quiet / closed sessions).
-  const quotes = await fetchQuotesWithRetry(toFetch.slice(0, 40));
-  for (const q of quotes) cacheQuote(q);
+  const quotes = await fetchQuotesWithRetry(toFetch);
+  for (const q of quotes) {
+    const aliases = [...(apiToOriginals.get(q.symbol.toUpperCase()) ?? new Set([q.symbol]))];
+    cacheQuote(q, aliases);
+  }
 
   if (quotes.length) {
     applyStreamQuotes(
@@ -184,29 +240,29 @@ export async function refreshPaperTradingLiveQuotes(
     );
   }
 
-  for (const sym of toFetch) {
-    const live = getLiveQuote(sym);
+  for (const api of toFetch) {
+    const live = getLiveQuote(api);
     if (live?.price) {
-      cacheQuote({
-        symbol: sym,
-        price: live.price,
-        change: live.change,
-        changePercent: live.changePercent,
-        open: live.open,
-        high: live.high,
-        low: live.low,
-        prevClose: live.prevClose,
-        volume: live.volume,
-        source: 'tradingview',
-        lastUpdated: live.lastUpdated,
-      });
+      cacheQuote(
+        {
+          symbol: api,
+          price: live.price,
+          change: live.change,
+          changePercent: live.changePercent,
+          open: live.open,
+          high: live.high,
+          low: live.low,
+          prevClose: live.prevClose,
+          volume: live.volume,
+          source: 'tradingview',
+          lastUpdated: live.lastUpdated,
+        },
+        [...(apiToOriginals.get(api) ?? [])],
+      );
     }
   }
 
-  const totalLive = toFetch.filter((s) => {
-    const q = getLiveQuote(s) || equityQuoteCache.get(s);
-    return Boolean(q?.price);
-  }).length;
+  const totalLive = originals.filter((s) => Boolean(liveRowFor(s)?.price)).length;
   const ws = getMarketConnectionState().streamActive;
 
   return {
@@ -215,14 +271,10 @@ export async function refreshPaperTradingLiveQuotes(
     serverOk: true,
     message:
       totalLive > 0
-        ? `Live · ${totalLive} symbol${totalLive === 1 ? '' : 's'}`
+        ? `Live TradingView · ${totalLive} symbol${totalLive === 1 ? '' : 's'}`
         : ws
           ? 'WebSocket connected — waiting for ticks'
-          : 'Server OK — fetching live tape…',
+          : 'Server OK — retrying live tape…',
     updatedAt: new Date().toISOString(),
   };
-}
-
-export function isTvPricedGlobalSymbol(symbol: string): boolean {
-  return TV_GLOBAL_SYMBOLS.has(symbol.trim().toUpperCase());
 }
