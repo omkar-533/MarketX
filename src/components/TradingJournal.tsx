@@ -48,6 +48,8 @@ import {
   autoSyncJournal,
   canCloudSync,
   hydrateJournalFromCloud,
+  mergeTradeLists,
+  persistLocalTrades,
 } from '../services/journalSyncService';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { getJournalCompletenessWarnings } from '../services/masterAiService';
@@ -121,10 +123,22 @@ const MARKET_OPTIONS: { id: JournalMarket; label: string; hint: string }[] = [
   { id: 'forex', label: 'Forex', hint: 'FX pairs & gold' },
 ];
 
-const EMPTY_FORM: TradeFormState = {
+function localDateTimeInputValue(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function freshEmptyForm(): TradeFormState {
+  return {
+    ...EMPTY_FORM_BASE,
+    date: localDateTimeInputValue(),
+  };
+}
+
+const EMPTY_FORM_BASE: TradeFormState = {
   market: 'equity',
   pnlCurrency: 'INR',
-  instrument: '',
+  instrument: 'NIFTY',
   entryPrice: '',
   exitPrice: '',
   stopLoss: '',
@@ -136,7 +150,7 @@ const EMPTY_FORM: TradeFormState = {
   strategy: '',
   notes: '',
   tags: '',
-  date: new Date().toISOString().slice(0, 16),
+  date: '',
   quantityIsLots: false,
   realizedPnl: '',
   ...DEFAULT_TRADE_PSYCHOLOGY,
@@ -524,6 +538,8 @@ export default function TradingJournal({
   const [tradeStore, setTradeStore] = useState<TradeRecord[]>([]);
   const skipPersistRef = useRef(true);
   const syncLockRef = useRef(false);
+  const hydrateGenRef = useRef(0);
+  const tradeLogRef = useRef<HTMLDivElement | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
@@ -538,7 +554,7 @@ export default function TradingJournal({
   const [challengeMode, setChallengeMode] = useState(true);
   const [syncStatus, setSyncStatus] = useState('Ready');
   const [statusMessage, setStatusMessage] = useState('Add a completed trade to start your journal.');
-  const [form, setForm] = useState<TradeFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<TradeFormState>(() => freshEmptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadPreview, setUploadPreview] = useState('');
   const [lightbox, setLightbox] = useState<{ src: string; title?: string; subtitle?: string } | null>(null);
@@ -555,13 +571,15 @@ export default function TradingJournal({
     }
 
     let cancelled = false;
+    const gen = ++hydrateGenRef.current;
     skipPersistRef.current = true;
     setIsSyncing(true);
     setSyncStatus('Syncing journal…');
 
     hydrateJournalFromCloud(user).then((trades) => {
-      if (cancelled) return;
-      setTradeStore(trades);
+      if (cancelled || gen !== hydrateGenRef.current) return;
+      // Merge so in-flight saves during hydrate are not wiped.
+      setTradeStore((prev) => (prev.length ? mergeTradeLists(prev, trades) : trades));
       const cloudHint = canCloudSync(user) ? ' · cloud' : ' · local';
       setSyncStatus(`Loaded${cloudHint} • ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`);
       requestAnimationFrame(() => {
@@ -597,9 +615,14 @@ export default function TradingJournal({
     const pull = window.setInterval(() => {
       if (syncLockRef.current || skipPersistRef.current) return;
       syncLockRef.current = true;
+      const gen = ++hydrateGenRef.current;
       hydrateJournalFromCloud(user).then((merged) => {
+        if (gen !== hydrateGenRef.current) {
+          syncLockRef.current = false;
+          return;
+        }
         skipPersistRef.current = true;
-        setTradeStore(merged);
+        setTradeStore((prev) => mergeTradeLists(prev, merged));
         setSyncStatus(`Updated • ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`);
         requestAnimationFrame(() => {
           skipPersistRef.current = false;
@@ -618,7 +641,7 @@ export default function TradingJournal({
       if (!e.key?.includes('tradeflow_journal_store_v3_')) return;
       skipPersistRef.current = true;
       hydrateJournalFromCloud(user).then((trades) => {
-        setTradeStore(trades);
+        setTradeStore((prev) => mergeTradeLists(prev, trades));
         setSyncStatus(`Synced from another tab • ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`);
         skipPersistRef.current = false;
       });
@@ -789,8 +812,12 @@ export default function TradingJournal({
   const [selectedGlobalMeta, setSelectedGlobalMeta] = useState<GlobalInstrumentSelection | null>(null);
 
   useEffect(() => {
-    if (form.market !== 'equity' || !form.instrument) {
+    if (form.market !== 'equity') {
       setSelectedSymbolMeta(null);
+      return;
+    }
+    if (!sanitizeString(form.instrument)) {
+      setForm((prev) => ({ ...prev, instrument: 'NIFTY', pnlCurrency: 'INR' }));
       return;
     }
     let cancelled = false;
@@ -877,11 +904,16 @@ export default function TradingJournal({
     setForm((prev) => ({
       ...prev,
       market,
-      instrument: '',
+      instrument: market === 'equity' ? 'NIFTY' : '',
       pnlCurrency: defaultPnlCurrency(market),
       quantityIsLots: market === 'forex',
       type: market === 'equity' ? prev.type : 'Intraday',
     }));
+    if (market === 'equity') {
+      void import('../services/equitySymbolService').then((mod) => {
+        setSelectedSymbolMeta(mod.getJournalSymbolSelection('NIFTY'));
+      });
+    }
   };
 
   const handleGlobalInstrumentSelect = (sel: GlobalInstrumentSelection) => {
@@ -929,11 +961,13 @@ export default function TradingJournal({
   };
 
   const resetForm = () => {
-    setForm(EMPTY_FORM);
+    setForm(freshEmptyForm());
     setEditingId(null);
     setUploadPreview('');
-    setSelectedSymbolMeta(null);
     setSelectedGlobalMeta(null);
+    void import('../services/equitySymbolService').then((mod) => {
+      setSelectedSymbolMeta(mod.getJournalSymbolSelection('NIFTY'));
+    });
   };
 
   const handleSaveTrade = () => {
@@ -942,58 +976,83 @@ export default function TradingJournal({
       return;
     }
 
-    const missing = getMissingTradeFields(form);
+    // Recover instrument if picker showed a symbol but form field was empty.
+    const recoveredInstrument =
+      sanitizeString(form.instrument) ||
+      selectedSymbolMeta?.symbol ||
+      selectedGlobalMeta?.symbol ||
+      (form.market === 'equity' ? 'NIFTY' : '');
+
+    const formToSave: TradeFormState = {
+      ...form,
+      instrument: recoveredInstrument,
+      date: sanitizeString(form.date) || localDateTimeInputValue(),
+      pnlCurrency: form.pnlCurrency || defaultPnlCurrency(form.market),
+    };
+
+    const missing = getMissingTradeFields(formToSave);
     if (missing.length > 0) {
-      setStatusMessage(`Missing required: ${missing.join(', ')}. Broker & strategy are optional.`);
+      setStatusMessage(`Missing required: ${missing.join(', ')}. Fill Profit/Loss (number) then Save.`);
       return;
     }
 
-    const normalizedForm = normalizeFormForSave(form);
-    const record = parseFormToTradeRecord(
-      normalizedForm,
-      user,
-      editingId ?? undefined,
-      editingId ? tradeStore.find((trade) => trade.id === editingId)?.createdAt : undefined,
-    );
+    let record: TradeRecord | null = null;
+    try {
+      const normalizedForm = normalizeFormForSave(formToSave);
+      record = parseFormToTradeRecord(
+        normalizedForm,
+        user,
+        editingId ?? undefined,
+        editingId ? tradeStore.find((trade) => trade.id === editingId)?.createdAt : undefined,
+      );
+    } catch (err) {
+      console.warn('[Journal] save parse failed:', err);
+      setStatusMessage('Could not save trade. Check prices / P&L numbers and try again.');
+      return;
+    }
+
     if (!record) {
-      setStatusMessage('Invalid trade data. Check entry, exit, and quantity values.');
+      setStatusMessage('Could not save — need Instrument, Date, and Profit/Loss number.');
       return;
     }
 
-    const nextRecord = {
+    const nextRecord: TradeRecord = {
       ...record,
       screenshot: uploadPreview || undefined,
       updatedAt: new Date().toISOString(),
     };
 
-    let nextStore: TradeRecord[];
-    if (editingId) {
-      nextStore = tradeStore.map((trade) => (trade.id === editingId ? nextRecord : trade));
-      setStatusMessage('Trade updated successfully.');
-    } else {
-      nextStore = [nextRecord, ...tradeStore];
-      setStatusMessage('Trade saved successfully. View it in the Trades tab.');
-    }
+    const nextStore = editingId
+      ? tradeStore.map((trade) => (trade.id === editingId ? nextRecord : trade))
+      : [nextRecord, ...tradeStore];
+
+    // Persist immediately so cloud hydrate cannot wipe the new trade.
+    persistLocalTrades(user, nextStore);
+    skipPersistRef.current = false;
+    hydrateGenRef.current += 1;
+    setTradeStore(nextStore);
 
     const softWarnings = getJournalCompletenessWarnings(nextRecord);
-    if (softWarnings.length > 0) {
-      setStatusMessage(
-        `${editingId ? 'Trade updated' : 'Trade saved'}. Completeness tips (not blocking): ${softWarnings.slice(0, 4).join('; ')}.`,
-      );
-    }
+    setStatusMessage(
+      softWarnings.length
+        ? `${editingId ? 'Trade updated' : 'Trade saved'} ✓ Completeness tips: ${softWarnings.slice(0, 3).join('; ')}.`
+        : `${editingId ? 'Trade updated' : 'Trade saved'} ✓ See Trade Log below.`,
+    );
 
-    setTradeStore(nextStore);
-    skipPersistRef.current = false;
-    autoSyncJournal(user, nextStore).then((result) => {
+    void autoSyncJournal(user, nextStore).then((result) => {
       setSyncStatus(result.message);
       if (!result.ok) {
-        setStatusMessage('Trade saved but sync failed. Storage may be full — remove screenshots.');
+        setStatusMessage('Trade saved locally. Cloud sync failed — check storage / connection.');
       }
     });
+
     setActiveTab('trades');
     setSearch('');
     setFilters({ strategy: '', broker: '', instrument: '', tag: '', market: 'all', pnl: 'all' });
     resetForm();
+    requestAnimationFrame(() => {
+      tradeLogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const handleEditTrade = (trade: TradeRecord) => {
@@ -1733,7 +1792,10 @@ export default function TradingJournal({
                   <div className="mt-2 text-sm space-y-0.5">
                     <p className="text-xl font-bold">
                       <span className={preview.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                        {formatCurrency(preview.pnl)}
+                        {formatPnlAmount(
+                          preview.pnl,
+                          form.pnlCurrency || defaultPnlCurrency(form.market),
+                        )}
                       </span>
                       <span className="text-xs font-normal text-slate-500 ml-2">
                         {preview.pnl >= 0 ? 'Profit' : 'Loss'}
@@ -1923,7 +1985,7 @@ export default function TradingJournal({
         </aside>
       </div>
 
-      <div className="tj-card overflow-hidden">
+      <div className="tj-card overflow-hidden" ref={tradeLogRef}>
         <div className="p-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Table2 className="w-5 h-5 text-[#d4af37]" /> Trade Log
@@ -1973,7 +2035,11 @@ export default function TradingJournal({
                     <td className="px-4 py-3 font-semibold text-white">
                       {trade.instrument}
                       <span className="block text-[10px] text-slate-500 font-normal">
-                        Equity
+                        {tradeMarket(trade) === 'crypto'
+                          ? 'Crypto'
+                          : tradeMarket(trade) === 'forex'
+                            ? 'Forex'
+                            : 'Equity'}
                         {' · '}{trade.type}
                       </span>
                       {trade.beforeEmotion && trade.afterEmotion && (
