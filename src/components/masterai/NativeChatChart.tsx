@@ -4,7 +4,9 @@ import {
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
+  TickMarkType,
   createChart,
+  createTextWatermark,
   type IChartApi,
   type Time,
   type UTCTimestamp,
@@ -15,6 +17,7 @@ import { bollinger, ema, rsi, toHeikinAshi, vwap } from '../../services/chart/ch
 import { fetchMarketOhlc } from '../../services/marketApiService';
 import type { ChartBar } from '../../types/chart';
 import {
+  TV_TIMEFRAMES,
   apiSymbolFromTv,
   nativeIntervalFor,
   tradingViewSymbolLabel,
@@ -22,9 +25,11 @@ import {
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
 
-const UP = '#10b981';
-const DOWN = '#ef4444';
-const GOLD = '#d4af37';
+/** TradingView's own candle palette, so the chart reads exactly like theirs. */
+const UP = '#26a69a';
+const DOWN = '#ef5350';
+const UP_FILL = 'rgba(38,166,154,0.5)';
+const DOWN_FILL = 'rgba(239,83,80,0.5)';
 const REFRESH_MS = 60_000;
 
 const IST = 'Asia/Kolkata';
@@ -35,6 +40,17 @@ const istTime = new Intl.DateTimeFormat('en-IN', {
   hour12: false,
 });
 const istDate = new Intl.DateTimeFormat('en-IN', { timeZone: IST, day: '2-digit', month: 'short' });
+const istMonth = new Intl.DateTimeFormat('en-IN', { timeZone: IST, month: 'short' });
+const istYear = new Intl.DateTimeFormat('en-IN', { timeZone: IST, year: 'numeric' });
+
+/** Match TradingView's axis: dates at day/month/year boundaries, clock inside a session. */
+function formatTickMark(time: Time, type: TickMarkType): string {
+  const ms = Number(time) * 1000;
+  if (type === TickMarkType.Year) return istYear.format(ms);
+  if (type === TickMarkType.Month) return istMonth.format(ms);
+  if (type === TickMarkType.DayOfMonth) return istDate.format(ms);
+  return istTime.format(ms);
+}
 const istFull = new Intl.DateTimeFormat('en-IN', {
   timeZone: IST,
   day: '2-digit',
@@ -61,6 +77,18 @@ function priceDecimals(bars: ChartBar[]): number {
 
 const ts = (t: number) => t as UTCTimestamp;
 
+/** TradingView compares each bar against the previous close, not its own open. */
+function legendAt(bars: ChartBar[], index: number): Legend {
+  const bar = bars[index];
+  return {
+    o: bar.open,
+    h: bar.high,
+    l: bar.low,
+    c: bar.close,
+    prevClose: index > 0 ? bars[index - 1].close : bar.open,
+  };
+}
+
 export type NativeChatChartProps = {
   symbol: string;
   interval: TvInterval;
@@ -69,7 +97,7 @@ export type NativeChatChartProps = {
   reloadKey: number;
 };
 
-type Legend = { o: number; h: number; l: number; c: number };
+type Legend = { o: number; h: number; l: number; c: number; prevClose: number };
 type ChartView = { source: ChartBar[]; closes: number[]; decimals: number };
 
 /**
@@ -89,8 +117,10 @@ export default function NativeChatChart({
   /** Set when the chart is built; pushes a fresh dataset into the live series. */
   const applyRef = useRef<((view: ChartView, fit: boolean) => void) | null>(null);
   const viewRef = useRef<ChartView | null>(null);
-  const legendMapRef = useRef<Map<number, ChartBar>>(new Map());
+  const legendMapRef = useRef<Map<number, number>>(new Map());
   const needFitRef = useRef(true);
+  /** Set once the user pans or zooms, after which we stop auto-fitting. */
+  const touchedRef = useRef(false);
 
   const [bars, setBars] = useState<ChartBar[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
@@ -128,6 +158,7 @@ export default function NativeChatChart({
   // Refit the viewport only when the user actually switches instrument/timeframe.
   useEffect(() => {
     needFitRef.current = true;
+    touchedRef.current = false;
     setLegend(null);
   }, [apiSymbol, apiInterval]);
 
@@ -149,8 +180,24 @@ export default function NativeChatChart({
   const theme = useMemo(
     () =>
       isDark
-        ? { bg: '#0b0e17', text: '#94a3b8', grid: '#1a1f2e', border: '#1a1f2e' }
-        : { bg: '#ffffff', text: '#64748b', grid: '#e2e8f0', border: '#c8d4e3' },
+        ? {
+            bg: '#131722',
+            text: '#b2b5be',
+            grid: '#1e222d',
+            border: '#2a2e39',
+            crosshair: '#758696',
+            label: '#2a2e39',
+            watermark: 'rgba(178,181,190,0.09)',
+          }
+        : {
+            bg: '#ffffff',
+            text: '#131722',
+            grid: '#e0e3eb',
+            border: '#d6dcde',
+            crosshair: '#9598a1',
+            label: '#131722',
+            watermark: 'rgba(19,23,34,0.06)',
+          },
     [isDark],
   );
 
@@ -163,26 +210,55 @@ export default function NativeChatChart({
     const lowerPane = study === 'rsi' || study === 'macd';
 
     const chart = createChart(host, {
-      width: host.clientWidth,
-      height: host.clientHeight,
-      layout: { background: { color: theme.bg }, textColor: theme.text, fontSize: 11 },
+      autoSize: true,
+      layout: {
+        background: { color: theme.bg },
+        textColor: theme.text,
+        fontSize: 11,
+        fontFamily: "'Trebuchet MS', Roboto, Ubuntu, sans-serif",
+        attributionLogo: false,
+      },
       grid: { vertLines: { color: theme.grid }, horzLines: { color: theme.grid } },
       crosshair: {
-        mode: 1,
-        vertLine: { color: theme.text, width: 1, labelBackgroundColor: GOLD },
-        horzLine: { color: theme.text, width: 1, labelBackgroundColor: GOLD },
+        mode: 0,
+        vertLine: {
+          color: theme.crosshair,
+          width: 1,
+          style: 3,
+          labelBackgroundColor: theme.label,
+        },
+        horzLine: {
+          color: theme.crosshair,
+          width: 1,
+          style: 3,
+          labelBackgroundColor: theme.label,
+        },
       },
-      rightPriceScale: { borderColor: theme.border },
+      rightPriceScale: {
+        borderColor: theme.border,
+        scaleMargins: { top: 0.08, bottom: 0.24 },
+        entireTextOnly: true,
+      },
       timeScale: {
         borderColor: theme.border,
         timeVisible: intraday,
         secondsVisible: false,
-        tickMarkFormatter: (t: Time) =>
-          intraday ? istTime.format(Number(t) * 1000) : istDate.format(Number(t) * 1000),
+        rightOffset: 4,
+        barSpacing: 7,
+        tickMarkFormatter: formatTickMark,
       },
       localization: { timeFormatter: (t: Time) => istFull.format(Number(t) * 1000) },
     });
     chartRef.current = chart;
+
+    const mainPane = chart.panes()[0];
+    if (mainPane) {
+      createTextWatermark(mainPane, {
+        horzAlign: 'center',
+        vertAlign: 'center',
+        lines: [{ text: 'Wolf Trade AI', color: theme.watermark, fontSize: 34, fontStyle: 'bold' }],
+      });
+    }
 
     const line = (color: string, width: 1 | 2, pane = 0) =>
       chart.addSeries(
@@ -193,12 +269,12 @@ export default function NativeChatChart({
 
     const priceSeries =
       chartStyle === '2'
-        ? chart.addSeries(LineSeries, { color: GOLD, lineWidth: 2 })
+        ? chart.addSeries(LineSeries, { color: '#2962ff', lineWidth: 2 })
         : chartStyle === '3' || chartStyle === '10'
           ? chart.addSeries(AreaSeries, {
-              lineColor: GOLD,
-              topColor: 'rgba(212,175,55,0.28)',
-              bottomColor: 'rgba(212,175,55,0.02)',
+              lineColor: '#2962ff',
+              topColor: 'rgba(41,98,255,0.28)',
+              bottomColor: 'rgba(41,98,255,0.02)',
               lineWidth: 2,
             })
           : chart.addSeries(CandlestickSeries, {
@@ -217,7 +293,7 @@ export default function NativeChatChart({
       lastValueVisible: false,
       priceLineVisible: false,
     });
-    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
+    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
     const overlays =
       study === 'ema'
@@ -278,7 +354,7 @@ export default function NativeChatChart({
         source.map((b) => ({
           time: ts(b.time),
           value: b.volume,
-          color: b.close >= b.open ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)',
+          color: b.close >= b.open ? UP_FILL : DOWN_FILL,
         })),
       );
 
@@ -307,25 +383,29 @@ export default function NativeChatChart({
           source.map((b, i) => ({
             time: ts(b.time),
             value: m.hist[i],
-            color: m.hist[i] >= 0 ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)',
+            color: m.hist[i] >= 0 ? UP_FILL : DOWN_FILL,
           })),
         );
         macdLine.setData(source.map((b, i) => ({ time: ts(b.time), value: m.line[i] })));
         macdSignal.setData(source.map((b, i) => ({ time: ts(b.time), value: m.signal[i] })));
       }
 
-      legendMapRef.current = new Map(source.map((b) => [b.time, b]));
-      const last = source[source.length - 1];
-      setLegend({ o: last.open, h: last.high, l: last.low, c: last.close });
-      if (fit) chart.timeScale().fitContent();
+      legendMapRef.current = new Map(source.map((b, i) => [b.time, i]));
+      setLegend(legendAt(source, source.length - 1));
+      if (fit) {
+        chart.timeScale().fitContent();
+        // The card animates in, so the first layout pass can be narrower than final.
+        requestAnimationFrame(() => {
+          if (!touchedRef.current) chart.timeScale().fitContent();
+        });
+      }
     };
 
     chart.subscribeCrosshairMove((param) => {
       const source = viewRef.current?.source;
       if (!source?.length) return;
       const hovered = param.time ? legendMapRef.current.get(Number(param.time)) : undefined;
-      const bar = hovered ?? source[source.length - 1];
-      setLegend({ o: bar.open, h: bar.high, l: bar.low, c: bar.close });
+      setLegend(legendAt(source, hovered ?? source.length - 1));
     });
 
     if (viewRef.current) {
@@ -333,15 +413,27 @@ export default function NativeChatChart({
       needFitRef.current = false;
     }
 
+    // autoSize keeps the canvas in step; a widened card still needs a refit so
+    // candles do not stay bunched on the left with dead space on the right.
+    const markTouched = () => {
+      touchedRef.current = true;
+    };
+    host.addEventListener('wheel', markTouched, { passive: true });
+    host.addEventListener('pointerdown', markTouched);
+
+    let lastWidth = host.clientWidth;
     const observer = new ResizeObserver(() => {
-      const el = hostRef.current;
-      if (!el) return;
-      chart.applyOptions({ width: el.clientWidth, height: el.clientHeight });
+      const width = hostRef.current?.clientWidth ?? 0;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      if (!touchedRef.current) chart.timeScale().fitContent();
     });
     observer.observe(host);
 
     return () => {
       observer.disconnect();
+      host.removeEventListener('wheel', markTouched);
+      host.removeEventListener('pointerdown', markTouched);
       applyRef.current = null;
       chartRef.current = null;
       chart.remove();
@@ -356,8 +448,10 @@ export default function NativeChatChart({
 
   const label = tradingViewSymbolLabel(symbol);
   const decimals = view?.decimals ?? 2;
-  const change = legend ? legend.c - legend.o : 0;
-  const changePct = legend && legend.o ? (change / legend.o) * 100 : 0;
+  const change = legend ? legend.c - legend.prevClose : 0;
+  const changePct = legend && legend.prevClose ? (change / legend.prevClose) * 100 : 0;
+  const tone = change >= 0 ? 'mai-nc__up' : 'mai-nc__down';
+  const intervalLabel = TV_TIMEFRAMES.find((tf) => tf.id === interval)?.label ?? interval;
 
   return (
     <div className="mai-tv__frame">
@@ -366,13 +460,21 @@ export default function NativeChatChart({
       {legend && status === 'ready' ? (
         <div className="mai-nc__legend">
           <span className="mai-nc__legend-sym">{label}</span>
-          <span>O {legend.o.toFixed(decimals)}</span>
-          <span>H {legend.h.toFixed(decimals)}</span>
-          <span>L {legend.l.toFixed(decimals)}</span>
-          <span>C {legend.c.toFixed(decimals)}</span>
-          <span className={change >= 0 ? 'mai-nc__up' : 'mai-nc__down'}>
-            {change >= 0 ? '+' : ''}
-            {change.toFixed(decimals)} ({changePct.toFixed(2)}%)
+          <span className="mai-nc__legend-tf">{intervalLabel}</span>
+          <span className="mai-nc__legend-ohlc">
+            <b>O</b>
+            <span className={tone}>{legend.o.toFixed(decimals)}</span>
+            <b>H</b>
+            <span className={tone}>{legend.h.toFixed(decimals)}</span>
+            <b>L</b>
+            <span className={tone}>{legend.l.toFixed(decimals)}</span>
+            <b>C</b>
+            <span className={tone}>{legend.c.toFixed(decimals)}</span>
+            <span className={tone}>
+              {change >= 0 ? '+' : ''}
+              {change.toFixed(decimals)} ({change >= 0 ? '+' : ''}
+              {changePct.toFixed(2)}%)
+            </span>
           </span>
         </div>
       ) : null}

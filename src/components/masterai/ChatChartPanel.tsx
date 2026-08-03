@@ -99,6 +99,8 @@ export default function ChatChartPanel({
           />
         </form>
 
+        <span className="mai-tv__sep" aria-hidden />
+
         <div className="mai-tv__tfs" role="group" aria-label="Timeframe">
           {timeframes.map((tf) => (
             <button
@@ -111,6 +113,8 @@ export default function ChatChartPanel({
             </button>
           ))}
         </div>
+
+        <span className="mai-tv__sep" aria-hidden />
 
         <div className="mai-tv__selects">
           <select
