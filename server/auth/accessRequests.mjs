@@ -53,9 +53,10 @@ function parseTradingViewId(note) {
 }
 
 function buildAccessNote({ tradingViewId, message }) {
-  const lines = [`TradingView ID: ${tradingViewId}`];
-  if (message) lines.push(`Additional details: ${message}`);
-  return lines.join('\n');
+  const lines = [];
+  if (tradingViewId) lines.push(`TradingView ID: ${tradingViewId}`);
+  if (message) lines.push(tradingViewId ? `Additional details: ${message}` : message);
+  return lines.join('\n').slice(0, 500);
 }
 
 function fromRow(row, signedUrl = null) {
@@ -119,31 +120,20 @@ export async function createAccessRequest({
   note = '',
   screenshot = '',
 }) {
-  const name = String(fullName || user?.name || '').trim().slice(0, 80);
-  const mobile = String(phone || user?.phone || '').trim().slice(0, 20);
+  if (!String(screenshot || '').trim()) {
+    throw Object.assign(new Error('Attach a screenshot first'), { status: 400 });
+  }
+
+  const { buffer, mime, ext } = decodeDataUrl(screenshot);
+  const name = String(fullName || user?.name || '').trim().slice(0, 80) || null;
+  const mobile = String(phone || user?.phone || '').trim().slice(0, 20) || null;
   const tvId = String(tradingViewId || '').trim().slice(0, 80);
   const cleanEmail = String(email || user?.email || '').trim().slice(0, 120) || null;
   const extra = String(message || note || '').trim().slice(0, 500);
-  const hasShot = Boolean(String(screenshot || '').trim());
-
-  if (name.length < 2) {
-    throw Object.assign(new Error('Please enter your full name'), { status: 400 });
-  }
-  if (mobile.replace(/\D/g, '').length < 10) {
-    throw Object.assign(new Error('Please enter a valid mobile number'), { status: 400 });
-  }
-  if (tvId.length < 2) {
-    throw Object.assign(new Error('Please enter your TradingView username / ID'), { status: 400 });
-  }
-
-  let decoded = null;
-  if (hasShot) {
-    decoded = decodeDataUrl(screenshot);
-  }
+  const cleanNote = buildAccessNote({ tradingViewId: tvId || null, message: extra || null });
 
   const id = `req_${randomBytes(9).toString('hex')}`;
   const createdAt = new Date().toISOString();
-  const cleanNote = buildAccessNote({ tradingViewId: tvId, message: extra || null });
 
   await supersedeOpenRequests(user.id);
 
@@ -153,7 +143,7 @@ export async function createAccessRequest({
     name,
     email: cleanEmail,
     phone: mobile,
-    note: cleanNote,
+    note: cleanNote || null,
     status: 'pending',
     admin_note: null,
     reviewed_by: null,
@@ -165,29 +155,31 @@ export async function createAccessRequest({
   if (!db) {
     const row = {
       ...base,
-      trading_view_id: tvId,
+      trading_view_id: tvId || null,
       screenshot_path: null,
-      screenshot_data: hasShot ? screenshot : null,
+      screenshot_data: screenshot,
     };
     writeRows([row, ...readRows()]);
     return fromRow(row);
   }
 
-  let path = null;
-  if (decoded) {
-    await ensureBucket(db);
-    path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${decoded.ext}`;
-    const { error: uploadError } = await db.storage.from(BUCKET).upload(path, decoded.buffer, {
-      contentType: decoded.mime,
-      upsert: false,
-    });
-    if (uploadError) throw storeError(uploadError);
-  }
+  await ensureBucket(db);
+  const path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
+  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, buffer, {
+    contentType: mime,
+    upsert: false,
+  });
+  if (uploadError) throw storeError(uploadError);
 
-  const row = { ...base, screenshot_path: path, screenshot_data: null };
+  const row = {
+    ...base,
+    trading_view_id: tvId || null,
+    screenshot_path: path,
+    screenshot_data: null,
+  };
   const { error } = await db.from(TABLE).insert(row);
   if (error) throw storeError(error);
-  return fromRow(row, path ? await signScreenshot(db, row) : null);
+  return fromRow(row, await signScreenshot(db, row));
 }
 
 export async function latestRequestForUser(userId) {

@@ -508,7 +508,7 @@ router.get('/access', requireUser, async (req, res) => {
   }
 });
 
-/** POST /api/app-auth/access/request — full details form for admin review */
+/** POST /api/app-auth/access/request — screenshot proof (+ optional note) for admin review */
 router.post('/access/request', requireUser, async (req, res) => {
   try {
     const request = await createAccessRequest({
