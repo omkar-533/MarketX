@@ -43,8 +43,6 @@ import {
   isCasualGreeting,
   isPoliteAck,
   getChartImageRequiredMessage,
-  getNeedChartOnlyReply,
-  isDayMarketReviewQuestion,
   isConversationFollowUp,
   detectExplicitLanguageRequest,
   hasActiveDeskThread,
@@ -165,7 +163,7 @@ export default function MasterAI() {
 
   const currentWelcomeText = () =>
     langMode === 'auto'
-      ? 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.'
+      ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
       : getMasterAiWelcome(selectedLang.code);
 
   useEffect(() => {
@@ -537,41 +535,8 @@ export default function MasterAI() {
       return;
     }
 
-    // Day / market review without chart — only on a fresh thread (not mid-conversation)
-    if (
-      !hasImage &&
-      isDayMarketReviewQuestion(userText) &&
-      !isJournalReviewQuestion(userText) &&
-      !hasActiveDeskThread(messages)
-    ) {
-      const recentUser = messages
-        .filter((m) => m.role === 'user')
-        .slice(-4)
-        .map((m) => m.text)
-        .reverse();
-      const activeLang = resolveMasterAiLanguage(
-        langMode,
-        userText,
-        selectedLang.code,
-        recentUser,
-      );
-      if (langMode === 'auto' && activeLang.code !== selectedLang.code) {
-        setSelectedLang(activeLang);
-        saveSelectedLanguage(activeLang.code);
-      }
-      setMessages((prev) => [
-        ...prev,
-        { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
-        {
-          id: `${Date.now()}-a`,
-          role: 'trafi',
-          text: getNeedChartOnlyReply(activeLang.code),
-          timestamp: new Date(),
-        },
-      ]);
-      setInputText('');
-      return;
-    }
+    // Day / market questions go to the API — server injects live TradingView tape
+    // (do NOT hard-block with "send screenshot" when live data is available).
 
     // If chat already started, always continue — never block mid-conversation
     const continuingThread = hasActiveDeskThread(messages);

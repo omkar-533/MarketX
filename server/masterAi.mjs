@@ -1370,7 +1370,7 @@ Extract visible candles, structure, S/R, indicators, labels, TF, patterns.
 - FIRST answer the user’s exact question (OB, FVG, BOS, pattern, etc.). Point to approx price from Y-axis. Blurry → unclear.
 - Do NOT dump a full report for a pointed question.
 - Full report only for full analysis or chart with no specific question.
-No chart + no prior analysis → ask only for a TradingView chart screenshot.
+No chart + no prior analysis: if LIVE MARKET DATA tape is present, answer LTP/change/range from tape — do NOT ask for a screenshot. Ask for a chart only when user wants structure/S-R detail and tape alone is not enough.
 
 FULL REPORT (compact; skip unsupported as N/A; Governance Engine applies)
 Overview · Structure · Momentum · Liquidity · S/R (Areas of Interest) · Volume · Volatility · Bullish Scenario · Bearish Scenario · Neutral Scenario · Evidence To Monitor · Risk Factors · Analyst Summary · Bullish%/Bearish%/Neutral% · Confidence
@@ -1412,7 +1412,9 @@ Probabilistic language only (may/could/appears/suggests). Never invent levels/vo
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
-const NO_CHART_HINT = `No chart attached and no prior analysis in history. Do not invent levels. Reply in 2 short lines asking only for a TradingView/chart screenshot.`;
+const NO_CHART_HINT = `No chart and no LIVE MARKET DATA tape. Do not invent levels. Ask for a TradingView/chart screenshot only if the user needs structure/S-R — for simple price questions say live tape is unavailable.`;
+
+const LIVE_TAPE_HINT = `LIVE TAPE MODE: LIVE MARKET DATA is in context. Answer the user's market question NOW using LTP / change / day range. Do NOT ask for a chart screenshot. Optional one line: chart help for structure if they want deeper levels. No Entry/Stop/Target/Buy/Sell.`;
 
 const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY source of truth. Analyze ONLY PLATFORM TRADING JOURNAL context. Score completeness/quality/compliance when evidence exists. Separate Good Decision from Good Result; Bad Result from Bad Process. Flag outliers/risk drift/integrity issues without modifying records. Never invent trades/stats/emotions/rules. Never ask to rewrite stored trades. Never ask for a chart unless also requested. Empty/missing → Insufficient journal evidence. Compact output: Journal Quality · Trade Quality · Compliance · Behavior · Risk · Execution · Pattern · Similarity · Insight · Focus · Confidence.`;
 
@@ -1776,11 +1778,14 @@ export function createMasterAiRouter(apiKey) {
             hasImage ? `${message} chart support resistance trend entry stop target` : message,
           );
 
-      // Strip client "n/a" stubs when we have real tape so they don't confuse the model.
-      const cleanedClientCtx =
-        contextHasLiveTape && /NO verified live|n\/a/i.test(platformContextRaw)
-          ? ''
-          : platformContextRaw;
+      // Strip client stubs / "ask for screenshot" banners when we have real tape.
+      const cleanedClientCtx = contextHasLiveTape
+        ? String(platformContextRaw || '')
+            .replace(/NO CHART ATTACHED:[^\n]*/gi, '')
+            .replace(/Ask only for a TradingView[^\n]*/gi, '')
+            .replace(/NO verified live[^\n]*/gi, '')
+            .trim()
+        : platformContextRaw;
 
       const platformContext = [cleanedClientCtx, liveBlock, ownerKnowledge]
         .filter((s) => String(s || '').trim())
@@ -1810,15 +1815,15 @@ export function createMasterAiRouter(apiKey) {
             : wantsTradeCall
               ? 'Task: refuse trade orders. Explain you analyze markets with scenarios — ask for chart in 2 short lines. No buy/sell.'
               : wantsDayReview && contextHasLiveTape
-                ? 'Task: Answer from LIVE MARKET DATA tape (LTP/change/range). Short market view. No invented S/R. Chart optional. No Entry/Stop/Target. Under ~120 words.'
+                ? 'Task: LIVE TAPE — answer NOW with NIFTY/BANKNIFTY (or asked symbol) LTP, change%, day high/low from LIVE MARKET DATA. NEVER ask for screenshot. No invented S/R. Under ~100 words.'
               : wantsDayReview && !contextHasLiveTape
-                ? 'Task: Ask only for a chart screenshot in 2 short lines.'
+                ? 'Task: Live tape unavailable. Say so briefly; ask for chart only if they want structure. Under ~40 words.'
                 : wantsChartRead && contextHasLiveTape
-                  ? 'Task: answer from live tape + analyst view in 3–6 short lines; invite chart only if structure detail is needed. No trade instructions.'
+                  ? 'Task: answer from live tape first (LTP/range); invite chart ONLY if they need structure/S-R detail. NEVER lead with screenshot ask. No trade instructions.'
                 : wantsChartRead
                   ? 'Task: answer in 3–5 short lines as analyst; if visual read needed, ask for chart. No trade instructions.'
                   : contextHasLiveTape
-                    ? 'Task: answer using LIVE MARKET DATA when relevant. 3–6 short lines. No Entry/Stop/Target. No essays.'
+                    ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = `[You are Hunter — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
@@ -1831,6 +1836,8 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (historyHasAnalysis || wantsLanguageSwitch) {
         textBlock += `\n\n${CONTINUE_THREAD_HINT}`;
+      } else if (contextHasLiveTape && (wantsDayReview || wantsChartRead || /\b(nifty|banknifty|sensex|btc|bitcoin|price|ltp|abhi|kaha|chal)\b/i.test(String(message || '')))) {
+        textBlock += `\n\n${LIVE_TAPE_HINT}`;
       } else if (!contextHasLiveTape && (wantsDayReview || wantsChartRead)) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }

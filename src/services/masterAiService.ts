@@ -1035,10 +1035,14 @@ export function formatContextBlock(
   autoMode = false,
 ): string {
   const niftyRaw = String(ctx.nifty || '');
-  const hasLiveTape = /\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw);
+  const summaryRaw = String(ctx.summary || '');
+  const hasLiveTape =
+    (/\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw)) ||
+    /live|inject/i.test(niftyRaw) ||
+    /live|inject/i.test(summaryRaw);
   const liveBanner = hasLiveTape
-    ? 'LIVE CONTEXT: real snapshot numbers below — cite only these if you use levels.'
-    : 'NO CHART ATTACHED: Do not invent levels. Ask only for a TradingView chart screenshot.';
+    ? 'LIVE CONTEXT: server provides LIVE MARKET DATA tape — answer price/where/how questions from that tape. Do NOT ask for a chart screenshot for LTP/change/range. Chart only if user wants structure/levels detail.'
+    : 'NO LIVE TAPE in this client stub — server may still inject LIVE MARKET DATA. If tape is present, answer from it; only ask for a chart when structure/S-R detail is required and tape is missing.';
 
   if (compact) {
     return [
