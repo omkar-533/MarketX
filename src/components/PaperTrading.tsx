@@ -859,17 +859,7 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                     : 'DEMO'}
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 truncate">
-              {quoteFeed.mode === 'live'
-                ? `Live LTP · ${quoteFeed.liveSymbolCount} symbols`
-                : 'Cash · Futures · Options'}
-            </p>
           </div>
-        </div>
-        <div className="hidden md:block flex-1 min-w-0 max-w-xl">
-          <p className="text-xs text-slate-400 truncate">
-            <span className="text-slate-600">Status:</span> {statusMessage}
-          </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm ml-auto shrink-0">
           <button
