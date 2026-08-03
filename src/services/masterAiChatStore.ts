@@ -1,11 +1,21 @@
 /** Multi-chat history for Wolf AI — localStorage, no server. */
 
+import { TV_STUDY_PRESETS, TV_TIMEFRAMES, type TvInterval } from '../utils/tradingViewSymbols';
+
+/** A live chart pinned into the conversation. */
+export interface ChatChartAttachment {
+  symbol: string;
+  interval: TvInterval;
+  study: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'trafi';
   text: string;
   timestamp: Date;
   imageUrl?: string;
+  chart?: ChatChartAttachment;
 }
 
 export interface ChatSessionMeta {
@@ -23,6 +33,7 @@ interface StoredMessage {
   role: 'user' | 'trafi';
   text: string;
   timestamp?: string;
+  chart?: ChatChartAttachment;
 }
 
 interface StoredSession {
@@ -54,15 +65,29 @@ function cleanText(text: string): string {
     .slice(0, 4000);
 }
 
+function hydrateChart(chart: unknown): ChatChartAttachment | undefined {
+  if (!chart || typeof chart !== 'object') return undefined;
+  const { symbol, interval, study } = chart as Partial<ChatChartAttachment>;
+  if (typeof symbol !== 'string' || !symbol.trim()) return undefined;
+  return {
+    symbol: symbol.trim().toUpperCase().slice(0, 40),
+    interval: TV_TIMEFRAMES.some((tf) => tf.id === interval) ? (interval as TvInterval) : '15',
+    study: TV_STUDY_PRESETS.some((s) => s.id === study) ? (study as string) : 'none',
+  };
+}
+
 function hydrateMessage(m: StoredMessage): ChatMessage | null {
   if (!m || (m.role !== 'user' && m.role !== 'trafi') || typeof m.text !== 'string') return null;
   const text = cleanText(m.text);
-  if (!text) return null;
+  const chart = hydrateChart(m.chart);
+  // Chart cards carry no text of their own.
+  if (!text && !chart) return null;
   return {
     id: m.id || newId('msg'),
     role: m.role,
     text,
     timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+    ...(chart ? { chart } : {}),
   };
 }
 
@@ -75,6 +100,7 @@ function dehydrateMessages(msgs: ChatMessage[]): StoredMessage[] {
       role: m.role,
       text: m.text.slice(0, 4000),
       timestamp: m.timestamp.toISOString(),
+      ...(m.chart ? { chart: m.chart } : {}),
     }));
 }
 

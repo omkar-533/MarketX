@@ -125,6 +125,47 @@ export function tradingViewSymbolLabel(tvSymbol: string): string {
   return part || tvSymbol;
 }
 
+/**
+ * TradingView is not licensed to serve these exchanges through the free embed
+ * widget — it answers with "This symbol is only available on TradingView".
+ * We draw those from our own /api/market/ohlc feed instead.
+ */
+const WIDGET_BLOCKED_EXCHANGES = new Set(['NSE', 'BSE', 'MCX', 'NCDEX']);
+
+export function isWidgetRestricted(tvSymbol: string): boolean {
+  const exchange = tvSymbol.includes(':') ? tvSymbol.split(':')[0] : '';
+  return WIDGET_BLOCKED_EXCHANGES.has(exchange.toUpperCase());
+}
+
+/** TV symbol → the plain name our own market API expects (NSE:NIFTY → NIFTY). */
+export function apiSymbolFromTv(tvSymbol: string): string {
+  return tradingViewSymbolLabel(tvSymbol).toUpperCase();
+}
+
+/** Timeframes our OHLC backend can resolve; 3m and monthly have no mapping. */
+const NATIVE_INTERVAL: Partial<Record<TvInterval, string>> = {
+  '1': '1m',
+  '5': '5m',
+  '15': '15m',
+  '30': '30m',
+  '60': '1h',
+  '120': '2h',
+  '240': '4h',
+  D: '1d',
+  W: '1w',
+};
+
+export function nativeIntervalFor(interval: TvInterval): string | null {
+  return NATIVE_INTERVAL[interval] ?? null;
+}
+
+export const NATIVE_TIMEFRAMES = TV_TIMEFRAMES.filter((tf) => nativeIntervalFor(tf.id) !== null);
+
+/** Study presets we can compute locally for the native chart. */
+const NATIVE_STUDY_IDS = new Set(['none', 'ema', 'rsi', 'macd', 'bb', 'vwap']);
+
+export const NATIVE_STUDY_PRESETS = TV_STUDY_PRESETS.filter((s) => NATIVE_STUDY_IDS.has(s.id));
+
 const FNO_SYMBOLS = new Set(FNO_UNIVERSE.map((i) => i.symbol.toUpperCase()));
 
 /** Words that mean "put this on the chart" across English / Hindi / Hinglish. */

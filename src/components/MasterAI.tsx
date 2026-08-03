@@ -69,17 +69,14 @@ import {
   persistActiveChat,
   startNewChat,
   switchChat,
+  type ChatChartAttachment,
   type ChatMessage,
   type ChatSessionMeta,
 } from '../services/masterAiChatStore';
 import ChatMarkdown from './ChatMarkdown';
 import HunterMark from './HunterMark';
-import TradingViewChatChart from './masterai/TradingViewChatChart';
-import {
-  detectChartRequest,
-  tradingViewSymbolLabel,
-  type TvInterval,
-} from '../utils/tradingViewSymbols';
+import ChatChartPanel from './masterai/ChatChartPanel';
+import { detectChartRequest, type TvInterval } from '../utils/tradingViewSymbols';
 import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
@@ -158,7 +155,7 @@ export default function MasterAI() {
   const [selectedImageName, setSelectedImageName] = useState('');
   const [imageError, setImageError] = useState<string | null>(null);
   const [isAnalyzingChart, setIsAnalyzingChart] = useState(false);
-  const [chartOpen, setChartOpen] = useState(false);
+  // Last chart settings the user landed on — seeds the next chart card.
   const [chartSymbol, setChartSymbol] = useState('NSE:NIFTY');
   const [chartInterval, setChartInterval] = useState<TvInterval>('15');
   const [chartStudy, setChartStudy] = useState('none');
@@ -496,6 +493,39 @@ export default function MasterAI() {
     if (file) void processChartFile(file);
   };
 
+  /** Charts live in the transcript as their own card, right where they were asked for. */
+  const makeChartMessage = useCallback(
+    (chart: ChatChartAttachment): Message => ({
+      id: `${Date.now()}-chart-${Math.random().toString(36).slice(2, 7)}`,
+      role: 'trafi',
+      text: '',
+      timestamp: new Date(),
+      chart,
+    }),
+    [],
+  );
+
+  const updateChartMessage = useCallback((id: string, patch: Partial<ChatChartAttachment>) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id && m.chart ? { ...m, chart: { ...m.chart, ...patch } } : m)),
+    );
+    // Remember the last setup so the next card opens on the same instrument.
+    if (patch.symbol) setChartSymbol(patch.symbol);
+    if (patch.interval) setChartInterval(patch.interval);
+    if (patch.study) setChartStudy(patch.study);
+  }, []);
+
+  const removeChartMessage = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  const addChartCard = useCallback(() => {
+    setMessages((prev) => [
+      ...prev,
+      makeChartMessage({ symbol: chartSymbol, interval: chartInterval, study: chartStudy }),
+    ]);
+  }, [makeChartMessage, chartSymbol, chartInterval, chartStudy]);
+
   const handleSend = async (
     textOverride?: string,
     opts?: { imageDataUrl?: string | null; imageName?: string },
@@ -517,14 +547,19 @@ export default function MasterAI() {
 
     if (!userText && !hasImage) return;
 
-    // "NIFTY ka 5 min chart dikha" — retune the live panel, then answer as usual.
+    // "NIFTY ka 5 min chart dikha" — drop a chart card in the thread, then answer as usual.
+    let pendingChart: ChatChartAttachment | null = null;
     if (!hasImage) {
       const chartReq = detectChartRequest(userText);
       if (chartReq) {
-        if (chartReq.tvSymbol) setChartSymbol(chartReq.tvSymbol);
-        if (chartReq.interval) setChartInterval(chartReq.interval);
-        if (chartReq.study) setChartStudy(chartReq.study);
-        setChartOpen(true);
+        pendingChart = {
+          symbol: chartReq.tvSymbol || chartSymbol,
+          interval: chartReq.interval ?? chartInterval,
+          study: chartReq.study ?? chartStudy,
+        };
+        setChartSymbol(pendingChart.symbol);
+        setChartInterval(pendingChart.interval);
+        setChartStudy(pendingChart.study);
       }
     }
 
@@ -565,7 +600,7 @@ export default function MasterAI() {
     // If chat already started, always continue — never block mid-conversation
     const continuingThread = hasActiveDeskThread(messages);
 
-    if (!hasImage && !isTradingRelated(userText) && !continuingThread) {
+    if (!hasImage && !isTradingRelated(userText) && !continuingThread && !pendingChart) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
         .slice(-4)
@@ -605,14 +640,18 @@ export default function MasterAI() {
       timestamp: new Date(),
       imageUrl: hasImage ? imageDataUrl ?? undefined : undefined,
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      ...(pendingChart ? [makeChartMessage(pendingChart)] : []),
+    ]);
     setInputText('');
     analyzingRef.current = true;
     setIsThinking(true);
     if (hasImage) setIsAnalyzingChart(true);
 
     const history: ChatHistoryItem[] = messages
-      .filter((m) => m.id !== 'welcome')
+      .filter((m) => m.id !== 'welcome' && m.text.trim().length > 0)
       .slice(-24)
       .map((m) => ({
         role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
@@ -782,17 +821,16 @@ export default function MasterAI() {
         <div className="mai-chat__controls">
           <button
             type="button"
-            onClick={() => setChartOpen((v) => !v)}
-            className={`mai-chat__chip ${chartOpen ? 'mai-chat__chip--active' : ''}`}
+            onClick={addChartCard}
+            className="mai-chat__chip"
             title={
               hindi
-                ? 'Live chart — "NIFTY ka 5 min chart dikha" bhi likh sakte ho'
-                : 'Live chart — you can also type "show NIFTY 5 min chart"'
+                ? 'Chat mein live chart daalo — "NIFTY ka 5 min chart dikha" bhi likh sakte ho'
+                : 'Drop a live chart into the chat — you can also type "show NIFTY 5 min chart"'
             }
-            aria-pressed={chartOpen}
           >
             <CandlestickChart className="h-3.5 w-3.5" />
-            <span>{chartOpen ? tradingViewSymbolLabel(chartSymbol) : 'Chart'}</span>
+            <span>Chart</span>
           </button>
 
           <button
@@ -985,29 +1023,6 @@ export default function MasterAI() {
         </div>
       </header>
 
-      <AnimatePresence initial={false}>
-        {chartOpen ? (
-          <motion.div
-            key="mai-tv-panel"
-            className="mai-chat__chart"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <TradingViewChatChart
-              symbol={chartSymbol}
-              interval={chartInterval}
-              study={chartStudy}
-              onSymbolChange={setChartSymbol}
-              onIntervalChange={setChartInterval}
-              onStudyChange={setChartStudy}
-              onClose={() => setChartOpen(false)}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
       <div
         ref={chatAreaRef}
         className="mai-chat__scroll"
@@ -1080,6 +1095,36 @@ export default function MasterAI() {
             {messages.map((message) => {
               const isUser = message.role === 'user';
               if (message.id === 'welcome') return null;
+
+              if (message.chart) {
+                const chart = message.chart;
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                    className="mai-chat__row mai-chat__row--ai"
+                  >
+                    <div className="mai-chat__msg-avatar" aria-hidden>
+                      <CandlestickChart className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="mai-chat__chart-card">
+                      <ChatChartPanel
+                        symbol={chart.symbol}
+                        interval={chart.interval}
+                        study={chart.study}
+                        onSymbolChange={(symbol) => updateChartMessage(message.id, { symbol })}
+                        onIntervalChange={(interval) => updateChartMessage(message.id, { interval })}
+                        onStudyChange={(study) => updateChartMessage(message.id, { study })}
+                        onClose={() => removeChartMessage(message.id)}
+                        closeLabel="Remove chart"
+                      />
+                    </div>
+                  </motion.div>
+                );
+              }
+
               return (
                 <motion.div
                   key={message.id}

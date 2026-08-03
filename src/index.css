@@ -7359,13 +7359,19 @@ input[type="number"] { -moz-appearance: textfield; }
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── Wolf AI: inline TradingView chart ─────────────────────────────── */
+/* ── Wolf AI: live chart card inside the chat thread ───────────────── */
 
-.mai-chat__chart {
-  flex: 0 0 auto;
+.mai-chat__chart-card {
+  flex: 1;
+  min-width: 0;
+  max-width: min(42rem, 100%);
   overflow: hidden;
-  border-bottom: 1px solid var(--tf-border);
-  background: var(--tf-surface);
+  border-radius: 1.05rem 1.05rem 1.05rem 0.4rem;
+  border: 1px solid color-mix(in srgb, #d4af37 22%, var(--tf-border));
+  background: var(--tf-elevated);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tf-border) 50%, transparent) inset,
+    0 12px 36px var(--tf-shadow);
 }
 
 .mai-tv {
@@ -7386,7 +7392,7 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-wrap: wrap;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--tf-border);
-  background: var(--tf-elevated);
+  background: var(--tf-surface);
 }
 
 .mai-tv__symbol {
@@ -7506,7 +7512,77 @@ input[type="number"] { -moz-appearance: textfield; }
   font-weight: 600;
 }
 
+/* Native chart (own market feed) — legend, timestamp and retry states */
+
+.mai-nc__legend {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.6rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  pointer-events: none;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--tf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mai-nc__legend-sym {
+  color: var(--tf-text);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.mai-nc__up {
+  color: #10b981;
+}
+
+.mai-nc__down {
+  color: #ef4444;
+}
+
+.mai-nc__stamp {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.4rem;
+  z-index: 2;
+  pointer-events: none;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--tf-text-muted);
+  opacity: 0.75;
+}
+
+.mai-nc__msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mai-nc__retry {
+  padding: 0.3rem 0.85rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--tj-gold-strong);
+  background: transparent;
+  color: var(--tj-gold-strong);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.mai-nc__retry:hover {
+  background: var(--tj-gold-strong);
+  color: #0b0e17;
+}
+
 @media (max-width: 640px) {
+  .mai-chat__chart-card {
+    max-width: 100%;
+  }
+
   .mai-tv {
     height: 16rem;
   }
@@ -7538,6 +7614,15 @@ input[type="number"] { -moz-appearance: textfield; }
   }
 
   .mai-tv__selects {
+    display: none;
+  }
+
+  .mai-nc__legend {
+    gap: 0.35rem;
+    font-size: 0.625rem;
+  }
+
+  .mai-nc__stamp {
     display: none;
   }
 }
