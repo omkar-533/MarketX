@@ -609,16 +609,19 @@ export default function NativeChatChart({
     levelLinesRef.current = [];
     if (!levels?.length || !view) return;
 
-    levelLinesRef.current = levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0).map((lvl) =>
-      series.createPriceLine({
-        price: lvl.price,
-        color: LEVEL_COLOR[lvl.kind],
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: lvl.label || lvl.kind,
-      }),
-    );
+    // Skip SUPPORT/RESISTANCE price-lines — those are canvas rays (TV style).
+    levelLinesRef.current = levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0)
+      .filter((lvl) => !/^(support|resistance)$/i.test(lvl.label || ''))
+      .map((lvl) =>
+        series.createPriceLine({
+          price: lvl.price,
+          color: LEVEL_COLOR[lvl.kind],
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: lvl.label || lvl.kind,
+        }),
+      );
   }, [levels, view, chartEpoch]);
 
   const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
