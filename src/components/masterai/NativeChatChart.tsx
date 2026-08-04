@@ -824,6 +824,15 @@ export default function NativeChatChart({
           <div className="mai-nc__legend">
             <span className="mai-nc__legend-sym">{label}</span>
             <span className="mai-nc__legend-tf">{intervalLabel}</span>
+            {!marketOpen ? (
+              <span className="mai-nc__session mai-nc__session--closed" title="NSE cash / F&O session closed">
+                CLOSE
+              </span>
+            ) : liveStreaming ? (
+              <span className="mai-nc__session mai-nc__session--live" title="Live market feed">
+                LIVE
+              </span>
+            ) : null}
             <span className="mai-nc__legend-ohlc">
               <b>O</b>
               <span className={tone}>{legend.o.toFixed(decimals)}</span>
@@ -891,7 +900,7 @@ export default function NativeChatChart({
           </div>
         ) : null}
 
-        {status === 'ready' && fetchedAt ? (
+        {status === 'ready' ? (
           <div
             className={`mai-nc__stamp ${
               !marketOpen
@@ -904,19 +913,23 @@ export default function NativeChatChart({
               marketOpen
                 ? liveStreaming
                   ? 'Live market feed'
-                  : `Last feed ${istFull.format(new Date(fetchedAt))} IST`
+                  : fetchedAt
+                    ? `Last feed ${istFull.format(new Date(fetchedAt))} IST`
+                    : 'Waiting for ticks'
                 : 'NSE cash / F&O session closed'
             }
           >
             {!marketOpen ? (
-              <>CLOSE</>
+              <>Market closed</>
             ) : liveStreaming ? (
               <>
                 <span className="mai-nc__live-dot" aria-hidden />
                 LIVE · running
               </>
-            ) : (
+            ) : fetchedAt ? (
               <>Feed · {istFull.format(new Date(fetchedAt))} IST</>
+            ) : (
+              <>OPEN</>
             )}
           </div>
         ) : null}

@@ -8823,8 +8823,31 @@ html.dark .mai-tv__fs-btn--on,
 .mai-nc__stamp--closed {
   color: #ef5350;
   opacity: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+.mai-nc__session {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
   text-transform: uppercase;
+}
+
+.mai-nc__session--closed {
+  color: #fff;
+  background: #ef5350;
+}
+
+.mai-nc__session--live {
+  color: #0b1f1c;
+  background: #26a69a;
 }
 
 .mai-nc__live-dot {
