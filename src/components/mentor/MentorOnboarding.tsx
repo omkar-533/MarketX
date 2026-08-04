@@ -75,8 +75,8 @@ export default function MentorOnboarding({
             Hi{name.trim() ? ` ${name.trim()}` : ''} — welcome to your AI Teacher
           </h2>
           <p className="wm-learn__lead">
-            Pehle main tumhe samajhna chahta hoon taaki learning personalized ho. Levels locked hain —
-            skip nahi hoga. Process only — no Entry / Stop / Target.
+            Pehle profile set karo — learning personalized hogi. Levels locked hain, skip nahi hoga.
+            Process only — no Entry / Stop / Target.
           </p>
         </div>
       </div>
