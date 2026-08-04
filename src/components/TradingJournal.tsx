@@ -1698,7 +1698,7 @@ export default function TradingJournal({
 
                 <p className="text-xs text-slate-500">
                   {form.market === 'equity'
-                    ? 'Underlying * — NIFTY / BANKNIFTY / stock chuno, phir neeche uski script (Cash / Futures / Options)'
+                    ? 'Underlying * — select NIFTY / BANKNIFTY / stock, then choose Cash / Futures / Options below'
                     : form.market === 'crypto'
                       ? 'Instrument * — crypto pair (search or type e.g. BTC/USDT)'
                       : 'Instrument * — forex pair (EUR/USD, XAU/USD, USD/INR…)'}
@@ -1740,13 +1740,13 @@ export default function TradingJournal({
                     <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
                     <span className="text-[10px]">
                       {selectedSymbolMeta.isFno || selectedSymbolMeta.type === 'index'
-                        ? 'Ab neeche iski script chuno — Cash / Futures / Options'
-                        : 'Matched from list · prices ab bhi manual'}
+                        ? 'Choose contract below — Cash / Futures / Options'
+                        : 'Matched from list · enter prices manually'}
                     </span>
                   </div>
                 )}
 
-                {/* NIFTY etc. select ke turant baad — kaunsi script trade hui */}
+                {/* Contract picker for index / F&O underlyings */}
                 {form.market === 'equity' &&
                   (selectedSymbolMeta?.isFno ||
                     selectedSymbolMeta?.type === 'index' ||
@@ -1757,10 +1757,10 @@ export default function TradingJournal({
                       <div>
                         <p className="text-[11px] font-bold text-[#d4af37]">
                           {journalUnderlyingSymbol(form.instrument) || form.instrument || 'NIFTY'}{' '}
-                          — kaunsi script?
+                          — which contract?
                         </p>
                         <p className="text-[10px] text-slate-500 mt-0.5">
-                          Index select karne ke baad yahan CE/PE strike wala contract choose karo.
+                          After selecting the underlying, pick Cash, Futures, or an Options CE/PE strike.
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -1862,8 +1862,8 @@ export default function TradingJournal({
                         <div className="space-y-2 rounded-lg border border-[#d4af37]/25 bg-[#d4af37]/5 p-2.5">
                           <p className="text-[10px] text-slate-400 leading-relaxed">
                             Example:{' '}
-                            <span className="text-slate-200">NIFTY 24600 CE 07AUG</span> — Entry/Exit
-                            pe <span className="text-slate-200">premium</span> daalo.
+                            <span className="text-slate-200">NIFTY 24600 CE 07AUG</span> — use{' '}
+                            <span className="text-slate-200">option premium</span> for Entry / Exit.
                           </p>
                           <div className="grid grid-cols-3 gap-2">
                             <input
@@ -1919,7 +1919,7 @@ export default function TradingJournal({
                             </p>
                           ) : (
                             <p className="text-[10px] text-amber-400/90">
-                              Strike number daalo — tab script complete hogi.
+                              Enter the strike to complete the contract name.
                             </p>
                           )}
                         </div>
