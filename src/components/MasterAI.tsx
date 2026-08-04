@@ -561,8 +561,9 @@ export default function MasterAI() {
 
     if (!userText && !hasImage) return;
 
-    // Any question naming an instrument gets a chart beside the answer, not
-    // just an explicit "NIFTY ka 5 min chart dikha".
+    // Every market question gets a live chart beside the answer — AI draws on it
+    // automatically. Concept lessons ("RSI kya hota hai") and journal reviews stay
+    // text-only so they are not forced onto a random ticker.
     let chartMsg: Message | null = null;
     let chartMessageId: string | null = null;
     let chartTarget: ChatChartAttachment | null = null;
@@ -570,20 +571,34 @@ export default function MasterAI() {
       const chartReq = detectChartRequest(userText);
       const mentioned = chartReq ? null : detectInstrumentMention(userText);
       const lastChart = [...messages].reverse().find((m) => m.chart);
-      // "Order block mark kro" names nothing — it means the chart on screen, or
-      // the last instrument looked at when the chat has no chart open yet.
-      // Without this fallback the request lands as plain text and marks nothing.
       const marksExisting = !chartReq && !mentioned && isChartMarkupRequest(userText);
+      const conceptOnly =
+        /\b(kya\s+(hai|hota|hoti)|what\s+is|what\s+are|explain|samjha|samjhao|meaning|definition|difference|kaise\s+kaam)\b/i.test(
+          userText,
+        ) && !mentioned && !chartReq && !marksExisting;
+      const journalOnly = isJournalReviewQuestion(userText);
+      // No ticker named → reuse last/on-screen chart, else default NIFTY so the
+      // answer always has a canvas to draw on.
+      const autoMarketChart =
+        !chartReq &&
+        !mentioned &&
+        !marksExisting &&
+        !conceptOnly &&
+        !journalOnly &&
+        isTradingRelated(userText);
       const symbol =
         chartReq?.tvSymbol ||
         mentioned ||
-        (marksExisting ? lastChart?.chart?.symbol ?? chartSymbol : '') ||
+        (marksExisting || autoMarketChart
+          ? lastChart?.chart?.symbol || chartSymbol || 'NSE:NIFTY'
+          : '') ||
         (chartReq ? chartSymbol : '');
 
       if (symbol) {
-        const interval = marksExisting
-          ? lastChart?.chart?.interval ?? chartInterval
-          : chartReq?.interval ?? chartInterval;
+        const interval =
+          marksExisting || autoMarketChart
+            ? lastChart?.chart?.interval ?? chartInterval
+            : chartReq?.interval ?? chartInterval;
         const study = chartReq?.study ?? chartStudy;
         setChartSymbol(symbol);
         setChartInterval(interval);
@@ -738,18 +753,20 @@ export default function MasterAI() {
             : undefined;
           // Without this the model has no idea which instrument "mark it" means.
           const chartHint = chartTarget
-            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. Any request to mark, draw or point something out refers to this chart — answer for this instrument and emit the wolfchart block so the marking appears on it.]`
+            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer — zones, S/R, order blocks, structure from the live tape — and emit the wolfchart block. Do not wait for the user to say "mark". NEVER ask for a screenshot.]`
             : '';
           const baseMessage = `${userText}${chartHint}`;
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
-              ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
+              ? `${userText}${chartHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.${
+                  chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
+                }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext
-                ? // "Keep it brief" alone makes the model skip the markup block, so a
-                  // follow-up about an open chart keeps asking for the drawing.
-                  `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.${
-                    chartTarget ? ' Still append the wolfchart block for everything you name.' : ''
+                ? `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.${
+                    chartTarget
+                      ? ' ALWAYS append the wolfchart block and redraw relevant levels/zones on the open chart.'
+                      : ''
                   }]`
                 : journalContext
                   ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`

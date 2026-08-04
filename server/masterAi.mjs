@@ -1530,17 +1530,19 @@ const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY so
  * leaves the chart blank. This is the last thing they read before answering.
  */
 const MARKUP_REQUIRED_HINT = `MANDATORY LAST STEP — the drawing block. Your answer is incomplete without it.
+AUTO-DRAW is always on: even if the user never said "mark" / "draw", you still place the relevant structure on the chart.
 Every price band you name in the prose becomes a "zone" shape, every line a "trend", every break a "vline". A "Bullish OB 4034-4038" in the text MUST come back as {"type":"zone","p1":4038,"p2":4034,"tone":"bull","label":"Bullish OB"}.
+At minimum mark day high / day low (or nearest S/R) from LIVE MARKET DATA as levels or zones — never leave shapes empty when the tape has prices.
 Finish the reply with exactly this, on its own lines, nothing after it:
 \`\`\`wolfchart
 {"symbol":"<ticker>","tf":"<timeframe>","levels":[...],"shapes":[...]}
 \`\`\`
 No block = nothing gets drawn and the user sees an empty chart. If you truly have no price to mark, say so in the prose instead.`;
 
-const CHART_OPEN_HINT = `CHART ALREADY OPEN: a live chart of this instrument sits beside the chat. NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. The day's high, low and LTP in LIVE MARKET DATA are real prices — that is everything you need to mark bands, so never answer "show me the chart" or hand back an empty block; the user asked YOU to place them. Never reuse the numbers from the prompt example. Asked for order blocks, zones or S/R without naming a side? Mark BOTH sides — the demand band below price AND the supply band above it, each as its own zone with tone "bull"/"bear" and its own label. One-sided answers are wrong.
+const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart of this instrument sits beside the chat. For EVERY answer, draw on it yourself — the user does not need to ask "mark kro". NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. The day's high, low and LTP in LIVE MARKET DATA are real prices — that is everything you need to mark bands, so never answer "show me the chart" or hand back an empty block. Never reuse the numbers from the prompt example. For a general market/view/structure question mark BOTH sides — demand below price AND supply above it — each as its own zone with tone "bull"/"bear" and its own label. One-sided answers are wrong.
 Prices yes, candle positions no: leave x1/x2 out of every shape and the app anchors each band to the candles that actually traded there. Only if the tape itself is missing, say so in the prose.`;
 
-const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
+const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart. If a chart is open beside the chat, still append the wolfchart block and redraw those levels.`;
 
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
@@ -1889,9 +1891,12 @@ export function createMasterAiRouter(apiKey) {
       // The client tags the message when a live chart is already sitting next to
       // the chat; that chart is what "mark it" refers to.
       const chartOnScreen = /CHART OPEN BESIDE THIS CHAT/i.test(String(message || ''));
+      // AUTO-DRAW: chart open, screenshot, or any market structure / view question
+      // must return a wolfchart block — the user does not have to say "mark".
       const wantsMarkup =
         chartOnScreen ||
-        /\b(mark|marking|draw|annotate|highlight|khinch|point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level)\b/i.test(
+        hasImage ||
+        /\b(mark|marking|draw|annotate|highlight|khinch|point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
           String(message || ''),
         );
 
@@ -1972,20 +1977,22 @@ export function createMasterAiRouter(apiKey) {
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
-          : chartOnScreen && wantsMarkup
-            ? 'Task: MARK THE OPEN CHART. Answer in 3–6 short lines, then append the wolfchart block containing EVERY structure you named — zones for order blocks/supply/demand/FVG, trend for trendlines, fib, vline for BOS/CHoCH, label for notes — with real prices from the live tape. The chart is already open beside the chat: NEVER ask for a screenshot. Areas of Interest only, no Entry/Stop/Target.'
+          : chartOnScreen
+            ? 'Task: AUTO-DRAW ON OPEN CHART. Answer in 3–6 short lines, then ALWAYS append the wolfchart block with real day high/low / S/R / zones from the live tape — even if the user never said mark/draw. Zones for order blocks/supply/demand/FVG, trend for trendlines, fib, vline for BOS/CHoCH. Chart is already open: NEVER ask for a screenshot. Areas of Interest only, no Entry/Stop/Target.'
           : historyHasAnalysis || wantsLanguageSwitch
-            ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same Areas of Interest. Under ~100 words. Do NOT ask for a chart again. No Entry/Stop/Target.'
+            ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same Areas of Interest. Under ~100 words. Do NOT ask for a chart again. If levels are restated, still append wolfchart. No Entry/Stop/Target.'
             : wantsTradeCall
               ? 'Task: refuse trade orders. Explain you analyze markets with scenarios — ask for chart in 2 short lines. No buy/sell.'
               : wantsDayReview && contextHasLiveTape
-                ? 'Task: LIVE TAPE — answer NOW with NIFTY/BANKNIFTY (or asked symbol) LTP, change%, day high/low from LIVE MARKET DATA. NEVER ask for screenshot. No invented S/R. Under ~100 words.'
+                ? 'Task: LIVE TAPE + AUTO-DRAW — answer NOW with LTP, change%, day high/low from LIVE MARKET DATA, then append wolfchart marking those levels/zones. NEVER ask for screenshot. Under ~100 words prose.'
               : wantsDayReview && !contextHasLiveTape
                 ? 'Task: Live tape unavailable. Say so briefly; ask for chart only if they want structure. Under ~40 words.'
                 : wantsChartRead && contextHasLiveTape
-                  ? 'Task: answer from live tape first (LTP/range); invite chart ONLY if they need structure/S-R detail. NEVER lead with screenshot ask. No trade instructions.'
+                  ? 'Task: answer from live tape (LTP/range), then append wolfchart with day high/low / nearest S/R. NEVER lead with screenshot ask. No trade instructions.'
                 : wantsChartRead
                   ? 'Task: answer in 3–5 short lines as analyst; if visual read needed, ask for chart. No trade instructions.'
+                  : wantsMarkup && contextHasLiveTape
+                    ? 'Task: answer using LIVE MARKET DATA, then ALWAYS append wolfchart with day high/low / S/R zones. NEVER ask for a screenshot. 3–6 short lines. No Entry/Stop/Target.'
                   : contextHasLiveTape
                     ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
@@ -2009,7 +2016,11 @@ export function createMasterAiRouter(apiKey) {
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
       if (chartOnScreen) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
-        if (wantsMarkup) textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (wantsMarkup && !hasImage && !wantsJournalReview && !shortChat) {
+        // No chart-open tag yet (client will still open one) — still force the block
+        // so markings are not dropped when the model answers from the tape alone.
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       }
 
       const models = hasImage
