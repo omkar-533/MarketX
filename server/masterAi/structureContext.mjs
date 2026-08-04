@@ -3,6 +3,7 @@
  * real labels (HH/HL/LH/LL) on the chart instead of a default supply/demand box.
  */
 import { fetchOhlc } from '../market/provider.mjs';
+import { buildTrendlineFromBars } from './trendlineEngine.mjs';
 
 const STRUCTURE_RE =
   /\b(hh|hl|lh|ll|higher\s*high|higher\s*low|lower\s*high|lower\s*low|bos|choch|c'?ho'?ch|change\s*of\s*character|break\s*of\s*structure|market\s*structure|swing\s*(high|low|point)?s?|structure)\b/i;
@@ -126,6 +127,7 @@ const EMPTY = {
   rangeLow: 0,
   rangeHighBarsAgo: 0,
   rangeLowBarsAgo: 0,
+  trendline: null,
 };
 
 /**
@@ -196,10 +198,16 @@ export async function buildStructureContext(message, opts = {}) {
         ? 'recent swings lean bullish (HH/HL more common)'
         : 'recent swings lean bearish (LH/LL more common)';
 
+    const trendline = buildTrendlineFromBars(recent);
+    const trendLineHint = trendline
+      ? `TRENDLINE DRAW (use when user asks for trendline — NOT S/R): bias=${trendline.bias}, ${trendline.label} through wick prices ${trendline.p1} (barsAgo=${Math.abs(trendline.x1)}) → ${trendline.p2} (barsAgo=${Math.abs(trendline.x2)}), touches≈${trendline.touches}. Emit exactly: {"type":"ray","p1":${trendline.p1},"p2":${trendline.p2},"x1":${trendline.x1},"x2":${trendline.x2},"label":"${trendline.label}","tone":"${trendline.tone}"}. RULES: uptrend line under rising swing LOWS; downtrend line over falling swing HIGHS; extend as ray to the right; never mix highs+lows; never draw horizontal SUPPORT/RESISTANCE for a trendline ask.`
+      : 'TRENDLINE: no clean spaced swing pair in window — say so; do not invent a line or substitute S/R.';
+
     const block = [
       `STRUCTURE TAPE (${symbol} ${interval} — confirmed pivots from live OHLC; MARK THESE, not supply/demand unless asked):`,
       `LTP/last close: ${Number(lastClose).toFixed(2)}. Window high: ${Number(rangeHigh).toFixed(2)} (barsAgo=${rangeHighBarsAgo}). Window low: ${Number(rangeLow).toFixed(2)} (barsAgo=${rangeLowBarsAgo}).`,
       'S/R RULE: RESISTANCE = structural peak ABOVE LTP (highest clear swing/window high overhead). SUPPORT = structural trough BELOW LTP (lowest held swing/window low — NOT a mid pivot price already sliced through). Never put RESISTANCE below LTP.',
+      trendLineHint,
       ...swingLines,
       ...(eventLines.length ? ['Events:', ...eventLines] : []),
       `Desk bias read: ${bias}.`,
@@ -217,6 +225,7 @@ export async function buildStructureContext(message, opts = {}) {
       rangeLow,
       rangeHighBarsAgo,
       rangeLowBarsAgo,
+      trendline,
     };
   } catch (err) {
     console.warn('[Wolf AI] structure context failed:', err?.message || err);

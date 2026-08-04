@@ -327,7 +327,30 @@ export function levelsNearPrice(levels: ChartLevel[], reference: number): ChartL
 /** Same sanity check for shapes: everything must sit near the traded range. */
 export function shapesNearPrice(shapes: ChartShape[], reference: number): ChartShape[] {
   if (!Number.isFinite(reference) || reference <= 0) return shapes;
-  const near = (price?: number) =>
-    price === undefined || Math.abs(price - reference) / reference <= 0.25;
-  return shapes.filter((shape) => near(shape.p1) && near(shape.p2));
+  const near = (price?: number, band = 0.25) =>
+    price === undefined || Math.abs(price - reference) / reference <= band;
+
+  return shapes.filter((shape) => {
+    // Trend / ray: older swing can be far below LTP — keep if either end is
+    // near OR the projected price at the latest bar is near.
+    if (shape.type === 'trend' || shape.type === 'ray' || shape.type === 'arrow') {
+      if (near(shape.p1, 0.35) || near(shape.p2, 0.35)) return true;
+      if (
+        shape.p1 !== undefined &&
+        shape.p2 !== undefined &&
+        shape.x1 !== undefined &&
+        shape.x2 !== undefined
+      ) {
+        const x1 = Number(shape.x1);
+        const x2 = Number(shape.x2);
+        if (Number.isFinite(x1) && Number.isFinite(x2) && x2 !== x1) {
+          const t = (0 - x1) / (x2 - x1);
+          const projected = shape.p1 + (shape.p2 - shape.p1) * t;
+          if (near(projected, 0.2)) return true;
+        }
+      }
+      return false;
+    }
+    return near(shape.p1) && near(shape.p2);
+  });
 }

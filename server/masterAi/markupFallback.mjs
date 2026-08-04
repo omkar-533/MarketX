@@ -168,17 +168,43 @@ export function synthesizeSrWolfchart(meta = {}) {
 }
 
 /**
- * Diagonal trendline from two structural swings.
- * Uptrend → rising ray on swing lows; downtrend → falling ray on swing highs.
+ * Diagonal trendline — prefers the engine-scored pair from OHLC (STRUCTURE TAPE).
+ * Fallback: last two rising lows / falling highs from swing list.
  */
 export function synthesizeTrendWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
+
+  const engine = meta.trendline;
+  if (
+    engine &&
+    Number(engine.p1) > 0 &&
+    Number(engine.p2) > 0 &&
+    Number(engine.p1) !== Number(engine.p2)
+  ) {
+    return fence({
+      symbol,
+      tf,
+      levels: [],
+      shapes: [
+        {
+          type: 'ray',
+          p1: roundPrice(engine.p1),
+          p2: roundPrice(engine.p2),
+          x1: Number(engine.x1),
+          x2: Number(engine.x2),
+          label: String(engine.label || 'Trendline').slice(0, 28),
+          tone: engine.tone === 'bear' || engine.tone === 'bull' ? engine.tone : 'neutral',
+        },
+      ],
+    });
+  }
+
   const swings = Array.isArray(meta.swings) ? meta.swings : [];
   const lows = swings
     .filter((s) => s.kind === 'low' && Number(s.price) > 0)
     .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
-    .sort((a, b) => b.barsAgo - a.barsAgo); // older → newer
+    .sort((a, b) => b.barsAgo - a.barsAgo);
   const highs = swings
     .filter((s) => s.kind === 'high' && Number(s.price) > 0)
     .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
@@ -188,48 +214,60 @@ export function synthesizeTrendWolfchart(meta = {}) {
   const lhll = swings.filter((s) => s.label === 'LH' || s.label === 'LL').length;
   const bullish = hhhl >= lhll;
 
-  let a = null;
-  let b = null;
+  /** Find oldest→newest pair with correct slope and ≥6 bars span. */
+  const pickRising = (pts) => {
+    for (let j = pts.length - 1; j >= 1; j -= 1) {
+      for (let i = j - 1; i >= 0; i -= 1) {
+        const a = pts[i];
+        const b = pts[j];
+        if (b.price > a.price && a.barsAgo - b.barsAgo >= 6) return { a, b };
+      }
+    }
+    return null;
+  };
+  const pickFalling = (pts) => {
+    for (let j = pts.length - 1; j >= 1; j -= 1) {
+      for (let i = j - 1; i >= 0; i -= 1) {
+        const a = pts[i];
+        const b = pts[j];
+        if (b.price < a.price && a.barsAgo - b.barsAgo >= 6) return { a, b };
+      }
+    }
+    return null;
+  };
+
+  let pair = null;
   let label = 'Trendline';
   let tone = 'neutral';
-
-  if (bullish && lows.length >= 2) {
-    // Last two swing lows (older, newer) — rising support trendline.
-    a = lows[lows.length - 2];
-    b = lows[lows.length - 1];
-    // If the "newer" low is lower, try earlier pair for a rising line.
-    if (b.price < a.price && lows.length >= 3) {
-      a = lows[lows.length - 3];
-      b = lows[lows.length - 2];
-    }
-    if (b.price >= a.price) {
+  if (bullish) {
+    pair = pickRising(lows);
+    if (pair) {
       label = 'Rising trendline';
       tone = 'bull';
-    } else if (highs.length >= 2) {
-      a = highs[highs.length - 2];
-      b = highs[highs.length - 1];
+    } else {
+      pair = pickFalling(highs);
+      if (pair) {
+        label = 'Falling trendline';
+        tone = 'bear';
+      }
+    }
+  } else {
+    pair = pickFalling(highs);
+    if (pair) {
       label = 'Falling trendline';
       tone = 'bear';
+    } else {
+      pair = pickRising(lows);
+      if (pair) {
+        label = 'Rising trendline';
+        tone = 'bull';
+      }
     }
-  } else if (highs.length >= 2) {
-    a = highs[highs.length - 2];
-    b = highs[highs.length - 1];
-    if (b.price > a.price && highs.length >= 3) {
-      a = highs[highs.length - 3];
-      b = highs[highs.length - 2];
-    }
-    label = b.price <= a.price ? 'Falling trendline' : 'Trendline';
-    tone = b.price <= a.price ? 'bear' : 'neutral';
-  } else if (lows.length >= 2) {
-    a = lows[lows.length - 2];
-    b = lows[lows.length - 1];
-    label = b.price >= a.price ? 'Rising trendline' : 'Trendline';
-    tone = b.price >= a.price ? 'bull' : 'neutral';
   }
 
-  if (!a || !b) return null;
-  const p1 = roundPrice(a.price);
-  const p2 = roundPrice(b.price);
+  if (!pair) return null;
+  const p1 = roundPrice(pair.a.price);
+  const p2 = roundPrice(pair.b.price);
   if (p1 == null || p2 == null || p1 === p2) return null;
 
   return fence({
@@ -241,8 +279,8 @@ export function synthesizeTrendWolfchart(meta = {}) {
         type: 'ray',
         p1,
         p2,
-        x1: -Math.abs(a.barsAgo || 40),
-        x2: -Math.abs(b.barsAgo || 8),
+        x1: -Math.abs(pair.a.barsAgo || 40),
+        x2: -Math.abs(pair.b.barsAgo || 8),
         label,
         tone,
       },

@@ -477,18 +477,41 @@ export function useChartDrawings({
         const x1 = anchorX(shape.x1, -45);
         const x2 = anchorX(shape.x2, 0);
         if (x1 === null || x2 === null) continue;
+        const isTrend =
+          shape.type === 'ray' ||
+          shape.type === 'trend' ||
+          /trend/i.test(shape.label || '');
         let endX = x2;
         let endY = y2;
+        ctx.strokeStyle = isTrend ? '#2962ff' : tone.line;
+        ctx.lineWidth = isTrend ? 1.85 : 1.5;
+        ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         if (shape.type === 'ray') {
-          endX = x2 + (x2 - x1) * 400;
-          endY = y2 + (y2 - y1) * 400;
+          // Extend to the right edge (desk ray), not infinitely off-canvas.
+          const dx = x2 - x1 || 1;
+          const dy = y2 - y1;
+          const t = (paneWidth - 8 - x1) / dx;
+          endX = paneWidth - 8;
+          endY = y1 + dy * Math.max(t, 1);
           ctx.lineTo(endX, endY);
         } else {
           ctx.lineTo(x2, y2);
         }
         ctx.stroke();
+        ctx.strokeStyle = tone.line;
+        ctx.lineWidth = 1.5;
+        // Anchor dots on the two swing wicks.
+        if (isTrend) {
+          ctx.fillStyle = '#2962ff';
+          ctx.beginPath();
+          ctx.arc(x1, y1, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x2, y2, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
         if (shape.type === 'arrow') {
           const angle = Math.atan2(y2 - y1, x2 - x1);
           const head = 9;
@@ -506,7 +529,8 @@ export function useChartDrawings({
           ctx.fillStyle = tone.line;
           ctx.fill();
         }
-        chip(shape.label, (shape.type === 'ray' ? x2 : endX) + 6, shape.type === 'ray' ? y2 : endY, tone.line);
+        const tagX = Math.min(Math.max(8, x2 + 6), paneWidth - 100);
+        chip(shape.label, tagX, shape.type === 'ray' ? y2 : endY, isTrend ? '#2962ff' : tone.line);
       }
     };
 

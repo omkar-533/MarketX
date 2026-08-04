@@ -1567,11 +1567,16 @@ No block = empty chart. No real price → say so in prose instead.`;
 
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block matching the TOOL they named (trendline→trend/ray, S/R→hray SUPPORT/RESISTANCE, OB→zone, fib→fib). Do NOT default to SUPPORT/RESISTANCE when they asked for a trendline. Never ask which zone. Never omit the fence.`;
 
-const TREND_MARK_HINT = `TRENDLINE MARK (mandatory for this ask):
-Draw a DIAGONAL trendline — NOT support/resistance horizontals.
-- Uptrend (HH/HL): ray through two swing LOWS from STRUCTURE TAPE → {"type":"ray","p1":<olderLow>,"p2":<newerLow>,"x1":-<barsAgo1>,"x2":-<barsAgo2>,"label":"Rising trendline","tone":"bull"}
-- Downtrend (LH/LL): ray through two swing HIGHS → label "Falling trendline", tone bear.
-levels:[]. No SUPPORT/RESISTANCE shapes. Prose 2–3 lines then wolfchart.`;
+const TREND_MARK_HINT = `TRENDLINE MARK (mandatory — classic desk rules):
+A trendline is DIAGONAL. NEVER draw horizontal SUPPORT/RESISTANCE for this ask.
+How / where:
+1) Read STRUCTURE TAPE bias first (HH+HL = up, LH+LL = down). Sideways → say no clean trendline.
+2) UPTREND line = under price, connect ≥2 rising swing LOWS (wicks), extend right as ray (dynamic support).
+3) DOWNTREND line = above price, connect ≥2 falling swing HIGHS (wicks), extend right as ray (dynamic resistance).
+4) Prefer the TRENDLINE DRAW coordinates from STRUCTURE TAPE when present — copy that ray JSON.
+5) Two points draw it; more touches = stronger. Do not force a line through noise. Do not mix highs with lows.
+Emit: {"type":"ray","p1":…,"p2":…,"x1":…,"x2":…,"label":"Rising trendline"|"Falling trendline","tone":"bull"|"bear"}
+levels:[]. Prose 2–3 lines then wolfchart.`;
 
 const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory — match TradingView horizontal RAY look):
 NOT zones. NOT full-width lines. NOT nearest mid pivots.
@@ -2048,6 +2053,7 @@ export function createMasterAiRouter(apiKey) {
         rangeLow: 0,
         rangeHighBarsAgo: 0,
         rangeLowBarsAgo: 0,
+        trendline: null,
       };
       let intelBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
@@ -2088,6 +2094,7 @@ export function createMasterAiRouter(apiKey) {
               rangeLow: structure.rangeLow || 0,
               rangeHighBarsAgo: structure.rangeHighBarsAgo || 0,
               rangeLowBarsAgo: structure.rangeLowBarsAgo || 0,
+              trendline: structure.trendline || null,
             };
             if (structureBlock) {
               console.info(
@@ -2304,6 +2311,7 @@ export function createMasterAiRouter(apiKey) {
               rangeLow: structureMeta.rangeLow,
               rangeHighBarsAgo: structureMeta.rangeHighBarsAgo,
               rangeLowBarsAgo: structureMeta.rangeLowBarsAgo,
+              trendline: structureMeta.trendline,
               style: wantsTrendMark
                 ? 'trend'
                 : wantsSrMark
