@@ -3,7 +3,7 @@
  * real labels (HH/HL/LH/LL) on the chart instead of a default supply/demand box.
  */
 import { fetchOhlc } from '../market/provider.mjs';
-import { buildTrendlineFromBars } from './trendlineEngine.mjs';
+import { buildTrendChannelFromBars, buildTrendlineFromBars } from './trendlineEngine.mjs';
 
 const STRUCTURE_RE =
   /\b(hh|hl|lh|ll|higher\s*high|higher\s*low|lower\s*high|lower\s*low|bos|choch|c'?ho'?ch|change\s*of\s*character|break\s*of\s*structure|market\s*structure|swing\s*(high|low|point)?s?|structure)\b/i;
@@ -128,6 +128,7 @@ const EMPTY = {
   rangeHighBarsAgo: 0,
   rangeLowBarsAgo: 0,
   trendline: null,
+  trendChannel: null,
 };
 
 /**
@@ -198,10 +199,31 @@ export async function buildStructureContext(message, opts = {}) {
         ? 'recent swings lean bullish (HH/HL more common)'
         : 'recent swings lean bearish (LH/LL more common)';
 
+    const trendChannel = buildTrendChannelFromBars(recent);
     const trendline = buildTrendlineFromBars(recent);
-    const trendLineHint = trendline
-      ? `TRENDLINE DRAW (use when user asks for trendline — NOT S/R): bias=${trendline.bias}, ${trendline.label} through wick prices ${trendline.p1} (barsAgo=${Math.abs(trendline.x1)}) → ${trendline.p2} (barsAgo=${Math.abs(trendline.x2)}), touches≈${trendline.touches}. Emit exactly: {"type":"ray","p1":${trendline.p1},"p2":${trendline.p2},"x1":${trendline.x1},"x2":${trendline.x2},"label":"${trendline.label}","tone":"${trendline.tone}"}. RULES: uptrend line under rising swing LOWS; downtrend line over falling swing HIGHS; extend as ray to the right; never mix highs+lows; never draw horizontal SUPPORT/RESISTANCE for a trendline ask.`
-      : 'TRENDLINE: no clean spaced swing pair in window — say so; do not invent a line or substitute S/R.';
+    let trendLineHint =
+      'TRENDLINE: no clean spaced swing pair in window — say so; do not invent horizontals or substitute S/R.';
+    if (trendChannel && (trendChannel.lower || trendChannel.upper)) {
+      const parts = [
+        `TREND CHANNEL DRAW (trendline ask — BOTH sides, diagonal rays like TradingView — NEVER horizontal SUPPORT/RESISTANCE): bias=${trendChannel.bias}.`,
+      ];
+      if (trendChannel.lower) {
+        const L = trendChannel.lower;
+        parts.push(
+          `LOWER (swing lows): {"type":"ray","p1":${L.p1},"p2":${L.p2},"x1":${L.x1},"x2":${L.x2},"label":"Lower trendline","tone":"bull"}`,
+        );
+      }
+      if (trendChannel.upper) {
+        const U = trendChannel.upper;
+        parts.push(
+          `UPPER (swing highs): {"type":"ray","p1":${U.p1},"p2":${U.p2},"x1":${U.x1},"x2":${U.x2},"label":"Upper trendline","tone":"bear"}`,
+        );
+      }
+      parts.push(
+        'Copy BOTH rays into wolfchart shapes. levels:[]. Do NOT emit SUPPORT/RESISTANCE hline/hray.',
+      );
+      trendLineHint = parts.join(' ');
+    }
 
     const block = [
       `STRUCTURE TAPE (${symbol} ${interval} — confirmed pivots from live OHLC; MARK THESE, not supply/demand unless asked):`,
@@ -226,6 +248,7 @@ export async function buildStructureContext(message, opts = {}) {
       rangeHighBarsAgo,
       rangeLowBarsAgo,
       trendline,
+      trendChannel,
     };
   } catch (err) {
     console.warn('[Wolf AI] structure context failed:', err?.message || err);

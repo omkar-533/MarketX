@@ -167,125 +167,102 @@ export function synthesizeSrWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 6) });
 }
 
+function rayShape(line, fallbackLabel, tone) {
+  if (!line || !(Number(line.p1) > 0) || !(Number(line.p2) > 0)) return null;
+  if (Number(line.p1) === Number(line.p2)) return null;
+  return {
+    type: 'ray',
+    p1: roundPrice(line.p1),
+    p2: roundPrice(line.p2),
+    x1: Number(line.x1),
+    x2: Number(line.x2),
+    label: String(line.label || fallbackLabel).slice(0, 28),
+    tone: tone || line.tone || 'neutral',
+  };
+}
+
 /**
- * Diagonal trendline — prefers the engine-scored pair from OHLC (STRUCTURE TAPE).
- * Fallback: last two rising lows / falling highs from swing list.
+ * Both-side diagonal channel (lower + upper rays). Never SUPPORT/RESISTANCE.
  */
 export function synthesizeTrendWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
+  const shapes = [];
 
-  const engine = meta.trendline;
-  if (
-    engine &&
-    Number(engine.p1) > 0 &&
-    Number(engine.p2) > 0 &&
-    Number(engine.p1) !== Number(engine.p2)
-  ) {
-    return fence({
-      symbol,
-      tf,
-      levels: [],
-      shapes: [
-        {
-          type: 'ray',
-          p1: roundPrice(engine.p1),
-          p2: roundPrice(engine.p2),
-          x1: Number(engine.x1),
-          x2: Number(engine.x2),
-          label: String(engine.label || 'Trendline').slice(0, 28),
-          tone: engine.tone === 'bear' || engine.tone === 'bull' ? engine.tone : 'neutral',
-        },
-      ],
-    });
+  const ch = meta.trendChannel;
+  if (ch) {
+    const lower = rayShape(ch.lower, 'Lower trendline', 'bull');
+    const upper = rayShape(ch.upper, 'Upper trendline', 'bear');
+    if (lower) shapes.push(lower);
+    if (upper) shapes.push(upper);
   }
 
-  const swings = Array.isArray(meta.swings) ? meta.swings : [];
-  const lows = swings
-    .filter((s) => s.kind === 'low' && Number(s.price) > 0)
-    .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
-    .sort((a, b) => b.barsAgo - a.barsAgo);
-  const highs = swings
-    .filter((s) => s.kind === 'high' && Number(s.price) > 0)
-    .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
-    .sort((a, b) => b.barsAgo - a.barsAgo);
-
-  const hhhl = swings.filter((s) => s.label === 'HH' || s.label === 'HL').length;
-  const lhll = swings.filter((s) => s.label === 'LH' || s.label === 'LL').length;
-  const bullish = hhhl >= lhll;
-
-  /** Find oldest→newest pair with correct slope and ≥6 bars span. */
-  const pickRising = (pts) => {
-    for (let j = pts.length - 1; j >= 1; j -= 1) {
-      for (let i = j - 1; i >= 0; i -= 1) {
-        const a = pts[i];
-        const b = pts[j];
-        if (b.price > a.price && a.barsAgo - b.barsAgo >= 6) return { a, b };
-      }
-    }
-    return null;
-  };
-  const pickFalling = (pts) => {
-    for (let j = pts.length - 1; j >= 1; j -= 1) {
-      for (let i = j - 1; i >= 0; i -= 1) {
-        const a = pts[i];
-        const b = pts[j];
-        if (b.price < a.price && a.barsAgo - b.barsAgo >= 6) return { a, b };
-      }
-    }
-    return null;
-  };
-
-  let pair = null;
-  let label = 'Trendline';
-  let tone = 'neutral';
-  if (bullish) {
-    pair = pickRising(lows);
-    if (pair) {
-      label = 'Rising trendline';
-      tone = 'bull';
-    } else {
-      pair = pickFalling(highs);
-      if (pair) {
-        label = 'Falling trendline';
-        tone = 'bear';
-      }
-    }
-  } else {
-    pair = pickFalling(highs);
-    if (pair) {
-      label = 'Falling trendline';
-      tone = 'bear';
-    } else {
-      pair = pickRising(lows);
-      if (pair) {
-        label = 'Rising trendline';
-        tone = 'bull';
-      }
-    }
+  if (!shapes.length && meta.trendline) {
+    const one = rayShape(meta.trendline, 'Rising trendline', meta.trendline.tone);
+    if (one) shapes.push(one);
   }
 
-  if (!pair) return null;
-  const p1 = roundPrice(pair.a.price);
-  const p2 = roundPrice(pair.b.price);
-  if (p1 == null || p2 == null || p1 === p2) return null;
+  // Swing-list fallback — still diagonal rays on both sides when possible.
+  if (!shapes.length) {
+    const swings = Array.isArray(meta.swings) ? meta.swings : [];
+    const lows = swings
+      .filter((s) => s.kind === 'low' && Number(s.price) > 0)
+      .map((s) => ({ price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
+      .sort((a, b) => b.barsAgo - a.barsAgo);
+    const highs = swings
+      .filter((s) => s.kind === 'high' && Number(s.price) > 0)
+      .map((s) => ({ price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
+      .sort((a, b) => b.barsAgo - a.barsAgo);
 
-  return fence({
-    symbol,
-    tf,
-    levels: [],
-    shapes: [
-      {
+    const pair = (pts, rising) => {
+      for (let i = 0; i < pts.length; i += 1) {
+        for (let j = i + 1; j < pts.length; j += 1) {
+          const a = pts[i];
+          const b = pts[j];
+          if (a.barsAgo - b.barsAgo < 4) continue;
+          if (rising && b.price > a.price) return { a, b };
+          if (!rising && b.price < a.price) return { a, b };
+        }
+      }
+      if (pts.length >= 2) {
+        const a = pts[0];
+        const b = pts[pts.length - 1];
+        if (a.barsAgo !== b.barsAgo) return { a, b };
+      }
+      return null;
+    };
+
+    const rising =
+      swings.filter((s) => s.label === 'HH' || s.label === 'HL').length >=
+      swings.filter((s) => s.label === 'LH' || s.label === 'LL').length;
+    const lowPair = pair(lows, rising) || pair(lows, !rising);
+    const highPair = pair(highs, rising) || pair(highs, !rising);
+    if (lowPair) {
+      shapes.push({
         type: 'ray',
-        p1,
-        p2,
-        x1: -Math.abs(pair.a.barsAgo || 40),
-        x2: -Math.abs(pair.b.barsAgo || 8),
-        label,
-        tone,
-      },
-    ],
-  });
+        p1: roundPrice(lowPair.a.price),
+        p2: roundPrice(lowPair.b.price),
+        x1: -lowPair.a.barsAgo,
+        x2: -lowPair.b.barsAgo,
+        label: 'Lower trendline',
+        tone: 'bull',
+      });
+    }
+    if (highPair) {
+      shapes.push({
+        type: 'ray',
+        p1: roundPrice(highPair.a.price),
+        p2: roundPrice(highPair.b.price),
+        x1: -highPair.a.barsAgo,
+        x2: -highPair.b.barsAgo,
+        label: 'Upper trendline',
+        tone: 'bear',
+      });
+    }
+  }
+
+  if (!shapes.length) return null;
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 4) });
 }
 
 /**
@@ -307,10 +284,14 @@ export function ensureWolfchartReply(reply, meta) {
 
   if (meta?.style === 'trend') {
     const block = synthesizeTrendWolfchart(meta);
-    if (!block) return text;
-    // Model often ignores "trendline" and dumps S/R — replace with a real ray.
-    console.info('[Wolf AI] enforced trendline ray markup');
-    return `${stripWolfchart(text)}${block}`;
+    // Always strip any SUPPORT/RESISTANCE dump the model added — never leave horizontals.
+    const cleaned = stripWolfchart(text);
+    if (!block) {
+      console.warn('[Wolf AI] trend ask but no channel pair — stripped S/R markup');
+      return cleaned;
+    }
+    console.info('[Wolf AI] enforced both-side trend channel rays');
+    return `${cleaned}${block}`;
   }
 
   if (meta?.style === 'sr') {

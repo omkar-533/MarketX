@@ -1567,16 +1567,13 @@ No block = empty chart. No real price → say so in prose instead.`;
 
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block matching the TOOL they named (trendline→trend/ray, S/R→hray SUPPORT/RESISTANCE, OB→zone, fib→fib). Do NOT default to SUPPORT/RESISTANCE when they asked for a trendline. Never ask which zone. Never omit the fence.`;
 
-const TREND_MARK_HINT = `TRENDLINE MARK (mandatory — classic desk rules):
-A trendline is DIAGONAL. NEVER draw horizontal SUPPORT/RESISTANCE for this ask.
-How / where:
-1) Read STRUCTURE TAPE bias first (HH+HL = up, LH+LL = down). Sideways → say no clean trendline.
-2) UPTREND line = under price, connect ≥2 rising swing LOWS (wicks), extend right as ray (dynamic support).
-3) DOWNTREND line = above price, connect ≥2 falling swing HIGHS (wicks), extend right as ray (dynamic resistance).
-4) Prefer the TRENDLINE DRAW coordinates from STRUCTURE TAPE when present — copy that ray JSON.
-5) Two points draw it; more touches = stronger. Do not force a line through noise. Do not mix highs with lows.
-Emit: {"type":"ray","p1":…,"p2":…,"x1":…,"x2":…,"label":"Rising trendline"|"Falling trendline","tone":"bull"|"bear"}
-levels:[]. Prose 2–3 lines then wolfchart.`;
+const TREND_MARK_HINT = `TRENDLINE / CHANNEL MARK (mandatory — match TradingView diagonal channel):
+DIAGONAL rays on BOTH sides. NEVER horizontal SUPPORT or RESISTANCE lines. NEVER hline/hray labeled SUPPORT/RESISTANCE.
+1) LOWER trendline = swing LOWS connected, slope with the trend, ray to the right (like gold TV example).
+2) UPPER trendline = swing HIGHS connected, same side of the channel, ray to the right.
+3) Copy TREND CHANNEL DRAW JSON from STRUCTURE TAPE into wolfchart shapes (both rays). levels:[].
+4) Labels must be "Lower trendline" / "Upper trendline" — not SUPPORT/RESISTANCE.
+Prose 2–3 lines then wolfchart.`;
 
 const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory — match TradingView horizontal RAY look):
 NOT zones. NOT full-width lines. NOT nearest mid pivots.
@@ -1985,9 +1982,11 @@ export function createMasterAiRouter(apiKey) {
       // "trend live" / "trend line" / trendline — diagonal tool, not S/R.
       const wantsTrendMark =
         !wantsSrMark &&
-        /\b(trend\s*lines?|trendlines?|trend\s*live|rising\s*trend|falling\s*trend|uptrend\s*line|downtrend\s*line|channel\s*line)\b|\btrend\b.*\b(mark|draw|khinch|laga|dikha)/i.test(
+        (/\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel|rising\s*trend|falling\s*trend|uptrend\s*line|downtrend\s*line|channel\s*line)\b/i.test(
           String(message || ''),
-        );
+        ) ||
+          (/\btrend\b/i.test(String(message || '')) &&
+            /\b(mark|draw|khinch|khich|laga|dikha|line|channel)\b/i.test(String(message || ''))));
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
       const wantsMarkup =
@@ -2054,6 +2053,7 @@ export function createMasterAiRouter(apiKey) {
         rangeHighBarsAgo: 0,
         rangeLowBarsAgo: 0,
         trendline: null,
+        trendChannel: null,
       };
       let intelBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
@@ -2095,6 +2095,7 @@ export function createMasterAiRouter(apiKey) {
               rangeHighBarsAgo: structure.rangeHighBarsAgo || 0,
               rangeLowBarsAgo: structure.rangeLowBarsAgo || 0,
               trendline: structure.trendline || null,
+              trendChannel: structure.trendChannel || null,
             };
             if (structureBlock) {
               console.info(
@@ -2157,7 +2158,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : wantsTrendMark
-            ? 'Task: MARK TRENDLINE NOW. 2–3 short lines. wolfchart MUST be a diagonal ray/trend through two STRUCTURE TAPE swings (lows if uptrend, highs if downtrend). Do NOT draw SUPPORT/RESISTANCE horizontals. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK TREND CHANNEL NOW (both sides). 2–3 short lines. wolfchart: TWO diagonal rays — Lower trendline on swing lows + Upper trendline on swing highs from TREND CHANNEL DRAW. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
@@ -2312,6 +2313,7 @@ export function createMasterAiRouter(apiKey) {
               rangeHighBarsAgo: structureMeta.rangeHighBarsAgo,
               rangeLowBarsAgo: structureMeta.rangeLowBarsAgo,
               trendline: structureMeta.trendline,
+              trendChannel: structureMeta.trendChannel,
               style: wantsTrendMark
                 ? 'trend'
                 : wantsSrMark

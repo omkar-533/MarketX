@@ -932,11 +932,17 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             : undefined;
           // Without this the model has no idea which instrument "mark it" means.
           const wantsMarkNow = isChartMarkupRequest(userText);
+          const wantsTrendNow =
+            /\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel)\b|\btrend\b.*\b(mark|draw|line|channel|khinch)/i.test(
+              userText,
+            );
           const chartHint = chartTarget
-            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer — zones, S/R, order blocks, structure from the live tape — and emit the wolfchart block. Do not wait for the user to say "mark". NEVER ask for a screenshot.${
-                wantsMarkNow
-                  ? ' EXPLICIT MARK: user asked to mark NOW — do not ask which zone; draw Day High/Low/LTP + structure labels and end with wolfchart.'
-                  : ''
+            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer and emit the wolfchart block. NEVER ask for a screenshot.${
+                wantsTrendNow
+                  ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Do NOT draw horizontal SUPPORT/RESISTANCE.'
+                  : wantsMarkNow
+                    ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
+                    : ''
               }]`
             : '';
           const baseMessage = `${userText}${chartHint}`;
