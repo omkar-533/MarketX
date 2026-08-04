@@ -10,7 +10,7 @@ import {
 import type { User } from '../hooks/useAuth';
 import { usePlansCatalog } from '../hooks/usePlansCatalog';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
-import AccessProofUpload from './access/AccessProofUpload';
+import AccessUnlockPanel from './access/AccessUnlockPanel';
 
 interface SubscriptionProps {
   user: User | null;
@@ -24,19 +24,19 @@ function statusLine(access: AccessState | null | undefined) {
   if (access.status === 'blocked') return 'Your access is paused — contact the desk.';
   if (!access.unlocked) {
     return access.reason === 'trial_expired'
-      ? 'Your free trial has ended — fill the form below. We respond within 24 hours.'
-      : 'Your access has expired — fill the form below. We respond within 24 hours.';
+      ? 'Your free trial has ended — follow the unlock steps below. We respond within 24 hours.'
+      : 'Your access has expired — follow the unlock steps below. We respond within 24 hours.';
   }
   if (access.daysLeft === null) return 'You have lifetime access. Nothing to renew.';
   if (access.isTrial) {
     return access.daysLeft <= 1
-      ? `Your free trial ends in ${access.hoursLeft ?? 0} hours.`
-      : `${access.daysLeft} days left in your free trial.`;
+      ? `Your free trial ends in ${access.hoursLeft ?? 0} hours — submit verification anytime below.`
+      : `${access.daysLeft} days left in your free trial — submit verification anytime below.`;
   }
   return `${access.daysLeft} days left on your current access.`;
 }
 
-/** In-app pricing — same plans and prices as the landing page. */
+/** In-app pricing — same plans and prices as the landing page + unlock panel. */
 export default function Subscription({
   user,
   access,
@@ -46,7 +46,7 @@ export default function Subscription({
   const { plans, trialDays } = usePlansCatalog();
   const whatsapp = popup?.whatsapp?.trim();
   const isTrialUser = access?.isTrial ?? Boolean(user?.trialEndsAt);
-  const needsForm = Boolean(access && !access.unlocked && access.status !== 'blocked');
+  const showUnlock = Boolean(popup && popup.enabled !== false && access?.status !== 'blocked');
 
   return (
     <div className="space-y-5">
@@ -56,7 +56,8 @@ export default function Subscription({
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan covers Wolf AI and Trading Journal — higher plans unlock more.
+          Every plan covers Wolf AI, Wolf Mentor, Indicators, Paper Trading, and Trading Journal —
+          or unlock free with desk verification.
         </p>
       </div>
 
@@ -76,25 +77,18 @@ export default function Subscription({
         ) : null}
       </div>
 
-      {needsForm ? (
-        <div className="w-full rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 space-y-2">
-          <p className="text-sm font-bold text-[#d4af37]">
-            {popup?.title?.trim() || 'Request access'}
-          </p>
-          <p className="text-[11px] text-slate-500">
-            {popup?.message?.trim() ||
-              'Fill your name, registered mobile, demat account number, and upload your first F&O trade screenshot. Our team verifies within 24 hours. TradingView ID is not required for this unlock.'}
-          </p>
-          <AccessProofUpload
-            request={access?.request ?? null}
-            onSubmitted={onAccessSubmitted || (() => undefined)}
-            defaults={{
-              name: user?.name,
-              phone: user?.phone,
-              email: user?.email,
-            }}
-          />
-        </div>
+      {showUnlock ? (
+        <AccessUnlockPanel
+          className="access-unlock--inline"
+          popup={popup ?? null}
+          request={access?.request ?? null}
+          onSubmitted={onAccessSubmitted || (() => undefined)}
+          defaults={{
+            name: user?.name,
+            phone: user?.phone,
+            email: user?.email,
+          }}
+        />
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
@@ -184,7 +178,7 @@ export default function Subscription({
 
       <p className="text-[11px] text-slate-600 text-center max-w-2xl mx-auto">
         Prices in INR, inclusive of taxes. Paid access is activated by the desk after your account
-        is verified — upload your screenshot from the popup and we switch it on.
+        is verified — or use the unlock form above with demat + F&amp;O screenshot.
       </p>
     </div>
   );

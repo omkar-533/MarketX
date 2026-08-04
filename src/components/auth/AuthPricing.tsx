@@ -1,13 +1,16 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { ArrowRight, Check, Sparkles, Zap } from 'lucide-react';
 import type { Plan, PlanId } from '../../constants/plans';
 import { usePlansCatalog } from '../../hooks/usePlansCatalog';
+import { fetchPublicAccessPopup, type AccessPopup } from '../../services/appInviteAuth';
+import AccessUnlockPanel from '../access/AccessUnlockPanel';
 import { Counter, EASE, GradientLine, Reveal, Words } from './scrollFx';
 
 type AuthPricingProps = {
   onStartTrial: () => void;
   onChoosePlan: (plan: PlanId) => void;
+  onSignIn?: () => void;
 };
 
 function PlanCard({
@@ -136,9 +139,21 @@ function PlanCard({
   );
 }
 
-/** Pricing wall — catalog from admin (fallback to defaults). */
-export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingProps) {
+/** Pricing wall — catalog from admin (fallback to defaults) + unlock path. */
+export default function AuthPricing({ onStartTrial, onChoosePlan, onSignIn }: AuthPricingProps) {
   const { plans, trialDays } = usePlansCatalog();
+  const [popup, setPopup] = useState<AccessPopup | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const next = await fetchPublicAccessPopup();
+      if (!cancelled) setPopup(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section id="pricing" className="auth-lux__pricing">
@@ -155,7 +170,7 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
               Features grow with each plan. Pick the term that matches how deep you want Wolf AI and
-              Journal.
+              Journal — or unlock free after trial with desk verification.
             </p>
           </Reveal>
         </div>
@@ -172,10 +187,36 @@ export default function AuthPricing({ onStartTrial, onChoosePlan }: AuthPricingP
           ))}
         </div>
 
+        {popup?.enabled !== false ? (
+          <div className="auth-lux__unlock" id="unlock">
+            <Reveal y={24} blur={false}>
+              <div className="auth-lux__unlock-grid">
+                <div className="auth-lux__unlock-copy">
+                  <p className="auth-lux__kicker">After free trial</p>
+                  <h3>Unlock with desk approval</h3>
+                  <p>
+                    When your free trial ends, follow the same steps we show in-app — open the
+                    referral link, take a small F&amp;O trade, then submit demat + screenshot after
+                    sign-in. The desk verifies and unlocks premium access.
+                  </p>
+                </div>
+                <AccessUnlockPanel
+                  className="access-unlock--inline"
+                  popup={popup}
+                  guestMode
+                  onGuestStartTrial={onStartTrial}
+                  onGuestSignIn={onSignIn}
+                />
+              </div>
+            </Reveal>
+          </div>
+        ) : null}
+
         <Reveal delay={0.2} y={18} blur={false}>
           <p className="auth-lux__plans-foot">
             Prices in INR, inclusive of taxes. Paid plans are activated by the desk after signup —
-            your trial keeps running until then.
+            your trial keeps running until then. Free unlock uses the verification form above after
+            you sign in.
           </p>
         </Reveal>
       </div>

@@ -1174,6 +1174,18 @@ router.put('/admin/settings', requireAdmin, async (req, res) => {
   }
 });
 
+/* ────────────────────────── public access popup (landing) ────────────────────────── */
+
+/** GET /api/app-auth/access-popup — public unlock copy (no auth) */
+router.get('/access-popup', async (_req, res) => {
+  try {
+    const popup = await getAccessPopup();
+    return res.json({ popup: publicAccessPopup(popup) });
+  } catch (err) {
+    return failed(res, err, 'Could not load access popup');
+  }
+});
+
 /* ────────────────────────── subscription plans catalog ────────────────────────── */
 
 /** GET /api/app-auth/plans — public catalog (enabled plans only) */

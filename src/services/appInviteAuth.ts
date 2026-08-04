@@ -246,6 +246,42 @@ function sessionHeaders(): HeadersInit {
   };
 }
 
+const DEFAULT_PUBLIC_POPUP: AccessPopup = {
+  enabled: true,
+  title: 'Unlock premium access',
+  message: [
+    'Open the account using our above referral link',
+    'Take any small trade in F&O segment',
+    'Send your account details on WhatsApp',
+    'Our team will verify and give you access',
+    'Make sure first you take a trade & then send details',
+    'Hurrey !!! You are done.',
+  ].join('\n'),
+  url: '',
+  buttonLabel: 'click here',
+  whatsapp: '',
+};
+
+/** Public unlock copy for landing / pricing (no auth). */
+export async function fetchPublicAccessPopup(): Promise<AccessPopup> {
+  try {
+    const res = await apiFetch('/api/app-auth/access-popup');
+    if (!res.ok) return DEFAULT_PUBLIC_POPUP;
+    const data = (await res.json().catch(() => ({}))) as { popup?: AccessPopup };
+    if (!data?.popup) return DEFAULT_PUBLIC_POPUP;
+    return {
+      enabled: data.popup.enabled !== false,
+      title: String(data.popup.title || DEFAULT_PUBLIC_POPUP.title),
+      message: String(data.popup.message || DEFAULT_PUBLIC_POPUP.message),
+      url: String(data.popup.url || ''),
+      buttonLabel: String(data.popup.buttonLabel || DEFAULT_PUBLIC_POPUP.buttonLabel),
+      whatsapp: String(data.popup.whatsapp || ''),
+    };
+  } catch {
+    return DEFAULT_PUBLIC_POPUP;
+  }
+}
+
 /** Live gate state — the stored token is never trusted for access decisions. */
 export async function fetchAccessState(): Promise<AccessSnapshot | null> {
   const session = loadAppSession();

@@ -555,7 +555,11 @@ export default function AuthPage(props: AuthPageProps) {
           </div>
         </section>
 
-        <AuthPricing onStartTrial={() => openSignUp('trial')} onChoosePlan={openSignUp} />
+        <AuthPricing
+          onStartTrial={() => openSignUp('trial')}
+          onChoosePlan={openSignUp}
+          onSignIn={openSignIn}
+        />
 
         {/* Bottom CTA */}
         <section className="auth-lux__bottom-cta">
