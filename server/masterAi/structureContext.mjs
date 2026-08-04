@@ -11,7 +11,7 @@ export function wantsStructureMarkup(text) {
   return STRUCTURE_RE.test(String(text || ''));
 }
 
-function pivotHigh(bars, i, left = 2, right = 2) {
+function pivotHigh(bars, i, left = 3, right = 3) {
   const h = bars[i].high;
   for (let j = i - left; j <= i + right; j += 1) {
     if (j === i) continue;
@@ -20,7 +20,7 @@ function pivotHigh(bars, i, left = 2, right = 2) {
   return true;
 }
 
-function pivotLow(bars, i, left = 2, right = 2) {
+function pivotLow(bars, i, left = 3, right = 3) {
   const l = bars[i].low;
   for (let j = i - left; j <= i + right; j += 1) {
     if (j === i) continue;
@@ -31,10 +31,11 @@ function pivotLow(bars, i, left = 2, right = 2) {
 
 /**
  * Walk confirmed pivots and tag each as HH/HL/LH/LL vs the prior same-side swing.
+ * Wider pivot window (3/3) so S/R uses structural swings, not every minor wiggle.
  */
 function labelSwings(bars) {
   const swings = [];
-  for (let i = 2; i < bars.length - 2; i += 1) {
+  for (let i = 3; i < bars.length - 3; i += 1) {
     if (pivotHigh(bars, i)) {
       swings.push({ kind: 'high', price: bars[i].high, index: i, barsAgo: bars.length - 1 - i });
     } else if (pivotLow(bars, i)) {
@@ -198,7 +199,7 @@ export async function buildStructureContext(message, opts = {}) {
     const block = [
       `STRUCTURE TAPE (${symbol} ${interval} — confirmed pivots from live OHLC; MARK THESE, not supply/demand unless asked):`,
       `LTP/last close: ${Number(lastClose).toFixed(2)}. Window high: ${Number(rangeHigh).toFixed(2)} (barsAgo=${rangeHighBarsAgo}). Window low: ${Number(rangeLow).toFixed(2)} (barsAgo=${rangeLowBarsAgo}).`,
-      'S/R RULE: RESISTANCE = nearest high ABOVE LTP. SUPPORT = nearest low BELOW LTP. Never put RESISTANCE below LTP.',
+      'S/R RULE: RESISTANCE = structural peak ABOVE LTP (highest clear swing/window high overhead). SUPPORT = structural trough BELOW LTP (lowest held swing/window low — NOT a mid pivot price already sliced through). Never put RESISTANCE below LTP.',
       ...swingLines,
       ...(eventLines.length ? ['Events:', ...eventLines] : []),
       `Desk bias read: ${bias}.`,

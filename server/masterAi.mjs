@@ -1452,10 +1452,10 @@ ANNOTATIONS
   arrow — direction (x1,p1)→(x2,p2). Impulse / rejection direction (NOT a trade order).
 MATCH THE QUESTION:
   structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE (not Supply/Demand).
-  SUPPORT / RESISTANCE → exactly TWO hrays sided to LTP (ray from swing wick → right, NOT full-width hline):
-    nearest high ABOVE LTP → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
-    nearest low BELOW LTP  → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
-    levels:[]. NEVER put RESISTANCE below LTP. NO zones.
+  SUPPORT / RESISTANCE → exactly TWO hrays (ray from swing wick → right):
+    structural peak ABOVE LTP → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
+    structural trough BELOW LTP → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
+    Do NOT mark broken mid pivots as support. levels:[]. NO zones.
   OB / supply / demand / FVG → zone.
   trendline / channel / pitchfork → trend (and ray if it should extend).
   fib / pullback / 0.618 0.705 0.786 → fib with real swing p1/p2.

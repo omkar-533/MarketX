@@ -41,17 +41,23 @@ function resolveTf(meta) {
 }
 
 /**
- * Pick S/R relative to live price — same logic as a trader reading the chart.
+ * Desk S/R logic (not "nearest pivot"):
+ * - RESISTANCE = structural peak ABOVE LTP (highest swing/window high still overhead)
+ * - SUPPORT    = structural trough BELOW LTP (lowest swing/window low that held the move)
+ * Never mark a mid-level that price already sliced through while a deeper low exists.
  */
 export function pickSrPair(meta = {}) {
   const q = meta.quote;
-  const px =
-    Number(meta.lastClose) ||
-    Number(q?.price) ||
-    0;
+  const px = Number(meta.lastClose) || Number(q?.price) || 0;
   const swings = Array.isArray(meta.swings) ? meta.swings : [];
-  const highs = swings.filter((s) => s.kind === 'high' && Number(s.price) > 0);
-  const lows = swings.filter((s) => s.kind === 'low' && Number(s.price) > 0);
+
+  // Prefer confirmed swing pivots; window extremes fill gaps (real structural H/L).
+  const highs = swings
+    .filter((s) => s.kind === 'high' && Number(s.price) > 0)
+    .map((s) => ({ ...s, price: Number(s.price) }));
+  const lows = swings
+    .filter((s) => s.kind === 'low' && Number(s.price) > 0)
+    .map((s) => ({ ...s, price: Number(s.price) }));
 
   if (Number(meta.rangeHigh) > 0) {
     highs.push({
@@ -69,47 +75,51 @@ export function pickSrPair(meta = {}) {
       label: 'RL',
     });
   }
-  if (q?.high > 0) highs.push({ price: Number(q.high), barsAgo: 2, kind: 'high', label: 'DH' });
-  if (q?.low > 0) lows.push({ price: Number(q.low), barsAgo: 14, kind: 'low', label: 'DL' });
+
+  const byRecent = (a, b) => (Number(a.barsAgo) || 0) - (Number(b.barsAgo) || 0);
 
   if (!(px > 0)) {
-    const res = highs.sort((a, b) => b.price - a.price)[0] || null;
-    const sup = lows.sort((a, b) => a.price - b.price)[0] || null;
+    const res = highs.slice().sort((a, b) => b.price - a.price || byRecent(a, b))[0] || null;
+    const sup = lows.slice().sort((a, b) => a.price - b.price || byRecent(a, b))[0] || null;
     return { res, sup, px: 0 };
   }
 
   const eps = Math.max(px * 0.0002, 0.5);
 
-  // Nearest high ABOVE price = resistance
+  // Structural resistance = clear peak still ABOVE price (not the nearest minor LH).
   let res = highs
     .filter((h) => h.price > px + eps)
-    .sort((a, b) => a.price - b.price)[0];
+    .sort((a, b) => b.price - a.price || byRecent(a, b))[0];
 
-  // Nearest low BELOW price = support
+  // Structural support = trough BELOW price (deepest held low — not a broken mid pivot).
   let sup = lows
     .filter((l) => l.price < px - eps)
-    .sort((a, b) => b.price - a.price)[0];
+    .sort((a, b) => a.price - b.price || byRecent(a, b))[0];
 
-  // At session highs: day/range high can sit on/near LTP — still valid resistance tag.
+  // At highs: allow day/range high sitting on/near LTP.
   if (!res) {
     const touch = highs
       .filter((h) => h.price >= px - eps)
-      .sort((a, b) => b.price - a.price)[0];
+      .sort((a, b) => b.price - a.price || byRecent(a, b))[0];
     if (touch) res = { ...touch, price: Math.max(touch.price, px) };
+    else if (q?.high > px - eps) {
+      res = { price: Math.max(Number(q.high), px), barsAgo: 2, kind: 'high', label: 'DH' };
+    }
   }
 
   if (!sup) {
     const touch = lows
       .filter((l) => l.price <= px + eps)
-      .sort((a, b) => a.price - b.price)[0];
+      .sort((a, b) => a.price - b.price || byRecent(a, b))[0];
     if (touch) sup = touch;
+    else if (q?.low > 0 && q.low < px + eps) {
+      sup = { price: Number(q.low), barsAgo: 14, kind: 'low', label: 'DL' };
+    }
   }
 
-  // Final guard: never ship resistance under LTP or support above LTP.
   if (res && res.price < px - eps) res = null;
   if (sup && sup.price > px + eps) sup = null;
   if (res && sup && res.price <= sup.price) {
-    // Prefer keeping the side that respects LTP.
     if (res.price <= px) res = null;
     else sup = null;
   }
