@@ -570,12 +570,14 @@ export default function MasterAI() {
       const chartReq = detectChartRequest(userText);
       const mentioned = chartReq ? null : detectInstrumentMention(userText);
       const lastChart = [...messages].reverse().find((m) => m.chart);
-      // "Order block mark kro" names nothing — it means the chart on screen.
+      // "Order block mark kro" names nothing — it means the chart on screen, or
+      // the last instrument looked at when the chat has no chart open yet.
+      // Without this fallback the request lands as plain text and marks nothing.
       const marksExisting = !chartReq && !mentioned && isChartMarkupRequest(userText);
       const symbol =
         chartReq?.tvSymbol ||
         mentioned ||
-        (marksExisting ? lastChart?.chart?.symbol ?? '' : '') ||
+        (marksExisting ? lastChart?.chart?.symbol ?? chartSymbol : '') ||
         (chartReq ? chartSymbol : '');
 
       if (symbol) {
