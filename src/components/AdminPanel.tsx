@@ -19,6 +19,7 @@ import {
   BookOpen,
   Download,
   CalendarRange,
+  ShieldCheck,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -47,6 +48,7 @@ import {
 } from '../services/appInviteAuth';
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
+import ApprovedAccessTab, { countApprovedAccessUsers } from './admin/ApprovedAccessTab';
 import IndicatorsTab from './admin/IndicatorsTab';
 import KnowledgeTab from './admin/KnowledgeTab';
 import PlansTab from './admin/PlansTab';
@@ -77,7 +79,18 @@ function randomPassword(len = 10) {
   return out;
 }
 
-type AdminTab = 'users' | 'requests' | 'tv' | 'indicators' | 'knowledge' | 'plans' | 'settings' | 'overview' | 'analytics' | 'payments';
+type AdminTab =
+  | 'users'
+  | 'approved'
+  | 'requests'
+  | 'tv'
+  | 'indicators'
+  | 'knowledge'
+  | 'plans'
+  | 'settings'
+  | 'overview'
+  | 'analytics'
+  | 'payments';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -197,6 +210,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
 
   const adminEmail = user?.email ?? null;
   const newUserCount = rows.filter((r) => isUnseenNewUser(r)).length;
+  const approvedCount = useMemo(() => countApprovedAccessUsers(rows), [rows]);
 
   const memberRows = useMemo(() => rows.filter((r) => r.role !== 'admin'), [rows]);
 
@@ -311,7 +325,13 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [adminEmail, adminPassword]);
 
   useEffect(() => {
-    if (activeTab === 'users' || activeTab === 'overview') void refresh();
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (activeTab === 'users' || activeTab === 'approved' || activeTab === 'overview') {
+      void refresh();
+    }
   }, [activeTab, refresh]);
 
   useEffect(() => {
@@ -350,14 +370,23 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
     }
   };
 
-  const changeAccess = async (row: InviteUserRow, status: 'granted' | 'locked' | 'blocked') => {
+  const changeAccess = async (
+    row: InviteUserRow,
+    status: 'granted' | 'locked' | 'blocked',
+    days?: number,
+  ) => {
     setErr('');
     try {
       await adminSetUserAccess(
         row.id,
         {
           status,
-          days: status === 'granted' ? Number(grantDays[row.id] ?? defaultGrantDays) : null,
+          days:
+            status === 'granted'
+              ? Number.isFinite(days)
+                ? Number(days)
+                : Number(grantDays[row.id] ?? defaultGrantDays)
+              : null,
         },
         adminEmail,
         adminPassword,
@@ -409,6 +438,12 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
             { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
             { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+            {
+              id: 'approved' as const,
+              label: 'Approved access',
+              icon: ShieldCheck,
+              badge: approvedCount,
+            },
             { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
             { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
             { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
@@ -466,6 +501,16 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           adminEmail={adminEmail}
           adminPassword={adminPassword}
           onSaved={(popup) => setDefaultGrantDays(popup.defaultGrantDays)}
+        />
+      )}
+
+      {activeTab === 'approved' && (
+        <ApprovedAccessTab
+          rows={rows}
+          loading={loading}
+          defaultGrantDays={defaultGrantDays}
+          onRefresh={() => void refresh()}
+          onChangeAccess={(row, status, days) => changeAccess(row, status, days)}
         />
       )}
 
