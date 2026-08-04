@@ -182,95 +182,98 @@ export default function ChatChartPanel({
       aria-label="Chart"
     >
       <header className="mai-tv__bar">
-        <form
-          className="mai-tv__symbol"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submitSymbol();
-          }}
-        >
-          <input
-            value={symbolInput}
-            onChange={(e) => setSymbolInput(e.target.value)}
-            onBlur={submitSymbol}
-            className="mai-tv__symbol-input"
-            aria-label="Chart symbol"
-            spellCheck={false}
-          />
-        </form>
-
-        <span className="mai-tv__sep" aria-hidden />
-
-        <div className="mai-tv__tfs" role="group" aria-label="Multi-timeframe">
-          <span className="mai-tv__mtf-label" title="Switch TF for MTF context">
-            MTF
-          </span>
-          {timeframes.map((tf) => (
-            <button
-              key={tf.id}
-              type="button"
-              onClick={() => onIntervalChange(tf.id)}
-              className={`mai-tv__tf ${tf.id === activeInterval ? 'mai-tv__tf--on' : ''}`}
-            >
-              {tf.label}
-            </button>
-          ))}
-        </div>
-
-        <span className="mai-tv__sep" aria-hidden />
-
-        <div className="mai-tv__selects">
-          <select
-            value={chartStyle}
-            onChange={(e) => setChartStyle(e.target.value as TvChartStyle)}
-            className="mai-tv__select"
-            aria-label="Chart style"
+        <div className="mai-tv__bar-scroll">
+          <form
+            className="mai-tv__symbol"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitSymbol();
+            }}
           >
-            {TV_CHART_STYLES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
+            <input
+              value={symbolInput}
+              onChange={(e) => setSymbolInput(e.target.value)}
+              onBlur={submitSymbol}
+              className="mai-tv__symbol-input"
+              aria-label="Chart symbol"
+              spellCheck={false}
+            />
+          </form>
+
+          <span className="mai-tv__sep" aria-hidden />
+
+          <div className="mai-tv__tfs" role="group" aria-label="Multi-timeframe">
+            <span className="mai-tv__mtf-label" title="Switch TF for MTF context">
+              MTF
+            </span>
+            {timeframes.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => onIntervalChange(tf.id)}
+                className={`mai-tv__tf ${tf.id === activeInterval ? 'mai-tv__tf--on' : ''}`}
+              >
+                {tf.label}
+              </button>
             ))}
-          </select>
+          </div>
 
-          <div className="mai-tv__ind" ref={indicatorsRef}>
-            <button
-              type="button"
-              className={`mai-tv__ind-btn ${activeStudies.length ? 'mai-tv__ind-btn--on' : ''}`}
-              onClick={() => setIndicatorsOpen((v) => !v)}
-              aria-expanded={indicatorsOpen}
-              aria-label="Indicators"
+          <span className="mai-tv__sep" aria-hidden />
+
+          <div className="mai-tv__selects">
+            <select
+              value={chartStyle}
+              onChange={(e) => setChartStyle(e.target.value as TvChartStyle)}
+              className="mai-tv__select"
+              aria-label="Chart style"
             >
-              Indicators{activeStudies.length ? ` · ${activeStudies.length}` : ''}
-              <ChevronDown className="h-3 w-3" />
-            </button>
+              {TV_CHART_STYLES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
 
-            {indicatorsOpen ? (
-              <div className="mai-tv__ind-menu" role="menu">
-                {studyPresets.map((s) => (
-                  <label key={s.id} className="mai-tv__ind-item">
-                    <input
-                      type="checkbox"
-                      checked={activeStudies.includes(s.id)}
-                      onChange={() => toggleStudy(s.id)}
-                    />
-                    {s.label}
-                  </label>
-                ))}
-                {activeStudies.length ? (
-                  <button
-                    type="button"
-                    className="mai-tv__ind-clear"
-                    onClick={() => onStudyChange(joinStudies([]))}
-                  >
-                    Clear all
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="mai-tv__ind" ref={indicatorsRef}>
+              <button
+                type="button"
+                className={`mai-tv__ind-btn ${activeStudies.length ? 'mai-tv__ind-btn--on' : ''}`}
+                onClick={() => setIndicatorsOpen((v) => !v)}
+                aria-expanded={indicatorsOpen}
+                aria-label="Indicators"
+              >
+                Indicators{activeStudies.length ? ` · ${activeStudies.length}` : ''}
+                <ChevronDown className="h-3 w-3" />
+              </button>
+
+              {indicatorsOpen ? (
+                <div className="mai-tv__ind-menu" role="menu">
+                  {studyPresets.map((s) => (
+                    <label key={s.id} className="mai-tv__ind-item">
+                      <input
+                        type="checkbox"
+                        checked={activeStudies.includes(s.id)}
+                        onChange={() => toggleStudy(s.id)}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                  {activeStudies.length ? (
+                    <button
+                      type="button"
+                      className="mai-tv__ind-clear"
+                      onClick={() => onStudyChange(joinStudies([]))}
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
+        {/* Always pinned — never scrolls away with timeframes */}
         <div className="mai-tv__actions">
           <button
             type="button"
@@ -299,11 +302,12 @@ export default function ChatChartPanel({
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
-            className={`mai-tv__icon mai-tv__icon--fs ${fullscreen ? 'mai-tv__icon--fs-on' : ''}`}
+            className={`mai-tv__fs-btn ${fullscreen ? 'mai-tv__fs-btn--on' : ''}`}
             title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen — chart fills this page'}
             aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
           >
             {fullscreen ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
+            <span>{fullscreen ? 'Exit' : 'Full screen'}</span>
           </button>
           {hideClose && !fullscreen ? null : (
             <button
