@@ -941,12 +941,21 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*zone|demand\s*zone)\b/i.test(
               userText,
             );
+          const recentLiqContext = [...messages]
+            .slice(-8)
+            .some((m) =>
+              /liquidity|\bbsl\b|\bssl\b|\bpdh\b|\bpdl\b|\bpwh\b|\bpwl\b|\bpmh\b|\bpml\b|BSL \(High Vol\)|SSL \(High Vol\)/i.test(
+                m.text || '',
+              ),
+            );
           const wantsLiqNow =
             !wantsTrendNow &&
             !wantsObNow &&
-            /\b(liquidity|liquidty|liq\b|buy[\s-]*side|sell[\s-]*side|\bbsl\b|\bssl\b|eqh|eql|equal\s*highs?|equal\s*lows?)\b/i.test(
+            (/\b(liquidity|liquidty|liq\b|buy[\s-]*side|sell[\s-]*side|\bbsl\b|\bssl\b|eqh|eql|equal\s*highs?|equal\s*lows?|pdh|pdl|pwh|pwl|pmh|pml)\b/i.test(
               userText,
-            );
+            ) ||
+              // "chart me mark kar do" after a liquidity answer → keep Pine liq tool
+              (wantsMarkNow && recentLiqContext));
           const wantsSrNow =
             !wantsTrendNow &&
             !wantsObNow &&

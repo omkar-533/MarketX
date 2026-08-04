@@ -1616,6 +1616,8 @@ NOT Support/Resistance. Copy LIQUIDITY TAPE shapes exactly (hray + color + lineS
 Rules: swing len=5 · vol > SMA(20)×1.5 → "BSL (High Vol)" / "SSL (High Vol)".
 Also PDH PDL · PWH PWL · PMH PML if still outside price. Mitigated levels already removed.
 Colors: BSL red · SSL green · PDH/PDL orange · PWH/PWL yellow · PMH/PML blue.
+SHORTCUT labels ONLY (exact strings): BSL (High Vol) · SSL (High Vol) · PDH · PDL · PWH · PWL · PMH · PML
+FORBIDDEN long names: "Resistance Liquidity", "Support Liquidity", "Internal Liquidity".
 levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
@@ -2228,7 +2230,9 @@ export function createMasterAiRouter(apiKey) {
             console.warn('[Wolf AI] order block tape failed:', err?.message || err);
           }
         }
-        if (wantsLiqMark || (chartOnScreen && liqAsked)) {
+        // Build tape whenever liq tool is active (incl. markTool:liq from client
+        // after a liquidity thread + bare "mark kar do").
+        if (wantsLiqMark || liqAsked || markTool === 'liq') {
           try {
             const liqCtx = await buildLiquidityContext(message || userTextBase, {
               symbol: structureMeta.symbol || undefined,

@@ -6,6 +6,8 @@
  * SUPPORT = nearest real low BELOW LTP. Never mark resistance under price.
  */
 
+import { looksLikeLiquidityLabel, normalizePineLiqLabel } from './liquidityEngine.mjs';
+
 export function replyHasWolfchart(reply) {
   const text = String(reply || '');
   if (/```\s*wolfchart/i.test(text)) return true;
@@ -433,8 +435,21 @@ export function ensureWolfchartReply(reply, meta) {
       console.warn('[Wolf AI] liquidity ask but no BSL/SSL pools found');
       return cleaned;
     }
-    console.info('[Wolf AI] enforced ICT/SMC liquidity hrays');
+    console.info('[Wolf AI] enforced Pine shortcut liquidity hrays');
     return `${cleaned}${block}`;
+  }
+
+  // Model often invents "Resistance Liquidity (BSL)" — rewrite to Pine shortcuts,
+  // or replace entirely when engine pools are available.
+  if (replyHasWolfchart(text) && /liquidity|\bbsl\b|\bssl\b|\bpdh\b|\bpdl\b/i.test(text)) {
+    if (Array.isArray(meta?.liquidityPools) && meta.liquidityPools.length) {
+      const block = synthesizeLiqWolfchart(meta);
+      if (block) {
+        console.info('[Wolf AI] replaced verbose liquidity labels with Pine engine tape');
+        return `${stripWolfchart(text)}${block}`;
+      }
+    }
+    return rewriteLiquidityLabelsInReply(text);
   }
 
   if (replyHasWolfchart(text)) return text;
@@ -442,4 +457,19 @@ export function ensureWolfchartReply(reply, meta) {
   if (!block) return text;
   console.info('[Wolf AI] injected fallback wolfchart (model omitted markup)');
   return `${text}${block}`;
+}
+
+/** Rewrite wolfchart shape labels to Pine shortcuts (BSL/SSL/PDH…). */
+export function rewriteLiquidityLabelsInReply(reply) {
+  const text = String(reply || '');
+  return text.replace(
+    /("label"\s*:\s*")([^"]+)(")/gi,
+    (full, a, label, c) => {
+      if (!looksLikeLiquidityLabel(label)) return full;
+      const short = normalizePineLiqLabel(label);
+      // Invented names ("Internal Liquidity") → drop via empty label (client skips)
+      if (!short) return `${a}${c}`;
+      return `${a}${short}${c}`;
+    },
+  );
 }

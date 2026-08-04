@@ -102,6 +102,25 @@ function toLabel(raw: unknown): string {
     .slice(0, LABEL_MAX);
 }
 
+/** Pine liquidity shortcuts only — never long "Resistance Liquidity (BSL)". */
+function toPineLiqLabel(raw: unknown): string | null {
+  const t = toLabel(raw);
+  if (!t) return null;
+  if (/^BSL \(High Vol\)$/i.test(t)) return 'BSL (High Vol)';
+  if (/^SSL \(High Vol\)$/i.test(t)) return 'SSL (High Vol)';
+  if (/^(PDH|PDL|PWH|PWL|PMH|PML)$/i.test(t)) return t.toUpperCase();
+  if (/\bpmh\b|prev(?:ious)?\s*month(?:ly)?\s*high/i.test(t)) return 'PMH';
+  if (/\bpml\b|prev(?:ious)?\s*month(?:ly)?\s*low/i.test(t)) return 'PML';
+  if (/\bpwh\b|prev(?:ious)?\s*week(?:ly)?\s*high/i.test(t)) return 'PWH';
+  if (/\bpwl\b|prev(?:ious)?\s*week(?:ly)?\s*low/i.test(t)) return 'PWL';
+  if (/\bpdh\b|prev(?:ious)?\s*day\s*high|daily\s*high/i.test(t)) return 'PDH';
+  if (/\bpdl\b|prev(?:ious)?\s*day\s*low|daily\s*low/i.test(t)) return 'PDL';
+  if (/\bbsl\b|buy[\s-]*side|resistance\s*liquidity/i.test(t)) return 'BSL (High Vol)';
+  if (/\bssl\b|sell[\s-]*side|support\s*liquidity/i.test(t)) return 'SSL (High Vol)';
+  if (/internal\s*liquidity|external\s*liquidity|^liquidity$/i.test(t)) return null;
+  return null;
+}
+
 function toLevel(raw: unknown): ChartLevel | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -187,15 +206,32 @@ function toShape(raw: unknown): ChartShape | null {
   const type = toShapeType(row.type ?? row.kind ?? row.t);
   if (!type) return null;
 
+  const rawLabel = toLabel(row.label ?? row.text ?? row.note ?? row.l);
+  const pineLiq = toPineLiqLabel(rawLabel);
+  // Drop invented long liquidity names that don't map to a Pine shortcut.
+  if (
+    pineLiq === null &&
+    /liquidity|resistance\s*liquidity|support\s*liquidity|internal\s*liquidity/i.test(rawLabel)
+  ) {
+    return null;
+  }
   const shape: ChartShape = {
     type,
     tone: toTone(row.tone ?? row.side ?? row.bias),
-    label: toLabel(row.label ?? row.text ?? row.note ?? row.l),
+    label: pineLiq || rawLabel,
     p1: toPrice(row.p1 ?? row.price ?? row.top ?? row.y1 ?? row.from_price),
     p2: toPrice(row.p2 ?? row.price2 ?? row.bottom ?? row.y2 ?? row.to_price),
     x1: toAnchor(row.x1 ?? row.from ?? row.start ?? row.x ?? row.time),
     x2: toAnchor(row.x2 ?? row.to ?? row.end),
   };
+  if (pineLiq) {
+    shape.lineStyle = 'dotted';
+    if (/^BSL/i.test(pineLiq)) shape.color = '#ef5350';
+    else if (/^SSL/i.test(pineLiq)) shape.color = '#26a69a';
+    else if (/^PDH|^PDL/i.test(pineLiq)) shape.color = '#ff9800';
+    else if (/^PWH|^PWL/i.test(pineLiq)) shape.color = '#f0b90b';
+    else if (/^PMH|^PML/i.test(pineLiq)) shape.color = '#2962ff';
+  }
 
   const colorRaw = String(row.color ?? row.col ?? '').trim();
   if (/^#[0-9a-fA-F]{6}$/.test(colorRaw)) shape.color = colorRaw.toLowerCase();

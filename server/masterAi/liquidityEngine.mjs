@@ -59,12 +59,52 @@ function toneFor(label) {
 
 /** Pine Script palette: red / green / orange / yellow / blue. */
 export function colorForLiqLabel(label) {
-  if (/^BSL/i.test(label)) return '#ef5350'; // color.red
-  if (/^SSL/i.test(label)) return '#26a69a'; // color.green
-  if (/^PDH|^PDL/i.test(label)) return '#ff9800'; // color.orange
-  if (/^PWH|^PWL/i.test(label)) return '#f0b90b'; // color.yellow
-  if (/^PMH|^PML/i.test(label)) return '#2962ff'; // color.blue
+  const short = normalizePineLiqLabel(label) || String(label || '');
+  if (/^BSL/i.test(short)) return '#ef5350'; // color.red
+  if (/^SSL/i.test(short)) return '#26a69a'; // color.green
+  if (/^PDH|^PDL/i.test(short)) return '#ff9800'; // color.orange
+  if (/^PWH|^PWL/i.test(short)) return '#f0b90b'; // color.yellow
+  if (/^PMH|^PML/i.test(short)) return '#2962ff'; // color.blue
   return '#787b86';
+}
+
+/**
+ * Force Pine shortcut labels only — never "Resistance Liquidity (BSL)" etc.
+ * Returns null to drop invented junk like "Internal Liquidity".
+ */
+export function normalizePineLiqLabel(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return null;
+  // Already exact Pine shortcuts
+  if (/^BSL \(High Vol\)$/i.test(t)) return 'BSL (High Vol)';
+  if (/^SSL \(High Vol\)$/i.test(t)) return 'SSL (High Vol)';
+  if (/^(PDH|PDL|PWH|PWL|PMH|PML)$/i.test(t)) return t.toUpperCase();
+
+  // HTF shortcuts (allow "Prev Day High" → PDH etc.)
+  if (/\bpmh\b|prev(?:ious)?\s*month(?:ly)?\s*high/i.test(t)) return 'PMH';
+  if (/\bpml\b|prev(?:ious)?\s*month(?:ly)?\s*low/i.test(t)) return 'PML';
+  if (/\bpwh\b|prev(?:ious)?\s*week(?:ly)?\s*high/i.test(t)) return 'PWH';
+  if (/\bpwl\b|prev(?:ious)?\s*week(?:ly)?\s*low/i.test(t)) return 'PWL';
+  if (/\bpdh\b|prev(?:ious)?\s*day\s*high|daily\s*high/i.test(t)) return 'PDH';
+  if (/\bpdl\b|prev(?:ious)?\s*day\s*low|daily\s*low/i.test(t)) return 'PDL';
+
+  // High-vol / buy-sell side → exact Pine strings
+  if (/\bbsl\b|buy[\s-]*side|resistance\s*liquidity|liquidity\s*\(?\s*bsl/i.test(t)) {
+    return 'BSL (High Vol)';
+  }
+  if (/\bssl\b|sell[\s-]*side|support\s*liquidity|liquidity\s*\(?\s*ssl/i.test(t)) {
+    return 'SSL (High Vol)';
+  }
+
+  // Invented filler — drop
+  if (/internal\s*liquidity|external\s*liquidity|liquidity\s*level/i.test(t)) return null;
+
+  return null;
+}
+
+export function looksLikeLiquidityLabel(raw) {
+  const t = String(raw || '');
+  return /liquidity|\bbsl\b|\bssl\b|\bpdh\b|\bpdl\b|\bpwh\b|\bpwl\b|\bpmh\b|\bpml\b/i.test(t);
 }
 
 function sideFor(label) {
