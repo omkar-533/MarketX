@@ -1144,7 +1144,7 @@ export interface MasterChatRequest {
   /** True when request comes from Mentor AI training desk (not Hunter analysis) */
   mentorDesk?: boolean;
   /** Client-resolved draw tool — server must not infer S/R from chart-hint text */
-  markTool?: 'trend' | 'sr' | 'ob' | 'auto';
+  markTool?: 'trend' | 'sr' | 'ob' | 'liq' | 'auto';
 }
 
 export async function fetchMasterAiStatus(): Promise<{

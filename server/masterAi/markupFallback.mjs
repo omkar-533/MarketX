@@ -296,6 +296,71 @@ export function synthesizeTrendWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 3) });
 }
 
+/** ICT/SMC liquidity hrays — same visual language as S/R, different labels/logic. */
+export function synthesizeLiqWolfchart(meta = {}) {
+  const symbol = resolveSymbol(meta);
+  const tf = resolveTf(meta);
+  const pools = Array.isArray(meta.liquidityPools) ? meta.liquidityPools : [];
+  const px =
+    Number(meta.lastClose) ||
+    Number(meta.quote?.price) ||
+    Number(meta.ltp) ||
+    0;
+
+  // Prefer engine pair when provided; else derive from pools.
+  let bsl = meta.liquidityPair?.bsl || null;
+  let ssl = meta.liquidityPair?.ssl || null;
+  if (!bsl || !ssl) {
+    const eps = px > 0 ? Math.max(px * 0.0002, 0.5) : 0;
+    const rank = (a, b) => {
+      const au = a.swept ? 0 : 1;
+      const bu = b.swept ? 0 : 1;
+      if (bu !== au) return bu - au;
+      return (b.score || 0) - (a.score || 0);
+    };
+    if (!bsl) {
+      bsl =
+        pools
+          .filter((p) => p.side === 'bsl' && (!px || p.price > px + eps))
+          .sort(rank)[0] || null;
+    }
+    if (!ssl) {
+      ssl =
+        pools
+          .filter((p) => p.side === 'ssl' && (!px || p.price < px - eps))
+          .sort(rank)[0] || null;
+    }
+  }
+
+  const shapes = [];
+  if (bsl) {
+    const p = roundPrice(bsl.price);
+    if (p != null) {
+      shapes.push({
+        type: 'hray',
+        p1: p,
+        x1: -Math.abs(Number(bsl.barsAgo) || 8),
+        label: bsl.label || 'BUY-SIDE LIQ',
+        tone: bsl.swept ? 'neutral' : 'bear',
+      });
+    }
+  }
+  if (ssl) {
+    const p = roundPrice(ssl.price);
+    if (p != null) {
+      shapes.push({
+        type: 'hray',
+        p1: p,
+        x1: -Math.abs(Number(ssl.barsAgo) || 16),
+        label: ssl.label || 'SELL-SIDE LIQ',
+        tone: ssl.swept ? 'neutral' : 'bull',
+      });
+    }
+  }
+  if (!shapes.length) return null;
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 4) });
+}
+
 /** Institutional OB zones from orderBlockEngine (passed via meta.orderBlocks). */
 export function synthesizeObWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
@@ -337,6 +402,7 @@ export function synthesizeWolfchart(meta = {}) {
   if (meta.style === 'sr') return synthesizeSrWolfchart(meta);
   if (meta.style === 'trend') return synthesizeTrendWolfchart(meta);
   if (meta.style === 'ob') return synthesizeObWolfchart(meta);
+  if (meta.style === 'liq') return synthesizeLiqWolfchart(meta);
   // Generic "mark karo" with no tool named → structural S/R is a safe default.
   return synthesizeSrWolfchart(meta) || synthesizeTrendWolfchart(meta);
 }
@@ -375,6 +441,17 @@ export function ensureWolfchartReply(reply, meta) {
       return cleaned;
     }
     console.info('[Wolf AI] enforced institutional Order Block zones');
+    return `${cleaned}${block}`;
+  }
+
+  if (meta?.style === 'liq') {
+    const block = synthesizeLiqWolfchart(meta);
+    const cleaned = stripWolfchart(text);
+    if (!block) {
+      console.warn('[Wolf AI] liquidity ask but no BSL/SSL pools found');
+      return cleaned;
+    }
+    console.info('[Wolf AI] enforced ICT/SMC liquidity hrays');
     return `${cleaned}${block}`;
   }
 

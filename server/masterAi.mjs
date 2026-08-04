@@ -9,6 +9,10 @@ import {
   buildOrderBlockContext,
   wantsOrderBlockMarkup,
 } from './masterAi/orderBlockEngine.mjs';
+import {
+  buildLiquidityContext,
+  wantsLiquidityMarkup,
+} from './masterAi/liquidityEngine.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
@@ -1607,6 +1611,13 @@ Draw type "zone" with p1/p2/x1 from the tape. Prefer highest score / active or m
 Invalid blocks: omit or tone neutral. Mention score + key confirmations in prose (2–4 lines).
 levels:[]. No Entry/Stop/Target/Buy/Sell.`;
 
+const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — ICT/SMC, S/R visual style):
+NOT Support/Resistance labels. Use horizontal RAYS (hray) like S/R look.
+- BUY-SIDE LIQ (BSL) = above swing highs / EQH — buy-stops resting overhead.
+- SELL-SIDE LIQ (SSL) = below swing lows / EQL — sell-stops resting underneath.
+Prefer EQH/EQL clusters and untouched pools from LIQUIDITY TAPE. Swept = tone neutral / note swept.
+Exactly the tape prices. levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
+
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
 
@@ -2036,20 +2047,27 @@ export function createMasterAiRouter(apiKey) {
         body?.markTool === 'trend' ||
         body?.markTool === 'sr' ||
         body?.markTool === 'ob' ||
+        body?.markTool === 'liq' ||
         body?.markTool === 'auto'
           ? body.markTool
           : null;
       const trendAsked = asksTrendLineTool(userAsk);
       const srAsked = asksSrLevels(userAsk);
       const obAsked = wantsOrderBlockMarkup(userAsk);
-      // Strict priority: trendline > order block > S/R.
+      const liqAsked = wantsLiquidityMarkup(userAsk);
+      // Strict priority: trendline > order block > liquidity > S/R.
       const wantsTrendMark = markTool === 'trend' || ((!markTool || markTool === 'auto') && trendAsked);
       const wantsObMark =
         !wantsTrendMark &&
         (markTool === 'ob' || ((!markTool || markTool === 'auto') && obAsked));
+      const wantsLiqMark =
+        !wantsTrendMark &&
+        !wantsObMark &&
+        (markTool === 'liq' || ((!markTool || markTool === 'auto') && liqAsked));
       const wantsSrMark =
         !wantsTrendMark &&
         !wantsObMark &&
+        !wantsLiqMark &&
         (markTool === 'sr' || ((!markTool || markTool === 'auto') && srAsked));
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
@@ -2060,6 +2078,7 @@ export function createMasterAiRouter(apiKey) {
         wantsSrMark ||
         wantsTrendMark ||
         wantsObMark ||
+        wantsLiqMark ||
         /\b(point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
           String(message || ''),
         );
@@ -2120,9 +2139,12 @@ export function createMasterAiRouter(apiKey) {
         trendline: null,
         trendChannel: null,
         orderBlocks: [],
+        liquidityPools: [],
+        liquidityPair: null,
       };
       let intelBlock = '';
       let obBlock = '';
+      let liqBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       if (!shortChat && !wantsJournalReview) {
         try {
@@ -2146,7 +2168,8 @@ export function createMasterAiRouter(apiKey) {
           explicitMark ||
           wantsSrMark ||
           wantsTrendMark ||
-          wantsObMark
+          wantsObMark ||
+          wantsLiqMark
         ) {
           try {
             const structure = await buildStructureContext(message || userTextBase, {
@@ -2156,7 +2179,8 @@ export function createMasterAiRouter(apiKey) {
                 wantsStructure ||
                 wantsSrMark ||
                 wantsTrendMark ||
-                wantsObMark,
+                wantsObMark ||
+                wantsLiqMark,
             });
             structureBlock = structure.block || '';
             structureMeta = {
@@ -2172,6 +2196,8 @@ export function createMasterAiRouter(apiKey) {
               trendline: structure.trendline || null,
               trendChannel: structure.trendChannel || null,
               orderBlocks: [],
+              liquidityPools: [],
+              liquidityPair: null,
             };
             if (structureBlock) {
               console.info(
@@ -2200,6 +2226,27 @@ export function createMasterAiRouter(apiKey) {
             }
           } catch (err) {
             console.warn('[Wolf AI] order block tape failed:', err?.message || err);
+          }
+        }
+        if (wantsLiqMark || (chartOnScreen && liqAsked)) {
+          try {
+            const liqCtx = await buildLiquidityContext(message || userTextBase, {
+              symbol: structureMeta.symbol || undefined,
+              interval: structureMeta.interval || undefined,
+              ltp: structureMeta.lastClose || primaryQuote?.price || 0,
+            });
+            liqBlock = liqCtx.block || '';
+            structureMeta.liquidityPools = liqCtx.pools || [];
+            structureMeta.liquidityPair = liqCtx.pair || null;
+            if (!structureMeta.symbol && liqCtx.symbol) structureMeta.symbol = liqCtx.symbol;
+            if (!structureMeta.interval && liqCtx.interval) structureMeta.interval = liqCtx.interval;
+            if (liqBlock) {
+              console.info(
+                `[Wolf AI] LIQ tape ${liqCtx.symbol} ${liqCtx.interval} n=${structureMeta.liquidityPools.length}`,
+              );
+            }
+          } catch (err) {
+            console.warn('[Wolf AI] liquidity tape failed:', err?.message || err);
           }
         }
         if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode || mentorDesk) {
@@ -2235,6 +2282,7 @@ export function createMasterAiRouter(apiKey) {
         liveBlock,
         structureBlock,
         obBlock,
+        liqBlock,
         intelBlock,
         ownerKnowledge,
       ]
@@ -2264,10 +2312,12 @@ export function createMasterAiRouter(apiKey) {
             ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsObMark
             ? 'Task: MARK INSTITUTIONAL ORDER BLOCKS NOW. Use ORDER BLOCK TAPE only (No BOS = No OB). 2–4 short lines with scores/confirmations + wolfchart zones. Never invent random opposite-candle blocks. levels:[]. No Entry/Stop/Target.'
+          : wantsLiqMark
+            ? 'Task: MARK ICT/SMC LIQUIDITY NOW. Use LIQUIDITY TAPE. wolfchart: hrays labeled BUY-SIDE LIQ (above) + SELL-SIDE LIQ (below) — same look as S/R but NOT Support/Resistance labels. Prefer EQH/EQL untouched. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
-            ? 'Task: MARK CHART NOW with the tool the user named. 2–4 short lines + wolfchart. If they said trendline → diagonal ray (not S/R). If order block → zones from ORDER BLOCK TAPE. If S/R → hrays. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
+            ? 'Task: MARK CHART NOW with the tool the user named. 2–4 short lines + wolfchart. If they said trendline → diagonal ray (not S/R). If order block → zones from ORDER BLOCK TAPE. If liquidity → BSL/SSL hrays from LIQUIDITY TAPE. If S/R → hrays. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2334,7 +2384,9 @@ export function createMasterAiRouter(apiKey) {
         (historyHasAnalysis || wantsLanguageSwitch) &&
         !explicitMark &&
         !wantsTrendMark &&
-        !wantsSrMark
+        !wantsSrMark &&
+        !wantsObMark &&
+        !wantsLiqMark
       ) {
         textBlock += `\n\n${CONTINUE_THREAD_HINT}`;
       } else if (contextHasLiveTape && (wantsDayReview || wantsChartRead || /\b(nifty|banknifty|sensex|btc|bitcoin|price|ltp|abhi|kaha|chal)\b/i.test(String(message || '')))) {
@@ -2349,6 +2401,9 @@ export function createMasterAiRouter(apiKey) {
       } else if (wantsObMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${OB_MARK_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (wantsLiqMark && !hasImage && !wantsJournalReview && !shortChat) {
+        textBlock += `\n\n${LIQ_MARK_HINT}`;
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       } else if (wantsSrMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${SR_MARK_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
@@ -2358,7 +2413,7 @@ export function createMasterAiRouter(apiKey) {
       }
       if (chartOnScreen) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
-        if (!explicitMark && !wantsSrMark && !wantsTrendMark && !wantsObMark) {
+        if (!explicitMark && !wantsSrMark && !wantsTrendMark && !wantsObMark && !wantsLiqMark) {
           textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
         }
       } else if (
@@ -2367,6 +2422,7 @@ export function createMasterAiRouter(apiKey) {
         !wantsSrMark &&
         !wantsTrendMark &&
         !wantsObMark &&
+        !wantsLiqMark &&
         !hasImage &&
         !wantsJournalReview &&
         !shortChat
@@ -2424,15 +2480,19 @@ export function createMasterAiRouter(apiKey) {
               trendline: structureMeta.trendline,
               trendChannel: structureMeta.trendChannel,
               orderBlocks: structureMeta.orderBlocks,
+              liquidityPools: structureMeta.liquidityPools,
+              liquidityPair: structureMeta.liquidityPair,
               style: wantsTrendMark
                 ? 'trend'
                 : wantsObMark
                   ? 'ob'
-                  : wantsSrMark
-                    ? 'sr'
-                    : explicitMark
-                      ? 'auto'
-                      : undefined,
+                  : wantsLiqMark
+                    ? 'liq'
+                    : wantsSrMark
+                      ? 'sr'
+                      : explicitMark
+                        ? 'auto'
+                        : undefined,
             }),
           };
         }

@@ -941,9 +941,16 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*zone|demand\s*zone)\b/i.test(
               userText,
             );
+          const wantsLiqNow =
+            !wantsTrendNow &&
+            !wantsObNow &&
+            /\b(liquidity|liquidty|liq\b|buy[\s-]*side|sell[\s-]*side|\bbsl\b|\bssl\b|eqh|eql|equal\s*highs?|equal\s*lows?)\b/i.test(
+              userText,
+            );
           const wantsSrNow =
             !wantsTrendNow &&
             !wantsObNow &&
+            !wantsLiqNow &&
             /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance)\b/i.test(
               userText,
             );
@@ -953,9 +960,11 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Forbidden: horizontal S-R level rays or hray labels.'
                   : wantsObNow
                     ? ' ORDER BLOCK ASK: draw institutional OB zones from engine tape only (BOS+displacement). Forbidden: random opposite-candle boxes.'
-                    : wantsMarkNow
-                      ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
-                      : ''
+                    : wantsLiqNow
+                      ? ' LIQUIDITY ASK: draw BSL/SSL horizontal rays (ICT/SMC EQH/EQL). Labels BUY-SIDE LIQ / SELL-SIDE LIQ — not SUPPORT/RESISTANCE.'
+                      : wantsMarkNow
+                        ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
+                        : ''
               }]`
             : '';
           const baseMessage = `${userText}${chartHint}`;
@@ -993,11 +1002,13 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                 ? 'trend'
                 : wantsObNow
                   ? 'ob'
-                  : wantsSrNow
-                    ? 'sr'
-                    : wantsMarkNow
-                      ? 'auto'
-                      : undefined,
+                  : wantsLiqNow
+                    ? 'liq'
+                    : wantsSrNow
+                      ? 'sr'
+                      : wantsMarkNow
+                        ? 'auto'
+                        : undefined,
             },
             hasImage
               ? {
