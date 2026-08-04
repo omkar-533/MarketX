@@ -16,6 +16,7 @@ const SYMBOL_ALIASES = [
   [/\bsensex\b/gi, 'SENSEX'],
   [/\bbitcoin\b|\bbtc\b/gi, 'BTC'],
   [/\bethereum\b|\beth\b/gi, 'ETH'],
+  [/\bxauusd\b|\bxau\b|\bgold\b|\bsona\b/gi, 'XAUUSD'],
   [/\breliance\b/gi, 'RELIANCE'],
   [/\btcs\b/gi, 'TCS'],
   [/\binf[oy]\b|\binfosys\b/gi, 'INFY'],

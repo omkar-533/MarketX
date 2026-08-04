@@ -353,13 +353,32 @@ export function useChartDrawings({
 
         if (shape.type === 'hline') {
           if (y1 === null) continue;
-          ctx.setLineDash([2, 3]);
+          const isSr = /^(support|resistance)$/i.test(shape.label || '');
+          // Desk S/R look: solid blue full-width line + uppercase tag at the swing.
+          const lineColor = isSr ? '#2962ff' : tone.line;
+          const tagColor = isSr ? '#ef5350' : tone.line;
+          ctx.strokeStyle = lineColor;
+          ctx.lineWidth = isSr ? 1.75 : 1.5;
+          ctx.setLineDash(isSr ? [] : [2, 3]);
           ctx.beginPath();
           ctx.moveTo(0, y1);
           ctx.lineTo(paneWidth, y1);
           ctx.stroke();
           ctx.setLineDash([]);
-          chip(shape.label, 8, y1 - 2, tone.line);
+          ctx.strokeStyle = tone.line;
+          ctx.lineWidth = 1.5;
+          const tagX =
+            shape.x1 === undefined ? 10 : (anchorX(shape.x1, -10) ?? 10);
+          const above = /resistance/i.test(shape.label || '');
+          const tagY = above ? y1 - 4 : y1 + 14;
+          if (isSr) {
+            ctx.font = '700 11px "Trebuchet MS", Roboto, sans-serif';
+            ctx.textBaseline = above ? 'bottom' : 'top';
+            ctx.fillStyle = tagColor;
+            ctx.fillText(String(shape.label || '').toUpperCase(), Math.max(8, tagX), tagY);
+          } else {
+            chip(shape.label, 8, y1 - 2, tone.line);
+          }
           continue;
         }
 

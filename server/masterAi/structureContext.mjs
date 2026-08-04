@@ -92,8 +92,10 @@ function pickSymbol(message, chartHint) {
     return raw.includes(':') ? raw.split(':').pop() : raw;
   }
   if (chartHint) return chartHint;
-  if (/\bbank\s*nifty|banknifty\b/i.test(message || '')) return 'BANKNIFTY';
-  if (/\bnifty\b/i.test(message || '')) return 'NIFTY';
+  const msg = String(message || '');
+  if (/\bxau\b|\bxauusd\b|\bgold\b|\bsona\b/i.test(msg)) return 'XAUUSD';
+  if (/\bbank\s*nifty|banknifty\b/i.test(msg)) return 'BANKNIFTY';
+  if (/\bnifty\b/i.test(msg)) return 'NIFTY';
   return 'NIFTY';
 }
 

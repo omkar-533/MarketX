@@ -1452,7 +1452,10 @@ ANNOTATIONS
   arrow — direction (x1,p1)→(x2,p2). Impulse / rejection direction (NOT a trade order).
 MATCH THE QUESTION:
   structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE (not Supply/Demand).
-  S/R / previous high-low / round number → levels and/or hline / hray.
+  SUPPORT / RESISTANCE (classic desk mark) → exactly TWO hlines from STRUCTURE TAPE:
+    recent swing HIGH → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
+    recent swing LOW  → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
+    Also mirror in levels with kind support/resistance. NO zones, NO Day High/Low labels for this ask.
   OB / supply / demand / FVG → zone.
   trendline / channel / pitchfork → trend (and ray if it should extend).
   fib / pullback / 0.618 0.705 0.786 → fib with real swing p1/p2.
@@ -1548,10 +1551,10 @@ const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY so
  */
 const MARKUP_REQUIRED_HINT = `MANDATORY LAST STEP — the drawing block. Your answer is incomplete without it.
 AUTO-DRAW is always on: even if the user never said "mark" / "draw", you still place what the QUESTION asked for on the chart.
-If the user said mark/marking/draw/khinch — DO NOT ask "kya mark karu?". Pick Day High / Day Low / LTP from LIVE MARKET DATA and STRUCTURE TAPE labels, and DRAW them now.
+If the user said mark/marking/draw/khinch — DO NOT ask "kya mark karu?". Draw now from STRUCTURE TAPE / LIVE MARKET DATA.
 PICK THE RIGHT TOOL — do not default to Supply/Demand zones:
 - structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE.
-- S/R, PDH/PDL, round numbers → levels and/or hline / hray (not fat zones unless they asked for a zone).
+- SUPPORT + RESISTANCE → TWO hlines only: swing high labeled exactly "RESISTANCE", swing low labeled exactly "SUPPORT" (x1 = barsAgo). No zones.
 - OB / supply / demand / FVG → zone (rectangle).
 - trendline / channel → trend; extending level → ray or hray.
 - fib / pullback / 0.618·0.705·0.786 → fib between real swings.
@@ -1562,7 +1565,14 @@ Finish with exactly this, nothing after:
 \`\`\`
 No block = empty chart. No real price → say so in prose instead.`;
 
-const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block using LIVE MARKET DATA (Day High/Low/LTP as hline/levels) and STRUCTURE TAPE (labels/vlines) when present. Never ask which zone. Never omit the fence.`;
+const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block. Prefer STRUCTURE TAPE swing high/low as RESISTANCE/SUPPORT hlines when they asked for S/R or a generic mark. Never ask which zone. Never omit the fence.`;
+
+const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory for this ask):
+Mark like a TradingView horizontal-line desk mark — NOT zones, NOT order blocks.
+1) From STRUCTURE TAPE take the latest swing HIGH → hline + label "RESISTANCE" (tone bear), x1 = -barsAgo of that swing.
+2) Latest swing LOW → hline + label "SUPPORT" (tone bull), x1 = -barsAgo.
+3) Mirror both in "levels" with kind resistance/support.
+4) Prose: 2–3 short lines naming those two prices. Then the wolfchart block. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
@@ -1957,12 +1967,17 @@ export function createMasterAiRouter(apiKey) {
         /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark\s*(kar|kr|kro|krdo|kardo)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
           String(message || ''),
         );
+      const wantsSrMark =
+        /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance|resistance\s*(aur|and|&)?\s*support)\b/i.test(
+          String(message || ''),
+        );
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
       const wantsMarkup =
         chartOnScreen ||
         hasImage ||
         explicitMark ||
+        wantsSrMark ||
         /\b(point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
           String(message || ''),
         );
@@ -2028,11 +2043,11 @@ export function createMasterAiRouter(apiKey) {
         } catch (err) {
           console.warn('[Wolf AI] live tape inject failed:', err?.message || err);
         }
-        // "marking kr do" has no HH/BOS keywords — still need pivots to draw.
-        if (wantsStructure || chartOnScreen || explicitMark) {
+        // "marking kr do" / S/R asks have no HH/BOS keywords — still need pivots.
+        if (wantsStructure || chartOnScreen || explicitMark || wantsSrMark) {
           try {
             const structure = await buildStructureContext(message || userTextBase, {
-              force: chartOnScreen || explicitMark || wantsStructure,
+              force: chartOnScreen || explicitMark || wantsStructure || wantsSrMark,
             });
             structureBlock = structure.block || '';
             structureMeta = {
@@ -2101,8 +2116,10 @@ export function createMasterAiRouter(apiKey) {
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
+          : wantsSrMark
+            ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart MUST have exactly two hlines from STRUCTURE TAPE: swing high label RESISTANCE, swing low label SUPPORT (with x1 barsAgo). No zones. No Entry/Stop/Target.'
           : explicitMark
-            ? 'Task: MARK CHART NOW. 2–4 short lines, then ALWAYS append complete wolfchart with Day High/Low/LTP (hline/levels) + STRUCTURE TAPE labels/vlines. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
+            ? 'Task: MARK CHART NOW. 2–4 short lines, then ALWAYS append wolfchart. Default desk mark = SUPPORT + RESISTANCE hlines from STRUCTURE TAPE swing high/low. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2173,14 +2190,24 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
-      if (explicitMark && !hasImage && !wantsJournalReview && !shortChat) {
+      if (wantsSrMark && !hasImage && !wantsJournalReview && !shortChat) {
+        textBlock += `\n\n${SR_MARK_HINT}`;
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (explicitMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${EXPLICIT_MARK_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       }
       if (chartOnScreen) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
-        if (!explicitMark) textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
-      } else if (wantsMarkup && !explicitMark && !hasImage && !wantsJournalReview && !shortChat) {
+        if (!explicitMark && !wantsSrMark) textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (
+        wantsMarkup &&
+        !explicitMark &&
+        !wantsSrMark &&
+        !hasImage &&
+        !wantsJournalReview &&
+        !shortChat
+      ) {
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       }
       if (wantsStructure && !hasImage && !wantsJournalReview && !shortChat) {
@@ -2226,6 +2253,7 @@ export function createMasterAiRouter(apiKey) {
               quote,
               swings: structureMeta.swings,
               events: structureMeta.events,
+              style: wantsSrMark || explicitMark ? (wantsSrMark ? 'sr' : 'auto') : undefined,
             }),
           };
         }
