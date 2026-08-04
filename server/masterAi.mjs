@@ -1692,6 +1692,22 @@ Step styles:
 
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
 
+const MENTOR_MASTER_HINT = `WOLF AI TRADING MASTER — MODULE 6 (Institutional Mentor / Personal Trading Brain):
+Mission: Be the student's long-term Jarvis — DNA, personality coaching, adaptive learning path, AI Twin habit comparison, strategy FRAMEWORKS, career roadmap, playbook.
+Hard rules:
+- NEVER invent live Entry / Stop / Target / Buy / Sell / lot size.
+- NEVER claim guaranteed profit or funded-account outcomes.
+- Behavior forecasts are probabilistic warnings, not certainty.
+- AI Twin compares decisions to the student's OWN best habits — never copy trades.
+- Prefer Modules 1–5 practice prescriptions (lesson → quiz → homework → lab → live mentor).
+
+Skeleton for full briefings:
+### DNA read
+### Personality coaching
+### Adaptive next steps
+### Twin reminder
+### Focus for this week`;
+
 const MENTOR_LIVE_HINT = `WOLF AI LIVE MENTOR — MODULE 5 (real-market silent mentor, not an execution bot):
 Mission: Improve the student's planning, analysis process, discipline, and review while they trade live. YOU DO NOT TAKE DECISIONS FOR THEM.
 Hard rules:
@@ -2237,6 +2253,8 @@ export function createMasterAiRouter(apiKey) {
         Boolean(body?.mentorLab) || /\[TRADING LAB/i.test(String(message || ''));
       const mentorLive =
         Boolean(body?.mentorLive) || /\[LIVE MENTOR/i.test(String(message || ''));
+      const mentorMaster =
+        Boolean(body?.mentorMaster) || /\[TRADING MASTER/i.test(String(message || ''));
       const trainingGrade = Boolean(body?.trainingGrade);
       const mentorLesson =
         body?.mentorLesson && typeof body.mentorLesson === 'object'
@@ -2483,7 +2501,7 @@ export function createMasterAiRouter(apiKey) {
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
-      if (mentorDesk || mentorChart || mentorCoach || mentorLab || mentorLive) {
+      if (mentorDesk || mentorChart || mentorCoach || mentorLab || mentorLive || mentorMaster) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
         if (mentorChart) {
@@ -2499,6 +2517,9 @@ export function createMasterAiRouter(apiKey) {
         }
         if (mentorLive) {
           textBlock += `\n\n${MENTOR_LIVE_HINT}`;
+        }
+        if (mentorMaster) {
+          textBlock += `\n\n${MENTOR_MASTER_HINT}`;
         }
         if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
         if (trainingGrade) {
@@ -2529,12 +2550,13 @@ export function createMasterAiRouter(apiKey) {
             '\n\nAUTO-QUIZ TASK: Ask ONE short process question about LIVE or HISTORICAL structure from MARKET INTEL. Do not reveal the ideal answer yet. No trade orders.';
         }
         // Mentor coaching should usually draw the lesson when teaching/grading.
-        // Coach / Lab / Live Mentor are process-only — never force wolfchart markup.
+        // Coach / Lab / Live / Master are process-only — never force wolfchart markup.
         if (
           !mentorChart &&
           !mentorCoach &&
           !mentorLab &&
           !mentorLive &&
+          !mentorMaster &&
           !trainingGrade &&
           !/\[MENTOR AUTO-QUIZ\]|\[MENTOR HISTORY/i.test(String(message || '')) &&
           /\b(teach|mistake|draw|mark|structure|explain|sikh|galat|seekh)\b/i.test(
