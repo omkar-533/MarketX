@@ -142,7 +142,7 @@ export default function AccessProofUpload({
       ) : null}
 
       <p className="access-proof__field-hint">
-        TradingView ID is not needed here — only demat + first F&amp;O trade screenshot.
+        Only demat details and your first F&amp;O trade screenshot are required.
       </p>
 
       <div className="access-proof__grid">
@@ -188,7 +188,7 @@ export default function AccessProofUpload({
           id="access-demat"
           type="text"
           className="access-proof__note"
-          placeholder="Broker demat / client ID (not TradingView)"
+          placeholder="Broker demat / client ID"
           value={dematNumber}
           maxLength={40}
           autoComplete="off"

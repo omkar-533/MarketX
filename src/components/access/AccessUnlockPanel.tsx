@@ -116,7 +116,7 @@ export default function AccessUnlockPanel({
           <p className="access-unlock__proof-title">
             {pending
               ? 'Verification under review'
-              : 'Submit demat + F&O screenshot (TradingView ID not required)'}
+              : 'Submit demat + F&O screenshot'}
           </p>
           <AccessProofUpload
             request={request}
