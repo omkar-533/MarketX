@@ -430,6 +430,21 @@ function hasManualPnl(input: TradeFormState): boolean {
   return parseManualPnl(input.realizedPnl) !== null;
 }
 
+/** Entry + Exit + Qty → P&L can be derived; user need not type it by hand. */
+function canAutoComputePnl(input: TradeFormState): boolean {
+  const entry = parseNumber(input.entryPrice);
+  const exit = parseNumber(input.exitPrice);
+  const qty = parseNumber(input.quantity);
+  return (
+    entry !== null &&
+    entry > 0 &&
+    exit !== null &&
+    exit >= 0 &&
+    qty !== null &&
+    qty > 0
+  );
+}
+
 function getMissingTradeFields(input: TradeFormState): string[] {
   const missing: string[] = [];
   if (!sanitizeString(input.instrument)) missing.push('Instrument');
@@ -437,7 +452,9 @@ function getMissingTradeFields(input: TradeFormState): string[] {
     missing.push('Option strike');
   }
   if (!sanitizeString(input.date)) missing.push('Date');
-  if (parseManualPnl(input.realizedPnl) === null) missing.push('Profit / Loss');
+  if (parseManualPnl(input.realizedPnl) === null && !canAutoComputePnl(input)) {
+    missing.push('Profit / Loss (or Entry + Exit + Qty)');
+  }
   return missing;
 }
 
@@ -477,7 +494,7 @@ function isTradeComplete(input: TradeFormState) {
     sanitizeString(input.instrument).length > 0 &&
     (input.type !== 'Options' || sanitizeString(input.optStrike).length > 0) &&
     sanitizeString(input.date).length > 0 &&
-    hasManualPnl(input)
+    (hasManualPnl(input) || canAutoComputePnl(input))
   );
 }
 
@@ -865,6 +882,8 @@ export default function TradingJournal({
 
   const [selectedSymbolMeta, setSelectedSymbolMeta] = useState<JournalSymbolSelection | null>(null);
   const [selectedGlobalMeta, setSelectedGlobalMeta] = useState<GlobalInstrumentSelection | null>(null);
+  /** Once the user edits P&L by hand, stop overwriting it from Entry/Exit/Qty. */
+  const [pnlManualOverride, setPnlManualOverride] = useState(false);
 
   useEffect(() => {
     if (form.market !== 'equity') {
@@ -902,20 +921,42 @@ export default function TradingJournal({
 
   const preview = useMemo(() => {
     const normalized = normalizeFormForSave(form);
+    const entryPrice = parseNumber(normalized.entryPrice) ?? 0;
+    const exitPrice = parseNumber(normalized.exitPrice) ?? 0;
+    const stopLoss = parseNumber(normalized.stopLoss) ?? entryPrice;
+    const target = parseNumber(normalized.target) ?? entryPrice;
+    const quantity = parseNumber(normalized.quantity) ?? 0;
     const manual = parseManualPnl(normalized.realizedPnl);
 
+    if (entryPrice > 0 && exitPrice >= 0 && quantity > 0) {
+      const metrics = calculateJournalTradeMetrics(
+        buildCalcInput(normalized, entryPrice, exitPrice, stopLoss, target, quantity),
+      );
+      // Prefer typed P&L when the user overrode; still show auto RR / lots.
+      if (manual !== null && pnlManualOverride) {
+        const invested = entryPrice * metrics.positionSize;
+        return {
+          ...metrics,
+          pnl: manual,
+          netPnl: manual,
+          roi: invested > 0 ? Number(((manual / invested) * 100).toFixed(2)) : 0,
+          isManual: true,
+          isAuto: false,
+        };
+      }
+      return { ...metrics, isManual: false, isAuto: true };
+    }
+
     if (manual !== null) {
-      const entryPrice = parseNumber(normalized.entryPrice) ?? 0;
-      const quantity = parseNumber(normalized.quantity) ?? 1;
-      const invested = entryPrice * quantity;
+      const invested = entryPrice * (quantity || 1);
       return {
         pnl: manual,
         netPnl: manual,
         rr: 0,
         brokerage: 0,
         roi: invested > 0 ? Number(((manual / invested) * 100).toFixed(2)) : 0,
-        positionSize: quantity,
-        lots: quantity,
+        positionSize: quantity || 1,
+        lots: quantity || 1,
         lotSize: getInstrumentLotSize(
           normalized.instrument,
           normalized.market,
@@ -923,11 +964,41 @@ export default function TradingJournal({
         ),
         notional: invested,
         isManual: true,
+        isAuto: false,
       };
     }
 
     return null;
-  }, [form]);
+  }, [form, pnlManualOverride]);
+
+  // Keep the P&L box in sync with Entry / Exit / Qty unless the user typed over it.
+  useEffect(() => {
+    if (pnlManualOverride || !canAutoComputePnl(form)) return;
+    const entryPrice = parseNumber(form.entryPrice)!;
+    const exitPrice = parseNumber(form.exitPrice)!;
+    const quantity = parseNumber(form.quantity)!;
+    const stopLoss = parseNumber(form.stopLoss) ?? entryPrice;
+    const target = parseNumber(form.target) ?? entryPrice;
+    const normalized = normalizeFormForSave(form);
+    const metrics = calculateJournalTradeMetrics(
+      buildCalcInput(normalized, entryPrice, exitPrice, stopLoss, target, quantity),
+    );
+    const next = String(metrics.pnl);
+    if (form.realizedPnl === next) return;
+    setForm((prev) => ({ ...prev, realizedPnl: next }));
+  }, [
+    form.entryPrice,
+    form.exitPrice,
+    form.quantity,
+    form.side,
+    form.quantityIsLots,
+    form.type,
+    form.instrument,
+    form.market,
+    form.stopLoss,
+    form.target,
+    pnlManualOverride,
+  ]);
 
   const formAssist = useMemo(
     () =>
@@ -1011,6 +1082,16 @@ export default function TradingJournal({
       market: 'equity',
       pnlCurrency: 'INR',
       instrument: sel.symbol,
+      // Live LTP as entry when the box is still empty (user can edit).
+      entryPrice:
+        !sanitizeString(prev.entryPrice) && sel.price > 0
+          ? String(Number(sel.price.toFixed(2)))
+          : prev.entryPrice,
+      quantity:
+        !sanitizeString(prev.quantity) &&
+        (useLots || (sel.isFno && (prev.type === 'Futures' || prev.type === 'Options')))
+          ? '1'
+          : prev.quantity,
       quantityIsLots: useLots || (sel.isFno && (prev.type === 'Futures' || prev.type === 'Options')),
     }));
   };
@@ -1036,6 +1117,7 @@ export default function TradingJournal({
     setEditingId(null);
     setUploadPreview('');
     setSelectedGlobalMeta(null);
+    setPnlManualOverride(false);
     void import('../services/equitySymbolService').then((mod) => {
       setSelectedSymbolMeta(mod.getJournalSymbolSelection('NIFTY'));
     });
@@ -1176,6 +1258,7 @@ export default function TradingJournal({
     });
     setEditingId(trade.id);
     setUploadPreview(trade.screenshot || '');
+    setPnlManualOverride(true);
     if (mkt === 'crypto' || mkt === 'forex') {
       setSelectedGlobalMeta(createManualGlobalInstrument(mkt, trade.instrument));
       setSelectedSymbolMeta(null);
@@ -1577,7 +1660,7 @@ export default function TradingJournal({
                 <p className="tj-chart__eyebrow">Desk entry</p>
                 <h2 className="tj-trade-form__title">{editingId ? 'Edit Trade' : 'Log Trade'}</h2>
                 <p className="tj-trade-form__sub">
-                  Required: symbol · date · P&amp;L. AI rail guides completeness as you type.
+                  Required: symbol · date · (P&amp;L auto from Entry + Exit + Qty, or type it).
                 </p>
               </div>
               <NotebookPen className="w-5 h-5 text-[#d4af37] shrink-0" />
@@ -1769,21 +1852,51 @@ export default function TradingJournal({
                   </div>
                 )}
               </div>
-              <input type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={`rounded-xl border px-3 py-2 ${inputClass}`} />
               <input
-                value={form.entryPrice}
-                onChange={(e) => setForm({ ...form, entryPrice: sanitizeDecimalInput(e.target.value) })}
-                onKeyDown={(e) => {
-                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
-                }}
+                type="datetime-local"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
                 className={`rounded-xl border px-3 py-2 ${inputClass}`}
-                placeholder={form.type === 'Options' ? 'Entry premium' : 'Entry Price'}
-                inputMode="decimal"
-                autoComplete="off"
               />
+              <div className="space-y-1">
+                <div className="flex gap-2">
+                  <input
+                    value={form.entryPrice}
+                    onChange={(e) =>
+                      setForm({ ...form, entryPrice: sanitizeDecimalInput(e.target.value) })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                    }}
+                    className={`min-w-0 flex-1 rounded-xl border px-3 py-2 ${inputClass}`}
+                    placeholder={form.type === 'Options' ? 'Entry premium' : 'Entry Price'}
+                    inputMode="decimal"
+                    autoComplete="off"
+                  />
+                  {form.market === 'equity' && selectedSymbolMeta && selectedSymbolMeta.price > 0 && (
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-xl border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-2.5 text-[10px] font-bold text-[#d4af37] hover:border-[#d4af37]/40"
+                      title="Fill entry from live LTP"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          entryPrice: String(Number(selectedSymbolMeta.price.toFixed(2))),
+                        }));
+                        setPnlManualOverride(false);
+                      }}
+                    >
+                      LTP
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <input
                 value={form.exitPrice}
-                onChange={(e) => setForm({ ...form, exitPrice: sanitizeDecimalInput(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, exitPrice: sanitizeDecimalInput(e.target.value) })
+                }
                 onKeyDown={(e) => {
                   if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
                 }}
@@ -1792,63 +1905,26 @@ export default function TradingJournal({
                 inputMode="decimal"
                 autoComplete="off"
               />
-              <div className="md:col-span-2 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/5 p-3 space-y-1">
-                <label className="text-xs font-bold text-[#d4af37]">{pnlFieldLabel(form.pnlCurrency)}</label>
-                <input
-                  value={form.realizedPnl}
-                  onChange={(e) => setForm({ ...form, realizedPnl: sanitizeSignedDecimalInput(e.target.value) })}
-                  onKeyDown={(e) => {
-                    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
-                  }}
-                  className={`w-full rounded-xl border px-2.5 py-2 tj-field tj-field--pnl ${inputClass}`}
-                  placeholder={
-                    form.market === 'equity' ? '2500  or  -1200' : '150  or  -80'
-                  }
-                  inputMode="decimal"
-                  autoComplete="off"
-                />
-                <p className="text-[10px] text-slate-500">Numbers only. Positive = profit, negative (-) = loss.</p>
-              </div>
-              <input
-                value={form.stopLoss}
-                onChange={(e) => setForm({ ...form, stopLoss: sanitizeDecimalInput(e.target.value) })}
-                onKeyDown={(e) => {
-                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
-                }}
-                className={`rounded-xl border px-3 py-2 ${inputClass}`}
-                placeholder="Stop Loss (optional)"
-                inputMode="decimal"
-                autoComplete="off"
-              />
-              <input
-                value={form.target}
-                onChange={(e) => setForm({ ...form, target: sanitizeDecimalInput(e.target.value) })}
-                onKeyDown={(e) => {
-                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
-                }}
-                className={`rounded-xl border px-3 py-2 ${inputClass}`}
-                placeholder="Target (optional)"
-                inputMode="decimal"
-                autoComplete="off"
-              />
               <div className="space-y-1">
                 <input
                   value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: sanitizeDecimalInput(e.target.value) })}
+                  onChange={(e) =>
+                    setForm({ ...form, quantity: sanitizeDecimalInput(e.target.value) })
+                  }
                   onKeyDown={(e) => {
                     if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
                   }}
                   className={`w-full rounded-xl border px-3 py-2 ${inputClass}`}
                   placeholder={
                     form.market === 'crypto'
-                      ? 'Quantity (coins / units) — optional'
+                      ? 'Quantity (coins / units)'
                       : form.market === 'forex'
                         ? form.quantityIsLots
-                          ? `Lots · 1 standard lot = ${activeLotSize.toLocaleString()} units`
-                          : 'Units (optional) — or enable standard lots below'
+                          ? `Lots · 1 lot = ${activeLotSize.toLocaleString()} units`
+                          : 'Units'
                         : form.quantityIsLots
-                          ? `Lots (manual) · 1 lot = ${activeLotSize} shares`
-                          : 'Quantity / Qty (shares) — optional'
+                          ? `Lots · 1 lot = ${activeLotSize} qty`
+                          : 'Quantity / Qty (shares)'
                   }
                   inputMode="decimal"
                   autoComplete="off"
@@ -1877,17 +1953,100 @@ export default function TradingJournal({
                       }
                       className="rounded"
                     />
-                    F&amp;O lots mode (P&amp;L = price diff × lot size × lots)
+                    F&amp;O lots (P&amp;L = price diff × lot size × lots)
                   </label>
                 )}
               </div>
+
+              <div className="md:col-span-2 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/5 p-3 space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-[#d4af37]">
+                    {pnlFieldLabel(form.pnlCurrency)}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {preview?.isAuto && !pnlManualOverride && (
+                      <span className="text-[10px] text-emerald-400/90">Auto from prices</span>
+                    )}
+                    {pnlManualOverride && (
+                      <button
+                        type="button"
+                        className="text-[10px] font-bold text-[#d4af37] underline-offset-2 hover:underline"
+                        onClick={() => setPnlManualOverride(false)}
+                      >
+                        Recalc auto
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input
+                  value={form.realizedPnl}
+                  onChange={(e) => {
+                    setPnlManualOverride(true);
+                    setForm({
+                      ...form,
+                      realizedPnl: sanitizeSignedDecimalInput(e.target.value),
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                  }}
+                  className={`w-full rounded-xl border px-2.5 py-2 tj-field tj-field--pnl ${inputClass}`}
+                  placeholder={
+                    canAutoComputePnl(form)
+                      ? 'Auto-filled — edit to override'
+                      : form.market === 'equity'
+                        ? '2500  or  -1200  (or fill Entry+Exit+Qty)'
+                        : '150  or  -80  (or fill Entry+Exit+Qty)'
+                  }
+                  inputMode="decimal"
+                  autoComplete="off"
+                />
+                <p className="text-[10px] text-slate-500">
+                  {preview && preview.rr > 0
+                    ? `R:R ≈ ${preview.rr} · ${
+                        form.quantityIsLots
+                          ? `lot size ${preview.lotSize} · ${preview.lots} lot(s)`
+                          : `${preview.positionSize} units`
+                      }`
+                    : 'Entry + Exit + Qty → P&L auto. Positive = profit, negative = loss.'}
+                </p>
+              </div>
+              <input
+                value={form.stopLoss}
+                onChange={(e) =>
+                  setForm({ ...form, stopLoss: sanitizeDecimalInput(e.target.value) })
+                }
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Stop Loss (optional)"
+                inputMode="decimal"
+                autoComplete="off"
+              />
+              <input
+                value={form.target}
+                onChange={(e) =>
+                  setForm({ ...form, target: sanitizeDecimalInput(e.target.value) })
+                }
+                onKeyDown={(e) => {
+                  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                }}
+                className={`rounded-xl border px-3 py-2 ${inputClass}`}
+                placeholder="Target (optional)"
+                inputMode="decimal"
+                autoComplete="off"
+              />
               <LuxSelect
                 value={form.side}
                 options={[
                   { value: 'Buy', label: 'Buy' },
                   { value: 'Sell', label: 'Sell' },
                 ]}
-                onChange={(v) => setForm({ ...form, side: v as TradeSide })}
+                onChange={(v) => {
+                  setPnlManualOverride(false);
+                  setForm({ ...form, side: v as TradeSide });
+                }}
               />
               <LuxSelect
                 value={form.type}
@@ -1910,6 +2069,11 @@ export default function TradingJournal({
                     journalUnderlyingSymbol(form.instrument) ||
                     selectedSymbolMeta?.symbol ||
                     form.instrument;
+                  const fnoLots =
+                    form.market === 'equity' &&
+                    (type === 'Futures' || type === 'Options') &&
+                    Boolean(selectedSymbolMeta?.isFno);
+                  setPnlManualOverride(false);
                   setForm({
                     ...form,
                     type,
@@ -1917,14 +2081,13 @@ export default function TradingJournal({
                     optStrike: type === 'Options' ? form.optStrike : '',
                     optRight: type === 'Options' ? form.optRight : 'CE',
                     optExpiry: type === 'Options' ? form.optExpiry : '',
-                    quantityIsLots:
-                      form.market === 'equity' &&
-                      (type === 'Futures' || type === 'Options') &&
-                      Boolean(selectedSymbolMeta?.isFno)
-                        ? true
-                        : form.market === 'forex'
-                          ? form.quantityIsLots
-                          : form.quantityIsLots && Boolean(selectedSymbolMeta?.isFno),
+                    quantity:
+                      fnoLots && !sanitizeString(form.quantity) ? '1' : form.quantity,
+                    quantityIsLots: fnoLots
+                      ? true
+                      : form.market === 'forex'
+                        ? form.quantityIsLots
+                        : form.quantityIsLots && Boolean(selectedSymbolMeta?.isFno),
                   });
                 }}
               />
@@ -1979,12 +2142,17 @@ export default function TradingJournal({
                         {preview.pnl >= 0 ? 'Profit' : 'Loss'}
                       </span>
                     </p>
-                    {preview.notional > 0 && (
+                    {preview.rr > 0 && (
+                      <p className="text-xs text-slate-500">Planned R:R ≈ {preview.rr}</p>
+                    )}
+                    {'notional' in preview && preview.notional > 0 && (
                       <p className="text-xs text-slate-500">ROI (if entry×qty): {preview.roi.toFixed(2)}%</p>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-slate-400">Enter symbol, date, and profit/loss.</p>
+                  <p className="mt-2 text-sm text-slate-400">
+                    Fill Entry + Exit + Qty for auto P&amp;L, or type P&amp;L manually.
+                  </p>
                 )}
               </div>
               <div className="tj-trade-preview">
