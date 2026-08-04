@@ -1147,6 +1147,8 @@ export interface MasterChatRequest {
   mentorChart?: boolean;
   /** Module 3 Performance Coach (journal / habits) */
   mentorCoach?: boolean;
+  /** Module 4 Trading Lab simulator reviews */
+  mentorLab?: boolean;
   /** Module 1 curriculum lesson step (AI Teacher) */
   mentorLesson?: {
     levelId: number;
@@ -1280,6 +1282,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         mentorDesk: Boolean(req.mentorDesk),
         mentorChart: Boolean(req.mentorChart),
         mentorCoach: Boolean(req.mentorCoach),
+        mentorLab: Boolean(req.mentorLab),
         mentorLesson: req.mentorLesson || undefined,
         markTool: req.markTool,
       }),

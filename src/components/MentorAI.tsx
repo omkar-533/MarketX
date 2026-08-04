@@ -6,6 +6,7 @@ import {
   Brain,
   Check,
   ChevronDown,
+  FlaskConical,
   GraduationCap,
   HelpCircle,
   History,
@@ -25,6 +26,7 @@ import MentorRoadmap from './mentor/MentorRoadmap';
 import LessonPlayer from './mentor/LessonPlayer';
 import ChartMentorPanel from './mentor/ChartMentorPanel';
 import PerformanceCoachPanel from './mentor/PerformanceCoachPanel';
+import TradingLabPanel from './mentor/TradingLabPanel';
 import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
@@ -102,7 +104,9 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'coach' | 'desk'>('curriculum');
+  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'coach' | 'lab' | 'desk'>(
+    'curriculum',
+  );
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -394,11 +398,13 @@ export default function MentorAI() {
         ? `Module 2 Chart Mentor · ${tradingViewSymbolLabel(symbol)} · ${tfLabel}`
         : deskView === 'coach'
           ? `Module 3 Performance Coach · ${student.name} · journal habits & psychology`
-          : aiOk
-            ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
-                langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
-              }`
-            : 'Add AI key in Profile to grade process checks';
+          : deskView === 'lab'
+            ? `Module 4 Trading Lab · ${student.name} · historical replay simulator`
+            : aiOk
+              ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
+                  langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+                }`
+              : 'Add AI key in Profile to grade process checks';
 
   const onOnboarded = (profile: MentorStudentProfile) => {
     saveStudentProfile(profile, ownerKey);
@@ -428,7 +434,9 @@ export default function MentorAI() {
                     ? 'Chart Mentor · Module 2'
                     : deskView === 'coach'
                       ? 'Performance Coach · Module 3'
-                      : 'Professional Mentor'}
+                      : deskView === 'lab'
+                        ? 'Trading Lab · Module 4'
+                        : 'Professional Mentor'}
               </span>
             </div>
             <p className="wm-desk__sub">{sessionLine}</p>
@@ -469,6 +477,17 @@ export default function MentorAI() {
             >
               <Activity className="h-3 w-3" />
               Coach
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'lab' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => {
+                setDeskView('lab');
+                setActiveLevelId(null);
+              }}
+            >
+              <FlaskConical className="h-3 w-3" />
+              Lab
             </button>
             <button
               type="button"
@@ -741,6 +760,20 @@ export default function MentorAI() {
             <PerformanceCoachPanel
               ownerKey={ownerKey}
               user={user}
+              profile={student}
+              lang={selectedLang}
+              langMode={langMode}
+              mentorMode={mentorMode}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      {student && deskView === 'lab' ? (
+        <div className="wm-desk__body wm-desk__body--lab">
+          <aside className="wm-desk__side wm-desk__side--lesson wm-desk__side--lab">
+            <TradingLabPanel
+              ownerKey={ownerKey}
               profile={student}
               lang={selectedLang}
               langMode={langMode}

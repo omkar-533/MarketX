@@ -8259,6 +8259,320 @@ input[type="number"] { -moz-appearance: textfield; }
   overflow: auto;
 }
 
+/* —— Module 4 Trading Lab —— */
+.wm-desk__body--lab {
+  grid-template-columns: 1fr;
+}
+
+.wm-desk__side--lab {
+  max-width: 56rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.wm-lab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.7rem;
+  background: var(--tf-elevated);
+}
+
+.wm-lab__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wm-lab__cert {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #d4af37;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.wm-lab__cert span {
+  display: block;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__cert b {
+  color: var(--tf-text);
+  font-size: 0.85rem;
+}
+
+.wm-lab__setup {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+@media (max-width: 860px) {
+  .wm-lab__setup {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.wm-lab__setup label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  color: var(--tf-muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wm-lab__setup select,
+.wm-lab__ticket input,
+.wm-lab__ticket textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--tf-border);
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 92%, #000);
+  color: var(--tf-text);
+  font-size: 0.78rem;
+}
+
+.wm-lab__load {
+  width: auto;
+  margin-top: 0;
+  min-width: 9rem;
+}
+
+.wm-lab__mode-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__stage {
+  height: min(42vh, 340px);
+  min-height: 220px;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 94%, #000);
+}
+
+.wm-lab__chart-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.wm-lab__chart-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 0.8rem;
+  color: var(--tf-muted, #94a3b8);
+  padding: 1rem;
+  text-align: center;
+}
+
+.wm-lab__tape,
+.wm-lab__controls,
+.wm-lab__order-btns,
+.wm-lab__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.wm-lab__tape {
+  font-size: 0.68rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__overlay {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+  font-size: 0.75rem;
+}
+
+.wm-lab__overlay--warn {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.wm-lab__overlay strong {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: #d4af37;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wm-lab__overlay p {
+  margin: 0;
+  color: var(--tf-text);
+  line-height: 1.4;
+}
+
+.wm-lab__ticket {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+}
+
+.wm-lab__ticket-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+@media (max-width: 720px) {
+  .wm-lab__ticket-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.wm-lab__ticket label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__rr b {
+  font-size: 0.95rem;
+  color: #d4af37;
+  padding-top: 0.25rem;
+}
+
+.wm-lab__notes textarea {
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.wm-lab__buy,
+.wm-lab__sell {
+  min-width: 5.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.4rem;
+  border: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #0b1220;
+}
+
+.wm-lab__buy {
+  background: #26a69a;
+}
+
+.wm-lab__sell {
+  background: #ef5350;
+  color: #fff;
+}
+
+.wm-lab__buy:disabled,
+.wm-lab__sell:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wm-lab__pos {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--tf-text);
+}
+
+.wm-lab__scores,
+.wm-lab__summary {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+}
+
+.wm-lab__scores h3,
+.wm-lab__summary h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.wm-lab__score-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__score-row b {
+  color: var(--tf-text);
+}
+
+.wm-lab__score-row i {
+  grid-column: 1 / -1;
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d4af37, #34d399);
+  max-width: 100%;
+}
+
+.wm-lab__overall {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--tf-text);
+}
+
+.wm-lab__overall b {
+  color: #d4af37;
+  font-size: 1.05rem;
+}
+
+.wm-lab__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wm-lab__kpis div {
+  text-align: center;
+  padding: 0.35rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--tf-border);
+}
+
+.wm-lab__kpis b {
+  display: block;
+  color: #d4af37;
+  font-size: 0.95rem;
+}
+
+.wm-lab__kpis span {
+  font-size: 0.6rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-lab__mission-detail {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--tf-muted, #94a3b8);
+  line-height: 1.4;
+}
+
 .mai-detective {
   margin: 0 0 0.75rem;
   padding: 0.75rem 0.85rem;
