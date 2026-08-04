@@ -1568,12 +1568,10 @@ No block = empty chart. No real price → say so in prose instead.`;
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block. Prefer STRUCTURE TAPE swing high/low as RESISTANCE/SUPPORT hlines when they asked for S/R or a generic mark. Never ask which zone. Never omit the fence.`;
 
 const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory — match TradingView horizontal RAY look):
-NOT zones. NOT full-width lines across the whole chart.
-- RESISTANCE = nearest high ABOVE LTP. SUPPORT = nearest low BELOW LTP.
-- Use type "hray" (horizontal ray) from the swing bar to the right:
-  {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
-  {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
-- Leave "levels" empty for this ask (rays are drawn on canvas). Labels must be exactly SUPPORT / RESISTANCE.
+NOT zones. NOT full-width lines. NOT nearest mid pivots.
+- RESISTANCE = structural peak ABOVE LTP (highest clear swing/window high overhead).
+- SUPPORT = structural trough BELOW LTP (lowest held low of the move — if price dumped to 24400 then bounced, support is that low, not a broken 24580 mid level).
+- Use type "hray" from the swing bar to the right, labels exactly SUPPORT / RESISTANCE, levels:[].
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
