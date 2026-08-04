@@ -7642,6 +7642,45 @@ input[type="number"] { -moz-appearance: textfield; }
   min-height: 0;
 }
 
+/* TradingView's widget cannot be drawn on, so its markings are listed here. */
+.mai-tv__marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.55rem;
+  border-top: 1px solid var(--tf-border);
+  background: var(--tf-surface-2, transparent);
+}
+
+.mai-tv__marks-title {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-text-muted);
+}
+
+.mai-tv__mark {
+  padding: 0.14rem 0.4rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--tf-text);
+  white-space: nowrap;
+}
+
+.mai-tv__mark--bull {
+  border-color: rgba(22, 163, 74, 0.45);
+  color: #16a34a;
+}
+
+.mai-tv__mark--bear {
+  border-color: rgba(220, 38, 38, 0.45);
+  color: #dc2626;
+}
+
 .mai-tv__frame--tools {
   display: flex;
   align-items: stretch;

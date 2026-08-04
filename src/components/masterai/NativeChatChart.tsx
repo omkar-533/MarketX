@@ -172,14 +172,22 @@ export default function NativeChatChart({
   const studies = useMemo(() => parseStudies(study), [study]);
   const studyKey = studies.join(',');
 
+  /** A slow reply for the previous instrument must never repaint the new one. */
+  const requestRef = useRef(0);
+
   const load = useCallback(
     async (background: boolean) => {
       if (!apiInterval) {
         setStatus('error');
         return;
       }
-      if (!background) setStatus('loading');
+      const token = ++requestRef.current;
+      if (!background) {
+        setBars([]);
+        setStatus('loading');
+      }
       const res = await fetchMarketOhlc(apiSymbol, apiInterval);
+      if (token !== requestRef.current) return;
       const next = res?.bars ?? [];
       if (!next.length) {
         // A background refresh coming back empty should not wipe a good chart.

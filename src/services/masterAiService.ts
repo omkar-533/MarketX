@@ -453,6 +453,40 @@ export function getMasterAiSorryMessage(langCode: string, kind: 'chat' | 'chart'
   return 'The response could not be completed just now. Please try again shortly.';
 }
 
+/**
+ * "Try again shortly" is the wrong advice when the screenshot was too big or no
+ * API key is set — those need the user to do something specific.
+ */
+export function describeMasterAiFailure(
+  err: unknown,
+  langCode: string,
+  kind: 'chat' | 'chart' | 'image' = 'chat',
+): string {
+  const status = (err as { status?: number } | null)?.status;
+  const hindi = isHindiLang(langCode) || isHinglishLang(langCode);
+  if (status === 413) {
+    return hindi
+      ? 'Screenshot bahut bada hai. Chart ko crop karke ya JPG me save karke bhejiye.'
+      : 'That screenshot is too large. Crop the chart or save it as JPG and send it again.';
+  }
+  if (status === 503) {
+    return hindi
+      ? 'AI key abhi set nahi hai. Profile me API key add karke try kijiye.'
+      : 'No AI key is configured yet. Add an API key in Profile and try again.';
+  }
+  if (status === 429) {
+    return hindi
+      ? 'AI ka limit abhi full hai. Ek-do minute baad try kijiye.'
+      : 'The AI quota is exhausted right now. Please try again in a minute.';
+  }
+  if (err instanceof Error && /abort|timeout/i.test(`${err.name} ${err.message}`)) {
+    return hindi
+      ? 'Jawab aane me bahut time lag gaya. Ek baar phir try kijiye.'
+      : 'That took too long to answer. Please try again.';
+  }
+  return getMasterAiSorryMessage(langCode, kind);
+}
+
 /** Prefer web/news models only when the question needs “latest” info */
 export function shouldUseWebSearch(input: string): boolean {
   const n = input.toLowerCase();
@@ -489,8 +523,10 @@ Live market data comes from the connected live feed in Profile.
 `;
 
 const NON_TRADING_TERMS = [
-  'weather', 'movie', 'song', 'recipe', 'joke', 'romance', 'dating',
-  'doctor', 'medicine', 'homework', 'gaming', 'fortnite', 'cricket score only',
+  'weather', 'movie', 'film', 'song', 'lyrics', 'recipe', 'cooking', 'joke', 'shayari',
+  'poem', 'romance', 'dating', 'girlfriend', 'boyfriend', 'love letter',
+  'doctor', 'medicine', 'symptom', 'homework', 'assignment', 'essay',
+  'gaming', 'fortnite', 'football', 'cricket match', 'cricket score',
 ];
 
 const TRADING_KEYWORDS = [
@@ -870,19 +906,20 @@ export function getNeedChartOnlyReply(langCode: string): string {
   return 'Please share a Nifty TradingView chart screenshot. I will read structure and levels from that image.';
 }
 
+/**
+ * A trading desk gets asked in a thousand phrasings — "expiry pe kya hota hai",
+ * "chandi ka scene", "revenge trading se kaise bachu" — and a keyword whitelist
+ * turns every one it has not seen into a refusal, which reads like a broken app.
+ * Only clearly off-topic questions are turned away; the desk answers the rest.
+ */
 export function isTradingRelated(input: string): boolean {
   const n = input.toLowerCase().trim();
   if (!n) return false;
   if (isCasualGreeting(n)) return true;
   if (n.length < 2) return false;
-  if (NON_TRADING_TERMS.some((t) => n.includes(t))) return false;
   if (TRADING_KEYWORDS.some((t) => n.includes(t))) return true;
-  if (isConversationFollowUp(n)) return true;
-  // Short polite chat on the desk (thanks / ok / cool)
-  if (isPoliteAck(n)) {
-    return true;
-  }
-  return false;
+  if (NON_TRADING_TERMS.some((t) => n.includes(t))) return false;
+  return true;
 }
 
 /** Follow-ups that continue an existing desk thread (language switch, SL, more detail, etc.) */
@@ -1226,7 +1263,12 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err?.error === 'string' ? err.error : 'AI unavailable');
+    // The status travels with the error so the chat can explain a missing key or
+    // an oversized screenshot instead of a blanket "try again".
+    throw Object.assign(
+      new Error(typeof err?.error === 'string' ? err.error : 'AI unavailable'),
+      { status: res.status },
+    );
   }
 
   const data = await res.json();

@@ -1407,8 +1407,9 @@ CHART MARKUP (machine-read — the user never sees this block, they see the draw
 The app opens a live chart beside your answer and draws exactly what this block says. This is how you "mark the chart".
 Whenever you discuss a specific instrument — and ALWAYS when the user asks you to mark, draw, show or point out anything — append ONE block at the very END of the reply, after all prose:
 \`\`\`wolfchart
-{"symbol":"NIFTY","tf":"15m","levels":[{"price":24800,"kind":"resistance","label":"Supply"},{"price":24500,"kind":"support","label":"Demand"}],"shapes":[{"type":"zone","p1":24810,"p2":24760,"tone":"bear","label":"Supply OB","x1":-40},{"type":"trend","p1":24350,"p2":24780,"x1":-60,"x2":-2,"tone":"bull","label":"Rising trendline"},{"type":"vline","x1":-12,"label":"BOS"},{"type":"label","p1":24600,"x1":-8,"label":"FVG"}]}
+{"symbol":"EXAMPLE","tf":"15m","levels":[{"price":1050,"kind":"resistance","label":"Supply"},{"price":1010,"kind":"support","label":"Demand"}],"shapes":[{"type":"zone","p1":1052,"p2":1046,"tone":"bear","label":"Supply OB","x1":-40},{"type":"trend","p1":1005,"p2":1048,"x1":-60,"x2":-2,"tone":"bull","label":"Rising trendline"},{"type":"vline","x1":-12,"label":"BOS"},{"type":"label","p1":1030,"x1":-8,"label":"FVG"}]}
 \`\`\`
+FORMAT ONLY — the symbol and every number above are placeholders. Copying them marks the wrong prices on a real chart. Read the actual price from LIVE MARKET DATA (LTP, day high/low) or from the screenshot's own axis, and keep your levels within that day's range unless you say why.
 "symbol": plain ticker as written on exchanges — NIFTY, BANKNIFTY, SENSEX, RELIANCE, BTCUSDT, EURUSD, XAUUSD. No expiry, no strike, no option leg; for an option chart send the underlying.
 "tf": one of 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit either key when unsure — a wrong symbol opens the wrong chart.
 "levels" (max 8): single horizontal lines. "kind" is support | resistance | pivot.
@@ -1444,6 +1445,8 @@ const NO_CHART_HINT = `No chart and no LIVE MARKET DATA tape. Do not invent leve
 const LIVE_TAPE_HINT = `LIVE TAPE MODE: LIVE MARKET DATA is in context. Answer the user's market question NOW using LTP / change / day range. Do NOT ask for a chart screenshot. Optional one line: chart help for structure if they want deeper levels. No Entry/Stop/Target/Buy/Sell.`;
 
 const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY source of truth. Analyze ONLY PLATFORM TRADING JOURNAL context. Score completeness/quality/compliance when evidence exists. Separate Good Decision from Good Result; Bad Result from Bad Process. Flag outliers/risk drift/integrity issues without modifying records. Never invent trades/stats/emotions/rules. Never ask to rewrite stored trades. Never ask for a chart unless also requested. Empty/missing → Insufficient journal evidence. Compact output: Journal Quality · Trade Quality · Compliance · Behavior · Risk · Execution · Pattern · Similarity · Insight · Focus · Confidence.`;
+
+const CHART_OPEN_HINT = `CHART ALREADY OPEN: a live chart of this instrument sits beside the chat. NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. Take each price from LIVE MARKET DATA in context — anchor them around the current LTP and the day's high/low. Never reuse the numbers from the prompt example. If the tape is missing, say you cannot mark real levels instead of guessing.`;
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
 
@@ -1555,12 +1558,23 @@ function isShortChat(message) {
   );
 }
 
+/**
+ * The chart markup block is written after the prose, so a budget sized for the
+ * prose alone gets the JSON cut in half and the chart stays blank.
+ */
+export function replyTokenBudget({ hasImage, shortChat, wantsMarkup }) {
+  if (shortChat) return 120;
+  if (hasImage) return 1400;
+  if (wantsMarkup) return 900;
+  return 420;
+}
+
 /** Prefer quality config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
-function geminiGenerationConfigs(hasImage, shortChat) {
+function geminiGenerationConfigs(hasImage, shortChat, maxOutputTokens) {
   const base = {
     temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
     topP: hasImage ? 0.8 : 0.9,
-    maxOutputTokens: hasImage ? 750 : shortChat ? 120 : 320,
+    maxOutputTokens,
   };
   return [
     { ...base, thinkingConfig: { thinkingBudget: 0 } },
@@ -1621,6 +1635,7 @@ async function chatWithGemini(gemini, {
   hasImage,
   models,
   shortChat = false,
+  maxTokens = 420,
 }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
   const system = hasImage
@@ -1645,7 +1660,7 @@ async function chatWithGemini(gemini, {
     userParts.push({ inlineData: { mimeType: parsed.mimeType, data: parsed.data } });
   }
 
-  const configs = geminiGenerationConfigs(hasImage, shortChat);
+  const configs = geminiGenerationConfigs(hasImage, shortChat, maxTokens);
   let lastError = null;
 
   for (const modelId of models) {
@@ -1754,10 +1769,27 @@ export function createMasterAiRouter(apiKey) {
             String(message || ''),
           ));
 
+      // "Stop loss kya hota hai" is a lesson, not an order — only treat it as a
+      // trade call when nothing in the sentence asks for an explanation.
+      const asksExplanation =
+        /\b(kya\s+(hai|hota|hoti)|what\s+is|what\s+are|explain|samjha|samjhao|batao\s+kaise|kaise\s+(kaam|lagate|lagaye|set)|how\s+(do|does|to)|meaning|definition|difference)\b/i.test(
+          String(message || ''),
+        );
+
       const wantsTradeCall =
         !hasImage &&
         !wantsJournalReview &&
+        !asksExplanation &&
         /\b(buy\s*kar|sell\s*kar|kharid|bech|entry|sl\b|stoploss|stop\s*loss|target|trade\s*le|position\s*le|long\s*kar|short\s*kar)\b/i.test(
+          String(message || ''),
+        );
+
+      // The client tags the message when a live chart is already sitting next to
+      // the chat; that chart is what "mark it" refers to.
+      const chartOnScreen = /CHART OPEN BESIDE THIS CHAT/i.test(String(message || ''));
+      const wantsMarkup =
+        chartOnScreen ||
+        /\b(mark|marking|draw|annotate|highlight|khinch|point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level)\b/i.test(
           String(message || ''),
         );
 
@@ -1838,6 +1870,8 @@ export function createMasterAiRouter(apiKey) {
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
+          : chartOnScreen && wantsMarkup
+            ? 'Task: MARK THE OPEN CHART. Answer in 3–6 short lines, then append the wolfchart block containing EVERY structure you named — zones for order blocks/supply/demand/FVG, trend for trendlines, fib, vline for BOS/CHoCH, label for notes — with real prices from the live tape. The chart is already open beside the chat: NEVER ask for a screenshot. Areas of Interest only, no Entry/Stop/Target.'
           : historyHasAnalysis || wantsLanguageSwitch
             ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same Areas of Interest. Under ~100 words. Do NOT ask for a chart again. No Entry/Stop/Target.'
             : wantsTradeCall
@@ -1870,10 +1904,13 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
+      if (chartOnScreen) textBlock += `\n\n${CHART_OPEN_HINT}`;
 
       const models = hasImage
         ? pickVisionModels(model, provider)
         : pickTextModels(model, needsWeb, lang, provider);
+
+      const maxTokens = replyTokenBudget({ hasImage, shortChat, wantsMarkup });
 
       if (provider === 'gemini' && gemini) {
         return chatWithGemini(gemini, {
@@ -1884,6 +1921,7 @@ export function createMasterAiRouter(apiKey) {
           hasImage,
           models,
           shortChat,
+          maxTokens,
         });
       }
 
@@ -1900,12 +1938,17 @@ export function createMasterAiRouter(apiKey) {
         try {
           const completion = await client.chat.completions.create({
             model: modelId,
-            max_tokens: hasImage ? 750 : shortChat ? 120 : 320,
+            max_tokens: maxTokens,
             temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
             top_p: 0.9,
             messages,
           });
-          const reply = completion.choices[0]?.message?.content?.trim();
+          const raw = completion.choices[0]?.message?.content;
+          // Some OpenRouter models answer with content parts instead of a string.
+          const reply = (Array.isArray(raw)
+            ? raw.map((part) => (typeof part === 'string' ? part : part?.text ?? '')).join('')
+            : String(raw ?? '')
+          ).trim();
           if (reply) {
             return { reply, modelUsed: modelId, source: provider };
           }

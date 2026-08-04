@@ -87,10 +87,12 @@ export function useChartDrawings({
   const magnetRef = useRef(magnet);
   const dragRef = useRef<Drag>(null);
   const doneRef = useRef(onShapeDone);
+  const aiRevisionRef = useRef(0);
 
   drawingsRef.current = drawings;
   selectedRef.current = selectedId;
   barsRef.current = bars;
+  if (aiRef.current !== aiShapes) aiRevisionRef.current += 1;
   aiRef.current = aiShapes;
   toolRef.current = tool;
   magnetRef.current = magnet;
@@ -426,6 +428,7 @@ export function useChartDrawings({
         return;
       }
       const probe = barsRef.current[0];
+      const lastBar = barsRef.current[barsRef.current.length - 1];
       const next = [
         host.clientWidth,
         host.clientHeight,
@@ -434,7 +437,11 @@ export function useChartDrawings({
         probe ? series.priceToCoordinate(probe.close) : 0,
         probe ? series.priceToCoordinate(probe.close * 1.01) : 0,
         drawingsRef.current.length,
-        aiRef.current.length,
+        // A fresh set of AI shapes can be the same length as the old one, and
+        // bar-offset anchors move as soon as a new candle arrives.
+        aiRevisionRef.current,
+        barsRef.current.length,
+        lastBar ? lastBar.time : 0,
         selectedRef.current,
       ].join('|');
       if (next !== signature) {

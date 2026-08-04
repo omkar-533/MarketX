@@ -37,6 +37,7 @@ import {
   getMasterAiLanguage,
   getMasterAiWelcome,
   getMasterAiSorryMessage,
+  describeMasterAiFailure,
   getTradingBlockMessage,
   isHindiLang,
   isHinglishLang,
@@ -467,8 +468,14 @@ export default function MasterAI() {
       const { dataUrl, fileName } = await prepareChartImageForAi(file);
       setSelectedImage(dataUrl);
       setSelectedImageName(fileName);
-    } catch {
-      setImageError(getMasterAiSorryMessage(selectedLang.code, 'image'));
+    } catch (err) {
+      // "Unsupported format" / "max 14 MB" tell the user what to change; the
+      // generic line only tells them something broke.
+      setImageError(
+        err instanceof Error && err.message
+          ? err.message
+          : getMasterAiSorryMessage(selectedLang.code, 'image'),
+      );
       clearSelectedImage();
     }
   };
@@ -737,7 +744,11 @@ export default function MasterAI() {
             : explicitLang && lastAi
               ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext
-                ? `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
+                ? // "Keep it brief" alone makes the model skip the markup block, so a
+                  // follow-up about an open chart keeps asking for the drawing.
+                  `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.${
+                    chartTarget ? ' Still append the wolfchart block for everything you name.' : ''
+                  }]`
                 : journalContext
                   ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
                   : baseMessage;
@@ -777,7 +788,8 @@ export default function MasterAI() {
             getMasterAiSorryMessage(activeLang.code, hasImage ? 'chart' : 'chat');
         } catch (err) {
           console.warn('[Wolf AI] chat failed:', err);
-          responseText = getMasterAiSorryMessage(
+          responseText = describeMasterAiFailure(
+            err,
             activeLang.code,
             hasImage ? 'chart' : 'chat',
           );

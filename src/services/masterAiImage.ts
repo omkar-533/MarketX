@@ -17,6 +17,9 @@ const ALLOWED_EXT = new Set([
 
 export const MASTER_AI_MAX_IMAGE_BYTES = 14 * 1024 * 1024;
 
+/** Matches the server's encoded-image ceiling in `server/masterAi.mjs`. */
+const MASTER_AI_MAX_ENCODED_CHARS = 6_400_000;
+
 export function isSupportedChartImage(file: File): boolean {
   if (file.type.startsWith('image/')) return true;
   const ext = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
@@ -75,6 +78,14 @@ export async function prepareChartImageForAi(
   let dataUrl = await readFileAsDataUrl(file);
   if (file.size > 900_000) {
     dataUrl = await compressDataUrl(dataUrl);
+  }
+  // The API refuses anything past ~6.5 MB encoded, so squeeze once more rather
+  // than letting the upload fail after the user has already waited for it.
+  if (dataUrl.length > MASTER_AI_MAX_ENCODED_CHARS) {
+    dataUrl = await compressDataUrl(dataUrl, 1600, 0.72);
+  }
+  if (dataUrl.length > MASTER_AI_MAX_ENCODED_CHARS) {
+    throw new Error('Image too heavy to send. Crop the chart or save it as JPG and try again.');
   }
 
   return { dataUrl, fileName: file.name };

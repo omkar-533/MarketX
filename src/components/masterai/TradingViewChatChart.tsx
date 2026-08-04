@@ -22,20 +22,32 @@ function loadTradingViewScript(): Promise<void> {
   if (scriptPromise) return scriptPromise;
 
   scriptPromise = new Promise<void>((resolve, reject) => {
+    // A blocked or dead script never fires either event, and the panel would sit
+    // on "Loading TradingView…" for good.
+    const timer = window.setTimeout(() => {
+      scriptPromise = null;
+      reject(new Error('tv.js timed out'));
+    }, 15_000);
+    const settle = (fn: () => void) => {
+      window.clearTimeout(timer);
+      fn();
+    };
+
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${TV_SCRIPT_SRC}"]`);
     if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('tv.js failed')));
+      existing.addEventListener('load', () => settle(resolve));
+      existing.addEventListener('error', () => settle(() => reject(new Error('tv.js failed'))));
       return;
     }
     const script = document.createElement('script');
     script.src = TV_SCRIPT_SRC;
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      scriptPromise = null;
-      reject(new Error('tv.js failed'));
-    };
+    script.onload = () => settle(resolve);
+    script.onerror = () =>
+      settle(() => {
+        scriptPromise = null;
+        reject(new Error('tv.js failed'));
+      });
     document.head.appendChild(script);
   });
 
@@ -114,6 +126,9 @@ export default function TradingViewChatChart({
 
     return () => {
       cancelled = true;
+      // The widget keeps timers alive inside its iframe; dropping the mount node
+      // lets it go when the chart card is closed.
+      if (hostRef.current) hostRef.current.innerHTML = '';
     };
   }, [symbol, interval, chartStyle, studies, isDark, reloadKey]);
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Expand, Maximize2, Minimize2, RefreshCw, Shrink, X } from 'lucide-react';
-import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
+import type { ChartLevel, ChartShape, ChartShapeTone } from '../../utils/chartAnnotations';
 import {
   NATIVE_STUDY_PRESETS,
   NATIVE_TIMEFRAMES,
@@ -117,6 +117,36 @@ export default function ChatChartPanel({
       document.removeEventListener('keydown', onKey);
     };
   }, [indicatorsOpen]);
+
+  /**
+   * The TradingView widget cannot be drawn on from outside, so its markings are
+   * listed instead of being lost — the native chart draws them properly.
+   */
+  const marks = useMemo(() => {
+    if (native) return [];
+    const price = (value?: number) =>
+      typeof value === 'number' ? value.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '';
+    const out: { key: string; tone: ChartShapeTone; text: string }[] = [];
+    (levels ?? []).forEach((level, i) => {
+      out.push({
+        key: `level-${i}`,
+        tone: level.kind === 'support' ? 'bull' : level.kind === 'resistance' ? 'bear' : 'neutral',
+        text: `${level.label || level.kind} · ${price(level.price)}`,
+      });
+    });
+    (shapes ?? []).forEach((shape, i) => {
+      const span =
+        typeof shape.p1 === 'number' && typeof shape.p2 === 'number'
+          ? `${price(shape.p2)}–${price(shape.p1)}`
+          : price(shape.p1);
+      out.push({
+        key: `shape-${i}`,
+        tone: shape.tone,
+        text: [shape.label || shape.type, span].filter(Boolean).join(' · '),
+      });
+    });
+    return out.slice(0, 12);
+  }, [native, levels, shapes]);
 
   const submitSymbol = () => {
     const next = parseTradingViewInput(symbolInput);
@@ -275,13 +305,25 @@ export default function ChatChartPanel({
           shapes={shapes}
         />
       ) : (
-        <TradingViewChatChart
-          symbol={symbol}
-          interval={activeInterval}
-          study={activeStudy}
-          chartStyle={chartStyle}
-          reloadKey={reloadKey}
-        />
+        <>
+          <TradingViewChatChart
+            symbol={symbol}
+            interval={activeInterval}
+            study={activeStudy}
+            chartStyle={chartStyle}
+            reloadKey={reloadKey}
+          />
+          {marks.length ? (
+            <div className="mai-tv__marks">
+              <span className="mai-tv__marks-title">Wolf AI marks</span>
+              {marks.map((mark) => (
+                <span key={mark.key} className={`mai-tv__mark mai-tv__mark--${mark.tone}`}>
+                  {mark.text}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );
