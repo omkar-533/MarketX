@@ -1567,13 +1567,26 @@ No block = empty chart. No real price → say so in prose instead.`;
 
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block matching the TOOL they named (trendline→trend/ray, S/R→hray SUPPORT/RESISTANCE, OB→zone, fib→fib). Do NOT default to SUPPORT/RESISTANCE when they asked for a trendline. Never ask which zone. Never omit the fence.`;
 
-const TREND_MARK_HINT = `TRENDLINE / CHANNEL MARK (mandatory — match TradingView diagonal channel):
-DIAGONAL rays on BOTH sides. NEVER horizontal SUPPORT or RESISTANCE lines. NEVER hline/hray labeled SUPPORT/RESISTANCE.
-1) LOWER trendline = swing LOWS connected, slope with the trend, ray to the right (like gold TV example).
-2) UPPER trendline = swing HIGHS connected, same side of the channel, ray to the right.
-3) Copy TREND CHANNEL DRAW JSON from STRUCTURE TAPE into wolfchart shapes (both rays). levels:[].
-4) Labels must be "Lower trendline" / "Upper trendline" — not SUPPORT/RESISTANCE.
-Prose 2–3 lines then wolfchart.`;
+const TREND_MARK_HINT = `TREND LINE MARK (mandatory — TradingView Trend Line tool curriculum):
+A trend line is a STRAIGHT DIAGONAL connecting important swing highs OR swing lows. NEVER horizontal SUPPORT/RESISTANCE.
+
+UPTREND (bullish) — market making Higher Lows:
+- Connect at least 2 (better 3) Higher Lows with a ray drawn from BELOW price.
+- Label: "Uptrend line". Tone: bull.
+- More wick touches / respects = stronger.
+
+DOWNTREND (bearish) — market making Lower Highs:
+- Connect at least 2 (better 3) Lower Highs with a ray drawn from ABOVE price.
+- Label: "Downtrend line". Tone: bear.
+
+RULES:
+1) Minimum 2 swing points.
+2) 3rd touch confirms the line.
+3) Touch candle WICKS consistently (do not mix random body/wick logic).
+4) NEVER force a line — only natural points from STRUCTURE TAPE / TREND LINE DRAW.
+5) Optional second ray (Channel high/low) only if naturals exist on the other side — not a fake parallel.
+
+Copy TREND LINE DRAW PRIMARY JSON into wolfchart. levels:[]. Prose 2–3 lines then wolfchart.`;
 
 const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory — match TradingView horizontal RAY look):
 NOT zones. NOT full-width lines. NOT nearest mid pivots.
@@ -2158,7 +2171,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : wantsTrendMark
-            ? 'Task: MARK TREND CHANNEL NOW (both sides). 2–3 short lines. wolfchart: TWO diagonal rays — Lower trendline on swing lows + Upper trendline on swing highs from TREND CHANNEL DRAW. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark

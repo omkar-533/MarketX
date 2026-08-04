@@ -203,24 +203,32 @@ export async function buildStructureContext(message, opts = {}) {
     const trendline = buildTrendlineFromBars(recent);
     let trendLineHint =
       'TRENDLINE: no clean spaced swing pair in window — say so; do not invent horizontals or substitute S/R.';
-    if (trendChannel && (trendChannel.lower || trendChannel.upper)) {
+    if (trendChannel?.primary || trendChannel?.lower || trendChannel?.upper) {
       const parts = [
-        `TREND CHANNEL DRAW (trendline ask — BOTH sides, diagonal rays like TradingView — NEVER horizontal SUPPORT/RESISTANCE): bias=${trendChannel.bias}.`,
+        'TREND LINE DRAW (TradingView Trend Line tool — DIAGONAL only, NEVER horizontal SUPPORT/RESISTANCE):',
+        'Rules: ≥2 swing points; 3rd wick touch confirms; use wicks consistently; never force.',
+        `Bias=${trendChannel.bias}.`,
       ];
-      if (trendChannel.lower) {
-        const L = trendChannel.lower;
+      const P = trendChannel.primary || (trendChannel.rising ? trendChannel.lower : trendChannel.upper);
+      if (P) {
         parts.push(
-          `LOWER (swing lows): {"type":"ray","p1":${L.p1},"p2":${L.p2},"x1":${L.x1},"x2":${L.x2},"label":"Lower trendline","tone":"bull"}`,
+          `PRIMARY: {"type":"ray","p1":${P.p1},"p2":${P.p2},"x1":${P.x1},"x2":${P.x2},"label":"${P.label || (trendChannel.rising ? 'Uptrend line' : 'Downtrend line')}","tone":"${P.tone || (trendChannel.rising ? 'bull' : 'bear')}"}`,
         );
       }
-      if (trendChannel.upper) {
+      if (trendChannel.rising && trendChannel.upper) {
         const U = trendChannel.upper;
         parts.push(
-          `UPPER (swing highs): {"type":"ray","p1":${U.p1},"p2":${U.p2},"x1":${U.x1},"x2":${U.x2},"label":"Upper trendline","tone":"bear"}`,
+          `OPTIONAL channel high: {"type":"ray","p1":${U.p1},"p2":${U.p2},"x1":${U.x1},"x2":${U.x2},"label":"Channel high","tone":"bear"}`,
+        );
+      }
+      if (!trendChannel.rising && trendChannel.lower) {
+        const L = trendChannel.lower;
+        parts.push(
+          `OPTIONAL channel low: {"type":"ray","p1":${L.p1},"p2":${L.p2},"x1":${L.x1},"x2":${L.x2},"label":"Channel low","tone":"bull"}`,
         );
       }
       parts.push(
-        'Copy BOTH rays into wolfchart shapes. levels:[]. Do NOT emit SUPPORT/RESISTANCE hline/hray.',
+        'Uptrend = connect Higher Lows from BELOW. Downtrend = connect Lower Highs from ABOVE. Copy PRIMARY ray (and optional channel if present). levels:[].',
       );
       trendLineHint = parts.join(' ');
     }

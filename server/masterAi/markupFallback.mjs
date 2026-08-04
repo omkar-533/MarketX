@@ -182,7 +182,8 @@ function rayShape(line, fallbackLabel, tone) {
 }
 
 /**
- * Both-side diagonal channel (lower + upper rays). Never SUPPORT/RESISTANCE.
+ * Classic trendline(s): primary Uptrend/Downtrend ray first;
+ * optional natural channel ray on the other side. Never SUPPORT/RESISTANCE.
  */
 export function synthesizeTrendWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
@@ -191,18 +192,42 @@ export function synthesizeTrendWolfchart(meta = {}) {
 
   const ch = meta.trendChannel;
   if (ch) {
-    const lower = rayShape(ch.lower, 'Lower trendline', 'bull');
-    const upper = rayShape(ch.upper, 'Upper trendline', 'bear');
-    if (lower) shapes.push(lower);
-    if (upper) shapes.push(upper);
+    // Primary first (the real TV Trend Line tool mark).
+    const primary = rayShape(
+      ch.primary || (ch.rising ? ch.lower : ch.upper),
+      ch.rising ? 'Uptrend line' : 'Downtrend line',
+      ch.rising ? 'bull' : 'bear',
+    );
+    if (primary) shapes.push(primary);
+
+    // Optional second side only when engine found a natural channel leg.
+    if (ch.rising && ch.upper && ch.primary !== ch.upper) {
+      const sec = rayShape(ch.upper, 'Channel high', 'bear');
+      if (sec) shapes.push(sec);
+    } else if (!ch.rising && ch.lower && ch.primary !== ch.lower) {
+      const sec = rayShape(ch.lower, 'Channel low', 'bull');
+      if (sec) shapes.push(sec);
+    }
+
+    // If primary missing but sides exist, still draw what we have.
+    if (!shapes.length) {
+      const lower = rayShape(ch.lower, 'Uptrend line', 'bull');
+      const upper = rayShape(ch.upper, 'Downtrend line', 'bear');
+      if (lower) shapes.push(lower);
+      if (upper) shapes.push(upper);
+    }
   }
 
   if (!shapes.length && meta.trendline) {
-    const one = rayShape(meta.trendline, 'Rising trendline', meta.trendline.tone);
+    const one = rayShape(
+      meta.trendline,
+      meta.trendline.tone === 'bear' ? 'Downtrend line' : 'Uptrend line',
+      meta.trendline.tone,
+    );
     if (one) shapes.push(one);
   }
 
-  // Swing-list fallback — still diagonal rays on both sides when possible.
+  // Strict swing fallback: HL → uptrend, LH → downtrend (no forced opposite slope).
   if (!shapes.length) {
     const swings = Array.isArray(meta.swings) ? meta.swings : [];
     const lows = swings
@@ -214,55 +239,61 @@ export function synthesizeTrendWolfchart(meta = {}) {
       .map((s) => ({ price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
       .sort((a, b) => b.barsAgo - a.barsAgo);
 
-    const pair = (pts, rising) => {
+    const risingPair = (pts) => {
       for (let i = 0; i < pts.length; i += 1) {
         for (let j = i + 1; j < pts.length; j += 1) {
           const a = pts[i];
           const b = pts[j];
-          if (a.barsAgo - b.barsAgo < 4) continue;
-          if (rising && b.price > a.price) return { a, b };
-          if (!rising && b.price < a.price) return { a, b };
+          if (a.barsAgo - b.barsAgo >= 5 && b.price > a.price) return { a, b };
         }
       }
-      if (pts.length >= 2) {
-        const a = pts[0];
-        const b = pts[pts.length - 1];
-        if (a.barsAgo !== b.barsAgo) return { a, b };
+      return null;
+    };
+    const fallingPair = (pts) => {
+      for (let i = 0; i < pts.length; i += 1) {
+        for (let j = i + 1; j < pts.length; j += 1) {
+          const a = pts[i];
+          const b = pts[j];
+          if (a.barsAgo - b.barsAgo >= 5 && b.price < a.price) return { a, b };
+        }
       }
       return null;
     };
 
-    const rising =
-      swings.filter((s) => s.label === 'HH' || s.label === 'HL').length >=
+    const hl =
+      swings.filter((s) => s.label === 'HL' || s.label === 'HH').length >=
       swings.filter((s) => s.label === 'LH' || s.label === 'LL').length;
-    const lowPair = pair(lows, rising) || pair(lows, !rising);
-    const highPair = pair(highs, rising) || pair(highs, !rising);
-    if (lowPair) {
-      shapes.push({
-        type: 'ray',
-        p1: roundPrice(lowPair.a.price),
-        p2: roundPrice(lowPair.b.price),
-        x1: -lowPair.a.barsAgo,
-        x2: -lowPair.b.barsAgo,
-        label: 'Lower trendline',
-        tone: 'bull',
-      });
-    }
-    if (highPair) {
-      shapes.push({
-        type: 'ray',
-        p1: roundPrice(highPair.a.price),
-        p2: roundPrice(highPair.b.price),
-        x1: -highPair.a.barsAgo,
-        x2: -highPair.b.barsAgo,
-        label: 'Upper trendline',
-        tone: 'bear',
-      });
+    if (hl) {
+      const p = risingPair(lows);
+      if (p) {
+        shapes.push({
+          type: 'ray',
+          p1: roundPrice(p.a.price),
+          p2: roundPrice(p.b.price),
+          x1: -p.a.barsAgo,
+          x2: -p.b.barsAgo,
+          label: 'Uptrend line',
+          tone: 'bull',
+        });
+      }
+    } else {
+      const p = fallingPair(highs);
+      if (p) {
+        shapes.push({
+          type: 'ray',
+          p1: roundPrice(p.a.price),
+          p2: roundPrice(p.b.price),
+          x1: -p.a.barsAgo,
+          x2: -p.b.barsAgo,
+          label: 'Downtrend line',
+          tone: 'bear',
+        });
+      }
     }
   }
 
   if (!shapes.length) return null;
-  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 4) });
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 3) });
 }
 
 /**

@@ -517,12 +517,19 @@ export function useChartDrawings({
           ctx.fillStyle = '#2962ff';
           ctx.textBaseline = isUpper ? 'bottom' : 'top';
           ctx.textAlign = 'left';
-          const tag = /upper/i.test(shape.label || '')
-            ? 'Upper'
-            : /lower/i.test(shape.label || '')
-              ? 'Lower'
-              : String(shape.label || 'Trend').slice(0, 18);
-          ctx.fillText(tag, Math.min(Math.max(6, x1 + 4), paneWidth - 48), isUpper ? y1 - 4 : y1 + 4);
+          const raw = String(shape.label || 'Trend');
+          const tag = /uptrend/i.test(raw)
+            ? 'Uptrend'
+            : /downtrend/i.test(raw)
+              ? 'Downtrend'
+              : /channel\s*high|upper/i.test(raw)
+                ? 'Channel high'
+                : /channel\s*low|lower/i.test(raw)
+                  ? 'Channel low'
+                  : raw.slice(0, 18);
+          const labelAbove = isUpper || /downtrend|channel\s*high/i.test(raw);
+          ctx.textBaseline = labelAbove ? 'bottom' : 'top';
+          ctx.fillText(tag, Math.min(Math.max(6, x1 + 4), paneWidth - 72), labelAbove ? y1 - 4 : y1 + 4);
         } else if (shape.type === 'arrow') {
           const angle = Math.atan2(y2 - y1, x2 - x1);
           const head = 9;
