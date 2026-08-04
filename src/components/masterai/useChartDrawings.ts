@@ -232,6 +232,33 @@ export function useChartDrawings({
       ctx.fillText(text, x + 4, y);
     };
 
+    /**
+     * A zone reads best the way a trader draws it by hand: the name sitting in
+     * the middle of the band, not a tag stuck to one corner. Narrow or short
+     * boxes fall back to a chip so the text never spills outside the band.
+     */
+    const zoneLabel = (
+      text: string,
+      left: number,
+      right: number,
+      top: number,
+      bottom: number,
+      color: string,
+    ) => {
+      if (!text) return;
+      ctx.font = '600 11px "Trebuchet MS", Roboto, sans-serif';
+      const width = ctx.measureText(text).width;
+      if (right - left < width + 24 || bottom - top < 18) {
+        chip(text, left + 4, top + 8, color);
+        return;
+      }
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = color;
+      ctx.fillText(text, (left + right) / 2, (top + bottom) / 2);
+      ctx.textAlign = 'left';
+    };
+
     /** Wolf AI's markings: read-only, drawn under anything the user added. */
     const paintAiShapes = (paneWidth: number, paneHeight: number) => {
       for (const shape of aiRef.current) {
@@ -247,16 +274,22 @@ export function useChartDrawings({
         if (shape.type === 'zone' || shape.type === 'fib') {
           if (y1 === null || y2 === null) continue;
           const left = anchorX(shape.x1, -45) ?? 0;
-          const right = shape.x2 === undefined ? paneWidth : (anchorX(shape.x2, 6) ?? paneWidth);
+          let right = shape.x2 === undefined ? paneWidth : (anchorX(shape.x2, 6) ?? paneWidth);
+          // An order block is only useful ahead of price, so the band always
+          // runs past the latest candle the way a trader would extend it.
+          if (shape.type === 'zone') {
+            const lastX = anchorX(0, 0);
+            if (lastX !== null) right = Math.max(right, Math.min(paneWidth, lastX + 48));
+          }
           const top = Math.min(y1, y2);
           const bottom = Math.max(y1, y2);
 
           if (shape.type === 'zone') {
             ctx.fillRect(left, top, right - left, bottom - top);
-            ctx.setLineDash([4, 3]);
+            ctx.setLineDash([5, 4]);
             ctx.strokeRect(left, top, right - left, bottom - top);
             ctx.setLineDash([]);
-            chip(shape.label, left + 4, top + 8, tone.line);
+            zoneLabel(shape.label, left, right, top, bottom, tone.line);
           } else {
             ctx.font = '10px "Trebuchet MS", Roboto, sans-serif';
             ctx.textBaseline = 'bottom';

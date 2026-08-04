@@ -51,7 +51,7 @@ async function compressDataUrl(dataUrl: string, maxDim = 2048, quality = 0.88): 
 
   const img = await loadImage(dataUrl);
   const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-  if (scale >= 1 && dataUrl.length < 2_000_000) return dataUrl;
+  if (scale >= 1 && dataUrl.length < 400_000) return dataUrl;
 
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
@@ -76,9 +76,9 @@ export async function prepareChartImageForAi(
   }
 
   let dataUrl = await readFileAsDataUrl(file);
-  if (file.size > 900_000) {
-    dataUrl = await compressDataUrl(dataUrl);
-  }
+  // Vision models bill by image tiles, and a chart stays perfectly readable at
+  // 1600px — sending a raw 4K screenshot only burns the prompt budget.
+  dataUrl = await compressDataUrl(dataUrl, 1600, 0.85);
   // The API refuses anything past ~6.5 MB encoded, so squeeze once more rather
   // than letting the upload fail after the user has already waited for it.
   if (dataUrl.length > MASTER_AI_MAX_ENCODED_CHARS) {

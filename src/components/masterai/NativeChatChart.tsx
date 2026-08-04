@@ -113,6 +113,8 @@ export type NativeChatChartProps = {
   reloadKey: number;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
+  /** Our feed has no data for this symbol — the panel can fall back elsewhere. */
+  onUnavailable?: () => void;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -140,6 +142,7 @@ export default function NativeChatChart({
   reloadKey,
   levels,
   shapes,
+  onUnavailable,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -194,6 +197,7 @@ export default function NativeChatChart({
         if (!background) {
           setBars([]);
           setStatus(res ? 'empty' : 'error');
+          onUnavailable?.();
         }
         return;
       }
@@ -201,7 +205,7 @@ export default function NativeChatChart({
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
     },
-    [apiSymbol, apiInterval],
+    [apiSymbol, apiInterval, onUnavailable],
   );
 
   // Refit the viewport only when the user actually switches instrument/timeframe.

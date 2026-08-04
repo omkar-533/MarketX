@@ -13,8 +13,8 @@ export const MASTER_AI_MODELS = [
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', web: false },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Flash (via OR)', provider: 'Google' },
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { id: 'google/gemini-2.5-flash', name: 'Flash (via OR)', provider: 'Google' },
+  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5', provider: 'Anthropic' },
   { id: 'perplexity/sonar', name: 'Sonar (web)', provider: 'Perplexity', web: true },
 ];
 
@@ -1446,6 +1446,18 @@ const LIVE_TAPE_HINT = `LIVE TAPE MODE: LIVE MARKET DATA is in context. Answer t
 
 const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY source of truth. Analyze ONLY PLATFORM TRADING JOURNAL context. Score completeness/quality/compliance when evidence exists. Separate Good Decision from Good Result; Bad Result from Bad Process. Flag outliers/risk drift/integrity issues without modifying records. Never invent trades/stats/emotions/rules. Never ask to rewrite stored trades. Never ask for a chart unless also requested. Empty/missing → Insufficient journal evidence. Compact output: Journal Quality · Trade Quality · Compliance · Behavior · Risk · Execution · Pattern · Similarity · Insight · Focus · Confidence.`;
 
+/**
+ * Models describe the levels in prose and then forget the machine block, which
+ * leaves the chart blank. This is the last thing they read before answering.
+ */
+const MARKUP_REQUIRED_HINT = `MANDATORY LAST STEP — the drawing block. Your answer is incomplete without it.
+Every price band you name in the prose becomes a "zone" shape, every line a "trend", every break a "vline". A "Bullish OB 4034-4038" in the text MUST come back as {"type":"zone","p1":4038,"p2":4034,"tone":"bull","label":"Bullish OB"}.
+Finish the reply with exactly this, on its own lines, nothing after it:
+\`\`\`wolfchart
+{"symbol":"<ticker>","tf":"<timeframe>","levels":[...],"shapes":[...]}
+\`\`\`
+No block = nothing gets drawn and the user sees an empty chart. If you truly have no price to mark, say so in the prose instead.`;
+
 const CHART_OPEN_HINT = `CHART ALREADY OPEN: a live chart of this instrument sits beside the chat. NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. Take each price from LIVE MARKET DATA in context — anchor them around the current LTP and the day's high/low. Never reuse the numbers from the prompt example. If the tape is missing, say you cannot mark real levels instead of guessing.`;
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
@@ -1499,15 +1511,15 @@ function pickTextModels(requested, needsWeb, langCode, provider) {
     chain.push(requested);
   }
   chain.push(
+    'google/gemini-2.5-flash-lite',
     'openai/gpt-4o-mini',
-    'google/gemini-2.0-flash-001',
-    'openai/gpt-4o',
+    'google/gemini-2.5-flash',
     'deepseek/deepseek-chat',
   );
   if (hindi) {
-    chain.push('qwen/qwen-2.5-72b-instruct', 'google/gemini-2.0-flash-001');
+    chain.push('qwen/qwen-2.5-72b-instruct');
   }
-  chain.push('google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.2-3b-instruct:free');
+  chain.push('google/gemma-4-31b-it:free');
   return [...new Set(chain)];
 }
 
@@ -1523,11 +1535,13 @@ function pickVisionModels(requested, provider) {
   if (provider === 'openai') {
     return ['gpt-4o-mini', 'gpt-4o'];
   }
+  // Cheapest capable vision first: a chart read does not need a frontier model,
+  // and an expensive one is refused outright on a low-credit key.
   const chain = [
-    'google/gemini-2.0-flash-001',
+    'google/gemini-2.5-flash-lite',
+    'google/gemini-2.5-flash',
     'openai/gpt-4o-mini',
-    'openai/gpt-4o',
-    'anthropic/claude-3.5-haiku',
+    'google/gemma-4-31b-it:free',
   ];
   return [...new Set(chain)];
 }
@@ -1894,6 +1908,7 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Live LTP sirf cross-check ke liye. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. Live LTP is secondary cross-check only. If unclear, say unclear — do not guess.';
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (historyHasAnalysis || wantsLanguageSwitch) {
@@ -1904,7 +1919,10 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
-      if (chartOnScreen) textBlock += `\n\n${CHART_OPEN_HINT}`;
+      if (chartOnScreen) {
+        textBlock += `\n\n${CHART_OPEN_HINT}`;
+        if (wantsMarkup) textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      }
 
       const models = hasImage
         ? pickVisionModels(model, provider)
@@ -1934,31 +1952,55 @@ export function createMasterAiRouter(apiKey) {
       const messages = buildMessages({ platformContext, history, userContent, hasImage });
 
       let lastError = null;
+      let bestError = null;
+      let budget = maxTokens;
+
+      const askModel = async (modelId) => {
+        const completion = await client.chat.completions.create({
+          model: modelId,
+          max_tokens: budget,
+          temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
+          top_p: 0.9,
+          messages,
+        });
+        const raw = completion.choices[0]?.message?.content;
+        // Some OpenRouter models answer with content parts instead of a string.
+        return (Array.isArray(raw)
+          ? raw.map((part) => (typeof part === 'string' ? part : part?.text ?? '')).join('')
+          : String(raw ?? '')
+        ).trim();
+      };
+
       for (const modelId of models) {
-        try {
-          const completion = await client.chat.completions.create({
-            model: modelId,
-            max_tokens: maxTokens,
-            temperature: hasImage ? 0.15 : shortChat ? 0.4 : 0.22,
-            top_p: 0.9,
-            messages,
-          });
-          const raw = completion.choices[0]?.message?.content;
-          // Some OpenRouter models answer with content parts instead of a string.
-          const reply = (Array.isArray(raw)
-            ? raw.map((part) => (typeof part === 'string' ? part : part?.text ?? '')).join('')
-            : String(raw ?? '')
-          ).trim();
-          if (reply) {
-            return { reply, modelUsed: modelId, source: provider };
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const reply = await askModel(modelId);
+            if (reply) return { reply, modelUsed: modelId, source: provider };
+            break;
+          } catch (err) {
+            lastError = err;
+            const detail = String(err?.message ?? '');
+            // "You requested up to 1400 tokens, but can only afford 740" — a low
+            // balance should shorten the answer, not kill the whole request.
+            const affordable = /can only afford (\d+)/i.exec(detail);
+            const room = affordable ? Math.max(200, Number(affordable[1]) - 40) : 0;
+            // A retired model id ("no endpoints found") says nothing useful; keep
+            // the first real refusal so the error names the actual blocker.
+            if (!bestError && !/no endpoints found/i.test(detail)) bestError = err;
+            console.warn(`[Analyse AI] Model ${modelId} failed:`, detail || err);
+            if (room && room < budget && attempt === 0) {
+              budget = room;
+              continue;
+            }
+            break;
           }
-        } catch (err) {
-          lastError = err;
-          console.warn(`[Analyse AI] Model ${modelId} failed:`, err?.message ?? err);
         }
       }
 
-      throw Object.assign(new Error(lastError?.message ?? 'All models failed'), { status: 502 });
+      throw Object.assign(
+        new Error(bestError?.message ?? lastError?.message ?? 'All models failed'),
+        { status: 502 },
+      );
     },
   };
 }

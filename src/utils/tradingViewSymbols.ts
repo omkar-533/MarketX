@@ -146,15 +146,25 @@ export function tradingViewSymbolLabel(tvSymbol: string): string {
 }
 
 /**
- * TradingView is not licensed to serve these exchanges through the free embed
- * widget — it answers with "This symbol is only available on TradingView".
- * We draw those from our own /api/market/ohlc feed instead.
+ * Exchanges our own /api/market/ohlc feed can serve. Indian ones have to be
+ * native because TradingView's free widget refuses them, and the rest are drawn
+ * natively on purpose: Wolf AI can only draw its markings on our own canvas.
+ * Anything else (US stocks, exotic pairs) still gets the TradingView widget.
  */
-const WIDGET_BLOCKED_EXCHANGES = new Set(['NSE', 'BSE', 'MCX', 'NCDEX']);
+const NATIVE_EXCHANGES = new Set([
+  'NSE',
+  'BSE',
+  'MCX',
+  'NCDEX',
+  'BINANCE',
+  'FX_IDC',
+  'OANDA',
+  'TVC',
+]);
 
-export function isWidgetRestricted(tvSymbol: string): boolean {
+export function usesNativeChart(tvSymbol: string): boolean {
   const exchange = tvSymbol.includes(':') ? tvSymbol.split(':')[0] : '';
-  return WIDGET_BLOCKED_EXCHANGES.has(exchange.toUpperCase());
+  return NATIVE_EXCHANGES.has(exchange.toUpperCase());
 }
 
 /** TV symbol → the plain name our own market API expects (NSE:NIFTY → NIFTY). */

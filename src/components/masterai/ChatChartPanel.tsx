@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Expand, Maximize2, Minimize2, RefreshCw, Shrink, X } from 'lucide-react';
 import type { ChartLevel, ChartShape, ChartShapeTone } from '../../utils/chartAnnotations';
@@ -8,7 +8,7 @@ import {
   TV_CHART_STYLES,
   TV_STUDY_PRESETS,
   TV_TIMEFRAMES,
-  isWidgetRestricted,
+  usesNativeChart,
   joinStudies,
   parseStudies,
   parseTradingViewInput,
@@ -57,7 +57,13 @@ export default function ChatChartPanel({
   const [fullscreen, setFullscreen] = useState(false);
   const indicatorsRef = useRef<HTMLDivElement>(null);
 
-  const native = isWidgetRestricted(symbol);
+  // A global symbol our feed cannot serve falls back to the widget, so the user
+  // still gets a chart instead of an empty panel.
+  const [nativeFailed, setNativeFailed] = useState(false);
+  useEffect(() => setNativeFailed(false), [symbol]);
+  // A new identity here would re-trigger the chart's fetch effect on every render.
+  const handleNativeUnavailable = useCallback(() => setNativeFailed(true), []);
+  const native = usesNativeChart(symbol) && !nativeFailed;
   const timeframes = native ? NATIVE_TIMEFRAMES : TV_TIMEFRAMES;
   const studyPresets = native ? NATIVE_STUDY_PRESETS : TV_STUDY_PRESETS;
 
@@ -303,6 +309,7 @@ export default function ChatChartPanel({
           reloadKey={reloadKey}
           levels={levels}
           shapes={shapes}
+          onUnavailable={handleNativeUnavailable}
         />
       ) : (
         <>
