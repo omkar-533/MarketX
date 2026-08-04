@@ -1611,12 +1611,12 @@ Draw type "zone" with p1/p2/x1 from the tape. Prefer highest score / active or m
 Invalid blocks: omit or tone neutral. Mention score + key confirmations in prose (2–4 lines).
 levels:[]. No Entry/Stop/Target/Buy/Sell.`;
 
-const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic, S/R visual style):
-NOT Support/Resistance. Horizontal RAYS (hray) only. Copy LIQUIDITY TAPE exactly.
+const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic + Pine visuals):
+NOT Support/Resistance. Copy LIQUIDITY TAPE shapes exactly (hray + color + lineStyle dotted).
 Rules: swing len=5 · vol > SMA(20)×1.5 → "BSL (High Vol)" / "SSL (High Vol)".
-Also PDH PDL (prev day) · PWH PWL (prev week) · PMH PML (prev month) if still outside price.
-Mitigated (price traded through) levels are already removed — do not redraw them.
-Exact labels only. levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
+Also PDH PDL · PWH PWL · PMH PML if still outside price. Mitigated levels already removed.
+Colors: BSL red · SSL green · PDH/PDL orange · PWH/PWL yellow · PMH/PML blue.
+levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;

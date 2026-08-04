@@ -433,15 +433,77 @@ export function useChartDrawings({
             paintSrRay();
             continue;
           }
+
+          /**
+           * Pine liquidity look:
+           * line.new(..., extend.right, style_dotted, width=2, color)
+           * label.new(..., style_label_left, color.new(col,20), textcolor white)
+           */
+          const isPineLiq =
+            shape.lineStyle === 'dotted' ||
+            /^(BSL|SSL|PDH|PDL|PWH|PWL|PMH|PML)\b/i.test(shape.label || '');
           const start =
             (shape.x1 === undefined
               ? zoneOriginX(shape.p1!, shape.p1!)
               : anchorX(shape.x1, -20)) ?? 0;
+          const x0 = Math.min(Math.max(4, start), paneWidth - 40);
+
+          if (isPineLiq) {
+            const col =
+              shape.color ||
+              (/^BSL/i.test(shape.label)
+                ? '#ef5350'
+                : /^SSL/i.test(shape.label)
+                  ? '#26a69a'
+                  : /^PDH|^PDL/i.test(shape.label)
+                    ? '#ff9800'
+                    : /^PWH|^PWL/i.test(shape.label)
+                      ? '#f0b90b'
+                      : /^PMH|^PML/i.test(shape.label)
+                        ? '#2962ff'
+                        : tone.line);
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([2, 4]);
+            ctx.beginPath();
+            ctx.moveTo(x0, y1);
+            ctx.lineTo(paneWidth - 4, y1);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            const text = String(shape.label || '').slice(0, 28);
+            ctx.font = '600 10px "Trebuchet MS", Roboto, sans-serif';
+            const tw = ctx.measureText(text).width;
+            const padX = 5;
+            const h = 15;
+            const bx = x0 + 2;
+            const by = y1 - h / 2;
+            // color.new(col, 20) ≈ 80% opaque fill
+            ctx.globalAlpha = 0.82;
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            const r = 3;
+            ctx.moveTo(bx + r, by);
+            ctx.arcTo(bx + tw + padX * 2, by, bx + tw + padX * 2, by + h, r);
+            ctx.arcTo(bx + tw + padX * 2, by + h, bx, by + h, r);
+            ctx.arcTo(bx, by + h, bx, by, r);
+            ctx.arcTo(bx, by, bx + tw + padX * 2, by, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#ffffff';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.fillText(text, bx + padX, y1);
+            ctx.textBaseline = 'alphabetic';
+            continue;
+          }
+
           ctx.beginPath();
-          ctx.moveTo(start, y1);
+          ctx.moveTo(x0, y1);
           ctx.lineTo(paneWidth + 200, y1);
           ctx.stroke();
-          chip(shape.label, Math.min(start + 8, paneWidth - 80), y1 - 2, tone.line);
+          chip(shape.label, Math.min(x0 + 8, paneWidth - 80), y1 - 2, tone.line);
           continue;
         }
 

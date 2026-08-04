@@ -57,6 +57,16 @@ function toneFor(label) {
   return 'neutral';
 }
 
+/** Pine Script palette: red / green / orange / yellow / blue. */
+export function colorForLiqLabel(label) {
+  if (/^BSL/i.test(label)) return '#ef5350'; // color.red
+  if (/^SSL/i.test(label)) return '#26a69a'; // color.green
+  if (/^PDH|^PDL/i.test(label)) return '#ff9800'; // color.orange
+  if (/^PWH|^PWL/i.test(label)) return '#f0b90b'; // color.yellow
+  if (/^PMH|^PML/i.test(label)) return '#2962ff'; // color.blue
+  return '#787b86';
+}
+
 function sideFor(label) {
   if (/BSL|PDH|PWH|PMH/i.test(label)) return 'bsl';
   return 'ssl';
@@ -133,6 +143,8 @@ export function detectLiquidity(bars, opts = {}) {
       x1: -barsAgoOf(bars, Math.min(l.birth, bars.length - 1)),
       label: l.label,
       tone: toneFor(l.label),
+      color: colorForLiqLabel(l.label),
+      lineStyle: 'dotted',
       swept: false,
       score: /High Vol/i.test(l.label) ? 80 : 75,
       count: 1,
@@ -170,7 +182,7 @@ export function formatLiquidityTape(pools, symbol = '', interval = '', ltp = 0) 
   } else {
     for (const p of rows.slice(0, 16)) {
       lines.push(
-        `- ${p.label} ${p.price.toFixed(2)} barsAgo=${p.barsAgo} → {"type":"hray","p1":${p.price},"x1":${p.x1},"label":"${p.label}","tone":"${p.tone}"}`,
+        `- ${p.label} ${p.price.toFixed(2)} barsAgo=${p.barsAgo} → {"type":"hray","p1":${p.price},"x1":${p.x1},"label":"${p.label}","tone":"${p.tone}","color":"${p.color}","lineStyle":"dotted"}`,
       );
     }
   }

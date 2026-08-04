@@ -55,12 +55,16 @@ export interface ChartShape {
   p2?: number;
   x1?: ChartAnchor;
   x2?: ChartAnchor;
+  /** Optional hex color (Pine liquidity palette). */
+  color?: string;
+  /** Line style — Pine liquidity uses dotted right-extend rays. */
+  lineStyle?: 'solid' | 'dotted';
 }
 
 export const CHART_ANNOTATION_TAG = 'wolfchart';
 
 const MAX_LEVELS = 10;
-const MAX_SHAPES = 16;
+const MAX_SHAPES = 20;
 const LABEL_MAX = 36;
 
 /** ```wolfchart { ... } ``` — the format we ask for. */
@@ -188,6 +192,22 @@ function toShape(raw: unknown): ChartShape | null {
     x1: toAnchor(row.x1 ?? row.from ?? row.start ?? row.x ?? row.time),
     x2: toAnchor(row.x2 ?? row.to ?? row.end),
   };
+
+  const colorRaw = String(row.color ?? row.col ?? '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(colorRaw)) shape.color = colorRaw.toLowerCase();
+  const styleRaw = String(row.lineStyle ?? row.style ?? row.ls ?? '')
+    .trim()
+    .toLowerCase();
+  if (styleRaw === 'dotted' || styleRaw === 'dashed' || styleRaw === 'solid') {
+    shape.lineStyle = styleRaw === 'dashed' ? 'dotted' : (styleRaw as 'solid' | 'dotted');
+  }
+  // Pine liquidity labels default to dotted even if model omits style.
+  if (
+    !shape.lineStyle &&
+    /^(BSL|SSL|PDH|PDL|PWH|PWL|PMH|PML)\b/i.test(shape.label)
+  ) {
+    shape.lineStyle = 'dotted';
+  }
 
   // Each shape needs the prices its geometry is built from.
   if (type === 'vline') return shape.x1 === undefined ? null : shape;

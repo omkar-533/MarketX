@@ -320,16 +320,31 @@ export function synthesizeLiqWolfchart(meta = {}) {
     const key = `${label}:${p}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const color =
+      lvl.color ||
+      (/^BSL/i.test(label)
+        ? '#ef5350'
+        : /^SSL/i.test(label)
+          ? '#26a69a'
+          : /^PDH|^PDL/i.test(label)
+            ? '#ff9800'
+            : /^PWH|^PWL/i.test(label)
+              ? '#f0b90b'
+              : /^PMH|^PML/i.test(label)
+                ? '#2962ff'
+                : undefined);
     shapes.push({
       type: 'hray',
       p1: p,
       x1: -Math.abs(Number(lvl.barsAgo) || 8),
       label,
       tone: lvl.tone || (lvl.side === 'bsl' ? 'bear' : 'bull'),
+      color,
+      lineStyle: 'dotted',
     });
   }
   if (!shapes.length) return null;
-  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 14) });
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 16) });
 }
 
 /** Institutional OB zones from orderBlockEngine (passed via meta.orderBlocks). */
