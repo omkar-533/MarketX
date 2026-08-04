@@ -1143,6 +1143,12 @@ export interface MasterChatRequest {
   trainingGrade?: boolean;
   /** True when request comes from Mentor AI training desk (not Hunter analysis) */
   mentorDesk?: boolean;
+  /** Module 1 curriculum lesson step (AI Teacher) */
+  mentorLesson?: {
+    levelId: number;
+    stepId: string;
+    title: string;
+  };
   /** Client-resolved draw tool — server must not infer S/R from chart-hint text */
   markTool?: 'trend' | 'sr' | 'ob' | 'liq' | 'auto';
 }
@@ -1268,6 +1274,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         roomMode: Boolean(req.roomMode),
         trainingGrade: Boolean(req.trainingGrade),
         mentorDesk: Boolean(req.mentorDesk),
+        mentorLesson: req.mentorLesson || undefined,
         markTool: req.markTool,
       }),
     },

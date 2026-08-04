@@ -7481,6 +7481,432 @@ input[type="number"] { -moz-appearance: textfield; }
   }
 }
 
+/* —— Module 1 AI Teacher (curriculum) —— */
+.wm-desk__body--learn {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+  .wm-desk__body--learn {
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 1fr);
+  }
+}
+
+.wm-desk__side--lesson {
+  min-height: 0;
+}
+
+.wm-learn {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.75rem;
+  background: var(--tf-elevated);
+}
+
+.wm-learn__hero,
+.wm-learn__roadmap-head,
+.wm-learn__lesson-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.wm-learn__hero-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+  display: grid;
+  place-items: center;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.wm-learn__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.wm-learn__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wm-learn__lead {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-learn__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 720px) {
+  .wm-learn__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.wm-learn__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-muted, #64748b);
+}
+
+.wm-learn__field input,
+.wm-learn__field select {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface, #0b0e17);
+  color: var(--tf-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.wm-learn__weak {
+  margin-top: 0.85rem;
+}
+
+.wm-learn__label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tf-muted, #64748b);
+}
+
+.wm-learn__chips,
+.wm-learn__adapt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.wm-learn__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface, var(--tf-elevated));
+  color: var(--tf-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.wm-learn__chip--on {
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.12);
+  color: #d4af37;
+}
+
+.wm-learn__chip:disabled {
+  opacity: 0.45;
+}
+
+.wm-learn__cta,
+.wm-learn__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.14);
+  color: #d4af37;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.wm-learn__cta {
+  width: 100%;
+}
+
+.wm-learn__error,
+.wm-learn__quiz-msg {
+  margin: 0.65rem 0 0;
+  font-size: 0.75rem;
+  color: #fca5a5;
+}
+
+.wm-learn__progress-pill {
+  margin-left: auto;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #d4af37;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.wm-learn__levels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wm-learn__level-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.wm-learn__level-connector {
+  width: 2px;
+  height: 0.45rem;
+  margin: 0 0 0 1.15rem;
+  background: rgba(212, 175, 55, 0.35);
+}
+
+.wm-learn__level {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--tf-border);
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 92%, #000);
+}
+
+.wm-learn__level--active {
+  border-color: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.wm-learn__level--done {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.wm-learn__level--locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wm-learn__level-num {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.4rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.08);
+  flex-shrink: 0;
+}
+
+.wm-learn__level--done .wm-learn__level-num {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.wm-learn__level-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.wm-learn__level-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.wm-learn__level-obj {
+  font-size: 0.68rem;
+  color: var(--tf-muted, #94a3b8);
+  line-height: 1.35;
+}
+
+.wm-learn__level-cta,
+.wm-learn__level-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #d4af37;
+  flex-shrink: 0;
+}
+
+.wm-learn__level-lock {
+  color: var(--tf-muted, #64748b);
+}
+
+.wm-learn__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--tf-border);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-learn__stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.wm-learn__step-dot {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.35rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-muted, #64748b);
+  background: transparent;
+}
+
+.wm-learn__step-dot--on {
+  border-color: rgba(212, 175, 55, 0.5);
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.wm-learn__step-dot--done {
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.wm-learn__note {
+  position: relative;
+  min-height: 8rem;
+  max-height: min(42vh, 22rem);
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 90%, #000);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.wm-learn__note--busy {
+  opacity: 0.8;
+}
+
+.wm-learn__spin {
+  margin-bottom: 0.4rem;
+  color: #d4af37;
+}
+
+.wm-learn__quiz,
+.wm-learn__homework,
+.wm-learn__practical {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.wm-learn__q p {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.wm-learn__opts {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.wm-learn__opt {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface, var(--tf-elevated));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wm-learn__opt--on {
+  border-color: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
+}
+
+.wm-learn__pass {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.wm-learn__homework ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.wm-learn__homework label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.wm-learn__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.wm-learn__nav-btn {
+  margin-top: 0;
+  flex: 1;
+}
+
+.wm-learn__nav-btn--primary {
+  background: rgba(212, 175, 55, 0.2);
+}
+
 .mai-detective {
   margin: 0 0 0.75rem;
   padding: 0.75rem 0.85rem;

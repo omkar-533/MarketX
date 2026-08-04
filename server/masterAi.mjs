@@ -1672,6 +1672,24 @@ const MENTOR_TEACH_HINT = `TEACH MODE: Trainee asked to learn from scratch. Foll
 
 const MENTOR_HISTORY_QUIZ_HINT = `HISTORICAL CHART QUIZ: Follow the mentor skeleton, but under ### Check ask ONE question about a PAST swing/event from MARKET INTEL (bars-ago + price). Do not reveal the answer yet. Say you will mark the chart after they reply. No trade orders.`;
 
+const MENTOR_LESSON_HINT = `WOLF AI MENTOR — MODULE 1 CURRICULUM LESSON (AI Teacher):
+You are teaching ONE lesson step only (see [MENTOR LESSON] in the user message).
+Personality rules:
+- Never answer without reason (why + how).
+- Simplify until the student can understand; adapt if they ask Hindi / easy / again.
+- Real market context + examples — not dry definitions only.
+- End with a tiny practical check or what to notice next (still no trade orders).
+- If uncertain, state the assumption clearly.
+- Never Entry/Stop/Target/Buy/Sell.
+Step styles:
+- explain: simple definition + why it matters
+- story: short story analogy
+- analogy: daily-life example tied back to markets
+- visual: describe a clear mental diagram / “animation” in prose (boxes/arrows)
+- chart: MUST use open chart + final wolfchart marks (Areas of Interest)
+- mistakes: common retail mistakes + correct process
+- revision: short notes + cheat bullets the student can revise`;
+
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
 
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
@@ -2130,6 +2148,14 @@ export function createMasterAiRouter(apiKey) {
       const roomMode = Boolean(body?.roomMode);
       const mentorDesk = Boolean(body?.mentorDesk);
       const trainingGrade = Boolean(body?.trainingGrade);
+      const mentorLesson =
+        body?.mentorLesson && typeof body.mentorLesson === 'object'
+          ? {
+              levelId: Number(body.mentorLesson.levelId) || 0,
+              stepId: String(body.mentorLesson.stepId || ''),
+              title: String(body.mentorLesson.title || ''),
+            }
+          : null;
       const wantsDetective =
         chartOnScreen ||
         /\b(detective|market\s*condition|what.?s\s*going\s*on|scene|bias|view|kaise|kaisa|structure|liquidity|order\s*block|fvg)\b/i.test(
@@ -2369,6 +2395,18 @@ export function createMasterAiRouter(apiKey) {
         if (/\[MENTOR TEACH\]/i.test(String(message || ''))) {
           textBlock += `\n\n${MENTOR_TEACH_HINT}`;
           textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        }
+        if (mentorLesson || /\[MENTOR LESSON\]/i.test(String(message || ''))) {
+          textBlock += `\n\n${MENTOR_LESSON_HINT}`;
+          if (mentorLesson?.levelId) {
+            textBlock += `\nCurriculum level ${mentorLesson.levelId}: ${mentorLesson.title || ''} · step ${mentorLesson.stepId || ''}.`;
+          }
+          if (
+            mentorLesson?.stepId === 'chart' ||
+            /Current lesson STEP ONLY:\s*chart/i.test(String(message || ''))
+          ) {
+            textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+          }
         }
         if (/\[MENTOR HISTORY.?QUIZ\]/i.test(String(message || ''))) {
           textBlock += `\n\n${MENTOR_HISTORY_QUIZ_HINT}`;

@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import ChatMarkdown from './ChatMarkdown';
 import ChatChartPanel from './masterai/ChatChartPanel';
+import MentorOnboarding from './mentor/MentorOnboarding';
+import MentorRoadmap from './mentor/MentorRoadmap';
+import LessonPlayer from './mentor/LessonPlayer';
 import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
@@ -27,6 +30,16 @@ import {
   saveMentorMode,
   type MentorMode,
 } from '../services/mentorModes';
+import {
+  loadCurriculumProgress,
+  saveCurriculumProgress,
+  type CurriculumProgress,
+} from '../services/mentorCurriculum';
+import {
+  loadStudentProfile,
+  saveStudentProfile,
+  type MentorStudentProfile,
+} from '../services/mentorStudentProfile';
 import {
   buildDrillFromDetective,
   gradePromptForDrill,
@@ -86,6 +99,10 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
+  const [deskView, setDeskView] = useState<'curriculum' | 'desk'>('curriculum');
+  const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
+  const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
+  const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
   const [drillBias, setDrillBias] = useState<DrillBias>('auto');
   const [symbol, setSymbol] = useState('NSE:NIFTY');
   const [interval, setInterval] = useState<TvInterval>('15');
@@ -102,6 +119,20 @@ export default function MentorAI() {
   const [skillTick, setSkillTick] = useState(0);
   const [aiOk, setAiOk] = useState(false);
   const gradingRef = useRef(false);
+
+  useEffect(() => {
+    setStudent(loadStudentProfile(ownerKey));
+    setCurriculum(loadCurriculumProgress(ownerKey));
+  }, [ownerKey]);
+
+  const persistCurriculum = useCallback(
+    (next: CurriculumProgress) => {
+      saveCurriculumProgress(next, ownerKey);
+      setCurriculum(next);
+      setSkillTick((n) => n + 1);
+    },
+    [ownerKey],
+  );
 
   const effectiveBias: DrillBias =
     drillBias !== 'auto' ? drillBias : mentorMode === 'beginner' ? 'teach' : 'auto';
@@ -191,22 +222,22 @@ export default function MentorAI() {
     };
   }, [symbol, interval]);
 
-  // Always punch drills from live + historical tape — training desk, not chat.
+  // Live desk only — curriculum mode uses LessonPlayer quizzes.
   useEffect(() => {
-    if (!detective || activeDrill || busy) return;
+    if (deskView !== 'desk' || !detective || activeDrill || busy) return;
     const t = window.setTimeout(() => {
       setActiveDrill(buildDrillFromDetective(detective, effectiveBias));
     }, 6_000);
     return () => window.clearTimeout(t);
-  }, [detective?.symbol, detective?.ltp, detective?.zone, activeDrill, busy, effectiveBias]);
+  }, [deskView, detective?.symbol, detective?.ltp, detective?.zone, activeDrill, busy, effectiveBias]);
 
   useEffect(() => {
-    if (!detective || busy) return;
+    if (deskView !== 'desk' || !detective || busy) return;
     const t = window.setInterval(() => {
       setActiveDrill((prev) => prev ?? buildDrillFromDetective(detective, effectiveBias));
     }, 40_000);
     return () => window.clearInterval(t);
-  }, [detective, busy, effectiveBias]);
+  }, [deskView, detective, busy, effectiveBias]);
 
   const speakBriefing = useCallback(() => {
     if (!detective || typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -350,11 +381,26 @@ export default function MentorAI() {
         ? 'Lesson'
         : 'Live tape';
 
-  const sessionLine = aiOk
-    ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`} · Live tape${
-        langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
-      }`
-    : 'Add AI key in Profile to grade process checks';
+  const sessionLine = !student
+    ? 'Module 1 AI Teacher · complete onboarding to unlock your roadmap'
+    : deskView === 'curriculum'
+      ? `Module 1 · ${student.name} · Level ${curriculum.highestUnlocked}/12 unlocked`
+      : aiOk
+        ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`} · Live tape${
+            langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+          }`
+        : 'Add AI key in Profile to grade process checks';
+
+  const onOnboarded = (profile: MentorStudentProfile) => {
+    saveStudentProfile(profile, ownerKey);
+    setStudent(profile);
+    if (profile.experience === 'none' || profile.experience === 'beginner') {
+      setMentorMode('beginner');
+      saveMentorMode('beginner');
+    }
+    setDeskView('curriculum');
+    setActiveLevelId(null);
+  };
 
   return (
     <div className="wm-desk">
@@ -366,12 +412,39 @@ export default function MentorAI() {
           <div>
             <div className="wm-desk__title-row">
               <h1 className="wm-desk__title">{WOLF_MENTOR}</h1>
-              <span className="wm-desk__badge">Professional Mentor</span>
+              <span className="wm-desk__badge">
+                {deskView === 'curriculum' ? 'AI Teacher · Module 1' : 'Professional Mentor'}
+              </span>
             </div>
             <p className="wm-desk__sub">{sessionLine}</p>
           </div>
         </div>
 
+        {student ? (
+          <div className="wm-desk__modes" role="group" aria-label="Mentor workspace">
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'curriculum' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => {
+                setDeskView('curriculum');
+                setActiveLevelId(null);
+              }}
+            >
+              <BookOpen className="h-3 w-3" />
+              Curriculum
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'desk' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => setDeskView('desk')}
+            >
+              <Target className="h-3 w-3" />
+              Live desk
+            </button>
+          </div>
+        ) : null}
+
+        {deskView === 'desk' ? (
         <div className="wm-desk__modes" role="group" aria-label="Mentor style">
           {MENTOR_MODES.map((m) => (
             <button
@@ -397,6 +470,7 @@ export default function MentorAI() {
             </button>
           ))}
         </div>
+        ) : null}
 
         <div className="wm-desk__actions">
           <div className={`mai-chat__lang wm-desk__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
@@ -501,6 +575,79 @@ export default function MentorAI() {
         </div>
       </header>
 
+      {!student ? (
+        <MentorOnboarding
+          defaultName={user?.name || ''}
+          defaultLanguage={selectedLang.code.startsWith('hi') ? 'hi-IN' : 'en-IN'}
+          onComplete={onOnboarded}
+        />
+      ) : deskView === 'curriculum' && activeLevelId == null ? (
+        <MentorRoadmap
+          progress={curriculum}
+          studentName={student.name}
+          activeLevelId={activeLevelId}
+          onOpenLevel={(id) => setActiveLevelId(id)}
+        />
+      ) : null}
+
+      {student && deskView === 'curriculum' && activeLevelId != null ? (
+        <div className="wm-desk__body wm-desk__body--learn">
+          <section className="wm-desk__chart" aria-label="Lesson chart">
+            <ChatChartPanel
+              symbol={symbol}
+              interval={interval}
+              study={study}
+              onSymbolChange={(s) => {
+                setSymbol(s);
+                setChartLevels([]);
+                setChartShapes([]);
+              }}
+              onIntervalChange={(tf) => {
+                setInterval(tf);
+                setChartLevels([]);
+                setChartShapes([]);
+              }}
+              onStudyChange={setStudy}
+              onClose={() => undefined}
+              hideClose
+              levels={chartLevels}
+              shapes={chartShapes}
+            />
+            {(chartLevels.length > 0 || chartShapes.length > 0) && (
+              <p className="wm-desk__draw-hint">
+                <Pencil className="h-3 w-3" />
+                Blackboard — mentor marks for this lesson.
+              </p>
+            )}
+          </section>
+          <aside className="wm-desk__side wm-desk__side--lesson">
+            <LessonPlayer
+              levelId={activeLevelId}
+              ownerKey={ownerKey}
+              profile={student}
+              progress={curriculum}
+              symbol={symbol}
+              interval={interval}
+              lang={selectedLang}
+              langMode={langMode}
+              mentorMode={mentorMode}
+              onProgress={persistCurriculum}
+              onChartMarks={(levels, shapes) => {
+                setChartLevels(levels);
+                setChartShapes(shapes);
+              }}
+              onBack={() => setActiveLevelId(null)}
+              onPractical={() => {
+                setDeskView('desk');
+                punchQuiz('teach');
+              }}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      {student && deskView === 'desk' ? (
+      <>
       <div className="wm-desk__rail" role="group" aria-label="Mentor session actions">
         <div className="wm-desk__rail-group">
           <span className="wm-desk__rail-label">Teach</span>
@@ -720,6 +867,8 @@ export default function MentorAI() {
           <ChatMarkdown text={coachNote} />
         </div>
       </section>
+      </>
+      ) : null}
     </div>
   );
 }
