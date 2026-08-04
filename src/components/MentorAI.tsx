@@ -22,6 +22,7 @@ import ChatChartPanel from './masterai/ChatChartPanel';
 import MentorOnboarding from './mentor/MentorOnboarding';
 import MentorRoadmap from './mentor/MentorRoadmap';
 import LessonPlayer from './mentor/LessonPlayer';
+import ChartMentorPanel from './mentor/ChartMentorPanel';
 import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
@@ -99,7 +100,7 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [deskView, setDeskView] = useState<'curriculum' | 'desk'>('curriculum');
+  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'desk'>('curriculum');
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -381,15 +382,19 @@ export default function MentorAI() {
         ? 'Lesson'
         : 'Live tape';
 
+  const tfLabel =
+    interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`;
   const sessionLine = !student
     ? 'Module 1 AI Teacher · complete onboarding to unlock your roadmap'
     : deskView === 'curriculum'
       ? `Module 1 · ${student.name} · Level ${curriculum.highestUnlocked}/12 unlocked`
-      : aiOk
-        ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`} · Live tape${
-            langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
-          }`
-        : 'Add AI key in Profile to grade process checks';
+      : deskView === 'chart'
+        ? `Module 2 Chart Mentor · ${tradingViewSymbolLabel(symbol)} · ${tfLabel}`
+        : aiOk
+          ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
+              langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+            }`
+          : 'Add AI key in Profile to grade process checks';
 
   const onOnboarded = (profile: MentorStudentProfile) => {
     saveStudentProfile(profile, ownerKey);
@@ -413,7 +418,11 @@ export default function MentorAI() {
             <div className="wm-desk__title-row">
               <h1 className="wm-desk__title">{WOLF_MENTOR}</h1>
               <span className="wm-desk__badge">
-                {deskView === 'curriculum' ? 'AI Teacher · Module 1' : 'Professional Mentor'}
+                {deskView === 'curriculum'
+                  ? 'AI Teacher · Module 1'
+                  : deskView === 'chart'
+                    ? 'Chart Mentor · Module 2'
+                    : 'Professional Mentor'}
               </span>
             </div>
             <p className="wm-desk__sub">{sessionLine}</p>
@@ -432,6 +441,17 @@ export default function MentorAI() {
             >
               <BookOpen className="h-3 w-3" />
               Curriculum
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'chart' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => {
+                setDeskView('chart');
+                setActiveLevelId(null);
+              }}
+            >
+              <Pencil className="h-3 w-3" />
+              Chart Mentor
             </button>
             <button
               type="button"
@@ -640,6 +660,58 @@ export default function MentorAI() {
               onPractical={() => {
                 setDeskView('desk');
                 punchQuiz('teach');
+              }}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      {student && deskView === 'chart' ? (
+        <div className="wm-desk__body wm-desk__body--learn">
+          <section className="wm-desk__chart" aria-label="Chart Mentor blackboard">
+            <ChatChartPanel
+              symbol={symbol}
+              interval={interval}
+              study={study}
+              onSymbolChange={(s) => {
+                setSymbol(s);
+                setChartLevels([]);
+                setChartShapes([]);
+              }}
+              onIntervalChange={(tf) => {
+                setInterval(tf);
+                setChartLevels([]);
+                setChartShapes([]);
+              }}
+              onStudyChange={setStudy}
+              onClose={() => undefined}
+              hideClose
+              levels={chartLevels}
+              shapes={chartShapes}
+            />
+            {(chartLevels.length > 0 || chartShapes.length > 0) && (
+              <p className="wm-desk__draw-hint">
+                <Pencil className="h-3 w-3" />
+                Chart Mentor blackboard — Areas of Interest only.
+              </p>
+            )}
+          </section>
+          <aside className="wm-desk__side wm-desk__side--lesson">
+            <ChartMentorPanel
+              symbol={symbol}
+              interval={interval}
+              profile={student}
+              curriculum={curriculum}
+              lang={selectedLang}
+              langMode={langMode}
+              mentorMode={mentorMode}
+              onChartMarks={(levels, shapes) => {
+                setChartLevels(levels);
+                setChartShapes(shapes);
+              }}
+              onOpenCurriculumLevel={(levelId) => {
+                setDeskView('curriculum');
+                setActiveLevelId(levelId);
               }}
             />
           </aside>

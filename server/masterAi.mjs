@@ -1692,6 +1692,31 @@ Step styles:
 
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
 
+const CHART_MENTOR_HINT = `WOLF AI CHART MENTOR — MODULE 2 (educational chart teacher, not a signal bot):
+Mission: Teach the student to READ charts with reasoning. Every conclusion needs why + how. Never Entry/Stop/Target/Buy/Sell/RR as orders.
+
+Use this labeled skeleton (short bullets; evidence from MARKET INTEL / STRUCTURE / LIQUIDITY / ORDER BLOCK tape, or visible screenshot):
+### Chart read
+Symbol, timeframe, LTP/context if known. If screenshot is blurry/unclear — ask for a clearer image and stop inventing precise levels.
+### Structure
+HH/HL/LH/LL lean, BOS/CHoCH status, trend strength (evidence score 0–10, not win-rate).
+### Liquidity
+BSL/SSL / equal highs-lows / sweeps as Areas of Interest — explain retail stop logic in plain language.
+### SMC / S&R AOIs
+Order blocks, FVG/imbalance, premium/discount, major support/resistance Areas of Interest — each with a one-line why + rough confidence %.
+### Scenario A
+Bullish-leaning educational path: conditions + probability % + invalidation Area of Interest.
+### Scenario B
+Bearish-leaning (or alternate) educational path: conditions + probability % (A+B ≈ 100%) + invalidation AOI.
+### Confirmation / Invalidation AOIs
+What a disciplined desk would MONITOR for confirmation vs what would kill the idea — NEVER entry price, stop, target, or lot size.
+### Confidence
+Structure % · Liquidity % · Trend % · Overall Confidence: High/Medium/Low — model evidence certainty, NOT trade success guarantee.
+### Key learnings
+1) What to observe  2) Common mistake  3) Homework (process only)  4) Related Module 1 level number (3–10) for deeper study.
+
+Always end with a \`\`\`wolfchart\`\`\` block marking Areas of Interest (structure/liquidity/S&R/OB/FVG). No trade orders.`;
+
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
   const key = String(apiKey || '').trim();
@@ -2147,6 +2172,8 @@ export function createMasterAiRouter(apiKey) {
           : 'professional';
       const roomMode = Boolean(body?.roomMode);
       const mentorDesk = Boolean(body?.mentorDesk);
+      const mentorChart =
+        Boolean(body?.mentorChart) || /\[CHART MENTOR/i.test(String(message || ''));
       const trainingGrade = Boolean(body?.trainingGrade);
       const mentorLesson =
         body?.mentorLesson && typeof body.mentorLesson === 'object'
@@ -2158,6 +2185,7 @@ export function createMasterAiRouter(apiKey) {
           : null;
       const wantsDetective =
         chartOnScreen ||
+        mentorChart ||
         /\b(detective|market\s*condition|what.?s\s*going\s*on|scene|bias|view|kaise|kaisa|structure|liquidity|order\s*block|fvg)\b/i.test(
           String(message || ''),
         );
@@ -2292,7 +2320,15 @@ export function createMasterAiRouter(apiKey) {
             console.warn('[Wolf AI] liquidity tape failed:', err?.message || err);
           }
         }
-        if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode || mentorDesk) {
+        if (
+          wantsDetective ||
+          chartOnScreen ||
+          hasImage ||
+          trainingGrade ||
+          roomMode ||
+          mentorDesk ||
+          mentorChart
+        ) {
           try {
             const intel = await buildIntelPack(message || userTextBase);
             intelBlock = intel.block || '';
@@ -2384,9 +2420,14 @@ export function createMasterAiRouter(apiKey) {
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
-      if (mentorDesk) {
+      if (mentorDesk || mentorChart) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
+        if (mentorChart) {
+          textBlock += `\n\n${CHART_MENTOR_HINT}`;
+          textBlock += `\n\n${SCENARIO_HINT}`;
+          textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        }
         if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
         if (trainingGrade) {
           textBlock += `\n\n${TRAINING_GRADE_HINT}`;
@@ -2417,6 +2458,7 @@ export function createMasterAiRouter(apiKey) {
         }
         // Mentor coaching should usually draw the lesson when teaching/grading.
         if (
+          !mentorChart &&
           !trainingGrade &&
           !/\[MENTOR AUTO-QUIZ\]|\[MENTOR HISTORY/i.test(String(message || '')) &&
           /\b(teach|mistake|draw|mark|structure|explain|sikh|galat|seekh)\b/i.test(

@@ -7907,6 +7907,107 @@ input[type="number"] { -moz-appearance: textfield; }
   background: rgba(212, 175, 55, 0.2);
 }
 
+/* —— Module 2 Chart Mentor —— */
+.wm-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.7rem;
+  background: var(--tf-elevated);
+}
+
+.wm-chart__head {
+  margin-bottom: 0.15rem;
+}
+
+.wm-chart__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.wm-chart__analyze {
+  width: auto;
+  margin-top: 0;
+  min-width: 11rem;
+}
+
+.wm-chart__confidence {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 92%, #000);
+}
+
+.wm-chart__bar span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--tf-muted, #94a3b8);
+  margin-bottom: 0.12rem;
+}
+
+.wm-chart__bar b {
+  color: var(--tf-text);
+}
+
+.wm-chart__bar > i {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d4af37, #34d399);
+  max-width: 100%;
+}
+
+.wm-chart__overall {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-chart__overall b {
+  color: #d4af37;
+  text-transform: capitalize;
+}
+
+.wm-chart__note {
+  max-height: min(48vh, 26rem);
+}
+
+.wm-chart__follow {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.wm-chart__related {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(212, 175, 55, 0.06);
+  color: #d4af37;
+}
+
+.wm-chart__related-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--tf-text);
+}
+
+.wm-chart__related .wm-learn__lead {
+  margin: 0.15rem 0 0;
+}
+
 .mai-detective {
   margin: 0 0 0.75rem;
   padding: 0.75rem 0.85rem;
