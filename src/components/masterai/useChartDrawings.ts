@@ -233,6 +233,32 @@ export function useChartDrawings({
     };
 
     /**
+     * Wolf AI answers from the live tape, so it knows the price band but not
+     * which candle formed it. Guessing a fixed offset drops the box in empty
+     * space; instead the band starts at the last stretch of candles that
+     * actually traded inside it — the block itself — and runs forward from
+     * there. A band price has never visited spans the full width.
+     */
+    const zoneOriginX = (p1: number, p2: number): number | null => {
+      const bars = barsRef.current;
+      const top = Math.max(p1, p2);
+      const bottom = Math.min(p1, p2);
+      const touches = (i: number) => bars[i].low <= top && bars[i].high >= bottom;
+
+      let end = -1;
+      for (let i = bars.length - 1; i >= 0; i -= 1) {
+        if (touches(i)) {
+          end = i;
+          break;
+        }
+      }
+      if (end < 0) return 0;
+      let start = end;
+      while (start > 0 && touches(start - 1)) start -= 1;
+      return timeScale.logicalToCoordinate(start as Logical);
+    };
+
+    /**
      * A zone reads best the way a trader draws it by hand: the name sitting in
      * the middle of the band, not a tag stuck to one corner. Narrow or short
      * boxes fall back to a chip so the text never spills outside the band.
@@ -273,7 +299,10 @@ export function useChartDrawings({
 
         if (shape.type === 'zone' || shape.type === 'fib') {
           if (y1 === null || y2 === null) continue;
-          const left = anchorX(shape.x1, -45) ?? 0;
+          const left =
+            (shape.type === 'zone' && shape.x1 === undefined
+              ? zoneOriginX(shape.p1!, shape.p2!)
+              : anchorX(shape.x1, -45)) ?? 0;
           let right = shape.x2 === undefined ? paneWidth : (anchorX(shape.x2, 6) ?? paneWidth);
           // An order block is only useful ahead of price, so the band always
           // runs past the latest candle the way a trader would extend it.

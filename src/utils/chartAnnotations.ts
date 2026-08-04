@@ -164,7 +164,13 @@ function toShape(raw: unknown): ChartShape | null {
   if (type === 'label') return shape.p1 === undefined ? null : shape;
   if (type === 'zone' || type === 'fib') {
     if (shape.p1 === undefined || shape.p2 === undefined) return null;
-    if (shape.p1 === shape.p2) return null;
+    if (shape.p1 === shape.p2) {
+      // A band quoted at one price ("OB around 24774") is still a real marking;
+      // dropping it loses the answer, so it gets a thin band to sit in.
+      if (type === 'fib') return null;
+      const pad = shape.p1 * 0.0006;
+      return { ...shape, p1: shape.p1 + pad, p2: shape.p2 - pad };
+    }
     return shape;
   }
   return shape.p1 !== undefined && shape.p2 !== undefined ? shape : null;

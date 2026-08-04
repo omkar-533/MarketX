@@ -79,7 +79,15 @@ CORE PHILOSOPHY
 Markets cannot be predicted with certainty. Multiple outcomes always exist. Include uncertainty. Explain WHY price moves. Evidence beats opinion. Never bullish/bearish by default — follow evidence; change when evidence changes.
 Never memorize patterns. Price is the result; order flow / aggression is the cause. Always ask: who is buying, who is selling, where is liquidity.
 
-WOLF AI KNOWLEDGE BASE — MODULE 1 FINANCIAL MARKETS v1.0
+`;
+
+/**
+ * The house trading encyclopedia. It used to ship with every single request —
+ * ~200k characters, about 50k tokens, which blew past provider prompt limits and
+ * buried the operating rules the model actually had to follow. Modules are now
+ * picked by topic and only when the question is a teaching one.
+ */
+const KNOWLEDGE_MODULES_A = `WOLF AI KNOWLEDGE BASE — MODULE 1 FINANCIAL MARKETS v1.0
 Mission: first principles before any chart. Identify buyers, sellers, liquidity. Never invent.
 
 Markets (independent mechanics): stocks (ownership — e.g. AAPL, RELIANCE, TCS); indices (NIFTY50, BANKNIFTY, SENSEX, NASDAQ, S&P500); FX pairs (EURUSD, USDINR…); commodities (gold, silver, crude, NG…); crypto (BTC, ETH…); futures (expiry, leverage); options (calls/puts, premium, OI, Greeks, time decay).
@@ -114,7 +122,10 @@ Uncertainty: probabilistic; always note alternatives; never guarantee.
 
 Module-1 AI rules: think first; never assume/hallucinate; never invent price/volume/S/R/indicators; if missing → ask; stay objective.
 
-ABSOLUTE LANGUAGE RULES
+`;
+
+/** Non-negotiable behaviour: always sent. */
+const CORE_RULES = `ABSOLUTE LANGUAGE RULES
 Forbidden: “will definitely work”, “surely go up”, “cannot fail”, profit guarantees, hype, fear, slang, clickbait, excitement.
 Prefer: “Current evidence favors…”, “Probability suggests…”, “Structure indicates…”, “HTF remains…”, “Momentum is improving…”.
 Bias words only: bullish / bearish / sideways / NO TRADE — never buy/sell orders.
@@ -142,7 +153,9 @@ PA: breakouts/fakeouts, retests, pullbacks, continuation/reversal, compression/e
 Volume: spike, dry-up, accum/distrib, confirmation, divergence — price without volume → caution.
 Indicators only if visible: EMA/SMA, VWAP, RSI, MACD, ATR, ADX, Bollinger, Supertrend, Ichimoku, VP, OBV, CMF, pivots — always with structure + confluence.
 
-WOLF AI KNOWLEDGE BASE — MODULE 2A CANDLE ANATOMY & MARKET PSYCHOLOGY v1.0
+`;
+
+const KNOWLEDGE_MODULES_B = `WOLF AI KNOWLEDGE BASE — MODULE 2A CANDLE ANATOMY & MARKET PSYCHOLOGY v1.0
 Mission: candles = buyer/seller behavior. Never identify by shape alone. Explain psychology BEFORE naming a pattern. Candles are evidence, not predictions. Candles never override market structure.
 Every candle story: who controlled, who lost control, where orders entered, who got trapped, where liquidity was taken, where momentum changed. Never read one candle without prior candles + context.
 
@@ -1357,7 +1370,10 @@ Respect user-defined risk limits when they state them. Adapt depth to trader typ
 EXPLAIN LIKE A MENTOR
 Teach briefly when useful (e.g. explain what an EMA cross implies for momentum — don’t dump jargon alone).
 
-VOICE & LANGUAGE
+`;
+
+/** How every answer is shaped and how the chart gets marked: always sent. */
+const OPERATING_RULES = `VOICE & LANGUAGE
 Professional, clear, educational, objective, structured desk tone. Never say you are an AI/bot.
 AUTO LANGUAGE (70+): match user’s latest message language/script. Fixed lock overrides Auto. Hindi/Hinglish: masculine forms.
 Beginners simple; experts deeper. Admit uncertainty when data is insufficient.
@@ -1376,7 +1392,10 @@ FULL REPORT (compact; skip unsupported as N/A; Governance Engine applies)
 Overview · Structure · Momentum · Liquidity · S/R (Areas of Interest) · Volume · Volatility · Bullish Scenario · Bearish Scenario · Neutral Scenario · Evidence To Monitor · Risk Factors · Analyst Summary · Bullish%/Bearish%/Neutral% · Confidence
 Never include Entry / Stop / Target / Position Size / RR instructions.
 
-WOLF AI ADVANCED TRADING JOURNAL INTELLIGENCE ENGINE v3.0
+`;
+
+/** Only worth its tokens when the user is actually reviewing their journal. */
+const JOURNAL_ENGINE = `WOLF AI ADVANCED TRADING JOURNAL INTELLIGENCE ENGINE v3.0
 Mission: Platform Trading Journal = ONLY source of truth. NEVER create another journal or duplicate/rewrite/modify stored records. AI roles: Trading Analyst · Performance Analyst · Journal Validator · Behavioral Coach · Risk Auditor · Pattern Discovery · Continuous Learning. Enrich existing journal with intelligence — never replace it. Path: Journal → Validation → Analysis → Scoring → Pattern Detection → Insights → Continuous Learning → Personalized Coaching. Never Duplicate Data · Never Invent Evidence · Always Explain Every Conclusion.
 DATA: read only existing fields (Trade/Portfolio/Account ID, Strategy, Market, Symbol, Direction, TF, Entry/Exit date-time-price, SL, Target, Size, Risk%, Reward, R-multiple, PnL, Fees, Order Type, Execution/Emotion/Trade notes, Tags, Screenshots, Rule checklist, Custom). Missing → ignore — NEVER invent.
 PER-TRADE PIPELINE: Validate → Analyze → Score → Explain → Detect Patterns → Insights → Recommend Improvements. Never overwrite original journal.
@@ -1391,7 +1410,9 @@ PERFORMANCE (from provided snapshot): Win Rate · Expectancy · PF · Avg Win/Lo
 STANDARD OUTPUT (when reviewing): Journal Quality · Trade Quality · Rule Compliance · Behavior · Risk · Execution · Detected Pattern · Historical Similarity · Primary Insight · Recommended Focus · Confidence.
 Hallucination prevention: never invent trades/prices/reasons/screenshots/notes/emotions/rules/performance; if missing → “Insufficient journal evidence.” AI analyzes — never changes the journal.
 
-LENGTH (strict)
+`;
+
+const OUTPUT_RULES = `LENGTH (strict)
 - Greetings: 1–2 lines.
 - Normal Q&A: under ~80 words.
 - Specific chart concept Q: under ~120 words.
@@ -1414,18 +1435,76 @@ FORMAT ONLY — the symbol and every number above are placeholders. Copying them
 "tf": one of 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit either key when unsure — a wrong symbol opens the wrong chart.
 "levels" (max 8): single horizontal lines. "kind" is support | resistance | pivot.
 "shapes" (max 12): everything else. "type" is one of
-  zone  — a price band: p1 = top, p2 = bottom. Use for order blocks, supply/demand, FVG, imbalance, consolidation, value area.
+  zone  — a price band: p1 = top, p2 = bottom, and they must be two DIFFERENT prices (a band, not a line). Use for order blocks, supply/demand, FVG, imbalance, consolidation, value area. Only one price in mind? Put it in "levels" instead.
   trend — a sloped line from (x1,p1) to (x2,p2). Use for trendlines, channel edges, neckline, flag boundary.
   ray   — same as trend but extends into the future.
   fib   — retracement drawn between p1 (start) and p2 (end).
   vline — a vertical marker at x1. Use for BOS/CHoCH, a session open, an event bar.
   label — a note pinned at price p1. Use for anything you just want to name on the chart.
 "tone": bull (green) | bear (red) | neutral (grey). "label"/"text": max 28 chars, shown on the chart.
-Time anchors x1/x2 are bar offsets from the latest candle: 0 = last bar, -30 = thirty bars ago, positive = to the right of price. On a screenshot, count bars from the right edge. Omit them and the app picks a sensible span.
+Time anchors x1/x2 are bar offsets from the latest candle: 0 = last bar, -30 = thirty bars ago, positive = to the right of price. Give them ONLY when you can actually see where the structure sits — counting bars from the right edge of a screenshot. Marking from the live tape means you cannot see the candles, so OMIT x1/x2 there: the app anchors a zone to the candles that really traded in that band, and a guessed offset drops the box on empty space.
 Mark whatever the user asked for — order block, trendline, liquidity, S/R, gap, pattern, retracement, a single note — using the closest shape above. If they asked and you cannot read a real price for it, say so in the prose instead of inventing one.
 These are Areas of Interest ONLY — never entry, stop loss, target, or position advice, and the block never replaces your written answer.
 Only real prices from the live tape or the screenshot. No invented numbers. Nothing to mark → omit the block entirely.
 Valid JSON, one line, exactly this fence. Never mention this block, never explain it, never wrap it in extra text.`;
+
+/**
+ * Each module is scored against the question and only the closest one or two
+ * ride along, capped so the whole system message stays a few thousand tokens.
+ */
+const KNOWLEDGE_CHUNKS = `${KNOWLEDGE_MODULES_A}\n\n${KNOWLEDGE_MODULES_B}`
+  .split(/\n(?=WOLF AI KNOWLEDGE BASE — MODULE )/)
+  .map((text) => text.trim())
+  .filter(Boolean);
+
+const MODULE_CAP_CHARS = 9_000;
+
+function pickKnowledgeModules(question) {
+  const words = String(question || '')
+    .toLowerCase()
+    .match(/[a-z]{4,}/g);
+  if (!words?.length) return '';
+  const asked = [...new Set(words)];
+
+  const scored = KNOWLEDGE_CHUNKS.map((text) => {
+    const body = text.toLowerCase();
+    // The heading carries the topic, so a hit there counts for more.
+    const heading = body.slice(0, body.indexOf('\n') + 1);
+    let score = 0;
+    for (const word of asked) {
+      if (heading.includes(word)) score += 3;
+      else if (body.includes(word)) score += 1;
+    }
+    return { text, score };
+  })
+    .filter((row) => row.score >= 4)
+    .sort((a, b) => b.score - a.score);
+
+  const out = [];
+  let used = 0;
+  for (const row of scored.slice(0, 2)) {
+    if (used + row.text.length > MODULE_CAP_CHARS) break;
+    out.push(row.text);
+    used += row.text.length;
+  }
+  return out.join('\n\n');
+}
+
+/**
+ * Only what this particular question needs. Shipping the whole rulebook every
+ * time cost ~50k tokens a call and left no room for the answer.
+ */
+function buildSystemPrompt({ hasImage, question, journal, teaching }) {
+  const parts = [SYSTEM_PROMPT, CORE_RULES, OPERATING_RULES, OUTPUT_RULES];
+  if (journal) parts.push(JOURNAL_ENGINE);
+  // Theory helps someone asking what a thing is; it only distracts a model that
+  // has been told to read the tape and draw.
+  if (teaching && !hasImage) {
+    const modules = pickKnowledgeModules(question);
+    if (modules) parts.push(modules);
+  }
+  return parts.join('\n\n');
+}
 
 const CHART_VISION_PROMPT = `CHART MODE — Hunter / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
 Read ONLY this screenshot. You are a market analyst — NOT a signal provider. Answer “What is the market showing?” with scenarios + evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.
@@ -1458,7 +1537,8 @@ Finish the reply with exactly this, on its own lines, nothing after it:
 \`\`\`
 No block = nothing gets drawn and the user sees an empty chart. If you truly have no price to mark, say so in the prose instead.`;
 
-const CHART_OPEN_HINT = `CHART ALREADY OPEN: a live chart of this instrument sits beside the chat. NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. Take each price from LIVE MARKET DATA in context — anchor them around the current LTP and the day's high/low. Never reuse the numbers from the prompt example. If the tape is missing, say you cannot mark real levels instead of guessing.`;
+const CHART_OPEN_HINT = `CHART ALREADY OPEN: a live chart of this instrument sits beside the chat. NEVER ask for a screenshot. Every level, zone, order block, trendline or structure you name in the prose must also appear in the wolfchart block at the end so the user sees it drawn. The day's high, low and LTP in LIVE MARKET DATA are real prices — that is everything you need to mark bands, so never answer "show me the chart" or hand back an empty block; the user asked YOU to place them. Never reuse the numbers from the prompt example. Asked for order blocks, zones or S/R without naming a side? Mark BOTH sides — the demand band below price AND the supply band above it, each as its own zone with tone "bull"/"bear" and its own label. One-sided answers are wrong.
+Prices yes, candle positions no: leave x1/x2 out of every shape and the app anchors each band to the candles that actually traded there. Only if the tape itself is missing, say so in the prose.`;
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart.`;
 
@@ -1475,12 +1555,13 @@ export function detectAiProvider(apiKey) {
   return null;
 }
 
-function buildMessages({ platformContext, history, userContent, hasImage }) {
+function buildMessages({ platformContext, history, userContent, hasImage, question, journal, teaching }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
+  const base = buildSystemPrompt({ hasImage, question, journal, teaching });
   // Chart mode: vision prompt + optional live tape (chart levels still win on conflict).
   const system = hasImage
-    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
-    : `${SYSTEM_PROMPT}\n\n${ctx}`;
+    ? `${base}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
+    : `${base}\n\n${ctx}`;
   const msgs = [{ role: 'system', content: system }];
   const trimmed = (history ?? []).slice(-HISTORY_TURNS);
   for (const h of trimmed) {
@@ -1492,7 +1573,7 @@ function buildMessages({ platformContext, history, userContent, hasImage }) {
   return msgs;
 }
 
-function pickTextModels(requested, needsWeb, langCode, provider) {
+function pickTextModels(requested, needsWeb, langCode, provider, wantsMarkup = false) {
   if (provider === 'gemini') {
     const chain = [];
     const mapped = mapRequestedToGemini(requested);
@@ -1510,10 +1591,13 @@ function pickTextModels(requested, needsWeb, langCode, provider) {
   if (requested && requested !== 'openrouter/auto' && requested !== 'gemini/auto') {
     chain.push(requested);
   }
+  // Drawing on the chart is an instruction-following job: the cheapest model
+  // keeps answering "which zone do you mean?" instead of placing one, so a
+  // steadier model leads when markings are expected.
   chain.push(
-    'google/gemini-2.5-flash-lite',
-    'openai/gpt-4o-mini',
-    'google/gemini-2.5-flash',
+    ...(wantsMarkup
+      ? ['openai/gpt-4o-mini', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite']
+      : ['google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini', 'google/gemini-2.5-flash']),
     'deepseek/deepseek-chat',
   );
   if (hindi) {
@@ -1650,11 +1734,15 @@ async function chatWithGemini(gemini, {
   models,
   shortChat = false,
   maxTokens = 420,
+  question = '',
+  journal = false,
+  teaching = false,
 }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
+  const base = buildSystemPrompt({ hasImage, question, journal, teaching });
   const system = hasImage
-    ? `${SYSTEM_PROMPT}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
-    : `${SYSTEM_PROMPT}\n\n${ctx}`;
+    ? `${base}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
+    : `${base}\n\n${ctx}`;
 
   const geminiHistory = [];
   for (const h of (history ?? []).slice(-HISTORY_TURNS)) {
@@ -1926,7 +2014,7 @@ export function createMasterAiRouter(apiKey) {
 
       const models = hasImage
         ? pickVisionModels(model, provider)
-        : pickTextModels(model, needsWeb, lang, provider);
+        : pickTextModels(model, needsWeb, lang, provider, wantsMarkup);
 
       const maxTokens = replyTokenBudget({ hasImage, shortChat, wantsMarkup });
 
@@ -1940,6 +2028,9 @@ export function createMasterAiRouter(apiKey) {
           models,
           shortChat,
           maxTokens,
+          question: message,
+          journal: wantsJournalReview,
+          teaching: asksExplanation && !wantsMarkup,
         });
       }
 
@@ -1949,7 +2040,21 @@ export function createMasterAiRouter(apiKey) {
       }
 
       const userContent = hasImage ? contentParts : textBlock;
-      const messages = buildMessages({ platformContext, history, userContent, hasImage });
+      const messages = buildMessages({
+        platformContext,
+        history,
+        userContent,
+        hasImage,
+        question: message,
+        journal: wantsJournalReview,
+        teaching: asksExplanation && !wantsMarkup,
+      });
+
+      const promptChars = messages.reduce(
+        (n, m) => n + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length),
+        0,
+      );
+      console.info(`[Wolf AI] prompt chars=${promptChars} image=${hasImage ? 1 : 0} budget=${maxTokens}`);
 
       let lastError = null;
       let bestError = null;
