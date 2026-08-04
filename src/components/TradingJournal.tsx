@@ -458,13 +458,20 @@ function getMissingTradeFields(input: TradeFormState): string[] {
   return missing;
 }
 
-/** Underlying in the picker + strike/CE-PE → saved script name. */
+/** Underlying in the picker + strike/CE-PE (or FUT) → saved script name. */
 function resolveInstrumentForSave(form: TradeFormState): string {
   const underlying =
+    journalUnderlyingSymbol(form.instrument) ||
     sanitizeString(form.instrument).split(/\s+/)[0] ||
     'NIFTY';
-  if (form.type !== 'Options') return sanitizeString(form.instrument) || underlying;
-  return formatOptionContract(underlying, form.optStrike, form.optRight, form.optExpiry);
+  if (form.type === 'Options') {
+    return formatOptionContract(underlying, form.optStrike, form.optRight, form.optExpiry);
+  }
+  if (form.type === 'Futures') {
+    const exp = sanitizeString(form.optExpiry).toUpperCase();
+    return exp ? `${underlying} ${exp} FUT` : `${underlying} FUT`;
+  }
+  return underlying;
 }
 
 function normalizeFormForSave(form: TradeFormState): TradeFormState {
@@ -1690,13 +1697,11 @@ export default function TradingJournal({
                 </div>
 
                 <p className="text-xs text-slate-500">
-                  {form.type === 'Options'
-                    ? 'Underlying * — pehle NIFTY / BANKNIFTY / stock chuno, neeche strike + CE/PE bharo'
-                    : form.market === 'equity'
-                      ? 'Instrument * — NSE / BSE stocks & indices'
-                      : form.market === 'crypto'
-                        ? 'Instrument * — crypto pair (search or type e.g. BTC/USDT)'
-                        : 'Instrument * — forex pair (EUR/USD, XAU/USD, USD/INR…)'}
+                  {form.market === 'equity'
+                    ? 'Underlying * — NIFTY / BANKNIFTY / stock chuno, phir neeche uski script (Cash / Futures / Options)'
+                    : form.market === 'crypto'
+                      ? 'Instrument * — crypto pair (search or type e.g. BTC/USDT)'
+                      : 'Instrument * — forex pair (EUR/USD, XAU/USD, USD/INR…)'}
                 </p>
 
                 {form.market === 'equity' ? (
@@ -1734,77 +1739,193 @@ export default function TradingJournal({
                     <span>{selectedSymbolMeta.name}</span>
                     <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
                     <span className="text-[10px]">
-                      {form.type === 'Options'
-                        ? 'Underlying matched · option contract neeche'
+                      {selectedSymbolMeta.isFno || selectedSymbolMeta.type === 'index'
+                        ? 'Ab neeche iski script chuno — Cash / Futures / Options'
                         : 'Matched from list · prices ab bhi manual'}
                     </span>
                   </div>
                 )}
 
-                {form.market === 'equity' && form.type === 'Options' && (
-                  <div className="rounded-xl border border-[#d4af37]/35 bg-[#d4af37]/10 p-3 space-y-2">
-                    <p className="text-[11px] font-bold text-[#d4af37]">
-                      Option contract — script aise bharo
-                    </p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                      Example: underlying <span className="text-slate-300">NIFTY</span> + strike{' '}
-                      <span className="text-slate-300">24600</span> +{' '}
-                      <span className="text-slate-300">CE</span> → saved as{' '}
-                      <span className="font-semibold text-[var(--tf-text)]">NIFTY 24600 CE</span>.
-                      Entry / Exit pe <span className="text-slate-300">premium</span> daalo (spot nahi).
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <input
-                        value={form.optStrike}
-                        onChange={(e) =>
-                          setForm({ ...form, optStrike: sanitizeDecimalInput(e.target.value) })
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
-                        }}
-                        className={`col-span-1 rounded-xl border px-3 py-2 text-sm ${inputClass}`}
-                        placeholder="Strike *"
-                        inputMode="decimal"
-                        autoComplete="off"
-                      />
-                      <LuxSelect
-                        value={form.optRight}
-                        options={[
-                          { value: 'CE', label: 'CE (Call)' },
-                          { value: 'PE', label: 'PE (Put)' },
-                        ]}
-                        onChange={(v) => setForm({ ...form, optRight: v as OptionRight })}
-                      />
-                      <input
-                        value={form.optExpiry}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            optExpiry: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                          })
-                        }
-                        className={`rounded-xl border px-3 py-2 text-sm ${inputClass}`}
-                        placeholder="Expiry (07AUG)"
-                        autoComplete="off"
-                      />
-                    </div>
-                    {sanitizeString(form.optStrike) ? (
-                      <p className="text-[11px] text-[var(--tf-text)]">
-                        Script preview:{' '}
-                        <span className="font-bold text-[#d4af37]">
-                          {formatOptionContract(
-                            form.instrument || selectedSymbolMeta?.symbol || 'NIFTY',
-                            form.optStrike,
-                            form.optRight,
-                            form.optExpiry,
+                {/* NIFTY etc. select ke turant baad — kaunsi script trade hui */}
+                {form.market === 'equity' &&
+                  (selectedSymbolMeta?.isFno ||
+                    selectedSymbolMeta?.type === 'index' ||
+                    /^(NIFTY|BANKNIFTY|FINNIFTY|MIDCPNIFTY|SENSEX)$/i.test(
+                      journalUnderlyingSymbol(form.instrument) || form.instrument,
+                    )) && (
+                    <div className="rounded-xl border border-[#d4af37]/40 bg-[#121520] p-3 space-y-3">
+                      <div>
+                        <p className="text-[11px] font-bold text-[#d4af37]">
+                          {journalUnderlyingSymbol(form.instrument) || form.instrument || 'NIFTY'}{' '}
+                          — kaunsi script?
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Index select karne ke baad yahan CE/PE strike wala contract choose karo.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(
+                          [
+                            { id: 'cash' as const, label: 'Cash / Spot', hint: 'Index / equity' },
+                            { id: 'futures' as const, label: 'Futures', hint: 'FUT contract' },
+                            { id: 'options' as const, label: 'Options', hint: 'CE / PE strike' },
+                          ] as const
+                        ).map((opt) => {
+                          const active =
+                            opt.id === 'options'
+                              ? form.type === 'Options'
+                              : opt.id === 'futures'
+                                ? form.type === 'Futures'
+                                : form.type === 'Intraday' || form.type === 'Swing';
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                const underlying =
+                                  journalUnderlyingSymbol(form.instrument) ||
+                                  selectedSymbolMeta?.symbol ||
+                                  form.instrument ||
+                                  'NIFTY';
+                                setPnlManualOverride(false);
+                                if (opt.id === 'options') {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    type: 'Options',
+                                    instrument: underlying,
+                                    quantityIsLots: true,
+                                    quantity: sanitizeString(prev.quantity) || '1',
+                                  }));
+                                  return;
+                                }
+                                if (opt.id === 'futures') {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    type: 'Futures',
+                                    instrument: underlying,
+                                    optStrike: '',
+                                    optExpiry: '',
+                                    quantityIsLots: true,
+                                    quantity: sanitizeString(prev.quantity) || '1',
+                                  }));
+                                  return;
+                                }
+                                setForm((prev) => ({
+                                  ...prev,
+                                  type: prev.type === 'Swing' ? 'Swing' : 'Intraday',
+                                  instrument: underlying,
+                                  optStrike: '',
+                                  optExpiry: '',
+                                  quantityIsLots: false,
+                                }));
+                              }}
+                              className={`rounded-xl border px-2 py-2.5 text-left transition-colors ${
+                                active
+                                  ? 'border-[#d4af37] bg-[#d4af37]/15 text-[#d4af37]'
+                                  : 'border-[var(--tf-border)] bg-[var(--tf-elevated)] text-slate-400 hover:border-[#d4af37]/40'
+                              }`}
+                            >
+                              <span className="block text-[11px] font-bold">{opt.label}</span>
+                              <span className="block text-[9px] opacity-80 mt-0.5">{opt.hint}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {form.type === 'Futures' && (
+                        <div className="space-y-1">
+                          <input
+                            value={form.optExpiry}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                optExpiry: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                              })
+                            }
+                            className={`w-full rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                            placeholder="Futures expiry (optional) e.g. 28AUG"
+                            autoComplete="off"
+                          />
+                          <p className="text-[10px] text-slate-500">
+                            Script preview:{' '}
+                            <span className="font-semibold text-[var(--tf-text)]">
+                              {(journalUnderlyingSymbol(form.instrument) || form.instrument || 'NIFTY') +
+                                (sanitizeString(form.optExpiry)
+                                  ? ` ${sanitizeString(form.optExpiry)} FUT`
+                                  : ' FUT')}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+
+                      {form.type === 'Options' && (
+                        <div className="space-y-2 rounded-lg border border-[#d4af37]/25 bg-[#d4af37]/5 p-2.5">
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                            Example:{' '}
+                            <span className="text-slate-200">NIFTY 24600 CE 07AUG</span> — Entry/Exit
+                            pe <span className="text-slate-200">premium</span> daalo.
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input
+                              value={form.optStrike}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  optStrike: sanitizeDecimalInput(e.target.value),
+                                })
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                              }}
+                              className={`rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                              placeholder="Strike *"
+                              inputMode="decimal"
+                              autoComplete="off"
+                            />
+                            <LuxSelect
+                              value={form.optRight}
+                              options={[
+                                { value: 'CE', label: 'CE (Call)' },
+                                { value: 'PE', label: 'PE (Put)' },
+                              ]}
+                              onChange={(v) => setForm({ ...form, optRight: v as OptionRight })}
+                            />
+                            <input
+                              value={form.optExpiry}
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  optExpiry: e.target.value
+                                    .toUpperCase()
+                                    .replace(/[^A-Z0-9]/g, ''),
+                                })
+                              }
+                              className={`rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                              placeholder="Expiry 07AUG"
+                              autoComplete="off"
+                            />
+                          </div>
+                          {sanitizeString(form.optStrike) ? (
+                            <p className="text-[11px] text-[var(--tf-text)]">
+                              Script:{' '}
+                              <span className="font-bold text-[#d4af37]">
+                                {formatOptionContract(
+                                  form.instrument || selectedSymbolMeta?.symbol || 'NIFTY',
+                                  form.optStrike,
+                                  form.optRight,
+                                  form.optExpiry,
+                                )}
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-amber-400/90">
+                              Strike number daalo — tab script complete hogi.
+                            </p>
                           )}
-                        </span>
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-amber-400/90">Strike bharo — bina iske option script incomplete hai.</p>
-                    )}
-                  </div>
-                )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 {form.market !== 'equity' && selectedGlobalMeta && (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--tf-border)] bg-[var(--tf-elevated)] px-3 py-2 text-xs text-[var(--tf-text-secondary)]">
                     <span className="font-bold text-[var(--tf-text)]">{selectedGlobalMeta.symbol}</span>
