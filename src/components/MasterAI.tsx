@@ -1146,7 +1146,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">{isMentor ? 'Mentor AI' : AI_PRODUCT_NAME}</h1>
-              <span className="mai-chat__badge">{isMentor ? 'Trainer' : 'Hunter'}</span>
+              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Hunter'}</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured

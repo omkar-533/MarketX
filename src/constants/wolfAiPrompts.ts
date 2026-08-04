@@ -12,27 +12,27 @@ export type DeskPrompt = {
   hintHi: string;
 };
 
-/** Wolf Mentor desk actions (quizzes / process) — not a chat product */
+/** Wolf Mentor desk actions (process drills) — professional mentor, not a chat product */
 export const MENTOR_CHAT_PROMPTS: DeskPrompt[] = [
   {
     id: 'challenge',
     label: 'Challenge my bias',
     labelHi: 'Challenge my bias',
     prompt:
-      'Challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
+      'As my professional mentor: challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic desk critique, no trade orders.',
     promptHi:
-      'Challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
-    hint: 'Socratic',
-    hintHi: 'Socratic',
+      'As my professional mentor: challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic desk critique, no trade orders.',
+    hint: 'Desk critique',
+    hintHi: 'Desk critique',
   },
   {
     id: 'invalidate',
-    label: 'What invalidates this?',
-    labelHi: 'What invalidates this?',
+    label: 'Define invalidation',
+    labelHi: 'Define invalidation',
     prompt:
-      'Quiz me: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+      'Process check: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
     promptHi:
-      'Quiz me: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+      'Process check: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
     hint: 'Invalidation',
     hintHi: 'Invalidation',
   },
@@ -41,31 +41,31 @@ export const MENTOR_CHAT_PROMPTS: DeskPrompt[] = [
     label: 'Why wait?',
     labelHi: 'Why wait?',
     prompt:
-      'Train me: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
+      'Mentor session: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
     promptHi:
-      'Train me: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
-    hint: 'Patience',
-    hintHi: 'Patience',
+      'Mentor session: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
+    hint: 'Patience process',
+    hintHi: 'Patience process',
   },
   {
     id: 'chart-quiz',
-    label: 'Quiz me from chart',
-    labelHi: 'Quiz me from chart',
+    label: 'Process check from chart',
+    labelHi: 'Process check from chart',
     prompt:
       '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question (premium/discount, structure lean, or liquidity). Do not answer it yourself — wait for my reply. No Entry/Stop/Target.',
     promptHi:
       '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question (premium/discount, structure lean, or liquidity). Do not answer it yourself — wait for my reply. No Entry/Stop/Target.',
-    hint: 'Live tape quiz',
-    hintHi: 'Live tape quiz',
+    hint: 'Live tape',
+    hintHi: 'Live tape',
   },
   {
     id: 'training-plan',
-    label: 'My training plan',
-    labelHi: 'My training plan',
+    label: '7-day mentor path',
+    labelHi: '7-day mentor path',
     prompt: 'MY_TRAINING_PLAN',
     promptHi: 'MY_TRAINING_PLAN',
-    hint: '7-day path',
-    hintHi: '7-day path',
+    hint: 'Training path',
+    hintHi: 'Training path',
   },
 ];
 

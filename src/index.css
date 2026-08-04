@@ -6934,11 +6934,11 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
 }
 
-/* —— Wolf Mentor training desk (not a chatbot) —— */
+/* —— Wolf Mentor professional training desk —— */
 .wm-desk {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.7rem;
   min-height: calc(100vh - 4.5rem);
   color: var(--tf-text);
 }
@@ -6948,11 +6948,11 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem 1rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--tf-border);
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(212, 175, 55, 0.12), transparent 55%),
+    radial-gradient(120% 80% at 0% 0%, rgba(212, 175, 55, 0.1), transparent 55%),
     var(--tf-elevated);
 }
 
@@ -6990,19 +6990,23 @@ input[type="number"] { -moz-appearance: textfield; }
 .wm-desk__badge {
   font-size: 0.58rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 0.15rem 0.4rem;
-  border-radius: 999px;
-  border: 1px solid rgba(52, 211, 153, 0.35);
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.08);
+  padding: 0.18rem 0.45rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.1);
+  white-space: nowrap;
 }
 
 .wm-desk__sub {
-  margin: 0.15rem 0 0;
-  font-size: 0.7rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--tf-muted, #94a3b8);
+  line-height: 1.35;
 }
 
 .wm-desk__modes,
@@ -7050,14 +7054,46 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .wm-desk__chip--on {
-  border-color: rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.1);
-  color: #34d399;
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.12);
+  color: #d4af37;
+}
+
+.wm-desk__chip--ghost {
+  opacity: 0.9;
+  font-weight: 600;
 }
 
 .wm-desk__chip:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.wm-desk__rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.25rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--tf-elevated) 92%, #0a0c12);
+}
+
+.wm-desk__rail-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.wm-desk__rail-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--tf-muted, #64748b);
+  margin-right: 0.15rem;
 }
 
 .wm-desk__spin {
@@ -7136,10 +7172,10 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
   gap: 0.35rem;
   padding: 0.5rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -7152,19 +7188,26 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .wm-desk__card {
-  padding: 0.75rem 0.85rem;
+  padding: 0.8rem 0.9rem;
   border: 1px solid var(--tf-border);
-  border-radius: 0.85rem;
+  border-radius: 0.7rem;
   background: var(--tf-elevated);
 }
 
 .wm-desk__card-h {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #d4af37;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+
+.wm-desk__level {
+  margin: -0.2rem 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--tf-text);
 }
 
 .wm-desk__card-h--row {
@@ -7284,10 +7327,10 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .wm-desk__quiz {
-  padding: 0.85rem 1rem;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  border-radius: 0.85rem;
-  background: rgba(52, 211, 153, 0.06);
+  padding: 0.9rem 1.05rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 0.7rem;
+  background: rgba(212, 175, 55, 0.05);
 }
 
 .wm-desk__quiz-h {
@@ -7296,7 +7339,7 @@ input[type="number"] { -moz-appearance: textfield; }
   gap: 0.4rem;
   font-size: 0.75rem;
   font-weight: 800;
-  color: #34d399;
+  color: #d4af37;
   margin-bottom: 0.45rem;
 }
 
@@ -7363,39 +7406,79 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
   font-size: 0.75rem;
   font-weight: 800;
 }
 
 .wm-desk__coach {
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1.1rem;
   border: 1px solid var(--tf-border);
-  border-radius: 0.85rem;
+  border-radius: 0.7rem;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--tf-elevated) 88%, #1a1810), var(--tf-elevated));
 }
 
 .wm-desk__coach-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.wm-desk__coach-title {
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #d4af37;
-  margin-bottom: 0.45rem;
+}
+
+.wm-desk__mode-pill {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-muted, #94a3b8);
+  background: color-mix(in srgb, var(--tf-surface, var(--tf-elevated)) 90%, #000);
+}
+
+.wm-desk__coach-busy {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--tf-muted, #94a3b8);
 }
 
 .wm-desk__coach-body {
-  font-size: 0.85rem;
-  line-height: 1.5;
-  min-height: 3.5rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  min-height: 3.75rem;
 }
 
 .wm-desk__coach-body--busy {
   opacity: 0.75;
+}
+
+@media (max-width: 640px) {
+  .wm-desk__badge {
+    font-size: 0.52rem;
+  }
+
+  .wm-desk__rail {
+    gap: 0.5rem 0.75rem;
+  }
+
+  .wm-desk__sub {
+    font-size: 0.62rem;
+  }
 }
 
 .mai-detective {

@@ -1,4 +1,4 @@
-/** Hunter mentor personality + session modes for Wolf AI. */
+/** Wolf Mentor personality + session modes. */
 
 export type MentorMode = 'beginner' | 'professional' | 'strict' | 'socratic';
 
@@ -7,10 +7,10 @@ export const MENTOR_MODES: {
   label: string;
   hint: string;
 }[] = [
-  { id: 'beginner', label: 'Beginner', hint: 'Simple language' },
-  { id: 'professional', label: 'Pro', hint: 'SMC / ICT terms' },
-  { id: 'strict', label: 'Strict', hint: 'Challenge mistakes' },
-  { id: 'socratic', label: 'Socratic', hint: 'Questions first' },
+  { id: 'beginner', label: 'Beginner', hint: 'Plain language · define every term' },
+  { id: 'professional', label: 'Professional', hint: 'Institutional process · evidence-first' },
+  { id: 'strict', label: 'Strict', hint: 'Challenge weak process' },
+  { id: 'socratic', label: 'Socratic', hint: 'Questions before conclusions' },
 ];
 
 const STORAGE_MENTOR = 'wolf_ai_mentor_mode';
@@ -26,6 +26,10 @@ export function loadMentorMode(): MentorMode {
 
 export function saveMentorMode(mode: MentorMode): void {
   if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_MENTOR, mode);
+}
+
+export function mentorModeLabel(mode: MentorMode): string {
+  return MENTOR_MODES.find((m) => m.id === mode)?.label ?? 'Professional';
 }
 
 export function loadTrainingMode(): boolean {

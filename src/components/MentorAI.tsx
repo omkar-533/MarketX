@@ -23,6 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
   loadMentorMode,
+  mentorModeLabel,
   saveMentorMode,
   type MentorMode,
 } from '../services/mentorModes';
@@ -66,8 +67,8 @@ import { tradingViewSymbolLabel } from '../utils/tradingViewSymbols';
 const WOLF_MENTOR = 'Wolf Mentor';
 
 /**
- * Wolf Mentor — live training desk (not a chatbot).
- * Chart + quizzes + coach notes. Hunter / Wolf AI stays separate for analysis chat.
+ * Wolf Mentor — professional training desk (not a chatbot).
+ * Chart + process checks + mentor briefings. Hunter / Wolf AI stays separate for analysis.
  */
 export default function MentorAI() {
   const { user } = useAuth();
@@ -94,9 +95,9 @@ export default function MentorAI() {
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
   const [coachNote, setCoachNote] = useState(
-    'Wolf Mentor is ready. Live + historical chart quizzes, beginner teaching, and drawings on the chart. Process only — never Entry/Stop/Target.',
+    'Wolf Mentor intake ready. We train process from live tape and historical structure — Areas of Interest only. No Entry, Stop, Target, or trade calls.',
   );
-  const [coachTitle, setCoachTitle] = useState('Coach notes');
+  const [coachTitle, setCoachTitle] = useState('Mentor briefing');
   const [busy, setBusy] = useState(false);
   const [skillTick, setSkillTick] = useState(0);
   const [aiOk, setAiOk] = useState(false);
@@ -235,11 +236,11 @@ export default function MentorAI() {
       if (gradingRef.current) return;
       gradingRef.current = true;
       setBusy(true);
-      setCoachTitle(opts?.title || 'Coach notes');
+      setCoachTitle(opts?.title || 'Mentor briefing');
       setCoachNote(
         langMode === 'auto' || isHinglishLang(selectedLang.code)
-          ? 'Chart tape padh raha hoon…'
-          : 'Reading the chart tape…',
+          ? 'Desk tape padh raha hoon…'
+          : 'Reading desk tape…',
       );
       try {
         const ctx = buildMasterMarketContext();
@@ -266,11 +267,11 @@ export default function MentorAI() {
         setCoachNote(
           parsed.text.trim() ||
             (parsed.levels.length || parsed.shapes.length
-              ? 'Marked the lesson on the chart — study the drawing.'
-              : 'No coach note — try Next quiz again.'),
+              ? 'Lesson marked on the chart — study the drawing.'
+              : 'No briefing returned — run a process check again.'),
         );
       } catch {
-        setCoachNote('Wolf Mentor could not reach the coach engine. Check your AI key in Profile, then retry.');
+        setCoachNote('Wolf Mentor could not reach the mentor engine. Check your AI key in Profile, then retry.');
       } finally {
         gradingRef.current = false;
         setBusy(false);
@@ -304,7 +305,7 @@ export default function MentorAI() {
     setActiveDrill(null);
     void askCoach(gradeMsg, {
       trainingGrade: true,
-      title: correct ? 'Solid process' : 'Mistake + lesson',
+      title: correct ? 'Process check · Correct' : 'Process check · Mistake',
     });
   };
 
@@ -315,7 +316,7 @@ export default function MentorAI() {
   const quizFromChart = () => {
     void askCoach(
       '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question about LIVE tape OR a HISTORICAL swing/event (bars-ago). Do not reveal the ideal answer yet. No Entry/Stop/Target.',
-      { title: 'Chart question' },
+      { title: 'Process check · Chart' },
     );
   };
 
@@ -324,7 +325,7 @@ export default function MentorAI() {
     if (detective) setActiveDrill(buildDrillFromDetective(detective, 'historical'));
     void askCoach(
       '[MENTOR HISTORY-QUIZ] Using MARKET INTEL historical swings/events, ask me ONE question about a past structure mark on this chart. Do not answer yet.',
-      { title: 'Historical chart quiz' },
+      { title: 'Process check · History' },
     );
   };
 
@@ -334,20 +335,26 @@ export default function MentorAI() {
     saveMentorMode('beginner');
     void askCoach(
       '[MENTOR TEACH] I am new to trading. Teach me one core idea from this open chart (structure or liquidity) in simple steps, name common mistakes beginners make, DRAW it on the chart with wolfchart, then ask one check question. No Entry/Stop/Target.',
-      { title: 'Beginner lesson' },
+      { title: 'Mentor lesson' },
     );
   };
 
   const sendTrainingPlan = () => {
-    void askCoach(trainingPlanPrompt(skillProfile), { title: '7-day training path' });
+    void askCoach(trainingPlanPrompt(skillProfile), { title: '7-day mentor path' });
   };
 
   const scopeLabel =
     activeDrill?.scope === 'historical'
-      ? 'Historical chart'
+      ? 'Historical'
       : activeDrill?.scope === 'teach'
-        ? 'Beginner lesson'
+        ? 'Lesson'
         : 'Live tape';
+
+  const sessionLine = aiOk
+    ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`} · Live tape${
+        langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+      }`
+    : 'Add AI key in Profile to grade process checks';
 
   return (
     <div className="wm-desk">
@@ -359,19 +366,13 @@ export default function MentorAI() {
           <div>
             <div className="wm-desk__title-row">
               <h1 className="wm-desk__title">{WOLF_MENTOR}</h1>
-              <span className="wm-desk__badge">Trainer</span>
+              <span className="wm-desk__badge">Professional Mentor</span>
             </div>
-            <p className="wm-desk__sub">
-              {aiOk
-                ? langMode === 'auto'
-                  ? `Live training · Auto · ${selectedLang.nativeLabel}`
-                  : `Live training · ${selectedLang.nativeLabel}`
-                : 'Add AI key in Profile to grade quizzes'}
-            </p>
+            <p className="wm-desk__sub">{sessionLine}</p>
           </div>
         </div>
 
-        <div className="wm-desk__modes" role="group" aria-label="Coach style">
+        <div className="wm-desk__modes" role="group" aria-label="Mentor style">
           {MENTOR_MODES.map((m) => (
             <button
               key={m.id}
@@ -403,7 +404,7 @@ export default function MentorAI() {
               type="button"
               className={`wm-desk__chip ${langMenuOpen ? 'wm-desk__chip--on' : ''}`}
               onClick={() => setLangMenuOpen((o) => !o)}
-              aria-label="Coach language"
+              aria-label="Mentor language"
               aria-expanded={langMenuOpen}
               aria-haspopup="listbox"
               title="Same language list as Wolf AI / Hunter"
@@ -420,7 +421,7 @@ export default function MentorAI() {
                 <motion.div
                   className="mai-chat__lang-menu"
                   role="listbox"
-                  aria-label="Select coach language"
+                  aria-label="Select mentor language"
                   initial={{ opacity: 0, y: -8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.97 }}
@@ -430,7 +431,7 @@ export default function MentorAI() {
                   <div className="mai-chat__lang-head">
                     <div className="mai-chat__lang-head-title">
                       <Sparkles className="h-3.5 w-3.5" />
-                      <span>Coach language</span>
+                      <span>Mentor language</span>
                     </div>
                     <input
                       type="search"
@@ -493,10 +494,16 @@ export default function MentorAI() {
             </AnimatePresence>
           </div>
 
-          <button type="button" className="wm-desk__chip" onClick={speakBriefing} disabled={!detective}>
+          <button type="button" className="wm-desk__chip wm-desk__chip--ghost" onClick={speakBriefing} disabled={!detective}>
             <Mic2 className="h-3.5 w-3.5" />
-            Briefing
+            Brief
           </button>
+        </div>
+      </header>
+
+      <div className="wm-desk__rail" role="group" aria-label="Mentor session actions">
+        <div className="wm-desk__rail-group">
+          <span className="wm-desk__rail-label">Teach</span>
           <button
             type="button"
             className={`wm-desk__chip ${drillBias === 'teach' || mentorMode === 'beginner' ? 'wm-desk__chip--on' : ''}`}
@@ -507,6 +514,9 @@ export default function MentorAI() {
             <BookOpen className="h-3.5 w-3.5" />
             Teach me
           </button>
+        </div>
+        <div className="wm-desk__rail-group">
+          <span className="wm-desk__rail-label">Drill</span>
           <button
             type="button"
             className={`wm-desk__chip ${drillBias === 'historical' ? 'wm-desk__chip--on' : ''}`}
@@ -515,7 +525,7 @@ export default function MentorAI() {
             title="Quiz from past swings / BOS-CHoCH"
           >
             <History className="h-3.5 w-3.5" />
-            History quiz
+            History
           </button>
           <button
             type="button"
@@ -524,14 +534,14 @@ export default function MentorAI() {
             disabled={!detective || busy}
           >
             <Target className="h-3.5 w-3.5" />
-            Next quiz
+            Next check
           </button>
           <button type="button" className="wm-desk__chip" onClick={quizFromChart} disabled={busy}>
             <RefreshCw className={`h-3.5 w-3.5 ${busy ? 'wm-desk__spin' : ''}`} />
-            Chart question
+            Chart check
           </button>
         </div>
-      </header>
+      </div>
 
       <div className="wm-desk__body">
         <section className="wm-desk__chart" aria-label="Training chart">
@@ -558,7 +568,7 @@ export default function MentorAI() {
           {(chartLevels.length > 0 || chartShapes.length > 0) && (
             <p className="wm-desk__draw-hint">
               <Pencil className="h-3 w-3" />
-              Lesson drawn on chart — study the marks (live + historical bars).
+              Mentor marks on chart — study live + historical structure.
             </p>
           )}
         </section>
@@ -566,7 +576,7 @@ export default function MentorAI() {
         <aside className="wm-desk__side">
           {detective ? (
             <div className="wm-desk__card">
-              <div className="wm-desk__card-h">Market Condition</div>
+              <div className="wm-desk__card-h">Desk read</div>
               <div className="wm-desk__grid">
                 <div>
                   <span>Trend</span>
@@ -581,8 +591,8 @@ export default function MentorAI() {
                   <b>{detective.volatility}</b>
                 </div>
                 <div>
-                  <span>Confidence</span>
-                  <b>{detective.confidence}% · evidence</b>
+                  <span>Evidence</span>
+                  <b>{detective.confidence}%</b>
                 </div>
                 <div className="wm-desk__wide">
                   <span>Liquidity</span>
@@ -601,7 +611,7 @@ export default function MentorAI() {
             </div>
           ) : (
             <div className="wm-desk__card">
-              <div className="wm-desk__card-h">Market Condition</div>
+              <div className="wm-desk__card-h">Desk read</div>
               <p className="wm-desk__muted">Loading tape for {tradingViewSymbolLabel(symbol)}…</p>
             </div>
           )}
@@ -610,10 +620,11 @@ export default function MentorAI() {
             <div className="wm-desk__card-h wm-desk__card-h--row">
               <span className="inline-flex items-center gap-1.5">
                 <Trophy className="h-3.5 w-3.5" />
-                {skillProfile.level.label}
+                Trader progression
               </span>
               <em className="wm-desk__xp">{skillProfile.xp} XP</em>
             </div>
+            <p className="wm-desk__level">{skillProfile.level.label}</p>
             <div className="wm-desk__bars">
               {(
                 [
@@ -635,7 +646,7 @@ export default function MentorAI() {
               Focus: {skillProfile.weakness}. {skillProfile.focusWeek[0]}
             </p>
             <button type="button" className="wm-desk__plan" onClick={sendTrainingPlan} disabled={busy}>
-              Build 7-day path
+              Build 7-day mentor path
             </button>
             <div className="wm-desk__ach">
               {skillProfile.achievements.map((a) => (
@@ -652,12 +663,12 @@ export default function MentorAI() {
         </aside>
       </div>
 
-      <section className="wm-desk__quiz" aria-label="Decision quiz">
+      <section className="wm-desk__quiz" aria-label="Process check">
         {activeDrill ? (
           <>
             <div className="wm-desk__quiz-h">
               <Target className="h-4 w-4" />
-              <span>Decision quiz</span>
+              <span>Process check</span>
               <span className="wm-desk__scope">{scopeLabel}</span>
               <button type="button" className="wm-desk__dismiss" onClick={() => setActiveDrill(null)}>
                 Skip
@@ -672,24 +683,27 @@ export default function MentorAI() {
               ))}
             </div>
             <p className="wm-desk__muted">
-              Wrong answers get a clear “Mistake: …” lesson and a drawing on the chart.
+              Mistakes get a clear “Mistake: …” critique and a drawing on the chart.
             </p>
           </>
         ) : (
           <div className="wm-desk__quiz-idle">
-            <p>Live + historical quizzes auto-load — Teach me for full beginner lessons with drawings.</p>
+            <p>
+              Process checks load from live and historical tape. Use Teach me for a full mentor lesson
+              with chart drawings.
+            </p>
             <div className="wm-desk__quiz-idle-actions">
               <button type="button" onClick={() => punchQuiz('live')} disabled={!detective || busy}>
                 <Target className="h-4 w-4" />
-                Live quiz
+                Live check
               </button>
               <button type="button" onClick={() => punchQuiz('historical')} disabled={!detective || busy}>
                 <History className="h-4 w-4" />
-                History quiz
+                History check
               </button>
               <button type="button" onClick={() => punchQuiz('teach')} disabled={!detective || busy}>
                 <BookOpen className="h-4 w-4" />
-                Beginner quiz
+                Lesson check
               </button>
             </div>
           </div>
@@ -697,7 +711,11 @@ export default function MentorAI() {
       </section>
 
       <section className="wm-desk__coach" aria-live="polite">
-        <div className="wm-desk__coach-h">{coachTitle}</div>
+        <div className="wm-desk__coach-h">
+          <span className="wm-desk__coach-title">{coachTitle}</span>
+          <span className="wm-desk__mode-pill">{mentorModeLabel(mentorMode)}</span>
+          {busy ? <span className="wm-desk__coach-busy">Working…</span> : null}
+        </div>
         <div className={`wm-desk__coach-body ${busy ? 'wm-desk__coach-body--busy' : ''}`}>
           <ChatMarkdown text={coachNote} />
         </div>
