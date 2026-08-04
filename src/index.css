@@ -6956,6 +6956,80 @@ input[type="number"] { -moz-appearance: textfield; }
     var(--tf-elevated);
 }
 
+/* Full-width module nav — Curriculum cannot hide behind Beginner/Pro chips */
+.wm-desk__nav {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 0.75rem;
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.wm-desk__nav-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.wm-desk__nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wm-desk__nav-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 7.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.wm-desk__nav-btn span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.wm-desk__nav-btn small {
+  font-size: 0.62rem;
+  color: var(--tf-muted, #94a3b8);
+  font-weight: 600;
+}
+
+.wm-desk__nav-btn--start {
+  min-width: 10rem;
+  border-color: rgba(212, 175, 55, 0.55);
+  background: rgba(212, 175, 55, 0.16);
+}
+
+.wm-desk__nav-btn--start small {
+  color: #d4af37;
+  font-weight: 800;
+}
+
+.wm-desk__nav-btn--on {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35);
+}
+
+.wm-desk__modes--style {
+  padding-top: 0.2rem;
+}
+
 .wm-desk__brand {
   display: flex;
   align-items: center;

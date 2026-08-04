@@ -491,113 +491,6 @@ export default function MentorAI() {
           </div>
         </div>
 
-        {student ? (
-          <div className="wm-desk__modes" role="group" aria-label="Mentor workspace">
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'curriculum' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('curriculum');
-                setActiveLevelId(null);
-              }}
-            >
-              <BookOpen className="h-3 w-3" />
-              Curriculum
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'chart' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('chart');
-                setActiveLevelId(null);
-              }}
-            >
-              <Pencil className="h-3 w-3" />
-              Chart Mentor
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'coach' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('coach');
-                setActiveLevelId(null);
-              }}
-            >
-              <Activity className="h-3 w-3" />
-              Coach
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'lab' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('lab');
-                setActiveLevelId(null);
-              }}
-            >
-              <FlaskConical className="h-3 w-3" />
-              Lab
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'liveMentor' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('liveMentor');
-                setActiveLevelId(null);
-              }}
-            >
-              <Shield className="h-3 w-3" />
-              Live Mentor
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'master' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => {
-                setDeskView('master');
-                setActiveLevelId(null);
-              }}
-            >
-              <BrainCircuit className="h-3 w-3" />
-              Master
-            </button>
-            <button
-              type="button"
-              className={`wm-desk__chip ${deskView === 'desk' ? 'wm-desk__chip--on' : ''}`}
-              onClick={() => setDeskView('desk')}
-            >
-              <Target className="h-3 w-3" />
-              Live desk
-            </button>
-          </div>
-        ) : null}
-
-        {deskView === 'desk' ? (
-        <div className="wm-desk__modes" role="group" aria-label="Mentor style">
-          {MENTOR_MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`wm-desk__chip ${mentorMode === m.id ? 'wm-desk__chip--on' : ''}`}
-              title={m.hint}
-              onClick={() => {
-                setMentorMode(m.id);
-                saveMentorMode(m.id);
-              }}
-            >
-              {m.id === 'beginner' ? (
-                <GraduationCap className="h-3 w-3" />
-              ) : m.id === 'strict' ? (
-                <Swords className="h-3 w-3" />
-              ) : m.id === 'socratic' ? (
-                <HelpCircle className="h-3 w-3" />
-              ) : (
-                <Brain className="h-3 w-3" />
-              )}
-              {m.label}
-            </button>
-          ))}
-        </div>
-        ) : null}
-
         <div className="wm-desk__actions">
           <div className={`mai-chat__lang wm-desk__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
             <button
@@ -700,6 +593,117 @@ export default function MentorAI() {
           </button>
         </div>
       </header>
+
+      {student ? (
+        <nav className="wm-desk__nav" aria-label="Mentor modules">
+          <p className="wm-desk__nav-label">Modules — yahan se choose karo</p>
+          <div className="wm-desk__nav-row">
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'curriculum' ? 'wm-desk__nav-btn--on' : ''} wm-desk__nav-btn--start`}
+              onClick={() => {
+                setDeskView('curriculum');
+                setActiveLevelId(null);
+              }}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>1 · Curriculum</span>
+              <small>YAHAN SE START</small>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'chart' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => {
+                setDeskView('chart');
+                setActiveLevelId(null);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              <span>2 · Chart</span>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'coach' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => {
+                setDeskView('coach');
+                setActiveLevelId(null);
+              }}
+            >
+              <Activity className="h-4 w-4" />
+              <span>3 · Coach</span>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'lab' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => {
+                setDeskView('lab');
+                setActiveLevelId(null);
+              }}
+            >
+              <FlaskConical className="h-4 w-4" />
+              <span>4 · Lab</span>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'liveMentor' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => {
+                setDeskView('liveMentor');
+                setActiveLevelId(null);
+              }}
+            >
+              <Shield className="h-4 w-4" />
+              <span>5 · Live Mentor</span>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'master' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => {
+                setDeskView('master');
+                setActiveLevelId(null);
+              }}
+            >
+              <BrainCircuit className="h-4 w-4" />
+              <span>6 · Master</span>
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__nav-btn ${deskView === 'desk' ? 'wm-desk__nav-btn--on' : ''}`}
+              onClick={() => setDeskView('desk')}
+            >
+              <Target className="h-4 w-4" />
+              <span>Live desk</span>
+              <small>baad mein</small>
+            </button>
+          </div>
+          {deskView === 'desk' ? (
+            <div className="wm-desk__modes wm-desk__modes--style" role="group" aria-label="Mentor style">
+              {MENTOR_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`wm-desk__chip ${mentorMode === m.id ? 'wm-desk__chip--on' : ''}`}
+                  title={m.hint}
+                  onClick={() => {
+                    setMentorMode(m.id);
+                    saveMentorMode(m.id);
+                  }}
+                >
+                  {m.id === 'beginner' ? (
+                    <GraduationCap className="h-3 w-3" />
+                  ) : m.id === 'strict' ? (
+                    <Swords className="h-3 w-3" />
+                  ) : m.id === 'socratic' ? (
+                    <HelpCircle className="h-3 w-3" />
+                  ) : (
+                    <Brain className="h-3 w-3" />
+                  )}
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </nav>
+      ) : null}
 
       {student ? (
         <MentorEcosystemBar
