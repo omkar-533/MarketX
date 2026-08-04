@@ -1285,29 +1285,36 @@ html[data-theme="light"] .access-gate__card {
   color: #0f172a !important;
 }
 
-html[data-theme="light"] .access-gate__title {
+html[data-theme="light"] .access-gate__title,
+html[data-theme="light"] .access-gate__card .access-unlock__title {
   color: #0b7a38 !important;
   text-shadow: none !important;
 }
 
 html[data-theme="light"] .access-gate__link-label,
-html[data-theme="light"] .access-gate__steps-heading {
+html[data-theme="light"] .access-gate__steps-heading,
+html[data-theme="light"] .access-gate__card .access-unlock__link-label,
+html[data-theme="light"] .access-gate__card .access-unlock__steps-heading {
   color: #14532d !important;
 }
 
-html[data-theme="light"] .access-gate__bullets li {
+html[data-theme="light"] .access-gate__bullets li,
+html[data-theme="light"] .access-gate__card .access-unlock__bullets li {
   color: #0f172a !important;
 }
 
-html[data-theme="light"] .access-gate__bullets li::marker {
+html[data-theme="light"] .access-gate__bullets li::marker,
+html[data-theme="light"] .access-gate__card .access-unlock__bullets li::marker {
   color: #166534 !important;
 }
 
-html[data-theme="light"] .access-gate__link-missing {
+html[data-theme="light"] .access-gate__link-missing,
+html[data-theme="light"] .access-gate__card .access-unlock__link-missing {
   color: #64748b !important;
 }
 
-html[data-theme="light"] .access-gate__click {
+html[data-theme="light"] .access-gate__click,
+html[data-theme="light"] .access-gate__card .access-unlock__click {
   color: #052e16 !important;
   background: linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #16a34a 100%) !important;
   box-shadow:
@@ -1315,12 +1322,14 @@ html[data-theme="light"] .access-gate__click {
     0 4px 14px rgba(22, 163, 74, 0.28) !important;
 }
 
-html[data-theme="light"] .access-gate__proof {
+html[data-theme="light"] .access-gate__proof,
+html[data-theme="light"] .access-gate__card .access-unlock__proof {
   background: rgba(15, 159, 74, 0.06) !important;
   border-color: rgba(15, 159, 74, 0.22) !important;
 }
 
 html[data-theme="light"] .access-gate__proof-title,
+html[data-theme="light"] .access-gate__card .access-unlock__proof-title,
 html[data-theme="light"] .access-proof__title {
   color: #14532d !important;
 }
