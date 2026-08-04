@@ -48,24 +48,13 @@ import {
 } from '../services/appInviteAuth';
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
+import AdminAnalyticsTab from './admin/AdminAnalyticsTab';
 import ApprovedAccessTab, { countApprovedAccessUsers } from './admin/ApprovedAccessTab';
 import IndicatorsTab from './admin/IndicatorsTab';
 import KnowledgeTab from './admin/KnowledgeTab';
 import PlansTab from './admin/PlansTab';
 import TvAccessRequestsTab from './admin/TvAccessRequestsTab';
 import { SHOW_INDICATORS } from '../constants/featureFlags';
-
-const trafficData = Array.from({ length: 14 }, (_, i) => ({
-  date: `Day ${i + 1}`,
-  users: Math.floor(800 + Math.random() * 400),
-  pageViews: Math.floor(3000 + Math.random() * 2000),
-}));
-
-const revenueData = Array.from({ length: 6 }, (_, i) => ({
-  month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][i],
-  revenue: Math.floor(50000 + Math.random() * 30000),
-  subscriptions: Math.floor(100 + Math.random() * 80),
-}));
 
 interface AdminPanelProps {
   user: User | null;
@@ -329,10 +318,58 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [refresh]);
 
   useEffect(() => {
-    if (activeTab === 'users' || activeTab === 'approved' || activeTab === 'overview') {
+    if (
+      activeTab === 'users' ||
+      activeTab === 'approved' ||
+      activeTab === 'overview' ||
+      activeTab === 'analytics'
+    ) {
       void refresh();
     }
   }, [activeTab, refresh]);
+
+  const overviewSignupSeries = useMemo(() => {
+    const members = rows.filter((r) => r.role !== 'admin');
+    const days = 14;
+    const today = startOfLocalDay(new Date());
+    const out: { date: string; users: number }[] = [];
+    for (let i = days - 1; i >= 0; i -= 1) {
+      const d = new Date(today.getTime() - i * 86_400_000);
+      const from = startOfLocalDay(d).getTime();
+      const to = endOfLocalDay(d).getTime();
+      const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      out.push({
+        date: label,
+        users: members.filter((u) => {
+          const t = parseCreatedMs(u);
+          return t >= from && t <= to;
+        }).length,
+      });
+    }
+    return out;
+  }, [rows]);
+
+  const overviewAccessBars = useMemo(() => {
+    const members = rows.filter((r) => r.role !== 'admin');
+    let trial = 0;
+    let granted = 0;
+    let locked = 0;
+    let blocked = 0;
+    for (const u of members) {
+      if (u.accessStatus === 'blocked' || !u.active) blocked += 1;
+      else if (u.accessStatus === 'granted') {
+        if (u.access?.unlocked === false) locked += 1;
+        else granted += 1;
+      } else if (u.accessStatus === 'locked' || u.access?.unlocked === false) locked += 1;
+      else trial += 1;
+    }
+    return [
+      { label: 'Trial', count: trial },
+      { label: 'Approved', count: granted },
+      { label: 'Locked', count: locked },
+      { label: 'Blocked', count: blocked },
+    ];
+  }, [rows]);
 
   useEffect(() => {
     adminGetSettings(adminEmail, adminPassword)
@@ -935,9 +972,9 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
-              <h3 className="text-sm font-bold text-[#d4af37] mb-3">Traffic Overview</h3>
+              <h3 className="text-sm font-bold text-[#d4af37] mb-3">Signups · last 14 days</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={trafficData}>
+                <AreaChart data={overviewSignupSeries}>
                   <defs>
                     <linearGradient id="ad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#d4af37" stopOpacity={0.3} />
@@ -946,21 +983,21 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" />
                   <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ backgroundColor: '#0b0e17', border: '1px solid #1a1f2e', borderRadius: '8px', fontSize: '12px' }} />
                   <Area type="monotone" dataKey="users" stroke="#d4af37" fill="url(#ad)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
             <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4">
-              <h3 className="text-sm font-bold text-[#d4af37] mb-3">Revenue</h3>
+              <h3 className="text-sm font-bold text-[#d4af37] mb-3">Access status</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={revenueData}>
+                <BarChart data={overviewAccessBars}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" />
-                  <XAxis dataKey="month" stroke="#475569" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#475569" fontSize={10} tickLine={false} />
+                  <XAxis dataKey="label" stroke="#475569" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ backgroundColor: '#0b0e17', border: '1px solid #1a1f2e', borderRadius: '8px', fontSize: '12px' }} />
-                  <Bar dataKey="revenue" fill="#d4af37" opacity={0.7} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="count" fill="#d4af37" opacity={0.85} radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -969,9 +1006,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       )}
 
       {activeTab === 'analytics' && (
-        <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 text-sm text-slate-500">
-          Analytics charts are illustrative. Invite user counts above are live.
-        </div>
+        <AdminAnalyticsTab rows={rows} loading={loading} />
       )}
 
       {activeTab === 'payments' && (
