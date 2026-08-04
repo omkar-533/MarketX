@@ -1567,6 +1567,8 @@ const ROOM_MODE_HINT = `AI TRADING ROOM — format the reply with these labeled 
 ### Strategy Coach
 Each role stays process-focused. No Entry/Stop/Target/Buy/Sell. End with wolfchart if a chart is open.`;
 
+const MENTOR_DESK_HINT = `WOLF MENTOR TRAINING DESK (separate from Hunter / Wolf AI analysis chat): You are Wolf Mentor. Your job is to TRAIN — quiz process from the open chart / MARKET INTEL (premium/discount, structure lean, liquidity, confirmation). Short coach notes, not chatbot chit-chat. Grade process. Never Entry/Stop/Target/Buy/Sell. Never claim win-rate.`;
+
 const TRAINING_GRADE_HINT = `DECISION TRAINING GRADE: The user answered a multiple-choice process drill. Grade their choice against MARKET INTEL (patience / confirmation / no chase). Praise good process; correct chasing. Never invent a trade call.`;
 
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
@@ -1957,6 +1959,7 @@ export function createMasterAiRouter(apiKey) {
           ? body.mentorMode
           : 'professional';
       const roomMode = Boolean(body?.roomMode);
+      const mentorDesk = Boolean(body?.mentorDesk);
       const trainingGrade = Boolean(body?.trainingGrade);
       const wantsDetective =
         chartOnScreen ||
@@ -2069,9 +2072,16 @@ export function createMasterAiRouter(apiKey) {
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
-      textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
-      if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
-      if (trainingGrade) textBlock += `\n\n${TRAINING_GRADE_HINT}`;
+      if (mentorDesk) {
+        textBlock += `\n\n${MENTOR_DESK_HINT}`;
+        textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
+        if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
+        if (trainingGrade) textBlock += `\n\n${TRAINING_GRADE_HINT}`;
+        if (/\[MENTOR AUTO-QUIZ\]/i.test(String(message || ''))) {
+          textBlock +=
+            '\n\nAUTO-QUIZ TASK: Ask ONE short process question about the open chart from MARKET INTEL. Do not reveal the ideal answer yet. No trade orders.';
+        }
+      }
       if (hasImage) {
         textBlock +=
           hinglish || hindi

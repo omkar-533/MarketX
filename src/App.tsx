@@ -35,6 +35,7 @@ const FuturesAnalytics = lazy(() => import('./components/FuturesAnalytics'));
 const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
+const MentorAI = lazy(() => import('./components/MentorAI'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 
@@ -64,6 +65,7 @@ const VALID_TABS = new Set([
   'oiintelligence',
   'footprint',
   'wolf-ai',
+  'mentor-ai',
   'trafi', // legacy alias → normalized to wolf-ai
   'indicators',
   'papertrading',
@@ -275,6 +277,8 @@ function AppWorkspace() {
         return <FootprintChart />;
       case 'wolf-ai':
         return <MasterAI />;
+      case 'mentor-ai':
+        return <MentorAI />;
       case 'indicators':
         return (
           <Indicators
@@ -372,7 +376,9 @@ function AppWorkspace() {
                   ? 'page-content page-content--screener'
                   : activeTab === 'wolf-ai'
                     ? 'page-content page-content--chat'
-                    : 'page-content page-content--full'
+                    : activeTab === 'mentor-ai'
+                      ? 'page-content page-content--full page-content--mentor'
+                      : 'page-content page-content--full'
                 : ''
             }
           >

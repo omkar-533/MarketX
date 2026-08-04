@@ -30,6 +30,14 @@ const LOGIN_FEATURES: Feature[] = [
     icon: Bot,
     viz: 'chat',
   },
+  {
+    id: 'mentor-ai',
+    title: PAGE_NAMES['mentor-ai'],
+    detail: 'Live trainer',
+    description: 'Chart drills and process coaching desk — separate from Wolf AI analysis chat.',
+    icon: Bot,
+    viz: 'scan',
+  },
   ...(SHOW_INDICATORS
     ? [
         {

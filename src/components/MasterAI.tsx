@@ -78,6 +78,7 @@ import {
   startNewChat,
   switchChat,
   type ChatChartAttachment,
+  type ChatDeskScope,
   type ChatMessage,
   type ChatSessionMeta,
 } from '../services/masterAiChatStore';
@@ -103,6 +104,7 @@ import { consumeHunterPendingPrompt } from '../services/journalAiAssist';
 import { useAuth } from '../hooks/useAuth';
 import { AI_PRODUCT_NAME } from '../constants/brandLabels';
 import {
+  MENTOR_CHAT_PROMPTS,
   WOLF_CHAT_PROMPTS,
   WOLF_CHART_PROMPTS,
   deskPromptHint,
@@ -114,10 +116,8 @@ import {
   MENTOR_MODES,
   loadMentorMode,
   loadRoomMode,
-  loadTrainingMode,
   saveMentorMode,
   saveRoomMode,
-  saveTrainingMode,
   type MentorMode,
 } from '../services/mentorModes';
 import {
@@ -163,6 +163,7 @@ const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
   challenge: Swords,
   invalidate: HelpCircle,
   'why-wait': Target,
+  'chart-quiz': Target,
   'training-plan': GraduationCap,
   structure: Layers,
   liquidity: Waves,
@@ -171,6 +172,8 @@ const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
   risk: Shield,
   journal: BookOpen,
 };
+
+export type MasterAiDesk = 'hunter' | 'mentor';
 
 const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
   full: ScanSearch,
@@ -184,7 +187,11 @@ const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
   'mtf-chart': Eye,
 };
 
-export default function MasterAI() {
+/** Wolf AI (Hunter) analysis chat — training desk lives in MentorAI / Wolf Mentor. */
+export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
+  const isMentor = false;
+  const chatScope: ChatDeskScope = 'hunter';
+  const deskPrompts = WOLF_CHAT_PROMPTS;
   const { user } = useAuth();
   const initialMode = loadLanguageMode();
   const initialLang =
@@ -199,10 +206,12 @@ export default function MasterAI() {
   const historyMenuRef = useRef<HTMLDivElement>(null);
   const chartPromptRef = useRef<HTMLDivElement>(null);
   const welcomeText =
-    initialMode === 'auto'
-      ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
-      : getMasterAiWelcome(initialLang.code);
-  const [boot] = useState(() => loadActiveChat(welcomeText));
+    isMentor
+      ? 'Mentor AI training desk — I quiz you from the live chart and tape. Answer with process only (no chase). Pick a mode and I will punch questions.'
+      : initialMode === 'auto'
+        ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
+        : getMasterAiWelcome(initialLang.code);
+  const [boot] = useState(() => loadActiveChat(welcomeText, chatScope));
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
   const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>(boot.sessions);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -213,8 +222,7 @@ export default function MasterAI() {
   const useHiPrompts = hindi || isHinglishLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [trainingMode, setTrainingMode] = useState(loadTrainingMode);
-  const [roomMode, setRoomMode] = useState(loadRoomMode);
+  const [roomMode, setRoomMode] = useState(() => (isMentor ? loadRoomMode() : false));
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
   const [skillTick, setSkillTick] = useState(0);
@@ -242,6 +250,7 @@ export default function MasterAI() {
   );
 
   useEffect(() => {
+    if (!isMentor) return;
     let cancelled = false;
     const load = async () => {
       const card = await fetchMentorDetective(chartSymbol, chartInterval);
@@ -253,24 +262,35 @@ export default function MasterAI() {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [chartSymbol, chartInterval]);
+  }, [isMentor, chartSymbol, chartInterval]);
 
+  // Mentor always trains: punch a chart drill when tape updates / on a timer.
   useEffect(() => {
-    if (!trainingMode || !detective || activeDrill) return;
+    if (!isMentor || !detective || activeDrill || isThinking) return;
     const t = window.setTimeout(() => {
       setActiveDrill(buildDrillFromDetective(detective));
-    }, 12_000);
+    }, 8_000);
     return () => window.clearTimeout(t);
-  }, [trainingMode, detective?.symbol, detective?.ltp, activeDrill]);
+  }, [isMentor, detective?.symbol, detective?.ltp, detective?.zone, activeDrill, isThinking]);
+
+  useEffect(() => {
+    if (!isMentor || !detective || isThinking) return;
+    const t = window.setInterval(() => {
+      setActiveDrill((prev) => prev ?? buildDrillFromDetective(detective));
+    }, 45_000);
+    return () => window.clearInterval(t);
+  }, [isMentor, detective, isThinking]);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeChatIdRef = useRef(activeChatId);
   activeChatIdRef.current = activeChatId;
 
   const currentWelcomeText = () =>
-    langMode === 'auto'
-      ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
-      : getMasterAiWelcome(selectedLang.code);
+    isMentor
+      ? 'Mentor AI training desk — I quiz you from the live chart and tape. Answer with process only (no chase).'
+      : langMode === 'auto'
+        ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
+        : getMasterAiWelcome(selectedLang.code);
 
   useEffect(() => {
     const refresh = () => void fetchMasterAiStatus().then(setAiStatus);
@@ -337,7 +357,7 @@ export default function MasterAI() {
   }, [messages, isThinking]);
 
   useEffect(() => {
-    setChatSessions(persistActiveChat(activeChatIdRef.current, messages));
+    setChatSessions(persistActiveChat(activeChatIdRef.current, messages, chatScope));
   }, [messages]);
 
   useEffect(() => {
@@ -420,7 +440,9 @@ export default function MasterAI() {
           m.id === 'welcome'
             ? {
                 ...m,
-                text: 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.',
+                text: isMentor
+                  ? 'Mentor AI training desk — I quiz you from the live chart and tape. Answer with process only (no chase).'
+                  : 'Auto language on — type in any language and Hunter replies in the same one. Share a chart for structure analysis.',
               }
             : m,
         ),
@@ -554,7 +576,7 @@ export default function MasterAI() {
     clearSelectedImage();
     setInputText('');
     setHistoryOpen(false);
-    const next = startNewChat(activeChatId, messages, currentWelcomeText());
+    const next = startNewChat(activeChatId, messages, currentWelcomeText(), chatScope);
     setActiveChatId(next.activeId);
     setMessages(next.messages);
     setChatSessions(next.sessions);
@@ -574,7 +596,7 @@ export default function MasterAI() {
     }
     clearSelectedImage();
     setInputText('');
-    const next = switchChat(activeChatId, messages, id, currentWelcomeText());
+    const next = switchChat(activeChatId, messages, id, currentWelcomeText(), chatScope);
     if (!next) return;
     setActiveChatId(next.activeId);
     setMessages(next.messages);
@@ -585,7 +607,7 @@ export default function MasterAI() {
   const handleDeleteChat = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (isThinking) return;
-    const next = deleteChat(activeChatId, id, currentWelcomeText());
+    const next = deleteChat(activeChatId, id, currentWelcomeText(), chatScope);
     setActiveChatId(next.activeId);
     setMessages(next.messages);
     setChatSessions(next.sessions);
@@ -673,6 +695,29 @@ export default function MasterAI() {
       makeChartMessage({ symbol: chartSymbol, interval: chartInterval, study: chartStudy }),
     ]);
   }, [makeChartMessage, chartSymbol, chartInterval, chartStudy]);
+
+  // Mentor desk always keeps a live chart so quizzes come from tape + structure.
+  useEffect(() => {
+    if (!isMentor) return;
+    setMessages((prev) => {
+      if (prev.some((m) => m.chart)) return prev;
+      return [
+        ...prev,
+        makeChartMessage({ symbol: chartSymbol, interval: chartInterval, study: chartStudy }),
+      ];
+    });
+  }, [isMentor, activeChatId, makeChartMessage, chartSymbol, chartInterval, chartStudy]);
+
+  // Periodic AI quiz punch from open chart (Mentor only).
+  useEffect(() => {
+    if (!isMentor) return;
+    const t = window.setInterval(() => {
+      if (analyzingRef.current || activeDrill) return;
+      const quiz = MENTOR_CHAT_PROMPTS.find((p) => p.id === 'chart-quiz');
+      if (quiz) void handleSendRef.current(deskPromptText(quiz, false));
+    }, 150_000);
+    return () => window.clearInterval(t);
+  }, [isMentor, activeDrill]);
 
   const handleSend = async (
     textOverride?: string,
@@ -916,9 +961,10 @@ export default function MasterAI() {
               history,
               needsWeb: !hasImage && shouldUseWebSearch(userText),
               journalContext,
-              mentorMode,
-              roomMode,
+              mentorMode: isMentor ? mentorMode : 'professional',
+              roomMode: isMentor ? roomMode : false,
               trainingGrade: Boolean(opts?.trainingGrade),
+              mentorDesk: isMentor,
             },
             hasImage
               ? {
@@ -1046,8 +1092,8 @@ export default function MasterAI() {
           </div>
           <div className="min-w-0">
             <div className="mai-chat__title-row">
-              <h1 className="mai-chat__title">{AI_PRODUCT_NAME}</h1>
-              <span className="mai-chat__badge">Hunter</span>
+              <h1 className="mai-chat__title">{isMentor ? 'Mentor AI' : AI_PRODUCT_NAME}</h1>
+              <span className="mai-chat__badge">{isMentor ? 'Trainer' : 'Hunter'}</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
@@ -1166,61 +1212,60 @@ export default function MasterAI() {
             <span>Voice</span>
           </button>
 
-          <div className="mai-chat__mentor-modes" title="Mentor personality">
-            {MENTOR_MODES.map((m) => (
+          {isMentor ? (
+            <>
+              <div className="mai-chat__mentor-modes" title="Mentor personality">
+                {MENTOR_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`mai-chat__chip mai-chat__chip--sm ${mentorMode === m.id ? 'mai-chat__chip--on' : ''}`}
+                    title={m.hint}
+                    onClick={() => {
+                      setMentorMode(m.id);
+                      saveMentorMode(m.id);
+                    }}
+                  >
+                    {m.id === 'beginner' ? (
+                      <GraduationCap className="h-3 w-3" />
+                    ) : m.id === 'strict' ? (
+                      <Swords className="h-3 w-3" />
+                    ) : m.id === 'socratic' ? (
+                      <HelpCircle className="h-3 w-3" />
+                    ) : (
+                      <Brain className="h-3 w-3" />
+                    )}
+                    <span>{m.label}</span>
+                  </button>
+                ))}
+              </div>
+
               <button
-                key={m.id}
                 type="button"
-                className={`mai-chat__chip mai-chat__chip--sm ${mentorMode === m.id ? 'mai-chat__chip--on' : ''}`}
-                title={m.hint}
+                className="mai-chat__chip mai-chat__chip--on"
+                title="Always-on training — chart drills stay live"
+                onClick={() => detective && setActiveDrill(buildDrillFromDetective(detective))}
+                disabled={!detective || isThinking}
+              >
+                <Target className="h-3.5 w-3.5" />
+                <span>Next quiz</span>
+              </button>
+
+              <button
+                type="button"
+                className={`mai-chat__chip ${roomMode ? 'mai-chat__chip--on' : ''}`}
+                title="AI Trading Room — multi-role reply"
                 onClick={() => {
-                  setMentorMode(m.id);
-                  saveMentorMode(m.id);
+                  const next = !roomMode;
+                  setRoomMode(next);
+                  saveRoomMode(next);
                 }}
               >
-                {m.id === 'beginner' ? (
-                  <GraduationCap className="h-3 w-3" />
-                ) : m.id === 'strict' ? (
-                  <Swords className="h-3 w-3" />
-                ) : m.id === 'socratic' ? (
-                  <HelpCircle className="h-3 w-3" />
-                ) : (
-                  <Brain className="h-3 w-3" />
-                )}
-                <span>{m.label}</span>
+                <Split className="h-3.5 w-3.5" />
+                <span>Room</span>
               </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className={`mai-chat__chip ${trainingMode ? 'mai-chat__chip--on' : ''}`}
-            title="Live decision training quizzes"
-            onClick={() => {
-              const next = !trainingMode;
-              setTrainingMode(next);
-              saveTrainingMode(next);
-              if (next && detective) setActiveDrill(buildDrillFromDetective(detective));
-              else setActiveDrill(null);
-            }}
-          >
-            <Target className="h-3.5 w-3.5" />
-            <span>Train</span>
-          </button>
-
-          <button
-            type="button"
-            className={`mai-chat__chip ${roomMode ? 'mai-chat__chip--on' : ''}`}
-            title="AI Trading Room — multi-role reply"
-            onClick={() => {
-              const next = !roomMode;
-              setRoomMode(next);
-              saveRoomMode(next);
-            }}
-          >
-            <Split className="h-3.5 w-3.5" />
-            <span>Room</span>
-          </button>
+            </>
+          ) : null}
 
           <div className={`mai-chat__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
             <button
@@ -1328,7 +1373,7 @@ export default function MasterAI() {
         onPaste={handlePaste}
       >
         <div className="mai-chat__column">
-          {detective ? (
+          {isMentor && detective ? (
             <div className="mai-detective" aria-label="Market condition">
               <div className="mai-detective__head">
                 <span className="mai-detective__title">Market Condition</span>
@@ -1379,59 +1424,61 @@ export default function MasterAI() {
             </div>
           ) : null}
 
-          <div className="mai-skill" aria-label="Trader skill profile">
-            <div className="mai-skill__head">
-              <Trophy className="h-3.5 w-3.5" />
-              <span>{skillProfile.level.label}</span>
-              <span className="mai-skill__xp">{skillProfile.xp} XP</span>
-              <button
-                type="button"
-                className="mai-skill__plan"
-                disabled={isThinking}
-                onClick={() =>
-                  applyDeskPrompt(
-                    WOLF_CHAT_PROMPTS.find((p) => p.id === 'training-plan')!,
-                    { send: true },
-                  )
-                }
-              >
-                My training plan
-              </button>
-            </div>
-            <div className="mai-skill__bars">
-              {(
-                [
-                  ['Reading', skillProfile.scores.marketReading],
-                  ['Timing', skillProfile.scores.entryTiming],
-                  ['Risk', skillProfile.scores.riskManagement],
-                  ['Patience', skillProfile.scores.patience],
-                ] as const
-              ).map(([label, val]) => (
-                <div key={label} className="mai-skill__bar">
-                  <span>
-                    {label} <em>{val}</em>
-                  </span>
-                  <i style={{ width: `${val}%` }} />
-                </div>
-              ))}
-            </div>
-            <p className="mai-skill__focus">
-              Focus this week: {skillProfile.weakness}. {skillProfile.focusWeek[0]}
-            </p>
-            <div className="mai-skill__ach">
-              {skillProfile.achievements.map((a) => (
-                <span
-                  key={a.id}
-                  className={`mai-skill__badge ${a.earned ? 'mai-skill__badge--on' : ''}`}
-                  title={a.detail}
+          {isMentor ? (
+            <div className="mai-skill" aria-label="Trader skill profile">
+              <div className="mai-skill__head">
+                <Trophy className="h-3.5 w-3.5" />
+                <span>{skillProfile.level.label}</span>
+                <span className="mai-skill__xp">{skillProfile.xp} XP</span>
+                <button
+                  type="button"
+                  className="mai-skill__plan"
+                  disabled={isThinking}
+                  onClick={() =>
+                    applyDeskPrompt(
+                      MENTOR_CHAT_PROMPTS.find((p) => p.id === 'training-plan')!,
+                      { send: true },
+                    )
+                  }
                 >
-                  {a.label}
-                </span>
-              ))}
+                  My training plan
+                </button>
+              </div>
+              <div className="mai-skill__bars">
+                {(
+                  [
+                    ['Reading', skillProfile.scores.marketReading],
+                    ['Timing', skillProfile.scores.entryTiming],
+                    ['Risk', skillProfile.scores.riskManagement],
+                    ['Patience', skillProfile.scores.patience],
+                  ] as const
+                ).map(([label, val]) => (
+                  <div key={label} className="mai-skill__bar">
+                    <span>
+                      {label} <em>{val}</em>
+                    </span>
+                    <i style={{ width: `${val}%` }} />
+                  </div>
+                ))}
+              </div>
+              <p className="mai-skill__focus">
+                Focus this week: {skillProfile.weakness}. {skillProfile.focusWeek[0]}
+              </p>
+              <div className="mai-skill__ach">
+                {skillProfile.achievements.map((a) => (
+                  <span
+                    key={a.id}
+                    className={`mai-skill__badge ${a.earned ? 'mai-skill__badge--on' : ''}`}
+                    title={a.detail}
+                  >
+                    {a.label}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
-          {trainingMode && activeDrill ? (
+          {isMentor && activeDrill ? (
             <div className="mai-drill" role="group" aria-label="Decision training">
               <div className="mai-drill__head">
                 <Target className="h-3.5 w-3.5" />
@@ -1458,7 +1505,7 @@ export default function MasterAI() {
                 ))}
               </div>
             </div>
-          ) : trainingMode ? (
+          ) : isMentor ? (
             <div className="mai-drill mai-drill--idle">
               <button
                 type="button"
@@ -1480,7 +1527,11 @@ export default function MasterAI() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, duration: 0.4 }}
               >
-                {hindi ? 'Aaj kya analyse karna hai?' : 'What should we analyse today?'}
+                {isMentor
+                  ? 'Ready to train from the live chart?'
+                  : hindi
+                    ? 'Aaj kya analyse karna hai?'
+                    : 'What should we analyse today?'}
               </motion.h2>
               <motion.p
                 className="mai-chat__empty-sub"
@@ -1488,13 +1539,15 @@ export default function MasterAI() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.14, duration: 0.4 }}
               >
-                {hindi
-                  ? 'Quick prompt choose karo, ya chart attach karke desk question select karo'
-                  : 'Pick a quick prompt — or attach a chart and choose a desk question'}
+                {isMentor
+                  ? 'I will punch process quizzes from Market Condition — answer, get graded, level up.'
+                  : hindi
+                    ? 'Quick prompt choose karo, ya chart attach karke desk question select karo'
+                    : 'Pick a quick prompt — or attach a chart and choose a desk question'}
               </motion.p>
 
               <div className="mai-chat__suggestions" role="list">
-                {WOLF_CHAT_PROMPTS.map((p, i) => {
+                {deskPrompts.map((p, i) => {
                   const Icon = CHAT_PROMPT_ICONS[p.id] ?? Sparkles;
                   return (
                     <motion.button
@@ -1807,8 +1860,12 @@ export default function MasterAI() {
                       ? 'Prompt dropdown se choose karo ya likho…'
                       : 'Pick from desk prompts or write…'
                     : hindi
-                      ? 'Wolf AI se poochho…'
-                      : `Message ${AI_PRODUCT_NAME}…`
+                      ? isMentor
+                        ? 'Mentor AI se train karo…'
+                        : 'Wolf AI se poochho…'
+                      : isMentor
+                        ? 'Answer Mentor AI…'
+                        : `Message ${AI_PRODUCT_NAME}…`
               }
               className="mai-chat__textarea"
             disabled={isListening}

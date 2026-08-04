@@ -28,6 +28,8 @@ export type ChatChartPanelProps = {
   onStudyChange: (study: string) => void;
   onClose: () => void;
   closeLabel?: string;
+  /** Hide the X close control (pinned charts on training desks). */
+  hideClose?: boolean;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
 };
@@ -46,6 +48,7 @@ export default function ChatChartPanel({
   onStudyChange,
   onClose,
   closeLabel = 'Close chart',
+  hideClose = false,
   levels,
   shapes,
 }: ChatChartPanelProps) {
@@ -291,15 +294,17 @@ export default function ChatChartPanel({
           >
             {fullscreen ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
           </button>
-          <button
-            type="button"
-            onClick={() => (fullscreen ? setFullscreen(false) : onClose())}
-            className="mai-tv__icon"
-            title={fullscreen ? 'Exit full screen' : closeLabel}
-            aria-label={fullscreen ? 'Exit full screen' : closeLabel}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          {hideClose && !fullscreen ? null : (
+            <button
+              type="button"
+              onClick={() => (fullscreen ? setFullscreen(false) : onClose())}
+              className="mai-tv__icon"
+              title={fullscreen ? 'Exit full screen' : closeLabel}
+              aria-label={fullscreen ? 'Exit full screen' : closeLabel}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </header>
 

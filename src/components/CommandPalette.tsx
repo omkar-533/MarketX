@@ -11,6 +11,7 @@ interface CommandPaletteProps {
 
 const commands = [
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
+  { id: 'mentor-ai', label: 'Open Wolf Mentor', shortcut: 'T' },
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' },

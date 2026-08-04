@@ -943,7 +943,7 @@ export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
   const openPropCoach = () => {
     if (!propChallenge) return;
     queueHunterJournalReview(propCoachPrompt(propChallenge, netEquity));
-    onNavigate?.('wolf-ai');
+    onNavigate?.('mentor-ai');
   };
 
   return (

@@ -1141,6 +1141,8 @@ export interface MasterChatRequest {
   roomMode?: boolean;
   /** User is answering a decision-training drill */
   trainingGrade?: boolean;
+  /** True when request comes from Mentor AI training desk (not Hunter analysis) */
+  mentorDesk?: boolean;
 }
 
 export async function fetchMasterAiStatus(): Promise<{
@@ -1263,6 +1265,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         mentorMode: req.mentorMode ?? 'professional',
         roomMode: Boolean(req.roomMode),
         trainingGrade: Boolean(req.trainingGrade),
+        mentorDesk: Boolean(req.mentorDesk),
       }),
     },
     { retries: 0, timeoutMs: 75_000 },

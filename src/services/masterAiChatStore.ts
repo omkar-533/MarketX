@@ -60,8 +60,16 @@ interface ChatStore {
 
 const LEGACY_KEY = 'master_ai_chat_memory_v1';
 const STORE_KEY = 'master_ai_chat_sessions_v2';
+const MENTOR_STORE_KEY = 'mentor_ai_chat_sessions_v1';
 const MSG_MAX = 40;
 const SESSION_MAX = 40;
+
+/** Separate history: Wolf AI (Hunter) vs Mentor AI training desk */
+export type ChatDeskScope = 'hunter' | 'mentor';
+
+function keyFor(scope: ChatDeskScope): string {
+  return scope === 'mentor' ? MENTOR_STORE_KEY : STORE_KEY;
+}
 
 function newId(prefix = 'chat'): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -142,10 +150,10 @@ function hasRealTurns(msgs: ChatMessage[]): boolean {
   return msgs.some((m) => m.id !== 'welcome' && m.role === 'user' && m.text.trim().length > 0);
 }
 
-function readRawStore(): ChatStore | null {
+function readRawStore(scope: ChatDeskScope): ChatStore | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(STORE_KEY);
+    const raw = window.localStorage.getItem(keyFor(scope));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ChatStore;
     if (!parsed?.activeId || !Array.isArray(parsed.sessions)) return null;
@@ -155,7 +163,7 @@ function readRawStore(): ChatStore | null {
   }
 }
 
-function writeStore(store: ChatStore) {
+function writeStore(store: ChatStore, scope: ChatDeskScope) {
   if (typeof window === 'undefined') return;
   try {
     const slim: ChatStore = {
@@ -167,7 +175,7 @@ function writeStore(store: ChatStore) {
         messages: (s.messages || []).slice(-MSG_MAX),
       })),
     };
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(slim));
+    window.localStorage.setItem(keyFor(scope), JSON.stringify(slim));
   } catch {
     /* quota / private mode */
   }
@@ -199,7 +207,7 @@ function migrateLegacy(welcome: ChatMessage): ChatStore {
       },
     ],
   };
-  writeStore(store);
+  writeStore(store, 'hunter');
   try {
     window.localStorage.removeItem(LEGACY_KEY);
   } catch {
@@ -208,15 +216,19 @@ function migrateLegacy(welcome: ChatMessage): ChatStore {
   return store;
 }
 
-function ensureStore(welcome: ChatMessage): ChatStore {
-  const existing = readRawStore();
+function ensureStore(welcome: ChatMessage, scope: ChatDeskScope): ChatStore {
+  const existing = readRawStore(scope);
   if (existing && existing.sessions.length > 0) {
     if (!existing.sessions.some((s) => s.id === existing.activeId)) {
       existing.activeId = existing.sessions[0].id;
     }
     return existing;
   }
-  if (typeof window !== 'undefined' && window.localStorage.getItem(LEGACY_KEY)) {
+  if (
+    scope === 'hunter' &&
+    typeof window !== 'undefined' &&
+    window.localStorage.getItem(LEGACY_KEY)
+  ) {
     return migrateLegacy(welcome);
   }
   const id = newId();
@@ -231,7 +243,7 @@ function ensureStore(welcome: ChatMessage): ChatStore {
       },
     ],
   };
-  writeStore(store);
+  writeStore(store, scope);
   return store;
 }
 
@@ -242,13 +254,16 @@ function sessionMessages(session: StoredSession | undefined, welcome: ChatMessag
 }
 
 /** Load active chat messages + session list for UI. */
-export function loadActiveChat(welcomeText: string): {
+export function loadActiveChat(
+  welcomeText: string,
+  scope: ChatDeskScope = 'hunter',
+): {
   activeId: string;
   messages: ChatMessage[];
   sessions: ChatSessionMeta[];
 } {
   const welcome = makeWelcomeMessage(welcomeText);
-  const store = ensureStore(welcome);
+  const store = ensureStore(welcome, scope);
   const active = store.sessions.find((s) => s.id === store.activeId) ?? store.sessions[0];
   return {
     activeId: active.id,
@@ -271,9 +286,10 @@ function listMeta(store: ChatStore): ChatSessionMeta[] {
 export function persistActiveChat(
   activeId: string,
   messages: ChatMessage[],
+  scope: ChatDeskScope = 'hunter',
 ): ChatSessionMeta[] {
   const welcome = makeWelcomeMessage('');
-  const store = ensureStore(welcome);
+  const store = ensureStore(welcome, scope);
   const idx = store.sessions.findIndex((s) => s.id === activeId);
   const payload: StoredSession = {
     id: activeId,
@@ -288,7 +304,7 @@ export function persistActiveChat(
   store.sessions = store.sessions.filter(
     (s) => s.id === activeId || (s.messages && s.messages.some((m) => m.role === 'user')),
   );
-  writeStore(store);
+  writeStore(store, scope);
   return listMeta(store);
 }
 
@@ -300,9 +316,10 @@ export function startNewChat(
   activeId: string,
   currentMessages: ChatMessage[],
   welcomeText: string,
+  scope: ChatDeskScope = 'hunter',
 ): { activeId: string; messages: ChatMessage[]; sessions: ChatSessionMeta[] } {
   const welcome = makeWelcomeMessage(welcomeText);
-  const store = ensureStore(welcome);
+  const store = ensureStore(welcome, scope);
 
   if (hasRealTurns(currentMessages)) {
     const idx = store.sessions.findIndex((s) => s.id === activeId);
@@ -328,7 +345,7 @@ export function startNewChat(
     messages: [],
   });
   store.sessions = store.sessions.slice(0, SESSION_MAX);
-  writeStore(store);
+  writeStore(store, scope);
 
   return {
     activeId: id,
@@ -343,9 +360,10 @@ export function switchChat(
   currentMessages: ChatMessage[],
   toId: string,
   welcomeText: string,
+  scope: ChatDeskScope = 'hunter',
 ): { activeId: string; messages: ChatMessage[]; sessions: ChatSessionMeta[] } | null {
   const welcome = makeWelcomeMessage(welcomeText);
-  const store = ensureStore(welcome);
+  const store = ensureStore(welcome, scope);
   const target = store.sessions.find((s) => s.id === toId);
   if (!target) return null;
 
@@ -366,7 +384,7 @@ export function switchChat(
   }
 
   store.activeId = toId;
-  writeStore(store);
+  writeStore(store, scope);
 
   return {
     activeId: toId,
@@ -379,9 +397,10 @@ export function deleteChat(
   activeId: string,
   deleteId: string,
   welcomeText: string,
+  scope: ChatDeskScope = 'hunter',
 ): { activeId: string; messages: ChatMessage[]; sessions: ChatSessionMeta[] } {
   const welcome = makeWelcomeMessage(welcomeText);
-  const store = ensureStore(welcome);
+  const store = ensureStore(welcome, scope);
   store.sessions = store.sessions.filter((s) => s.id !== deleteId);
 
   if (store.sessions.length === 0) {
@@ -395,14 +414,14 @@ export function deleteChat(
         messages: [],
       },
     ];
-    writeStore(store);
+    writeStore(store, scope);
     return { activeId: id, messages: [welcome], sessions: listMeta(store) };
   }
 
   if (activeId === deleteId) {
     const next = store.sessions[0];
     store.activeId = next.id;
-    writeStore(store);
+    writeStore(store, scope);
     return {
       activeId: next.id,
       messages: sessionMessages(next, welcome),
@@ -410,7 +429,7 @@ export function deleteChat(
     };
   }
 
-  writeStore(store);
+  writeStore(store, scope);
   const active = store.sessions.find((s) => s.id === activeId) ?? store.sessions[0];
   return {
     activeId: active.id,

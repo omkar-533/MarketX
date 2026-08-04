@@ -12,16 +12,16 @@ export type DeskPrompt = {
   hintHi: string;
 };
 
-/** Empty-state / general chat starters */
-export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
+/** Wolf Mentor desk actions (quizzes / process) — not a chat product */
+export const MENTOR_CHAT_PROMPTS: DeskPrompt[] = [
   {
     id: 'challenge',
     label: 'Challenge my bias',
     labelHi: 'Challenge my bias',
     prompt:
-      'Challenge my current bias. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
+      'Challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
     promptHi:
-      'Challenge my current bias. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
+      'Challenge my current bias on the open chart. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
     hint: 'Socratic',
     hintHi: 'Socratic',
   },
@@ -30,9 +30,9 @@ export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
     label: 'What invalidates this?',
     labelHi: 'What invalidates this?',
     prompt:
-      'Help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+      'Quiz me: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
     promptHi:
-      'Help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+      'Quiz me: help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
     hint: 'Invalidation',
     hintHi: 'Invalidation',
   },
@@ -41,11 +41,22 @@ export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
     label: 'Why wait?',
     labelHi: 'Why wait?',
     prompt:
-      'Explain why waiting for confirmation may be the higher-quality process on this market right now, using structure and liquidity evidence. No trade call.',
+      'Train me: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
     promptHi:
-      'Explain why waiting for confirmation may be the higher-quality process on this market right now, using structure and liquidity evidence. No trade call.',
+      'Train me: explain why waiting for confirmation may be the higher-quality process on this chart right now, using structure and liquidity evidence. No trade call.',
     hint: 'Patience',
     hintHi: 'Patience',
+  },
+  {
+    id: 'chart-quiz',
+    label: 'Quiz me from chart',
+    labelHi: 'Quiz me from chart',
+    prompt:
+      '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question (premium/discount, structure lean, or liquidity). Do not answer it yourself — wait for my reply. No Entry/Stop/Target.',
+    promptHi:
+      '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question (premium/discount, structure lean, or liquidity). Do not answer it yourself — wait for my reply. No Entry/Stop/Target.',
+    hint: 'Live tape quiz',
+    hintHi: 'Live tape quiz',
   },
   {
     id: 'training-plan',
@@ -56,6 +67,10 @@ export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
     hint: '7-day path',
     hintHi: '7-day path',
   },
+];
+
+/** Wolf AI (Hunter) — market analysis desk starters */
+export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
   {
     id: 'structure',
     label: 'Market structure',
