@@ -8805,10 +8805,40 @@ html.dark .mai-tv__fs-btn--on,
   bottom: 0.4rem;
   z-index: 2;
   pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.625rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   color: var(--tf-text-muted);
-  opacity: 0.75;
+  opacity: 0.85;
+}
+
+.mai-nc__stamp--live {
+  color: #26a69a;
+  opacity: 1;
+}
+
+.mai-nc__live-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #26a69a;
+  box-shadow: 0 0 0 0 rgba(38, 166, 154, 0.55);
+  animation: mai-nc-live-pulse 1.4s ease-out infinite;
+}
+
+@keyframes mai-nc-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(38, 166, 154, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 0.45rem rgba(38, 166, 154, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(38, 166, 154, 0);
+  }
 }
 
 .mai-nc__msg {

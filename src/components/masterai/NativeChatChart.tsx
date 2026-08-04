@@ -34,7 +34,18 @@ import {
   toHeikinAshi,
   vwap,
 } from '../../services/chart/chartIndicators';
-import { fetchMarketOhlc } from '../../services/marketApiService';
+import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
+import {
+  applyLivePriceToBars,
+  quoteMatchesSymbol,
+} from '../../services/chart/liveCandleMerge';
+import {
+  getFyersCachedQuote,
+  onFyersMarketUpdate,
+  startFyersSocketClient,
+  subscribeFyersMarketSymbols,
+  unsubscribeFyersMarketSymbols,
+} from '../../services/fyersSocketClient';
 import type { ChartBar } from '../../types/chart';
 import {
   TV_TIMEFRAMES,
@@ -54,7 +65,10 @@ const UP = '#26a69a';
 const DOWN = '#ef5350';
 const UP_FILL = 'rgba(38,166,154,0.5)';
 const DOWN_FILL = 'rgba(239,83,80,0.5)';
-const REFRESH_MS = 60_000;
+/** Full OHLC resync (history/volume). Live LTP uses WS + fast quote poll. */
+const OHLC_RESYNC_MS = 120_000;
+/** Fallback LTP poll when socket is quiet (keeps candle tip moving). */
+const QUOTE_POLL_MS = 2_000;
 
 const IST = 'Asia/Kolkata';
 const istTime = new Intl.DateTimeFormat('en-IN', {
@@ -163,6 +177,7 @@ export default function NativeChatChart({
   const [bars, setBars] = useState<ChartBar[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
   const [fetchedAt, setFetchedAt] = useState('');
+  const [liveStreaming, setLiveStreaming] = useState(false);
   const [legend, setLegend] = useState<Legend | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tool, setTool] = useState<DrawingTool>('cursor');
@@ -177,6 +192,9 @@ export default function NativeChatChart({
 
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
+  const barsRef = useRef<ChartBar[]>([]);
+  const liveThrottleRef = useRef(0);
+  const lastLiveAtRef = useRef(0);
 
   const load = useCallback(
     async (background: boolean) => {
@@ -208,6 +226,7 @@ export default function NativeChatChart({
         }
         return;
       }
+      barsRef.current = next;
       setBars(next);
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
@@ -215,20 +234,115 @@ export default function NativeChatChart({
     [apiSymbol, apiInterval, onUnavailable],
   );
 
+  /** Push LTP into the forming candle + lightweight-charts tip (real-time run). */
+  const applyLivePrice = useCallback(
+    (price: number, volume?: number) => {
+      if (!(price > 0) || !apiInterval || !barsRef.current.length) return;
+      const now = Date.now();
+      if (now - liveThrottleRef.current < 120) return;
+      liveThrottleRef.current = now;
+
+      const merged = applyLivePriceToBars(barsRef.current, price, apiInterval, {
+        nowMs: now,
+        volume,
+      });
+      if (!merged) return;
+      barsRef.current = merged.bars;
+      lastLiveAtRef.current = now;
+      setLiveStreaming(true);
+      setFetchedAt(new Date(now).toISOString());
+
+      const series = priceSeriesRef.current;
+      const bar = merged.updated;
+      if (series && chartStyle !== '8') {
+        try {
+          if (chartStyle === '2' || chartStyle === '3' || chartStyle === '10') {
+            series.update({ time: ts(bar.time), value: bar.close });
+          } else {
+            series.update({
+              time: ts(bar.time),
+              open: bar.open,
+              high: bar.high,
+              low: bar.low,
+              close: bar.close,
+            });
+          }
+        } catch {
+          /* series may be mid-rebuild */
+        }
+      } else {
+        setBars(merged.bars);
+      }
+
+      setLegend((prev) => {
+        const prevClose = prev?.prevClose ?? bar.open;
+        return {
+          o: bar.open,
+          h: bar.high,
+          l: bar.low,
+          c: bar.close,
+          prevClose,
+        };
+      });
+    },
+    [apiInterval, chartStyle],
+  );
+
   // Refit the viewport only when the user actually switches instrument/timeframe.
   useEffect(() => {
     needFitRef.current = true;
     touchedRef.current = false;
     setLegend(null);
+    setLiveStreaming(false);
   }, [apiSymbol, apiInterval]);
 
   useEffect(() => {
     void load(false);
     const timer = window.setInterval(() => {
       if (!document.hidden) void load(true);
-    }, REFRESH_MS);
+    }, OHLC_RESYNC_MS);
     return () => window.clearInterval(timer);
   }, [load, reloadKey]);
+
+  // Real-time: Socket.IO ticks + quote poll fallback so the candle tip keeps running.
+  useEffect(() => {
+    if (!apiSymbol || !apiInterval) return;
+    startFyersSocketClient();
+    subscribeFyersMarketSymbols([apiSymbol]);
+
+    const cached = getFyersCachedQuote(apiSymbol);
+    if (cached?.price) applyLivePrice(cached.price, cached.volume);
+
+    const unsub = onFyersMarketUpdate((payload) => {
+      const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+      if (q?.price) applyLivePrice(q.price, q.volume);
+    });
+
+    const poll = window.setInterval(() => {
+      if (document.hidden) return;
+      // Prefer cache; if quiet > 3s, hit REST quotes.
+      const cachedNow = getFyersCachedQuote(apiSymbol);
+      if (cachedNow?.price && Date.now() - lastLiveAtRef.current < 3_000) {
+        applyLivePrice(cachedNow.price, cachedNow.volume);
+        return;
+      }
+      void fetchMarketQuotes([apiSymbol]).then((res) => {
+        const q = res?.quotes?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+        if (q?.price) applyLivePrice(q.price, q.volume);
+      });
+    }, QUOTE_POLL_MS);
+
+    const stale = window.setInterval(() => {
+      if (Date.now() - lastLiveAtRef.current > 8_000) setLiveStreaming(false);
+    }, 2_000);
+
+    return () => {
+      unsub();
+      unsubscribeFyersMarketSymbols([apiSymbol]);
+      window.clearInterval(poll);
+      window.clearInterval(stale);
+    };
+  }, [apiSymbol, apiInterval, applyLivePrice, reloadKey]);
 
   const view = useMemo<ChartView | null>(() => {
     if (!bars.length) return null;
@@ -768,7 +882,16 @@ export default function NativeChatChart({
         ) : null}
 
         {status === 'ready' && fetchedAt ? (
-          <div className="mai-nc__stamp">Live feed · {istFull.format(new Date(fetchedAt))} IST</div>
+          <div className={`mai-nc__stamp ${liveStreaming ? 'mai-nc__stamp--live' : ''}`}>
+            {liveStreaming ? (
+              <>
+                <span className="mai-nc__live-dot" aria-hidden />
+                LIVE · running
+              </>
+            ) : (
+              <>Feed · {istFull.format(new Date(fetchedAt))} IST</>
+            )}
+          </div>
         ) : null}
 
         {status !== 'ready' ? (
