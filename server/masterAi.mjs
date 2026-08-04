@@ -1452,10 +1452,10 @@ ANNOTATIONS
   arrow — direction (x1,p1)→(x2,p2). Impulse / rejection direction (NOT a trade order).
 MATCH THE QUESTION:
   structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE (not Supply/Demand).
-  SUPPORT / RESISTANCE (classic desk mark) → exactly TWO hlines sided to LTP:
-    nearest high ABOVE LTP → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
-    nearest low BELOW LTP  → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
-    NEVER put RESISTANCE below LTP. Mirror in levels. NO zones.
+  SUPPORT / RESISTANCE → exactly TWO hrays sided to LTP (ray from swing wick → right, NOT full-width hline):
+    nearest high ABOVE LTP → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
+    nearest low BELOW LTP  → {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
+    levels:[]. NEVER put RESISTANCE below LTP. NO zones.
   OB / supply / demand / FVG → zone.
   trendline / channel / pitchfork → trend (and ray if it should extend).
   fib / pullback / 0.618 0.705 0.786 → fib with real swing p1/p2.
@@ -1567,13 +1567,14 @@ No block = empty chart. No real price → say so in prose instead.`;
 
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block. Prefer STRUCTURE TAPE swing high/low as RESISTANCE/SUPPORT hlines when they asked for S/R or a generic mark. Never ask which zone. Never omit the fence.`;
 
-const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory for this ask):
-Mark like a TradingView horizontal-line desk mark — NOT zones, NOT order blocks.
-CRITICAL vs LTP from STRUCTURE TAPE / LIVE MARKET DATA:
-- RESISTANCE = nearest real high ABOVE current LTP (window high / swing high / day high above price). NEVER mark resistance below LTP.
-- SUPPORT = nearest real low BELOW current LTP (swing low / day low). NEVER mark support above LTP.
-Shapes: {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"} and same for SUPPORT.
-Mirror both in "levels". Prose 2–3 short lines with those prices. Then wolfchart. No Entry/Stop/Target.`;
+const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory — match TradingView horizontal RAY look):
+NOT zones. NOT full-width lines across the whole chart.
+- RESISTANCE = nearest high ABOVE LTP. SUPPORT = nearest low BELOW LTP.
+- Use type "hray" (horizontal ray) from the swing bar to the right:
+  {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
+  {"type":"hray","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
+- Leave "levels" empty for this ask (rays are drawn on canvas). Labels must be exactly SUPPORT / RESISTANCE.
+Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
@@ -2133,7 +2134,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : wantsSrMark
-            ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart MUST have exactly two hlines from STRUCTURE TAPE: swing high label RESISTANCE, swing low label SUPPORT (with x1 barsAgo). No zones. No Entry/Stop/Target.'
+            ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
             ? 'Task: MARK CHART NOW. 2–4 short lines, then ALWAYS append wolfchart. Default desk mark = SUPPORT + RESISTANCE hlines from STRUCTURE TAPE swing high/low. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure

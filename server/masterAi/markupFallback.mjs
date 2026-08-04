@@ -126,12 +126,13 @@ export function synthesizeSrWolfchart(meta = {}) {
   const levels = [];
   const shapes = [];
 
+  // Canvas-only hrays (no "levels") so the chart does not get full-width lines
+  // left of the swing — matches the TradingView reference screenshot.
   if (res) {
     const p = roundPrice(res.price);
     if (p != null) {
-      levels.push({ price: p, kind: 'resistance', label: 'RESISTANCE' });
       shapes.push({
-        type: 'hline',
+        type: 'hray',
         p1: p,
         x1: -Math.abs(Number(res.barsAgo) || 8),
         label: 'RESISTANCE',
@@ -142,9 +143,8 @@ export function synthesizeSrWolfchart(meta = {}) {
   if (sup) {
     const p = roundPrice(sup.price);
     if (p != null) {
-      levels.push({ price: p, kind: 'support', label: 'SUPPORT' });
       shapes.push({
-        type: 'hline',
+        type: 'hray',
         p1: p,
         x1: -Math.abs(Number(sup.barsAgo) || 16),
         label: 'SUPPORT',
@@ -153,8 +153,8 @@ export function synthesizeSrWolfchart(meta = {}) {
     }
   }
 
-  if (!levels.length && !shapes.length) return null;
-  return fence({ symbol, tf, levels: levels.slice(0, 4), shapes: shapes.slice(0, 6) });
+  if (!shapes.length) return null;
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 6) });
 }
 
 /**

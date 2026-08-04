@@ -351,44 +351,88 @@ export function useChartDrawings({
           continue;
         }
 
+        /**
+         * TradingView-style S/R from the user's reference shot:
+         * blue horizontal RAY from the swing wick → right edge,
+         * short red vertical tick on the wick, red SUPPORT/RESISTANCE tag
+         * at the ray origin (above for resistance, below for support).
+         */
+        const paintSrRay = () => {
+          if (y1 === null || shape.p1 === undefined) return;
+          const startRaw =
+            shape.x1 === undefined
+              ? zoneOriginX(shape.p1, shape.p1)
+              : anchorX(shape.x1, -12);
+          const x0 = Math.min(Math.max(6, startRaw ?? paneWidth * 0.4), paneWidth - 48);
+          const isRes = /resistance/i.test(shape.label || '');
+          const tick = 12;
+
+          // Red vertical connector on the swing wick.
+          ctx.strokeStyle = '#ef5350';
+          ctx.lineWidth = 1.25;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(x0, isRes ? y1 - tick : y1);
+          ctx.lineTo(x0, isRes ? y1 : y1 + tick);
+          ctx.stroke();
+
+          // Blue ray from that wick to the right (not full-width left).
+          ctx.strokeStyle = '#2962ff';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(x0, y1);
+          ctx.lineTo(paneWidth - 4, y1);
+          ctx.stroke();
+
+          // Red uppercase label at the ray start.
+          ctx.font = '700 12px "Trebuchet MS", Roboto, sans-serif';
+          ctx.fillStyle = '#ef5350';
+          ctx.textBaseline = isRes ? 'bottom' : 'top';
+          ctx.textAlign = 'left';
+          ctx.fillText(
+            String(shape.label || '').toUpperCase(),
+            x0 + 5,
+            isRes ? y1 - 4 : y1 + 4,
+          );
+
+          // Price chip at the right edge (axis-style read).
+          const priceTxt = Number(shape.p1).toLocaleString('en-IN', {
+            maximumFractionDigits: 2,
+          });
+          ctx.font = '600 10px "Trebuchet MS", Roboto, sans-serif';
+          const tw = ctx.measureText(priceTxt).width;
+          const bx = paneWidth - tw - 14;
+          const by = y1 - 8;
+          ctx.fillStyle = '#2962ff';
+          ctx.fillRect(bx - 4, by, tw + 8, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(priceTxt, bx, y1);
+          ctx.textBaseline = 'alphabetic';
+        };
+
         if (shape.type === 'hline') {
           if (y1 === null) continue;
-          const isSr = /^(support|resistance)$/i.test(shape.label || '');
-          // Desk S/R look: solid blue full-width line + tag near the swing (like TV).
-          const lineColor = isSr ? '#2962ff' : tone.line;
-          const tagColor = isSr ? '#ef5350' : tone.line;
-          ctx.strokeStyle = lineColor;
-          ctx.lineWidth = isSr ? 1.75 : 1.5;
-          ctx.setLineDash(isSr ? [] : [2, 3]);
+          if (/^(support|resistance)$/i.test(shape.label || '')) {
+            paintSrRay();
+            continue;
+          }
+          ctx.setLineDash([2, 3]);
           ctx.beginPath();
           ctx.moveTo(0, y1);
           ctx.lineTo(paneWidth, y1);
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.strokeStyle = tone.line;
-          ctx.lineWidth = 1.5;
-          if (isSr) {
-            const swingX = shape.x1 === undefined ? null : anchorX(shape.x1, -10);
-            // Keep label on-screen near the swing; fall back to left gutter.
-            let tagX = swingX == null ? 12 : swingX;
-            tagX = Math.min(Math.max(10, tagX), paneWidth - 96);
-            const above = /resistance/i.test(shape.label || '');
-            ctx.font = '700 12px "Trebuchet MS", Roboto, sans-serif';
-            ctx.textBaseline = above ? 'bottom' : 'top';
-            ctx.fillStyle = tagColor;
-            ctx.fillText(
-              String(shape.label || '').toUpperCase(),
-              tagX,
-              above ? y1 - 5 : y1 + 5,
-            );
-          } else {
-            chip(shape.label, 8, y1 - 2, tone.line);
-          }
+          chip(shape.label, 8, y1 - 2, tone.line);
           continue;
         }
 
         if (shape.type === 'hray') {
           if (y1 === null) continue;
+          if (/^(support|resistance)$/i.test(shape.label || '')) {
+            paintSrRay();
+            continue;
+          }
           const start =
             (shape.x1 === undefined
               ? zoneOriginX(shape.p1!, shape.p1!)

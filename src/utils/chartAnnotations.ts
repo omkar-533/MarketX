@@ -212,10 +212,17 @@ function toShape(raw: unknown): ChartShape | null {
 /**
  * Horizontal hline shapes also become price lines so they show on the axis
  * even if canvas paint is skipped.
+ * SUPPORT/RESISTANCE stay canvas-only (TV-style rays) — a full-width price
+ * line would redraw left of the swing and break that look.
  */
 export function shapesToExtraLevels(shapes: ChartShape[]): ChartLevel[] {
   return shapes
-    .filter((s) => (s.type === 'hline' || s.type === 'hray') && s.p1)
+    .filter(
+      (s) =>
+        (s.type === 'hline' || s.type === 'hray') &&
+        s.p1 &&
+        !/^(support|resistance)$/i.test(s.label || ''),
+    )
     .map((s) => ({
       price: s.p1!,
       kind: (s.tone === 'bull' ? 'support' : s.tone === 'bear' ? 'resistance' : 'pivot') as ChartLevelKind,
