@@ -931,8 +931,13 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             ? buildJournalContextForAi(loadLocalTrades(user))
             : undefined;
           // Without this the model has no idea which instrument "mark it" means.
+          const wantsMarkNow = isChartMarkupRequest(userText);
           const chartHint = chartTarget
-            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer — zones, S/R, order blocks, structure from the live tape — and emit the wolfchart block. Do not wait for the user to say "mark". NEVER ask for a screenshot.]`
+            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer — zones, S/R, order blocks, structure from the live tape — and emit the wolfchart block. Do not wait for the user to say "mark". NEVER ask for a screenshot.${
+                wantsMarkNow
+                  ? ' EXPLICIT MARK: user asked to mark NOW — do not ask which zone; draw Day High/Low/LTP + structure labels and end with wolfchart.'
+                  : ''
+              }]`
             : '';
           const baseMessage = `${userText}${chartHint}`;
           const textMessage = hasImage
@@ -941,7 +946,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               ? `${userText}${chartHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.${
                   chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
                 }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
-              : continuingThread && !journalContext
+              : continuingThread && !journalContext && !wantsMarkNow
                 ? `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.${
                     chartTarget
                       ? ' ALWAYS append the wolfchart block and redraw relevant levels/zones on the open chart.'

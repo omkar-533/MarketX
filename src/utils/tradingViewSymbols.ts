@@ -380,13 +380,14 @@ export function resolveKnownSymbol(raw: unknown): string | null {
  */
 const MARKUP_INTENT = new RegExp(
   [
-    '\\b(mark|marking|markup|draw|annotate|highlight|plot)\\b',
+    '\\b(mark|marking|markings|markup|draw|annotate|highlight|plot)\\b',
+    'mark\\s*(kar|kr|kro|krdo|kardo|kardo)',
     'order\\s*block|\\bob\\b|supply|demand|\\bfvg\\b|imbalance|liquidity',
     '\\bbos\\b|choch|break\\s*of\\s*structure',
     'trend\\s*line|trendline|channel|neckline',
     '\\bfib\\b|fibonacci|retracement',
     'support|resistance|\\bzone\\b|\\blevels?\\b|pivot',
-    'khinch|khich|laga\\s*do|lagao|bana\\s*do|dikha',
+    'khinch|khich|laga\\s*do|lagao|bana\\s*do|dikha(?:\\s*do)?|dikhado',
   ].join('|'),
   'i',
 );

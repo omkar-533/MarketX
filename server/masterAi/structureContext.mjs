@@ -112,12 +112,31 @@ function pickInterval(message) {
   return '15m';
 }
 
+const EMPTY = {
+  block: '',
+  symbol: '',
+  interval: '',
+  swings: [],
+  events: [],
+  lastClose: 0,
+};
+
 /**
- * @returns {Promise<{ block: string, symbol: string, interval: string }>}
+ * @param {string} message
+ * @param {{ force?: boolean }} [opts] force=true builds tape even without structure keywords
+ *   (needed for "marking kr do" / chart-open auto-draw).
+ * @returns {Promise<{
+ *   block: string,
+ *   symbol: string,
+ *   interval: string,
+ *   swings: Array<{ label: string, price: number, kind: string, barsAgo: number }>,
+ *   events: Array<{ label: string, price: number, barsAgo: number }>,
+ *   lastClose: number,
+ * }>}
  */
-export async function buildStructureContext(message) {
-  if (!wantsStructureMarkup(message)) {
-    return { block: '', symbol: '', interval: '' };
+export async function buildStructureContext(message, opts = {}) {
+  if (!opts.force && !wantsStructureMarkup(message)) {
+    return { ...EMPTY };
   }
 
   const symbol = pickSymbol(message);
@@ -126,13 +145,13 @@ export async function buildStructureContext(message) {
   try {
     const data = await fetchOhlc(symbol, interval);
     const bars = Array.isArray(data?.bars) ? data.bars : [];
-    if (bars.length < 20) return { block: '', symbol, interval };
+    if (bars.length < 20) return { ...EMPTY, symbol, interval };
 
     const recent = bars.slice(-80);
     const swings = labelSwings(recent).slice(-8);
-    if (!swings.length) return { block: '', symbol, interval };
+    if (!swings.length) return { ...EMPTY, symbol, interval };
 
-    const lastClose = recent[recent.length - 1]?.close;
+    const lastClose = recent[recent.length - 1]?.close ?? 0;
     const events = detectEvents(swings, lastClose);
 
     const swingLines = swings.map(
@@ -158,9 +177,9 @@ export async function buildStructureContext(message) {
       'For the wolfchart block: put each HH/HL/LH/LL as {"type":"label","p1":<price>,"label":"HH"} (or HL/LH/LL). Put BOS/CHOCH as {"type":"vline","x1":-<barsAgo>,"label":"BOS"} plus a label at the broken level. Do NOT replace this with Supply/Demand zones.',
     ].join('\n');
 
-    return { block, symbol, interval };
+    return { block, symbol, interval, swings, events, lastClose };
   } catch (err) {
     console.warn('[Wolf AI] structure context failed:', err?.message || err);
-    return { block: '', symbol, interval };
+    return { ...EMPTY, symbol, interval };
   }
 }

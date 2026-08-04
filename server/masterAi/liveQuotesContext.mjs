@@ -90,6 +90,8 @@ export async function buildLiveQuotesContext(message, history = [], opts = {}) {
         block: '',
         hasLiveTape: false,
         quoteCount: 0,
+        quotes: [],
+        primary: null,
       };
     }
 
@@ -110,9 +112,15 @@ export async function buildLiveQuotesContext(message, history = [], opts = {}) {
       (q) => q.symbol === 'NIFTY' || q.symbol === 'BANKNIFTY' || Number(q.price) > 0,
     );
 
-    return { block, hasLiveTape, quoteCount: quotes.length };
+    // Prefer a user-mentioned symbol; else first watchlist quote with a price.
+    const primary =
+      quotes.find((q) => mentioned.includes(q.symbol) && Number(q.price) > 0) ||
+      quotes.find((q) => Number(q.price) > 0) ||
+      null;
+
+    return { block, hasLiveTape, quoteCount: quotes.length, quotes, primary };
   } catch (err) {
     console.warn('[Wolf AI] live quotes context failed:', err?.message || err);
-    return { block: '', hasLiveTape: false, quoteCount: 0 };
+    return { block: '', hasLiveTape: false, quoteCount: 0, quotes: [], primary: null };
   }
 }

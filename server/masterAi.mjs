@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 import { buildLiveQuotesContext } from './masterAi/liveQuotesContext.mjs';
 import { buildStructureContext, wantsStructureMarkup } from './masterAi/structureContext.mjs';
+import { ensureWolfchartReply } from './masterAi/markupFallback.mjs';
 import { buildIntelPack } from './masterAi/intelPack.mjs';
 
 export const MASTER_AI_MODELS = [
@@ -1547,6 +1548,7 @@ const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY so
  */
 const MARKUP_REQUIRED_HINT = `MANDATORY LAST STEP — the drawing block. Your answer is incomplete without it.
 AUTO-DRAW is always on: even if the user never said "mark" / "draw", you still place what the QUESTION asked for on the chart.
+If the user said mark/marking/draw/khinch — DO NOT ask "kya mark karu?". Pick Day High / Day Low / LTP from LIVE MARKET DATA and STRUCTURE TAPE labels, and DRAW them now.
 PICK THE RIGHT TOOL — do not default to Supply/Demand zones:
 - structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE.
 - S/R, PDH/PDL, round numbers → levels and/or hline / hray (not fat zones unless they asked for a zone).
@@ -1559,6 +1561,8 @@ Finish with exactly this, nothing after:
 {"symbol":"<ticker>","tf":"<timeframe>","levels":[...],"shapes":[...]}
 \`\`\`
 No block = empty chart. No real price → say so in prose instead.`;
+
+const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block using LIVE MARKET DATA (Day High/Low/LTP as hline/levels) and STRUCTURE TAPE (labels/vlines) when present. Never ask which zone. Never omit the fence.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
@@ -1722,7 +1726,8 @@ function isShortChat(message) {
 export function replyTokenBudget({ hasImage, shortChat, wantsMarkup }) {
   if (shortChat) return 120;
   if (hasImage) return 1400;
-  if (wantsMarkup) return 900;
+  // Prose + wolfchart JSON — 900 often truncates the fence and the chart stays blank.
+  if (wantsMarkup) return 1400;
   return 420;
 }
 
@@ -1948,12 +1953,17 @@ export function createMasterAiRouter(apiKey) {
       // The client tags the message when a live chart is already sitting next to
       // the chat; that chart is what "mark it" refers to.
       const chartOnScreen = /CHART OPEN BESIDE THIS CHAT/i.test(String(message || ''));
+      const explicitMark =
+        /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark\s*(kar|kr|kro|krdo|kardo)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
+          String(message || ''),
+        );
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
       const wantsMarkup =
         chartOnScreen ||
         hasImage ||
-        /\b(mark|marking|draw|annotate|highlight|khinch|point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
+        explicitMark ||
+        /\b(point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
           String(message || ''),
         );
 
@@ -1997,7 +2007,10 @@ export function createMasterAiRouter(apiKey) {
 
       let liveBlock = '';
       let contextHasLiveTape = false;
+      let primaryQuote = null;
+      let liveQuotes = [];
       let structureBlock = '';
+      let structureMeta = { symbol: '', interval: '', swings: [], events: [] };
       let intelBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       if (!shortChat && !wantsJournalReview) {
@@ -2007,16 +2020,27 @@ export function createMasterAiRouter(apiKey) {
           });
           liveBlock = live.block || '';
           contextHasLiveTape = Boolean(live.hasLiveTape);
+          primaryQuote = live.primary || null;
+          liveQuotes = Array.isArray(live.quotes) ? live.quotes : [];
           if (live.quoteCount) {
             console.info(`[Wolf AI] live tape quotes=${live.quoteCount} image=${hasImage ? 1 : 0}`);
           }
         } catch (err) {
           console.warn('[Wolf AI] live tape inject failed:', err?.message || err);
         }
-        if (wantsStructure || chartOnScreen) {
+        // "marking kr do" has no HH/BOS keywords — still need pivots to draw.
+        if (wantsStructure || chartOnScreen || explicitMark) {
           try {
-            const structure = await buildStructureContext(message || userTextBase);
+            const structure = await buildStructureContext(message || userTextBase, {
+              force: chartOnScreen || explicitMark || wantsStructure,
+            });
             structureBlock = structure.block || '';
+            structureMeta = {
+              symbol: structure.symbol || '',
+              interval: structure.interval || '',
+              swings: structure.swings || [],
+              events: structure.events || [],
+            };
             if (structureBlock) {
               console.info(
                 `[Wolf AI] structure tape ${structure.symbol} ${structure.interval}`,
@@ -2077,6 +2101,8 @@ export function createMasterAiRouter(apiKey) {
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
+          : explicitMark
+            ? 'Task: MARK CHART NOW. 2–4 short lines, then ALWAYS append complete wolfchart with Day High/Low/LTP (hline/levels) + STRUCTURE TAPE labels/vlines. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2139,7 +2165,7 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${SCENARIO_HINT}`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
-      } else if (historyHasAnalysis || wantsLanguageSwitch) {
+      } else if ((historyHasAnalysis || wantsLanguageSwitch) && !explicitMark) {
         textBlock += `\n\n${CONTINUE_THREAD_HINT}`;
       } else if (contextHasLiveTape && (wantsDayReview || wantsChartRead || /\b(nifty|banknifty|sensex|btc|bitcoin|price|ltp|abhi|kaha|chal)\b/i.test(String(message || '')))) {
         textBlock += `\n\n${LIVE_TAPE_HINT}`;
@@ -2147,10 +2173,14 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${NO_CHART_HINT}`;
       }
       if (needsWeb && !hasImage) textBlock += `\n\n${WEB_HINT}`;
+      if (explicitMark && !hasImage && !wantsJournalReview && !shortChat) {
+        textBlock += `\n\n${EXPLICIT_MARK_HINT}`;
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      }
       if (chartOnScreen) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
-        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
-      } else if (wantsMarkup && !hasImage && !wantsJournalReview && !shortChat) {
+        if (!explicitMark) textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (wantsMarkup && !explicitMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       }
       if (wantsStructure && !hasImage && !wantsJournalReview && !shortChat) {
@@ -2170,20 +2200,54 @@ export function createMasterAiRouter(apiKey) {
 
       const maxTokens = replyTokenBudget({ hasImage, shortChat, wantsMarkup });
 
+      const finalizeReply = (result) => {
+        if (!result?.reply) return result;
+        // Model often answers "marking kr do" in prose and skips the fence —
+        // inject Day High/Low/LTP + structure pivots so the chart never stays blank.
+        if (wantsMarkup && !wantsJournalReview && !shortChat) {
+          const openSym =
+            /CHART OPEN BESIDE THIS CHAT:\s*([A-Z0-9:._-]+)/i.exec(String(message || ''))?.[1] ||
+            '';
+          const symbol = String(
+            structureMeta.symbol ||
+              (openSym.includes(':') ? openSym.split(':').pop() : openSym) ||
+              primaryQuote?.symbol ||
+              'NIFTY',
+          ).toUpperCase();
+          const quote =
+            liveQuotes.find((q) => String(q?.symbol || '').toUpperCase() === symbol) ||
+            primaryQuote ||
+            null;
+          return {
+            ...result,
+            reply: ensureWolfchartReply(result.reply, {
+              symbol,
+              interval: structureMeta.interval || '15m',
+              quote,
+              swings: structureMeta.swings,
+              events: structureMeta.events,
+            }),
+          };
+        }
+        return result;
+      };
+
       if (provider === 'gemini' && gemini) {
-        return chatWithGemini(gemini, {
-          platformContext,
-          history,
-          userText: textBlock,
-          imageDataUrl,
-          hasImage,
-          models,
-          shortChat,
-          maxTokens,
-          question: message,
-          journal: wantsJournalReview,
-          teaching: asksExplanation && !wantsMarkup,
-        });
+        return finalizeReply(
+          await chatWithGemini(gemini, {
+            platformContext,
+            history,
+            userText: textBlock,
+            imageDataUrl,
+            hasImage,
+            models,
+            shortChat,
+            maxTokens,
+            question: message,
+            journal: wantsJournalReview,
+            teaching: asksExplanation && !wantsMarkup,
+          }),
+        );
       }
 
       const contentParts = [{ type: 'text', text: textBlock }];
@@ -2232,7 +2296,7 @@ export function createMasterAiRouter(apiKey) {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const reply = await askModel(modelId);
-            if (reply) return { reply, modelUsed: modelId, source: provider };
+            if (reply) return finalizeReply({ reply, modelUsed: modelId, source: provider });
             break;
           } catch (err) {
             lastError = err;
