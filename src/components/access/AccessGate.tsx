@@ -127,7 +127,9 @@ export default function AccessGate({
                 {popup?.enabled !== false ? (
                   <div className="access-gate__proof">
                     <p className="access-gate__proof-title">
-                      {pending ? 'Verification under review' : 'Submit details for verification'}
+                      {pending
+                        ? 'Verification under review'
+                        : 'Submit demat + F&O screenshot (TradingView ID not required)'}
                     </p>
                     <AccessProofUpload
                       request={access?.request ?? null}

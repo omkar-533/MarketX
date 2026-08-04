@@ -83,7 +83,7 @@ export default function Subscription({
           </p>
           <p className="text-[11px] text-slate-500">
             {popup?.message?.trim() ||
-              'Please fill in your name, mobile number, and TradingView ID. Our team will get back to you within 24 hours.'}
+              'Fill your name, registered mobile, demat account number, and upload your first F&O trade screenshot. Our team verifies within 24 hours. TradingView ID is not required for this unlock.'}
           </p>
           <AccessProofUpload
             request={access?.request ?? null}

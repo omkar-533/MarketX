@@ -9,6 +9,7 @@ type AccessProofUploadProps = {
   defaults?: {
     name?: string | null;
     phone?: string | null;
+    email?: string | null;
   };
 };
 
@@ -25,9 +26,12 @@ export default function AccessProofUpload({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  /** Allows editing even when server still reports a pending request. */
+  const [forceEdit, setForceEdit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const pending = request?.status === 'pending';
+  const showSuccess = (pending || done) && !forceEdit;
 
   const pickFile = async (file?: File | null) => {
     if (!file) return;
@@ -35,7 +39,10 @@ export default function AccessProofUpload({
     try {
       setPreview(await prepareAccessProof(file));
     } catch (err) {
+      setPreview(null);
       setError(err instanceof Error ? err.message : 'Could not read that image');
+    } finally {
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -68,11 +75,17 @@ export default function AccessProofUpload({
         fullName: name,
         phone: mobile,
         dematAccountNumber: demat,
+        email: defaults?.email || undefined,
         screenshot: preview,
       });
       setDone(true);
+      setForceEdit(false);
       setPreview(null);
-      await onSubmitted();
+      try {
+        await onSubmitted();
+      } catch {
+        // Request already saved — refresh failure must not look like submit failure.
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed');
     } finally {
@@ -80,7 +93,7 @@ export default function AccessProofUpload({
     }
   };
 
-  if (pending || done) {
+  if (showSuccess) {
     return (
       <div className="access-proof access-proof--pending">
         <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
@@ -90,8 +103,16 @@ export default function AccessProofUpload({
             Our team will verify your F&O trade and unlock access. You will see it here without
             signing in again.
           </p>
-          {request?.status === 'pending' ? (
-            <button type="button" className="access-proof__relink" onClick={() => setDone(false)}>
+          {pending ? (
+            <button
+              type="button"
+              className="access-proof__relink"
+              onClick={() => {
+                setDone(false);
+                setForceEdit(true);
+                setError('');
+              }}
+            >
               Submit again
             </button>
           ) : null}
@@ -99,6 +120,13 @@ export default function AccessProofUpload({
       </div>
     );
   }
+
+  const canSubmit =
+    !busy &&
+    fullName.trim().length >= 2 &&
+    phone.replace(/\D/g, '').length >= 10 &&
+    dematNumber.trim().length >= 4 &&
+    Boolean(preview);
 
   return (
     <form className="access-proof" onSubmit={(e) => void submit(e)}>
@@ -112,6 +140,10 @@ export default function AccessProofUpload({
           </span>
         </div>
       ) : null}
+
+      <p className="access-proof__field-hint">
+        TradingView ID is not needed here — only demat + first F&amp;O trade screenshot.
+      </p>
 
       <div className="access-proof__grid">
         <div>
@@ -156,7 +188,7 @@ export default function AccessProofUpload({
           id="access-demat"
           type="text"
           className="access-proof__note"
-          placeholder="Your demat / client account number"
+          placeholder="Broker demat / client ID (not TradingView)"
           value={dematNumber}
           maxLength={40}
           autoComplete="off"
@@ -194,7 +226,7 @@ export default function AccessProofUpload({
         >
           <ImageUp className="w-5 h-5" />
           <span className="access-proof__title">Upload your first F&O trade screenshot</span>
-          <span className="access-proof__hint">PNG, JPG or WebP — clear trade proof</span>
+          <span className="access-proof__hint">PNG, JPG or WebP — clear trade proof (not HEIC)</span>
         </button>
       )}
 
@@ -203,19 +235,13 @@ export default function AccessProofUpload({
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           {error}
         </p>
+      ) : !canSubmit && !busy ? (
+        <p className="access-proof__field-hint">
+          Fill name, 10-digit mobile, demat, and upload screenshot — then Submit unlocks.
+        </p>
       ) : null}
 
-      <button
-        type="submit"
-        className="access-proof__submit"
-        disabled={
-          busy ||
-          fullName.trim().length < 2 ||
-          phone.replace(/\D/g, '').length < 10 ||
-          dematNumber.trim().length < 4 ||
-          !preview
-        }
-      >
+      <button type="submit" className="access-proof__submit" disabled={!canSubmit}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         {busy ? 'Submitting…' : 'Send for verification'}
       </button>

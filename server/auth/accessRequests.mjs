@@ -193,23 +193,32 @@ export async function createAccessRequest({
     return fromRow(row);
   }
 
-  await ensureBucket(db);
-  const path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, buffer, {
-    contentType: mime,
-    upsert: false,
-  });
-  if (uploadError) throw storeError(uploadError);
+  // Prefer Storage; if the bucket is missing / blocked, keep the compressed
+  // data-URL on the row so verification submit never hard-fails for users.
+  let screenshotPath = null;
+  let screenshotData = null;
+  try {
+    await ensureBucket(db);
+    const path = `${user.id}/${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
+    const { error: uploadError } = await db.storage.from(BUCKET).upload(path, buffer, {
+      contentType: mime,
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+    screenshotPath = path;
+  } catch {
+    screenshotData = String(screenshot).slice(0, MAX_BYTES * 2);
+  }
 
   const row = {
     ...base,
     trading_view_id: demat,
-    screenshot_path: path,
-    screenshot_data: null,
+    screenshot_path: screenshotPath,
+    screenshot_data: screenshotData,
   };
   const { error } = await db.from(TABLE).insert(row);
   if (error) throw storeError(error);
-  return fromRow(row, await signScreenshot(db, row));
+  return fromRow(row, screenshotPath ? await signScreenshot(db, row) : screenshotData);
 }
 
 export async function latestRequestForUser(userId) {
