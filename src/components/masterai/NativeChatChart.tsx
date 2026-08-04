@@ -46,6 +46,7 @@ import {
   subscribeFyersMarketSymbols,
   unsubscribeFyersMarketSymbols,
 } from '../../services/fyersSocketClient';
+import { isNseFnoMarketOpen } from '../../utils/marketHours';
 import type { ChartBar } from '../../types/chart';
 import {
   TV_TIMEFRAMES,
@@ -178,6 +179,7 @@ export default function NativeChatChart({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
   const [fetchedAt, setFetchedAt] = useState('');
   const [liveStreaming, setLiveStreaming] = useState(false);
+  const [marketOpen, setMarketOpen] = useState(() => isNseFnoMarketOpen());
   const [legend, setLegend] = useState<Legend | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tool, setTool] = useState<DrawingTool>('cursor');
@@ -295,6 +297,14 @@ export default function NativeChatChart({
     setLegend(null);
     setLiveStreaming(false);
   }, [apiSymbol, apiInterval]);
+
+  // TradingView-style session: flip OPEN ↔ CLOSE without waiting for a full reload.
+  useEffect(() => {
+    const sync = () => setMarketOpen(isNseFnoMarketOpen());
+    sync();
+    const timer = window.setInterval(sync, 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     void load(false);
@@ -882,8 +892,25 @@ export default function NativeChatChart({
         ) : null}
 
         {status === 'ready' && fetchedAt ? (
-          <div className={`mai-nc__stamp ${liveStreaming ? 'mai-nc__stamp--live' : ''}`}>
-            {liveStreaming ? (
+          <div
+            className={`mai-nc__stamp ${
+              !marketOpen
+                ? 'mai-nc__stamp--closed'
+                : liveStreaming
+                  ? 'mai-nc__stamp--live'
+                  : ''
+            }`}
+            title={
+              marketOpen
+                ? liveStreaming
+                  ? 'Live market feed'
+                  : `Last feed ${istFull.format(new Date(fetchedAt))} IST`
+                : 'NSE cash / F&O session closed'
+            }
+          >
+            {!marketOpen ? (
+              <>CLOSE</>
+            ) : liveStreaming ? (
               <>
                 <span className="mai-nc__live-dot" aria-hidden />
                 LIVE · running

@@ -8820,6 +8820,13 @@ html.dark .mai-tv__fs-btn--on,
   opacity: 1;
 }
 
+.mai-nc__stamp--closed {
+  color: #ef5350;
+  opacity: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .mai-nc__live-dot {
   width: 0.45rem;
   height: 0.45rem;
