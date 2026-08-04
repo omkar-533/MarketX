@@ -7384,6 +7384,27 @@ input[type="number"] { -moz-appearance: textfield; }
   height: min(42rem, 74vh);
 }
 
+/* In-app full screen — the chart never leaves the site */
+.mai-tv__fs-layer {
+  position: fixed;
+  inset: 0;
+  /* Above the app's own bars and popups (140 / 200) */
+  z-index: 300;
+  display: flex;
+  padding: 0.6rem;
+  background: var(--tf-bg);
+}
+
+.mai-tv--fs {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--tf-surface);
+}
+
 /* Single-row toolbar mirroring TradingView's chart header */
 .mai-tv__bar {
   display: flex;

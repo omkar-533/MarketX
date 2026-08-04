@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ExternalLink, Maximize2, Minimize2, RefreshCw, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, Expand, Maximize2, Minimize2, RefreshCw, Shrink, X } from 'lucide-react';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
-import { openExternalUrl } from '../../utils/openExternalUrl';
 import {
   NATIVE_STUDY_PRESETS,
   NATIVE_TIMEFRAMES,
@@ -54,6 +54,7 @@ export default function ChatChartPanel({
   const [symbolInput, setSymbolInput] = useState(() => tradingViewSymbolLabel(symbol));
   const [reloadKey, setReloadKey] = useState(0);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const indicatorsRef = useRef<HTMLDivElement>(null);
 
   const native = isWidgetRestricted(symbol);
@@ -86,6 +87,21 @@ export default function ChatChartPanel({
     onStudyChange(joinStudies(next));
   };
 
+  // Fullscreen stays inside the app: Escape leaves it and the page behind cannot scroll.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFullscreen(false);
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [fullscreen]);
+
   useEffect(() => {
     if (!indicatorsOpen) return;
     const onDown = (event: MouseEvent) => {
@@ -108,8 +124,13 @@ export default function ChatChartPanel({
     else setSymbolInput(tradingViewSymbolLabel(symbol));
   };
 
-  return (
-    <section className={`mai-tv ${expanded ? 'mai-tv--tall' : ''}`} aria-label="Chart">
+  const panel = (
+    <section
+      className={`mai-tv ${expanded && !fullscreen ? 'mai-tv--tall' : ''} ${
+        fullscreen ? 'mai-tv--fs' : ''
+      }`}
+      aria-label="Chart"
+    >
       <header className="mai-tv__bar">
         <form
           className="mai-tv__symbol"
@@ -198,21 +219,6 @@ export default function ChatChartPanel({
         </div>
 
         <div className="mai-tv__actions">
-          {native ? (
-            <button
-              type="button"
-              onClick={() =>
-                openExternalUrl(
-                  `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`,
-                )
-              }
-              className="mai-tv__icon"
-              title="Open full chart on TradingView"
-              aria-label="Open full chart on TradingView"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => setReloadKey((k) => k + 1)}
@@ -222,21 +228,36 @@ export default function ChatChartPanel({
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
+          {fullscreen ? null : (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mai-tv__icon"
+              title={expanded ? 'Shrink chart' : 'Taller chart'}
+              aria-label={expanded ? 'Shrink chart' : 'Taller chart'}
+            >
+              {expanded ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => setFullscreen((v) => !v)}
             className="mai-tv__icon"
-            title={expanded ? 'Shrink chart' : 'Expand chart'}
-            aria-label={expanded ? 'Shrink chart' : 'Expand chart'}
+            title={fullscreen ? 'Exit full screen' : 'Full screen'}
+            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
           >
-            {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {fullscreen ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => (fullscreen ? setFullscreen(false) : onClose())}
             className="mai-tv__icon"
-            title={closeLabel}
-            aria-label={closeLabel}
+            title={fullscreen ? 'Exit full screen' : closeLabel}
+            aria-label={fullscreen ? 'Exit full screen' : closeLabel}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -264,4 +285,15 @@ export default function ChatChartPanel({
       )}
     </section>
   );
+
+  // Portalled out of the chat: bubbles clip and transform their contents,
+  // which would otherwise trap a fixed overlay inside the message.
+  return fullscreen
+    ? createPortal(
+        <div className="mai-tv__fs-layer" role="dialog" aria-modal="true" aria-label="Chart full screen">
+          {panel}
+        </div>,
+        document.body,
+      )
+    : panel;
 }
