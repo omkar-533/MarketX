@@ -2,8 +2,10 @@ import type { MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import {
   Bot,
-  Link2,
+  Code2,
+  GraduationCap,
   NotebookPen,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { PAGE_NAMES } from '../../constants/brandLabels';
@@ -33,9 +35,9 @@ const LOGIN_FEATURES: Feature[] = [
   {
     id: 'mentor-ai',
     title: PAGE_NAMES['mentor-ai'],
-    detail: 'Live trainer',
-    description: 'Chart drills and process coaching desk — separate from Wolf AI analysis chat.',
-    icon: Bot,
+    detail: 'AI teacher',
+    description: 'Structured curriculum, chart drills, and process coaching — separate from Wolf AI chat.',
+    icon: GraduationCap,
     viz: 'scan',
   },
   ...(SHOW_INDICATORS
@@ -43,14 +45,22 @@ const LOGIN_FEATURES: Feature[] = [
         {
           id: 'indicators',
           title: PAGE_NAMES.indicators,
-          detail: 'Invite links',
+          detail: 'Script library',
           description:
             'Browse published indicators, open invite links, and use them during your demo.',
-          icon: Link2,
-          viz: 'scan' as const,
+          icon: Code2,
+          viz: 'tiles' as const,
         },
       ]
     : []),
+  {
+    id: 'papertrading',
+    title: PAGE_NAMES.papertrading,
+    detail: 'Practice desk',
+    description: 'Simulate trades with live market context — build process before risking capital.',
+    icon: Wallet,
+    viz: 'bars',
+  },
   {
     id: 'tradingjournal',
     title: PAGE_NAMES.tradingjournal,

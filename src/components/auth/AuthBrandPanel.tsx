@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, Cpu, Shield, Sparkles, Zap } from 'lucide-react';
+import { Bot, Code2, Cpu, GraduationCap, NotebookPen, Shield, Sparkles, Wallet } from 'lucide-react';
 import AuthRobotScene from './AuthRobotScene';
 import {
   BRAND,
@@ -8,14 +8,16 @@ import {
   BRAND_LINE2,
   BRAND_SHORT,
   BRAND_TAGLINE_FULL,
+  PAGE_NAMES,
 } from '../../constants/brandLabels';
 import { SHOW_INDICATORS } from '../../constants/featureFlags';
 
 const capabilities = [
-  { icon: Sparkles, text: 'Wolf AI copilots' },
-  ...(SHOW_INDICATORS ? [{ icon: Bot, text: 'Indicators library' }] : []),
-  { icon: Zap, text: 'Trading journal' },
-  { icon: Cpu, text: 'Invite-only desk' },
+  { icon: Sparkles, text: PAGE_NAMES['wolf-ai'] },
+  { icon: GraduationCap, text: PAGE_NAMES['mentor-ai'] },
+  ...(SHOW_INDICATORS ? [{ icon: Code2, text: PAGE_NAMES.indicators }] : []),
+  { icon: Wallet, text: PAGE_NAMES.papertrading },
+  { icon: NotebookPen, text: PAGE_NAMES.tradingjournal },
 ];
 
 function LiveClock() {

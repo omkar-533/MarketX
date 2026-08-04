@@ -40,12 +40,28 @@ const STORY_BANDS_ALL = [
     image: `${import.meta.env.BASE_URL}landing/band-ai-copilot.jpg`,
   },
   {
+    id: 'mentor-ai',
+    kicker: 'Wolf Mentor',
+    title: 'Learn markets with a structured path',
+    body: 'Curriculum, chart drills, and process coaching locked in sequence — education only, no Entry / Stop / Target calls.',
+    cta: 'Start learning',
+    image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=4`,
+  },
+  {
     id: 'indicators',
     kicker: 'Indicators',
     title: 'A library built for serious charts',
     body: 'Browse published indicators, open the invite link, and use them during your demo — longer access after the desk approves.',
     cta: 'Get access now',
     image: `${import.meta.env.BASE_URL}landing/band-workspace.jpg?v=4`,
+  },
+  {
+    id: 'papertrading',
+    kicker: 'Paper Trading',
+    title: 'Practice before you risk capital',
+    body: 'Simulate trades with live market context and refine your process without putting real money on the line.',
+    cta: 'Try the desk',
+    image: `${import.meta.env.BASE_URL}landing/band-autopilot.jpg`,
   },
   {
     id: 'tradingjournal',
@@ -391,8 +407,8 @@ export default function AuthPage(props: AuthPageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.55, ease }}
             >
-              The AI platform for serious Indian traders — Wolf AI and Trading Journal in one
-              invite-only workspace.
+              The AI platform for serious Indian traders — Wolf AI, Wolf Mentor, Indicators, Paper
+              Trading, and Trading Journal in one invite-only workspace.
             </motion.p>
             <motion.div
               className="auth-lux__hero-actions"
@@ -530,8 +546,8 @@ export default function AuthPage(props: AuthPageProps) {
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
                   {SHOW_INDICATORS
-                    ? 'Three core modules — Wolf AI, Indicators, and Trading Journal in one luxury workspace.'
-                    : 'Core modules — Wolf AI and Trading Journal in one luxury workspace.'}
+                    ? 'Five core modules — Wolf AI, Wolf Mentor, Indicators, Paper Trading, and Trading Journal in one luxury workspace.'
+                    : 'Core modules — Wolf AI, Wolf Mentor, Paper Trading, and Trading Journal in one luxury workspace.'}
                 </p>
               </Reveal>
             </div>
