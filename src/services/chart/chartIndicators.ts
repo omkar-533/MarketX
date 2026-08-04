@@ -81,6 +81,71 @@ export function vwap(bars: ChartBar[]): number[] {
   });
 }
 
+export function macd(closes: number[], fastLen = 12, slowLen = 26, signalLen = 9) {
+  const fast = ema(closes, fastLen);
+  const slow = ema(closes, slowLen);
+  const line = closes.map((_, i) => fast[i] - slow[i]);
+  const signal = ema(line, signalLen);
+  return { line, signal, hist: line.map((v, i) => v - signal[i]) };
+}
+
+/** Wilder's Average True Range. */
+export function atr(bars: ChartBar[], period = 14): number[] {
+  const out: number[] = [];
+  let prev = 0;
+  bars.forEach((b, i) => {
+    const prevClose = i > 0 ? bars[i - 1].close : b.open;
+    const tr = Math.max(b.high - b.low, Math.abs(b.high - prevClose), Math.abs(b.low - prevClose));
+    prev = i === 0 ? tr : (prev * (period - 1) + tr) / period;
+    out.push(prev);
+  });
+  return out;
+}
+
+export function stochastic(bars: ChartBar[], period = 14, smooth = 3) {
+  const raw = bars.map((b, i) => {
+    const from = Math.max(0, i - period + 1);
+    let high = -Infinity;
+    let low = Infinity;
+    for (let j = from; j <= i; j += 1) {
+      high = Math.max(high, bars[j].high);
+      low = Math.min(low, bars[j].low);
+    }
+    return high === low ? 50 : ((b.close - low) / (high - low)) * 100;
+  });
+  const k = sma(raw, smooth);
+  return { k, d: sma(k, smooth) };
+}
+
+/** Supertrend line plus its direction (+1 up-trend, -1 down-trend). */
+export function supertrend(bars: ChartBar[], period = 10, mult = 3) {
+  const range = atr(bars, period);
+  const line: number[] = [];
+  const dir: number[] = [];
+  let upper = 0;
+  let lower = 0;
+  let trend = 1;
+
+  bars.forEach((b, i) => {
+    const mid = (b.high + b.low) / 2;
+    const rawUpper = mid + mult * range[i];
+    const rawLower = mid - mult * range[i];
+    if (i === 0) {
+      upper = rawUpper;
+      lower = rawLower;
+    } else {
+      const prevClose = bars[i - 1].close;
+      upper = rawUpper < upper || prevClose > upper ? rawUpper : upper;
+      lower = rawLower > lower || prevClose < lower ? rawLower : lower;
+      trend = b.close > upper ? 1 : b.close < lower ? -1 : trend;
+    }
+    dir.push(trend);
+    line.push(trend > 0 ? lower : upper);
+  });
+
+  return { line, dir };
+}
+
 export function toHeikinAshi(bars: ChartBar[]): ChartBar[] {
   const out: ChartBar[] = [];
   let prevHaOpen = bars[0].open;

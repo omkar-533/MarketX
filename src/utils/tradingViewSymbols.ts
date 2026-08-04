@@ -90,17 +90,37 @@ export const TV_TIMEFRAMES: { id: TvInterval; label: string }[] = [
   { id: 'M', label: '1M' },
 ];
 
+/** Study ids follow TradingView's tv-basicstudies naming; unknown ids are ignored by the widget. */
 export const TV_STUDY_PRESETS: { id: string; label: string; studies: string[] }[] = [
-  { id: 'none', label: 'No preset', studies: [] },
-  { id: 'ema', label: 'EMA', studies: ['STD;EMA@tv-basicstudies'] },
-  { id: 'rsi', label: 'RSI', studies: ['STD;RSI@tv-basicstudies'] },
-  { id: 'macd', label: 'MACD', studies: ['STD;MACD@tv-basicstudies'] },
-  { id: 'bb', label: 'Bollinger Bands', studies: ['STD;Bollinger Bands@tv-basicstudies'] },
-  { id: 'vwap', label: 'VWAP', studies: ['STD;VWAP@tv-basicstudies'] },
-  { id: 'supertrend', label: 'Supertrend', studies: ['STD;Supertrend@tv-basicstudies'] },
-  { id: 'ichimoku', label: 'Ichimoku', studies: ['STD;Ichimoku Cloud@tv-basicstudies'] },
-  { id: 'volume', label: 'Volume', studies: ['STD;Volume@tv-basicstudies'] },
+  { id: 'ema', label: 'EMA 20/50', studies: ['MAExp@tv-basicstudies'] },
+  { id: 'sma', label: 'SMA 20/50', studies: ['MASimple@tv-basicstudies'] },
+  { id: 'bb', label: 'Bollinger Bands', studies: ['BB@tv-basicstudies'] },
+  { id: 'vwap', label: 'VWAP', studies: ['VWAP@tv-basicstudies'] },
+  { id: 'supertrend', label: 'Supertrend', studies: ['STD;Supertrend'] },
+  { id: 'ichimoku', label: 'Ichimoku', studies: ['IchimokuCloud@tv-basicstudies'] },
+  { id: 'rsi', label: 'RSI', studies: ['RSI@tv-basicstudies'] },
+  { id: 'macd', label: 'MACD', studies: ['MACD@tv-basicstudies'] },
+  { id: 'stoch', label: 'Stochastic', studies: ['Stochastic@tv-basicstudies'] },
+  { id: 'atr', label: 'ATR', studies: ['ATR@tv-basicstudies'] },
+  // The native chart always plots volume, so this preset is widget-only.
+  { id: 'volume', label: 'Volume', studies: ['Volume@tv-basicstudies'] },
 ];
+
+/** Studies are stored as one comma-joined string so a chat message can carry them. */
+export function parseStudies(value: string): string[] {
+  return String(value || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && s !== 'none');
+}
+
+export function joinStudies(list: string[]): string {
+  return list.length ? list.join(',') : 'none';
+}
+
+export function tvStudyIds(list: string[]): string[] {
+  return list.flatMap((id) => TV_STUDY_PRESETS.find((s) => s.id === id)?.studies ?? []);
+}
 
 export function toTradingViewSymbol(symbol: string, type?: FnoInstrumentType): string {
   const sym = symbol.trim().toUpperCase();
@@ -195,7 +215,17 @@ export function normalizeTvInterval(raw: unknown): TvInterval | null {
 export const NATIVE_TIMEFRAMES = TV_TIMEFRAMES.filter((tf) => nativeIntervalFor(tf.id) !== null);
 
 /** Study presets we can compute locally for the native chart. */
-const NATIVE_STUDY_IDS = new Set(['none', 'ema', 'rsi', 'macd', 'bb', 'vwap']);
+const NATIVE_STUDY_IDS = new Set([
+  'ema',
+  'sma',
+  'bb',
+  'vwap',
+  'supertrend',
+  'rsi',
+  'macd',
+  'stoch',
+  'atr',
+]);
 
 export const NATIVE_STUDY_PRESETS = TV_STUDY_PRESETS.filter((s) => NATIVE_STUDY_IDS.has(s.id));
 
@@ -246,7 +276,9 @@ export function detectChartRequest(text: string): ChartRequest | null {
   if (!raw) return null;
 
   const interval = INTERVAL_WORDS.find((w) => w.re.test(raw))?.id;
-  const study = STUDY_WORDS.find((w) => w.re.test(raw))?.id;
+  // "RSI aur MACD ke saath" should switch both on, not just the first one.
+  const matched = STUDY_WORDS.filter((w) => w.re.test(raw)).map((w) => w.id);
+  const study = matched.length ? matched.join(',') : undefined;
   const wantsChart = CHART_INTENT.test(raw);
   if (!wantsChart && !interval) return null;
 

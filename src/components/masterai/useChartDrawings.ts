@@ -1,0 +1,470 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { IChartApi, ISeriesApi, Logical, SeriesType } from 'lightweight-charts';
+import {
+  DRAW_COLOR,
+  FIB_RATIOS,
+  POINTS_NEEDED,
+  distanceToRect,
+  distanceToSegment,
+  drawingsKey,
+  loadDrawings,
+  logicalToTime,
+  newDrawingId,
+  saveDrawings,
+  snapToBar,
+  timeToLogical,
+  type Drawing,
+  type DrawPoint,
+  type DrawingTool,
+  type Pixel,
+} from '../../services/chart/chartDrawings';
+import type { ChartBar } from '../../types/chart';
+
+const HIT_PX = 7;
+const HANDLE_PX = 4;
+
+type Drag =
+  | { mode: 'new'; id: string; index: number }
+  | { mode: 'handle'; id: string; index: number }
+  | { mode: 'move'; id: string; from: DrawPoint }
+  | null;
+
+export interface ChartDrawingsApi {
+  drawings: Drawing[];
+  selectedId: string | null;
+  undo: () => void;
+  clear: () => void;
+  removeSelected: () => void;
+}
+
+export interface UseChartDrawingsOptions {
+  hostRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  chartRef: React.MutableRefObject<IChartApi | null>;
+  seriesRef: React.MutableRefObject<ISeriesApi<SeriesType> | null>;
+  /** Bumped whenever the chart is rebuilt, so listeners re-attach. */
+  epoch: number;
+  bars: ChartBar[];
+  symbol: string;
+  tool: DrawingTool;
+  /** Called once a shape is complete so the toolbar can fall back to cursor. */
+  onShapeDone: () => void;
+  magnet: boolean;
+  isDark: boolean;
+}
+
+/**
+ * Drawing tools for the native chart: creation, selection, dragging and
+ * painting, on a transparent canvas stacked over the chart.
+ */
+export function useChartDrawings({
+  hostRef,
+  canvasRef,
+  chartRef,
+  seriesRef,
+  epoch,
+  bars,
+  symbol,
+  tool,
+  onShapeDone,
+  magnet,
+  isDark,
+}: UseChartDrawingsOptions): ChartDrawingsApi {
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const storageKey = drawingsKey(symbol);
+  const drawingsRef = useRef<Drawing[]>([]);
+  const selectedRef = useRef<string | null>(null);
+  const barsRef = useRef<ChartBar[]>(bars);
+  const toolRef = useRef<DrawingTool>(tool);
+  const magnetRef = useRef(magnet);
+  const dragRef = useRef<Drag>(null);
+  const doneRef = useRef(onShapeDone);
+
+  drawingsRef.current = drawings;
+  selectedRef.current = selectedId;
+  barsRef.current = bars;
+  toolRef.current = tool;
+  magnetRef.current = magnet;
+  doneRef.current = onShapeDone;
+
+  // Each symbol/timeframe keeps its own set, the way a TradingView layout does.
+  useEffect(() => {
+    setDrawings(loadDrawings(storageKey));
+    setSelectedId(null);
+  }, [storageKey]);
+
+  const commit = useCallback(
+    (next: Drawing[]) => {
+      drawingsRef.current = next;
+      setDrawings(next);
+      saveDrawings(storageKey, next);
+    },
+    [storageKey],
+  );
+
+  const undo = useCallback(() => {
+    commit(drawingsRef.current.slice(0, -1));
+    setSelectedId(null);
+  }, [commit]);
+
+  const clear = useCallback(() => {
+    commit([]);
+    setSelectedId(null);
+  }, [commit]);
+
+  const removeSelected = useCallback(() => {
+    const id = selectedRef.current;
+    if (!id) return;
+    commit(drawingsRef.current.filter((d) => d.id !== id));
+    setSelectedId(null);
+  }, [commit]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!host || !canvas || !chart || !series) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const timeScale = chart.timeScale();
+    const toX = (time: number): number | null =>
+      timeScale.logicalToCoordinate(timeToLogical(barsRef.current, time) as Logical);
+    const toY = (price: number): number | null => series.priceToCoordinate(price);
+    const pixelOf = (p: DrawPoint): Pixel | null => {
+      const x = toX(p.time);
+      const y = toY(p.price);
+      return x === null || y === null ? null : { x, y };
+    };
+
+    const pointAt = (clientX: number, clientY: number): DrawPoint | null => {
+      const rect = host.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const logical = timeScale.coordinateToLogical(x);
+      const price = series.coordinateToPrice(y);
+      if (logical === null || price === null) return null;
+      const value = magnetRef.current ? snapToBar(barsRef.current, logical, price) : price;
+      return { time: logicalToTime(barsRef.current, logical), price: value };
+    };
+
+    const hitTest = (at: Pixel): { drawing: Drawing; handle: number | null } | null => {
+      // Topmost first so the most recently drawn shape wins.
+      for (let i = drawingsRef.current.length - 1; i >= 0; i -= 1) {
+        const drawing = drawingsRef.current[i];
+        const pts = drawing.points.map(pixelOf);
+        if (pts.some((p) => p === null)) continue;
+        const px = pts as Pixel[];
+
+        const handle = px.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) <= HIT_PX);
+        if (handle >= 0) return { drawing, handle };
+
+        let distance = Infinity;
+        if (drawing.kind === 'hline') distance = Math.abs(at.y - px[0].y);
+        else if (drawing.kind === 'vline') distance = Math.abs(at.x - px[0].x);
+        else if (drawing.kind === 'rect') distance = distanceToRect(at, px[0], px[1]);
+        else if (drawing.kind === 'fib') {
+          const left = Math.min(px[0].x, px[1].x);
+          const right = Math.max(px[0].x, px[1].x);
+          distance = FIB_RATIOS.reduce((best, ratio) => {
+            const y = px[0].y + (px[1].y - px[0].y) * ratio;
+            const gap =
+              at.x >= left - HIT_PX && at.x <= right + HIT_PX ? Math.abs(at.y - y) : Infinity;
+            return Math.min(best, gap);
+          }, Infinity);
+        } else if (drawing.kind === 'ray') {
+          const dx = px[1].x - px[0].x;
+          const dy = px[1].y - px[0].y;
+          const far = { x: px[1].x + dx * 400, y: px[1].y + dy * 400 };
+          distance = distanceToSegment(at, px[0], far);
+        } else {
+          distance = distanceToSegment(at, px[0], px[1]);
+        }
+
+        if (distance <= HIT_PX) return { drawing, handle: null };
+      }
+      return null;
+    };
+
+    const paint = () => {
+      const width = host.clientWidth;
+      const height = host.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      // Keep shapes inside the price pane — never over the axes or a study pane.
+      const paneWidth = timeScale.width() || width;
+      const paneHeight = chart.panes()[0]?.getHeight() ?? height;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, paneWidth, paneHeight);
+      ctx.clip();
+
+      const labelColor = isDark ? '#d1d4dc' : '#131722';
+
+      for (const drawing of drawingsRef.current) {
+        const pts = drawing.points.map(pixelOf);
+        if (pts.some((p) => p === null)) continue;
+        const px = pts as Pixel[];
+        const selected = drawing.id === selectedRef.current;
+
+        ctx.strokeStyle = drawing.color;
+        ctx.lineWidth = selected ? 2 : 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+
+        if (drawing.kind === 'hline') {
+          ctx.moveTo(0, px[0].y);
+          ctx.lineTo(paneWidth, px[0].y);
+          ctx.stroke();
+        } else if (drawing.kind === 'vline') {
+          ctx.moveTo(px[0].x, 0);
+          ctx.lineTo(px[0].x, paneHeight);
+          ctx.stroke();
+        } else if (drawing.kind === 'rect') {
+          const x = Math.min(px[0].x, px[1].x);
+          const y = Math.min(px[0].y, px[1].y);
+          const w = Math.abs(px[1].x - px[0].x);
+          const h = Math.abs(px[1].y - px[0].y);
+          ctx.fillStyle = 'rgba(41,98,255,0.12)';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeRect(x, y, w, h);
+        } else if (drawing.kind === 'fib') {
+          const left = Math.min(px[0].x, px[1].x);
+          const right = Math.max(px[0].x, px[1].x);
+          const priceSpan = drawing.points[1].price - drawing.points[0].price;
+          ctx.font = '10px "Trebuchet MS", Roboto, sans-serif';
+          ctx.textBaseline = 'bottom';
+          FIB_RATIOS.forEach((ratio, i) => {
+            const y = px[0].y + (px[1].y - px[0].y) * ratio;
+            if (i > 0) {
+              const prevY = px[0].y + (px[1].y - px[0].y) * FIB_RATIOS[i - 1];
+              ctx.fillStyle = i % 2 ? 'rgba(41,98,255,0.06)' : 'rgba(41,98,255,0.12)';
+              ctx.fillRect(left, Math.min(prevY, y), right - left, Math.abs(y - prevY));
+            }
+            ctx.beginPath();
+            ctx.moveTo(left, y);
+            ctx.lineTo(right, y);
+            ctx.stroke();
+            const price = drawing.points[0].price + priceSpan * ratio;
+            ctx.fillStyle = labelColor;
+            ctx.fillText(`${ratio.toFixed(3)}  ${price.toFixed(2)}`, left + 4, y - 2);
+          });
+        } else if (drawing.kind === 'ray') {
+          const dx = px[1].x - px[0].x;
+          const dy = px[1].y - px[0].y;
+          ctx.moveTo(px[0].x, px[0].y);
+          ctx.lineTo(px[1].x + dx * 400, px[1].y + dy * 400);
+          ctx.stroke();
+        } else {
+          ctx.moveTo(px[0].x, px[0].y);
+          ctx.lineTo(px[1].x, px[1].y);
+          ctx.stroke();
+        }
+
+        if (selected) {
+          ctx.fillStyle = drawing.color;
+          px.forEach((p) => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, HANDLE_PX, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+      }
+
+      ctx.restore();
+    };
+
+    // The price scale can be dragged without firing any chart event, so the
+    // mapping is re-read every frame and repainted only when it moved.
+    let raf = 0;
+    let signature = '';
+    const tick = () => {
+      // An empty chart should cost nothing per frame.
+      if (!drawingsRef.current.length) {
+        if (signature !== 'empty') {
+          signature = 'empty';
+          paint();
+        }
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      const probe = barsRef.current[0];
+      const next = [
+        host.clientWidth,
+        host.clientHeight,
+        timeScale.logicalToCoordinate(0 as Logical),
+        timeScale.logicalToCoordinate(100 as Logical),
+        probe ? series.priceToCoordinate(probe.close) : 0,
+        probe ? series.priceToCoordinate(probe.close * 1.01) : 0,
+        drawingsRef.current.length,
+        selectedRef.current,
+      ].join('|');
+      if (next !== signature) {
+        signature = next;
+        paint();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const repaint = () => {
+      signature = '';
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const rect = host.getBoundingClientRect();
+      const at: Pixel = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      const point = pointAt(event.clientX, event.clientY);
+      if (!point) return;
+
+      const activeTool = toolRef.current;
+      if (activeTool === 'cursor') {
+        const hit = hitTest(at);
+        if (!hit) {
+          if (selectedRef.current) {
+            setSelectedId(null);
+            repaint();
+          }
+          return; // let the chart pan
+        }
+        event.stopPropagation();
+        event.preventDefault();
+        setSelectedId(hit.drawing.id);
+        dragRef.current =
+          hit.handle === null
+            ? { mode: 'move', id: hit.drawing.id, from: point }
+            : { mode: 'handle', id: hit.drawing.id, index: hit.handle };
+        repaint();
+        return;
+      }
+
+      event.stopPropagation();
+      event.preventDefault();
+
+      const needed = POINTS_NEEDED[activeTool];
+      const id = newDrawingId();
+      const shape: Drawing = {
+        id,
+        kind: activeTool,
+        points: needed === 1 ? [point] : [point, point],
+        color: DRAW_COLOR,
+      };
+      commit([...drawingsRef.current, shape]);
+      setSelectedId(id);
+      if (needed === 1) {
+        doneRef.current();
+      } else {
+        dragRef.current = { mode: 'new', id, index: 1 };
+      }
+      repaint();
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const point = pointAt(event.clientX, event.clientY);
+      if (!point) return;
+      event.preventDefault();
+
+      const next = drawingsRef.current.map((d) => {
+        if (d.id !== drag.id) return d;
+        if (drag.mode === 'move') {
+          const dt = point.time - drag.from.time;
+          const dp = point.price - drag.from.price;
+          return { ...d, points: d.points.map((p) => ({ time: p.time + dt, price: p.price + dp })) };
+        }
+        const points = [...d.points];
+        points[drag.index] = point;
+        return { ...d, points };
+      });
+      if (drag.mode === 'move') dragRef.current = { ...drag, from: point };
+      drawingsRef.current = next;
+      setDrawings(next);
+      repaint();
+    };
+
+    const onPointerUp = () => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      dragRef.current = null;
+
+      // A click without a drag leaves a zero-length shape; drop it.
+      if (drag.mode === 'new') {
+        const shape = drawingsRef.current.find((d) => d.id === drag.id);
+        const [a, b] = shape?.points ?? [];
+        if (a && b && a.time === b.time && a.price === b.price) {
+          drawingsRef.current = drawingsRef.current.filter((d) => d.id !== drag.id);
+          setDrawings(drawingsRef.current);
+          setSelectedId(null);
+        }
+      }
+
+      saveDrawings(storageKey, drawingsRef.current);
+      if (drag.mode === 'new') doneRef.current();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedId(null);
+        repaint();
+        return;
+      }
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (!selectedRef.current) return;
+      event.preventDefault();
+      commit(drawingsRef.current.filter((d) => d.id !== selectedRef.current));
+      setSelectedId(null);
+      repaint();
+    };
+
+    /**
+     * The chart also listens for mouse/touch events of its own, which pointer
+     * events do not cancel — they have to be swallowed separately or the chart
+     * pans underneath the shape being drawn.
+     */
+    const blockChartGesture = (event: Event) => {
+      if (toolRef.current === 'cursor' && !dragRef.current) return;
+      event.stopPropagation();
+      if (event.cancelable) event.preventDefault();
+    };
+
+    // Capture phase: a drawing gesture must win before the chart starts panning.
+    host.addEventListener('pointerdown', onPointerDown, true);
+    host.addEventListener('mousedown', blockChartGesture, true);
+    host.addEventListener('touchstart', blockChartGesture, { capture: true, passive: false });
+    host.addEventListener('touchmove', blockChartGesture, { capture: true, passive: false });
+    window.addEventListener('pointermove', onPointerMove, true);
+    window.addEventListener('pointerup', onPointerUp, true);
+    window.addEventListener('pointercancel', onPointerUp, true);
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      host.removeEventListener('pointerdown', onPointerDown, true);
+      host.removeEventListener('mousedown', blockChartGesture, true);
+      host.removeEventListener('touchstart', blockChartGesture, true);
+      host.removeEventListener('touchmove', blockChartGesture, true);
+      window.removeEventListener('pointermove', onPointerMove, true);
+      window.removeEventListener('pointerup', onPointerUp, true);
+      window.removeEventListener('pointercancel', onPointerUp, true);
+      window.removeEventListener('keydown', onKeyDown);
+      dragRef.current = null;
+    };
+  }, [hostRef, canvasRef, chartRef, seriesRef, epoch, commit, storageKey, isDark]);
+
+  return { drawings, selectedId, undo, clear, removeSelected };
+}

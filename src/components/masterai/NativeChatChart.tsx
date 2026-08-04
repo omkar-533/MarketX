@@ -9,23 +9,40 @@ import {
   createTextWatermark,
   type IChartApi,
   type IPriceLine,
+  type ISeriesApi,
+  type SeriesType,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { serverUnreachableMessage } from '../../constants/brandLabels';
 import { levelsNearPrice, type ChartLevel } from '../../utils/chartAnnotations';
 import { useTheme } from '../../context/ThemeContext';
-import { bollinger, ema, rsi, toHeikinAshi, vwap } from '../../services/chart/chartIndicators';
+import {
+  atr,
+  bollinger,
+  ema,
+  macd,
+  rsi,
+  sma,
+  stochastic,
+  supertrend,
+  toHeikinAshi,
+  vwap,
+} from '../../services/chart/chartIndicators';
 import { fetchMarketOhlc } from '../../services/marketApiService';
 import type { ChartBar } from '../../types/chart';
 import {
   TV_TIMEFRAMES,
   apiSymbolFromTv,
   nativeIntervalFor,
+  parseStudies,
   tradingViewSymbolLabel,
   type TvChartStyle,
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
+import ChartToolRail from './ChartToolRail';
+import { useChartDrawings } from './useChartDrawings';
+import type { DrawingTool } from '../../services/chart/chartDrawings';
 
 /** TradingView's own candle palette, so the chart reads exactly like theirs. */
 const UP = '#26a69a';
@@ -61,14 +78,6 @@ const istFull = new Intl.DateTimeFormat('en-IN', {
   minute: '2-digit',
   hour12: false,
 });
-
-function macd(closes: number[]) {
-  const fast = ema(closes, 12);
-  const slow = ema(closes, 26);
-  const line = closes.map((_, i) => fast[i] - slow[i]);
-  const signal = ema(line, 9);
-  return { line, signal, hist: line.map((v, i) => v - signal[i]) };
-}
 
 function priceDecimals(bars: ChartBar[]): number {
   const last = bars[bars.length - 1]?.close ?? 0;
@@ -106,8 +115,12 @@ const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
   pivot: '#787b86',
 };
 
+/** Studies drawn over the candles; everything else gets its own pane. */
+const OVERLAY_STUDIES = new Set(['ema', 'sma', 'bb', 'vwap', 'supertrend']);
+
 type Legend = { o: number; h: number; l: number; c: number; prevClose: number };
 type ChartView = { source: ChartBar[]; closes: number[]; decimals: number };
+type IndicatorLine = { label: string; color: string; values: number[]; decimals: number };
 
 /**
  * Candles drawn from our own market feed. Used for NSE/BSE/MCX symbols, which
@@ -123,13 +136,15 @@ export default function NativeChatChart({
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   /** Set when the chart is built; pushes a fresh dataset into the live series. */
   const applyRef = useRef<((view: ChartView, fit: boolean) => void) | null>(null);
   const viewRef = useRef<ChartView | null>(null);
   const legendMapRef = useRef<Map<number, number>>(new Map());
-  const priceSeriesRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null);
+  const priceSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const levelLinesRef = useRef<IPriceLine[]>([]);
+  const indicatorRef = useRef<IndicatorLine[]>([]);
   const [chartEpoch, setChartEpoch] = useState(0);
   const needFitRef = useRef(true);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
@@ -139,10 +154,16 @@ export default function NativeChatChart({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
   const [fetchedAt, setFetchedAt] = useState('');
   const [legend, setLegend] = useState<Legend | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [tool, setTool] = useState<DrawingTool>('cursor');
+  const [magnet, setMagnet] = useState(false);
+  const [logScale, setLogScale] = useState(false);
 
   const apiSymbol = apiSymbolFromTv(symbol);
   const apiInterval = nativeIntervalFor(interval);
   const intraday = interval !== 'D' && interval !== 'W' && interval !== 'M';
+  const studies = useMemo(() => parseStudies(study), [study]);
+  const studyKey = studies.join(',');
 
   const load = useCallback(
     async (background: boolean) => {
@@ -220,7 +241,7 @@ export default function NativeChatChart({
     const host = hostRef.current;
     if (!host || !hasData) return;
 
-    const lowerPane = study === 'rsi' || study === 'macd';
+    const paneStudies = studies.filter((id) => !OVERLAY_STUDIES.has(id));
 
     const chart = createChart(host, {
       autoSize: true,
@@ -276,7 +297,13 @@ export default function NativeChatChart({
     const line = (color: string, width: 1 | 2, pane = 0) =>
       chart.addSeries(
         LineSeries,
-        { color, lineWidth: width, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+        {
+          color,
+          lineWidth: width,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        },
         pane,
       );
 
@@ -308,46 +335,147 @@ export default function NativeChatChart({
     });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
-    const overlays =
-      study === 'ema'
-        ? [line('#38bdf8', 1), line('#f59e0b', 1)]
-        : study === 'bb'
-          ? [line('#64748b', 1), line('#38bdf8', 1), line('#64748b', 1)]
-          : study === 'vwap'
-            ? [line('#a855f7', 2)]
-            : [];
+    /** Each study registers a feed so a data refresh updates every series at once. */
+    const feeds: ((view: ChartView) => IndicatorLine[])[] = [];
+    const priceFormatted: ISeriesApi<SeriesType>[] = [];
 
-    const rsiSeries = study === 'rsi' ? line('#a855f7', 2, 1) : null;
-    if (rsiSeries) {
-      rsiSeries.applyOptions({ priceFormat: { type: 'price', precision: 1, minMove: 0.1 } });
-      [70, 30].forEach((level) =>
-        rsiSeries.createPriceLine({
-          price: level,
-          color: theme.border,
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-          title: '',
-        }),
-      );
+    for (const id of studies) {
+      if (id === 'ema' || id === 'sma') {
+        const fn = id === 'ema' ? ema : sma;
+        const fast = line('#38bdf8', 1);
+        const slow = line('#f59e0b', 1);
+        priceFormatted.push(fast, slow);
+        feeds.push(({ source, closes, decimals }) => {
+          const a = fn(closes, 20);
+          const b = fn(closes, 50);
+          fast.setData(source.map((bar, i) => ({ time: ts(bar.time), value: a[i] })));
+          slow.setData(source.map((bar, i) => ({ time: ts(bar.time), value: b[i] })));
+          const name = id.toUpperCase();
+          return [
+            { label: `${name} 20`, color: '#38bdf8', values: a, decimals },
+            { label: `${name} 50`, color: '#f59e0b', values: b, decimals },
+          ];
+        });
+      } else if (id === 'bb') {
+        const upper = line('#64748b', 1);
+        const mid = line('#38bdf8', 1);
+        const lower = line('#64748b', 1);
+        priceFormatted.push(upper, mid, lower);
+        feeds.push(({ source, closes, decimals }) => {
+          const bb = bollinger(closes, 20, 2);
+          upper.setData(source.map((bar, i) => ({ time: ts(bar.time), value: bb.upper[i] })));
+          mid.setData(source.map((bar, i) => ({ time: ts(bar.time), value: bb.middle[i] })));
+          lower.setData(source.map((bar, i) => ({ time: ts(bar.time), value: bb.lower[i] })));
+          return [{ label: 'BB 20/2', color: '#38bdf8', values: bb.middle, decimals }];
+        });
+      } else if (id === 'vwap') {
+        const series = line('#a855f7', 2);
+        priceFormatted.push(series);
+        feeds.push(({ source, decimals }) => {
+          const values = vwap(source);
+          series.setData(source.map((bar, i) => ({ time: ts(bar.time), value: values[i] })));
+          return [{ label: 'VWAP', color: '#a855f7', values, decimals }];
+        });
+      } else if (id === 'supertrend') {
+        const series = line('#26a69a', 2);
+        priceFormatted.push(series);
+        feeds.push(({ source, decimals }) => {
+          const st = supertrend(source, 10, 3);
+          series.setData(
+            source.map((bar, i) => ({
+              time: ts(bar.time),
+              value: st.line[i],
+              color: st.dir[i] > 0 ? UP : DOWN,
+            })),
+          );
+          return [{ label: 'Supertrend 10/3', color: '#26a69a', values: st.line, decimals }];
+        });
+      }
     }
 
-    const macdHist =
-      study === 'macd'
-        ? chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 2, minMove: 0.01 } }, 1)
-        : null;
-    const macdLine = study === 'macd' ? line('#38bdf8', 1, 1) : null;
-    const macdSignal = study === 'macd' ? line('#f59e0b', 1, 1) : null;
+    paneStudies.forEach((id, i) => {
+      const pane = i + 1;
+      if (id === 'rsi') {
+        const series = line('#a855f7', 2, pane);
+        series.applyOptions({ priceFormat: { type: 'price', precision: 1, minMove: 0.1 } });
+        [70, 30].forEach((level) =>
+          series.createPriceLine({
+            price: level,
+            color: theme.border,
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: false,
+            title: '',
+          }),
+        );
+        feeds.push(({ source, closes }) => {
+          const values = rsi(closes, 14);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'RSI 14', color: '#a855f7', values, decimals: 1 }];
+        });
+      } else if (id === 'macd') {
+        const hist = chart.addSeries(
+          HistogramSeries,
+          { priceFormat: { type: 'price', precision: 2, minMove: 0.01 } },
+          pane,
+        );
+        const fast = line('#38bdf8', 1, pane);
+        const signal = line('#f59e0b', 1, pane);
+        feeds.push(({ source, closes }) => {
+          const m = macd(closes);
+          hist.setData(
+            source.map((bar, j) => ({
+              time: ts(bar.time),
+              value: m.hist[j],
+              color: m.hist[j] >= 0 ? UP_FILL : DOWN_FILL,
+            })),
+          );
+          fast.setData(source.map((bar, j) => ({ time: ts(bar.time), value: m.line[j] })));
+          signal.setData(source.map((bar, j) => ({ time: ts(bar.time), value: m.signal[j] })));
+          return [{ label: 'MACD 12/26/9', color: '#38bdf8', values: m.line, decimals: 2 }];
+        });
+      } else if (id === 'stoch') {
+        const kLine = line('#38bdf8', 1, pane);
+        const dLine = line('#f59e0b', 1, pane);
+        kLine.applyOptions({ priceFormat: { type: 'price', precision: 1, minMove: 0.1 } });
+        [80, 20].forEach((level) =>
+          kLine.createPriceLine({
+            price: level,
+            color: theme.border,
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: false,
+            title: '',
+          }),
+        );
+        feeds.push(({ source }) => {
+          const st = stochastic(source, 14, 3);
+          kLine.setData(source.map((bar, j) => ({ time: ts(bar.time), value: st.k[j] })));
+          dLine.setData(source.map((bar, j) => ({ time: ts(bar.time), value: st.d[j] })));
+          return [{ label: 'Stoch 14/3', color: '#38bdf8', values: st.k, decimals: 1 }];
+        });
+      } else if (id === 'atr') {
+        const series = line('#f59e0b', 2, pane);
+        feeds.push(({ source, decimals }) => {
+          const values = atr(source, 14);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'ATR 14', color: '#f59e0b', values, decimals }];
+        });
+      }
+    });
 
-    if (lowerPane) {
-      chart.panes()[1]?.setHeight(Math.max(56, Math.round(host.clientHeight * 0.26)));
+    if (paneStudies.length) {
+      const share = Math.min(0.26, 0.62 / paneStudies.length);
+      paneStudies.forEach((_, i) => {
+        chart.panes()[i + 1]?.setHeight(Math.max(52, Math.round(host.clientHeight * share)));
+      });
     }
 
     applyRef.current = (next, fit) => {
       const { source, closes, decimals } = next;
       const priceFormat = { type: 'price' as const, precision: decimals, minMove: 1 / 10 ** decimals };
       priceSeries.applyOptions({ priceFormat });
-      overlays.forEach((s) => s.applyOptions({ priceFormat }));
+      priceFormatted.forEach((s) => s.applyOptions({ priceFormat }));
 
       if (isLineLike) {
         priceSeries.setData(source.map((b) => ({ time: ts(b.time), value: b.close })));
@@ -371,39 +499,10 @@ export default function NativeChatChart({
         })),
       );
 
-      const overlayValues =
-        study === 'ema'
-          ? [ema(closes, 20), ema(closes, 50)]
-          : study === 'bb'
-            ? (() => {
-                const bb = bollinger(closes, 20, 2);
-                return [bb.upper, bb.middle, bb.lower];
-              })()
-            : study === 'vwap'
-              ? [vwap(source)]
-              : [];
-      overlays.forEach((s, i) =>
-        s.setData(source.map((b, j) => ({ time: ts(b.time), value: overlayValues[i][j] }))),
-      );
-
-      if (rsiSeries) {
-        const values = rsi(closes, 14);
-        rsiSeries.setData(source.map((b, i) => ({ time: ts(b.time), value: values[i] })));
-      }
-      if (macdHist && macdLine && macdSignal) {
-        const m = macd(closes);
-        macdHist.setData(
-          source.map((b, i) => ({
-            time: ts(b.time),
-            value: m.hist[i],
-            color: m.hist[i] >= 0 ? UP_FILL : DOWN_FILL,
-          })),
-        );
-        macdLine.setData(source.map((b, i) => ({ time: ts(b.time), value: m.line[i] })));
-        macdSignal.setData(source.map((b, i) => ({ time: ts(b.time), value: m.signal[i] })));
-      }
+      indicatorRef.current = feeds.flatMap((feed) => feed({ source, closes, decimals }));
 
       legendMapRef.current = new Map(source.map((b, i) => [b.time, i]));
+      setHoverIndex(null);
       setLegend(legendAt(source, source.length - 1));
       if (fit) {
         chart.timeScale().fitContent();
@@ -418,6 +517,7 @@ export default function NativeChatChart({
       const source = viewRef.current?.source;
       if (!source?.length) return;
       const hovered = param.time ? legendMapRef.current.get(Number(param.time)) : undefined;
+      setHoverIndex(hovered ?? null);
       setLegend(legendAt(source, hovered ?? source.length - 1));
     });
 
@@ -454,15 +554,22 @@ export default function NativeChatChart({
       chartRef.current = null;
       priceSeriesRef.current = null;
       levelLinesRef.current = [];
+      indicatorRef.current = [];
       chart.remove();
     };
-  }, [hasData, chartStyle, study, theme, intraday]);
+    // studyKey stands in for the studies array, which is rebuilt on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasData, chartStyle, studyKey, theme, intraday]);
 
   useEffect(() => {
     if (!view || !applyRef.current) return;
     applyRef.current(view, needFitRef.current);
     needFitRef.current = false;
   }, [view]);
+
+  useEffect(() => {
+    chartRef.current?.priceScale('right').applyOptions({ mode: logScale ? 1 : 0 });
+  }, [logScale, chartEpoch]);
 
   // Areas of interest Wolf AI called out, drawn as labelled price lines.
   useEffect(() => {
@@ -486,6 +593,45 @@ export default function NativeChatChart({
     );
   }, [levels, view, chartEpoch]);
 
+  const drawings = useChartDrawings({
+    hostRef,
+    canvasRef,
+    chartRef,
+    seriesRef: priceSeriesRef,
+    epoch: chartEpoch,
+    bars: view?.source ?? [],
+    symbol,
+    tool,
+    onShapeDone: useCallback(() => setTool('cursor'), []),
+    magnet,
+    isDark,
+  });
+
+  const resetView = useCallback(() => {
+    touchedRef.current = false;
+    chartRef.current?.timeScale().fitContent();
+  }, []);
+
+  const saveScreenshot = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const shot = chart.takeScreenshot();
+    // The drawing canvas is a separate layer, so it is composited back in.
+    const merged = document.createElement('canvas');
+    merged.width = shot.width;
+    merged.height = shot.height;
+    const ctx = merged.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(shot, 0, 0);
+    const overlay = canvasRef.current;
+    if (overlay) ctx.drawImage(overlay, 0, 0, shot.width, shot.height);
+
+    const link = document.createElement('a');
+    link.href = merged.toDataURL('image/png');
+    link.download = `${apiSymbol}-${interval}.png`;
+    link.click();
+  }, [apiSymbol, interval]);
+
   const label = tradingViewSymbolLabel(symbol);
   const decimals = view?.decimals ?? 2;
   const change = legend ? legend.c - legend.prevClose : 0;
@@ -496,61 +642,118 @@ export default function NativeChatChart({
     levels?.length && view
       ? levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0).length
       : 0;
+  const readAt = hoverIndex ?? (view ? view.source.length - 1 : 0);
 
   return (
-    <div className="mai-tv__frame">
-      <div ref={hostRef} className="mai-tv__host" />
+    <div className="mai-tv__frame mai-tv__frame--tools">
+      <ChartToolRail
+        tool={tool}
+        onToolChange={setTool}
+        magnet={magnet}
+        onMagnetToggle={() => setMagnet((v) => !v)}
+        onUndo={drawings.undo}
+        onClear={drawings.clear}
+        canUndo={drawings.drawings.length > 0}
+      />
 
-      {legend && status === 'ready' ? (
-        <div className="mai-nc__legend">
-          <span className="mai-nc__legend-sym">{label}</span>
-          <span className="mai-nc__legend-tf">{intervalLabel}</span>
-          <span className="mai-nc__legend-ohlc">
-            <b>O</b>
-            <span className={tone}>{legend.o.toFixed(decimals)}</span>
-            <b>H</b>
-            <span className={tone}>{legend.h.toFixed(decimals)}</span>
-            <b>L</b>
-            <span className={tone}>{legend.l.toFixed(decimals)}</span>
-            <b>C</b>
-            <span className={tone}>{legend.c.toFixed(decimals)}</span>
-            <span className={tone}>
-              {change >= 0 ? '+' : ''}
-              {change.toFixed(decimals)} ({change >= 0 ? '+' : ''}
-              {changePct.toFixed(2)}%)
+      <div className="mai-nc__area" data-drawing={tool === 'cursor' ? undefined : 'on'}>
+        <div ref={hostRef} className="mai-tv__host" />
+        <canvas ref={canvasRef} className="mai-nc__draw" />
+
+        {legend && status === 'ready' ? (
+          <div className="mai-nc__legend">
+            <span className="mai-nc__legend-sym">{label}</span>
+            <span className="mai-nc__legend-tf">{intervalLabel}</span>
+            <span className="mai-nc__legend-ohlc">
+              <b>O</b>
+              <span className={tone}>{legend.o.toFixed(decimals)}</span>
+              <b>H</b>
+              <span className={tone}>{legend.h.toFixed(decimals)}</span>
+              <b>L</b>
+              <span className={tone}>{legend.l.toFixed(decimals)}</span>
+              <b>C</b>
+              <span className={tone}>{legend.c.toFixed(decimals)}</span>
+              <span className={tone}>
+                {change >= 0 ? '+' : ''}
+                {change.toFixed(decimals)} ({change >= 0 ? '+' : ''}
+                {changePct.toFixed(2)}%)
+              </span>
             </span>
-          </span>
-        </div>
-      ) : null}
+            {indicatorRef.current.length ? (
+              <span className="mai-nc__legend-ind">
+                {indicatorRef.current.map((ind) => (
+                  <span key={ind.label} className="mai-nc__ind">
+                    {ind.label}
+                    <b style={{ color: ind.color }}>
+                      {Number.isFinite(ind.values[readAt])
+                        ? ind.values[readAt].toFixed(ind.decimals)
+                        : '—'}
+                    </b>
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
-      {drawnLevels > 0 && status === 'ready' ? (
-        <div className="mai-nc__aoi">
-          {drawnLevels} area{drawnLevels > 1 ? 's' : ''} of interest · marked by Wolf AI
-        </div>
-      ) : null}
+        {status === 'ready' ? (
+          <div className="mai-nc__quick">
+            <button
+              type="button"
+              className={`mai-nc__quick-btn ${logScale ? 'mai-nc__quick-btn--on' : ''}`}
+              onClick={() => setLogScale((v) => !v)}
+              title="Logarithmic price scale"
+            >
+              log
+            </button>
+            <button
+              type="button"
+              className="mai-nc__quick-btn"
+              onClick={resetView}
+              title="Reset chart view"
+            >
+              fit
+            </button>
+            <button
+              type="button"
+              className="mai-nc__quick-btn"
+              onClick={saveScreenshot}
+              title="Save chart image"
+            >
+              PNG
+            </button>
+          </div>
+        ) : null}
 
-      {status === 'ready' && fetchedAt ? (
-        <div className="mai-nc__stamp">Live feed · {istFull.format(new Date(fetchedAt))} IST</div>
-      ) : null}
+        {drawnLevels > 0 && status === 'ready' ? (
+          <div className="mai-nc__aoi">
+            {drawnLevels} area{drawnLevels > 1 ? 's' : ''} of interest · marked by Wolf AI
+          </div>
+        ) : null}
 
-      {status !== 'ready' ? (
-        <div className="mai-tv__overlay">
-          {status === 'loading' ? (
-            `Loading ${label}…`
-          ) : (
-            <div className="mai-nc__msg">
-              <p>
-                {status === 'empty'
-                  ? `No candles available for ${label} on this timeframe.`
-                  : serverUnreachableMessage()}
-              </p>
-              <button type="button" className="mai-nc__retry" onClick={() => void load(false)}>
-                Retry
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
+        {status === 'ready' && fetchedAt ? (
+          <div className="mai-nc__stamp">Live feed · {istFull.format(new Date(fetchedAt))} IST</div>
+        ) : null}
+
+        {status !== 'ready' ? (
+          <div className="mai-tv__overlay">
+            {status === 'loading' ? (
+              `Loading ${label}…`
+            ) : (
+              <div className="mai-nc__msg">
+                <p>
+                  {status === 'empty'
+                    ? `No candles available for ${label} on this timeframe.`
+                    : serverUnreachableMessage()}
+                </p>
+                <button type="button" className="mai-nc__retry" onClick={() => void load(false)}>
+                  Retry
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

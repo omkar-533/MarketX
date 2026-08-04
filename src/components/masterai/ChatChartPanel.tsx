@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, Maximize2, Minimize2, RefreshCw, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ExternalLink, Maximize2, Minimize2, RefreshCw, X } from 'lucide-react';
 import type { ChartLevel } from '../../utils/chartAnnotations';
 import { openExternalUrl } from '../../utils/openExternalUrl';
 import {
@@ -9,6 +9,8 @@ import {
   TV_STUDY_PRESETS,
   TV_TIMEFRAMES,
   isWidgetRestricted,
+  joinStudies,
+  parseStudies,
   parseTradingViewInput,
   tradingViewSymbolLabel,
   type TvChartStyle,
@@ -49,6 +51,8 @@ export default function ChatChartPanel({
   const [expanded, setExpanded] = useState(false);
   const [symbolInput, setSymbolInput] = useState(() => tradingViewSymbolLabel(symbol));
   const [reloadKey, setReloadKey] = useState(0);
+  const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const indicatorsRef = useRef<HTMLDivElement>(null);
 
   const native = isWidgetRestricted(symbol);
   const timeframes = native ? NATIVE_TIMEFRAMES : TV_TIMEFRAMES;
@@ -63,18 +67,38 @@ export default function ChatChartPanel({
     if (!timeframes.some((tf) => tf.id === interval)) onIntervalChange('15');
   }, [timeframes, interval, onIntervalChange]);
 
-  useEffect(() => {
-    if (!studyPresets.some((s) => s.id === study)) onStudyChange('none');
-  }, [studyPresets, study, onStudyChange]);
-
   const activeInterval = useMemo(
     () => (timeframes.some((tf) => tf.id === interval) ? interval : '15'),
     [timeframes, interval],
   );
-  const activeStudy = useMemo(
-    () => (studyPresets.some((s) => s.id === study) ? study : 'none'),
+  const activeStudies = useMemo(
+    () => parseStudies(study).filter((id) => studyPresets.some((s) => s.id === id)),
     [studyPresets, study],
   );
+  const activeStudy = useMemo(() => joinStudies(activeStudies), [activeStudies]);
+
+  const toggleStudy = (id: string) => {
+    const next = activeStudies.includes(id)
+      ? activeStudies.filter((s) => s !== id)
+      : [...activeStudies, id];
+    onStudyChange(joinStudies(next));
+  };
+
+  useEffect(() => {
+    if (!indicatorsOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (!indicatorsRef.current?.contains(event.target as Node)) setIndicatorsOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIndicatorsOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [indicatorsOpen]);
 
   const submitSymbol = () => {
     const next = parseTradingViewInput(symbolInput);
@@ -133,18 +157,42 @@ export default function ChatChartPanel({
             ))}
           </select>
 
-          <select
-            value={activeStudy}
-            onChange={(e) => onStudyChange(e.target.value)}
-            className="mai-tv__select"
-            aria-label="Indicator"
-          >
-            {studyPresets.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+          <div className="mai-tv__ind" ref={indicatorsRef}>
+            <button
+              type="button"
+              className={`mai-tv__ind-btn ${activeStudies.length ? 'mai-tv__ind-btn--on' : ''}`}
+              onClick={() => setIndicatorsOpen((v) => !v)}
+              aria-expanded={indicatorsOpen}
+              aria-label="Indicators"
+            >
+              Indicators{activeStudies.length ? ` · ${activeStudies.length}` : ''}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+
+            {indicatorsOpen ? (
+              <div className="mai-tv__ind-menu" role="menu">
+                {studyPresets.map((s) => (
+                  <label key={s.id} className="mai-tv__ind-item">
+                    <input
+                      type="checkbox"
+                      checked={activeStudies.includes(s.id)}
+                      onChange={() => toggleStudy(s.id)}
+                    />
+                    {s.label}
+                  </label>
+                ))}
+                {activeStudies.length ? (
+                  <button
+                    type="button"
+                    className="mai-tv__ind-clear"
+                    onClick={() => onStudyChange(joinStudies([]))}
+                  >
+                    Clear all
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="mai-tv__actions">

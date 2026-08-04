@@ -7507,6 +7507,87 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--tf-text);
 }
 
+.mai-tv__ind {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mai-tv__ind-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.28rem 0.45rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.mai-tv__ind-btn:hover {
+  color: var(--tf-text);
+  background: var(--tf-bg);
+}
+
+.mai-tv__ind-btn--on {
+  color: var(--tf-text);
+}
+
+.mai-tv__ind-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.5rem;
+  background: var(--tf-elevated);
+  box-shadow: 0 18px 40px var(--tf-shadow);
+}
+
+.mai-tv__ind-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.35rem;
+  color: var(--tf-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mai-tv__ind-item:hover {
+  background: var(--tf-bg);
+}
+
+.mai-tv__ind-item input {
+  accent-color: #2962ff;
+}
+
+.mai-tv__ind-clear {
+  margin-top: 0.15rem;
+  padding: 0.3rem 0.35rem;
+  border: none;
+  border-top: 1px solid var(--tf-border);
+  background: transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.mai-tv__ind-clear:hover {
+  color: var(--tf-text);
+}
+
 .mai-tv__actions {
   display: flex;
   align-items: center;
@@ -7538,6 +7619,119 @@ input[type="number"] { -moz-appearance: textfield; }
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.mai-tv__frame--tools {
+  display: flex;
+  align-items: stretch;
+}
+
+.mai-nc__area {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mai-nc__area[data-drawing='on'],
+.mai-nc__area[data-drawing='on'] canvas {
+  cursor: crosshair;
+}
+
+.mai-nc__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  flex: 0 0 auto;
+  padding: 0.3rem 0.18rem;
+  border-right: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  z-index: 3;
+}
+
+.mai-nc__rail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--tf-text-muted);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.mai-nc__rail-btn:hover:not(:disabled) {
+  color: var(--tf-text);
+  background: var(--tf-bg);
+}
+
+.mai-nc__rail-btn--on {
+  color: #2962ff;
+  background: color-mix(in srgb, #2962ff 18%, transparent);
+}
+
+.mai-nc__rail-btn:disabled {
+  opacity: 0.35;
+}
+
+.mai-nc__rail-sep {
+  width: 62%;
+  height: 1px;
+  margin: 0.25rem 0;
+  background: var(--tf-border);
+}
+
+/* Drawings live on their own layer; the chart below keeps its own pointer handling. */
+.mai-nc__draw {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mai-nc__quick {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  z-index: 3;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.mai-nc__quick-btn {
+  padding: 0.12rem 0.35rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--tf-surface) 82%, transparent);
+  color: var(--tf-text-muted);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.4;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.mai-nc__quick-btn:hover {
+  color: var(--tf-text);
+}
+
+.mai-nc__quick-btn--on {
+  color: #2962ff;
+  border-color: color-mix(in srgb, #2962ff 45%, transparent);
+}
+
+.mai-nc__legend-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mai-nc__ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
 }
 
 .mai-tv__host {
@@ -7679,6 +7873,15 @@ input[type="number"] { -moz-appearance: textfield; }
   .mai-nc__legend {
     gap: 0.3rem;
     font-size: 0.625rem;
+  }
+
+  .mai-nc__legend-ind {
+    display: none;
+  }
+
+  .mai-nc__rail-btn {
+    width: 1.45rem;
+    height: 1.45rem;
   }
 
   .mai-nc__stamp {

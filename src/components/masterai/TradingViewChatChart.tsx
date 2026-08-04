@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { TV_STUDY_PRESETS, type TvChartStyle, type TvInterval } from '../../utils/tradingViewSymbols';
+import {
+  parseStudies,
+  tvStudyIds,
+  type TvChartStyle,
+  type TvInterval,
+} from '../../utils/tradingViewSymbols';
 
 const TV_SCRIPT_SRC = 'https://s3.tradingview.com/tv.js';
 
@@ -58,10 +63,7 @@ export default function TradingViewChatChart({
   const containerId = useRef(`tv_chat_${Math.random().toString(36).slice(2, 9)}`);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
-  const studies = useMemo(
-    () => TV_STUDY_PRESETS.find((s) => s.id === study)?.studies ?? [],
-    [study],
-  );
+  const studies = useMemo(() => tvStudyIds(parseStudies(study)), [study]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,10 +96,13 @@ export default function TradingViewChatChart({
           locale: 'in',
           timezone: 'Asia/Kolkata',
           autosize: true,
-          hide_side_toolbar: true,
+          // The widget's own drawing rail and image export, to match the native chart.
+          hide_side_toolbar: false,
           allow_symbol_change: false,
           withdateranges: true,
-          save_image: false,
+          save_image: true,
+          details: false,
+          enable_publishing: false,
           backgroundColor: isDark ? '#0b0e17' : '#ffffff',
           gridColor: isDark ? 'rgba(148,163,184,0.08)' : 'rgba(15,23,42,0.06)',
         });
