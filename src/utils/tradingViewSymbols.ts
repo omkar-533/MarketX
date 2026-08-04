@@ -206,7 +206,8 @@ export function normalizeTvInterval(raw: unknown): TvInterval | null {
   if (/^(1w|w|week|weekly)$/.test(value)) return 'W';
   if (/^(1mo|mo|month|monthly)$/.test(value)) return 'M';
 
-  const minutes = value.match(/^(\d{1,4})(m|min|mins|minute|minutes)?$/);
+  // Accept typos like 5mnt / 15mint / 5mins (Hinglish chat)
+  const minutes = value.match(/^(\d{1,4})(m|min|mins|mint|mnt|mnts|minute|minutes)?$/);
   if (minutes) {
     const n = Number(minutes[1]);
     const known: TvInterval[] = ['1', '3', '5', '15', '30', '60', '120', '240'];
@@ -245,15 +246,21 @@ const FNO_SYMBOLS = new Set(FNO_UNIVERSE.map((i) => i.symbol.toUpperCase()));
 const CHART_INTENT =
   /\b(chart|charts|graph|candle|candles|candlestick|timeframe|time frame|plot|dikhao?|dikha|dekhna|dekho|dekhe|kholo|khol|open|show|display|laga(?:o|do)?|lgao?)\b/i;
 
+/** Minute unit: m / min / mins / mint / mnt (common Hinglish typo for "min"). */
+const M = String.raw`m(?:in(?:ute)?s?|ints?|nts?)?`;
+
 const INTERVAL_WORDS: { re: RegExp; id: TvInterval }[] = [
-  { re: /\b(1\s*m(?:in|inute)?s?|one\s*min(?:ute)?)\b/i, id: '1' },
-  { re: /\b3\s*m(?:in|inute)?s?\b/i, id: '3' },
-  { re: /\b5\s*m(?:in|inute)?s?\b/i, id: '5' },
-  { re: /\b15\s*m(?:in|inute)?s?\b/i, id: '15' },
-  { re: /\b30\s*m(?:in|inute)?s?\b/i, id: '30' },
-  { re: /\b(1\s*h(?:r|our)?s?|60\s*m(?:in|inute)?s?|hourly)\b/i, id: '60' },
+  // Longer minutes first so 15/30 win before a bare "5m" fragment.
+  { re: new RegExp(String.raw`\b15\s*${M}\b`, 'i'), id: '15' },
+  { re: new RegExp(String.raw`\b30\s*${M}\b`, 'i'), id: '30' },
+  { re: new RegExp(String.raw`\b60\s*${M}\b`, 'i'), id: '60' },
+  { re: new RegExp(String.raw`\b240\s*${M}\b`, 'i'), id: '240' },
+  { re: new RegExp(String.raw`\b(1\s*${M}|one\s*min(?:ute)?s?)\b`, 'i'), id: '1' },
+  { re: new RegExp(String.raw`\b3\s*${M}\b`, 'i'), id: '3' },
+  { re: new RegExp(String.raw`\b5\s*${M}\b`, 'i'), id: '5' },
+  { re: /\b(1\s*h(?:r|our)?s?|hourly)\b/i, id: '60' },
   { re: /\b2\s*h(?:r|our)?s?\b/i, id: '120' },
-  { re: /\b(4\s*h(?:r|our)?s?|240\s*m(?:in|inute)?s?)\b/i, id: '240' },
+  { re: /\b4\s*h(?:r|our)?s?\b/i, id: '240' },
   { re: /\b(1\s*d(?:ay)?|daily|din\s*ka)\b/i, id: 'D' },
   { re: /\b(1\s*w(?:eek|k)?|weekly|hafte\s*ka)\b/i, id: 'W' },
   { re: /\b(1\s*mo(?:nth)?|monthly|mahine\s*ka)\b/i, id: 'M' },
