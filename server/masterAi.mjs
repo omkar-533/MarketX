@@ -1567,9 +1567,22 @@ const ROOM_MODE_HINT = `AI TRADING ROOM — format the reply with these labeled 
 ### Strategy Coach
 Each role stays process-focused. No Entry/Stop/Target/Buy/Sell. End with wolfchart if a chart is open.`;
 
-const MENTOR_DESK_HINT = `WOLF MENTOR TRAINING DESK (separate from Hunter / Wolf AI analysis chat): You are Wolf Mentor. Your job is to TRAIN — quiz process from the open chart / MARKET INTEL (premium/discount, structure lean, liquidity, confirmation). Short coach notes, not chatbot chit-chat. Grade process. Never Entry/Stop/Target/Buy/Sell. Never claim win-rate.`;
+const MENTOR_DESK_HINT = `WOLF MENTOR TRAINING DESK (separate from Hunter / Wolf AI analysis chat): You are Wolf Mentor — a teacher + quizzer, not a chatbot buddy.
+- Train from LIVE tape AND HISTORICAL structure on the open chart (swings HH/HL/LH/LL, BOS/CHoCH bars-ago, liquidity, premium/discount).
+- If the trader is new / Beginner mode: explain terms in plain language first, then the quiz lesson.
+- When correcting mistakes: clearly name WHERE the mistake is (e.g. "Mistake: you chased the impulse") then teach the fix.
+- ALWAYS draw the lesson on the chart with a final \`\`\`wolfchart\`\`\` block (labels/vlines/zones from MARKET INTEL prices — use negative bars-ago x1 for historical swings/events).
+- Short coach notes. Never Entry/Stop/Target/Buy/Sell. Never win-rate claims.`;
 
-const TRAINING_GRADE_HINT = `DECISION TRAINING GRADE: The user answered a multiple-choice process drill. Grade their choice against MARKET INTEL (patience / confirmation / no chase). Praise good process; correct chasing. Never invent a trade call.`;
+const TRAINING_GRADE_HINT = `DECISION TRAINING GRADE: User answered a process drill (live or historical).
+1) Say Correct or Mistake in the first line.
+2) If wrong: name the exact mistake in one plain sentence (what they misunderstood).
+3) Teach the concept simply (assume they may be new to trading).
+4) End with a wolfchart block drawing the relevant historical/live structure from MARKET INTEL / draw hint — labels, vlines, zones. No trade orders.`;
+
+const MENTOR_TEACH_HINT = `TEACH MODE: Student asked to learn from scratch. Explain 1 core idea from the open chart (structure or liquidity) in simple steps, point out common beginner mistakes, and DRAW it on the chart with wolfchart. Then ask 1 short check question. No Entry/Stop/Target.`;
+
+const MENTOR_HISTORY_QUIZ_HINT = `HISTORICAL CHART QUIZ: Ask ONE question about a PAST swing/event from MARKET INTEL (bars-ago + price). Do not reveal the answer yet. Mention you will mark it after they reply. No trade orders.`;
 
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
 
@@ -1998,7 +2011,7 @@ export function createMasterAiRouter(apiKey) {
             console.warn('[Wolf AI] structure tape failed:', err?.message || err);
           }
         }
-        if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode) {
+        if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode || mentorDesk) {
           try {
             const intel = await buildIntelPack(message || userTextBase);
             intelBlock = intel.block || '';
@@ -2076,10 +2089,30 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
         if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
-        if (trainingGrade) textBlock += `\n\n${TRAINING_GRADE_HINT}`;
+        if (trainingGrade) {
+          textBlock += `\n\n${TRAINING_GRADE_HINT}`;
+          textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        }
+        if (/\[MENTOR TEACH\]/i.test(String(message || ''))) {
+          textBlock += `\n\n${MENTOR_TEACH_HINT}`;
+          textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        }
+        if (/\[MENTOR HISTORY.?QUIZ\]/i.test(String(message || ''))) {
+          textBlock += `\n\n${MENTOR_HISTORY_QUIZ_HINT}`;
+        }
         if (/\[MENTOR AUTO-QUIZ\]/i.test(String(message || ''))) {
           textBlock +=
-            '\n\nAUTO-QUIZ TASK: Ask ONE short process question about the open chart from MARKET INTEL. Do not reveal the ideal answer yet. No trade orders.';
+            '\n\nAUTO-QUIZ TASK: Ask ONE short process question about LIVE or HISTORICAL structure from MARKET INTEL. Do not reveal the ideal answer yet. No trade orders.';
+        }
+        // Mentor coaching should usually draw the lesson when teaching/grading.
+        if (
+          !trainingGrade &&
+          !/\[MENTOR AUTO-QUIZ\]|\[MENTOR HISTORY/i.test(String(message || '')) &&
+          /\b(teach|mistake|draw|mark|structure|explain|sikh|galat|seekh)\b/i.test(
+            String(message || ''),
+          )
+        ) {
+          textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
         }
       }
       if (hasImage) {

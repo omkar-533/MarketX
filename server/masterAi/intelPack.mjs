@@ -316,6 +316,20 @@ export async function buildIntelPack(message, opts = {}) {
       confidence: Math.max(35, Math.min(88, confidence)),
       ltp,
       events: primary.events.map((e) => e.label),
+      /** Historical structure for Wolf Mentor quizzes + chart markup */
+      swings: primary.swings.slice(-8).map((s) => ({
+        label: s.label,
+        price: Number(s.price.toFixed(2)),
+        barsAgo: s.barsAgo,
+        kind: s.kind,
+      })),
+      eventDetails: primary.events.map((e) => ({
+        label: e.label,
+        price: Number(e.price.toFixed(2)),
+        barsAgo: e.barsAgo,
+      })),
+      dayHigh: Number(primary.dayHigh.toFixed(2)),
+      dayLow: Number(primary.dayLow.toFixed(2)),
       mtf: {
         daily: d1?.strength.lean || 'n/a',
         h1: h1?.strength.lean || 'n/a',

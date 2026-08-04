@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BookOpen,
   Brain,
+  Check,
+  ChevronDown,
   GraduationCap,
   HelpCircle,
+  History,
+  Languages,
   Mic2,
+  Pencil,
   RefreshCw,
+  Sparkles,
   Swords,
   Target,
   Trophy,
@@ -20,9 +28,11 @@ import {
 } from '../services/mentorModes';
 import {
   buildDrillFromDetective,
+  gradePromptForDrill,
   isDrillAnswerCorrect,
   saveDrillResult,
   type DetectiveCard,
+  type DrillBias,
   type MentorDrill,
 } from '../services/mentorDrills';
 import { fetchMentorDetective } from '../services/mentorDetective';
@@ -31,16 +41,25 @@ import {
   trainingPlanPrompt,
 } from '../services/traderSkillProfile';
 import {
+  MASTER_AI_LANGUAGES,
   MASTER_AI_MODEL_ID,
   askMasterAi,
   buildMasterMarketContext,
   fetchMasterAiStatus,
   getMasterAiLanguage,
+  isHinglishLang,
+  loadLanguageMode,
   loadSelectedLanguage,
+  saveLanguageMode,
+  saveSelectedLanguage,
+  type MasterAiLangCode,
+  type MasterAiLangMode,
+  type MasterAiLanguage,
 } from '../services/masterAiService';
 import { consumeHunterPendingPrompt } from '../services/journalAiAssist';
 import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
+import { parseChartAnnotations, type ChartLevel, type ChartShape } from '../utils/chartAnnotations';
 import type { TvInterval } from '../utils/tradingViewSymbols';
 import { tradingViewSymbolLabel } from '../utils/tradingViewSymbols';
 
@@ -53,22 +72,92 @@ const WOLF_MENTOR = 'Wolf Mentor';
 export default function MentorAI() {
   const { user } = useAuth();
   const ownerKey = user?.id || user?.email || 'guest';
-  const lang = getMasterAiLanguage(loadSelectedLanguage());
+  const initialMode = loadLanguageMode();
+  const initialLang =
+    initialMode === 'auto'
+      ? getMasterAiLanguage(loadSelectedLanguage())
+      : getMasterAiLanguage(initialMode);
+
+  const [langMode, setLangMode] = useState<MasterAiLangMode>(initialMode);
+  const [selectedLang, setSelectedLang] = useState<MasterAiLanguage>(initialLang);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [langQuery, setLangQuery] = useState('');
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
+  const [drillBias, setDrillBias] = useState<DrillBias>('auto');
   const [symbol, setSymbol] = useState('NSE:NIFTY');
   const [interval, setInterval] = useState<TvInterval>('15');
   const [study, setStudy] = useState('none');
+  const [chartLevels, setChartLevels] = useState<ChartLevel[]>([]);
+  const [chartShapes, setChartShapes] = useState<ChartShape[]>([]);
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
   const [coachNote, setCoachNote] = useState(
-    'Wolf Mentor is ready. Answer chart quizzes — I grade process only, never Entry/Stop/Target.',
+    'Wolf Mentor is ready. Live + historical chart quizzes, beginner teaching, and drawings on the chart. Process only — never Entry/Stop/Target.',
   );
   const [coachTitle, setCoachTitle] = useState('Coach notes');
   const [busy, setBusy] = useState(false);
   const [skillTick, setSkillTick] = useState(0);
   const [aiOk, setAiOk] = useState(false);
   const gradingRef = useRef(false);
+
+  const effectiveBias: DrillBias =
+    drillBias !== 'auto' ? drillBias : mentorMode === 'beginner' ? 'teach' : 'auto';
+
+  const langGroups = useMemo(() => {
+    const q = langQuery.trim().toLowerCase();
+    const match = (l: MasterAiLanguage) =>
+      !q ||
+      l.name.toLowerCase().includes(q) ||
+      l.nativeLabel.toLowerCase().includes(q) ||
+      l.code.toLowerCase().includes(q);
+    return [
+      { id: 'popular', label: 'Popular', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'popular' && match(l)) },
+      { id: 'india', label: 'India & South Asia', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'india' && match(l)) },
+      { id: 'world', label: 'World', items: MASTER_AI_LANGUAGES.filter((l) => l.group === 'world' && match(l)) },
+    ].filter((g) => g.items.length > 0);
+  }, [langQuery]);
+
+  const onLanguageChange = (value: string) => {
+    if (value === 'auto') {
+      setLangMode('auto');
+      saveLanguageMode('auto');
+      setLangMenuOpen(false);
+      setLangQuery('');
+      return;
+    }
+    const code = value as MasterAiLangCode;
+    const next = getMasterAiLanguage(code);
+    setLangMode(code);
+    setSelectedLang(next);
+    saveLanguageMode(code);
+    saveSelectedLanguage(code);
+    setLangMenuOpen(false);
+    setLangQuery('');
+  };
+
+  useEffect(() => {
+    if (!langMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!langMenuRef.current?.contains(e.target as Node)) {
+        setLangMenuOpen(false);
+        setLangQuery('');
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLangMenuOpen(false);
+        setLangQuery('');
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [langMenuOpen]);
 
   const skillProfile = useMemo(
     () => buildTraderSkillProfile(ownerKey, user),
@@ -101,22 +190,22 @@ export default function MentorAI() {
     };
   }, [symbol, interval]);
 
-  // Always punch drills from tape — training desk, not chat.
+  // Always punch drills from live + historical tape — training desk, not chat.
   useEffect(() => {
     if (!detective || activeDrill || busy) return;
     const t = window.setTimeout(() => {
-      setActiveDrill(buildDrillFromDetective(detective));
+      setActiveDrill(buildDrillFromDetective(detective, effectiveBias));
     }, 6_000);
     return () => window.clearTimeout(t);
-  }, [detective?.symbol, detective?.ltp, detective?.zone, activeDrill, busy]);
+  }, [detective?.symbol, detective?.ltp, detective?.zone, activeDrill, busy, effectiveBias]);
 
   useEffect(() => {
     if (!detective || busy) return;
     const t = window.setInterval(() => {
-      setActiveDrill((prev) => prev ?? buildDrillFromDetective(detective));
+      setActiveDrill((prev) => prev ?? buildDrillFromDetective(detective, effectiveBias));
     }, 40_000);
     return () => window.clearInterval(t);
-  }, [detective, busy]);
+  }, [detective, busy, effectiveBias]);
 
   const speakBriefing = useCallback(() => {
     if (!detective || typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -130,9 +219,16 @@ export default function MentorAI() {
       `Confidence ${detective.confidence} percent — evidence score, not win rate.`,
     ].join(' ');
     const u = new SpeechSynthesisUtterance(line);
-    u.lang = 'en-IN';
+    u.lang = isHinglishLang(selectedLang.code) ? 'hi-IN' : selectedLang.code;
+    const voices = window.speechSynthesis.getVoices();
+    const prefix = selectedLang.code.slice(0, 2);
+    const preferred =
+      voices.find((v) => v.lang === selectedLang.code) ??
+      voices.find((v) => v.lang.startsWith(prefix)) ??
+      voices.find((v) => v.lang.startsWith('hi'));
+    if (preferred) u.voice = preferred;
     window.speechSynthesis.speak(u);
-  }, [detective]);
+  }, [detective, selectedLang.code]);
 
   const askCoach = useCallback(
     async (message: string, opts?: { trainingGrade?: boolean; title?: string }) => {
@@ -140,17 +236,21 @@ export default function MentorAI() {
       gradingRef.current = true;
       setBusy(true);
       setCoachTitle(opts?.title || 'Coach notes');
-      setCoachNote('Reading the chart tape…');
+      setCoachNote(
+        langMode === 'auto' || isHinglishLang(selectedLang.code)
+          ? 'Chart tape padh raha hoon…'
+          : 'Reading the chart tape…',
+      );
       try {
         const ctx = buildMasterMarketContext();
-        const chartHint = `[CHART OPEN ON WOLF MENTOR DESK: ${tradingViewSymbolLabel(symbol)} · ${interval}. Train from MARKET INTEL. Process only.]`;
+        const chartHint = `[CHART OPEN ON WOLF MENTOR DESK: ${tradingViewSymbolLabel(symbol)} · ${interval}. Train from LIVE + HISTORICAL MARKET INTEL. Draw lessons with wolfchart. Process only. Reply in ${selectedLang.replyIn}.]`;
         const result = await askMasterAi(
           {
             message: `${message}\n\n${chartHint}`,
             model: MASTER_AI_MODEL_ID,
-            lang: lang.code,
-            langName: lang.name,
-            langMode: 'auto',
+            lang: selectedLang.code,
+            langName: selectedLang.name,
+            langMode,
             mentorMode,
             mentorDesk: true,
             trainingGrade: Boolean(opts?.trainingGrade),
@@ -158,10 +258,17 @@ export default function MentorAI() {
           },
           ctx,
         );
-        const text = String(result.reply || '')
-          .replace(/```wolfchart[\s\S]*?```/gi, '')
-          .trim();
-        setCoachNote(text || 'No coach note — try Next quiz again.');
+        const parsed = parseChartAnnotations(String(result.reply || ''));
+        if (parsed.levels.length || parsed.shapes.length) {
+          setChartLevels(parsed.levels);
+          setChartShapes(parsed.shapes);
+        }
+        setCoachNote(
+          parsed.text.trim() ||
+            (parsed.levels.length || parsed.shapes.length
+              ? 'Marked the lesson on the chart — study the drawing.'
+              : 'No coach note — try Next quiz again.'),
+        );
       } catch {
         setCoachNote('Wolf Mentor could not reach the coach engine. Check your AI key in Profile, then retry.');
       } finally {
@@ -169,7 +276,7 @@ export default function MentorAI() {
         setBusy(false);
       }
     },
-    [symbol, interval, lang.code, lang.name, mentorMode],
+    [symbol, interval, selectedLang, langMode, mentorMode],
   );
 
   useEffect(() => {
@@ -193,31 +300,54 @@ export default function MentorAI() {
     );
     setSkillTick((n) => n + 1);
     const chosen = activeDrill.options.find((o) => o.id === optionId)?.label || optionId;
-    const gradeMsg = [
-      `[DECISION TRAINING] My choice: ${chosen} (${optionId}).`,
-      `Drill: ${activeDrill.question}`,
-      `Correct process key: ${activeDrill.correctId}.`,
-      `Brief reason key: ${activeDrill.reason}`,
-      'Grade my process in 4–6 short lines. No Entry/Stop/Target.',
-    ].join('\n');
+    const gradeMsg = gradePromptForDrill(activeDrill, chosen, optionId, correct);
     setActiveDrill(null);
-    void askCoach(gradeMsg, { trainingGrade: true, title: correct ? 'Solid process' : 'Process correction' });
+    void askCoach(gradeMsg, {
+      trainingGrade: true,
+      title: correct ? 'Solid process' : 'Mistake + lesson',
+    });
   };
 
-  const punchQuiz = () => {
-    if (detective) setActiveDrill(buildDrillFromDetective(detective));
+  const punchQuiz = (bias: DrillBias = effectiveBias) => {
+    if (detective) setActiveDrill(buildDrillFromDetective(detective, bias));
   };
 
   const quizFromChart = () => {
     void askCoach(
-      '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question (premium/discount, structure lean, or liquidity). Do not answer it yourself. No Entry/Stop/Target.',
+      '[MENTOR AUTO-QUIZ] Look at MARKET INTEL for the open chart and ask me ONE short process question about LIVE tape OR a HISTORICAL swing/event (bars-ago). Do not reveal the ideal answer yet. No Entry/Stop/Target.',
       { title: 'Chart question' },
+    );
+  };
+
+  const historyQuiz = () => {
+    setDrillBias('historical');
+    if (detective) setActiveDrill(buildDrillFromDetective(detective, 'historical'));
+    void askCoach(
+      '[MENTOR HISTORY-QUIZ] Using MARKET INTEL historical swings/events, ask me ONE question about a past structure mark on this chart. Do not answer yet.',
+      { title: 'Historical chart quiz' },
+    );
+  };
+
+  const teachMe = () => {
+    setDrillBias('teach');
+    setMentorMode('beginner');
+    saveMentorMode('beginner');
+    void askCoach(
+      '[MENTOR TEACH] I am new to trading. Teach me one core idea from this open chart (structure or liquidity) in simple steps, name common mistakes beginners make, DRAW it on the chart with wolfchart, then ask one check question. No Entry/Stop/Target.',
+      { title: 'Beginner lesson' },
     );
   };
 
   const sendTrainingPlan = () => {
     void askCoach(trainingPlanPrompt(skillProfile), { title: '7-day training path' });
   };
+
+  const scopeLabel =
+    activeDrill?.scope === 'historical'
+      ? 'Historical chart'
+      : activeDrill?.scope === 'teach'
+        ? 'Beginner lesson'
+        : 'Live tape';
 
   return (
     <div className="wm-desk">
@@ -232,7 +362,11 @@ export default function MentorAI() {
               <span className="wm-desk__badge">Trainer</span>
             </div>
             <p className="wm-desk__sub">
-              {aiOk ? 'Live training desk · process only' : 'Add AI key in Profile to grade quizzes'}
+              {aiOk
+                ? langMode === 'auto'
+                  ? `Live training · Auto · ${selectedLang.nativeLabel}`
+                  : `Live training · ${selectedLang.nativeLabel}`
+                : 'Add AI key in Profile to grade quizzes'}
             </p>
           </div>
         </div>
@@ -264,11 +398,131 @@ export default function MentorAI() {
         </div>
 
         <div className="wm-desk__actions">
+          <div className={`mai-chat__lang wm-desk__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
+            <button
+              type="button"
+              className={`wm-desk__chip ${langMenuOpen ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => setLangMenuOpen((o) => !o)}
+              aria-label="Coach language"
+              aria-expanded={langMenuOpen}
+              aria-haspopup="listbox"
+              title="Same language list as Wolf AI / Hunter"
+            >
+              <Languages className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {langMode === 'auto' ? `Auto · ${selectedLang.nativeLabel}` : selectedLang.nativeLabel}
+              </span>
+              <ChevronDown className={`h-3 w-3 ${langMenuOpen ? 'wm-desk__chevron--up' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {langMenuOpen ? (
+                <motion.div
+                  className="mai-chat__lang-menu"
+                  role="listbox"
+                  aria-label="Select coach language"
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                >
+                  <div className="mai-chat__lang-glow" aria-hidden />
+                  <div className="mai-chat__lang-head">
+                    <div className="mai-chat__lang-head-title">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Coach language</span>
+                    </div>
+                    <input
+                      type="search"
+                      className="mai-chat__lang-search"
+                      placeholder="Search language…"
+                      value={langQuery}
+                      onChange={(e) => setLangQuery(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="mai-chat__lang-scroll">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={langMode === 'auto'}
+                      className={`mai-chat__lang-item mai-chat__lang-item--auto ${langMode === 'auto' ? 'mai-chat__lang-item--on' : ''}`}
+                      onClick={() => onLanguageChange('auto')}
+                    >
+                      <span className="mai-chat__lang-item-main">
+                        <span className="mai-chat__lang-item-name">Auto detect</span>
+                        <span className="mai-chat__lang-item-sub">
+                          Matches your message · {selectedLang.nativeLabel}
+                        </span>
+                      </span>
+                      {langMode === 'auto' ? <Check className="mai-chat__lang-check" /> : null}
+                    </button>
+
+                    {langGroups.map((group) => (
+                      <div key={group.id} className="mai-chat__lang-group">
+                        <div className="mai-chat__lang-group-label">{group.label}</div>
+                        {group.items.map((l) => {
+                          const on = langMode === l.code;
+                          return (
+                            <button
+                              key={l.code}
+                              type="button"
+                              role="option"
+                              aria-selected={on}
+                              className={`mai-chat__lang-item ${on ? 'mai-chat__lang-item--on' : ''}`}
+                              onClick={() => onLanguageChange(l.code)}
+                            >
+                              <span className="mai-chat__lang-item-main">
+                                <span className="mai-chat__lang-item-name">{l.nativeLabel}</span>
+                                <span className="mai-chat__lang-item-sub">{l.name}</span>
+                              </span>
+                              {on ? <Check className="mai-chat__lang-check" /> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+
+                    {langGroups.length === 0 ? (
+                      <p className="mai-chat__lang-empty">No language matched</p>
+                    ) : null}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
           <button type="button" className="wm-desk__chip" onClick={speakBriefing} disabled={!detective}>
             <Mic2 className="h-3.5 w-3.5" />
             Briefing
           </button>
-          <button type="button" className="wm-desk__chip" onClick={punchQuiz} disabled={!detective || busy}>
+          <button
+            type="button"
+            className={`wm-desk__chip ${drillBias === 'teach' || mentorMode === 'beginner' ? 'wm-desk__chip--on' : ''}`}
+            onClick={teachMe}
+            disabled={busy}
+            title="Explain from scratch + draw on chart"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Teach me
+          </button>
+          <button
+            type="button"
+            className={`wm-desk__chip ${drillBias === 'historical' ? 'wm-desk__chip--on' : ''}`}
+            onClick={historyQuiz}
+            disabled={busy}
+            title="Quiz from past swings / BOS-CHoCH"
+          >
+            <History className="h-3.5 w-3.5" />
+            History quiz
+          </button>
+          <button
+            type="button"
+            className="wm-desk__chip"
+            onClick={() => punchQuiz(drillBias === 'auto' ? 'auto' : drillBias)}
+            disabled={!detective || busy}
+          >
             <Target className="h-3.5 w-3.5" />
             Next quiz
           </button>
@@ -285,12 +539,28 @@ export default function MentorAI() {
             symbol={symbol}
             interval={interval}
             study={study}
-            onSymbolChange={setSymbol}
-            onIntervalChange={setInterval}
+            onSymbolChange={(s) => {
+              setSymbol(s);
+              setChartLevels([]);
+              setChartShapes([]);
+            }}
+            onIntervalChange={(tf) => {
+              setInterval(tf);
+              setChartLevels([]);
+              setChartShapes([]);
+            }}
             onStudyChange={setStudy}
             onClose={() => undefined}
             hideClose
+            levels={chartLevels}
+            shapes={chartShapes}
           />
+          {(chartLevels.length > 0 || chartShapes.length > 0) && (
+            <p className="wm-desk__draw-hint">
+              <Pencil className="h-3 w-3" />
+              Lesson drawn on chart — study the marks (live + historical bars).
+            </p>
+          )}
         </section>
 
         <aside className="wm-desk__side">
@@ -388,6 +658,7 @@ export default function MentorAI() {
             <div className="wm-desk__quiz-h">
               <Target className="h-4 w-4" />
               <span>Decision quiz</span>
+              <span className="wm-desk__scope">{scopeLabel}</span>
               <button type="button" className="wm-desk__dismiss" onClick={() => setActiveDrill(null)}>
                 Skip
               </button>
@@ -400,14 +671,27 @@ export default function MentorAI() {
                 </button>
               ))}
             </div>
+            <p className="wm-desk__muted">
+              Wrong answers get a clear “Mistake: …” lesson and a drawing on the chart.
+            </p>
           </>
         ) : (
           <div className="wm-desk__quiz-idle">
-            <p>Next chart quiz loads automatically — or punch one now.</p>
-            <button type="button" onClick={punchQuiz} disabled={!detective || busy}>
-              <Target className="h-4 w-4" />
-              Punch quiz
-            </button>
+            <p>Live + historical quizzes auto-load — Teach me for full beginner lessons with drawings.</p>
+            <div className="wm-desk__quiz-idle-actions">
+              <button type="button" onClick={() => punchQuiz('live')} disabled={!detective || busy}>
+                <Target className="h-4 w-4" />
+                Live quiz
+              </button>
+              <button type="button" onClick={() => punchQuiz('historical')} disabled={!detective || busy}>
+                <History className="h-4 w-4" />
+                History quiz
+              </button>
+              <button type="button" onClick={() => punchQuiz('teach')} disabled={!detective || busy}>
+                <BookOpen className="h-4 w-4" />
+                Beginner quiz
+              </button>
+            </div>
           </div>
         )}
       </section>
