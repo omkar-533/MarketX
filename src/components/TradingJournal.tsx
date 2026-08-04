@@ -2094,7 +2094,7 @@ export default function TradingJournal({
                         className="text-[10px] font-bold text-[#d4af37] underline-offset-2 hover:underline"
                         onClick={() => setPnlManualOverride(false)}
                       >
-                        Recalc auto
+                        Recalculate
                       </button>
                     )}
                   </div>
