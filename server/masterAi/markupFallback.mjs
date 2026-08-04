@@ -168,43 +168,112 @@ export function synthesizeSrWolfchart(meta = {}) {
 }
 
 /**
- * Generic mark fallback — still prefers LTP-sided S/R when swings exist.
+ * Diagonal trendline from two structural swings.
+ * Uptrend → rising ray on swing lows; downtrend → falling ray on swing highs.
  */
-export function synthesizeWolfchart(meta = {}) {
-  if (meta.style === 'sr') return synthesizeSrWolfchart(meta);
-
-  const sr = synthesizeSrWolfchart(meta);
-  if (sr) return sr;
-
+export function synthesizeTrendWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
-  const q = meta.quote;
-  const levels = [];
-  const shapes = [];
-  if (q?.high) {
-    const p = roundPrice(q.high);
-    if (p != null) {
-      levels.push({ price: p, kind: 'resistance', label: 'Day High' });
-      shapes.push({ type: 'hline', p1: p, label: 'Day High', tone: 'bear' });
+  const swings = Array.isArray(meta.swings) ? meta.swings : [];
+  const lows = swings
+    .filter((s) => s.kind === 'low' && Number(s.price) > 0)
+    .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
+    .sort((a, b) => b.barsAgo - a.barsAgo); // older → newer
+  const highs = swings
+    .filter((s) => s.kind === 'high' && Number(s.price) > 0)
+    .map((s) => ({ ...s, price: Number(s.price), barsAgo: Math.abs(Number(s.barsAgo) || 0) }))
+    .sort((a, b) => b.barsAgo - a.barsAgo);
+
+  const hhhl = swings.filter((s) => s.label === 'HH' || s.label === 'HL').length;
+  const lhll = swings.filter((s) => s.label === 'LH' || s.label === 'LL').length;
+  const bullish = hhhl >= lhll;
+
+  let a = null;
+  let b = null;
+  let label = 'Trendline';
+  let tone = 'neutral';
+
+  if (bullish && lows.length >= 2) {
+    // Last two swing lows (older, newer) — rising support trendline.
+    a = lows[lows.length - 2];
+    b = lows[lows.length - 1];
+    // If the "newer" low is lower, try earlier pair for a rising line.
+    if (b.price < a.price && lows.length >= 3) {
+      a = lows[lows.length - 3];
+      b = lows[lows.length - 2];
     }
-  }
-  if (q?.low) {
-    const p = roundPrice(q.low);
-    if (p != null) {
-      levels.push({ price: p, kind: 'support', label: 'Day Low' });
-      shapes.push({ type: 'hline', p1: p, label: 'Day Low', tone: 'bull' });
+    if (b.price >= a.price) {
+      label = 'Rising trendline';
+      tone = 'bull';
+    } else if (highs.length >= 2) {
+      a = highs[highs.length - 2];
+      b = highs[highs.length - 1];
+      label = 'Falling trendline';
+      tone = 'bear';
     }
+  } else if (highs.length >= 2) {
+    a = highs[highs.length - 2];
+    b = highs[highs.length - 1];
+    if (b.price > a.price && highs.length >= 3) {
+      a = highs[highs.length - 3];
+      b = highs[highs.length - 2];
+    }
+    label = b.price <= a.price ? 'Falling trendline' : 'Trendline';
+    tone = b.price <= a.price ? 'bear' : 'neutral';
+  } else if (lows.length >= 2) {
+    a = lows[lows.length - 2];
+    b = lows[lows.length - 1];
+    label = b.price >= a.price ? 'Rising trendline' : 'Trendline';
+    tone = b.price >= a.price ? 'bull' : 'neutral';
   }
-  if (!levels.length) return null;
-  return fence({ symbol, tf, levels, shapes });
+
+  if (!a || !b) return null;
+  const p1 = roundPrice(a.price);
+  const p2 = roundPrice(b.price);
+  if (p1 == null || p2 == null || p1 === p2) return null;
+
+  return fence({
+    symbol,
+    tf,
+    levels: [],
+    shapes: [
+      {
+        type: 'ray',
+        p1,
+        p2,
+        x1: -Math.abs(a.barsAgo || 40),
+        x2: -Math.abs(b.barsAgo || 8),
+        label,
+        tone,
+      },
+    ],
+  });
 }
 
 /**
- * Append or replace wolfchart so S/R asks always get SUPPORT/RESISTANCE hlines.
+ * Generic mark fallback — respect style; never force S/R onto a trend ask.
+ */
+export function synthesizeWolfchart(meta = {}) {
+  if (meta.style === 'sr') return synthesizeSrWolfchart(meta);
+  if (meta.style === 'trend') return synthesizeTrendWolfchart(meta);
+  // Generic "mark karo" with no tool named → structural S/R is a safe default.
+  return synthesizeSrWolfchart(meta) || synthesizeTrendWolfchart(meta);
+}
+
+/**
+ * Append or replace wolfchart so the drawn tool matches what the user asked for.
  */
 export function ensureWolfchartReply(reply, meta) {
   const text = String(reply || '').trim();
   if (!text) return text;
+
+  if (meta?.style === 'trend') {
+    const block = synthesizeTrendWolfchart(meta);
+    if (!block) return text;
+    // Model often ignores "trendline" and dumps S/R — replace with a real ray.
+    console.info('[Wolf AI] enforced trendline ray markup');
+    return `${stripWolfchart(text)}${block}`;
+  }
 
   if (meta?.style === 'sr') {
     const block = synthesizeSrWolfchart(meta);

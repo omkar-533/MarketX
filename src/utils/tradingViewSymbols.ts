@@ -384,7 +384,7 @@ const MARKUP_INTENT = new RegExp(
     'mark\\s*(kar|kr|kro|krdo|kardo|kardo)',
     'order\\s*block|\\bob\\b|supply|demand|\\bfvg\\b|imbalance|liquidity',
     '\\bbos\\b|choch|break\\s*of\\s*structure',
-    'trend\\s*line|trendline|channel|neckline',
+    'trend\\s*line|trendlines?|trend\\s*live|channel|neckline',
     '\\bfib\\b|fibonacci|retracement',
     'support|resistance|\\bzone\\b|\\blevels?\\b|pivot',
     'khinch|khich|laga\\s*do|lagao|bana\\s*do|dikha(?:\\s*do)?|dikhado',
