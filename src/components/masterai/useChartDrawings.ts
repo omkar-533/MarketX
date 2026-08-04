@@ -353,7 +353,13 @@ export function useChartDrawings({
 
         if (shape.type === 'label') {
           if (y1 === null) continue;
-          const x = anchorX(shape.x1, -6) ?? 0;
+          // Prefer the model's bar offset; otherwise sit the tag on the last
+          // candle that actually printed that swing price.
+          let x = shape.x1 === undefined ? null : anchorX(shape.x1, -6);
+          if (x === null && shape.p1 !== undefined) {
+            x = zoneOriginX(shape.p1, shape.p1);
+          }
+          x = x ?? anchorX(undefined, -6) ?? 0;
           ctx.beginPath();
           ctx.arc(x, y1, 3, 0, Math.PI * 2);
           ctx.fillStyle = tone.line;
