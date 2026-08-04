@@ -41,7 +41,7 @@ import {
 } from '../../services/chart/liveCandleMerge';
 import {
   getFyersCachedQuote,
-  onFyersMarketUpdate,
+  onFyersMarketTicks,
   startFyersSocketClient,
   subscribeFyersMarketSymbols,
   unsubscribeFyersMarketSymbols,
@@ -323,7 +323,7 @@ export default function NativeChatChart({
     const cached = getFyersCachedQuote(apiSymbol);
     if (cached?.price) applyLivePrice(cached.price, cached.volume);
 
-    const unsub = onFyersMarketUpdate((payload) => {
+    const unsub = onFyersMarketTicks((payload) => {
       const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
       if (q?.price) applyLivePrice(q.price, q.volume);
     });
