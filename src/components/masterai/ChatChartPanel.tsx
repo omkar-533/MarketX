@@ -96,18 +96,29 @@ export default function ChatChartPanel({
     onStudyChange(joinStudies(next));
   };
 
-  // Fullscreen stays inside the app: Escape leaves it and the page behind cannot scroll.
+  // Same-page desk fullscreen: Esc exits, body scroll locked, chart fills the viewport.
   useEffect(() => {
     if (!fullscreen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFullscreen(false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setFullscreen(false);
+      }
     };
-    const previous = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.classList.add('mai-tv-fs-active');
     document.addEventListener('keydown', onKey);
+    // Nudge layout after portal mount so NativeChatChart ResizeObserver refits candles.
+    const t = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 40);
     return () => {
-      document.body.style.overflow = previous;
+      document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.documentElement.classList.remove('mai-tv-fs-active');
       document.removeEventListener('keydown', onKey);
+      window.clearTimeout(t);
     };
   }, [fullscreen]);
 
@@ -288,8 +299,8 @@ export default function ChatChartPanel({
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
-            className="mai-tv__icon"
-            title={fullscreen ? 'Exit full screen' : 'Full screen'}
+            className={`mai-tv__icon mai-tv__icon--fs ${fullscreen ? 'mai-tv__icon--fs-on' : ''}`}
+            title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen — chart fills this page'}
             aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
           >
             {fullscreen ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
@@ -343,11 +354,32 @@ export default function ChatChartPanel({
     </section>
   );
 
-  // Portalled out of the chat: bubbles clip and transform their contents,
-  // which would otherwise trap a fixed overlay inside the message.
+  // Portalled to document.body so chat transforms / overflow never clip the desk.
   return fullscreen
     ? createPortal(
-        <div className="mai-tv__fs-layer" role="dialog" aria-modal="true" aria-label="Chart full screen">
+        <div
+          className="mai-tv__fs-layer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chart full screen"
+        >
+          <div className="mai-tv__fs-top">
+            <div className="mai-tv__fs-brand">
+              <span>Wolf Trade</span>
+              Chart desk · {tradingViewSymbolLabel(symbol)} ·{' '}
+              {timeframes.find((tf) => tf.id === activeInterval)?.label || activeInterval}
+            </div>
+            <div className="mai-tv__fs-hint">Esc to exit</div>
+            <button
+              type="button"
+              className="mai-tv__fs-exit"
+              onClick={() => setFullscreen(false)}
+              title="Exit full screen"
+            >
+              <Shrink className="h-3.5 w-3.5" />
+              Exit full screen
+            </button>
+          </div>
           {panel}
         </div>,
         document.body,

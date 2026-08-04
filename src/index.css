@@ -8147,25 +8147,113 @@ input[type="number"] { -moz-appearance: textfield; }
   height: min(42rem, 74vh);
 }
 
-/* In-app full screen — the chart never leaves the site */
+/* In-app full screen — same page, edge-to-edge trading desk (never leaves the site) */
 .mai-tv__fs-layer {
   position: fixed;
   inset: 0;
-  /* Above the app's own bars and popups (140 / 200) */
-  z-index: 300;
+  z-index: 9990;
   display: flex;
-  padding: 0.6rem;
-  background: var(--tf-bg);
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  margin: 0;
+  background: #0b0e14;
+  /* Keep above sidebar / modals / chat chrome */
+  isolation: isolate;
+}
+
+.mai-tv__fs-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #121722 0%, #0d1118 100%);
+  color: #e8eaef;
+}
+
+.mai-tv__fs-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(232, 234, 239, 0.88);
+}
+
+.mai-tv__fs-brand span {
+  color: #d4af37;
+}
+
+.mai-tv__fs-hint {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(232, 234, 239, 0.45);
+}
+
+.mai-tv__fs-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.12);
+  color: #f0d78c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.mai-tv__fs-exit:hover {
+  background: rgba(212, 175, 55, 0.22);
+  border-color: rgba(212, 175, 55, 0.7);
 }
 
 .mai-tv--fs {
   flex: 1 1 auto;
-  height: 100%;
+  width: 100%;
+  height: auto;
   min-height: 0;
-  border: 1px solid var(--tf-border);
-  border-radius: 0.75rem;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
-  background: var(--tf-surface);
+  background: var(--tf-surface, #131722);
+  box-shadow: none;
+}
+
+.mai-tv--fs .mai-tv__bar {
+  background: #131722;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.mai-tv--fs .mai-tv__frame,
+.mai-tv--fs .mai-tv__frame--tools,
+.mai-tv--fs .mai-nc__area {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.mai-tv__icon--fs {
+  color: #d4af37 !important;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.mai-tv__icon--fs:hover {
+  background: rgba(212, 175, 55, 0.18) !important;
+  color: #f0d78c !important;
 }
 
 /* Single-row toolbar mirroring TradingView's chart header */
