@@ -961,7 +961,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   : wantsObNow
                     ? ' ORDER BLOCK ASK: draw institutional OB zones from engine tape only (BOS+displacement). Forbidden: random opposite-candle boxes.'
                     : wantsLiqNow
-                      ? ' LIQUIDITY ASK: draw BSL/SSL horizontal rays (ICT/SMC EQH/EQL). Labels BUY-SIDE LIQ / SELL-SIDE LIQ — not SUPPORT/RESISTANCE.'
+                      ? ' LIQUIDITY ASK: Pine logic hrays — BSL/SSL (High Vol), PDH/PDL/PWH/PWL/PMH/PML. Not SUPPORT/RESISTANCE labels.'
                       : wantsMarkNow
                         ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
                         : ''

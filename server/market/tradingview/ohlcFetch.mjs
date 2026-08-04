@@ -17,6 +17,8 @@ const INTERVAL_MAP = {
   '4h': '240',
   '1d': '1D',
   '1w': '1W',
+  '1M': '1M',
+  '1mo': '1M',
 };
 
 function sessionId(prefix) {
@@ -41,7 +43,7 @@ function round(n) {
 /** How many bars TradingView should stream — keep high so panning left stays filled. */
 function candleCountFor(timeframe, rangeOverride) {
   const tf = String(timeframe || '15m');
-  const daily = tf === '1d' || tf === '1w';
+  const daily = tf === '1d' || tf === '1w' || tf === '1M' || tf === '1mo';
 
   if (rangeOverride === '1y') {
     if (daily) return 400;

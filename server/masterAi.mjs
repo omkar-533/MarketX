@@ -1611,12 +1611,12 @@ Draw type "zone" with p1/p2/x1 from the tape. Prefer highest score / active or m
 Invalid blocks: omit or tone neutral. Mention score + key confirmations in prose (2–4 lines).
 levels:[]. No Entry/Stop/Target/Buy/Sell.`;
 
-const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — ICT/SMC, S/R visual style):
-NOT Support/Resistance labels. Use horizontal RAYS (hray) like S/R look.
-- BUY-SIDE LIQ (BSL) = above swing highs / EQH — buy-stops resting overhead.
-- SELL-SIDE LIQ (SSL) = below swing lows / EQL — sell-stops resting underneath.
-Prefer EQH/EQL clusters and untouched pools from LIQUIDITY TAPE. Swept = tone neutral / note swept.
-Exactly the tape prices. levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
+const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic, S/R visual style):
+NOT Support/Resistance. Horizontal RAYS (hray) only. Copy LIQUIDITY TAPE exactly.
+Rules: swing len=5 · vol > SMA(20)×1.5 → "BSL (High Vol)" / "SSL (High Vol)".
+Also PDH PDL (prev day) · PWH PWL (prev week) · PMH PML (prev month) if still outside price.
+Mitigated (price traded through) levels are already removed — do not redraw them.
+Exact labels only. levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
@@ -2313,7 +2313,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsObMark
             ? 'Task: MARK INSTITUTIONAL ORDER BLOCKS NOW. Use ORDER BLOCK TAPE only (No BOS = No OB). 2–4 short lines with scores/confirmations + wolfchart zones. Never invent random opposite-candle blocks. levels:[]. No Entry/Stop/Target.'
           : wantsLiqMark
-            ? 'Task: MARK ICT/SMC LIQUIDITY NOW. Use LIQUIDITY TAPE. wolfchart: hrays labeled BUY-SIDE LIQ (above) + SELL-SIDE LIQ (below) — same look as S/R but NOT Support/Resistance labels. Prefer EQH/EQL untouched. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK LIQUIDITY NOW (Pine logic). Use LIQUIDITY TAPE. wolfchart hrays with exact labels BSL (High Vol)/SSL (High Vol)/PDH/PDL/PWH/PWL/PMH/PML. Same look as S/R rays — NOT Support/Resistance text. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark

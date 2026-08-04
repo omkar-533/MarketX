@@ -296,69 +296,40 @@ export function synthesizeTrendWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 3) });
 }
 
-/** ICT/SMC liquidity hrays — same visual language as S/R, different labels/logic. */
+/** Pine liquidity hrays — BSL/SSL High Vol + PDH/PDL/PWH/PWL/PMH/PML. */
 export function synthesizeLiqWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
-  const pools = Array.isArray(meta.liquidityPools) ? meta.liquidityPools : [];
-  const px =
-    Number(meta.lastClose) ||
-    Number(meta.quote?.price) ||
-    Number(meta.ltp) ||
-    0;
+  let pools = Array.isArray(meta.liquidityPools) ? meta.liquidityPools : [];
 
-  // Prefer engine pair when provided; else derive from pools.
-  let bsl = meta.liquidityPair?.bsl || null;
-  let ssl = meta.liquidityPair?.ssl || null;
-  if (!bsl || !ssl) {
-    const eps = px > 0 ? Math.max(px * 0.0002, 0.5) : 0;
-    const rank = (a, b) => {
-      const au = a.swept ? 0 : 1;
-      const bu = b.swept ? 0 : 1;
-      if (bu !== au) return bu - au;
-      return (b.score || 0) - (a.score || 0);
-    };
-    if (!bsl) {
-      bsl =
-        pools
-          .filter((p) => p.side === 'bsl' && (!px || p.price > px + eps))
-          .sort(rank)[0] || null;
-    }
-    if (!ssl) {
-      ssl =
-        pools
-          .filter((p) => p.side === 'ssl' && (!px || p.price < px - eps))
-          .sort(rank)[0] || null;
-    }
+  // Fallback: at least the primary BSL/SSL pair if full list empty.
+  if (!pools.length && meta.liquidityPair) {
+    pools = [meta.liquidityPair.bsl, meta.liquidityPair.ssl].filter(Boolean);
   }
 
   const shapes = [];
-  if (bsl) {
-    const p = roundPrice(bsl.price);
-    if (p != null) {
-      shapes.push({
-        type: 'hray',
-        p1: p,
-        x1: -Math.abs(Number(bsl.barsAgo) || 8),
-        label: bsl.label || 'BUY-SIDE LIQ',
-        tone: bsl.swept ? 'neutral' : 'bear',
-      });
-    }
-  }
-  if (ssl) {
-    const p = roundPrice(ssl.price);
-    if (p != null) {
-      shapes.push({
-        type: 'hray',
-        p1: p,
-        x1: -Math.abs(Number(ssl.barsAgo) || 16),
-        label: ssl.label || 'SELL-SIDE LIQ',
-        tone: ssl.swept ? 'neutral' : 'bull',
-      });
-    }
+  const seen = new Set();
+  for (const lvl of pools) {
+    if (!lvl) continue;
+    const p = roundPrice(lvl.price);
+    if (p == null) continue;
+    const label = String(lvl.label || (lvl.side === 'bsl' ? 'BSL (High Vol)' : 'SSL (High Vol)')).slice(
+      0,
+      36,
+    );
+    const key = `${label}:${p}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    shapes.push({
+      type: 'hray',
+      p1: p,
+      x1: -Math.abs(Number(lvl.barsAgo) || 8),
+      label,
+      tone: lvl.tone || (lvl.side === 'bsl' ? 'bear' : 'bull'),
+    });
   }
   if (!shapes.length) return null;
-  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 4) });
+  return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 14) });
 }
 
 /** Institutional OB zones from orderBlockEngine (passed via meta.orderBlocks). */
