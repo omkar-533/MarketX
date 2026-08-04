@@ -975,6 +975,50 @@ export default function MentorAI() {
         </section>
 
         <aside className="wm-desk__side">
+          <div className="wm-desk__card wm-desk__guide">
+            <div className="wm-desk__card-h">Kaise use karein? (simple)</div>
+            <ol className="wm-desk__guide-list">
+              <li>
+                <b>Curriculum</b> — pehle yahan se Level 1 padho + quiz pass karo
+              </li>
+              <li>
+                <b>Chart Mentor</b> — chart samjho (Buy/Sell nahi, sirf process)
+              </li>
+              <li>
+                <b>Lab</b> — bina paise risk ke practice
+              </li>
+              <li>
+                <b>Coach / Live Mentor / Master</b> — habits, rules, DNA
+              </li>
+            </ol>
+            <p className="wm-desk__muted">
+              Aap abhi <b>Live desk</b> pe ho — ye advanced practice hai. Beginner ho to pehle
+              Curriculum kholo.
+            </p>
+            <div className="wm-desk__guide-actions">
+              <button
+                type="button"
+                className="wm-desk__plan"
+                onClick={() =>
+                  applyHandoff({
+                    view: 'curriculum',
+                    levelId: 1,
+                    reason: 'Beginner start · Module 1 Level 1',
+                  })
+                }
+              >
+                Start Curriculum (Level 1)
+              </button>
+              <button
+                type="button"
+                className="wm-desk__chip"
+                onClick={() => applyHandoff(ecosystem.next)}
+              >
+                Mentor OS · Next step
+              </button>
+            </div>
+          </div>
+
           {detective ? (
             <div className="wm-desk__card">
               <div className="wm-desk__card-h">Desk read</div>

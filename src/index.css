@@ -7187,6 +7187,30 @@ input[type="number"] { -moz-appearance: textfield; }
   min-width: 0;
 }
 
+.wm-desk__guide {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.06);
+}
+
+.wm-desk__guide-list {
+  margin: 0 0 0.5rem;
+  padding-left: 1.1rem;
+  font-size: 0.74rem;
+  color: var(--tf-text);
+  line-height: 1.45;
+}
+
+.wm-desk__guide-list b {
+  color: #d4af37;
+}
+
+.wm-desk__guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
 .wm-desk__card {
   padding: 0.8rem 0.9rem;
   border: 1px solid var(--tf-border);
