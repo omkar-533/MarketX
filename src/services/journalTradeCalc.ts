@@ -20,6 +20,49 @@ export interface JournalCalcInput {
   market?: JournalMarket;
 }
 
+/** "NIFTY 24600 CE 07AUG" → underlying ticker for lot-size lookup. */
+export function journalUnderlyingSymbol(instrument: string): string {
+  const raw = String(instrument || '').trim().toUpperCase();
+  if (!raw) return '';
+  const opt = raw.match(/^([A-Z][A-Z0-9&-]{1,20})\s+(\d+(?:\.\d+)?)\s+(CE|PE)\b/);
+  if (opt) return opt[1];
+  const fut = raw.match(/^([A-Z][A-Z0-9&-]{1,20})\s+FUT\b/);
+  if (fut) return fut[1];
+  return raw.split(/\s+/)[0] || raw;
+}
+
+export type OptionRight = 'CE' | 'PE';
+
+export function formatOptionContract(
+  underlying: string,
+  strike: string | number,
+  right: OptionRight,
+  expiry = '',
+): string {
+  const u = String(underlying || '').trim().toUpperCase().split(/\s+/)[0];
+  const s = String(strike ?? '').trim();
+  const exp = String(expiry || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (!u || !s) return u;
+  return [u, s, right, exp].filter(Boolean).join(' ');
+}
+
+export function parseOptionContract(instrument: string): {
+  underlying: string;
+  strike: string;
+  right: OptionRight;
+  expiry: string;
+} | null {
+  const raw = String(instrument || '').trim().toUpperCase();
+  const m = raw.match(/^([A-Z][A-Z0-9&-]{1,20})\s+(\d+(?:\.\d+)?)\s+(CE|PE)(?:\s+(.+))?$/);
+  if (!m) return null;
+  return {
+    underlying: m[1],
+    strike: m[2],
+    right: m[3] as OptionRight,
+    expiry: (m[4] || '').trim(),
+  };
+}
+
 export function getInstrumentLotSize(
   instrument: string,
   market: JournalMarket = 'equity',
@@ -27,7 +70,8 @@ export function getInstrumentLotSize(
 ): number {
   if (market === 'crypto') return 1;
   if (market === 'forex') return forexStandardLots ? FOREX_STANDARD_LOT : 1;
-  const inst = getFnoInstrument(instrument.trim().toUpperCase());
+  const underlying = journalUnderlyingSymbol(instrument);
+  const inst = getFnoInstrument(underlying);
   return inst?.lotSize ?? 1;
 }
 

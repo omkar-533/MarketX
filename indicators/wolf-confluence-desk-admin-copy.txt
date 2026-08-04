@@ -1,0 +1,23 @@
+TITLE
+Wolf Confluence Desk
+
+DESCRIPTION (paste in Admin → Indicators)
+## Overview
+Multi-factor confluence desk for NIFTY / BANKNIFTY / F&O charts on TradingView.
+Scores Trend (EMA 21/55/200) + Momentum (RSI) + Volatility (ATR) + Participation (Volume) + Structure/Pullback.
+A signal fires only when the confluence score reaches your threshold (default 4/5).
+
+## Important
+This is a confluence SCORE tool — not a guaranteed accuracy system.
+No indicator can promise 80–90% win rate. Use as context with your own risk rules.
+
+## How to use
+1. Add on 5m / 15m (intraday) or 1h (swing).
+2. Watch EMAs + the top-right score table (Bull vs Bear /5).
+3. No buy/sell triangle signals — context / score only.
+4. Optional: enable NSE session filter (09:15–15:30 IST) in settings.
+
+## Best with
+- Higher-timeframe lean first (15m under 1h trend).
+- Avoid chasing when ATR filter shows Quiet.
+- Journal your own decisions — improve YOUR edge, don't trust a fixed %.

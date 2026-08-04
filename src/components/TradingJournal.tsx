@@ -71,7 +71,11 @@ import JournalTradeAssistPanel from './journal/JournalTradeAssistPanel';
 import type { JournalSymbolSelection } from '../services/equitySymbolService';
 import {
   calculateJournalTradeMetrics,
+  formatOptionContract,
   getInstrumentLotSize,
+  journalUnderlyingSymbol,
+  parseOptionContract,
+  type OptionRight,
 } from '../services/journalTradeCalc';
 import HunterMark from './HunterMark';
 import LuxSelect from './ui/LuxSelect';
@@ -90,6 +94,10 @@ type TradeFormState = {
   market: JournalMarket;
   pnlCurrency: PnlCurrency;
   instrument: string;
+  /** Options contract builder — composed into instrument on save */
+  optStrike: string;
+  optRight: OptionRight;
+  optExpiry: string;
   entryPrice: string;
   exitPrice: string;
   stopLoss: string;
@@ -138,6 +146,9 @@ const EMPTY_FORM_BASE: TradeFormState = {
   market: 'equity',
   pnlCurrency: 'INR',
   instrument: 'NIFTY',
+  optStrike: '',
+  optRight: 'CE',
+  optExpiry: '',
   entryPrice: '',
   exitPrice: '',
   stopLoss: '',
@@ -422,9 +433,21 @@ function hasManualPnl(input: TradeFormState): boolean {
 function getMissingTradeFields(input: TradeFormState): string[] {
   const missing: string[] = [];
   if (!sanitizeString(input.instrument)) missing.push('Instrument');
+  if (input.type === 'Options' && !sanitizeString(input.optStrike)) {
+    missing.push('Option strike');
+  }
   if (!sanitizeString(input.date)) missing.push('Date');
   if (parseManualPnl(input.realizedPnl) === null) missing.push('Profit / Loss');
   return missing;
+}
+
+/** Underlying in the picker + strike/CE-PE → saved script name. */
+function resolveInstrumentForSave(form: TradeFormState): string {
+  const underlying =
+    sanitizeString(form.instrument).split(/\s+/)[0] ||
+    'NIFTY';
+  if (form.type !== 'Options') return sanitizeString(form.instrument) || underlying;
+  return formatOptionContract(underlying, form.optStrike, form.optRight, form.optExpiry);
 }
 
 function normalizeFormForSave(form: TradeFormState): TradeFormState {
@@ -452,6 +475,7 @@ function normalizeFormForSave(form: TradeFormState): TradeFormState {
 function isTradeComplete(input: TradeFormState) {
   return (
     sanitizeString(input.instrument).length > 0 &&
+    (input.type !== 'Options' || sanitizeString(input.optStrike).length > 0) &&
     sanitizeString(input.date).length > 0 &&
     hasManualPnl(input)
   );
@@ -868,8 +892,13 @@ export default function TradingJournal({
       return form.quantityIsLots ? 100_000 : 1;
     }
     if (selectedSymbolMeta?.isFno) return selectedSymbolMeta.lotSize;
-    return getInstrumentLotSize(form.instrument || 'NIFTY', 'equity');
-  }, [form.instrument, form.market, form.quantityIsLots, selectedSymbolMeta]);
+    return getInstrumentLotSize(
+      form.type === 'Options'
+        ? journalUnderlyingSymbol(form.instrument) || form.instrument || 'NIFTY'
+        : form.instrument || 'NIFTY',
+      'equity',
+    );
+  }, [form.instrument, form.market, form.quantityIsLots, form.type, selectedSymbolMeta]);
 
   const preview = useMemo(() => {
     const normalized = normalizeFormForSave(form);
@@ -904,6 +933,15 @@ export default function TradingJournal({
     () =>
       computeFormDraftAssist({
         ...form,
+        instrument:
+          form.type === 'Options' && sanitizeString(form.optStrike)
+            ? formatOptionContract(
+                form.instrument || 'NIFTY',
+                form.optStrike,
+                form.optRight,
+                form.optExpiry,
+              )
+            : form.instrument,
         screenshot: Boolean(uploadPreview),
       }),
     [form, uploadPreview],
@@ -1009,8 +1047,9 @@ export default function TradingJournal({
       return;
     }
 
-    // Recover instrument if picker showed a symbol but form field was empty.
-    const recoveredInstrument =
+    // Recover underlying if picker showed a symbol but form field was empty,
+    // then for Options compose "NIFTY 24600 CE …" as the saved script.
+    const recoveredUnderlying =
       sanitizeString(form.instrument) ||
       selectedSymbolMeta?.symbol ||
       selectedGlobalMeta?.symbol ||
@@ -1018,10 +1057,11 @@ export default function TradingJournal({
 
     const formToSave: TradeFormState = {
       ...form,
-      instrument: recoveredInstrument,
+      instrument: recoveredUnderlying,
       date: sanitizeString(form.date) || localDateTimeInputValue(),
       pnlCurrency: form.pnlCurrency || defaultPnlCurrency(form.market),
     };
+    formToSave.instrument = resolveInstrumentForSave(formToSave);
 
     const missing = getMissingTradeFields(formToSave);
     if (missing.length > 0) {
@@ -1095,8 +1135,10 @@ export default function TradingJournal({
     if (!isAdmin && !tradeBelongsToUser(trade, user)) return;
 
     const mkt = tradeMarket(trade);
+    const opt = trade.type === 'Options' ? parseOptionContract(trade.instrument) : null;
+    const underlying = opt?.underlying || journalUnderlyingSymbol(trade.instrument) || trade.instrument;
     const lotSize = getInstrumentLotSize(
-      trade.instrument,
+      underlying,
       mkt,
       mkt === 'forex' && trade.positionSize >= 1000,
     );
@@ -1107,7 +1149,10 @@ export default function TradingJournal({
     setForm({
       market: mkt,
       pnlCurrency: tradePnlCurrency(trade),
-      instrument: trade.instrument,
+      instrument: underlying,
+      optStrike: opt?.strike ?? '',
+      optRight: opt?.right ?? 'CE',
+      optExpiry: opt?.expiry ?? '',
       entryPrice: String(trade.entryPrice),
       exitPrice: String(trade.exitPrice),
       stopLoss: String(trade.stopLoss),
@@ -1136,6 +1181,9 @@ export default function TradingJournal({
       setSelectedSymbolMeta(null);
     } else {
       setSelectedGlobalMeta(null);
+      void import('../services/equitySymbolService').then((mod) => {
+        setSelectedSymbolMeta(mod.getJournalSymbolSelection(underlying));
+      });
     }
     setStatusMessage('Editing trade — click Update Trade to save changes.');
   };
@@ -1559,12 +1607,13 @@ export default function TradingJournal({
                 </div>
 
                 <p className="text-xs text-slate-500">
-                  Instrument * —{' '}
-                  {form.market === 'equity'
-                    ? 'NSE / BSE stocks & indices'
-                    : form.market === 'crypto'
-                      ? 'crypto pair (search or type e.g. BTC/USDT)'
-                      : 'forex pair (EUR/USD, XAU/USD, USD/INR…)'}
+                  {form.type === 'Options'
+                    ? 'Underlying * — pehle NIFTY / BANKNIFTY / stock chuno, neeche strike + CE/PE bharo'
+                    : form.market === 'equity'
+                      ? 'Instrument * — NSE / BSE stocks & indices'
+                      : form.market === 'crypto'
+                        ? 'Instrument * — crypto pair (search or type e.g. BTC/USDT)'
+                        : 'Instrument * — forex pair (EUR/USD, XAU/USD, USD/INR…)'}
                 </p>
 
                 {form.market === 'equity' ? (
@@ -1601,7 +1650,76 @@ export default function TradingJournal({
                     <span className="font-bold text-[var(--tf-text)]">{selectedSymbolMeta.symbol}</span>
                     <span>{selectedSymbolMeta.name}</span>
                     <span className="rounded bg-[var(--tf-surface)] border border-[var(--tf-border)] px-1.5 py-0.5 text-[10px]">{selectedSymbolMeta.exchange}</span>
-                    <span className="text-[10px]">Matched from list · prices ab bhi manual</span>
+                    <span className="text-[10px]">
+                      {form.type === 'Options'
+                        ? 'Underlying matched · option contract neeche'
+                        : 'Matched from list · prices ab bhi manual'}
+                    </span>
+                  </div>
+                )}
+
+                {form.market === 'equity' && form.type === 'Options' && (
+                  <div className="rounded-xl border border-[#d4af37]/35 bg-[#d4af37]/10 p-3 space-y-2">
+                    <p className="text-[11px] font-bold text-[#d4af37]">
+                      Option contract — script aise bharo
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Example: underlying <span className="text-slate-300">NIFTY</span> + strike{' '}
+                      <span className="text-slate-300">24600</span> +{' '}
+                      <span className="text-slate-300">CE</span> → saved as{' '}
+                      <span className="font-semibold text-[var(--tf-text)]">NIFTY 24600 CE</span>.
+                      Entry / Exit pe <span className="text-slate-300">premium</span> daalo (spot nahi).
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        value={form.optStrike}
+                        onChange={(e) =>
+                          setForm({ ...form, optStrike: sanitizeDecimalInput(e.target.value) })
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
+                        }}
+                        className={`col-span-1 rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                        placeholder="Strike *"
+                        inputMode="decimal"
+                        autoComplete="off"
+                      />
+                      <LuxSelect
+                        value={form.optRight}
+                        options={[
+                          { value: 'CE', label: 'CE (Call)' },
+                          { value: 'PE', label: 'PE (Put)' },
+                        ]}
+                        onChange={(v) => setForm({ ...form, optRight: v as OptionRight })}
+                      />
+                      <input
+                        value={form.optExpiry}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            optExpiry: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                          })
+                        }
+                        className={`rounded-xl border px-3 py-2 text-sm ${inputClass}`}
+                        placeholder="Expiry (07AUG)"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {sanitizeString(form.optStrike) ? (
+                      <p className="text-[11px] text-[var(--tf-text)]">
+                        Script preview:{' '}
+                        <span className="font-bold text-[#d4af37]">
+                          {formatOptionContract(
+                            form.instrument || selectedSymbolMeta?.symbol || 'NIFTY',
+                            form.optStrike,
+                            form.optRight,
+                            form.optExpiry,
+                          )}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-amber-400/90">Strike bharo — bina iske option script incomplete hai.</p>
+                    )}
                   </div>
                 )}
                 {form.market !== 'equity' && selectedGlobalMeta && (
@@ -1659,7 +1777,7 @@ export default function TradingJournal({
                   if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
                 }}
                 className={`rounded-xl border px-3 py-2 ${inputClass}`}
-                placeholder="Entry Price"
+                placeholder={form.type === 'Options' ? 'Entry premium' : 'Entry Price'}
                 inputMode="decimal"
                 autoComplete="off"
               />
@@ -1670,7 +1788,7 @@ export default function TradingJournal({
                   if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) e.preventDefault();
                 }}
                 className={`rounded-xl border px-3 py-2 ${inputClass}`}
-                placeholder="Exit Price"
+                placeholder={form.type === 'Options' ? 'Exit premium' : 'Exit Price'}
                 inputMode="decimal"
                 autoComplete="off"
               />
@@ -1788,9 +1906,17 @@ export default function TradingJournal({
                 }
                 onChange={(v) => {
                   const type = v as TradeType;
+                  const underlying =
+                    journalUnderlyingSymbol(form.instrument) ||
+                    selectedSymbolMeta?.symbol ||
+                    form.instrument;
                   setForm({
                     ...form,
                     type,
+                    instrument: type === 'Options' ? underlying : form.instrument,
+                    optStrike: type === 'Options' ? form.optStrike : '',
+                    optRight: type === 'Options' ? form.optRight : 'CE',
+                    optExpiry: type === 'Options' ? form.optExpiry : '',
                     quantityIsLots:
                       form.market === 'equity' &&
                       (type === 'Futures' || type === 'Options') &&

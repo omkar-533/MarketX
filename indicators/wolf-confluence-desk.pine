@@ -1,0 +1,110 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Wolf Trade AI — Confluence Desk (educational confluence tool, NOT a guaranteed win-rate system)
+
+//@version=5
+indicator("Wolf Confluence Desk", shorttitle="WOLF CFD", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DISCLAIMER
+// This is a confluence SCORE tool. It does NOT claim 80–90% accuracy.
+// No indicator can guarantee win rate. Use for structure + momentum context only.
+// Not financial advice. Areas of Interest only — never auto trade blindly.
+// ═══════════════════════════════════════════════════════════════════════════
+
+grpTrend = "Trend filters"
+fastLen   = input.int(21, "Fast EMA", minval=2, group=grpTrend)
+midLen    = input.int(55, "Mid EMA", minval=2, group=grpTrend)
+slowLen   = input.int(200, "Anchor EMA", minval=2, group=grpTrend)
+
+grpMom = "Momentum"
+rsiLen    = input.int(14, "RSI length", minval=2, group=grpMom)
+rsiBullLo = input.int(45, "Bull RSI floor", minval=1, maxval=99, group=grpMom)
+rsiBullHi = input.int(68, "Bull RSI ceiling", minval=1, maxval=99, group=grpMom)
+rsiBearLo = input.int(32, "Bear RSI floor", minval=1, maxval=99, group=grpMom)
+rsiBearHi = input.int(55, "Bear RSI ceiling", minval=1, maxval=99, group=grpMom)
+
+grpVol = "Volatility & volume"
+atrLen    = input.int(14, "ATR length", minval=2, group=grpVol)
+atrMult   = input.float(1.0, "Min ATR vs ATR-SMA", minval=0.1, step=0.1, group=grpVol)
+useVol    = input.bool(true, "Require volume > SMA", group=grpVol)
+volLen    = input.int(20, "Volume SMA", minval=2, group=grpVol)
+
+grpUi = "Display"
+minScore  = input.int(4, "Highlight score from (1–5)", minval=3, maxval=5, group=grpUi)
+useSession = input.bool(false, "Only NSE cash session (09:15–15:30 IST)", group=grpUi)
+showTable = input.bool(true, "Show score table", group=grpUi)
+showBg    = input.bool(true, "Tint background by bias", group=grpUi)
+
+// ── Core series ────────────────────────────────────────────────────────────
+emaFast = ta.ema(close, fastLen)
+emaMid  = ta.ema(close, midLen)
+emaSlow = ta.ema(close, slowLen)
+rsi     = ta.rsi(close, rsiLen)
+atr     = ta.atr(atrLen)
+atrSma  = ta.sma(atr, atrLen)
+volSma  = ta.sma(volume, volLen)
+
+inSession = not useSession or not na(time(timeframe.period, "0915-1530:1234567", "Asia/Kolkata"))
+
+// ── Confluence components (each 0/1) ───────────────────────────────────────
+bullTrend = emaFast > emaMid and emaMid > emaSlow and close > emaFast
+bearTrend = emaFast < emaMid and emaMid < emaSlow and close < emaFast
+
+bullPull  = close > emaMid and close < emaFast and emaFast > emaMid   // pullback into fast while trend up
+bearPull  = close < emaMid and close > emaFast and emaFast < emaMid
+
+bullMom   = rsi > rsiBullLo and rsi < rsiBullHi and rsi > rsi[1]
+bearMom   = rsi < rsiBearHi and rsi > rsiBearLo and rsi < rsi[1]
+
+bullVolx  = atr > atrSma * atrMult
+bearVolx  = atr > atrSma * atrMult
+
+bullPart  = not useVol or volume > volSma
+bearPart  = not useVol or volume > volSma
+
+// Structure proxy: higher-high / lower-low vs recent pivot (simple, readable)
+ph = ta.pivothigh(high, 3, 3)
+pl = ta.pivotlow(low, 3, 3)
+var float lastPh = na
+var float lastPl = na
+if not na(ph)
+    lastPh := ph
+if not na(pl)
+    lastPl := pl
+
+bullStruct = not na(lastPl) and close > lastPl and (na(lastPh) or close >= lastPh * 0.998)
+bearStruct = not na(lastPh) and close < lastPh and (na(lastPl) or close <= lastPl * 1.002)
+
+bullScore = (bullTrend ? 1 : 0) + (bullMom ? 1 : 0) + (bullVolx ? 1 : 0) + (bullPart ? 1 : 0) + ((bullPull or bullStruct) ? 1 : 0)
+bearScore = (bearTrend ? 1 : 0) + (bearMom ? 1 : 0) + (bearVolx ? 1 : 0) + (bearPart ? 1 : 0) + ((bearPull or bearStruct) ? 1 : 0)
+
+bullBias = inSession and bullScore >= minScore and bullScore > bearScore
+bearBias = inSession and bearScore >= minScore and bearScore > bullScore
+
+// ── Plots (context only — no buy/sell signal markers) ──────────────────────
+plot(emaFast, "EMA Fast", color=color.new(#26a69a, 0), linewidth=1)
+plot(emaMid,  "EMA Mid",  color=color.new(#42a5f5, 20), linewidth=1)
+plot(emaSlow, "EMA Anchor", color=color.new(#ef5350, 35), linewidth=2)
+
+bgcolor(showBg ? (bullBias ? color.new(#26a69a, 92) : bearBias ? color.new(#ef5350, 92) : na) : na)
+
+// ── Score table ────────────────────────────────────────────────────────────
+if showTable and barstate.islast
+    var table t = table.new(position.top_right, 2, 8, bgcolor=color.new(#131722, 15), border_width=1, border_color=color.new(#363a45, 0))
+    table.cell(t, 0, 0, "Wolf CFD", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 0, "Score", text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 1, "Bull", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 1, str.tostring(bullScore) + "/5", text_color=bullScore >= minScore ? #26a69a : color.gray, text_size=size.small)
+    table.cell(t, 0, 2, "Bear", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 2, str.tostring(bearScore) + "/5", text_color=bearScore >= minScore ? #ef5350 : color.gray, text_size=size.small)
+    table.cell(t, 0, 3, "Trend", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 3, bullTrend ? "Bull stack" : bearTrend ? "Bear stack" : "Mixed", text_color=color.white, text_size=size.tiny)
+    table.cell(t, 0, 4, "RSI", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 4, str.tostring(rsi, "#.0"), text_color=color.white, text_size=size.tiny)
+    table.cell(t, 0, 5, "ATR filter", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 5, bullVolx ? "Active" : "Quiet", text_color=color.white, text_size=size.tiny)
+    table.cell(t, 0, 6, "Lean", text_color=color.gray, text_size=size.tiny)
+    leanTxt = bullBias ? "Bull lean" : bearBias ? "Bear lean" : "Balanced"
+    table.cell(t, 1, 6, leanTxt, text_color=bullBias ? #26a69a : bearBias ? #ef5350 : color.gray, text_size=size.tiny)
+    table.cell(t, 0, 7, "Note", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 7, "Context only — no signals", text_color=color.new(#d4af37, 0), text_size=size.tiny)
