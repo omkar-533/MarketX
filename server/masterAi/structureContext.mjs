@@ -121,6 +121,10 @@ const EMPTY = {
   swings: [],
   events: [],
   lastClose: 0,
+  rangeHigh: 0,
+  rangeLow: 0,
+  rangeHighBarsAgo: 0,
+  rangeLowBarsAgo: 0,
 };
 
 /**
@@ -149,12 +153,32 @@ export async function buildStructureContext(message, opts = {}) {
     const bars = Array.isArray(data?.bars) ? data.bars : [];
     if (bars.length < 20) return { ...EMPTY, symbol, interval };
 
-    const recent = bars.slice(-80);
-    const swings = labelSwings(recent).slice(-8);
+    // Longer window so S/R above a strong rally still exists in the tape.
+    const recent = bars.slice(-220);
+    const allSwings = labelSwings(recent);
+    const swings = allSwings.slice(-16);
     if (!swings.length) return { ...EMPTY, symbol, interval };
 
     const lastClose = recent[recent.length - 1]?.close ?? 0;
     const events = detectEvents(swings, lastClose);
+
+    let rangeHigh = 0;
+    let rangeLow = Infinity;
+    let rangeHighBarsAgo = 0;
+    let rangeLowBarsAgo = 0;
+    for (let i = 0; i < recent.length; i += 1) {
+      const b = recent[i];
+      const ago = recent.length - 1 - i;
+      if (b.high >= rangeHigh) {
+        rangeHigh = b.high;
+        rangeHighBarsAgo = ago;
+      }
+      if (b.low <= rangeLow) {
+        rangeLow = b.low;
+        rangeLowBarsAgo = ago;
+      }
+    }
+    if (!Number.isFinite(rangeLow)) rangeLow = 0;
 
     const swingLines = swings.map(
       (s) =>
@@ -173,13 +197,26 @@ export async function buildStructureContext(message, opts = {}) {
 
     const block = [
       `STRUCTURE TAPE (${symbol} ${interval} — confirmed pivots from live OHLC; MARK THESE, not supply/demand unless asked):`,
+      `LTP/last close: ${Number(lastClose).toFixed(2)}. Window high: ${Number(rangeHigh).toFixed(2)} (barsAgo=${rangeHighBarsAgo}). Window low: ${Number(rangeLow).toFixed(2)} (barsAgo=${rangeLowBarsAgo}).`,
+      'S/R RULE: RESISTANCE = nearest high ABOVE LTP. SUPPORT = nearest low BELOW LTP. Never put RESISTANCE below LTP.',
       ...swingLines,
       ...(eventLines.length ? ['Events:', ...eventLines] : []),
       `Desk bias read: ${bias}.`,
       'For the wolfchart block: put each HH/HL/LH/LL as {"type":"label","p1":<price>,"label":"HH"} (or HL/LH/LL). Put BOS/CHOCH as {"type":"vline","x1":-<barsAgo>,"label":"BOS"} plus a label at the broken level. Do NOT replace this with Supply/Demand zones.',
     ].join('\n');
 
-    return { block, symbol, interval, swings, events, lastClose };
+    return {
+      block,
+      symbol,
+      interval,
+      swings,
+      events,
+      lastClose,
+      rangeHigh,
+      rangeLow,
+      rangeHighBarsAgo,
+      rangeLowBarsAgo,
+    };
   } catch (err) {
     console.warn('[Wolf AI] structure context failed:', err?.message || err);
     return { ...EMPTY, symbol, interval };

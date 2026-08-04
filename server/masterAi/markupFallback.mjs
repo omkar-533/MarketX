@@ -2,8 +2,8 @@
  * When the model forgets the wolfchart fence, synthesize one from live tape /
  * structure pivots so "mark it" never leaves a blank chart.
  *
- * S/R style matches desk practice: one horizontal line on the recent swing high
- * labeled RESISTANCE, one on the recent swing low labeled SUPPORT.
+ * S/R rule (desk): RESISTANCE = nearest real high ABOVE LTP,
+ * SUPPORT = nearest real low BELOW LTP. Never mark resistance under price.
  */
 
 export function replyHasWolfchart(reply) {
@@ -40,29 +40,88 @@ function resolveTf(meta) {
   return String(meta.interval || '15m').replace(/^(\d+)$/, '$1m');
 }
 
-/** Latest swing high → RESISTANCE, latest swing low → SUPPORT (screenshot style). */
+/**
+ * Pick S/R relative to live price — same logic as a trader reading the chart.
+ */
+export function pickSrPair(meta = {}) {
+  const q = meta.quote;
+  const px =
+    Number(meta.lastClose) ||
+    Number(q?.price) ||
+    0;
+  const swings = Array.isArray(meta.swings) ? meta.swings : [];
+  const highs = swings.filter((s) => s.kind === 'high' && Number(s.price) > 0);
+  const lows = swings.filter((s) => s.kind === 'low' && Number(s.price) > 0);
+
+  if (Number(meta.rangeHigh) > 0) {
+    highs.push({
+      price: Number(meta.rangeHigh),
+      barsAgo: Number(meta.rangeHighBarsAgo) || 6,
+      kind: 'high',
+      label: 'RH',
+    });
+  }
+  if (Number(meta.rangeLow) > 0) {
+    lows.push({
+      price: Number(meta.rangeLow),
+      barsAgo: Number(meta.rangeLowBarsAgo) || 18,
+      kind: 'low',
+      label: 'RL',
+    });
+  }
+  if (q?.high > 0) highs.push({ price: Number(q.high), barsAgo: 2, kind: 'high', label: 'DH' });
+  if (q?.low > 0) lows.push({ price: Number(q.low), barsAgo: 14, kind: 'low', label: 'DL' });
+
+  if (!(px > 0)) {
+    const res = highs.sort((a, b) => b.price - a.price)[0] || null;
+    const sup = lows.sort((a, b) => a.price - b.price)[0] || null;
+    return { res, sup, px: 0 };
+  }
+
+  const eps = Math.max(px * 0.0002, 0.5);
+
+  // Nearest high ABOVE price = resistance
+  let res = highs
+    .filter((h) => h.price > px + eps)
+    .sort((a, b) => a.price - b.price)[0];
+
+  // Nearest low BELOW price = support
+  let sup = lows
+    .filter((l) => l.price < px - eps)
+    .sort((a, b) => b.price - a.price)[0];
+
+  // At session highs: day/range high can sit on/near LTP — still valid resistance tag.
+  if (!res) {
+    const touch = highs
+      .filter((h) => h.price >= px - eps)
+      .sort((a, b) => b.price - a.price)[0];
+    if (touch) res = { ...touch, price: Math.max(touch.price, px) };
+  }
+
+  if (!sup) {
+    const touch = lows
+      .filter((l) => l.price <= px + eps)
+      .sort((a, b) => a.price - b.price)[0];
+    if (touch) sup = touch;
+  }
+
+  // Final guard: never ship resistance under LTP or support above LTP.
+  if (res && res.price < px - eps) res = null;
+  if (sup && sup.price > px + eps) sup = null;
+  if (res && sup && res.price <= sup.price) {
+    // Prefer keeping the side that respects LTP.
+    if (res.price <= px) res = null;
+    else sup = null;
+  }
+
+  return { res, sup, px };
+}
+
+/** Screenshot-style SUPPORT / RESISTANCE hlines sided to LTP. */
 export function synthesizeSrWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
-  const swings = Array.isArray(meta.swings) ? meta.swings : [];
-
-  let res = null;
-  let sup = null;
-  for (let i = swings.length - 1; i >= 0; i -= 1) {
-    const s = swings[i];
-    if (!res && s.kind === 'high') res = s;
-    if (!sup && s.kind === 'low') sup = s;
-    if (res && sup) break;
-  }
-
-  // No pivots yet — fall back to session high/low (still labeled SUPPORT/RESISTANCE).
-  const q = meta.quote;
-  if (!res && q?.high) {
-    res = { price: q.high, barsAgo: 12, kind: 'high', label: 'HH' };
-  }
-  if (!sup && q?.low) {
-    sup = { price: q.low, barsAgo: 20, kind: 'low', label: 'LL' };
-  }
+  const { res, sup } = pickSrPair(meta);
 
   const levels = [];
   const shapes = [];
@@ -99,90 +158,35 @@ export function synthesizeSrWolfchart(meta = {}) {
 }
 
 /**
- * Generic mark fallback (day range + structure tags) when the ask is not S/R.
+ * Generic mark fallback — still prefers LTP-sided S/R when swings exist.
  */
 export function synthesizeWolfchart(meta = {}) {
   if (meta.style === 'sr') return synthesizeSrWolfchart(meta);
 
+  const sr = synthesizeSrWolfchart(meta);
+  if (sr) return sr;
+
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
+  const q = meta.quote;
   const levels = [];
   const shapes = [];
-  const seen = new Set();
-
-  const addLevel = (price, kind, label) => {
-    const p = roundPrice(price);
-    if (p == null) return;
-    const key = `${kind}:${p}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    levels.push({ price: p, kind, label });
-  };
-
-  // Prefer swing S/R lines first — closer to how traders mark a chart.
-  const swings = Array.isArray(meta.swings) ? meta.swings : [];
-  let res = null;
-  let sup = null;
-  for (let i = swings.length - 1; i >= 0; i -= 1) {
-    const s = swings[i];
-    if (!res && s.kind === 'high') res = s;
-    if (!sup && s.kind === 'low') sup = s;
-    if (res && sup) break;
-  }
-  if (res) {
-    const p = roundPrice(res.price);
+  if (q?.high) {
+    const p = roundPrice(q.high);
     if (p != null) {
-      addLevel(p, 'resistance', 'RESISTANCE');
-      shapes.push({
-        type: 'hline',
-        p1: p,
-        x1: -Math.abs(Number(res.barsAgo) || 8),
-        label: 'RESISTANCE',
-        tone: 'bear',
-      });
+      levels.push({ price: p, kind: 'resistance', label: 'Day High' });
+      shapes.push({ type: 'hline', p1: p, label: 'Day High', tone: 'bear' });
     }
   }
-  if (sup) {
-    const p = roundPrice(sup.price);
+  if (q?.low) {
+    const p = roundPrice(q.low);
     if (p != null) {
-      addLevel(p, 'support', 'SUPPORT');
-      shapes.push({
-        type: 'hline',
-        p1: p,
-        x1: -Math.abs(Number(sup.barsAgo) || 16),
-        label: 'SUPPORT',
-        tone: 'bull',
-      });
+      levels.push({ price: p, kind: 'support', label: 'Day Low' });
+      shapes.push({ type: 'hline', p1: p, label: 'Day Low', tone: 'bull' });
     }
   }
-
-  const q = meta.quote;
-  if (!res && !sup && q) {
-    addLevel(q.high, 'resistance', 'Day High');
-    addLevel(q.low, 'support', 'Day Low');
-    const high = roundPrice(q.high);
-    const low = roundPrice(q.low);
-    if (high != null) shapes.push({ type: 'hline', p1: high, label: 'Day High', tone: 'bear' });
-    if (low != null) shapes.push({ type: 'hline', p1: low, label: 'Day Low', tone: 'bull' });
-  }
-
-  for (const e of (meta.events || []).slice(0, 2)) {
-    const tag = /choch/i.test(e.label || '') ? 'CHOCH' : 'BOS';
-    shapes.push({
-      type: 'vline',
-      x1: -Math.abs(Number(e.barsAgo) || 0),
-      label: tag,
-      tone: /^bull/i.test(e.label || '') ? 'bull' : 'bear',
-    });
-  }
-
-  if (!levels.length && !shapes.length) return null;
-  return fence({
-    symbol,
-    tf,
-    levels: levels.slice(0, 8),
-    shapes: shapes.slice(0, 14),
-  });
+  if (!levels.length) return null;
+  return fence({ symbol, tf, levels, shapes });
 }
 
 /**
@@ -195,8 +199,7 @@ export function ensureWolfchartReply(reply, meta) {
   if (meta?.style === 'sr') {
     const block = synthesizeSrWolfchart(meta);
     if (!block) return text;
-    // Always enforce screenshot-style S/R for this ask.
-    console.info('[Wolf AI] enforced SUPPORT/RESISTANCE hline markup');
+    console.info('[Wolf AI] enforced LTP-sided SUPPORT/RESISTANCE hlines');
     return `${stripWolfchart(text)}${block}`;
   }
 

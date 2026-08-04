@@ -1452,10 +1452,10 @@ ANNOTATIONS
   arrow — direction (x1,p1)→(x2,p2). Impulse / rejection direction (NOT a trade order).
 MATCH THE QUESTION:
   structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE (not Supply/Demand).
-  SUPPORT / RESISTANCE (classic desk mark) → exactly TWO hlines from STRUCTURE TAPE:
-    recent swing HIGH → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
-    recent swing LOW  → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
-    Also mirror in levels with kind support/resistance. NO zones, NO Day High/Low labels for this ask.
+  SUPPORT / RESISTANCE (classic desk mark) → exactly TWO hlines sided to LTP:
+    nearest high ABOVE LTP → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"}
+    nearest low BELOW LTP  → {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"SUPPORT","tone":"bull"}
+    NEVER put RESISTANCE below LTP. Mirror in levels. NO zones.
   OB / supply / demand / FVG → zone.
   trendline / channel / pitchfork → trend (and ray if it should extend).
   fib / pullback / 0.618 0.705 0.786 → fib with real swing p1/p2.
@@ -1569,10 +1569,11 @@ const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on th
 
 const SR_MARK_HINT = `SUPPORT/RESISTANCE STYLE (mandatory for this ask):
 Mark like a TradingView horizontal-line desk mark — NOT zones, NOT order blocks.
-1) From STRUCTURE TAPE take the latest swing HIGH → hline + label "RESISTANCE" (tone bear), x1 = -barsAgo of that swing.
-2) Latest swing LOW → hline + label "SUPPORT" (tone bull), x1 = -barsAgo.
-3) Mirror both in "levels" with kind resistance/support.
-4) Prose: 2–3 short lines naming those two prices. Then the wolfchart block. No Entry/Stop/Target.`;
+CRITICAL vs LTP from STRUCTURE TAPE / LIVE MARKET DATA:
+- RESISTANCE = nearest real high ABOVE current LTP (window high / swing high / day high above price). NEVER mark resistance below LTP.
+- SUPPORT = nearest real low BELOW current LTP (swing low / day low). NEVER mark support above LTP.
+Shapes: {"type":"hline","p1":<price>,"x1":-<barsAgo>,"label":"RESISTANCE","tone":"bear"} and same for SUPPORT.
+Mirror both in "levels". Prose 2–3 short lines with those prices. Then wolfchart. No Entry/Stop/Target.`;
 
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
@@ -2025,7 +2026,17 @@ export function createMasterAiRouter(apiKey) {
       let primaryQuote = null;
       let liveQuotes = [];
       let structureBlock = '';
-      let structureMeta = { symbol: '', interval: '', swings: [], events: [] };
+      let structureMeta = {
+        symbol: '',
+        interval: '',
+        swings: [],
+        events: [],
+        lastClose: 0,
+        rangeHigh: 0,
+        rangeLow: 0,
+        rangeHighBarsAgo: 0,
+        rangeLowBarsAgo: 0,
+      };
       let intelBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       if (!shortChat && !wantsJournalReview) {
@@ -2055,6 +2066,11 @@ export function createMasterAiRouter(apiKey) {
               interval: structure.interval || '',
               swings: structure.swings || [],
               events: structure.events || [],
+              lastClose: structure.lastClose || 0,
+              rangeHigh: structure.rangeHigh || 0,
+              rangeLow: structure.rangeLow || 0,
+              rangeHighBarsAgo: structure.rangeHighBarsAgo || 0,
+              rangeLowBarsAgo: structure.rangeLowBarsAgo || 0,
             };
             if (structureBlock) {
               console.info(
@@ -2253,6 +2269,11 @@ export function createMasterAiRouter(apiKey) {
               quote,
               swings: structureMeta.swings,
               events: structureMeta.events,
+              lastClose: structureMeta.lastClose || quote?.price || 0,
+              rangeHigh: structureMeta.rangeHigh,
+              rangeLow: structureMeta.rangeLow,
+              rangeHighBarsAgo: structureMeta.rangeHighBarsAgo,
+              rangeLowBarsAgo: structureMeta.rangeLowBarsAgo,
               style: wantsSrMark || explicitMark ? (wantsSrMark ? 'sr' : 'auto') : undefined,
             }),
           };

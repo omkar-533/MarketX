@@ -354,7 +354,7 @@ export function useChartDrawings({
         if (shape.type === 'hline') {
           if (y1 === null) continue;
           const isSr = /^(support|resistance)$/i.test(shape.label || '');
-          // Desk S/R look: solid blue full-width line + uppercase tag at the swing.
+          // Desk S/R look: solid blue full-width line + tag near the swing (like TV).
           const lineColor = isSr ? '#2962ff' : tone.line;
           const tagColor = isSr ? '#ef5350' : tone.line;
           ctx.strokeStyle = lineColor;
@@ -367,15 +367,20 @@ export function useChartDrawings({
           ctx.setLineDash([]);
           ctx.strokeStyle = tone.line;
           ctx.lineWidth = 1.5;
-          const tagX =
-            shape.x1 === undefined ? 10 : (anchorX(shape.x1, -10) ?? 10);
-          const above = /resistance/i.test(shape.label || '');
-          const tagY = above ? y1 - 4 : y1 + 14;
           if (isSr) {
-            ctx.font = '700 11px "Trebuchet MS", Roboto, sans-serif';
+            const swingX = shape.x1 === undefined ? null : anchorX(shape.x1, -10);
+            // Keep label on-screen near the swing; fall back to left gutter.
+            let tagX = swingX == null ? 12 : swingX;
+            tagX = Math.min(Math.max(10, tagX), paneWidth - 96);
+            const above = /resistance/i.test(shape.label || '');
+            ctx.font = '700 12px "Trebuchet MS", Roboto, sans-serif';
             ctx.textBaseline = above ? 'bottom' : 'top';
             ctx.fillStyle = tagColor;
-            ctx.fillText(String(shape.label || '').toUpperCase(), Math.max(8, tagX), tagY);
+            ctx.fillText(
+              String(shape.label || '').toUpperCase(),
+              tagX,
+              above ? y1 - 5 : y1 + 5,
+            );
           } else {
             chip(shape.label, 8, y1 - 2, tone.line);
           }
