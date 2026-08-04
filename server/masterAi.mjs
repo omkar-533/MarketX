@@ -1692,6 +1692,29 @@ Step styles:
 
 const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
 
+const MENTOR_COACH_HINT = `WOLF AI PERFORMANCE COACH — MODULE 3 (trader coach, not market signal bot):
+Mission: Improve the STUDENT — habits, discipline, psychology, risk process, decision-making — using HISTORICAL journal evidence in the message. You coach the trader, not the next candle.
+Hard rules:
+- NEVER invent new Entry / Stop / Target / Buy / Sell / lot size / RR orders for future trades.
+- You MAY discuss logged historical levels from journal stats already provided.
+- Tone: supportive accountability, not judgmental. Socratic questions over lectures.
+- Prefer process homework (journal drills, identify patterns on chart, emotion tracking) over strategy signals.
+
+Use this labeled skeleton when doing a full briefing:
+### Performance read
+Stats + what they imply about process (not luck).
+### Mistakes / process gaps
+Technical + discipline + risk gaps from evidence (FOMO, revenge, poor RR process, stop respect, etc.).
+### Psychology notes
+Fear/greed/FOMO/overconfidence patterns — supportive language.
+### Personalized improvement plan
+3–5 concrete process steps + homework (no trade calls).
+### Next practice assignment
+One clear drill for the next session.
+### Accountability
+If goals look broken, recommend pause/review — supportive.
+End with ONE Socratic question.`;
+
 const CHART_MENTOR_HINT = `WOLF AI CHART MENTOR — MODULE 2 (educational chart teacher, not a signal bot):
 Mission: Teach the student to READ charts with reasoning. Every conclusion needs why + how. Never Entry/Stop/Target/Buy/Sell/RR as orders.
 
@@ -2174,6 +2197,8 @@ export function createMasterAiRouter(apiKey) {
       const mentorDesk = Boolean(body?.mentorDesk);
       const mentorChart =
         Boolean(body?.mentorChart) || /\[CHART MENTOR/i.test(String(message || ''));
+      const mentorCoach =
+        Boolean(body?.mentorCoach) || /\[PERFORMANCE COACH/i.test(String(message || ''));
       const trainingGrade = Boolean(body?.trainingGrade);
       const mentorLesson =
         body?.mentorLesson && typeof body.mentorLesson === 'object'
@@ -2420,13 +2445,16 @@ export function createMasterAiRouter(apiKey) {
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
-      if (mentorDesk || mentorChart) {
+      if (mentorDesk || mentorChart || mentorCoach) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
         if (mentorChart) {
           textBlock += `\n\n${CHART_MENTOR_HINT}`;
           textBlock += `\n\n${SCENARIO_HINT}`;
           textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        }
+        if (mentorCoach) {
+          textBlock += `\n\n${MENTOR_COACH_HINT}`;
         }
         if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
         if (trainingGrade) {
@@ -2457,8 +2485,10 @@ export function createMasterAiRouter(apiKey) {
             '\n\nAUTO-QUIZ TASK: Ask ONE short process question about LIVE or HISTORICAL structure from MARKET INTEL. Do not reveal the ideal answer yet. No trade orders.';
         }
         // Mentor coaching should usually draw the lesson when teaching/grading.
+        // Performance Coach is journal/process only — never force wolfchart markup.
         if (
           !mentorChart &&
+          !mentorCoach &&
           !trainingGrade &&
           !/\[MENTOR AUTO-QUIZ\]|\[MENTOR HISTORY/i.test(String(message || '')) &&
           /\b(teach|mistake|draw|mark|structure|explain|sikh|galat|seekh)\b/i.test(

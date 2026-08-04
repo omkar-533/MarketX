@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Activity,
   BookOpen,
   Brain,
   Check,
@@ -23,6 +24,7 @@ import MentorOnboarding from './mentor/MentorOnboarding';
 import MentorRoadmap from './mentor/MentorRoadmap';
 import LessonPlayer from './mentor/LessonPlayer';
 import ChartMentorPanel from './mentor/ChartMentorPanel';
+import PerformanceCoachPanel from './mentor/PerformanceCoachPanel';
 import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
@@ -100,7 +102,7 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'desk'>('curriculum');
+  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'coach' | 'desk'>('curriculum');
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -390,11 +392,13 @@ export default function MentorAI() {
       ? `Module 1 · ${student.name} · Level ${curriculum.highestUnlocked}/12 unlocked`
       : deskView === 'chart'
         ? `Module 2 Chart Mentor · ${tradingViewSymbolLabel(symbol)} · ${tfLabel}`
-        : aiOk
-          ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
-              langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
-            }`
-          : 'Add AI key in Profile to grade process checks';
+        : deskView === 'coach'
+          ? `Module 3 Performance Coach · ${student.name} · journal habits & psychology`
+          : aiOk
+            ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
+                langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+              }`
+            : 'Add AI key in Profile to grade process checks';
 
   const onOnboarded = (profile: MentorStudentProfile) => {
     saveStudentProfile(profile, ownerKey);
@@ -422,7 +426,9 @@ export default function MentorAI() {
                   ? 'AI Teacher · Module 1'
                   : deskView === 'chart'
                     ? 'Chart Mentor · Module 2'
-                    : 'Professional Mentor'}
+                    : deskView === 'coach'
+                      ? 'Performance Coach · Module 3'
+                      : 'Professional Mentor'}
               </span>
             </div>
             <p className="wm-desk__sub">{sessionLine}</p>
@@ -452,6 +458,17 @@ export default function MentorAI() {
             >
               <Pencil className="h-3 w-3" />
               Chart Mentor
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'coach' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => {
+                setDeskView('coach');
+                setActiveLevelId(null);
+              }}
+            >
+              <Activity className="h-3 w-3" />
+              Coach
             </button>
             <button
               type="button"
@@ -713,6 +730,21 @@ export default function MentorAI() {
                 setDeskView('curriculum');
                 setActiveLevelId(levelId);
               }}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      {student && deskView === 'coach' ? (
+        <div className="wm-desk__body wm-desk__body--coach">
+          <aside className="wm-desk__side wm-desk__side--lesson wm-desk__side--coach">
+            <PerformanceCoachPanel
+              ownerKey={ownerKey}
+              user={user}
+              profile={student}
+              lang={selectedLang}
+              langMode={langMode}
+              mentorMode={mentorMode}
             />
           </aside>
         </div>
