@@ -5,7 +5,7 @@
  */
 import { fetchOhlc } from '../market/provider.mjs';
 import { fetchQuotes } from '../market/provider.mjs';
-import { detectOrderBlocks, ZONE_MODE } from './orderBlockEngine.mjs';
+import { detectOrderBlocks } from './orderBlockEngine.mjs';
 
 function pivotHigh(bars, i, left = 2, right = 2) {
   const h = bars[i].high;
@@ -140,11 +140,8 @@ function findFvgs(bars) {
 /** Map institutional OB engine → intel tape rows (replaces simplistic displacement proxy). */
 function institutionalObZones(bars, htfBias = 'neutral', timeframe = '') {
   const blocks = detectOrderBlocks(bars, {
-    zoneMode: ZONE_MODE.HYBRID,
-    htfBias,
     timeframe,
-    minScore: 45,
-    maxBlocks: 4,
+    maxBlocks: 6,
   });
   return blocks.map((o) => ({
     label: o.label,
@@ -156,6 +153,8 @@ function institutionalObZones(bars, htfBias = 'neutral', timeframe = '') {
     status: o.status,
     kinds: o.kinds,
     confirmations: o.confirmations,
+    borderColor: o.borderColor,
+    fillColor: o.fillColor,
   }));
 }
 
@@ -233,7 +232,7 @@ async function analyzeTf(symbol, interval) {
   const vol = volumeIntel(recent);
   const pools = [...equalLevels(swings, 'high'), ...equalLevels(swings, 'low')];
   const fvgs = findFvgs(recent);
-  const obs = institutionalObZones(recent, strength.lean === 'bullish' ? 'bull' : strength.lean === 'bearish' ? 'bear' : 'neutral', interval);
+  const obs = institutionalObZones(recent, 'neutral', interval);
   const zone = premiumDiscount(last.close, dayHigh, dayLow);
   return {
     interval,

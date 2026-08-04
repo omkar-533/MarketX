@@ -1604,12 +1604,12 @@ NOT zones. NOT full-width lines. NOT nearest mid pivots.
 - Use type "hray" from the swing bar to the right, labels exactly SUPPORT / RESISTANCE, levels:[].
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
-const OB_MARK_HINT = `ORDER BLOCK MARK (mandatory — institutional engine only):
-STRICT: Copy zones from ORDER BLOCK TAPE only. No BOS = No OB. Never invent “last opposite candle before a move.”
-Each valid OB already scored (BOS 25 · Sweep 20 · Displacement 20 · FVG 15 · Volume 10 · HTF 10).
-Draw type "zone" with p1/p2/x1 from the tape. Prefer highest score / active or mitigating.
-Invalid blocks: omit or tone neutral. Mention score + key confirmations in prose (2–4 lines).
-levels:[]. No Entry/Stop/Target/Buy/Sell.`;
+const OB_MARK_HINT = `ORDER BLOCK MARK (mandatory — Pine FVG + high-volume logic):
+STRICT: Copy ORDER BLOCK TAPE zones exactly.
+Rules: bullFVG = low > high[2] · bearFVG = high < low[2] · volume[2] > SMA(volume,20)×1.5.
+OB = full candle[2] (high→low). Bull cleanup when low <= top; bear when high >= bottom.
+Visual: zone extend.right · bull border/fill #00ff9d · bear #ff4d4d (labels Bull OB / Bear OB).
+levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target/Buy/Sell.`;
 
 const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic + Pine visuals):
 NOT Support/Resistance. Copy LIQUIDITY TAPE shapes exactly (hray + color + lineStyle dotted).
@@ -2311,7 +2311,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsTrendMark
             ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsObMark
-            ? 'Task: MARK INSTITUTIONAL ORDER BLOCKS NOW. Use ORDER BLOCK TAPE only (No BOS = No OB). 2–4 short lines with scores/confirmations + wolfchart zones. Never invent random opposite-candle blocks. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK ORDER BLOCKS NOW (Pine FVG+vol). Use ORDER BLOCK TAPE only. wolfchart zones Bull OB (#00ff9d) / Bear OB (#ff4d4d) extend right. levels:[]. No Entry/Stop/Target.'
           : wantsLiqMark
             ? 'Task: MARK LIQUIDITY NOW (Pine logic). Use LIQUIDITY TAPE. wolfchart hrays with exact labels BSL (High Vol)/SSL (High Vol)/PDH/PDL/PWH/PWL/PMH/PML. Same look as S/R rays — NOT Support/Resistance text. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark

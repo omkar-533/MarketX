@@ -347,33 +347,29 @@ export function synthesizeLiqWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 16) });
 }
 
-/** Institutional OB zones from orderBlockEngine (passed via meta.orderBlocks). */
+/** Pine FVG high-vol OB zones (extend.right, bull #00ff9d / bear #ff4d4d). */
 export function synthesizeObWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
   const blocks = Array.isArray(meta.orderBlocks) ? meta.orderBlocks : [];
   const shapes = blocks
-    .filter(
-      (o) =>
-        o &&
-        (o.status === 'active' ||
-          o.status === 'mitigating' ||
-          o.status === 'breaker' ||
-          o.status === 'mitigated'),
-    )
-    .slice(0, 3)
+    .filter((o) => o && o.status === 'active')
+    .slice(0, 12)
     .map((o) => {
       const high = roundPrice(o.high ?? o.p1);
       const low = roundPrice(o.low ?? o.p2);
       if (high == null || low == null) return null;
-      const spent = o.status === 'breaker' || o.status === 'mitigated' || o.status === 'invalid';
+      const bull = o.side === 'bull' || o.tone === 'bull' || /bull/i.test(o.label || '');
       return {
         type: 'zone',
         p1: Math.max(high, low),
         p2: Math.min(high, low),
         x1: o.x1 ?? (o.barsAgo != null ? -o.barsAgo : undefined),
-        tone: spent ? 'neutral' : o.tone || (o.side === 'bull' ? 'bull' : 'bear'),
-        label: `${o.label || (o.side === 'bull' ? 'Demand OB' : 'Supply OB')}${o.score != null ? ` · ${o.score}` : ''}`,
+        tone: bull ? 'bull' : 'bear',
+        label: o.label || (bull ? 'Bull OB' : 'Bear OB'),
+        color: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
+        borderColor: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
+        fillColor: o.fillColor || (bull ? 'rgba(0,255,157,0.15)' : 'rgba(255,77,77,0.15)'),
       };
     })
     .filter(Boolean);

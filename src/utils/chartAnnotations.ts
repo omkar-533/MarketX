@@ -55,8 +55,12 @@ export interface ChartShape {
   p2?: number;
   x1?: ChartAnchor;
   x2?: ChartAnchor;
-  /** Optional hex color (Pine liquidity palette). */
+  /** Optional hex color (Pine liquidity / OB border). */
   color?: string;
+  /** Zone border (Pine OB). */
+  borderColor?: string;
+  /** Zone fill rgba (Pine OB bgcolor). */
+  fillColor?: string;
   /** Line style — Pine liquidity uses dotted right-extend rays. */
   lineStyle?: 'solid' | 'dotted';
 }
@@ -195,6 +199,22 @@ function toShape(raw: unknown): ChartShape | null {
 
   const colorRaw = String(row.color ?? row.col ?? '').trim();
   if (/^#[0-9a-fA-F]{6}$/.test(colorRaw)) shape.color = colorRaw.toLowerCase();
+  const borderRaw = String(row.borderColor ?? row.border ?? '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(borderRaw)) shape.borderColor = borderRaw.toLowerCase();
+  const fillRaw = String(row.fillColor ?? row.bgcolor ?? row.bg ?? '').trim();
+  if (/^rgba?\(/i.test(fillRaw) || /^#[0-9a-fA-F]{6,8}$/.test(fillRaw)) {
+    shape.fillColor = fillRaw;
+  }
+  // Pine OB defaults when label says Bull/Bear OB
+  if (/^bull\s*ob\b/i.test(shape.label)) {
+    shape.borderColor = shape.borderColor || '#00ff9d';
+    shape.fillColor = shape.fillColor || 'rgba(0,255,157,0.15)';
+    shape.color = shape.color || '#00ff9d';
+  } else if (/^bear\s*ob\b/i.test(shape.label)) {
+    shape.borderColor = shape.borderColor || '#ff4d4d';
+    shape.fillColor = shape.fillColor || 'rgba(255,77,77,0.15)';
+    shape.color = shape.color || '#ff4d4d';
+  }
   const styleRaw = String(row.lineStyle ?? row.style ?? row.ls ?? '')
     .trim()
     .toLowerCase();

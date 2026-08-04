@@ -314,11 +314,32 @@ export function useChartDrawings({
           const bottom = Math.max(y1, y2);
 
           if (shape.type === 'zone') {
-            ctx.fillRect(left, top, right - left, bottom - top);
-            ctx.setLineDash([5, 4]);
-            ctx.strokeRect(left, top, right - left, bottom - top);
-            ctx.setLineDash([]);
-            zoneLabel(shape.label, left, right, top, bottom, tone.line);
+            const isPineOb = Boolean(shape.borderColor || shape.fillColor) ||
+              /^(bull|bear)\s*ob\b/i.test(shape.label || '');
+            if (isPineOb) {
+              // Pine box.new: solid border, translucent bgcolor, extend.right
+              const border = shape.borderColor || shape.color || tone.line;
+              const fill =
+                shape.fillColor ||
+                (border === '#00ff9d'
+                  ? 'rgba(0,255,157,0.15)'
+                  : border === '#ff4d4d'
+                    ? 'rgba(255,77,77,0.15)'
+                    : tone.fill);
+              ctx.fillStyle = fill;
+              ctx.strokeStyle = border;
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([]);
+              ctx.fillRect(left, top, right - left, bottom - top);
+              ctx.strokeRect(left, top, right - left, bottom - top);
+              zoneLabel(shape.label, left, right, top, bottom, border);
+            } else {
+              ctx.fillRect(left, top, right - left, bottom - top);
+              ctx.setLineDash([5, 4]);
+              ctx.strokeRect(left, top, right - left, bottom - top);
+              ctx.setLineDash([]);
+              zoneLabel(shape.label, left, right, top, bottom, tone.line);
+            }
           } else {
             ctx.font = '10px "Trebuchet MS", Roboto, sans-serif';
             ctx.textBaseline = 'bottom';
