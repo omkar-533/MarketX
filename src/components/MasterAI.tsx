@@ -936,8 +936,14 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             /\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel)\b|\btrend\b.*\b(mark|draw|line|channel|khinch)/i.test(
               userText,
             );
+          const wantsObNow =
+            !wantsTrendNow &&
+            /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*zone|demand\s*zone)\b/i.test(
+              userText,
+            );
           const wantsSrNow =
             !wantsTrendNow &&
+            !wantsObNow &&
             /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance)\b/i.test(
               userText,
             );
@@ -945,9 +951,11 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer and emit the wolfchart block. NEVER ask for a screenshot.${
                 wantsTrendNow
                   ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Forbidden: horizontal S-R level rays or hray labels.'
-                  : wantsMarkNow
-                    ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
-                    : ''
+                  : wantsObNow
+                    ? ' ORDER BLOCK ASK: draw institutional OB zones from engine tape only (BOS+displacement). Forbidden: random opposite-candle boxes.'
+                    : wantsMarkNow
+                      ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
+                      : ''
               }]`
             : '';
           const baseMessage = `${userText}${chartHint}`;
@@ -981,7 +989,15 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               roomMode: isMentor ? roomMode : false,
               trainingGrade: Boolean(opts?.trainingGrade),
               mentorDesk: isMentor,
-              markTool: wantsTrendNow ? 'trend' : wantsSrNow ? 'sr' : wantsMarkNow ? 'auto' : undefined,
+              markTool: wantsTrendNow
+                ? 'trend'
+                : wantsObNow
+                  ? 'ob'
+                  : wantsSrNow
+                    ? 'sr'
+                    : wantsMarkNow
+                      ? 'auto'
+                      : undefined,
             },
             hasImage
               ? {

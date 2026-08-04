@@ -5,6 +5,7 @@
  */
 import { fetchOhlc } from '../market/provider.mjs';
 import { fetchQuotes } from '../market/provider.mjs';
+import { detectOrderBlocks, ZONE_MODE } from './orderBlockEngine.mjs';
 
 function pivotHigh(bars, i, left = 2, right = 2) {
   const h = bars[i].high;
@@ -136,26 +137,26 @@ function findFvgs(bars) {
   return gaps.slice(-3);
 }
 
-function displacementZones(bars) {
-  const zones = [];
-  for (let i = 3; i < bars.length; i += 1) {
-    const b = bars[i];
-    const body = Math.abs(b.close - b.open);
-    const range = b.high - b.low || 1;
-    const prevRange =
-      (bars[i - 1].high - bars[i - 1].low + (bars[i - 2].high - bars[i - 2].low)) / 2 || 1;
-    if (body / range > 0.65 && range > prevRange * 1.6) {
-      const bull = b.close > b.open;
-      zones.push({
-        label: bull ? 'Demand OB?' : 'Supply OB?',
-        tone: bull ? 'bull' : 'bear',
-        p1: bull ? b.open : b.high,
-        p2: bull ? b.low : b.open,
-        barsAgo: bars.length - 1 - i,
-      });
-    }
-  }
-  return zones.slice(-2);
+/** Map institutional OB engine → intel tape rows (replaces simplistic displacement proxy). */
+function institutionalObZones(bars, htfBias = 'neutral', timeframe = '') {
+  const blocks = detectOrderBlocks(bars, {
+    zoneMode: ZONE_MODE.HYBRID,
+    htfBias,
+    timeframe,
+    minScore: 45,
+    maxBlocks: 4,
+  });
+  return blocks.map((o) => ({
+    label: o.label,
+    tone: o.tone,
+    p1: o.high,
+    p2: o.low,
+    barsAgo: o.barsAgo,
+    score: o.score,
+    status: o.status,
+    kinds: o.kinds,
+    confirmations: o.confirmations,
+  }));
 }
 
 function volumeIntel(bars) {
@@ -232,7 +233,7 @@ async function analyzeTf(symbol, interval) {
   const vol = volumeIntel(recent);
   const pools = [...equalLevels(swings, 'high'), ...equalLevels(swings, 'low')];
   const fvgs = findFvgs(recent);
-  const obs = displacementZones(recent);
+  const obs = institutionalObZones(recent, strength.lean === 'bullish' ? 'bull' : strength.lean === 'bearish' ? 'bear' : 'neutral', interval);
   const zone = premiumDiscount(last.close, dayHigh, dayLow);
   return {
     interval,
@@ -356,10 +357,13 @@ export async function buildIntelPack(message, opts = {}) {
         ? `Liquidity pools: ${primary.pools.map((p) => `${p.kind} ${p.price}`).join(' · ')}`
         : 'Liquidity pools: none clustered',
       primary.obs.length
-        ? `Displacement / OB proxies: ${primary.obs
-            .map((z) => `${z.label} ${z.p2.toFixed(1)}-${z.p1.toFixed(1)}`)
+        ? `Institutional OBs: ${primary.obs
+            .map(
+              (z) =>
+                `${z.label} ${z.p2.toFixed(1)}-${z.p1.toFixed(1)} score=${z.score ?? '?'} (${z.status || 'active'})`,
+            )
             .join(' · ')}`
-        : '',
+        : 'Institutional OBs: none (no BOS-confirmed block)',
       primary.fvgs.length
         ? `FVG: ${primary.fvgs
             .map((f) => `${f.side} ${f.bottom.toFixed(1)}-${f.top.toFixed(1)}`)

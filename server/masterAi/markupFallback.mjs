@@ -296,12 +296,47 @@ export function synthesizeTrendWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 3) });
 }
 
+/** Institutional OB zones from orderBlockEngine (passed via meta.orderBlocks). */
+export function synthesizeObWolfchart(meta = {}) {
+  const symbol = resolveSymbol(meta);
+  const tf = resolveTf(meta);
+  const blocks = Array.isArray(meta.orderBlocks) ? meta.orderBlocks : [];
+  const shapes = blocks
+    .filter(
+      (o) =>
+        o &&
+        (o.status === 'active' ||
+          o.status === 'mitigating' ||
+          o.status === 'breaker' ||
+          o.status === 'mitigated'),
+    )
+    .slice(0, 3)
+    .map((o) => {
+      const high = roundPrice(o.high ?? o.p1);
+      const low = roundPrice(o.low ?? o.p2);
+      if (high == null || low == null) return null;
+      const spent = o.status === 'breaker' || o.status === 'mitigated' || o.status === 'invalid';
+      return {
+        type: 'zone',
+        p1: Math.max(high, low),
+        p2: Math.min(high, low),
+        x1: o.x1 ?? (o.barsAgo != null ? -o.barsAgo : undefined),
+        tone: spent ? 'neutral' : o.tone || (o.side === 'bull' ? 'bull' : 'bear'),
+        label: `${o.label || (o.side === 'bull' ? 'Demand OB' : 'Supply OB')}${o.score != null ? ` · ${o.score}` : ''}`,
+      };
+    })
+    .filter(Boolean);
+  if (!shapes.length) return null;
+  return fence({ symbol, tf, levels: [], shapes });
+}
+
 /**
  * Generic mark fallback — respect style; never force S/R onto a trend ask.
  */
 export function synthesizeWolfchart(meta = {}) {
   if (meta.style === 'sr') return synthesizeSrWolfchart(meta);
   if (meta.style === 'trend') return synthesizeTrendWolfchart(meta);
+  if (meta.style === 'ob') return synthesizeObWolfchart(meta);
   // Generic "mark karo" with no tool named → structural S/R is a safe default.
   return synthesizeSrWolfchart(meta) || synthesizeTrendWolfchart(meta);
 }
@@ -330,6 +365,17 @@ export function ensureWolfchartReply(reply, meta) {
     if (!block) return text;
     console.info('[Wolf AI] enforced LTP-sided SUPPORT/RESISTANCE hlines');
     return `${stripWolfchart(text)}${block}`;
+  }
+
+  if (meta?.style === 'ob') {
+    const block = synthesizeObWolfchart(meta);
+    const cleaned = stripWolfchart(text);
+    if (!block) {
+      console.warn('[Wolf AI] OB ask but engine found no BOS-confirmed block');
+      return cleaned;
+    }
+    console.info('[Wolf AI] enforced institutional Order Block zones');
+    return `${cleaned}${block}`;
   }
 
   if (replyHasWolfchart(text)) return text;

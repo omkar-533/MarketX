@@ -5,6 +5,10 @@ import { buildLiveQuotesContext } from './masterAi/liveQuotesContext.mjs';
 import { buildStructureContext, wantsStructureMarkup } from './masterAi/structureContext.mjs';
 import { ensureWolfchartReply } from './masterAi/markupFallback.mjs';
 import { buildIntelPack } from './masterAi/intelPack.mjs';
+import {
+  buildOrderBlockContext,
+  wantsOrderBlockMarkup,
+} from './masterAi/orderBlockEngine.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
@@ -1596,6 +1600,13 @@ NOT zones. NOT full-width lines. NOT nearest mid pivots.
 - Use type "hray" from the swing bar to the right, labels exactly SUPPORT / RESISTANCE, levels:[].
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
+const OB_MARK_HINT = `ORDER BLOCK MARK (mandatory — institutional engine only):
+STRICT: Copy zones from ORDER BLOCK TAPE only. No BOS = No OB. Never invent “last opposite candle before a move.”
+Each valid OB already scored (BOS 25 · Sweep 20 · Displacement 20 · FVG 15 · Volume 10 · HTF 10).
+Draw type "zone" with p1/p2/x1 from the tape. Prefer highest score / active or mitigating.
+Invalid blocks: omit or tone neutral. Mention score + key confirmations in prose (2–4 lines).
+levels:[]. No Entry/Stop/Target/Buy/Sell.`;
+
 const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
 Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
 
@@ -2022,15 +2033,23 @@ export function createMasterAiRouter(apiKey) {
       // inside a trendline instruction and forced style:'sr'.
       const userAsk = extractUserAsk(message);
       const markTool =
-        body?.markTool === 'trend' || body?.markTool === 'sr' || body?.markTool === 'auto'
+        body?.markTool === 'trend' ||
+        body?.markTool === 'sr' ||
+        body?.markTool === 'ob' ||
+        body?.markTool === 'auto'
           ? body.markTool
           : null;
       const trendAsked = asksTrendLineTool(userAsk);
       const srAsked = asksSrLevels(userAsk);
-      // Strict priority: trendline ask ALWAYS wins over S/R wording.
+      const obAsked = wantsOrderBlockMarkup(userAsk);
+      // Strict priority: trendline > order block > S/R.
       const wantsTrendMark = markTool === 'trend' || ((!markTool || markTool === 'auto') && trendAsked);
+      const wantsObMark =
+        !wantsTrendMark &&
+        (markTool === 'ob' || ((!markTool || markTool === 'auto') && obAsked));
       const wantsSrMark =
         !wantsTrendMark &&
+        !wantsObMark &&
         (markTool === 'sr' || ((!markTool || markTool === 'auto') && srAsked));
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
@@ -2040,6 +2059,7 @@ export function createMasterAiRouter(apiKey) {
         explicitMark ||
         wantsSrMark ||
         wantsTrendMark ||
+        wantsObMark ||
         /\b(point\s*out|order\s*block|orderblock|\bob\b|fvg|imbalance|liquidity|supply|demand|trendline|trend\s*line|fib|retracement|zone|bos|choch|support|resistance|level|chart|analyse|analyze|analysis|padh|structure|setup|view|kaise|kaisa|aaj|today|market)\b/i.test(
           String(message || ''),
         );
@@ -2099,8 +2119,10 @@ export function createMasterAiRouter(apiKey) {
         rangeLowBarsAgo: 0,
         trendline: null,
         trendChannel: null,
+        orderBlocks: [],
       };
       let intelBlock = '';
+      let obBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       if (!shortChat && !wantsJournalReview) {
         try {
@@ -2118,7 +2140,14 @@ export function createMasterAiRouter(apiKey) {
           console.warn('[Wolf AI] live tape inject failed:', err?.message || err);
         }
         // "marking kr do" / S/R asks have no HH/BOS keywords — still need pivots.
-        if (wantsStructure || chartOnScreen || explicitMark || wantsSrMark || wantsTrendMark) {
+        if (
+          wantsStructure ||
+          chartOnScreen ||
+          explicitMark ||
+          wantsSrMark ||
+          wantsTrendMark ||
+          wantsObMark
+        ) {
           try {
             const structure = await buildStructureContext(message || userTextBase, {
               force:
@@ -2126,7 +2155,8 @@ export function createMasterAiRouter(apiKey) {
                 explicitMark ||
                 wantsStructure ||
                 wantsSrMark ||
-                wantsTrendMark,
+                wantsTrendMark ||
+                wantsObMark,
             });
             structureBlock = structure.block || '';
             structureMeta = {
@@ -2141,6 +2171,7 @@ export function createMasterAiRouter(apiKey) {
               rangeLowBarsAgo: structure.rangeLowBarsAgo || 0,
               trendline: structure.trendline || null,
               trendChannel: structure.trendChannel || null,
+              orderBlocks: [],
             };
             if (structureBlock) {
               console.info(
@@ -2149,6 +2180,26 @@ export function createMasterAiRouter(apiKey) {
             }
           } catch (err) {
             console.warn('[Wolf AI] structure tape failed:', err?.message || err);
+          }
+        }
+        if (wantsObMark || (chartOnScreen && obAsked)) {
+          try {
+            const obCtx = await buildOrderBlockContext(message || userTextBase, {
+              symbol: structureMeta.symbol || undefined,
+              interval: structureMeta.interval || undefined,
+              mtf: /\b(mtf|multi\s*time|higher\s*time|weekly|monthly|4h|daily)\b/i.test(userAsk),
+            });
+            obBlock = obCtx.block || '';
+            structureMeta.orderBlocks = obCtx.orderBlocks || [];
+            if (!structureMeta.symbol && obCtx.symbol) structureMeta.symbol = obCtx.symbol;
+            if (!structureMeta.interval && obCtx.interval) structureMeta.interval = obCtx.interval;
+            if (obBlock) {
+              console.info(
+                `[Wolf AI] OB tape ${obCtx.symbol} ${obCtx.interval} n=${structureMeta.orderBlocks.length}`,
+              );
+            }
+          } catch (err) {
+            console.warn('[Wolf AI] order block tape failed:', err?.message || err);
           }
         }
         if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode || mentorDesk) {
@@ -2179,7 +2230,14 @@ export function createMasterAiRouter(apiKey) {
             .trim()
         : platformContextRaw;
 
-      const platformContext = [cleanedClientCtx, liveBlock, structureBlock, intelBlock, ownerKnowledge]
+      const platformContext = [
+        cleanedClientCtx,
+        liveBlock,
+        structureBlock,
+        obBlock,
+        intelBlock,
+        ownerKnowledge,
+      ]
         .filter((s) => String(s || '').trim())
         .join('\n\n')
         .trim();
@@ -2204,10 +2262,12 @@ export function createMasterAiRouter(apiKey) {
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : wantsTrendMark
             ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
+          : wantsObMark
+            ? 'Task: MARK INSTITUTIONAL ORDER BLOCKS NOW. Use ORDER BLOCK TAPE only (No BOS = No OB). 2–4 short lines with scores/confirmations + wolfchart zones. Never invent random opposite-candle blocks. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
-            ? 'Task: MARK CHART NOW with the tool the user named. 2–4 short lines + wolfchart. If they said trendline → diagonal ray (not S/R). If S/R → hrays. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
+            ? 'Task: MARK CHART NOW with the tool the user named. 2–4 short lines + wolfchart. If they said trendline → diagonal ray (not S/R). If order block → zones from ORDER BLOCK TAPE. If S/R → hrays. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2286,6 +2346,9 @@ export function createMasterAiRouter(apiKey) {
       if (wantsTrendMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${TREND_MARK_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+      } else if (wantsObMark && !hasImage && !wantsJournalReview && !shortChat) {
+        textBlock += `\n\n${OB_MARK_HINT}`;
+        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       } else if (wantsSrMark && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${SR_MARK_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
@@ -2295,7 +2358,7 @@ export function createMasterAiRouter(apiKey) {
       }
       if (chartOnScreen) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
-        if (!explicitMark && !wantsSrMark && !wantsTrendMark) {
+        if (!explicitMark && !wantsSrMark && !wantsTrendMark && !wantsObMark) {
           textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
         }
       } else if (
@@ -2303,6 +2366,7 @@ export function createMasterAiRouter(apiKey) {
         !explicitMark &&
         !wantsSrMark &&
         !wantsTrendMark &&
+        !wantsObMark &&
         !hasImage &&
         !wantsJournalReview &&
         !shortChat
@@ -2359,13 +2423,16 @@ export function createMasterAiRouter(apiKey) {
               rangeLowBarsAgo: structureMeta.rangeLowBarsAgo,
               trendline: structureMeta.trendline,
               trendChannel: structureMeta.trendChannel,
+              orderBlocks: structureMeta.orderBlocks,
               style: wantsTrendMark
                 ? 'trend'
-                : wantsSrMark
-                  ? 'sr'
-                  : explicitMark
-                    ? 'auto'
-                    : undefined,
+                : wantsObMark
+                  ? 'ob'
+                  : wantsSrMark
+                    ? 'sr'
+                    : explicitMark
+                      ? 'auto'
+                      : undefined,
             }),
           };
         }
