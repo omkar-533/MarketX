@@ -36,6 +36,13 @@ export const FIB_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
 
 export const DRAW_COLOR = '#2962ff';
 
+/** Palette for Wolf AI's own markings, kept distinct from user drawings. */
+export const SHAPE_TONE = {
+  bull: { line: '#26a69a', fill: 'rgba(38,166,154,0.14)' },
+  bear: { line: '#ef5350', fill: 'rgba(239,83,80,0.14)' },
+  neutral: { line: '#787b86', fill: 'rgba(120,123,134,0.14)' },
+} as const;
+
 const MAX_DRAWINGS = 60;
 const STORE_PREFIX = 'wolf.chart.drawings.';
 

@@ -365,6 +365,27 @@ export function resolveKnownSymbol(raw: unknown): string | null {
 }
 
 /**
+ * "Order block mark kro" names no instrument, but it clearly means the chart
+ * already on screen. Detecting that keeps the request attached to it.
+ */
+const MARKUP_INTENT = new RegExp(
+  [
+    '\\b(mark|marking|markup|draw|annotate|highlight|plot)\\b',
+    'order\\s*block|\\bob\\b|supply|demand|\\bfvg\\b|imbalance|liquidity',
+    '\\bbos\\b|choch|break\\s*of\\s*structure',
+    'trend\\s*line|trendline|channel|neckline',
+    '\\bfib\\b|fibonacci|retracement',
+    'support|resistance|\\bzone\\b|\\blevels?\\b|pivot',
+    'khinch|khich|laga\\s*do|lagao|bana\\s*do|dikha',
+  ].join('|'),
+  'i',
+);
+
+export function isChartMarkupRequest(text: string): boolean {
+  return MARKUP_INTENT.test(String(text || ''));
+}
+
+/**
  * Find the instrument a plain question is about — no "chart" keyword needed,
  * so "NIFTY ka kya view hai" can bring its own chart along.
  * Returns null when nothing is named, which keeps concept questions

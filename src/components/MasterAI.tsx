@@ -80,6 +80,8 @@ import { parseChartAnnotations } from '../utils/chartAnnotations';
 import {
   detectChartRequest,
   detectInstrumentMention,
+  isChartMarkupRequest,
+  tradingViewSymbolLabel,
   type TvInterval,
 } from '../utils/tradingViewSymbols';
 import {
@@ -556,12 +558,23 @@ export default function MasterAI() {
     // just an explicit "NIFTY ka 5 min chart dikha".
     let chartMsg: Message | null = null;
     let chartMessageId: string | null = null;
+    let chartTarget: ChatChartAttachment | null = null;
     if (!hasImage) {
       const chartReq = detectChartRequest(userText);
       const mentioned = chartReq ? null : detectInstrumentMention(userText);
-      const symbol = chartReq?.tvSymbol || mentioned || (chartReq ? chartSymbol : '');
+      const lastChart = [...messages].reverse().find((m) => m.chart);
+      // "Order block mark kro" names nothing — it means the chart on screen.
+      const marksExisting = !chartReq && !mentioned && isChartMarkupRequest(userText);
+      const symbol =
+        chartReq?.tvSymbol ||
+        mentioned ||
+        (marksExisting ? lastChart?.chart?.symbol ?? '' : '') ||
+        (chartReq ? chartSymbol : '');
+
       if (symbol) {
-        const interval = chartReq?.interval ?? chartInterval;
+        const interval = marksExisting
+          ? lastChart?.chart?.interval ?? chartInterval
+          : chartReq?.interval ?? chartInterval;
         const study = chartReq?.study ?? chartStudy;
         setChartSymbol(symbol);
         setChartInterval(interval);
@@ -569,13 +582,13 @@ export default function MasterAI() {
 
         // Follow-ups about the same instrument mark up the existing card
         // instead of stacking a new chart on every turn.
-        const lastChart = [...messages].reverse().find((m) => m.chart);
         if (!chartReq && lastChart?.chart?.symbol === symbol) {
           chartMessageId = lastChart.id;
         } else {
           chartMsg = makeChartMessage({ symbol, interval, study });
           chartMessageId = chartMsg.id;
         }
+        chartTarget = { symbol, interval, study };
       }
     }
 
@@ -711,15 +724,20 @@ export default function MasterAI() {
           const journalContext = !hasImage && isJournalReviewQuestion(userText)
             ? buildJournalContextForAi(loadLocalTrades(user))
             : undefined;
+          // Without this the model has no idea which instrument "mark it" means.
+          const chartHint = chartTarget
+            ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. Any request to mark, draw or point something out refers to this chart — answer for this instrument and emit the wolfchart block so the marking appears on it.]`
+            : '';
+          const baseMessage = `${userText}${chartHint}`;
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
               ? `${userText}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext
-                ? `${userText}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
+                ? `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.]`
                 : journalContext
                   ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
-                  : userText;
+                  : baseMessage;
           const result = await askMasterAi(
             {
               message: textMessage,
@@ -766,20 +784,27 @@ export default function MasterAI() {
       // Wolf AI hides its chart markup at the end of the reply — lift it out
       // before anything reaches the transcript or the speech engine.
       const parsed = parseChartAnnotations(responseText);
-      responseText = parsed.text || responseText;
+      const marked = parsed.levels.length > 0 || parsed.shapes.length > 0;
+      // A reply that was nothing but markup still needs a line to sit under.
+      responseText =
+        parsed.text ||
+        (marked ? (hindi ? 'Chart par marking kar di hai.' : 'Marked on the chart.') : responseText);
 
       // A screenshot only tells us the instrument once the model has read it,
       // so the matching live chart is built here rather than before the send.
+      // Markings with nowhere to go would be lost, so they get their own card.
       let replyChart: Message | null = null;
-      if (!chartMessageId && parsed.symbol) {
+      if (!chartMessageId && (parsed.symbol || marked)) {
+        const symbol = parsed.symbol ?? chartSymbol;
         const interval = parsed.interval ?? chartInterval;
         replyChart = makeChartMessage({
-          symbol: parsed.symbol,
+          symbol,
           interval,
           study: chartStudy,
           levels: parsed.levels,
+          shapes: parsed.shapes,
         });
-        setChartSymbol(parsed.symbol);
+        setChartSymbol(symbol);
         setChartInterval(interval);
       } else if (chartMessageId && parsed.interval) {
         // The user's wording won; a timeframe the model read off the image wins back.
@@ -793,13 +818,14 @@ export default function MasterAI() {
         timestamp: new Date(),
       };
       setMessages((prev) => {
-        const next = parsed.levels.length && chartMessageId
-          ? prev.map((m) =>
-              m.id === chartMessageId && m.chart
-                ? { ...m, chart: { ...m.chart, levels: parsed.levels } }
-                : m,
-            )
-          : prev;
+        const next =
+          marked && chartMessageId
+            ? prev.map((m) =>
+                m.id === chartMessageId && m.chart
+                  ? { ...m, chart: { ...m.chart, levels: parsed.levels, shapes: parsed.shapes } }
+                  : m,
+              )
+            : prev;
         return [...next, ...(replyChart ? [replyChart] : []), aiMsg];
       });
 
@@ -1164,6 +1190,7 @@ export default function MasterAI() {
                         onClose={() => removeChartMessage(message.id)}
                         closeLabel="Remove chart"
                         levels={chart.levels}
+                        shapes={chart.shapes}
                       />
                     </div>
                   </motion.div>

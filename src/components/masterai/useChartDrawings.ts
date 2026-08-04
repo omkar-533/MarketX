@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi, Logical, SeriesType } from 'lightweight-charts';
+import type { ChartAnchor, ChartShape } from '../../utils/chartAnnotations';
 import {
   DRAW_COLOR,
   FIB_RATIOS,
   POINTS_NEEDED,
+  SHAPE_TONE,
   distanceToRect,
   distanceToSegment,
   drawingsKey,
@@ -46,6 +48,8 @@ export interface UseChartDrawingsOptions {
   epoch: number;
   bars: ChartBar[];
   symbol: string;
+  /** Read-only markings Wolf AI attached to this chart. */
+  aiShapes: ChartShape[];
   tool: DrawingTool;
   /** Called once a shape is complete so the toolbar can fall back to cursor. */
   onShapeDone: () => void;
@@ -65,6 +69,7 @@ export function useChartDrawings({
   epoch,
   bars,
   symbol,
+  aiShapes,
   tool,
   onShapeDone,
   magnet,
@@ -77,6 +82,7 @@ export function useChartDrawings({
   const drawingsRef = useRef<Drawing[]>([]);
   const selectedRef = useRef<string | null>(null);
   const barsRef = useRef<ChartBar[]>(bars);
+  const aiRef = useRef<ChartShape[]>(aiShapes);
   const toolRef = useRef<DrawingTool>(tool);
   const magnetRef = useRef(magnet);
   const dragRef = useRef<Drag>(null);
@@ -85,6 +91,7 @@ export function useChartDrawings({
   drawingsRef.current = drawings;
   selectedRef.current = selectedId;
   barsRef.current = bars;
+  aiRef.current = aiShapes;
   toolRef.current = tool;
   magnetRef.current = magnet;
   doneRef.current = onShapeDone;
@@ -190,6 +197,124 @@ export function useChartDrawings({
       return null;
     };
 
+    /**
+     * Anchor from the model: a bar offset (0 = latest, -30 = thirty bars back),
+     * a unix timestamp, or an ISO date read off a screenshot.
+     */
+    const anchorLogical = (anchor: ChartAnchor | undefined, fallback: number): number => {
+      const last = Math.max(0, barsRef.current.length - 1);
+      if (typeof anchor === 'number') {
+        return Math.abs(anchor) > 100_000 ? timeToLogical(barsRef.current, anchor) : last + anchor;
+      }
+      if (typeof anchor === 'string') {
+        const ms = Date.parse(anchor);
+        if (Number.isFinite(ms)) return timeToLogical(barsRef.current, ms / 1000);
+      }
+      return last + fallback;
+    };
+    const anchorX = (anchor: ChartAnchor | undefined, fallback: number): number | null =>
+      timeScale.logicalToCoordinate(anchorLogical(anchor, fallback) as Logical);
+
+    const labelColor = isDark ? '#d1d4dc' : '#131722';
+
+    const chip = (text: string, x: number, y: number, color: string) => {
+      if (!text) return;
+      ctx.font = '600 10px "Trebuchet MS", Roboto, sans-serif';
+      ctx.textBaseline = 'middle';
+      const width = ctx.measureText(text).width + 8;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(x, y - 7, width, 14);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(text, x + 4, y);
+    };
+
+    /** Wolf AI's markings: read-only, drawn under anything the user added. */
+    const paintAiShapes = (paneWidth: number, paneHeight: number) => {
+      for (const shape of aiRef.current) {
+        const tone = SHAPE_TONE[shape.tone];
+        const y1 = shape.p1 === undefined ? null : toY(shape.p1);
+        const y2 = shape.p2 === undefined ? null : toY(shape.p2);
+
+        ctx.strokeStyle = tone.line;
+        ctx.fillStyle = tone.fill;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+
+        if (shape.type === 'zone' || shape.type === 'fib') {
+          if (y1 === null || y2 === null) continue;
+          const left = anchorX(shape.x1, -45) ?? 0;
+          const right = shape.x2 === undefined ? paneWidth : (anchorX(shape.x2, 6) ?? paneWidth);
+          const top = Math.min(y1, y2);
+          const bottom = Math.max(y1, y2);
+
+          if (shape.type === 'zone') {
+            ctx.fillRect(left, top, right - left, bottom - top);
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(left, top, right - left, bottom - top);
+            ctx.setLineDash([]);
+            chip(shape.label, left + 4, top + 8, tone.line);
+          } else {
+            ctx.font = '10px "Trebuchet MS", Roboto, sans-serif';
+            ctx.textBaseline = 'bottom';
+            FIB_RATIOS.forEach((ratio) => {
+              const y = y1 + (y2 - y1) * ratio;
+              ctx.beginPath();
+              ctx.moveTo(left, y);
+              ctx.lineTo(right, y);
+              ctx.stroke();
+              const price = shape.p1! + (shape.p2! - shape.p1!) * ratio;
+              ctx.fillStyle = labelColor;
+              ctx.fillText(`${ratio.toFixed(3)}  ${price.toFixed(2)}`, left + 4, y - 2);
+              ctx.fillStyle = tone.fill;
+            });
+            chip(shape.label, left + 4, Math.min(y1, y2) + 8, tone.line);
+          }
+          continue;
+        }
+
+        if (shape.type === 'vline') {
+          const x = anchorX(shape.x1, 0);
+          if (x === null) continue;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, paneHeight);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          chip(shape.label, x + 4, 12, tone.line);
+          continue;
+        }
+
+        if (shape.type === 'label') {
+          if (y1 === null) continue;
+          const x = anchorX(shape.x1, -6) ?? 0;
+          ctx.beginPath();
+          ctx.arc(x, y1, 3, 0, Math.PI * 2);
+          ctx.fillStyle = tone.line;
+          ctx.fill();
+          chip(shape.label, x + 6, y1, tone.line);
+          continue;
+        }
+
+        // trend / ray
+        if (y1 === null || y2 === null) continue;
+        const x1 = anchorX(shape.x1, -45);
+        const x2 = anchorX(shape.x2, 0);
+        if (x1 === null || x2 === null) continue;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        if (shape.type === 'ray') {
+          ctx.lineTo(x2 + (x2 - x1) * 400, y2 + (y2 - y1) * 400);
+        } else {
+          ctx.lineTo(x2, y2);
+        }
+        ctx.stroke();
+        chip(shape.label, x2 + 6, y2, tone.line);
+      }
+    };
+
     const paint = () => {
       const width = host.clientWidth;
       const height = host.clientHeight;
@@ -211,7 +336,7 @@ export function useChartDrawings({
       ctx.rect(0, 0, paneWidth, paneHeight);
       ctx.clip();
 
-      const labelColor = isDark ? '#d1d4dc' : '#131722';
+      paintAiShapes(paneWidth, paneHeight);
 
       for (const drawing of drawingsRef.current) {
         const pts = drawing.points.map(pixelOf);
@@ -292,7 +417,7 @@ export function useChartDrawings({
     let signature = '';
     const tick = () => {
       // An empty chart should cost nothing per frame.
-      if (!drawingsRef.current.length) {
+      if (!drawingsRef.current.length && !aiRef.current.length) {
         if (signature !== 'empty') {
           signature = 'empty';
           paint();
@@ -309,6 +434,7 @@ export function useChartDrawings({
         probe ? series.priceToCoordinate(probe.close) : 0,
         probe ? series.priceToCoordinate(probe.close * 1.01) : 0,
         drawingsRef.current.length,
+        aiRef.current.length,
         selectedRef.current,
       ].join('|');
       if (next !== signature) {

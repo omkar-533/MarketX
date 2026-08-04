@@ -503,6 +503,11 @@ const TRADING_KEYWORDS = [
   'invest', 'trade', 'chart', 'candle', 'scalp', 'position', 'margin', 'broker',
   'paper trading', 'backtest', 'scanner', 'max pain', 'gamma', 'theta', 'delta',
   'screener', 'heatmap', 'journal', 'bias', 'lot',
+  // Price-action and chart-markup vocabulary — "order block mark kro" is desk talk.
+  'order block', 'orderblock', 'supply', 'demand', 'fvg', 'imbalance', 'liquidity',
+  'bos', 'choch', 'structure', 'zone', 'level', 'pivot', 'trendline', 'trend line',
+  'fib', 'retracement', 'mark', 'draw', 'annotate', 'highlight', 'khinch', 'dikha',
+  'ema', 'sma', 'bollinger', 'atr', 'stochastic', 'supertrend', 'ichimoku', 'timeframe',
 ];
 
 export function isCasualGreeting(input: string): boolean {

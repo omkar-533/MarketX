@@ -1,6 +1,11 @@
 /** Multi-chat history for Wolf AI — localStorage, no server. */
 
-import { sanitizeLevels, type ChartLevel } from '../utils/chartAnnotations';
+import {
+  sanitizeLevels,
+  sanitizeShapes,
+  type ChartLevel,
+  type ChartShape,
+} from '../utils/chartAnnotations';
 import { TV_STUDY_PRESETS, TV_TIMEFRAMES, type TvInterval } from '../utils/tradingViewSymbols';
 
 /** A live chart pinned into the conversation. */
@@ -10,6 +15,8 @@ export interface ChatChartAttachment {
   study: string;
   /** Areas of interest Wolf AI marked up alongside its answer. */
   levels?: ChartLevel[];
+  /** Zones, trendlines and notes Wolf AI drew on the same chart. */
+  shapes?: ChartShape[];
 }
 
 export interface ChatMessage {
@@ -70,14 +77,20 @@ function cleanText(text: string): string {
 
 function hydrateChart(chart: unknown): ChatChartAttachment | undefined {
   if (!chart || typeof chart !== 'object') return undefined;
-  const { symbol, interval, study, levels } = chart as Partial<ChatChartAttachment>;
+  const { symbol, interval, study, levels, shapes } = chart as Partial<ChatChartAttachment>;
   if (typeof symbol !== 'string' || !symbol.trim()) return undefined;
-  const restored = sanitizeLevels(levels);
+  const restoredLevels = sanitizeLevels(levels);
+  const restoredShapes = sanitizeShapes(shapes);
+  const presets = String(study ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => TV_STUDY_PRESETS.some((preset) => preset.id === s));
   return {
     symbol: symbol.trim().toUpperCase().slice(0, 40),
     interval: TV_TIMEFRAMES.some((tf) => tf.id === interval) ? (interval as TvInterval) : '15',
-    study: TV_STUDY_PRESETS.some((s) => s.id === study) ? (study as string) : 'none',
-    ...(restored.length ? { levels: restored } : {}),
+    study: presets.length ? presets.join(',') : 'none',
+    ...(restoredLevels.length ? { levels: restoredLevels } : {}),
+    ...(restoredShapes.length ? { shapes: restoredShapes } : {}),
   };
 }
 

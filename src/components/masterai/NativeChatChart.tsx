@@ -15,7 +15,12 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { serverUnreachableMessage } from '../../constants/brandLabels';
-import { levelsNearPrice, type ChartLevel } from '../../utils/chartAnnotations';
+import {
+  levelsNearPrice,
+  shapesNearPrice,
+  type ChartLevel,
+  type ChartShape,
+} from '../../utils/chartAnnotations';
 import { useTheme } from '../../context/ThemeContext';
 import {
   atr,
@@ -107,6 +112,7 @@ export type NativeChatChartProps = {
   chartStyle: TvChartStyle;
   reloadKey: number;
   levels?: ChartLevel[];
+  shapes?: ChartShape[];
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -133,6 +139,7 @@ export default function NativeChatChart({
   chartStyle,
   reloadKey,
   levels,
+  shapes,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -580,8 +587,7 @@ export default function NativeChatChart({
     levelLinesRef.current = [];
     if (!levels?.length || !view) return;
 
-    const lastClose = view.source[view.source.length - 1]?.close ?? 0;
-    levelLinesRef.current = levelsNearPrice(levels, lastClose).map((lvl) =>
+    levelLinesRef.current = levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0).map((lvl) =>
       series.createPriceLine({
         price: lvl.price,
         color: LEVEL_COLOR[lvl.kind],
@@ -593,6 +599,12 @@ export default function NativeChatChart({
     );
   }, [levels, view, chartEpoch]);
 
+  const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
+  const aiShapes = useMemo(
+    () => (shapes?.length ? shapesNearPrice(shapes, lastClose) : []),
+    [shapes, lastClose],
+  );
+
   const drawings = useChartDrawings({
     hostRef,
     canvasRef,
@@ -601,6 +613,7 @@ export default function NativeChatChart({
     epoch: chartEpoch,
     bars: view?.source ?? [],
     symbol,
+    aiShapes,
     tool,
     onShapeDone: useCallback(() => setTool('cursor'), []),
     magnet,
@@ -639,9 +652,7 @@ export default function NativeChatChart({
   const tone = change >= 0 ? 'mai-nc__up' : 'mai-nc__down';
   const intervalLabel = TV_TIMEFRAMES.find((tf) => tf.id === interval)?.label ?? interval;
   const drawnLevels =
-    levels?.length && view
-      ? levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0).length
-      : 0;
+    (levels?.length && view ? levelsNearPrice(levels, lastClose).length : 0) + aiShapes.length;
   const readAt = hoverIndex ?? (view ? view.source.length - 1 : 0);
 
   return (

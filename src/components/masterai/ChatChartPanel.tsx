@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ExternalLink, Maximize2, Minimize2, RefreshCw, X } from 'lucide-react';
-import type { ChartLevel } from '../../utils/chartAnnotations';
+import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import { openExternalUrl } from '../../utils/openExternalUrl';
 import {
   NATIVE_STUDY_PRESETS,
@@ -29,6 +29,7 @@ export type ChatChartPanelProps = {
   onClose: () => void;
   closeLabel?: string;
   levels?: ChartLevel[];
+  shapes?: ChartShape[];
 };
 
 /**
@@ -46,6 +47,7 @@ export default function ChatChartPanel({
   onClose,
   closeLabel = 'Close chart',
   levels,
+  shapes,
 }: ChatChartPanelProps) {
   const [chartStyle, setChartStyle] = useState<TvChartStyle>('1');
   const [expanded, setExpanded] = useState(false);
@@ -249,6 +251,7 @@ export default function ChatChartPanel({
           chartStyle={chartStyle}
           reloadKey={reloadKey}
           levels={levels}
+          shapes={shapes}
         />
       ) : (
         <TradingViewChatChart

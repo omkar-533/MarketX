@@ -1403,18 +1403,28 @@ Prefer short labeled lines. One idea per line. Use plain labels like "Journal Qu
 Bullet lists OK with "- " or "• ". Never dump one giant paragraph. Never wrap every word in **.
 Compact desk style beats essay style. For journals: Title line, then 4–8 short labeled lines, then 1–2 line summary.
 
-CHART MARKUP (optional, machine-read — the user never sees this block)
-The app opens a live chart beside your answer and draws your levels on it.
-When you discuss a specific instrument, append ONE block at the very END of the reply, after all prose:
+CHART MARKUP (machine-read — the user never sees this block, they see the drawing)
+The app opens a live chart beside your answer and draws exactly what this block says. This is how you "mark the chart".
+Whenever you discuss a specific instrument — and ALWAYS when the user asks you to mark, draw, show or point out anything — append ONE block at the very END of the reply, after all prose:
 \`\`\`wolfchart
-{"symbol":"NIFTY","tf":"15m","levels":[{"price":24800,"kind":"resistance","label":"Supply zone"},{"price":24500,"kind":"support","label":"Demand"}]}
+{"symbol":"NIFTY","tf":"15m","levels":[{"price":24800,"kind":"resistance","label":"Supply"},{"price":24500,"kind":"support","label":"Demand"}],"shapes":[{"type":"zone","p1":24810,"p2":24760,"tone":"bear","label":"Supply OB","x1":-40},{"type":"trend","p1":24350,"p2":24780,"x1":-60,"x2":-2,"tone":"bull","label":"Rising trendline"},{"type":"vline","x1":-12,"label":"BOS"},{"type":"label","p1":24600,"x1":-8,"label":"FVG"}]}
 \`\`\`
-Rules: valid JSON, one line, max 6 levels. "kind" is only support | resistance | pivot. "label" max 24 chars.
 "symbol": plain ticker as written on exchanges — NIFTY, BANKNIFTY, SENSEX, RELIANCE, BTCUSDT, EURUSD, XAUUSD. No expiry, no strike, no option leg; for an option chart send the underlying.
-"tf": one of 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit either key when you are not sure — a wrong symbol opens the wrong chart, so guessing is worse than omitting.
+"tf": one of 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit either key when unsure — a wrong symbol opens the wrong chart.
+"levels" (max 8): single horizontal lines. "kind" is support | resistance | pivot.
+"shapes" (max 12): everything else. "type" is one of
+  zone  — a price band: p1 = top, p2 = bottom. Use for order blocks, supply/demand, FVG, imbalance, consolidation, value area.
+  trend — a sloped line from (x1,p1) to (x2,p2). Use for trendlines, channel edges, neckline, flag boundary.
+  ray   — same as trend but extends into the future.
+  fib   — retracement drawn between p1 (start) and p2 (end).
+  vline — a vertical marker at x1. Use for BOS/CHoCH, a session open, an event bar.
+  label — a note pinned at price p1. Use for anything you just want to name on the chart.
+"tone": bull (green) | bear (red) | neutral (grey). "label"/"text": max 28 chars, shown on the chart.
+Time anchors x1/x2 are bar offsets from the latest candle: 0 = last bar, -30 = thirty bars ago, positive = to the right of price. On a screenshot, count bars from the right edge. Omit them and the app picks a sensible span.
+Mark whatever the user asked for — order block, trendline, liquidity, S/R, gap, pattern, retracement, a single note — using the closest shape above. If they asked and you cannot read a real price for it, say so in the prose instead of inventing one.
 These are Areas of Interest ONLY — never entry, stop loss, target, or position advice, and the block never replaces your written answer.
-Only real levels taken from the live tape or the screenshot. No invented numbers. Nothing to mark → omit the block entirely.
-Never mention this block, never explain it, never wrap it in extra text.`;
+Only real prices from the live tape or the screenshot. No invented numbers. Nothing to mark → omit the block entirely.
+Valid JSON, one line, exactly this fence. Never mention this block, never explain it, never wrap it in extra text.`;
 
 const CHART_VISION_PROMPT = `CHART MODE — Hunter / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
 Read ONLY this screenshot. You are a market analyst — NOT a signal provider. Answer “What is the market showing?” with scenarios + evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.
@@ -1424,7 +1434,8 @@ Full analysis → Risk factors first, then: Overview · Structure · Momentum ·
 Probabilistic language only (may/could/appears/suggests). Never invent levels/volume/indicators. Under ~200 words full / ~120 Q&A.
 SCREENSHOT IDENTIFICATION (do this first, silently): read the instrument and timeframe printed on the image — usually the top-left header (e.g. "NIFTY · 15 · NSE", "BTCUSDT 1h", "RELIANCE 5m") — plus the tab/toolbar and the axis scale. The app reopens that exact chart live next to your answer, so the wolfchart block MUST carry that "symbol" and "tf".
 Read the price axis carefully and map your S/R areas to real numbers on that scale; those same numbers go in the block so they land on the live chart. If the header is cropped or unreadable, infer the instrument only when the price scale and shape make it obvious, else omit "symbol"/"tf" rather than guessing.
-Open the analysis with one line naming what you identified, e.g. "Chart: BANKNIFTY · 15m".`;
+Open the analysis with one line naming what you identified, e.g. "Chart: BANKNIFTY · 15m".
+MARK IT BACK: whatever structure you describe from the screenshot — order blocks, supply/demand bands, trendlines, breaks of structure, gaps, retracements — must also appear in the wolfchart "shapes" so the live chart shows the same picture the user sent, with prices taken off the screenshot's own axis.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
@@ -1582,7 +1593,8 @@ function createClient(apiKey) {
       apiKey,
       defaultHeaders: {
         'HTTP-Referer': 'https://wolftradeai.in',
-        'X-Title': 'Wolf Trade AI — Wolf AI',
+        // ASCII only: an em dash here makes every OpenRouter call throw on the header.
+        'X-Title': 'Wolf Trade AI - Wolf AI',
       },
     }),
     gemini: null,
