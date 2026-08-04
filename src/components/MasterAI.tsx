@@ -580,9 +580,12 @@ export default function MasterAI() {
         setChartInterval(interval);
         setChartStudy(study);
 
-        // Follow-ups about the same instrument mark up the existing card
-        // instead of stacking a new chart on every turn.
-        if (!chartReq && lastChart?.chart?.symbol === symbol) {
+        // An immediate follow-up marks up the card still on screen; once the
+        // conversation has moved on, the answer needs a chart of its own or the
+        // markings land somewhere the user has already scrolled past.
+        const stillOnScreen =
+          lastChart !== undefined && messages.slice(-3).some((m) => m.id === lastChart.id);
+        if (!chartReq && stillOnScreen && lastChart?.chart?.symbol === symbol) {
           chartMessageId = lastChart.id;
         } else {
           chartMsg = makeChartMessage({ symbol, interval, study });
