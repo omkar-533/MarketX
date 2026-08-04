@@ -14,6 +14,7 @@ import {
   Mic2,
   Pencil,
   RefreshCw,
+  Shield,
   Sparkles,
   Swords,
   Target,
@@ -27,6 +28,7 @@ import LessonPlayer from './mentor/LessonPlayer';
 import ChartMentorPanel from './mentor/ChartMentorPanel';
 import PerformanceCoachPanel from './mentor/PerformanceCoachPanel';
 import TradingLabPanel from './mentor/TradingLabPanel';
+import LiveMentorPanel from './mentor/LiveMentorPanel';
 import { useAuth } from '../hooks/useAuth';
 import {
   MENTOR_MODES,
@@ -104,9 +106,9 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [deskView, setDeskView] = useState<'curriculum' | 'chart' | 'coach' | 'lab' | 'desk'>(
-    'curriculum',
-  );
+  const [deskView, setDeskView] = useState<
+    'curriculum' | 'chart' | 'coach' | 'lab' | 'liveMentor' | 'desk'
+  >('curriculum');
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -400,11 +402,13 @@ export default function MentorAI() {
           ? `Module 3 Performance Coach · ${student.name} · journal habits & psychology`
           : deskView === 'lab'
             ? `Module 4 Trading Lab · ${student.name} · historical replay simulator`
-            : aiOk
-              ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
-                  langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
-                }`
-              : 'Add AI key in Profile to grade process checks';
+            : deskView === 'liveMentor'
+              ? `Module 5 Live Mentor · ${student.name} · real-market process coach`
+              : aiOk
+                ? `${mentorModeLabel(mentorMode)} · ${tradingViewSymbolLabel(symbol)} · ${tfLabel} · Live tape${
+                    langMode === 'auto' ? ` · Auto · ${selectedLang.nativeLabel}` : ` · ${selectedLang.nativeLabel}`
+                  }`
+                : 'Add AI key in Profile to grade process checks';
 
   const onOnboarded = (profile: MentorStudentProfile) => {
     saveStudentProfile(profile, ownerKey);
@@ -436,7 +440,9 @@ export default function MentorAI() {
                       ? 'Performance Coach · Module 3'
                       : deskView === 'lab'
                         ? 'Trading Lab · Module 4'
-                        : 'Professional Mentor'}
+                        : deskView === 'liveMentor'
+                          ? 'Live Mentor · Module 5'
+                          : 'Professional Mentor'}
               </span>
             </div>
             <p className="wm-desk__sub">{sessionLine}</p>
@@ -488,6 +494,17 @@ export default function MentorAI() {
             >
               <FlaskConical className="h-3 w-3" />
               Lab
+            </button>
+            <button
+              type="button"
+              className={`wm-desk__chip ${deskView === 'liveMentor' ? 'wm-desk__chip--on' : ''}`}
+              onClick={() => {
+                setDeskView('liveMentor');
+                setActiveLevelId(null);
+              }}
+            >
+              <Shield className="h-3 w-3" />
+              Live Mentor
             </button>
             <button
               type="button"
@@ -775,6 +792,23 @@ export default function MentorAI() {
             <TradingLabPanel
               ownerKey={ownerKey}
               profile={student}
+              lang={selectedLang}
+              langMode={langMode}
+              mentorMode={mentorMode}
+            />
+          </aside>
+        </div>
+      ) : null}
+
+      {student && deskView === 'liveMentor' ? (
+        <div className="wm-desk__body wm-desk__body--live">
+          <aside className="wm-desk__side wm-desk__side--lesson wm-desk__side--live">
+            <LiveMentorPanel
+              ownerKey={ownerKey}
+              user={user}
+              profile={student}
+              symbol={symbol}
+              interval={interval}
               lang={selectedLang}
               langMode={langMode}
               mentorMode={mentorMode}
