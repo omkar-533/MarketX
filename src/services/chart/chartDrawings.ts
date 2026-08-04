@@ -32,7 +32,8 @@ export const POINTS_NEEDED: Record<DrawingKind, number> = {
   fib: 2,
 };
 
-export const FIB_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
+/** Common desk Fib levels — includes 0.705 / 0.786 pullback zones. */
+export const FIB_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.705, 0.786, 1] as const;
 
 export const DRAW_COLOR = '#2962ff';
 

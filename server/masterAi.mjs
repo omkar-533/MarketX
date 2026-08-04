@@ -1428,28 +1428,41 @@ Compact desk style beats essay style. For journals: Title line, then 4–8 short
 
 CHART MARKUP (machine-read — the user never sees this block, they see the drawing)
 The app opens a live chart beside your answer and draws exactly what this block says. This is how you "mark the chart".
+Mark like a desk trader — pick the RIGHT tool. Do NOT dump random Supply/Demand boxes for every answer.
 Whenever you discuss a specific instrument — and ALWAYS when the user asks you to mark, draw, show or point out anything — append ONE block at the very END of the reply, after all prose:
 \`\`\`wolfchart
-{"symbol":"EXAMPLE","tf":"15m","levels":[{"price":1050,"kind":"resistance","label":"Day High"},{"price":1010,"kind":"support","label":"Day Low"}],"shapes":[{"type":"label","p1":1048,"label":"HH","tone":"bear"},{"type":"label","p1":1022,"label":"HL","tone":"bull"},{"type":"label","p1":1035,"label":"LH","tone":"bear"},{"type":"label","p1":1012,"label":"LL","tone":"bull"},{"type":"vline","x1":-18,"label":"BOS","tone":"bull"},{"type":"vline","x1":-40,"label":"CHOCH","tone":"bear"},{"type":"zone","p1":1052,"p2":1046,"tone":"bear","label":"Supply OB"},{"type":"trend","p1":1005,"p2":1048,"x1":-60,"x2":-2,"tone":"bull","label":"Rising trendline"}]}
+{"symbol":"EXAMPLE","tf":"15m","levels":[{"price":1050,"kind":"resistance","label":"PDH"},{"price":1010,"kind":"support","label":"PDL"}],"shapes":[{"type":"label","p1":1048,"x1":-12,"label":"HH","tone":"bear"},{"type":"vline","x1":-18,"label":"BOS","tone":"bull"},{"type":"hline","p1":1032,"label":"Pivot","tone":"neutral"},{"type":"hray","p1":1040,"x1":-25,"label":"Res ray","tone":"bear"},{"type":"zone","p1":1052,"p2":1046,"tone":"bear","label":"Supply OB"},{"type":"trend","p1":1005,"p2":1048,"x1":-60,"x2":-2,"tone":"bull","label":"Trend"},{"type":"ray","p1":1010,"p2":1035,"x1":-40,"x2":-5,"tone":"bull","label":"Ray"},{"type":"fib","p1":1000,"p2":1050,"x1":-50,"x2":-2,"tone":"neutral","label":"Fib"},{"type":"arrow","p1":1020,"p2":1040,"x1":-30,"x2":-8,"tone":"bull","label":"Impulse"},{"type":"callout","p1":1038,"x1":-10,"label":"Liquidity","tone":"neutral"}]}
 \`\`\`
-FORMAT ONLY — the symbol and every number above are placeholders. Copying them marks the wrong prices on a real chart. Read prices from STRUCTURE TAPE (preferred for HH/HL/BOS/CHOCH), LIVE MARKET DATA, or the screenshot axis.
-MATCH THE QUESTION: market structure / HH HL LH LL / BOS / CHOCH → mark those as label + vline shapes from STRUCTURE TAPE. Order block / supply / demand → zones. Trendline → trend/ray. Fib → fib. Do NOT default every answer to Supply/Demand zones when the user asked for structure.
-"symbol": plain ticker as written on exchanges — NIFTY, BANKNIFTY, SENSEX, RELIANCE, BTCUSDT, EURUSD, XAUUSD. No expiry, no strike, no option leg; for an option chart send the underlying.
-"tf": one of 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit either key when unsure — a wrong symbol opens the wrong chart.
-"levels" (max 8): single horizontal lines. "kind" is support | resistance | pivot.
-"shapes" (max 12): everything else. "type" is one of
-  zone  — a price band: p1 = top, p2 = bottom, and they must be two DIFFERENT prices (a band, not a line). Use for order blocks, supply/demand, FVG, imbalance, consolidation, value area. Only one price in mind? Put it in "levels" instead.
-  trend — a sloped line from (x1,p1) to (x2,p2). Use for trendlines, channel edges, neckline, flag boundary.
-  ray   — same as trend but extends into the future.
-  fib   — retracement drawn between p1 (start) and p2 (end).
-  vline — a vertical marker at x1. Use for BOS/CHoCH, a session open, an event bar. x1 = bars ago from the latest candle (e.g. -18).
-  label — a note pinned at price p1. Use for HH, HL, LH, LL, swing tags, or any named point.
-"tone": bull (green) | bear (red) | neutral (grey). "label"/"text": max 28 chars, shown on the chart.
-Time anchors x1/x2 are bar offsets from the latest candle: 0 = last bar, -30 = thirty bars ago, positive = to the right of price. For STRUCTURE TAPE events, copy the "~N bars ago" value as x1:-N on vlines. For zones from the live tape with no candle position, omit x1/x2 so the app anchors the band.
-Mark whatever the user asked for — structure tags, order block, trendline, liquidity, S/R, gap, pattern, retracement — using the closest shape above. If they asked and you cannot read a real price for it, say so in the prose instead of inventing one.
-These are Areas of Interest ONLY — never entry, stop loss, target, or position advice, and the block never replaces your written answer.
-Only real prices from STRUCTURE TAPE / live tape / screenshot. No invented numbers. Nothing to mark → omit the block entirely.
-Valid JSON, one line, exactly this fence. Never mention this block, never explain it, never wrap it in extra text.`;
+FORMAT ONLY — the symbol and every number above are placeholders. Copying them marks the wrong prices. Read prices from STRUCTURE TAPE (preferred for HH/HL/BOS/CHOCH), LIVE MARKET DATA, or the screenshot axis.
+TOOLKIT — pick by intent (do not invent other types):
+LINES
+  trend — sloped segment (x1,p1)→(x2,p2). Trend direction, channel edge, neckline.
+  ray   — same as trend but extends infinitely forward.
+  hline — full-width horizontal at p1. Important price levels, PDH/PDL, clean S/R.
+  hray  — horizontal ray from x1 at p1, extends right. Active level from a swing.
+  vline — vertical at x1 (bars ago). Session open, news, BOS/CHoCH bar, time event.
+ZONES
+  zone  — rectangle band p1≠p2. Order block, supply/demand, S/R zone, FVG, imbalance. Ellipse/brush asks → still use zone (closest supported tool).
+MEASURE / FIB
+  fib   — Fibonacci between p1 (start) and p2 (end). Pullbacks / premium-discount. Levels drawn: 0.236 0.382 0.5 0.618 0.705 0.786 1. Extension/channel/time asks → still use fib between the two prices (closest tool). Price/date range / ruler asks → mark the two prices as hline or fib + short prose measure.
+ANNOTATIONS
+  label — short tag at p1 (optional x1). HH/HL/LH/LL, swing names, "Liquidity Zone".
+  callout — note with stem at p1. Longer named area ("Liquidity", "Discount").
+  arrow — direction (x1,p1)→(x2,p2). Impulse / rejection direction (NOT a trade order).
+MATCH THE QUESTION:
+  structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE (not Supply/Demand).
+  S/R / previous high-low / round number → levels and/or hline / hray.
+  OB / supply / demand / FVG → zone.
+  trendline / channel / pitchfork → trend (and ray if it should extend).
+  fib / pullback / 0.618 0.705 0.786 → fib with real swing p1/p2.
+  session / news / event time → vline.
+  direction / impulse → arrow. Named note → callout or label.
+"symbol": plain ticker — NIFTY, BANKNIFTY, SENSEX, RELIANCE, BTCUSDT, EURUSD, XAUUSD. No expiry/strike/option leg; options → underlying.
+"tf": 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w. Omit when unsure.
+"levels" (max 10): axis price lines. kind = support | resistance | pivot.
+"shapes" (max 16): toolkit above. "tone": bull | bear | neutral. "label": max 36 chars.
+Time anchors x1/x2 = bars from latest candle (0 = last, -30 = thirty ago). STRUCTURE TAPE "~N bars ago" → x1:-N. Zones without candle position: omit x1/x2.
+Areas of Interest ONLY — never entry, stop, target, buy/sell. Real prices only. Nothing to mark → omit block. Valid JSON, one fence, never mention the block.`;
 
 /**
  * Each module is scored against the question and only the closest one or two
@@ -1534,21 +1547,23 @@ const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY so
  */
 const MARKUP_REQUIRED_HINT = `MANDATORY LAST STEP — the drawing block. Your answer is incomplete without it.
 AUTO-DRAW is always on: even if the user never said "mark" / "draw", you still place what the QUESTION asked for on the chart.
-MATCH THE TOPIC — do not default to Supply/Demand zones:
-- market structure / HH HL LH LL / BOS / CHOCH → use STRUCTURE TAPE prices as label shapes (HH/HL/LH/LL) and vline shapes (BOS/CHOCH). Skip supply/demand unless also asked.
-- order block / supply / demand / FVG → zone shapes.
-- support/resistance / day view with no structure ask → day high/low levels (and optional thin zones).
-Every price band you name becomes a "zone", every break a "vline", every swing tag a "label".
-Finish the reply with exactly this, on its own lines, nothing after it:
+PICK THE RIGHT TOOL — do not default to Supply/Demand zones:
+- structure / HH HL LH LL / BOS / CHOCH → label + vline from STRUCTURE TAPE.
+- S/R, PDH/PDL, round numbers → levels and/or hline / hray (not fat zones unless they asked for a zone).
+- OB / supply / demand / FVG → zone (rectangle).
+- trendline / channel → trend; extending level → ray or hray.
+- fib / pullback / 0.618·0.705·0.786 → fib between real swings.
+- session / news / event → vline. Direction → arrow. Named note → callout/label.
+Finish with exactly this, nothing after:
 \`\`\`wolfchart
 {"symbol":"<ticker>","tf":"<timeframe>","levels":[...],"shapes":[...]}
 \`\`\`
-No block = nothing gets drawn and the user sees an empty chart. If you truly have no price to mark, say so in the prose instead.`;
+No block = empty chart. No real price → say so in prose instead.`;
 
-const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart of this instrument sits beside the chat. For EVERY answer, draw on it yourself — the user does not need to ask "mark kro". NEVER ask for a screenshot. Draw what they asked about (structure tags, OBs, S/R, trendlines) — not a generic Supply + Demand pair when they asked for HH/HL/BOS/CHOCH. Prefer STRUCTURE TAPE when present; otherwise LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never hand back an empty shapes array when tape/structure prices exist.
-Zones without a known candle position: omit x1/x2. Structure events: use x1 as negative bars-ago from STRUCTURE TAPE.`;
+const CHART_OPEN_HINT = `CHART ALREADY OPEN + AUTO-DRAW: a live chart sits beside the chat. For EVERY answer, draw with the correct toolkit tool (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout) — not a generic Supply + Demand pair when they asked for structure or S/R lines. Prefer STRUCTURE TAPE; else LIVE MARKET DATA day high/low/LTP. Never reuse prompt-example numbers. Never empty shapes when tape/structure prices exist.
+Zones without candle position: omit x1/x2. Structure events: x1 = negative bars-ago from STRUCTURE TAPE.`;
 
-const STRUCTURE_MARKUP_HINT = `STRUCTURE MARKUP MODE: User asked about market structure (HH/HL/LH/LL, BOS, CHOCH, bias). STRUCTURE TAPE lists real pivot prices — mark THOSE on the chart as labels (HH/HL/LH/LL) and vlines (BOS/CHOCH). Explain bias from that structure in 4–8 short lines. Do NOT draw Supply Zone / Demand Zone for this answer unless the user also asked for zones.`;
+const STRUCTURE_MARKUP_HINT = `STRUCTURE MARKUP MODE: User asked about market structure (HH/HL/LH/LL, BOS, CHOCH, bias). STRUCTURE TAPE lists real pivot prices — mark THOSE as labels (HH/HL/LH/LL) and vlines (BOS/CHOCH). Optional trend/ray if a clear structure line exists. Explain bias in 4–8 short lines. Do NOT draw Supply Zone / Demand Zone unless the user also asked for zones.`;
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart. If a chart is open beside the chat, still append the wolfchart block and redraw those levels.`;
 
@@ -2063,23 +2078,23 @@ export function createMasterAiRouter(apiKey) {
           : wantsJournalReview
             ? 'Task: JOURNAL MODE v3.0 — analyze PLATFORM TRADING JOURNAL only. Completeness/quality/compliance/patterns. Never invent or modify trades. Good Decision ≠ Good Result. Under ~200 words. No chart ask. No new trade instructions.'
           : wantsStructure
-            ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart with label shapes for each HH/HL/LH/LL and vline for BOS/CHOCH from that tape. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
+            ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
-            ? 'Task: AUTO-DRAW ON OPEN CHART. Answer in 3–6 short lines, then ALWAYS append wolfchart matching what was asked (structure labels/vlines, OB zones, S/R levels — not a generic Supply+Demand pair every time). Chart is already open: NEVER ask for a screenshot. Areas of Interest only, no Entry/Stop/Target.'
+            ? 'Task: AUTO-DRAW ON OPEN CHART with correct toolkit (trend/ray/hline/hray/vline/zone/fib/label/arrow/callout). Match the ask — not a generic Supply+Demand pair. Chart open: NEVER ask for screenshot. Areas of Interest only, no Entry/Stop/Target.'
           : historyHasAnalysis || wantsLanguageSwitch
-            ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same Areas of Interest. Under ~100 words. Do NOT ask for a chart again. If levels are restated, still append wolfchart. No Entry/Stop/Target.'
+            ? 'Task: CONTINUE prior analysis SHORTLY in requested language. Same Areas of Interest. Under ~100 words. Do NOT ask for a chart again. If levels are restated, still append wolfchart with the same toolkit tools. No Entry/Stop/Target.'
             : wantsTradeCall
               ? 'Task: refuse trade orders. Explain you analyze markets with scenarios — ask for chart in 2 short lines. No buy/sell.'
               : wantsDayReview && contextHasLiveTape
-                ? 'Task: LIVE TAPE + AUTO-DRAW — answer NOW with LTP, change%, day high/low from LIVE MARKET DATA, then append wolfchart marking those levels. NEVER ask for screenshot. Under ~100 words prose.'
+                ? 'Task: LIVE TAPE + AUTO-DRAW — LTP, change%, day high/low from LIVE MARKET DATA, then wolfchart with levels/hline (not forced OB zones). NEVER ask for screenshot. Under ~100 words prose.'
               : wantsDayReview && !contextHasLiveTape
                 ? 'Task: Live tape unavailable. Say so briefly; ask for chart only if they want structure. Under ~40 words.'
                 : wantsChartRead && contextHasLiveTape
-                  ? 'Task: answer from live tape (LTP/range), then append wolfchart matching the question (not forced Supply/Demand). NEVER lead with screenshot ask. No trade instructions.'
+                  ? 'Task: answer from live tape (LTP/range), then wolfchart with the right tool for the ask (hline/hray/zone/fib/label — not forced Supply/Demand). NEVER lead with screenshot ask. No trade instructions.'
                 : wantsChartRead
                   ? 'Task: answer in 3–5 short lines as analyst; if visual read needed, ask for chart. No trade instructions.'
                   : wantsMarkup && contextHasLiveTape
-                    ? 'Task: answer using LIVE MARKET DATA, then ALWAYS append wolfchart matching the question. NEVER ask for a screenshot. 3–6 short lines. No Entry/Stop/Target.'
+                    ? 'Task: answer using LIVE MARKET DATA, then ALWAYS append wolfchart with the correct toolkit tool for the question. NEVER ask for a screenshot. 3–6 short lines. No Entry/Stop/Target.'
                   : contextHasLiveTape
                     ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';

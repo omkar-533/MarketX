@@ -351,7 +351,33 @@ export function useChartDrawings({
           continue;
         }
 
-        if (shape.type === 'label') {
+        if (shape.type === 'hline') {
+          if (y1 === null) continue;
+          ctx.setLineDash([2, 3]);
+          ctx.beginPath();
+          ctx.moveTo(0, y1);
+          ctx.lineTo(paneWidth, y1);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          chip(shape.label, 8, y1 - 2, tone.line);
+          continue;
+        }
+
+        if (shape.type === 'hray') {
+          if (y1 === null) continue;
+          const start =
+            (shape.x1 === undefined
+              ? zoneOriginX(shape.p1!, shape.p1!)
+              : anchorX(shape.x1, -20)) ?? 0;
+          ctx.beginPath();
+          ctx.moveTo(start, y1);
+          ctx.lineTo(paneWidth + 200, y1);
+          ctx.stroke();
+          chip(shape.label, Math.min(start + 8, paneWidth - 80), y1 - 2, tone.line);
+          continue;
+        }
+
+        if (shape.type === 'label' || shape.type === 'callout') {
           if (y1 === null) continue;
           // Prefer the model's bar offset; otherwise sit the tag on the last
           // candle that actually printed that swing price.
@@ -360,28 +386,59 @@ export function useChartDrawings({
             x = zoneOriginX(shape.p1, shape.p1);
           }
           x = x ?? anchorX(undefined, -6) ?? 0;
-          ctx.beginPath();
-          ctx.arc(x, y1, 3, 0, Math.PI * 2);
-          ctx.fillStyle = tone.line;
-          ctx.fill();
-          chip(shape.label, x + 6, y1, tone.line);
+          if (shape.type === 'callout') {
+            const tipX = Math.min(x + 56, paneWidth - 8);
+            const tipY = Math.max(12, y1 - 28);
+            ctx.beginPath();
+            ctx.moveTo(x, y1);
+            ctx.lineTo(tipX - 4, tipY + 6);
+            ctx.stroke();
+            chip(shape.label, tipX - 4, tipY, tone.line);
+          } else {
+            ctx.beginPath();
+            ctx.arc(x, y1, 3, 0, Math.PI * 2);
+            ctx.fillStyle = tone.line;
+            ctx.fill();
+            chip(shape.label, x + 6, y1, tone.line);
+          }
           continue;
         }
 
-        // trend / ray
+        // trend / ray / arrow
         if (y1 === null || y2 === null) continue;
         const x1 = anchorX(shape.x1, -45);
         const x2 = anchorX(shape.x2, 0);
         if (x1 === null || x2 === null) continue;
+        let endX = x2;
+        let endY = y2;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         if (shape.type === 'ray') {
-          ctx.lineTo(x2 + (x2 - x1) * 400, y2 + (y2 - y1) * 400);
+          endX = x2 + (x2 - x1) * 400;
+          endY = y2 + (y2 - y1) * 400;
+          ctx.lineTo(endX, endY);
         } else {
           ctx.lineTo(x2, y2);
         }
         ctx.stroke();
-        chip(shape.label, x2 + 6, y2, tone.line);
+        if (shape.type === 'arrow') {
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const head = 9;
+          ctx.beginPath();
+          ctx.moveTo(x2, y2);
+          ctx.lineTo(
+            x2 - head * Math.cos(angle - Math.PI / 6),
+            y2 - head * Math.sin(angle - Math.PI / 6),
+          );
+          ctx.lineTo(
+            x2 - head * Math.cos(angle + Math.PI / 6),
+            y2 - head * Math.sin(angle + Math.PI / 6),
+          );
+          ctx.closePath();
+          ctx.fillStyle = tone.line;
+          ctx.fill();
+        }
+        chip(shape.label, (shape.type === 'ray' ? x2 : endX) + 6, shape.type === 'ray' ? y2 : endY, tone.line);
       }
     };
 

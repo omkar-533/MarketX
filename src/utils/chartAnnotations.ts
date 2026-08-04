@@ -20,8 +20,22 @@ export interface ChartLevel {
   label: string;
 }
 
-/** Everything the model can draw beyond a plain horizontal line. */
-export type ChartShapeType = 'zone' | 'trend' | 'ray' | 'fib' | 'vline' | 'label';
+/**
+ * Desk toolkit the model can emit (TradingView-style).
+ * hline = full-width horizontal · hray = horizontal ray from a bar ·
+ * arrow/callout = directional / note annotations · zone = rectangle bands.
+ */
+export type ChartShapeType =
+  | 'zone'
+  | 'trend'
+  | 'ray'
+  | 'hline'
+  | 'hray'
+  | 'fib'
+  | 'vline'
+  | 'label'
+  | 'arrow'
+  | 'callout';
 export type ChartShapeTone = 'bull' | 'bear' | 'neutral';
 
 /**
@@ -45,9 +59,9 @@ export interface ChartShape {
 
 export const CHART_ANNOTATION_TAG = 'wolfchart';
 
-const MAX_LEVELS = 8;
-const MAX_SHAPES = 12;
-const LABEL_MAX = 28;
+const MAX_LEVELS = 10;
+const MAX_SHAPES = 16;
+const LABEL_MAX = 36;
 
 /** ```wolfchart { ... } ``` — the format we ask for. */
 const TAGGED_RE = new RegExp(
@@ -108,15 +122,31 @@ export function sanitizeLevels(raw: unknown): ChartLevel[] {
 }
 
 function toShapeType(raw: unknown): ChartShapeType | null {
-  const type = String(raw ?? '').trim().toLowerCase();
-  if (['zone', 'box', 'rect', 'ob', 'orderblock', 'area', 'fvg', 'gap'].includes(type)) {
+  const type = String(raw ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    ['zone', 'box', 'rect', 'rectangle', 'ob', 'orderblock', 'area', 'fvg', 'gap', 'ellipse'].includes(
+      type,
+    )
+  ) {
     return 'zone';
   }
-  if (['trend', 'trendline', 'line', 'channel'].includes(type)) return 'trend';
-  if (['ray', 'extend'].includes(type)) return 'ray';
-  if (['fib', 'fibonacci', 'retracement'].includes(type)) return 'fib';
-  if (['vline', 'vertical', 'time', 'event'].includes(type)) return 'vline';
-  if (['label', 'text', 'note', 'marker'].includes(type)) return 'label';
+  if (['trend', 'trendline', 'channel', 'pitchfork'].includes(type)) return 'trend';
+  if (['ray', 'extend', 'diagonalray'].includes(type)) return 'ray';
+  if (['hline', 'horizontal', 'horizontalline', 'pricelevel'].includes(type)) return 'hline';
+  if (['hray', 'horizontalray', 'priceray'].includes(type)) return 'hray';
+  if (
+    ['fib', 'fibonacci', 'retracement', 'fibretrace', 'fibextension', 'fibchannel'].includes(type)
+  ) {
+    return 'fib';
+  }
+  if (['vline', 'vertical', 'verticalline', 'time', 'event', 'session'].includes(type)) {
+    return 'vline';
+  }
+  if (['arrow', 'pointer', 'direction'].includes(type)) return 'arrow';
+  if (['callout', 'annotation'].includes(type)) return 'callout';
+  if (['label', 'text', 'note', 'marker', 'tag'].includes(type)) return 'label';
+  // Bare "line" → trend (sloped). Horizontals should say hline.
+  if (type === 'line') return 'trend';
   return null;
 }
 
@@ -161,7 +191,9 @@ function toShape(raw: unknown): ChartShape | null {
 
   // Each shape needs the prices its geometry is built from.
   if (type === 'vline') return shape.x1 === undefined ? null : shape;
-  if (type === 'label') return shape.p1 === undefined ? null : shape;
+  if (type === 'label' || type === 'callout' || type === 'hline' || type === 'hray') {
+    return shape.p1 === undefined ? null : shape;
+  }
   if (type === 'zone' || type === 'fib') {
     if (shape.p1 === undefined || shape.p2 === undefined) return null;
     if (shape.p1 === shape.p2) {
@@ -173,7 +205,22 @@ function toShape(raw: unknown): ChartShape | null {
     }
     return shape;
   }
+  // trend / ray / arrow need two prices
   return shape.p1 !== undefined && shape.p2 !== undefined ? shape : null;
+}
+
+/**
+ * Horizontal hline shapes also become price lines so they show on the axis
+ * even if canvas paint is skipped.
+ */
+export function shapesToExtraLevels(shapes: ChartShape[]): ChartLevel[] {
+  return shapes
+    .filter((s) => (s.type === 'hline' || s.type === 'hray') && s.p1)
+    .map((s) => ({
+      price: s.p1!,
+      kind: (s.tone === 'bull' ? 'support' : s.tone === 'bear' ? 'resistance' : 'pivot') as ChartLevelKind,
+      label: s.label || (s.type === 'hray' ? 'H-Ray' : 'Level'),
+    }));
 }
 
 export function sanitizeShapes(raw: unknown): ChartShape[] {
@@ -239,6 +286,19 @@ export function parseChartAnnotations(reply: string): ParsedReply {
     const parsed = JSON.parse(block.json.trim()) as unknown;
     levels = sanitizeLevels(parsed);
     shapes = sanitizeShapes(parsed);
+    // hline / hray also become axis price lines so they stay visible.
+    const extras = shapesToExtraLevels(shapes);
+    if (extras.length) {
+      const seen = new Set(levels.map((l) => `${l.kind}:${l.price.toFixed(4)}`));
+      for (const lvl of extras) {
+        const key = `${lvl.kind}:${lvl.price.toFixed(4)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          levels.push(lvl);
+        }
+      }
+      levels = levels.slice(0, MAX_LEVELS);
+    }
     if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
       const row = parsed as Record<string, unknown>;
       symbol = resolveKnownSymbol(row.symbol ?? row.sym);

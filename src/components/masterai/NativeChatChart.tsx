@@ -189,7 +189,14 @@ export default function NativeChatChart({
         setBars([]);
         setStatus('loading');
       }
-      const res = await fetchMarketOhlc(apiSymbol, apiInterval);
+      // Longer history so Wolf Mentor / pan-left still shows candles (not empty void).
+      const range =
+        apiInterval === '1d' || apiInterval === '1w'
+          ? '1y'
+          : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
+            ? '6mo'
+            : '3mo';
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range);
       if (token !== requestRef.current) return;
       const next = res?.bars ?? [];
       if (!next.length) {
@@ -296,8 +303,11 @@ export default function NativeChatChart({
         borderColor: theme.border,
         timeVisible: intraday,
         secondsVisible: false,
-        rightOffset: 4,
-        barSpacing: 7,
+        rightOffset: 6,
+        barSpacing: 6,
+        minBarSpacing: 1.5,
+        // Do not leave a blank void past the first historical bar when zooming out.
+        fixLeftEdge: true,
         tickMarkFormatter: formatTickMark,
       },
       localization: { timeFormatter: (t: Time) => istFull.format(Number(t) * 1000) },

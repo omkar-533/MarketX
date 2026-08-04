@@ -38,13 +38,36 @@ function round(n) {
   return Math.round(Number(n) * 100) / 100;
 }
 
+/** How many bars TradingView should stream — keep high so panning left stays filled. */
 function candleCountFor(timeframe, rangeOverride) {
-  if (rangeOverride === '1y') return 365;
-  if (rangeOverride === '6mo') return 180;
-  if (rangeOverride === '3mo') return 90;
-  if (timeframe === '1d' || timeframe === '1w') return 250;
-  if (timeframe === '1h') return 200;
-  return 120;
+  const tf = String(timeframe || '15m');
+  const daily = tf === '1d' || tf === '1w';
+
+  if (rangeOverride === '1y') {
+    if (daily) return 400;
+    if (tf === '1h' || tf === '2h' || tf === '4h') return 2500;
+    return 4000;
+  }
+  if (rangeOverride === '6mo') {
+    if (daily) return 220;
+    if (tf === '1h' || tf === '2h' || tf === '4h') return 1800;
+    return 3000;
+  }
+  if (rangeOverride === '3mo') {
+    if (daily) return 120;
+    if (tf === '1h' || tf === '2h' || tf === '4h') return 1200;
+    return 2000;
+  }
+
+  // Default chart loads — enough history that Mentor / pan-left is not blank.
+  if (daily) return 400;
+  if (tf === '4h' || tf === '2h') return 600;
+  if (tf === '1h') return 700;
+  if (tf === '30m') return 700;
+  if (tf === '15m') return 800;
+  if (tf === '5m') return 800;
+  if (tf === '1m') return 800;
+  return 600;
 }
 
 /**
@@ -70,7 +93,7 @@ export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride) {
 
     const timer = setTimeout(() => {
       finish(reject, new Error('TradingView OHLC timeout'));
-    }, 18_000);
+    }, 28_000);
 
     function finish(fn, value) {
       if (settled) return;
