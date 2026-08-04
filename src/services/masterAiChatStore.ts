@@ -1,5 +1,6 @@
 /** Multi-chat history for Wolf AI — localStorage, no server. */
 
+import { sanitizeLevels, type ChartLevel } from '../utils/chartAnnotations';
 import { TV_STUDY_PRESETS, TV_TIMEFRAMES, type TvInterval } from '../utils/tradingViewSymbols';
 
 /** A live chart pinned into the conversation. */
@@ -7,6 +8,8 @@ export interface ChatChartAttachment {
   symbol: string;
   interval: TvInterval;
   study: string;
+  /** Areas of interest Wolf AI marked up alongside its answer. */
+  levels?: ChartLevel[];
 }
 
 export interface ChatMessage {
@@ -67,12 +70,14 @@ function cleanText(text: string): string {
 
 function hydrateChart(chart: unknown): ChatChartAttachment | undefined {
   if (!chart || typeof chart !== 'object') return undefined;
-  const { symbol, interval, study } = chart as Partial<ChatChartAttachment>;
+  const { symbol, interval, study, levels } = chart as Partial<ChatChartAttachment>;
   if (typeof symbol !== 'string' || !symbol.trim()) return undefined;
+  const restored = sanitizeLevels(levels);
   return {
     symbol: symbol.trim().toUpperCase().slice(0, 40),
     interval: TV_TIMEFRAMES.some((tf) => tf.id === interval) ? (interval as TvInterval) : '15',
     study: TV_STUDY_PRESETS.some((s) => s.id === study) ? (study as string) : 'none',
+    ...(restored.length ? { levels: restored } : {}),
   };
 }
 

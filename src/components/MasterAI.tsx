@@ -76,7 +76,12 @@ import {
 import ChatMarkdown from './ChatMarkdown';
 import HunterMark from './HunterMark';
 import ChatChartPanel from './masterai/ChatChartPanel';
-import { detectChartRequest, type TvInterval } from '../utils/tradingViewSymbols';
+import { parseChartAnnotations } from '../utils/chartAnnotations';
+import {
+  detectChartRequest,
+  detectInstrumentMention,
+  type TvInterval,
+} from '../utils/tradingViewSymbols';
 import {
   MASTER_AI_IMAGE_ACCEPT,
   prepareChartImageForAi,
@@ -547,19 +552,30 @@ export default function MasterAI() {
 
     if (!userText && !hasImage) return;
 
-    // "NIFTY ka 5 min chart dikha" — drop a chart card in the thread, then answer as usual.
-    let pendingChart: ChatChartAttachment | null = null;
+    // Any question naming an instrument gets a chart beside the answer, not
+    // just an explicit "NIFTY ka 5 min chart dikha".
+    let chartMsg: Message | null = null;
+    let chartMessageId: string | null = null;
     if (!hasImage) {
       const chartReq = detectChartRequest(userText);
-      if (chartReq) {
-        pendingChart = {
-          symbol: chartReq.tvSymbol || chartSymbol,
-          interval: chartReq.interval ?? chartInterval,
-          study: chartReq.study ?? chartStudy,
-        };
-        setChartSymbol(pendingChart.symbol);
-        setChartInterval(pendingChart.interval);
-        setChartStudy(pendingChart.study);
+      const mentioned = chartReq ? null : detectInstrumentMention(userText);
+      const symbol = chartReq?.tvSymbol || mentioned || (chartReq ? chartSymbol : '');
+      if (symbol) {
+        const interval = chartReq?.interval ?? chartInterval;
+        const study = chartReq?.study ?? chartStudy;
+        setChartSymbol(symbol);
+        setChartInterval(interval);
+        setChartStudy(study);
+
+        // Follow-ups about the same instrument mark up the existing card
+        // instead of stacking a new chart on every turn.
+        const lastChart = [...messages].reverse().find((m) => m.chart);
+        if (!chartReq && lastChart?.chart?.symbol === symbol) {
+          chartMessageId = lastChart.id;
+        } else {
+          chartMsg = makeChartMessage({ symbol, interval, study });
+          chartMessageId = chartMsg.id;
+        }
       }
     }
 
@@ -600,7 +616,7 @@ export default function MasterAI() {
     // If chat already started, always continue — never block mid-conversation
     const continuingThread = hasActiveDeskThread(messages);
 
-    if (!hasImage && !isTradingRelated(userText) && !continuingThread && !pendingChart) {
+    if (!hasImage && !isTradingRelated(userText) && !continuingThread && !chartMessageId) {
       const recentUser = messages
         .filter((m) => m.role === 'user')
         .slice(-4)
@@ -640,11 +656,7 @@ export default function MasterAI() {
       timestamp: new Date(),
       imageUrl: hasImage ? imageDataUrl ?? undefined : undefined,
     };
-    setMessages((prev) => [
-      ...prev,
-      userMsg,
-      ...(pendingChart ? [makeChartMessage(pendingChart)] : []),
-    ]);
+    setMessages((prev) => [...prev, userMsg, ...(chartMsg ? [chartMsg] : [])]);
     setInputText('');
     analyzingRef.current = true;
     setIsThinking(true);
@@ -751,13 +763,45 @@ export default function MasterAI() {
         }
       }
 
+      // Wolf AI hides its chart markup at the end of the reply — lift it out
+      // before anything reaches the transcript or the speech engine.
+      const parsed = parseChartAnnotations(responseText);
+      responseText = parsed.text || responseText;
+
+      // A screenshot only tells us the instrument once the model has read it,
+      // so the matching live chart is built here rather than before the send.
+      let replyChart: Message | null = null;
+      if (!chartMessageId && parsed.symbol) {
+        const interval = parsed.interval ?? chartInterval;
+        replyChart = makeChartMessage({
+          symbol: parsed.symbol,
+          interval,
+          study: chartStudy,
+          levels: parsed.levels,
+        });
+        setChartSymbol(parsed.symbol);
+        setChartInterval(interval);
+      } else if (chartMessageId && parsed.interval) {
+        // The user's wording won; a timeframe the model read off the image wins back.
+        updateChartMessage(chartMessageId, { interval: parsed.interval });
+      }
+
       const aiMsg: Message = {
         id: `${Date.now()}-a`,
         role: 'trafi',
         text: responseText,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => {
+        const next = parsed.levels.length && chartMessageId
+          ? prev.map((m) =>
+              m.id === chartMessageId && m.chart
+                ? { ...m, chart: { ...m.chart, levels: parsed.levels } }
+                : m,
+            )
+          : prev;
+        return [...next, ...(replyChart ? [replyChart] : []), aiMsg];
+      });
 
       if (autoSpeak) speakText(responseText);
     } finally {
@@ -1119,6 +1163,7 @@ export default function MasterAI() {
                         onStudyChange={(study) => updateChartMessage(message.id, { study })}
                         onClose={() => removeChartMessage(message.id)}
                         closeLabel="Remove chart"
+                        levels={chart.levels}
                       />
                     </div>
                   </motion.div>

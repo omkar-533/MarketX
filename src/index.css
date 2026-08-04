@@ -7614,6 +7614,20 @@ input[type="number"] { -moz-appearance: textfield; }
   color: #ef5350;
 }
 
+.mai-nc__aoi {
+  position: absolute;
+  left: 0.65rem;
+  bottom: 0.4rem;
+  z-index: 2;
+  pointer-events: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--tf-text-muted) 14%, transparent);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--tf-text-muted);
+}
+
 .mai-nc__stamp {
   position: absolute;
   right: 0.6rem;

@@ -8,10 +8,12 @@ import {
   createChart,
   createTextWatermark,
   type IChartApi,
+  type IPriceLine,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { serverUnreachableMessage } from '../../constants/brandLabels';
+import { levelsNearPrice, type ChartLevel } from '../../utils/chartAnnotations';
 import { useTheme } from '../../context/ThemeContext';
 import { bollinger, ema, rsi, toHeikinAshi, vwap } from '../../services/chart/chartIndicators';
 import { fetchMarketOhlc } from '../../services/marketApiService';
@@ -95,6 +97,13 @@ export type NativeChatChartProps = {
   study: string;
   chartStyle: TvChartStyle;
   reloadKey: number;
+  levels?: ChartLevel[];
+};
+
+const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
+  support: '#26a69a',
+  resistance: '#ef5350',
+  pivot: '#787b86',
 };
 
 type Legend = { o: number; h: number; l: number; c: number; prevClose: number };
@@ -110,6 +119,7 @@ export default function NativeChatChart({
   study,
   chartStyle,
   reloadKey,
+  levels,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -118,6 +128,9 @@ export default function NativeChatChart({
   const applyRef = useRef<((view: ChartView, fit: boolean) => void) | null>(null);
   const viewRef = useRef<ChartView | null>(null);
   const legendMapRef = useRef<Map<number, number>>(new Map());
+  const priceSeriesRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null);
+  const levelLinesRef = useRef<IPriceLine[]>([]);
+  const [chartEpoch, setChartEpoch] = useState(0);
   const needFitRef = useRef(true);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
   const touchedRef = useRef(false);
@@ -408,6 +421,9 @@ export default function NativeChatChart({
       setLegend(legendAt(source, hovered ?? source.length - 1));
     });
 
+    priceSeriesRef.current = priceSeries;
+    setChartEpoch((n) => n + 1);
+
     if (viewRef.current) {
       applyRef.current(viewRef.current, needFitRef.current);
       needFitRef.current = false;
@@ -436,6 +452,8 @@ export default function NativeChatChart({
       host.removeEventListener('pointerdown', markTouched);
       applyRef.current = null;
       chartRef.current = null;
+      priceSeriesRef.current = null;
+      levelLinesRef.current = [];
       chart.remove();
     };
   }, [hasData, chartStyle, study, theme, intraday]);
@@ -446,12 +464,38 @@ export default function NativeChatChart({
     needFitRef.current = false;
   }, [view]);
 
+  // Areas of interest Wolf AI called out, drawn as labelled price lines.
+  useEffect(() => {
+    const series = priceSeriesRef.current;
+    if (!series) return;
+
+    levelLinesRef.current.forEach((lineApi) => series.removePriceLine(lineApi));
+    levelLinesRef.current = [];
+    if (!levels?.length || !view) return;
+
+    const lastClose = view.source[view.source.length - 1]?.close ?? 0;
+    levelLinesRef.current = levelsNearPrice(levels, lastClose).map((lvl) =>
+      series.createPriceLine({
+        price: lvl.price,
+        color: LEVEL_COLOR[lvl.kind],
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: lvl.label || lvl.kind,
+      }),
+    );
+  }, [levels, view, chartEpoch]);
+
   const label = tradingViewSymbolLabel(symbol);
   const decimals = view?.decimals ?? 2;
   const change = legend ? legend.c - legend.prevClose : 0;
   const changePct = legend && legend.prevClose ? (change / legend.prevClose) * 100 : 0;
   const tone = change >= 0 ? 'mai-nc__up' : 'mai-nc__down';
   const intervalLabel = TV_TIMEFRAMES.find((tf) => tf.id === interval)?.label ?? interval;
+  const drawnLevels =
+    levels?.length && view
+      ? levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0).length
+      : 0;
 
   return (
     <div className="mai-tv__frame">
@@ -476,6 +520,12 @@ export default function NativeChatChart({
               {changePct.toFixed(2)}%)
             </span>
           </span>
+        </div>
+      ) : null}
+
+      {drawnLevels > 0 && status === 'ready' ? (
+        <div className="mai-nc__aoi">
+          {drawnLevels} area{drawnLevels > 1 ? 's' : ''} of interest · marked by Wolf AI
         </div>
       ) : null}
 

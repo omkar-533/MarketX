@@ -159,6 +159,39 @@ export function nativeIntervalFor(interval: TvInterval): string | null {
   return NATIVE_INTERVAL[interval] ?? null;
 }
 
+/**
+ * Accept whatever a model reports for a timeframe — "15m", "15", "1H",
+ * "daily", "1 hour" — and pin it to one of our intervals.
+ */
+export function normalizeTvInterval(raw: unknown): TvInterval | null {
+  const value = String(raw ?? '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!value) return null;
+
+  const direct = TV_TIMEFRAMES.find(
+    (tf) => tf.id.toLowerCase() === value || tf.label.toLowerCase() === value,
+  );
+  if (direct) return direct.id;
+
+  if (/^(1d|d|day|daily)$/.test(value)) return 'D';
+  if (/^(1w|w|week|weekly)$/.test(value)) return 'W';
+  if (/^(1mo|mo|month|monthly)$/.test(value)) return 'M';
+
+  const minutes = value.match(/^(\d{1,4})(m|min|mins|minute|minutes)?$/);
+  if (minutes) {
+    const n = Number(minutes[1]);
+    const known: TvInterval[] = ['1', '3', '5', '15', '30', '60', '120', '240'];
+    if (known.includes(String(n) as TvInterval)) return String(n) as TvInterval;
+  }
+
+  const hours = value.match(/^(\d{1,2})(h|hr|hrs|hour|hours)$/);
+  if (hours) {
+    const n = Number(hours[1]) * 60;
+    if (n === 60 || n === 120 || n === 240) return String(n) as TvInterval;
+  }
+
+  return null;
+}
+
 export const NATIVE_TIMEFRAMES = TV_TIMEFRAMES.filter((tf) => nativeIntervalFor(tf.id) !== null);
 
 /** Study presets we can compute locally for the native chart. */
@@ -235,5 +268,93 @@ export function detectChartRequest(text: string): ChartRequest | null {
 
   // "5 min chart dikha" with no symbol — keep the current one, just retune it.
   if (interval || study) return { tvSymbol: '', interval, study };
+  return null;
+}
+
+/**
+ * Tickers that double as ordinary words. Without this a message like
+ * "koi idea hai" would silently open an IDEA chart.
+ */
+const AMBIGUOUS_TICKERS = new Set([
+  'IDEA',
+  'CALL',
+  'PUT',
+  'TREND',
+  'POWER',
+  'FORCE',
+  'INDIA',
+  'ZONE',
+  'GAP',
+  'BUY',
+  'SELL',
+  'VIEW',
+  'RISK',
+  'DATA',
+  'NEWS',
+  'TIME',
+  'BEST',
+  'GOOD',
+  'HIGH',
+  'LOW',
+  'OPEN',
+  'CLOSE',
+  'LONG',
+  'SHORT',
+  'LEVEL',
+  'PRICE',
+  'MARKET',
+  'TARGET',
+  'PROFIT',
+  'LOSS',
+]);
+
+/**
+ * Resolve a symbol the model read off a screenshot. Unlike
+ * parseTradingViewInput this refuses to guess: an unknown ticker returns null
+ * rather than an NSE symbol that would load an empty chart.
+ */
+export function resolveKnownSymbol(raw: unknown): string | null {
+  const input = String(raw ?? '').trim().toUpperCase();
+  if (!input) return null;
+
+  if (input.includes(':')) {
+    const [exchange, ticker] = input.split(':');
+    if (/^[A-Z_]{2,12}$/.test(exchange) && /^[A-Z0-9._]{1,20}$/.test(ticker)) return input;
+    return null;
+  }
+
+  const token = input.replace(/[\s/-]/g, '');
+  if (GLOBAL_TV[token]) return GLOBAL_TV[token];
+  if (INDEX_TV[token]) return INDEX_TV[token];
+  if (FNO_SYMBOLS.has(token)) return toTradingViewSymbol(token);
+  // Crypto pairs the alias table does not list yet (e.g. LINKUSDT).
+  if (/^[A-Z]{2,10}USDT$/.test(token)) return `BINANCE:${token}`;
+  return null;
+}
+
+/**
+ * Find the instrument a plain question is about — no "chart" keyword needed,
+ * so "NIFTY ka kya view hai" can bring its own chart along.
+ * Returns null when nothing is named, which keeps concept questions
+ * ("RSI kya hota hai") chart-free.
+ */
+export function detectInstrumentMention(text: string): string | null {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+
+  const explicit = raw.match(/\b([A-Z]{2,12}):([A-Z0-9._]{1,20})\b/);
+  if (explicit) return `${explicit[1]}:${explicit[2]}`;
+
+  const tokens = Array.from(
+    new Set((raw.toUpperCase().match(/[A-Z][A-Z0-9&/-]{1,19}/g) ?? []).map((t) => t.replace(/[/-]/g, ''))),
+  ).sort((a, b) => b.length - a.length);
+
+  for (const token of tokens) {
+    if (AMBIGUOUS_TICKERS.has(token)) continue;
+    if (GLOBAL_TV[token]) return GLOBAL_TV[token];
+    if (INDEX_TV[token]) return INDEX_TV[token];
+    // Single stocks need a longer match; 2-3 letter tickers hit English words.
+    if (token.length >= 4 && FNO_SYMBOLS.has(token)) return toTradingViewSymbol(token);
+  }
   return null;
 }
