@@ -43,6 +43,8 @@ import {
 import type { MentorMode } from '../../services/mentorModes';
 import type { MentorStudentProfile } from '../../services/mentorStudentProfile';
 import type { User } from '../../hooks/useAuth';
+import type { MentorHandoff } from '../../services/mentorBridge';
+import MentorPathRail from './MentorPathRail';
 
 type Props = {
   ownerKey: string;
@@ -51,6 +53,7 @@ type Props = {
   lang: MasterAiLanguage;
   langMode: MasterAiLangMode;
   mentorMode: MentorMode;
+  onNavigate?: (handoff: MentorHandoff) => void;
 };
 
 function ScoreCell({ label, value }: { label: string; value: number }) {
@@ -69,6 +72,7 @@ export default function PerformanceCoachPanel({
   lang,
   langMode,
   mentorMode,
+  onNavigate,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -263,6 +267,14 @@ export default function PerformanceCoachPanel({
               ))}
             </ol>
           </section>
+          {onNavigate ? (
+            <MentorPathRail
+              ownerKey={ownerKey}
+              weakness={s.weakness}
+              onOpen={onNavigate}
+              title="Fix path · Curriculum → Chart → Lab → Live"
+            />
+          ) : null}
         </>
       )}
 

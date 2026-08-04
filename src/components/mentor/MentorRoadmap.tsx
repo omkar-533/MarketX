@@ -1,15 +1,17 @@
-import { Check, Lock, Play } from 'lucide-react';
+import { Check, FlaskConical, Lock, Play } from 'lucide-react';
 import {
   CURRICULUM_LEVELS,
   type CurriculumProgress,
   isLevelUnlocked,
 } from '../../services/mentorCurriculum';
+import type { MentorHandoff } from '../../services/mentorBridge';
 
 type MentorRoadmapProps = {
   progress: CurriculumProgress;
   studentName: string;
   activeLevelId: number | null;
   onOpenLevel: (levelId: number) => void;
+  onNavigate?: (handoff: MentorHandoff) => void;
 };
 
 export default function MentorRoadmap({
@@ -17,6 +19,7 @@ export default function MentorRoadmap({
   studentName,
   activeLevelId,
   onOpenLevel,
+  onNavigate,
 }: MentorRoadmapProps) {
   return (
     <div className="wm-learn wm-learn--roadmap">
@@ -28,8 +31,29 @@ export default function MentorRoadmap({
             Levels unlock only after you pass the quiz (4/5). Skip allowed nahi — foundation pehle.
           </p>
         </div>
-        <div className="wm-learn__progress-pill">
-          Unlocked {progress.highestUnlocked}/12
+        <div className="wm-learn__roadmap-actions">
+          <div className="wm-learn__progress-pill">
+            Unlocked {progress.highestUnlocked}/12
+          </div>
+          {onNavigate ? (
+            <button
+              type="button"
+              className="wm-learn__chip wm-learn__chip--on"
+              onClick={() =>
+                onNavigate({
+                  view: 'lab',
+                  labMissionId: 'mistake_replay',
+                  labMode: 'beginner',
+                  mistakeReplay: true,
+                  reason: `Practice Level ${progress.highestUnlocked} ideas in Trading Lab`,
+                  focusNote: `Curriculum Level ${progress.highestUnlocked} process drill in Lab`,
+                })
+              }
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              Practice in Lab
+            </button>
+          ) : null}
         </div>
       </div>
 

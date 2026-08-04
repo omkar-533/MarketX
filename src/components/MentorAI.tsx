@@ -31,7 +31,13 @@ import PerformanceCoachPanel from './mentor/PerformanceCoachPanel';
 import TradingLabPanel from './mentor/TradingLabPanel';
 import LiveMentorPanel from './mentor/LiveMentorPanel';
 import TradingMasterPanel from './mentor/TradingMasterPanel';
+import MentorEcosystemBar from './mentor/MentorEcosystemBar';
 import { useAuth } from '../hooks/useAuth';
+import {
+  buildEcosystemSnapshot,
+  type MentordeskView,
+  type MentorHandoff,
+} from '../services/mentorBridge';
 import {
   MENTOR_MODES,
   loadMentorMode,
@@ -108,12 +114,11 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  const [deskView, setDeskView] = useState<
-    'curriculum' | 'chart' | 'coach' | 'lab' | 'liveMentor' | 'master' | 'desk'
-  >('curriculum');
+  const [deskView, setDeskView] = useState<MentordeskView>('curriculum');
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
+  const [labHandoff, setLabHandoff] = useState<MentorHandoff | null>(null);
   const [drillBias, setDrillBias] = useState<DrillBias>('auto');
   const [symbol, setSymbol] = useState('NSE:NIFTY');
   const [interval, setInterval] = useState<TvInterval>('15');
@@ -206,6 +211,37 @@ export default function MentorAI() {
     () => buildTraderSkillProfile(ownerKey, user),
     [ownerKey, user, skillTick],
   );
+
+  const ecosystem = useMemo(
+    () =>
+      buildEcosystemSnapshot({
+        ownerKey,
+        weakness: skillProfile.weakness,
+        curriculumLevel: curriculum.highestUnlocked,
+        coachOverall: Math.round(
+          (skillProfile.scores.patience + skillProfile.scores.riskManagement) / 2,
+        ),
+        dnaOverall: Math.round(
+          (skillProfile.scores.marketReading + skillProfile.scores.entryTiming) / 2,
+        ),
+      }),
+    [ownerKey, skillProfile, curriculum.highestUnlocked, skillTick],
+  );
+
+  const applyHandoff = useCallback((handoff: MentorHandoff) => {
+    setDeskView(handoff.view);
+    if (handoff.view === 'curriculum') {
+      setActiveLevelId(handoff.levelId ?? null);
+    } else {
+      setActiveLevelId(null);
+    }
+    if (handoff.view === 'lab') {
+      setLabHandoff(handoff);
+    } else {
+      setLabHandoff(null);
+    }
+    setSkillTick((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     const refresh = () =>
@@ -665,6 +701,14 @@ export default function MentorAI() {
         </div>
       </header>
 
+      {student ? (
+        <MentorEcosystemBar
+          snapshot={ecosystem}
+          activeView={deskView}
+          onOpen={applyHandoff}
+        />
+      ) : null}
+
       {!student ? (
         <MentorOnboarding
           defaultName={user?.name || ''}
@@ -677,6 +721,7 @@ export default function MentorAI() {
           studentName={student.name}
           activeLevelId={activeLevelId}
           onOpenLevel={(id) => setActiveLevelId(id)}
+          onNavigate={applyHandoff}
         />
       ) : null}
 
@@ -798,6 +843,7 @@ export default function MentorAI() {
               lang={selectedLang}
               langMode={langMode}
               mentorMode={mentorMode}
+              onNavigate={applyHandoff}
             />
           </aside>
         </div>
@@ -812,6 +858,9 @@ export default function MentorAI() {
               lang={selectedLang}
               langMode={langMode}
               mentorMode={mentorMode}
+              handoff={labHandoff}
+              onNavigate={applyHandoff}
+              onHandoffConsumed={() => setLabHandoff(null)}
             />
           </aside>
         </div>
@@ -829,6 +878,7 @@ export default function MentorAI() {
               lang={selectedLang}
               langMode={langMode}
               mentorMode={mentorMode}
+              onNavigate={applyHandoff}
             />
           </aside>
         </div>
@@ -844,6 +894,7 @@ export default function MentorAI() {
               lang={selectedLang}
               langMode={langMode}
               mentorMode={mentorMode}
+              onNavigate={applyHandoff}
             />
           </aside>
         </div>

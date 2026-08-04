@@ -58,6 +58,8 @@ import {
 import type { MentorMode } from '../../services/mentorModes';
 import type { MentorStudentProfile } from '../../services/mentorStudentProfile';
 import type { User } from '../../hooks/useAuth';
+import type { MentorHandoff } from '../../services/mentorBridge';
+import MentorPathRail from './MentorPathRail';
 
 type Props = {
   ownerKey: string;
@@ -68,6 +70,7 @@ type Props = {
   lang: MasterAiLanguage;
   langMode: MasterAiLangMode;
   mentorMode: MentorMode;
+  onNavigate?: (handoff: MentorHandoff) => void;
 };
 
 function DnaBar({ label, value }: { label: string; value: number }) {
@@ -90,6 +93,7 @@ export default function LiveMentorPanel({
   lang,
   langMode,
   mentorMode,
+  onNavigate,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -310,6 +314,15 @@ export default function LiveMentorPanel({
           <strong>{d.focusToday}</strong>
         </div>
       </section>
+
+      {onNavigate ? (
+        <MentorPathRail
+          ownerKey={ownerKey}
+          weakness={d.weakArea || d.focusToday}
+          onOpen={onNavigate}
+          title="Practice loop before live size"
+        />
+      ) : null}
 
       <section className="wm-live__dna">
         <h3>Trading DNA</h3>

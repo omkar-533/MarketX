@@ -52,6 +52,8 @@ import {
 } from '../../services/masterAiService';
 import type { MentorMode } from '../../services/mentorModes';
 import type { MentorStudentProfile } from '../../services/mentorStudentProfile';
+import type { MentorHandoff } from '../../services/mentorBridge';
+import MentorPathRail from './MentorPathRail';
 
 type Props = {
   ownerKey: string;
@@ -59,6 +61,9 @@ type Props = {
   lang: MasterAiLanguage;
   langMode: MasterAiLangMode;
   mentorMode: MentorMode;
+  handoff?: MentorHandoff | null;
+  onNavigate?: (handoff: MentorHandoff) => void;
+  onHandoffConsumed?: () => void;
 };
 
 function ScoreRow({ label, value }: { label: string; value: number }) {
@@ -77,11 +82,15 @@ export default function TradingLabPanel({
   lang,
   langMode,
   mentorMode,
+  handoff,
+  onNavigate,
+  onHandoffConsumed,
 }: Props) {
   const [mode, setMode] = useState<LabMode>('beginner');
   const [marketId, setMarketId] = useState('NIFTY');
   const [interval, setInterval] = useState('15m');
   const [missionId, setMissionId] = useState(LAB_MISSIONS[0].id);
+  const [replayBanner, setReplayBanner] = useState<string | null>(null);
   const [bars, setBars] = useState<ChartBar[]>([]);
   const [cursor, setCursor] = useState(0);
   const [startCursor, setStartCursor] = useState(0);
@@ -121,6 +130,24 @@ export default function TradingLabPanel({
   useEffect(() => {
     setProgress(loadLabProgress(ownerKey));
   }, [ownerKey]);
+
+  useEffect(() => {
+    if (!handoff || handoff.view !== 'lab') return;
+    if (handoff.labMode) setMode(handoff.labMode);
+    if (handoff.labMissionId && LAB_MISSIONS.some((m) => m.id === handoff.labMissionId)) {
+      setMissionId(handoff.labMissionId);
+    }
+    if (handoff.focusNote) {
+      setNotes(handoff.focusNote);
+      setReplayBanner(
+        handoff.mistakeReplay
+          ? `Mistake replay armed · ${handoff.reason}`
+          : handoff.reason,
+      );
+      setHint(handoff.focusNote);
+    }
+    onHandoffConsumed?.();
+  }, [handoff, onHandoffConsumed]);
 
   const stopPlay = useCallback(() => {
     setPlaying(false);
@@ -468,6 +495,26 @@ export default function TradingLabPanel({
       </section>
 
       <p className="wm-lab__mode-hint">{modeMeta.hint}</p>
+
+      {replayBanner ? (
+        <div className="wm-lab__overlay wm-lab__overlay--warn">
+          <strong>Mistake replay</strong>
+          <p>{replayBanner}</p>
+          <p>
+            Mission <b>{missionId}</b> · mode <b>{mode}</b>. Load session, then practice the same
+            process gap slower — no future candles.
+          </p>
+        </div>
+      ) : null}
+
+      {onNavigate ? (
+        <MentorPathRail
+          ownerKey={ownerKey}
+          weakness={replayBanner || profile?.weakAreas?.[0] || 'execution discipline'}
+          onOpen={onNavigate}
+          title="After Lab · continue the ecosystem path"
+        />
+      ) : null}
 
       <div className="wm-lab__stage">
         {visible.length ? (

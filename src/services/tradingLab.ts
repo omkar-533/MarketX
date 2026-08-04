@@ -126,6 +126,12 @@ export const LAB_MISSIONS: LabMission[] = [
     detail: 'Every lab trade must have a stop loss.',
     xp: 40,
   },
+  {
+    id: 'mistake_replay',
+    title: 'Mistake replay',
+    detail: 'Re-practice your documented weakness: observe ≥ 8 bars, require SL + notes, max 2 trades.',
+    xp: 55,
+  },
 ];
 
 export const LAB_CERTS = [
@@ -419,8 +425,16 @@ export function evaluateMissions(args: {
     if (id === 'max2' && closed.length > 0 && closed.length <= 2) done.push(id);
     if (id === 'protect' && closed.length > 0 && ddPct < 2) done.push(id);
     if (id === 'sl_always' && closed.length && closed.every((t) => t.stopLoss != null)) done.push(id);
+    if (
+      id === 'mistake_replay' &&
+      firstEntry - startCursor >= 8 &&
+      closed.length > 0 &&
+      closed.length <= 2 &&
+      closed.every((t) => t.stopLoss != null && t.notes.trim().length >= 8)
+    ) {
+      done.push(id);
+    }
   }
-  // unused cursor silence
   void cursor;
   return [...new Set(done)];
 }
