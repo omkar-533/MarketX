@@ -478,18 +478,18 @@ export function useChartDrawings({
         const x2 = anchorX(shape.x2, 0);
         if (x1 === null || x2 === null) continue;
         const isTrend =
-          shape.type === 'ray' ||
           shape.type === 'trend' ||
+          (shape.type === 'ray' && /trend/i.test(shape.label || '')) ||
           /trend/i.test(shape.label || '');
         let endX = x2;
         let endY = y2;
+        // Gold-TV look: thin solid blue, start at first wick, extend right.
         ctx.strokeStyle = isTrend ? '#2962ff' : tone.line;
-        ctx.lineWidth = isTrend ? 1.85 : 1.5;
+        ctx.lineWidth = isTrend ? 1.5 : 1.5;
         ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         if (shape.type === 'ray') {
-          // Extend to the right edge (desk ray), not infinitely off-canvas.
           const dx = x2 - x1 || 1;
           const dy = y2 - y1;
           const t = (paneWidth - 8 - x1) / dx;
@@ -502,17 +502,28 @@ export function useChartDrawings({
         ctx.stroke();
         ctx.strokeStyle = tone.line;
         ctx.lineWidth = 1.5;
-        // Anchor dots on the two swing wicks.
         if (isTrend) {
+          // Small wick anchors (not heavy dots).
           ctx.fillStyle = '#2962ff';
           ctx.beginPath();
-          ctx.arc(x1, y1, 3.5, 0, Math.PI * 2);
+          ctx.arc(x1, y1, 2.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.arc(x2, y2, 3.5, 0, Math.PI * 2);
+          ctx.arc(x2, y2, 2.5, 0, Math.PI * 2);
           ctx.fill();
-        }
-        if (shape.type === 'arrow') {
+          // Compact label at the first anchor — TV style, not a fat chip mid-line.
+          const isUpper = /upper/i.test(shape.label || '');
+          ctx.font = '600 11px "Trebuchet MS", Roboto, sans-serif';
+          ctx.fillStyle = '#2962ff';
+          ctx.textBaseline = isUpper ? 'bottom' : 'top';
+          ctx.textAlign = 'left';
+          const tag = /upper/i.test(shape.label || '')
+            ? 'Upper'
+            : /lower/i.test(shape.label || '')
+              ? 'Lower'
+              : String(shape.label || 'Trend').slice(0, 18);
+          ctx.fillText(tag, Math.min(Math.max(6, x1 + 4), paneWidth - 48), isUpper ? y1 - 4 : y1 + 4);
+        } else if (shape.type === 'arrow') {
           const angle = Math.atan2(y2 - y1, x2 - x1);
           const head = 9;
           ctx.beginPath();
@@ -528,9 +539,10 @@ export function useChartDrawings({
           ctx.closePath();
           ctx.fillStyle = tone.line;
           ctx.fill();
+          chip(shape.label, x2 + 6, y2, tone.line);
+        } else {
+          chip(shape.label, x2 + 6, y2, tone.line);
         }
-        const tagX = Math.min(Math.max(8, x2 + 6), paneWidth - 100);
-        chip(shape.label, tagX, shape.type === 'ray' ? y2 : endY, isTrend ? '#2962ff' : tone.line);
       }
     };
 

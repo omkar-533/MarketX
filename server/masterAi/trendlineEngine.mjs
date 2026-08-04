@@ -1,8 +1,9 @@
 /**
- * Desk trend CHANNEL (both sides) — like the TradingView gold reference:
- * - Lower diagonal: rising/falling swing LOWS (dynamic support)
- * - Upper diagonal: rising/falling swing HIGHS (dynamic resistance)
- * Extend both as rays to the right. Never horizontal SUPPORT/RESISTANCE lines.
+ * TradingView-style trend CHANNEL on the *active* swing structure:
+ * - Prefer the recent visible leg (not ancient broken channels)
+ * - Lower ray hugs rising/falling swing lows near price
+ * - Upper ray hugs swing highs of the SAME window (real highs, not a parallel copy)
+ * - If price has broken the channel, rebuild on the newest leg
  */
 
 function pivotHigh(bars, i, left = 2, right = 2) {
@@ -28,32 +29,25 @@ function collectSwings(bars) {
   const lows = [];
   for (let i = 2; i < bars.length - 2; i += 1) {
     const barsAgo = bars.length - 1 - i;
-    if (pivotHigh(bars, i)) {
-      highs.push({ price: bars[i].high, index: i, barsAgo });
-    } else if (pivotLow(bars, i)) {
-      lows.push({ price: bars[i].low, index: i, barsAgo });
-    }
+    if (pivotHigh(bars, i)) highs.push({ price: bars[i].high, index: i, barsAgo });
+    else if (pivotLow(bars, i)) lows.push({ price: bars[i].low, index: i, barsAgo });
   }
   return { highs, lows };
 }
 
 function classifyBias(highs, lows) {
-  let hh = 0;
-  let hl = 0;
-  let lh = 0;
-  let ll = 0;
+  let up = 0;
+  let down = 0;
   for (let i = 1; i < highs.length; i += 1) {
-    if (highs[i].price > highs[i - 1].price) hh += 1;
-    else lh += 1;
+    if (highs[i].price > highs[i - 1].price) up += 1;
+    else down += 1;
   }
   for (let i = 1; i < lows.length; i += 1) {
-    if (lows[i].price > lows[i - 1].price) hl += 1;
-    else ll += 1;
+    if (lows[i].price > lows[i - 1].price) up += 1;
+    else down += 1;
   }
-  const bull = hh + hl;
-  const bear = lh + ll;
-  if (bull >= bear + 1) return 'up';
-  if (bear >= bull + 1) return 'down';
+  if (up >= down + 1) return 'up';
+  if (down >= up + 1) return 'down';
   return 'range';
 }
 
@@ -61,73 +55,90 @@ function priceAtBarsAgo(a, b, barsAgo) {
   const x1 = -a.barsAgo;
   const x2 = -b.barsAgo;
   if (x2 === x1) return a.price;
-  const t = (barsAgo * -1 - x1) / (x2 - x1);
+  const t = (-barsAgo - x1) / (x2 - x1);
   return a.price + (b.price - a.price) * t;
 }
 
-function scorePair(points, a, b, rising) {
+/** How tightly the line still frames live price (gold-TV "in play" look). */
+function proximityBonus(a, b, lastClose, role) {
+  if (!(lastClose > 0)) return 0;
+  const atNow = priceAtBarsAgo(a, b, 0);
+  if (!(atNow > 0)) return 0;
+  const dist = (lastClose - atNow) / lastClose; // + means price above the line
+
+  if (role === 'lower') {
+    // Want price ABOVE support, not miles above, not clearly broken below.
+    if (dist < -0.003) return -80; // broken
+    if (dist > 0.035) return -40; // stale / left behind
+    return 35 - Math.abs(dist) * 900;
+  }
+  // upper
+  if (dist > 0.003) return -80; // broken above
+  if (dist < -0.035) return -40; // stale overhead
+  return 35 - Math.abs(dist) * 900;
+}
+
+function scorePair(points, a, b, rising, lastClose, role) {
   const span = a.barsAgo - b.barsAgo;
-  if (span < 4) return -1;
-  if (span > 180) return -1;
+  if (span < 5) return -1;
+  if (span > 90) return -1; // keep on the visible leg
 
   if (rising) {
-    if (!(b.price > a.price * 1.00005)) return -1;
-  } else if (!(b.price < a.price * 0.99995)) {
+    if (!(b.price > a.price * 1.00008)) return -1;
+  } else if (!(b.price < a.price * 0.99992)) {
     return -1;
   }
 
   const mid = (a.price + b.price) / 2 || 1;
   const slopePerBar = Math.abs(b.price - a.price) / span / mid;
-  if (slopePerBar > 0.02) return -1;
+  // Gentle TV-style slope — reject near-vertical spikes.
+  if (slopePerBar > 0.008) return -1;
+  if (slopePerBar < 0.00005) return -1;
 
   let touches = 2;
-  const tol = mid * 0.0018;
+  const tol = mid * 0.0015;
   for (const p of points) {
     if (p.index === a.index || p.index === b.index) continue;
-    if (p.barsAgo > a.barsAgo + 3 || p.barsAgo < Math.max(0, b.barsAgo - 3)) continue;
+    if (p.barsAgo > a.barsAgo + 2 || p.barsAgo < Math.max(0, b.barsAgo - 2)) continue;
     const expected = priceAtBarsAgo(a, b, p.barsAgo);
     if (Math.abs(p.price - expected) <= tol) touches += 1;
   }
 
-  return touches * 12 + Math.min(span, 80) * 0.15 + (50 - Math.min(b.barsAgo, 50)) * 0.25;
+  // Prefer recent anchors + lines still hugging LTP.
+  const recency = (55 - Math.min(b.barsAgo, 55)) * 0.45;
+  const prox = proximityBonus(a, b, lastClose, role);
+  return touches * 14 + Math.min(span, 50) * 0.2 + recency + prox;
 }
 
-function bestPair(points, rising) {
+function bestPair(points, rising, lastClose, role) {
   let best = null;
-  let bestScore = -1;
+  let bestScore = -Infinity;
   for (let i = 0; i < points.length; i += 1) {
     for (let j = i + 1; j < points.length; j += 1) {
       const older = points[i].barsAgo >= points[j].barsAgo ? points[i] : points[j];
       const newer = points[i].barsAgo >= points[j].barsAgo ? points[j] : points[i];
-      const score = scorePair(points, older, newer, rising);
+      const score = scorePair(points, older, newer, rising, lastClose, role);
       if (score > bestScore) {
         bestScore = score;
-        best = { a: older, b: newer, score, touches: Math.max(2, Math.round(score / 12)) };
+        best = { a: older, b: newer, score, touches: Math.max(2, Math.round(score / 14)) };
       }
     }
   }
-  return best;
+  return bestScore > 0 ? best : null;
 }
 
-/** Last-resort: two spaced points from the list with correct slope. */
-function anySlopedPair(points, rising) {
-  if (points.length < 2) return null;
-  const ordered = points.slice().sort((a, b) => b.barsAgo - a.barsAgo);
-  for (let i = 0; i < ordered.length; i += 1) {
-    for (let j = i + 1; j < ordered.length; j += 1) {
-      const a = ordered[i];
-      const b = ordered[j];
-      if (a.barsAgo - b.barsAgo < 3) continue;
-      if (rising && b.price > a.price) return { a, b, score: 1, touches: 2 };
-      if (!rising && b.price < a.price) return { a, b, score: 1, touches: 2 };
+function anyRecentPair(points, rising, maxAgo = 70) {
+  const pts = points.filter((p) => p.barsAgo <= maxAgo).sort((a, b) => b.barsAgo - a.barsAgo);
+  if (pts.length < 2) return null;
+  for (let i = 0; i < pts.length; i += 1) {
+    for (let j = i + 1; j < pts.length; j += 1) {
+      const a = pts[i];
+      const b = pts[j];
+      if (a.barsAgo - b.barsAgo < 5) continue;
+      if (rising && b.price > a.price) return { a, b, score: 2, touches: 2 };
+      if (!rising && b.price < a.price) return { a, b, score: 2, touches: 2 };
     }
   }
-  // Absolute fallback: oldest + newest with forced labels even if flat-ish
-  const a = ordered[0];
-  const b = ordered[ordered.length - 1];
-  if (!a || !b || a === b) return null;
-  if (rising && b.price >= a.price) return { a, b, score: 0.5, touches: 2 };
-  if (!rising && b.price <= a.price) return { a, b, score: 0.5, touches: 2 };
   return null;
 }
 
@@ -144,46 +155,136 @@ function toRay(pick, label, tone) {
     label,
     tone,
     touches: pick.touches || 2,
+    score: pick.score || 0,
+  };
+}
+
+function projectNow(ray) {
+  if (!ray) return null;
+  return priceAtBarsAgo(
+    { barsAgo: Math.abs(ray.x1), price: ray.p1 },
+    { barsAgo: Math.abs(ray.x2), price: ray.p2 },
+    0,
+  );
+}
+
+function channelQuality(lower, upper, lastClose) {
+  if (!(lastClose > 0)) return false;
+  const lo = projectNow(lower);
+  const hi = projectNow(upper);
+
+  // At least one line should still be near the tape.
+  const near = (px) => px > 0 && Math.abs(lastClose - px) / lastClose <= 0.028;
+  if (near(lo) || near(hi)) return true;
+  // Or price still inside the channel band.
+  if (lo && hi && lastClose >= lo * 0.997 && lastClose <= hi * 1.003) return true;
+  return false;
+}
+
+function buildInWindow(windowBars, rising) {
+  const lastClose = Number(windowBars[windowBars.length - 1]?.close) || 0;
+  const { highs, lows } = collectSwings(windowBars);
+  if (highs.length < 2 && lows.length < 2) return null;
+
+  const bias = classifyBias(highs, lows);
+  const useRising = rising ?? bias !== 'down';
+
+  const lowerPick =
+    bestPair(lows, useRising, lastClose, 'lower') ||
+    anyRecentPair(lows, useRising) ||
+    bestPair(lows, !useRising, lastClose, 'lower');
+  const upperPick =
+    bestPair(highs, useRising, lastClose, 'upper') ||
+    anyRecentPair(highs, useRising) ||
+    bestPair(highs, !useRising, lastClose, 'upper');
+
+  // Keep both legs on a similar time window (same impulse / channel).
+  let lower = toRay(lowerPick, 'Lower trendline', 'bull');
+  let upper = toRay(upperPick, 'Upper trendline', 'bear');
+
+  if (lower && upper) {
+    const lowerMid = (Math.abs(lower.x1) + Math.abs(lower.x2)) / 2;
+    const upperMid = (Math.abs(upper.x1) + Math.abs(upper.x2)) / 2;
+    if (Math.abs(lowerMid - upperMid) > 55) {
+      // Re-pick upper among highs that overlap the lower span.
+      const loSpan = Math.max(Math.abs(lower.x1), Math.abs(lower.x2)) + 8;
+      const hiSpan = Math.min(Math.abs(lower.x1), Math.abs(lower.x2)) - 2;
+      const focused = highs.filter((h) => h.barsAgo <= loSpan && h.barsAgo >= Math.max(0, hiSpan));
+      const alt =
+        bestPair(focused, useRising, lastClose, 'upper') || anyRecentPair(focused, useRising, loSpan);
+      const altRay = toRay(alt, 'Upper trendline', 'bear');
+      if (altRay) upper = altRay;
+    }
+  }
+
+  // Always try to show BOTH sides when one leg already framed.
+  if (lower && !upper) {
+    upper = toRay(
+      anyRecentPair(highs, useRising, 85) || anyRecentPair(highs, !useRising, 85),
+      'Upper trendline',
+      'bear',
+    );
+  }
+  if (upper && !lower) {
+    lower = toRay(
+      anyRecentPair(lows, useRising, 85) || anyRecentPair(lows, !useRising, 85),
+      'Lower trendline',
+      'bull',
+    );
+  }
+
+  if (!lower && !upper) return null;
+  return {
+    bias,
+    lower,
+    upper,
+    rising: useRising,
+    lastClose,
+    quality: channelQuality(lower, upper, lastClose),
   };
 }
 
 /**
- * Both-side channel rays (lower + upper), matching the user's gold TV reference.
- * @returns {null | { bias: string, lower: object|null, upper: object|null }}
+ * @returns {null | { bias: string, lower: object|null, upper: object|null, rising: boolean }}
  */
 export function buildTrendChannelFromBars(bars) {
   if (!Array.isArray(bars) || bars.length < 25) return null;
-  const recent = bars.slice(-220);
-  const { highs, lows } = collectSwings(recent);
-  if (highs.length < 2 && lows.length < 2) return null;
+  const lastClose = Number(bars[bars.length - 1]?.close) || 0;
 
-  const bias = classifyBias(highs, lows);
-  const rising = bias !== 'down';
+  // Tight → wider: prefer the active leg that still frames LTP (gold-TV feel).
+  const windows = [55, 75, 100, 140];
+  let fallback = null;
 
-  let lowerPick =
-    bestPair(lows, rising) || anySlopedPair(lows, rising) || bestPair(lows, !rising) || anySlopedPair(lows, !rising);
-  let upperPick =
-    bestPair(highs, rising) ||
-    anySlopedPair(highs, rising) ||
-    bestPair(highs, !rising) ||
-    anySlopedPair(highs, !rising);
+  for (const n of windows) {
+    const slice = bars.slice(-Math.min(n, bars.length));
+    // Try both slope directions; keep the one that hugs price.
+    const up = buildInWindow(slice, true);
+    const down = buildInWindow(slice, false);
+    const candidates = [up, down].filter(Boolean);
+    candidates.sort((a, b) => Number(b.quality) - Number(a.quality) || (b.lower?.score || 0) + (b.upper?.score || 0) - ((a.lower?.score || 0) + (a.upper?.score || 0)));
+    const best = candidates[0];
+    if (!best) continue;
+    if (!fallback) fallback = best;
+    if (best.quality) {
+      return { bias: best.bias, lower: best.lower, upper: best.upper, rising: best.rising };
+    }
+  }
 
-  const lower = toRay(
-    lowerPick,
-    rising ? 'Lower trendline' : 'Lower trendline',
-    'bull',
-  );
-  const upper = toRay(
-    upperPick,
-    rising ? 'Upper trendline' : 'Upper trendline',
-    'bear',
-  );
+  // Broken / extended market: force the newest 50-bar leg only.
+  const fresh = buildInWindow(bars.slice(-50), true) || buildInWindow(bars.slice(-50), false);
+  if (fresh) {
+    return { bias: fresh.bias, lower: fresh.lower, upper: fresh.upper, rising: fresh.rising };
+  }
 
-  if (!lower && !upper) return null;
-  return { bias, lower, upper, rising };
+  if (!fallback) return null;
+  return {
+    bias: fallback.bias,
+    lower: fallback.lower,
+    upper: fallback.upper,
+    rising: fallback.rising,
+  };
 }
 
-/** Single primary line (compat) — prefers lower in uptrend, upper in downtrend. */
 export function buildTrendlineFromBars(bars) {
   const ch = buildTrendChannelFromBars(bars);
   if (!ch) return null;
