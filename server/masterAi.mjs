@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 import { buildLiveQuotesContext } from './masterAi/liveQuotesContext.mjs';
 import { buildStructureContext, wantsStructureMarkup } from './masterAi/structureContext.mjs';
+import { buildIntelPack } from './masterAi/intelPack.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
@@ -1551,6 +1552,25 @@ const STRUCTURE_MARKUP_HINT = `STRUCTURE MARKUP MODE: User asked about market st
 
 const CONTINUE_THREAD_HINT = `CONTINUE THREAD: Chat history already has analysis. Do NOT ask for a chart again. Answer the user’s follow-up using the previous analysis (translate/restate/extend as asked). Keep the same levels and bias unless they provide a new chart. If a chart is open beside the chat, still append the wolfchart block and redraw those levels.`;
 
+const MENTOR_MODE_HINTS = {
+  beginner: `MENTOR MODE — BEGINNER: Use simple English. Define any term in one short clause. No jargon dumps. Short labeled lines. Still no Entry/Stop/Target.`,
+  professional: `MENTOR MODE — PROFESSIONAL: Use SMC/ICT vocabulary (BOS, CHoCH, OB, FVG, liquidity, premium/discount) with evidence from MARKET INTEL / STRUCTURE TAPE. Areas of Interest only.`,
+  strict: `MENTOR MODE — STRICT: Challenge emotional or premature decisions. If the user asks to buy/sell without confirmation, refuse firmly and list missing evidence (HTF lean, liquidity, confirmation). No soft enabling.`,
+  socratic: `MENTOR MODE — SOCRATIC: Ask 2–3 probing questions BEFORE giving your conclusion (why bias? what invalidates? alternative if liquidity fails?). Then a short synthesis. Never hand a trade order.`,
+};
+
+const ROOM_MODE_HINT = `AI TRADING ROOM — format the reply with these labeled sections (short bullets each):
+### Mentor
+### Market Scanner
+### Risk Manager
+### Psychology Coach
+### Strategy Coach
+Each role stays process-focused. No Entry/Stop/Target/Buy/Sell. End with wolfchart if a chart is open.`;
+
+const TRAINING_GRADE_HINT = `DECISION TRAINING GRADE: The user answered a multiple-choice process drill. Grade their choice against MARKET INTEL (patience / confirmation / no chase). Praise good process; correct chasing. Never invent a trade call.`;
+
+const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
+
 /** OpenAI sk-… · OpenRouter sk-or-… · Gemini AIza… (legacy) or AQ.… (auth keys) */
 export function detectAiProvider(apiKey) {
   const key = String(apiKey || '').trim();
@@ -1929,9 +1949,25 @@ export function createMasterAiRouter(apiKey) {
         );
 
       // Pull live TradingView tape for text answers (full) and chart answers (compact).
+      const mentorMode =
+        body?.mentorMode === 'beginner' ||
+        body?.mentorMode === 'professional' ||
+        body?.mentorMode === 'strict' ||
+        body?.mentorMode === 'socratic'
+          ? body.mentorMode
+          : 'professional';
+      const roomMode = Boolean(body?.roomMode);
+      const trainingGrade = Boolean(body?.trainingGrade);
+      const wantsDetective =
+        chartOnScreen ||
+        /\b(detective|market\s*condition|what.?s\s*going\s*on|scene|bias|view|kaise|kaisa|structure|liquidity|order\s*block|fvg)\b/i.test(
+          String(message || ''),
+        );
+
       let liveBlock = '';
       let contextHasLiveTape = false;
       let structureBlock = '';
+      let intelBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       if (!shortChat && !wantsJournalReview) {
         try {
@@ -1948,8 +1984,6 @@ export function createMasterAiRouter(apiKey) {
         }
         if (wantsStructure || chartOnScreen) {
           try {
-            // Structure questions need pivot prices; also help when a chart is open
-            // and the user asks about bias / view with structure wording.
             const structure = await buildStructureContext(message || userTextBase);
             structureBlock = structure.block || '';
             if (structureBlock) {
@@ -1959,6 +1993,17 @@ export function createMasterAiRouter(apiKey) {
             }
           } catch (err) {
             console.warn('[Wolf AI] structure tape failed:', err?.message || err);
+          }
+        }
+        if (wantsDetective || chartOnScreen || hasImage || trainingGrade || roomMode) {
+          try {
+            const intel = await buildIntelPack(message || userTextBase);
+            intelBlock = intel.block || '';
+            if (intelBlock) {
+              console.info(`[Wolf AI] intel pack ${intel.symbol} ${intel.interval}`);
+            }
+          } catch (err) {
+            console.warn('[Wolf AI] intel pack failed:', err?.message || err);
           }
         }
       }
@@ -1978,7 +2023,7 @@ export function createMasterAiRouter(apiKey) {
             .trim()
         : platformContextRaw;
 
-      const platformContext = [cleanedClientCtx, liveBlock, structureBlock, ownerKnowledge]
+      const platformContext = [cleanedClientCtx, liveBlock, structureBlock, intelBlock, ownerKnowledge]
         .filter((s) => String(s || '').trim())
         .join('\n\n')
         .trim();
@@ -2023,13 +2068,17 @@ export function createMasterAiRouter(apiKey) {
                     ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
-      let textBlock = `[You are Hunter — Market Analyst, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
+      if (roomMode && !shortChat) textBlock += `\n\n${ROOM_MODE_HINT}`;
+      if (trainingGrade) textBlock += `\n\n${TRAINING_GRADE_HINT}`;
       if (hasImage) {
         textBlock +=
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Live LTP sirf cross-check ke liye. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. Live LTP is secondary cross-check only. If unclear, say unclear — do not guess.';
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
+        textBlock += `\n\n${SCENARIO_HINT}`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (historyHasAnalysis || wantsLanguageSwitch) {
@@ -2044,12 +2093,17 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${CHART_OPEN_HINT}`;
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       } else if (wantsMarkup && !hasImage && !wantsJournalReview && !shortChat) {
-        // No chart-open tag yet (client will still open one) — still force the block
-        // so markings are not dropped when the model answers from the tape alone.
         textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
       }
       if (wantsStructure && !hasImage && !wantsJournalReview && !shortChat) {
         textBlock += `\n\n${STRUCTURE_MARKUP_HINT}`;
+      }
+      if (
+        (hasImage || chartOnScreen || wantsChartRead || wantsDetective) &&
+        !shortChat &&
+        !wantsJournalReview
+      ) {
+        textBlock += `\n\n${SCENARIO_HINT}`;
       }
 
       const models = hasImage

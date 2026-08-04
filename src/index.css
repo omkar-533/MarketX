@@ -6917,6 +6917,300 @@ input[type="number"] { -moz-appearance: textfield; }
   cursor: not-allowed;
 }
 
+.mai-chat__chip--sm {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.625rem;
+}
+
+.mai-chat__mentor-modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.mai-detective {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--tf-border) 80%, #d4af37);
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tf-elevated) 92%, #1a2a1a),
+    var(--tf-elevated)
+  );
+}
+
+.mai-detective__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.mai-detective__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.mai-detective__sym {
+  font-size: 0.65rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.mai-detective__brief {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.08);
+  color: #34d399;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.mai-detective__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .mai-detective__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mai-detective__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.mai-detective__grid span {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tf-muted, #64748b);
+}
+
+.mai-detective__grid b {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tf-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.mai-detective__wide {
+  grid-column: 1 / -1;
+}
+
+.mai-detective__mtf {
+  margin-top: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.mai-skill {
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 0.75rem;
+  background: var(--tf-elevated);
+}
+
+.mai-skill__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tf-text);
+  margin-bottom: 0.5rem;
+}
+
+.mai-skill__xp {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #d4af37;
+}
+
+.mai-skill__plan {
+  margin-left: auto;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: transparent;
+}
+
+.mai-skill__bars {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mai-skill__bar span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--tf-muted, #94a3b8);
+  margin-bottom: 0.15rem;
+}
+
+.mai-skill__bar em {
+  font-style: normal;
+  color: var(--tf-text);
+  font-weight: 700;
+}
+
+.mai-skill__bar {
+  position: relative;
+}
+
+.mai-skill__bar > i {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d4af37, #34d399);
+  max-width: 100%;
+}
+
+.mai-skill__focus {
+  margin: 0.55rem 0 0.4rem;
+  font-size: 0.7rem;
+  color: var(--tf-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.mai-skill__ach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.mai-skill__badge {
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-muted, #64748b);
+  opacity: 0.7;
+}
+
+.mai-skill__badge--on {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: #d4af37;
+  opacity: 1;
+}
+
+.mai-drill {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 0.75rem;
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.mai-drill--idle {
+  display: flex;
+  justify-content: flex-start;
+  padding: 0.45rem 0;
+  border: none;
+  background: transparent;
+}
+
+.mai-drill--idle > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(52, 211, 153, 0.4);
+  color: #34d399;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: transparent;
+}
+
+.mai-drill__head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #34d399;
+  margin-bottom: 0.4rem;
+}
+
+.mai-drill__skip {
+  margin-left: auto;
+  font-size: 0.6rem;
+  color: var(--tf-muted, #64748b);
+}
+
+.mai-drill__q {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0 0 0.55rem;
+  color: var(--tf-text);
+}
+
+.mai-drill__opts {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mai-drill__opts button {
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface, var(--tf-elevated));
+  color: var(--tf-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mai-drill__opts button:hover:not(:disabled) {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.mai-room {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.mai-room__card {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background: color-mix(in srgb, var(--tf-elevated) 88%, transparent);
+}
+
+.mai-room__role {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d4af37;
+  margin-bottom: 0.35rem;
+}
+
 .mai-chat__history {
   position: relative;
   z-index: 5;
@@ -7462,6 +7756,15 @@ input[type="number"] { -moz-appearance: textfield; }
   align-items: center;
   gap: 0.1rem;
   flex: 0 0 auto;
+}
+
+.mai-tv__mtf-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #d4af37;
+  margin-right: 0.15rem;
+  opacity: 0.9;
 }
 
 .mai-tv__tf {

@@ -20,6 +20,7 @@ import {
 } from './server/auth/appUserStore.mjs';
 import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
 import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
+import { buildDetectiveOnly } from './server/masterAi/intelPack.mjs';
 import { getTvWsStatus } from './server/market/tradingview/tvWsManager.mjs';
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)));
@@ -111,6 +112,22 @@ app.post('/api/chat', async (req, res) => {
     const message = error instanceof Error ? error.message : 'AI service error';
     if (status >= 500) console.error('[Analyse AI]', message);
     return res.status(status).json({ error: message });
+  }
+});
+
+/** Market Detective card — OHLC intel without burning an LLM call. */
+app.get('/api/mentor/detective', async (req, res) => {
+  try {
+    const symbol = String(req.query.symbol || 'NIFTY').toUpperCase().replace(/^NSE:/, '');
+    let interval = String(req.query.interval || '15m');
+    if (/^\d+$/.test(interval)) interval = `${interval}m`;
+    const detective = await buildDetectiveOnly(symbol, interval);
+    if (!detective) return res.status(404).json({ error: 'No market intel available' });
+    return res.json({ detective });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Detective failed';
+    console.warn('[Mentor Detective]', message);
+    return res.status(500).json({ error: message });
   }
 });
 

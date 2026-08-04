@@ -187,7 +187,10 @@ export default function ChatChartPanel({
 
         <span className="mai-tv__sep" aria-hidden />
 
-        <div className="mai-tv__tfs" role="group" aria-label="Timeframe">
+        <div className="mai-tv__tfs" role="group" aria-label="Multi-timeframe">
+          <span className="mai-tv__mtf-label" title="Switch TF for MTF context">
+            MTF
+          </span>
           {timeframes.map((tf) => (
             <button
               key={tf.id}

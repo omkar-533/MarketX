@@ -26,6 +26,13 @@ import {
   Box,
   Eye,
   CandlestickChart,
+  GraduationCap,
+  Brain,
+  Swords,
+  HelpCircle,
+  Target,
+  Mic2,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -103,10 +110,60 @@ import {
   deskPromptText,
   type DeskPrompt,
 } from '../constants/wolfAiPrompts';
+import {
+  MENTOR_MODES,
+  loadMentorMode,
+  loadRoomMode,
+  loadTrainingMode,
+  saveMentorMode,
+  saveRoomMode,
+  saveTrainingMode,
+  type MentorMode,
+} from '../services/mentorModes';
+import {
+  buildDrillFromDetective,
+  isDrillAnswerCorrect,
+  saveDrillResult,
+  type DetectiveCard,
+  type MentorDrill,
+} from '../services/mentorDrills';
+import { fetchMentorDetective } from '../services/mentorDetective';
+import {
+  buildTraderSkillProfile,
+  trainingPlanPrompt,
+} from '../services/traderSkillProfile';
 
 type Message = ChatMessage;
 
+const ROOM_ROLE_TITLES = [
+  'Mentor',
+  'Market Scanner',
+  'Risk Manager',
+  'Psychology Coach',
+  'Strategy Coach',
+] as const;
+
+function parseRoomSections(text: string): { title: string; body: string }[] | null {
+  const parts = text.split(/^###\s+/m);
+  if (parts.length < 3) return null;
+  const sections: { title: string; body: string }[] = [];
+  for (let i = 1; i < parts.length; i += 1) {
+    const nl = parts[i].indexOf('\n');
+    const title = (nl >= 0 ? parts[i].slice(0, nl) : parts[i]).trim();
+    let body = (nl >= 0 ? parts[i].slice(nl + 1) : '').trim();
+    body = body.replace(/```wolfchart[\s\S]*$/i, '').trim();
+    if (ROOM_ROLE_TITLES.some((t) => t.toLowerCase() === title.toLowerCase())) {
+      sections.push({ title, body });
+    }
+  }
+  return sections.length >= 2 ? sections : null;
+}
+
 const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
+  challenge: Swords,
+  invalidate: HelpCircle,
+  'why-wait': Target,
+  'training-plan': GraduationCap,
   structure: Layers,
   liquidity: Waves,
   zones: Crosshair,
@@ -155,6 +212,12 @@ export default function MasterAI() {
   const hindi = isHindiLang(selectedLang.code);
   const useHiPrompts = hindi || isHinglishLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
+  const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
+  const [trainingMode, setTrainingMode] = useState(loadTrainingMode);
+  const [roomMode, setRoomMode] = useState(loadRoomMode);
+  const [detective, setDetective] = useState<DetectiveCard | null>(null);
+  const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
+  const [skillTick, setSkillTick] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -171,7 +234,34 @@ export default function MasterAI() {
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const analyzingRef = useRef(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void; lang: string } | null>(null);
-  const handleSendRef = useRef<(text?: string) => void>(() => {});
+  const handleSendRef = useRef<(text?: string, opts?: { trainingGrade?: boolean }) => void>(() => {});
+  const ownerKey = user?.id || user?.email || 'guest';
+  const skillProfile = useMemo(
+    () => buildTraderSkillProfile(ownerKey, user),
+    [ownerKey, user, skillTick, messages.length],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const card = await fetchMentorDetective(chartSymbol, chartInterval);
+      if (!cancelled) setDetective(card);
+    };
+    void load();
+    const t = window.setInterval(() => void load(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [chartSymbol, chartInterval]);
+
+  useEffect(() => {
+    if (!trainingMode || !detective || activeDrill) return;
+    const t = window.setTimeout(() => {
+      setActiveDrill(buildDrillFromDetective(detective));
+    }, 12_000);
+    return () => window.clearTimeout(t);
+  }, [trainingMode, detective?.symbol, detective?.ltp, activeDrill]);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeChatIdRef = useRef(activeChatId);
@@ -397,7 +487,10 @@ export default function MasterAI() {
   };
 
   const applyDeskPrompt = (p: DeskPrompt, opts?: { send?: boolean }) => {
-    const text = deskPromptText(p, useHiPrompts);
+    let text = deskPromptText(p, useHiPrompts);
+    if (p.id === 'training-plan' || text === 'MY_TRAINING_PLAN') {
+      text = trainingPlanPrompt(skillProfile);
+    }
     setInputText(text);
     setChartPromptOpen(false);
     queueMicrotask(() => {
@@ -409,6 +502,47 @@ export default function MasterAI() {
       }
     });
     if (opts?.send) void handleSendRef.current(text);
+  };
+
+  const answerDrill = (optionId: string) => {
+    if (!activeDrill) return;
+    const correct = isDrillAnswerCorrect(activeDrill, optionId);
+    saveDrillResult(
+      {
+        drillId: activeDrill.id,
+        chosenId: optionId,
+        correct,
+        at: new Date().toISOString(),
+        symbol: activeDrill.symbol,
+      },
+      ownerKey,
+    );
+    setSkillTick((n) => n + 1);
+    const chosen = activeDrill.options.find((o) => o.id === optionId)?.label || optionId;
+    const gradeMsg = [
+      `[DECISION TRAINING] My choice: ${chosen} (${optionId}).`,
+      `Drill: ${activeDrill.question}`,
+      `Correct process key: ${activeDrill.correctId}.`,
+      `Brief reason key: ${activeDrill.reason}`,
+      'Grade my process. No Entry/Stop/Target.',
+    ].join('\n');
+    setActiveDrill(null);
+    void handleSendRef.current(gradeMsg, { trainingGrade: true });
+  };
+
+  const speakDetectiveBriefing = () => {
+    if (!detective) return;
+    const line = [
+      `${detective.symbol} market briefing.`,
+      `Trend ${detective.trend}.`,
+      `Zone ${detective.zone}.`,
+      `Liquidity: ${detective.liquidity}.`,
+      `Institutional area: ${detective.institutionalZone}.`,
+      `Volatility ${detective.volatility}.`,
+      `Process: ${detective.bestAction}.`,
+      `Confidence ${detective.confidence} percent — evidence score, not win rate.`,
+    ].join(' ');
+    speakText(line);
   };
 
   const handleNewChat = () => {
@@ -542,7 +676,7 @@ export default function MasterAI() {
 
   const handleSend = async (
     textOverride?: string,
-    opts?: { imageDataUrl?: string | null; imageName?: string },
+    opts?: { imageDataUrl?: string | null; imageName?: string; trainingGrade?: boolean },
   ) => {
     // One request at a time — parallel sends interleave replies out of order.
     if (analyzingRef.current) return;
@@ -782,6 +916,9 @@ export default function MasterAI() {
               history,
               needsWeb: !hasImage && shouldUseWebSearch(userText),
               journalContext,
+              mentorMode,
+              roomMode,
+              trainingGrade: Boolean(opts?.trainingGrade),
             },
             hasImage
               ? {
@@ -872,8 +1009,8 @@ export default function MasterAI() {
     }
   };
 
-  handleSendRef.current = (text) => {
-    void handleSend(text);
+  handleSendRef.current = (text, sendOpts) => {
+    void handleSend(text, sendOpts);
   };
 
   useEffect(() => {
@@ -1029,6 +1166,62 @@ export default function MasterAI() {
             <span>Voice</span>
           </button>
 
+          <div className="mai-chat__mentor-modes" title="Mentor personality">
+            {MENTOR_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`mai-chat__chip mai-chat__chip--sm ${mentorMode === m.id ? 'mai-chat__chip--on' : ''}`}
+                title={m.hint}
+                onClick={() => {
+                  setMentorMode(m.id);
+                  saveMentorMode(m.id);
+                }}
+              >
+                {m.id === 'beginner' ? (
+                  <GraduationCap className="h-3 w-3" />
+                ) : m.id === 'strict' ? (
+                  <Swords className="h-3 w-3" />
+                ) : m.id === 'socratic' ? (
+                  <HelpCircle className="h-3 w-3" />
+                ) : (
+                  <Brain className="h-3 w-3" />
+                )}
+                <span>{m.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className={`mai-chat__chip ${trainingMode ? 'mai-chat__chip--on' : ''}`}
+            title="Live decision training quizzes"
+            onClick={() => {
+              const next = !trainingMode;
+              setTrainingMode(next);
+              saveTrainingMode(next);
+              if (next && detective) setActiveDrill(buildDrillFromDetective(detective));
+              else setActiveDrill(null);
+            }}
+          >
+            <Target className="h-3.5 w-3.5" />
+            <span>Train</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mai-chat__chip ${roomMode ? 'mai-chat__chip--on' : ''}`}
+            title="AI Trading Room — multi-role reply"
+            onClick={() => {
+              const next = !roomMode;
+              setRoomMode(next);
+              saveRoomMode(next);
+            }}
+          >
+            <Split className="h-3.5 w-3.5" />
+            <span>Room</span>
+          </button>
+
           <div className={`mai-chat__lang ${langMenuOpen ? 'mai-chat__lang--open' : ''}`} ref={langMenuRef}>
             <button
               type="button"
@@ -1135,6 +1328,149 @@ export default function MasterAI() {
         onPaste={handlePaste}
       >
         <div className="mai-chat__column">
+          {detective ? (
+            <div className="mai-detective" aria-label="Market condition">
+              <div className="mai-detective__head">
+                <span className="mai-detective__title">Market Condition</span>
+                <span className="mai-detective__sym">
+                  {detective.symbol} · {detective.interval}
+                </span>
+                <button
+                  type="button"
+                  className="mai-detective__brief"
+                  onClick={speakDetectiveBriefing}
+                  title="Speak mentor briefing"
+                >
+                  <Mic2 className="h-3.5 w-3.5" />
+                  Briefing
+                </button>
+              </div>
+              <div className="mai-detective__grid">
+                <div>
+                  <span>Trend</span>
+                  <b>{detective.trend}</b>
+                </div>
+                <div>
+                  <span>Liquidity</span>
+                  <b>{detective.liquidity}</b>
+                </div>
+                <div>
+                  <span>Zone</span>
+                  <b>{detective.zone}</b>
+                </div>
+                <div>
+                  <span>Volatility</span>
+                  <b>{detective.volatility}</b>
+                </div>
+                <div className="mai-detective__wide">
+                  <span>Best process action</span>
+                  <b>{detective.bestAction}</b>
+                </div>
+                <div>
+                  <span>Confidence</span>
+                  <b>{detective.confidence}% · evidence</b>
+                </div>
+              </div>
+              {detective.mtf ? (
+                <div className="mai-detective__mtf">
+                  Daily {detective.mtf.daily} · 1H {detective.mtf.h1} · Chart TF {detective.mtf.entryTf}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="mai-skill" aria-label="Trader skill profile">
+            <div className="mai-skill__head">
+              <Trophy className="h-3.5 w-3.5" />
+              <span>{skillProfile.level.label}</span>
+              <span className="mai-skill__xp">{skillProfile.xp} XP</span>
+              <button
+                type="button"
+                className="mai-skill__plan"
+                disabled={isThinking}
+                onClick={() =>
+                  applyDeskPrompt(
+                    WOLF_CHAT_PROMPTS.find((p) => p.id === 'training-plan')!,
+                    { send: true },
+                  )
+                }
+              >
+                My training plan
+              </button>
+            </div>
+            <div className="mai-skill__bars">
+              {(
+                [
+                  ['Reading', skillProfile.scores.marketReading],
+                  ['Timing', skillProfile.scores.entryTiming],
+                  ['Risk', skillProfile.scores.riskManagement],
+                  ['Patience', skillProfile.scores.patience],
+                ] as const
+              ).map(([label, val]) => (
+                <div key={label} className="mai-skill__bar">
+                  <span>
+                    {label} <em>{val}</em>
+                  </span>
+                  <i style={{ width: `${val}%` }} />
+                </div>
+              ))}
+            </div>
+            <p className="mai-skill__focus">
+              Focus this week: {skillProfile.weakness}. {skillProfile.focusWeek[0]}
+            </p>
+            <div className="mai-skill__ach">
+              {skillProfile.achievements.map((a) => (
+                <span
+                  key={a.id}
+                  className={`mai-skill__badge ${a.earned ? 'mai-skill__badge--on' : ''}`}
+                  title={a.detail}
+                >
+                  {a.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {trainingMode && activeDrill ? (
+            <div className="mai-drill" role="group" aria-label="Decision training">
+              <div className="mai-drill__head">
+                <Target className="h-3.5 w-3.5" />
+                <span>Decision Training</span>
+                <button
+                  type="button"
+                  className="mai-drill__skip"
+                  onClick={() => setActiveDrill(null)}
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="mai-drill__q">{activeDrill.question}</p>
+              <div className="mai-drill__opts">
+                {activeDrill.options.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    disabled={isThinking}
+                    onClick={() => answerDrill(o.id)}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : trainingMode ? (
+            <div className="mai-drill mai-drill--idle">
+              <button
+                type="button"
+                disabled={!detective || isThinking}
+                onClick={() => detective && setActiveDrill(buildDrillFromDetective(detective))}
+              >
+                <Target className="h-3.5 w-3.5" />
+                Ask me a drill
+              </button>
+            </div>
+          ) : null}
+
           {messages.length <= 1 && !isThinking ? (
             <div className="mai-chat__empty">
               <HunterMark />
@@ -1231,6 +1567,9 @@ export default function MasterAI() {
                 );
               }
 
+              const roomSections =
+                !isUser && roomMode ? parseRoomSections(message.text) : null;
+
               return (
                 <motion.div
                   key={message.id}
@@ -1262,7 +1601,20 @@ export default function MasterAI() {
                       <img src={message.imageUrl} alt="" className="mai-chat__img" />
                     ) : null}
                     <div className="mai-chat__text">
-                      {isUser ? message.text : <ChatMarkdown text={message.text} />}
+                      {isUser ? (
+                        message.text
+                      ) : roomSections ? (
+                        <div className="mai-room">
+                          {roomSections.map((sec) => (
+                            <div key={sec.title} className="mai-room__card">
+                              <div className="mai-room__role">{sec.title}</div>
+                              <ChatMarkdown text={sec.body} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <ChatMarkdown text={message.text} />
+                      )}
                     </div>
                     {!isUser ? (
                       <div className="mai-chat__meta">

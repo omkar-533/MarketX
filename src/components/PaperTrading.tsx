@@ -13,6 +13,8 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  Shield,
+  Trophy,
   Wallet,
   X,
 } from 'lucide-react';
@@ -58,6 +60,16 @@ import {
   type PaperTradeRecord,
   type Side,
 } from '../services/paperTradingEngine';
+import {
+  evaluatePropChallenge,
+  loadPropChallenge,
+  MENTOR_PROP_PRESET,
+  propCoachPrompt,
+  savePropChallenge,
+  startPropChallenge,
+  type PropChallengeState,
+} from '../services/propChallenge';
+import { queueHunterJournalReview } from '../services/journalAiAssist';
 import { getJournalSymbolSelection, refreshMarketSymbols as refreshEquity } from '../services/equitySymbolService';
 import {
   clearPendingStrategy,
@@ -180,7 +192,8 @@ function createInitialState(): PaperState {
   };
 }
 
-export default function PaperTrading({ user }: PaperTradingProps) {
+export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
+  const ownerKey = user?.id || user?.email || 'guest';
   const [paperState, setPaperState] = useState<PaperState>(
     () => loadStoredState(user) ?? createInitialState(),
   );
@@ -191,12 +204,16 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   const [selectedSymbol, setSelectedSymbol] = useState<MarketItem | null>(null);
   const [pickerSymbol, setPickerSymbol] = useState('NIFTY');
   const [statusMessage, setStatusMessage] = useState('Paper trading ready. Use live snapshots and save your trades.');
-  const isStatusError = /insufficient|rejected|not supported|require|invalid|Enter a valid|Select a|failed|cancelled/i.test(
+  const isStatusError = /insufficient|rejected|not supported|require|invalid|Enter a valid|Select a|failed|cancelled|locked|breach/i.test(
     statusMessage,
   );
   const [pendingStrategy, setPendingStrategy] = useState<StrategyBuilderPaperPayload | null>(null);
   const [showAddWatchlist, setShowAddWatchlist] = useState(false);
   const [showResetCapital, setShowResetCapital] = useState(false);
+  const [showPropStart, setShowPropStart] = useState(false);
+  const [propChallenge, setPropChallenge] = useState<PropChallengeState | null>(() =>
+    loadPropChallenge(ownerKey),
+  );
   const [quoteFeed, setQuoteFeed] = useState<PaperQuoteFeedStatus>({
     mode: 'loading',
     liveSymbolCount: 0,
@@ -406,6 +423,28 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     { winning: 0, losing: 0, totalPnl: 0 },
   );
   const totalPnl = totalUnrealized + closedTrades.reduce((sum, trade) => sum + (trade.pnl ?? 0), 0);
+
+  useEffect(() => {
+    if (!propChallenge?.active) return;
+    const next = evaluatePropChallenge(propChallenge, netEquity);
+    if (
+      next.locked !== propChallenge.locked ||
+      next.passed !== propChallenge.passed ||
+      next.highWater !== propChallenge.highWater ||
+      next.dayKey !== propChallenge.dayKey ||
+      next.dayStartEquity !== propChallenge.dayStartEquity
+    ) {
+      setPropChallenge(next);
+      savePropChallenge(next, ownerKey);
+      if (next.locked) setStatusMessage(next.lockReason || 'Challenge locked.');
+      else if (next.passed) {
+        setStatusMessage(
+          `Mentor Challenge target hit (+${next.rules.profitTargetPct}%). Review process with Wolf AI — no victory claim on future trades.`,
+        );
+      }
+    }
+  }, [netEquity, propChallenge, ownerKey]);
+
   const highLowRange = currentSymbol
     ? `${formatPaperPrice(currentSymbol, Number(currentSymbol.low ?? 0))} - ${formatPaperPrice(currentSymbol, Number(currentSymbol.high ?? 0))}`
     : '—';
@@ -485,6 +524,10 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   };
 
   const addOrder = () => {
+    if (propChallenge?.locked) {
+      setStatusMessage(propChallenge.lockReason || 'Challenge locked — new orders blocked.');
+      return;
+    }
     if (!currentSymbol) {
       setStatusMessage('Select a market instrument first.');
       return;
@@ -747,6 +790,9 @@ export default function PaperTrading({ user }: PaperTradingProps) {
   );
 
   const executeHedgeStrategy = (group: PaperStrategyGroup): { ok: boolean; message: string } => {
+    if (propChallenge?.locked) {
+      return { ok: false, message: propChallenge.lockReason || 'Challenge locked — new orders blocked.' };
+    }
     const marginRequired = group.legs.reduce((s, leg) => s + marginForLeg(leg), 0);
     const entryBrokerage = group.legs.reduce((s, leg) => s + calculateChargesForLeg(leg).total, 0);
     const totalCost = Number((marginRequired + entryBrokerage).toFixed(2));
@@ -869,6 +915,37 @@ export default function PaperTrading({ user }: PaperTradingProps) {
     setStatusMessage(`Capital reset to ₹${INITIAL_CAPITAL.toLocaleString('en-IN')}. Positions, orders & history cleared.`);
   };
 
+  const confirmStartPropChallenge = () => {
+    const challenge = startPropChallenge(MENTOR_PROP_PRESET);
+    const cap = challenge.rules.startingCapital;
+    setPaperState((prev) => ({
+      ...resetPaperCapitalState(prev),
+      balance: cap,
+      available: cap,
+    }));
+    setPropChallenge(challenge);
+    savePropChallenge(challenge, ownerKey);
+    setShowPropStart(false);
+    setShowOrderModal(false);
+    setPendingStrategy(null);
+    setActiveTab('overview');
+    setStatusMessage(
+      `Mentor Challenge started — ₹${cap.toLocaleString('en-IN')}, daily loss ${challenge.rules.dailyLossLimitPct}%, max DD ${challenge.rules.maxDrawdownPct}%, target +${challenge.rules.profitTargetPct}%. Process only — no guaranteed outcome.`,
+    );
+  };
+
+  const endPropChallenge = () => {
+    setPropChallenge(null);
+    savePropChallenge(null, ownerKey);
+    setStatusMessage('Mentor Challenge ended. Paper capital unchanged — use Reset capital if you want ₹10L again.');
+  };
+
+  const openPropCoach = () => {
+    if (!propChallenge) return;
+    queueHunterJournalReview(propCoachPrompt(propChallenge, netEquity));
+    onNavigate?.('wolf-ai');
+  };
+
   return (
     <div className="h-[calc(100dvh-3.5rem)] flex flex-col bg-[#080a12] text-slate-200 min-h-0 overflow-hidden">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 sm:px-4 py-2.5 bg-[#0b0e17] border-b border-[#1a1f2e] shrink-0">
@@ -899,6 +976,43 @@ export default function PaperTrading({ user }: PaperTradingProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm ml-auto shrink-0">
+          {propChallenge?.active || propChallenge?.locked || propChallenge?.passed ? (
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg border border-[#d4af37]/35 bg-[#d4af37]/10 text-[10px] font-bold text-[#d4af37]">
+              <Shield className="w-3.5 h-3.5" />
+              {propChallenge.locked
+                ? 'Challenge locked'
+                : propChallenge.passed
+                  ? 'Target hit'
+                  : `Challenge · ${(((netEquity - propChallenge.startingEquity) / propChallenge.startingEquity) * 100).toFixed(1)}%`}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              if (propChallenge?.active) openPropCoach();
+              else if (propChallenge?.locked || propChallenge?.passed) openPropCoach();
+              else setShowPropStart(true);
+            }}
+            title="Mentor Prop Challenge — rule-based paper sim"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#d4af37]/35 bg-[#121520] text-[#d4af37] hover:border-[#d4af37]/60 text-[10px] sm:text-xs font-bold transition-colors"
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {propChallenge?.active || propChallenge?.locked || propChallenge?.passed
+                ? 'Coach me'
+                : 'Mentor Challenge'}
+            </span>
+          </button>
+          {(propChallenge?.active || propChallenge?.locked || propChallenge?.passed) && (
+            <button
+              type="button"
+              onClick={endPropChallenge}
+              title="End Mentor Challenge"
+              className="hidden md:inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#1a1f2e] text-slate-500 hover:text-slate-300 text-[10px] font-bold"
+            >
+              End
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowResetCapital(true)}
@@ -1542,6 +1656,56 @@ export default function PaperTrading({ user }: PaperTradingProps) {
                   className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600"
                 >
                   Execute All Legs
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPropStart && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0b0e17] border border-[#d4af37]/30 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-[#1a1f2e] bg-[#d4af37]/10">
+                <h3 className="text-lg font-bold text-[#d4af37] flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Mentor Challenge
+                </h3>
+              </div>
+              <div className="p-6 space-y-3 text-sm text-slate-400">
+                <p>
+                  Prop-style paper rules on a fresh{' '}
+                  <b className="text-white">
+                    ₹{MENTOR_PROP_PRESET.startingCapital.toLocaleString('en-IN')}
+                  </b>{' '}
+                  account. Hunter coaches adherence — never Entry/Stop/Target.
+                </p>
+                <ul className="text-xs space-y-1 list-disc list-inside text-slate-500">
+                  <li>Daily loss limit {MENTOR_PROP_PRESET.dailyLossLimitPct}%</li>
+                  <li>Max drawdown {MENTOR_PROP_PRESET.maxDrawdownPct}%</li>
+                  <li>Profit target +{MENTOR_PROP_PRESET.profitTargetPct}%</li>
+                  <li>Breach locks new orders until you end the challenge</li>
+                  <li>Open positions & history cleared when you start</li>
+                </ul>
+              </div>
+              <div className="p-6 pt-0 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPropStart(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-[#1a1f2e] text-slate-400 font-bold text-sm hover:bg-[#121520]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmStartPropChallenge}
+                  className="flex-1 py-2.5 rounded-lg bg-[#d4af37] text-[#0b0e17] font-bold text-sm hover:bg-[#e0c15a]"
+                >
+                  Start challenge
                 </button>
               </div>
             </motion.div>

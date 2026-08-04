@@ -15,12 +15,54 @@ export type DeskPrompt = {
 /** Empty-state / general chat starters */
 export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
   {
+    id: 'challenge',
+    label: 'Challenge my bias',
+    labelHi: 'Challenge my bias',
+    prompt:
+      'Challenge my current bias. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
+    promptHi:
+      'Challenge my current bias. Ask what evidence I am using, what would invalidate it, and what I am ignoring on liquidity — Socratic, no trade orders.',
+    hint: 'Socratic',
+    hintHi: 'Socratic',
+  },
+  {
+    id: 'invalidate',
+    label: 'What invalidates this?',
+    labelHi: 'What invalidates this?',
+    prompt:
+      'Help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+    promptHi:
+      'Help me define clear invalidation for the open chart bias — what structure break or liquidity event would kill the idea. No entry or stop instructions.',
+    hint: 'Invalidation',
+    hintHi: 'Invalidation',
+  },
+  {
+    id: 'why-wait',
+    label: 'Why wait?',
+    labelHi: 'Why wait?',
+    prompt:
+      'Explain why waiting for confirmation may be the higher-quality process on this market right now, using structure and liquidity evidence. No trade call.',
+    promptHi:
+      'Explain why waiting for confirmation may be the higher-quality process on this market right now, using structure and liquidity evidence. No trade call.',
+    hint: 'Patience',
+    hintHi: 'Patience',
+  },
+  {
+    id: 'training-plan',
+    label: 'My training plan',
+    labelHi: 'My training plan',
+    prompt: 'MY_TRAINING_PLAN',
+    promptHi: 'MY_TRAINING_PLAN',
+    hint: '7-day path',
+    hintHi: '7-day path',
+  },
+  {
     id: 'structure',
     label: 'Market structure',
     labelHi: 'Market structure',
     prompt: 'Explain market structure simply — HH/HL, LH/LL, BOS and CHOCH — with how a desk reads bias.',
     promptHi:
-      'Market structure simple samjhao — HH/HL, LH/LL, BOS aur CHOCH — desk bias kaise padhta hai.',
+      'Market structure simple samjhao — HH/HL, LH/LL, BOS and CHOCH — desk bias kaise padhta hai.',
     hint: 'Bias & swings',
     hintHi: 'Bias & swings',
   },

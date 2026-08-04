@@ -1137,6 +1137,10 @@ export interface MasterChatRequest {
   needsWeb?: boolean;
   /** Compact PLATFORM TRADING JOURNAL snapshot — single source of truth */
   journalContext?: string;
+  mentorMode?: 'beginner' | 'professional' | 'strict' | 'socratic';
+  roomMode?: boolean;
+  /** User is answering a decision-training drill */
+  trainingGrade?: boolean;
 }
 
 export async function fetchMasterAiStatus(): Promise<{
@@ -1256,6 +1260,9 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         history,
         needsWeb: req.needsWeb ?? false,
         platformContext,
+        mentorMode: req.mentorMode ?? 'professional',
+        roomMode: Boolean(req.roomMode),
+        trainingGrade: Boolean(req.trainingGrade),
       }),
     },
     { retries: 0, timeoutMs: 75_000 },
