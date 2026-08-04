@@ -936,10 +936,15 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             /\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel)\b|\btrend\b.*\b(mark|draw|line|channel|khinch)/i.test(
               userText,
             );
+          const wantsSrNow =
+            !wantsTrendNow &&
+            /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance)\b/i.test(
+              userText,
+            );
           const chartHint = chartTarget
             ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer and emit the wolfchart block. NEVER ask for a screenshot.${
                 wantsTrendNow
-                  ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Do NOT draw horizontal SUPPORT/RESISTANCE.'
+                  ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Forbidden: horizontal S-R level rays or hray labels.'
                   : wantsMarkNow
                     ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
                     : ''
@@ -949,7 +954,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
-              ? `${userText}${chartHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias/Support/Resistance. SHORT — under ~100 words. Do NOT ask for a chart.${
+              ? `${userText}${chartHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias and marked areas. SHORT — under ~100 words. Do NOT ask for a chart.${
                   chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
                 }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext && !wantsMarkNow
@@ -976,6 +981,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               roomMode: isMentor ? roomMode : false,
               trainingGrade: Boolean(opts?.trainingGrade),
               mentorDesk: isMentor,
+              markTool: wantsTrendNow ? 'trend' : wantsSrNow ? 'sr' : wantsMarkNow ? 'auto' : undefined,
             },
             hasImage
               ? {

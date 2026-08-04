@@ -1568,7 +1568,7 @@ No block = empty chart. No real price → say so in prose instead.`;
 const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block matching the TOOL they named (trendline→trend/ray, S/R→hray SUPPORT/RESISTANCE, OB→zone, fib→fib). Do NOT default to SUPPORT/RESISTANCE when they asked for a trendline. Never ask which zone. Never omit the fence.`;
 
 const TREND_MARK_HINT = `TREND LINE MARK (mandatory — TradingView Trend Line tool curriculum):
-A trend line is a STRAIGHT DIAGONAL connecting important swing highs OR swing lows. NEVER horizontal SUPPORT/RESISTANCE.
+STRICT: User asked for TREND LINE tool only. Draw DIAGONAL trend/ray shapes. NEVER use hray/hline. NEVER label SUPPORT or RESISTANCE. levels must be [].
 
 UPTREND (bullish) — market making Higher Lows:
 - Connect at least 2 (better 3) Higher Lows with a ray drawn from BELOW price.
@@ -1585,6 +1585,7 @@ RULES:
 3) Touch candle WICKS consistently (do not mix random body/wick logic).
 4) NEVER force a line — only natural points from STRUCTURE TAPE / TREND LINE DRAW.
 5) Optional second ray (Channel high/low) only if naturals exist on the other side — not a fake parallel.
+6) If you cannot find 2 clean swings, say so in prose — do NOT fall back to horizontal S-R.
 
 Copy TREND LINE DRAW PRIMARY JSON into wolfchart. levels:[]. Prose 2–3 lines then wolfchart.`;
 
@@ -1735,6 +1736,34 @@ function mapRequestedToGemini(requested) {
   if (r.includes('gemini-1.5-flash')) return 'gemini-1.5-flash';
   if (r.startsWith('gemini-')) return r;
   return null;
+}
+
+/**
+ * Strip client machine hints ([CHART OPEN…], [CRITICAL…], etc.) so intent
+ * regexes never match words inside those hints (e.g. "Do NOT draw … SUPPORT").
+ */
+function extractUserAsk(raw) {
+  let t = String(raw || '');
+  const cut = t.search(/\n\n\[/);
+  if (cut > 0) t = t.slice(0, cut);
+  return t.replace(/\[[^\]]{0,1200}\]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function asksTrendLineTool(ask) {
+  const t = String(ask || '');
+  return (
+    /\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel|rising\s*trend|falling\s*trend|uptrend\s*line|downtrend\s*line|channel\s*line)\b/i.test(
+      t,
+    ) ||
+    (/\btrend\b/i.test(t) &&
+      /\b(mark|draw|khinch|khich|laga|dikha|line|channel|marking|markup)\b/i.test(t))
+  );
+}
+
+function asksSrLevels(ask) {
+  return /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance|resistance\s*(aur|and|&)?\s*support)\b/i.test(
+    String(ask || ''),
+  );
 }
 
 function isShortChat(message) {
@@ -1988,18 +2017,21 @@ export function createMasterAiRouter(apiKey) {
         /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark\s*(kar|kr|kro|krdo|kardo)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
           String(message || ''),
         );
+      // Intent ONLY from bare user ask (+ optional client markTool). Never from
+      // appended [CHART OPEN…] hints — those historically said "SUPPORT/RESISTANCE"
+      // inside a trendline instruction and forced style:'sr'.
+      const userAsk = extractUserAsk(message);
+      const markTool =
+        body?.markTool === 'trend' || body?.markTool === 'sr' || body?.markTool === 'auto'
+          ? body.markTool
+          : null;
+      const trendAsked = asksTrendLineTool(userAsk);
+      const srAsked = asksSrLevels(userAsk);
+      // Strict priority: trendline ask ALWAYS wins over S/R wording.
+      const wantsTrendMark = markTool === 'trend' || ((!markTool || markTool === 'auto') && trendAsked);
       const wantsSrMark =
-        /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance|resistance\s*(aur|and|&)?\s*support)\b/i.test(
-          String(message || ''),
-        );
-      // "trend live" / "trend line" / trendline — diagonal tool, not S/R.
-      const wantsTrendMark =
-        !wantsSrMark &&
-        (/\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel|rising\s*trend|falling\s*trend|uptrend\s*line|downtrend\s*line|channel\s*line)\b/i.test(
-          String(message || ''),
-        ) ||
-          (/\btrend\b/i.test(String(message || '')) &&
-            /\b(mark|draw|khinch|khich|laga|dikha|line|channel)\b/i.test(String(message || ''))));
+        !wantsTrendMark &&
+        (markTool === 'sr' || ((!markTool || markTool === 'auto') && srAsked));
       // AUTO-DRAW: chart open, screenshot, or any market structure / view question
       // must return a wolfchart block — the user does not have to say "mark".
       const wantsMarkup =

@@ -1143,6 +1143,8 @@ export interface MasterChatRequest {
   trainingGrade?: boolean;
   /** True when request comes from Mentor AI training desk (not Hunter analysis) */
   mentorDesk?: boolean;
+  /** Client-resolved draw tool — server must not infer S/R from chart-hint text */
+  markTool?: 'trend' | 'sr' | 'auto';
 }
 
 export async function fetchMasterAiStatus(): Promise<{
@@ -1266,6 +1268,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
         roomMode: Boolean(req.roomMode),
         trainingGrade: Boolean(req.trainingGrade),
         mentorDesk: Boolean(req.mentorDesk),
+        markTool: req.markTool,
       }),
     },
     { retries: 0, timeoutMs: 75_000 },
