@@ -23,10 +23,12 @@ import {
   touchArenaStreak,
   type ArenaStats,
 } from '../../services/mentorArena';
+import { buildArenaDrill, arenaTopicLabel } from '../../services/mentorArenaBank';
 import {
   buildDrillChartMarks,
-  buildDrillFromDetective,
+  historicalStructureDrill,
   isDrillAnswerCorrect,
+  liveProcessDrill,
   saveDrillResult,
   type DetectiveCard,
   type MentorDrill,
@@ -113,7 +115,7 @@ export default function MentorArena({
 
   const nextDrill = useCallback(() => {
     if (!detective) return null;
-    return buildDrillFromDetective(detective, 'auto');
+    return buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill);
   }, [detective]);
 
   useEffect(() => {
@@ -404,8 +406,8 @@ export default function MentorArena({
               {studentName.split(' ')[0] || 'Trader'}, <span>lock in</span>
             </h2>
             <p className="wm-arena__lead">
-              3 lives · speed bonus · combo fire · {ARENA_MAX_WAVES} waves — chart pe dekho, phir tap
-              karo
+              Full trading desk quiz — 40% candles + candle psych · 10% chart psych · structure,
+              liquidity, risk, SMC & more
             </p>
           </div>
           <div className="wm-arena__stats">
@@ -447,8 +449,10 @@ export default function MentorArena({
               <div className="wm-arena__mode-card wm-arena__mode-card--on">
                 <Sparkles className="h-4 w-4" />
                 <div>
-                  <b>Survival</b>
-                  <p>{ARENA_LIVES} lives · {ARENA_MAX_WAVES} waves · faster each wave</p>
+                  <b>Survival · Full Desk</b>
+                  <p>
+                    {ARENA_LIVES} lives · {ARENA_MAX_WAVES} waves · candles-heavy mix
+                  </p>
                 </div>
               </div>
             </div>
@@ -559,6 +563,7 @@ export default function MentorArena({
 
             <div className="wm-arena__round-top">
               <span className="wm-arena__wave-pill">WAVE {wave}/{ARENA_MAX_WAVES}</span>
+              <span className="wm-arena__topic-pill">{arenaTopicLabel(drill.topic)}</span>
               <span>
                 Q{(qIndex % ARENA_WAVE_SIZE) + 1}/{ARENA_WAVE_SIZE}
               </span>

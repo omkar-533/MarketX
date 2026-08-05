@@ -17,6 +17,8 @@ export type MentorDrill = {
   scope: DrillScope;
   /** Optional markup hint so coach can draw the lesson */
   drawHint?: string;
+  /** Arena topic tag (candles, psych, structure, …) */
+  topic?: string;
 };
 
 export type DrillResult = {
@@ -81,7 +83,7 @@ export type DetectiveCard = {
   weakBreakout?: boolean;
 };
 
-function liveProcessDrill(d: DetectiveCard): MentorDrill {
+export function liveProcessDrill(d: DetectiveCard): MentorDrill {
   const id = `drill-live-${Date.now()}`;
   const premium = d.zone === 'premium';
   const discount = d.zone === 'discount';
@@ -106,6 +108,7 @@ function liveProcessDrill(d: DetectiveCard): MentorDrill {
   return {
     id,
     scope: 'live',
+    topic: 'live',
     question: `${d.symbol} near ${Number(d.ltp).toFixed(1)} is in a ${d.zone} zone (${d.trend} lean, ${d.volatility.toLowerCase()} volatility). What is the better process choice?`,
     options: [
       { id: 'buy_breakout', label: 'Buy the breakout now' },
@@ -121,7 +124,7 @@ function liveProcessDrill(d: DetectiveCard): MentorDrill {
   };
 }
 
-function historicalStructureDrill(d: DetectiveCard): MentorDrill | null {
+export function historicalStructureDrill(d: DetectiveCard): MentorDrill | null {
   const swings = d.swings || [];
   const events = d.eventDetails || [];
   const pick =
@@ -312,11 +315,70 @@ export function buildDrillChartMarks(
     levels.push({ price: ltp, kind: 'pivot', label: 'LTP' });
   }
 
+  const topic = (drill.topic || '').toLowerCase();
+  const wantsCandle =
+    topic === 'candle' ||
+    topic === 'candle_psych' ||
+    /\[CANDLES?\]|\[CANDLE PSYCH\]|candle|wick|engulf|doji|hammer|shooting/i.test(ask);
+  const wantsChartPsych =
+    topic === 'chart_psych' || /\[CHART PSYCH\]|equal high|round number|breakout FOMO|parabolic/i.test(ask);
+
   const wantsRange =
-    drill.scope === 'live' ||
+    topic === 'live' ||
+    topic === 'smc' ||
+    (drill.scope === 'live' && !wantsCandle && !wantsChartPsych) ||
     /premium|discount|zone|session|range|day high|day low/i.test(ask);
 
-  if (wantsRange && hi > 0 && lo > 0 && mid > 0) {
+  if (wantsCandle) {
+    shapes.push({
+      type: 'label',
+      p1: ltp > 0 ? ltp : hi || lo || 0,
+      x1: -4,
+      label: topic === 'candle_psych' ? 'Candle psych · body vs wick' : 'Read body · wick · close',
+      tone: 'neutral',
+    });
+    for (const s of (d.swings || []).slice(-4)) {
+      shapes.push({
+        type: 'label',
+        p1: s.price,
+        x1: -Math.abs(s.barsAgo || 8),
+        label: s.label,
+        tone: /HH|LH/i.test(s.label) ? 'bear' : 'bull',
+      });
+    }
+  }
+
+  if (wantsChartPsych && hi > 0 && lo > 0) {
+    shapes.push({
+      type: 'hray',
+      p1: hi,
+      x1: -45,
+      label: 'Psych high / magnet',
+      tone: 'bear',
+      color: '#f59e0b',
+      lineStyle: 'dotted',
+    });
+    shapes.push({
+      type: 'hray',
+      p1: lo,
+      x1: -45,
+      label: 'Psych low / magnet',
+      tone: 'bull',
+      color: '#f59e0b',
+      lineStyle: 'dotted',
+    });
+    if (mid > 0) {
+      shapes.push({
+        type: 'label',
+        p1: mid,
+        x1: -8,
+        label: 'Crowd tension zone',
+        tone: 'neutral',
+      });
+    }
+  }
+
+  if (wantsRange && hi > 0 && lo > 0 && mid > 0 && !wantsCandle && !wantsChartPsych) {
     const premiumOn = d.zone === 'premium';
     const discountOn = d.zone === 'discount';
 

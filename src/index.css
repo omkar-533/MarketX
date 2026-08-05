@@ -8336,6 +8336,16 @@ html.dark .wm-arena__panel,
   font-size: 0.62rem;
 }
 
+.wm-arena__topic-pill {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .wm-arena__panel--fight {
   overflow: hidden;
   position: relative;
