@@ -723,7 +723,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     textOverride?: string,
     opts?: { imageDataUrl?: string | null; imageName?: string; trainingGrade?: boolean },
   ) => {
-    // One request at a time — parallel sends interleave replies out of order.
+    // Lock immediately — chart setup below can await; double Enter must not fork two chats.
     if (analyzingRef.current) return;
     const text = textOverride ?? inputText;
     const imageDataUrl = opts?.imageDataUrl ?? selectedImage;
@@ -739,6 +739,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         : '');
 
     if (!userText && !hasImage) return;
+    analyzingRef.current = true;
 
     // Every market question gets a live chart beside the answer — AI draws on it
     // automatically. Concept lessons ("RSI kya hota hai") and journal reviews stay
@@ -826,6 +827,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         { id: `${Date.now()}-a`, role: 'trafi', text: reply, timestamp: new Date() },
       ]);
       setInputText('');
+      analyzingRef.current = false;
       return;
     }
 
@@ -863,6 +865,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       ]);
       setInputText('');
       clearSelectedImage();
+      analyzingRef.current = false;
       return;
     }
 
@@ -877,7 +880,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     };
     setMessages((prev) => [...prev, userMsg, ...(chartMsg ? [chartMsg] : [])]);
     setInputText('');
-    analyzingRef.current = true;
     setIsThinking(true);
     if (hasImage) setIsAnalyzingChart(true);
 
@@ -917,13 +919,9 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
 
       let responseText = '';
 
-      if (!aiStatus.configured) {
-        responseText =
-          isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-            ? 'Wolf AI key ready nahi hai. Profile mein AI key add karke phir try kijiye.'
-            : 'Wolf AI is not configured yet. Add an AI key in Profile and try again.';
-      } else {
-        try {
+      // Always call the API — status can falsely say "not configured" during cold start.
+      // Real missing-key (503) is handled by describeMasterAiFailure.
+      try {
           const lastAi = [...messages]
             .reverse()
             .find((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text.trim().length > 40);
@@ -1001,10 +999,10 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
                 }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext && !wantsMarkNow
-                ? `${baseMessage}\n\n[Continue briefly from previous messages. Under ~80 words. Do NOT ask for a chart again.${
+                ? `${baseMessage}\n\n[Continue from previous messages. Do NOT ask for a chart again.${
                     chartTarget
-                      ? ' ALWAYS append the wolfchart block and redraw relevant levels/zones on the open chart.'
-                      : ''
+                      ? ' Under ~120 words. ALWAYS append a complete wolfchart block and redraw relevant levels on the open chart.'
+                      : ' Under ~80 words.'
                   }]`
                 : journalContext
                   ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
@@ -1066,7 +1064,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             hasImage ? 'chart' : 'chat',
           );
         }
-      }
 
       // Wolf AI hides its chart markup at the end of the reply — lift it out
       // before anything reaches the transcript or the speech engine.

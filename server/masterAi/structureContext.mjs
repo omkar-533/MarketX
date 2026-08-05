@@ -153,7 +153,7 @@ export async function buildStructureContext(message, opts = {}) {
   const interval = pickInterval(message);
 
   try {
-    const data = await fetchOhlc(symbol, interval);
+    const data = await fetchOhlc(symbol, interval, undefined, { timeoutMs: 12_000 });
     const bars = Array.isArray(data?.bars) ? data.bars : [];
     if (bars.length < 20) return { ...EMPTY, symbol, interval };
 

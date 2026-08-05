@@ -400,7 +400,7 @@ export async function buildOrderBlockContext(message, opts = {}) {
       const packs = await Promise.all(
         tfs.map(async (tf) => {
           try {
-            const data = await fetchOhlc(symbol, tf);
+            const data = await fetchOhlc(symbol, tf, undefined, { timeoutMs: 12_000 });
             return [tf, Array.isArray(data?.bars) ? data.bars.slice(-220) : []];
           } catch {
             return [tf, []];
@@ -426,7 +426,7 @@ export async function buildOrderBlockContext(message, opts = {}) {
       };
     }
 
-    const data = await fetchOhlc(symbol, interval);
+    const data = await fetchOhlc(symbol, interval, undefined, { timeoutMs: 12_000 });
     const bars = Array.isArray(data?.bars) ? data.bars.slice(-300) : [];
     const raw = detectOrderBlocks(bars, {
       timeframe: interval,

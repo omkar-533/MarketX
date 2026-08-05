@@ -2363,6 +2363,8 @@ export function createMasterAiRouter(apiKey) {
       let obBlock = '';
       let liqBlock = '';
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
+      const chatStartedAt = Date.now();
+      const tapeBudgetMs = 40_000;
       if (!shortChat && !wantsJournalReview) {
         try {
           const live = await buildLiveQuotesContext(message || userTextBase, history, {
@@ -2378,16 +2380,27 @@ export function createMasterAiRouter(apiKey) {
         } catch (err) {
           console.warn('[Wolf AI] live tape inject failed:', err?.message || err);
         }
-        // "marking kr do" / S/R asks have no HH/BOS keywords — still need pivots.
-        if (
+
+        const needStructure =
           wantsStructure ||
           chartOnScreen ||
           explicitMark ||
           wantsSrMark ||
           wantsTrendMark ||
           wantsObMark ||
-          wantsLiqMark
-        ) {
+          wantsLiqMark;
+        // Intel adds 3× OHLC — skip on plain auto-chart Q&A so LLM still has time.
+        const needIntel =
+          mentorChart ||
+          mentorDesk ||
+          trainingGrade ||
+          roomMode ||
+          hasImage ||
+          /\b(detective|market\s*condition|what.?s\s*going\s*on|scene)\b/i.test(
+            String(message || ''),
+          );
+
+        if (needStructure && Date.now() - chatStartedAt < tapeBudgetMs) {
           try {
             const structure = await buildStructureContext(message || userTextBase, {
               force:
@@ -2425,61 +2438,69 @@ export function createMasterAiRouter(apiKey) {
             console.warn('[Wolf AI] structure tape failed:', err?.message || err);
           }
         }
-        if (wantsObMark || (chartOnScreen && obAsked)) {
-          try {
-            const obCtx = await buildOrderBlockContext(message || userTextBase, {
-              symbol: structureMeta.symbol || undefined,
-              interval: structureMeta.interval || undefined,
-              ltp: structureMeta.lastClose || primaryQuote?.price || 0,
-              markMode: Boolean(wantsObMark),
-              mtf: /\b(mtf|multi\s*time|higher\s*time|weekly|monthly|4h|daily)\b/i.test(userAsk),
-            });
-            obBlock = obCtx.block || '';
-            structureMeta.orderBlocks = obCtx.orderBlocks || [];
-            if (obCtx.lastClose && !structureMeta.lastClose) structureMeta.lastClose = obCtx.lastClose;
-            if (!structureMeta.symbol && obCtx.symbol) structureMeta.symbol = obCtx.symbol;
-            if (!structureMeta.interval && obCtx.interval) structureMeta.interval = obCtx.interval;
+
+        const needOb = wantsObMark || (chartOnScreen && obAsked);
+        const needLiq = wantsLiqMark || liqAsked || markTool === 'liq';
+        if ((needOb || needLiq) && Date.now() - chatStartedAt < tapeBudgetMs) {
+          const [obRes, liqRes] = await Promise.all([
+            needOb
+              ? buildOrderBlockContext(message || userTextBase, {
+                  symbol: structureMeta.symbol || undefined,
+                  interval: structureMeta.interval || undefined,
+                  ltp: structureMeta.lastClose || primaryQuote?.price || 0,
+                  markMode: Boolean(wantsObMark),
+                  mtf: /\b(mtf|multi\s*time|higher\s*time|weekly|monthly|4h|daily)\b/i.test(
+                    userAsk,
+                  ),
+                }).catch((err) => {
+                  console.warn('[Wolf AI] order block tape failed:', err?.message || err);
+                  return null;
+                })
+              : Promise.resolve(null),
+            needLiq
+              ? buildLiquidityContext(message || userTextBase, {
+                  symbol: structureMeta.symbol || undefined,
+                  interval: structureMeta.interval || undefined,
+                  ltp: structureMeta.lastClose || primaryQuote?.price || 0,
+                }).catch((err) => {
+                  console.warn('[Wolf AI] liquidity tape failed:', err?.message || err);
+                  return null;
+                })
+              : Promise.resolve(null),
+          ]);
+          if (obRes) {
+            obBlock = obRes.block || '';
+            structureMeta.orderBlocks = obRes.orderBlocks || [];
+            if (obRes.lastClose && !structureMeta.lastClose) {
+              structureMeta.lastClose = obRes.lastClose;
+            }
+            if (!structureMeta.symbol && obRes.symbol) structureMeta.symbol = obRes.symbol;
+            if (!structureMeta.interval && obRes.interval) {
+              structureMeta.interval = obRes.interval;
+            }
             if (obBlock) {
               console.info(
-                `[Wolf AI] OB tape ${obCtx.symbol} ${obCtx.interval} n=${structureMeta.orderBlocks.length}`,
+                `[Wolf AI] OB tape ${obRes.symbol} ${obRes.interval} n=${structureMeta.orderBlocks.length}`,
               );
             }
-          } catch (err) {
-            console.warn('[Wolf AI] order block tape failed:', err?.message || err);
           }
-        }
-        // Build tape whenever liq tool is active (incl. markTool:liq from client
-        // after a liquidity thread + bare "mark kar do").
-        if (wantsLiqMark || liqAsked || markTool === 'liq') {
-          try {
-            const liqCtx = await buildLiquidityContext(message || userTextBase, {
-              symbol: structureMeta.symbol || undefined,
-              interval: structureMeta.interval || undefined,
-              ltp: structureMeta.lastClose || primaryQuote?.price || 0,
-            });
-            liqBlock = liqCtx.block || '';
-            structureMeta.liquidityPools = liqCtx.pools || [];
-            structureMeta.liquidityPair = liqCtx.pair || null;
-            if (!structureMeta.symbol && liqCtx.symbol) structureMeta.symbol = liqCtx.symbol;
-            if (!structureMeta.interval && liqCtx.interval) structureMeta.interval = liqCtx.interval;
+          if (liqRes) {
+            liqBlock = liqRes.block || '';
+            structureMeta.liquidityPools = liqRes.pools || [];
+            structureMeta.liquidityPair = liqRes.pair || null;
+            if (!structureMeta.symbol && liqRes.symbol) structureMeta.symbol = liqRes.symbol;
+            if (!structureMeta.interval && liqRes.interval) {
+              structureMeta.interval = liqRes.interval;
+            }
             if (liqBlock) {
               console.info(
-                `[Wolf AI] LIQ tape ${liqCtx.symbol} ${liqCtx.interval} n=${structureMeta.liquidityPools.length}`,
+                `[Wolf AI] LIQ tape ${liqRes.symbol} ${liqRes.interval} n=${structureMeta.liquidityPools.length}`,
               );
             }
-          } catch (err) {
-            console.warn('[Wolf AI] liquidity tape failed:', err?.message || err);
           }
         }
-        if (
-          wantsDetective ||
-          chartOnScreen ||
-          hasImage ||
-          trainingGrade ||
-          roomMode ||
-          mentorDesk ||
-          mentorChart
-        ) {
+
+        if (needIntel && Date.now() - chatStartedAt < tapeBudgetMs) {
           try {
             const intel = await buildIntelPack(message || userTextBase);
             intelBlock = intel.block || '';
@@ -2489,6 +2510,8 @@ export function createMasterAiRouter(apiKey) {
           } catch (err) {
             console.warn('[Wolf AI] intel pack failed:', err?.message || err);
           }
+        } else if (needIntel) {
+          console.warn('[Wolf AI] skipped intel pack — tape budget exhausted');
         }
       }
 
@@ -2705,9 +2728,17 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${SCENARIO_HINT}`;
       }
 
-      const models = hasImage
+      const allModels = hasImage
         ? pickVisionModels(model, provider)
         : pickTextModels(model, needsWeb, lang, provider, wantsMarkup);
+      // Leave time for the LLM — if tape already ate the budget, try one model only.
+      const tapeElapsed = Date.now() - chatStartedAt;
+      const models =
+        tapeElapsed > 55_000
+          ? allModels.slice(0, 1)
+          : tapeElapsed > 40_000
+            ? allModels.slice(0, 2)
+            : allModels;
 
       const maxTokens = replyTokenBudget({ hasImage, shortChat, wantsMarkup });
 
@@ -2766,7 +2797,7 @@ export function createMasterAiRouter(apiKey) {
       };
 
       if (provider === 'gemini' && gemini) {
-        return finalizeReply(
+        const geminiOut = finalizeReply(
           await chatWithGemini(gemini, {
             platformContext,
             history,
@@ -2781,6 +2812,10 @@ export function createMasterAiRouter(apiKey) {
             teaching: asksExplanation && !wantsMarkup,
           }),
         );
+        if (!String(geminiOut?.reply || '').trim()) {
+          throw Object.assign(new Error('Empty reply from AI models'), { status: 502 });
+        }
+        return geminiOut;
       }
 
       const contentParts = [{ type: 'text', text: textBlock }];
@@ -2830,7 +2865,16 @@ export function createMasterAiRouter(apiKey) {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const reply = await askModel(modelId);
-            if (reply) return finalizeReply({ reply, modelUsed: modelId, source: provider });
+            if (reply) {
+              const out = finalizeReply({ reply, modelUsed: modelId, source: provider });
+              if (!String(out?.reply || '').trim()) {
+                sawEmpty = true;
+                console.warn(`[Wolf AI] ${modelId} finalized to empty — trying next`);
+                if (attempt === 0) continue;
+                break;
+              }
+              return out;
+            }
             sawEmpty = true;
             console.warn(`[Wolf AI] ${modelId} empty reply (attempt ${attempt + 1})`);
             // Empty once → retry same model; still empty → next model.

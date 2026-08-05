@@ -1181,9 +1181,12 @@ export async function fetchMasterAiStatus(): Promise<{
 }> {
   try {
     const keyHeaders = openRouterRequestHeaders();
-    const res = await apiFetch('/api/chat/status', {
-      headers: { ...keyHeaders },
-    });
+    // Cold Render often needs >18s; a short timeout falsely reports "no key".
+    const res = await apiFetch(
+      '/api/chat/status',
+      { headers: { ...keyHeaders } },
+      { retries: 1, timeoutMs: 45_000 },
+    );
     if (!res.ok) {
       return { configured: false, message: masterAiOfflineMessage(), keySource: 'none' };
     }
@@ -1255,7 +1258,10 @@ export function buildConversationMemoryNote(history: ChatHistoryItem[]): string 
 
 function isRetriableMasterAiError(err: unknown): boolean {
   const status = (err as { status?: number } | null)?.status;
-  if (status === 429 || status === 502 || status === 503 || status === 504) return true;
+  // 503 = missing API key — retrying never helps. 429 needs a longer wait (handled below).
+  if (status === 502 || status === 504) return true;
+  if (status === 429) return true;
+  if (status === 503) return false;
   const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err || '');
   return /abort|timeout|empty reply|Failed to fetch|NetworkError|network|Load failed|ECONNRESET|overloaded|temporarily|All models failed|models unavailable/i.test(
     msg,
@@ -1307,10 +1313,16 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
     markTool: req.markTool,
   };
 
-  // Cold Render + live tape + LLM often needs >75s. Mark/chart paths get more
-  // room; one automatic retry covers wake-ups, 502s, and empty model replies.
-  const heavy = Boolean(req.imageDataUrl || req.markTool || req.mentorChart);
-  const timeoutMs = heavy ? 95_000 : 85_000;
+  // Chart-open / mark / image paths run live tape + LLM — give them a full window.
+  // Nested apiFetch retries multiply orphan server jobs; keep retries:0 here and
+  // one outer retry only for abort/502/empty.
+  const heavy = Boolean(
+    req.imageDataUrl ||
+      req.markTool ||
+      req.mentorChart ||
+      /CHART OPEN BESIDE THIS CHAT/i.test(String(req.message || '')),
+  );
+  const timeoutMs = heavy ? 120_000 : 90_000;
   const maxAttempts = 2;
   let lastErr: unknown;
 
@@ -1323,8 +1335,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
           headers: { ...openRouterRequestHeaders() },
           body: JSON.stringify(payload),
         },
-        // apiFetch also retries 502/503/504 once; keep that for transport blips.
-        { retries: 1, timeoutMs },
+        { retries: 0, timeoutMs },
       );
 
       if (!res.ok) {
@@ -1348,7 +1359,9 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
     } catch (err) {
       lastErr = err;
       if (attempt >= maxAttempts || !isRetriableMasterAiError(err)) throw err;
-      await new Promise((r) => setTimeout(r, 1000 * attempt));
+      const status = (err as { status?: number } | null)?.status;
+      const waitMs = status === 429 ? 5_000 * attempt : 900 * attempt;
+      await new Promise((r) => setTimeout(r, waitMs));
     }
   }
 

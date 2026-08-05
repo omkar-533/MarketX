@@ -149,7 +149,7 @@ export async function fetchQuotes(symbols, opts = {}) {
   return data;
 }
 
-export async function fetchOhlc(symbol, timeframe = '15m', rangeOverride) {
+export async function fetchOhlc(symbol, timeframe = '15m', rangeOverride, opts = {}) {
   const sym = String(symbol).trim().toUpperCase();
   if (!toTvSymbol(sym)) throw new Error(`Unknown symbol ${sym}`);
 
@@ -157,7 +157,7 @@ export async function fetchOhlc(symbol, timeframe = '15m', rangeOverride) {
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < OHLC_CACHE_MS) return hit.data;
 
-  const { bars } = await fetchTvOhlcBars(sym, timeframe, rangeOverride);
+  const { bars } = await fetchTvOhlcBars(sym, timeframe, rangeOverride, opts);
   const data = {
     symbol: sym,
     timeframe,

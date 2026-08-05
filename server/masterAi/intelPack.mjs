@@ -217,7 +217,7 @@ export function pickIntervalFromMessage(message, fallback = '15m') {
 }
 
 async function analyzeTf(symbol, interval) {
-  const data = await fetchOhlc(symbol, interval);
+  const data = await fetchOhlc(symbol, interval, undefined, { timeoutMs: 12_000 });
   const bars = Array.isArray(data?.bars) ? data.bars : [];
   if (bars.length < 20) return null;
   const recent = bars.slice(-80);

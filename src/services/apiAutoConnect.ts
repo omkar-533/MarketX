@@ -15,6 +15,8 @@ export const FYERS_MARKET_LIVE_EVENT = MARKET_LIVE_EVENT;
 /** Keep wake light — Render free tier sleeps; hammering makes the UI feel hung. */
 const MAX_BOOT_ATTEMPTS = 8;
 const WATCH_MS = 3 * 60_000;
+/** After ready, ping every 12m so Free-tier services do not sleep mid-session. */
+const KEEP_ALIVE_MS = 12 * 60_000;
 const HEALTH_TIMEOUT_MS = 12_000;
 
 let bootStarted = false;
@@ -104,6 +106,7 @@ export function startApiAutoConnect(): () => void {
   let stopped = false;
   const isStopped = () => stopped;
   let watchTimer: ReturnType<typeof setInterval> | null = null;
+  let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
 
   void bootConnect(isStopped);
 
@@ -111,12 +114,17 @@ export function startApiAutoConnect(): () => void {
     if (!stopped && !serverReady) void tryConnect();
   }, WATCH_MS);
 
+  keepAliveTimer = setInterval(() => {
+    if (!stopped && serverReady) void tryConnect();
+  }, KEEP_ALIVE_MS);
+
   return () => {
     stopped = true;
     bootStarted = false;
     serverReady = false;
     connectAttempt = 0;
     if (watchTimer) clearInterval(watchTimer);
+    if (keepAliveTimer) clearInterval(keepAliveTimer);
   };
 }
 

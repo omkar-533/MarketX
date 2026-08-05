@@ -441,17 +441,23 @@ export function ensureWolfchartReply(reply, meta) {
     const cleaned = stripWolfchart(text);
     if (!block) {
       console.warn('[Wolf AI] trend ask but no channel pair — stripped S/R markup');
-      return cleaned;
+      // Never return empty — client treats blank as 502. Keep model drawings if any.
+      if (wolfchartHasDrawings(text)) return text;
+      return (
+        cleaned ||
+        text ||
+        'Trend channel tape unavailable — clean levels nahi mile, marking skip.'
+      );
     }
     console.info('[Wolf AI] enforced both-side trend channel rays');
-    return `${cleaned}${block}`;
+    return `${cleaned || text}${block}`;
   }
 
   if (meta?.style === 'sr') {
     const block = synthesizeSrWolfchart(meta);
     if (!block) return text;
     console.info('[Wolf AI] enforced LTP-sided SUPPORT/RESISTANCE hlines');
-    return `${stripWolfchart(text)}${block}`;
+    return `${stripWolfchart(text) || text}${block}`;
   }
 
   if (meta?.style === 'ob') {
@@ -459,10 +465,15 @@ export function ensureWolfchartReply(reply, meta) {
     const cleaned = stripWolfchart(text);
     if (!block) {
       console.warn('[Wolf AI] OB ask but engine found no active Demand/Supply OB');
-      return cleaned;
+      if (wolfchartHasDrawings(text)) return text;
+      return (
+        cleaned ||
+        text ||
+        'Order block tape unavailable — active Demand/Supply OB nahi mila.'
+      );
     }
     console.info('[Wolf AI] enforced Demand OB / Supply OB (never FVG gap)');
-    return `${cleaned}${block}`;
+    return `${cleaned || text}${block}`;
   }
 
   // Model often invents "Supply FVG" / marks the gap instead of the OB candle —
@@ -485,10 +496,15 @@ export function ensureWolfchartReply(reply, meta) {
     const cleaned = stripWolfchart(text);
     if (!block) {
       console.warn('[Wolf AI] liquidity ask but no BSL/SSL pools found');
-      return cleaned;
+      if (wolfchartHasDrawings(text)) return text;
+      return (
+        cleaned ||
+        text ||
+        'Liquidity tape unavailable — BSL/SSL pools nahi mile.'
+      );
     }
     console.info('[Wolf AI] enforced Pine shortcut liquidity hrays');
-    return `${cleaned}${block}`;
+    return `${cleaned || text}${block}`;
   }
 
   // Model often invents "Resistance Liquidity (BSL)" — rewrite to Pine shortcuts,

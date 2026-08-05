@@ -42,9 +42,9 @@ export async function fetchQuotes(symbols, opts) {
   return tvProvider.fetchQuotes(symbols, opts);
 }
 
-export async function fetchOhlc(symbol, timeframe, range) {
+export async function fetchOhlc(symbol, timeframe, range, opts) {
   subscribeTvSymbols([symbol]);
-  return tvProvider.fetchOhlc(symbol, timeframe, range);
+  return tvProvider.fetchOhlc(symbol, timeframe, range, opts);
 }
 
 export function getMarketHealth() {

@@ -259,11 +259,12 @@ export async function buildLiquidityContext(message, opts = {}) {
   }
 
   try {
+    const ohlcOpts = { timeoutMs: 12_000 };
     const [chartPack, dPack, wPack, mPack] = await Promise.all([
-      fetchOhlc(symbol, interval),
-      fetchOhlc(symbol, '1d').catch(() => null),
-      fetchOhlc(symbol, '1w').catch(() => null),
-      fetchOhlc(symbol, '1M').catch(() => null),
+      fetchOhlc(symbol, interval, undefined, ohlcOpts),
+      fetchOhlc(symbol, '1d', undefined, ohlcOpts).catch(() => null),
+      fetchOhlc(symbol, '1w', undefined, ohlcOpts).catch(() => null),
+      fetchOhlc(symbol, '1M', undefined, ohlcOpts).catch(() => null),
     ]);
     const bars = Array.isArray(chartPack?.bars) ? chartPack.bars.slice(-300) : [];
     const dHL = prevCandleHL(dPack?.bars);

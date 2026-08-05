@@ -73,14 +73,18 @@ function candleCountFor(timeframe, rangeOverride) {
 }
 
 /**
+ * @param {string} [rangeOverride]
+ * @param {{ timeoutMs?: number }} [opts] — AI chat path uses a shorter timeout so
+ *   sequential tape stages cannot burn the whole browser budget before the LLM runs.
  * @returns {Promise<{ bars: Array<{time:number,open:number,high:number,low:number,close:number,volume:number}> }>}
  */
-export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride) {
+export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride, opts = {}) {
   const tvSym = toTvSymbol(symbol);
   if (!tvSym) return Promise.reject(new Error(`Unknown symbol ${symbol}`));
 
   const resolution = INTERVAL_MAP[timeframe] || INTERVAL_MAP['15m'];
   const numbCandles = candleCountFor(timeframe, rangeOverride);
+  const timeoutMs = Number(opts?.timeoutMs) > 0 ? Number(opts.timeoutMs) : 28_000;
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -95,7 +99,7 @@ export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride) {
 
     const timer = setTimeout(() => {
       finish(reject, new Error('TradingView OHLC timeout'));
-    }, 28_000);
+    }, timeoutMs);
 
     function finish(fn, value) {
       if (settled) return;
