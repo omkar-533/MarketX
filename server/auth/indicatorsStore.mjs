@@ -293,6 +293,53 @@ export async function createIndicator({
   return fromRow(data, await signImage(db, data));
 }
 
+function pickLink(patchLink, currentLink) {
+  // Empty string must NOT wipe the existing invite URL (`??` only guards null/undefined).
+  const raw = patchLink === undefined || patchLink === null ? currentLink : patchLink;
+  const trimmed = String(raw || '').trim();
+  return trimmed || String(currentLink || '').trim();
+}
+
+/** Video-only write — never touches link/title (used when full PATCH is flaky). */
+export async function setIndicatorHowToVideo(id, howToVideoUrl = '') {
+  const current = await getIndicatorById(id);
+  if (!current) {
+    throw Object.assign(new Error('Indicator not found'), { status: 404 });
+  }
+  const url = validateHttpUrl(howToVideoUrl, 'how-to video');
+  const db = getAdminClient();
+  const now = new Date().toISOString();
+
+  if (!db) {
+    writeRows(
+      readRows().map((row) =>
+        row.id === id ? { ...row, how_to_video_url: url, updated_at: now } : row,
+      ),
+    );
+    return getIndicatorById(id);
+  }
+
+  const { data, error } = await db
+    .from(TABLE)
+    .update({ how_to_video_url: url, updated_at: now })
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) {
+    if (/how_to_video_url/i.test(error.message || '')) {
+      throw Object.assign(
+        new Error(
+          'How-to video column missing on database. Run scripts/add-howto-video-column.mjs then retry.',
+        ),
+        { status: 500 },
+      );
+    }
+    throw storeError(error);
+  }
+  if (!data) throw Object.assign(new Error('Indicator not found'), { status: 404 });
+  return fromRow(data, await signImage(db, data));
+}
+
 export async function updateIndicator(id, patch = {}) {
   const current = await getIndicatorById(id);
   if (!current) {
@@ -302,7 +349,7 @@ export async function updateIndicator(id, patch = {}) {
   const fields = validateFields({
     title: patch.title ?? current.title,
     description: patch.description ?? current.description,
-    link: patch.link ?? current.link,
+    link: pickLink(patch.link ?? patch.code, current.link),
     howToVideoUrl:
       patch.howToVideoUrl === undefined ? current.howToVideoUrl || '' : patch.howToVideoUrl,
   });

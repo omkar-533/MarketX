@@ -12,6 +12,7 @@ import {
   adminCreateIndicator,
   adminDeleteIndicator,
   adminListIndicators,
+  adminSetIndicatorHowToVideo,
   adminUpdateIndicator,
   type IndicatorItem,
 } from '../../services/indicatorLibrary';
@@ -146,6 +147,10 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           );
         }
       }
+      if (!link) {
+        throw new Error('Indicator link required hai (TradingView / invite URL).');
+      }
+
       const payload = {
         title: form.title.trim(),
         description: form.description,
@@ -160,24 +165,48 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
             : {}),
       };
 
-      const saved = editingId
+      let saved = editingId
         ? await adminUpdateIndicator(editingId, payload, adminEmail, adminPassword)
         : await adminCreateIndicator(payload, adminEmail, adminPassword);
 
-      if (howToVideoUrl && !String(saved?.howToVideoUrl || '').trim()) {
-        throw new Error(
-          'Save hua lekin video URL store nahi hui. Server/DB column check karo, phir dubara try karo.',
+      // Second write: video-only endpoint (survives link-column / partial PATCH issues).
+      if (howToVideoUrl && saved?.id) {
+        saved = await adminSetIndicatorHowToVideo(
+          saved.id,
+          howToVideoUrl,
+          adminEmail,
+          adminPassword,
         );
+        if (!String(saved?.howToVideoUrl || '').trim()) {
+          throw new Error('Video URL save fail hui. Link dubara paste karke Save dabao.');
+        }
       }
 
-      setMsg(editingId ? 'Indicator updated.' : 'Indicator created.');
-      setShowForm(false);
-      setEditingId(null);
-      setForm(emptyForm());
-      setPreviewUrl(null);
+      setMsg(
+        howToVideoUrl
+          ? `Saved. Video URL: ${howToVideoUrl}`
+          : editingId
+            ? 'Indicator updated.'
+            : 'Indicator created.',
+      );
+      // Keep form open so admin can see the persisted video URL.
+      setEditingId(saved.id);
+      setForm((prev) => ({
+        ...prev,
+        howToVideoUrl: saved.howToVideoUrl || howToVideoUrl || '',
+        link: saved.link || link,
+        image: null,
+        clearImage: false,
+      }));
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      const name = err instanceof Error ? err.name : '';
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      setError(
+        name === 'AbortError'
+          ? 'Server timeout — Render wake up hone do, 10 sec baad Save dubara dabao.'
+          : msg,
+      );
     } finally {
       setSaving(false);
     }

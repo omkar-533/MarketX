@@ -100,16 +100,23 @@ export type IndicatorInput = {
   published?: boolean;
 };
 
+/** Admin writes can hit a cold Render box — give them a full minute. */
+const ADMIN_WRITE_OPTS = { retries: 2, timeoutMs: 60_000 };
+
 export async function adminCreateIndicator(
   input: IndicatorInput,
   adminEmail?: string | null,
   adminPassword?: string | null,
 ): Promise<IndicatorItem> {
-  const res = await apiFetch('/api/app-auth/admin/indicators', {
-    method: 'POST',
-    headers: authHeaders(adminEmail, adminPassword),
-    body: JSON.stringify(input),
-  });
+  const res = await apiFetch(
+    '/api/app-auth/admin/indicators',
+    {
+      method: 'POST',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify(input),
+    },
+    ADMIN_WRITE_OPTS,
+  );
   const data = await readJson(res, 'Could not create indicator');
   return data.indicator as IndicatorItem;
 }
@@ -120,12 +127,36 @@ export async function adminUpdateIndicator(
   adminEmail?: string | null,
   adminPassword?: string | null,
 ): Promise<IndicatorItem> {
-  const res = await apiFetch(`/api/app-auth/admin/indicators/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: authHeaders(adminEmail, adminPassword),
-    body: JSON.stringify(input),
-  });
+  const res = await apiFetch(
+    `/api/app-auth/admin/indicators/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify(input),
+    },
+    ADMIN_WRITE_OPTS,
+  );
   const data = await readJson(res, 'Could not update indicator');
+  return data.indicator as IndicatorItem;
+}
+
+/** Saves only the how-to video URL (separate from title/link/image). */
+export async function adminSetIndicatorHowToVideo(
+  id: string,
+  howToVideoUrl: string,
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+): Promise<IndicatorItem> {
+  const res = await apiFetch(
+    `/api/app-auth/admin/indicators/${encodeURIComponent(id)}/how-to-video`,
+    {
+      method: 'PUT',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify({ howToVideoUrl }),
+    },
+    ADMIN_WRITE_OPTS,
+  );
+  const data = await readJson(res, 'Could not save how-to video URL');
   return data.indicator as IndicatorItem;
 }
 

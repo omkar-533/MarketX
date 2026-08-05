@@ -48,6 +48,7 @@ import {
   getIndicatorById,
   listAllIndicators,
   listPublishedIndicators,
+  setIndicatorHowToVideo,
   updateIndicator,
 } from './indicatorsStore.mjs';
 import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessSheet.mjs';
@@ -801,6 +802,19 @@ router.post('/admin/indicators', requireAdmin, async (req, res) => {
 /** PATCH /api/app-auth/admin/indicators/:id */
 router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
   try {
+    // Video-only body → dedicated writer (avoids link/title side effects).
+    const keys = Object.keys(req.body || {}).filter((k) => req.body[k] !== undefined);
+    const videoOnly =
+      keys.length > 0 &&
+      keys.every((k) => k === 'howToVideoUrl' || k === 'how_to_video_url');
+    if (videoOnly) {
+      const indicator = await setIndicatorHowToVideo(
+        req.params.id,
+        req.body?.howToVideoUrl ?? req.body?.how_to_video_url ?? '',
+      );
+      return res.json({ indicator: publicIndicator(indicator) });
+    }
+
     const indicator = await updateIndicator(req.params.id, {
       title: req.body?.title,
       description: req.body?.description,
@@ -813,6 +827,19 @@ router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
     return res.json({ indicator: publicIndicator(indicator) });
   } catch (err) {
     return failed(res, err, 'Could not update indicator');
+  }
+});
+
+/** PUT /api/app-auth/admin/indicators/:id/how-to-video — video URL only */
+router.put('/admin/indicators/:id/how-to-video', requireAdmin, async (req, res) => {
+  try {
+    const indicator = await setIndicatorHowToVideo(
+      req.params.id,
+      req.body?.howToVideoUrl ?? req.body?.url ?? '',
+    );
+    return res.json({ indicator: publicIndicator(indicator), ok: true });
+  } catch (err) {
+    return failed(res, err, 'Could not save how-to video URL');
   }
 });
 
