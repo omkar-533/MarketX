@@ -231,13 +231,13 @@ export async function createIndicator({
   const db = getAdminClient();
   const media = await uploadImage(db, image);
 
+  // File store keeps both; cloud prod historically has `code` but not always `link`.
   const row = {
     id,
     title: fields.title,
     description: fields.description,
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
-    // Keep legacy column in sync so older schemas without `link` still work via code.
     code: fields.link,
     image_path: media.path,
     image_data: media.data,
@@ -253,9 +253,26 @@ export async function createIndicator({
     return fromRow(row);
   }
 
-  let { data, error } = await db.from(TABLE).insert(row).select().single();
+  // Cloud write: prefer columns that exist on live Supabase (`code` + how_to_video_url).
+  // Sending `link` when the column is missing aborts the whole update and used to
+  // silently drop the video URL in the legacy retry path.
+  const cloudRow = {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    code: row.code,
+    how_to_video_url: row.how_to_video_url,
+    image_path: row.image_path,
+    image_data: row.image_data,
+    sort_order: row.sort_order,
+    published: row.published,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    created_by: row.created_by,
+  };
+
+  let { data, error } = await db.from(TABLE).insert(cloudRow).select().single();
   if (error && /how_to_video_url/i.test(error.message || '')) {
-    // Never silently drop a video the admin just pasted — surface the real failure.
     if (fields.howToVideoUrl) {
       throw Object.assign(
         new Error(
@@ -264,15 +281,13 @@ export async function createIndicator({
         { status: 500 },
       );
     }
-    const withoutVideo = { ...row };
+    const withoutVideo = { ...cloudRow };
     delete withoutVideo.how_to_video_url;
     ({ data, error } = await db.from(TABLE).insert(withoutVideo).select().single());
   }
-  if (error && /link/i.test(error.message || '')) {
-    const legacy = { ...row };
-    delete legacy.link;
-    if (!fields.howToVideoUrl) delete legacy.how_to_video_url;
-    ({ data, error } = await db.from(TABLE).insert(legacy).select().single());
+  // Optional: if `link` column was added later, keep it in sync (best-effort).
+  if (!error && data?.id && fields.link) {
+    await db.from(TABLE).update({ link: fields.link }).eq('id', data.id);
   }
   if (error) throw storeError(error);
   return fromRow(data, await signImage(db, data));
@@ -346,10 +361,10 @@ export async function updateIndicator(id, patch = {}) {
     return getIndicatorById(id);
   }
 
+  // Do NOT send `link` — live DB may not have that column; invite URL is in `code`.
   const cloudPatch = {
     title: next.title,
     description: next.description,
-    link: next.link,
     how_to_video_url: next.how_to_video_url,
     code: next.code,
     sort_order: next.sort_order,
@@ -375,14 +390,17 @@ export async function updateIndicator(id, patch = {}) {
     delete withoutVideo.how_to_video_url;
     ({ data, error } = await db.from(TABLE).update(withoutVideo).eq('id', id).select().maybeSingle());
   }
-  if (error && /link/i.test(error.message || '')) {
-    const legacy = { ...cloudPatch };
-    delete legacy.link;
-    if (!fields.howToVideoUrl) delete legacy.how_to_video_url;
-    ({ data, error } = await db.from(TABLE).update(legacy).eq('id', id).select().maybeSingle());
-  }
   if (error) throw storeError(error);
   if (!data) throw Object.assign(new Error('Indicator not found'), { status: 404 });
+
+  // Best-effort sync to `link` when that column exists (ignore schema-cache miss).
+  if (fields.link) {
+    const sync = await db.from(TABLE).update({ link: fields.link }).eq('id', id);
+    if (sync.error && !/link/i.test(sync.error.message || '')) {
+      console.warn('[indicators] link sync failed:', sync.error.message);
+    }
+  }
+
   return fromRow(data, await signImage(db, data));
 }
 
