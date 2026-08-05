@@ -189,7 +189,11 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [password, setPassword] = useState(() => randomPassword());
   const [plan, setPlan] = useState<'free' | 'pro' | 'premium'>('pro');
   const [creating, setCreating] = useState(false);
-  const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
+  const [lastCreated, setLastCreated] = useState<{
+    email: string;
+    phone: string;
+    password: string;
+  } | null>(null);
   const [grantDays, setGrantDays] = useState<Record<string, string>>({});
   const [defaultGrantDays, setDefaultGrantDays] = useState(30);
   const [tvPendingCount, setTvPendingCount] = useState(0);
@@ -400,15 +404,24 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const handleCreate = async () => {
     setMsg('');
     setErr('');
+    const phone = mobile.trim();
+    if (phone.replace(/\D/g, '').length < 10) {
+      setErr('Mobile number is required');
+      return;
+    }
     setCreating(true);
     try {
       await adminCreateUser(
-        { name, email, password, plan, phone: mobile || undefined },
+        { name, email: email.trim() || undefined, password, plan, phone },
         adminEmail,
         adminPassword,
       );
-      setLastCreated({ email: email.trim().toLowerCase(), password });
-      setMsg('Login created. Share email & password with the user privately.');
+      setLastCreated({
+        email: email.trim().toLowerCase(),
+        phone,
+        password,
+      });
+      setMsg('Login created. Share mobile & password with the user privately.');
       setName('');
       setEmail('');
       setMobile('');
@@ -592,14 +605,14 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder="Email (optional)"
                 type="email"
                 className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
               />
               <input
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="Mobile (optional)"
+                placeholder="Mobile"
                 inputMode="numeric"
                 className="px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200"
               />
@@ -621,7 +634,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             </div>
             <button
               type="button"
-              disabled={creating || !email || !password}
+              disabled={creating || mobile.replace(/\D/g, '').length < 10 || !password}
               onClick={() => void handleCreate()}
               className="px-4 py-2 rounded-lg bg-gold/15 border border-gold/30 text-gold text-xs font-bold hover:bg-gold/25 disabled:opacity-50"
             >
@@ -633,8 +646,13 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-slate-300 space-y-1">
                 <p className="font-bold text-emerald-400">Share privately:</p>
                 <p>
-                  Email: <span className="font-mono text-slate-100">{lastCreated.email}</span>
+                  Mobile: <span className="font-mono text-slate-100">{lastCreated.phone}</span>
                 </p>
+                {lastCreated.email ? (
+                  <p>
+                    Email: <span className="font-mono text-slate-100">{lastCreated.email}</span>
+                  </p>
+                ) : null}
                 <p className="flex items-center gap-2">
                   Password: <span className="font-mono text-slate-100">{lastCreated.password}</span>
                   <button
@@ -642,7 +660,13 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                     className="text-gold inline-flex items-center gap-1"
                     onClick={() =>
                       void navigator.clipboard.writeText(
-                        `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}`,
+                        [
+                          `Mobile: ${lastCreated.phone}`,
+                          lastCreated.email ? `Email: ${lastCreated.email}` : null,
+                          `Password: ${lastCreated.password}`,
+                        ]
+                          .filter(Boolean)
+                          .join('\n'),
                       )
                     }
                   >
@@ -826,8 +850,8 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                       <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
                         {loading
                           ? 'Loading…'
-                          : rangeFilterActive
-                            ? 'No users in this date range.'
+                          : searchActive || rangeFilterActive
+                            ? 'No users match this search / date filter.'
                             : 'No users yet.'}
                       </td>
                     </tr>

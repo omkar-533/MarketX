@@ -255,19 +255,31 @@ export async function createAppUser({
   accessStatus,
   accessDays,
 }) {
-  const normalized = String(email || '').trim().toLowerCase();
   const pwd = String(password || '');
-  const displayName = String(name || '').trim() || normalized.split('@')[0] || 'User';
   const normalizedPhone = phone ? normalizePhone(phone) : '';
+  let normalized = String(email || '').trim().toLowerCase();
 
-  if (!normalized || !normalized.includes('@')) {
-    throw Object.assign(new Error('Valid email required'), { status: 400 });
+  // Admin invite: mobile is enough — synthesize a stable email placeholder when omitted.
+  if ((!normalized || !normalized.includes('@')) && normalizedPhone) {
+    normalized = `${normalizedPhone}@phone.wolftrade.local`;
   }
-  if (!passwordHash && pwd.length < 6) {
-    throw Object.assign(new Error('Password must be at least 6 characters'), { status: 400 });
+
+  const displayName =
+    String(name || '').trim() ||
+    (normalizedPhone ? normalizedPhone.slice(-10) : normalized.split('@')[0]) ||
+    'User';
+
+  if (!normalizedPhone && (!normalized || !normalized.includes('@'))) {
+    throw Object.assign(new Error('Valid mobile number or email required'), { status: 400 });
+  }
+  if (!normalized || !normalized.includes('@')) {
+    throw Object.assign(new Error('Valid email or mobile number required'), { status: 400 });
   }
   if (phone && !normalizedPhone) {
     throw Object.assign(new Error('Enter a valid 10-digit Indian mobile number'), { status: 400 });
+  }
+  if (!passwordHash && pwd.length < 6) {
+    throw Object.assign(new Error('Password must be at least 6 characters'), { status: 400 });
   }
 
   const now = Date.now();
@@ -275,7 +287,7 @@ export async function createAppUser({
   const expiresAt = days > 0 ? new Date(now + days * 24 * 60 * 60 * 1000).toISOString() : null;
 
   const record = {
-    id: `usr_${createHash('sha256').update(`${normalized}-${now}`).digest('hex').slice(0, 16)}`,
+    id: `usr_${createHash('sha256').update(`${normalizedPhone || normalized}-${now}`).digest('hex').slice(0, 16)}`,
     email: normalized,
     name: displayName,
     passwordHash: passwordHash || hashPassword(pwd),

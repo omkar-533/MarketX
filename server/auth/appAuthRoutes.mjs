@@ -931,12 +931,16 @@ router.get('/admin/users', requireAdmin, async (_req, res) => {
 /** POST /api/app-auth/admin/users — create invite login */
 router.post('/admin/users', requireAdmin, async (req, res) => {
   try {
+    const phone = String(req.body?.phone || '').trim();
+    if (!phone) {
+      return res.status(400).json({ error: 'Mobile number is required' });
+    }
     const user = await createAppUser({
       email: req.body?.email,
       password: req.body?.password,
       name: req.body?.name,
-      phone: req.body?.phone,
-      phoneVerified: Boolean(req.body?.phone),
+      phone,
+      phoneVerified: true,
       plan: req.body?.plan,
       role: req.body?.role === 'admin' ? 'admin' : 'user',
       createdBy: req.adminActor || 'admin',
@@ -945,7 +949,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
     });
     return res.status(201).json({
       user,
-      message: 'Login created. Share email & password with the user privately.',
+      message: 'Login created. Share mobile & password with the user privately.',
     });
   } catch (err) {
     return failed(res, err, 'Create failed');

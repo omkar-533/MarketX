@@ -359,9 +359,9 @@ function authHeaders(adminEmail?: string | null, adminPassword?: string | null):
 
 export type InviteUserInput = {
   name: string;
-  email: string;
+  email?: string;
   password: string;
-  phone?: string;
+  phone: string;
   plan?: 'free' | 'pro' | 'premium';
 };
 
