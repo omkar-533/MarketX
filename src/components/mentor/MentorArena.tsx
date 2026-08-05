@@ -1,63 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Coins,
-  Gift,
-  Heart,
-  Lock,
+  Building2,
+  Car,
+  ChevronRight,
+  Gauge,
   Package,
   Play,
-  RotateCcw,
-  Shield,
-  Sparkles,
-  Star,
+  ShoppingBag,
   Target,
-  Timer,
-  Trophy,
-  Zap,
+  TrendingDown,
+  TrendingUp,
+  Watch,
+  RotateCcw,
 } from 'lucide-react';
+import { playArenaSfx } from '../../services/mentorArena';
 import {
-  playArenaSfx,
-  recordArenaRound,
-  touchArenaStreak,
-  loadArenaStats,
-} from '../../services/mentorArena';
+  STAKE_OPTIONS,
+  SHOP_CATALOG,
+  applyRoundPnl,
+  buyShopItem,
+  formatDeskCash,
+  loadDeskEmpire,
+  ownedItems,
+  type DeskEmpireState,
+  type ShopCategory,
+  type ShopItem,
+} from '../../services/deskEmpire';
 import {
-  ALL_BADGES,
-  ALL_TITLES,
-  CAMPAIGN_LEVELS,
-  POWERUP_SHOP,
-  addQuestCoins,
-  applyLevelClear,
-  buyPowerUp,
-  computeStars,
-  consumePowerUp,
-  equipTitle,
-  isLevelUnlocked,
-  loadQuestProgress,
-  modeLabel,
-  rewardPreview,
-  titleName,
-  type ChestLoot,
-  type PowerUpId,
-  type QuestLevel,
-  type QuestProgress,
-} from '../../services/mentorArenaCampaign';
-import WolfTapeGame, {
-  tapeConfigFromLevel,
-  type TapeGameConfig,
-  type TapeGameResult,
-} from './WolfTapeGame';
+  loadEmpireScenario,
+  resolveEmpireCall,
+  type EmpireBar,
+  type EmpireScenario,
+  type EmpireSide,
+} from '../../services/deskEmpireReplay';
 import type { DetectiveCard } from '../../services/mentorDrills';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
+import DeskEmpireChart from './DeskEmpireChart';
 
-type Phase = 'hub' | 'loadout' | 'brief' | 'countdown' | 'fight' | 'chest' | 'fail';
-
-type ArmedPowerUps = {
-  heart: boolean;
-  clock: boolean;
-  shield: boolean;
-};
+type Phase = 'lobby' | 'play' | 'decide' | 'resolve' | 'result' | 'shop' | 'garage';
 
 type MentorArenaProps = {
   ownerKey: string;
@@ -70,18 +51,11 @@ type MentorArenaProps = {
   onPlayingChange?: (playing: boolean) => void;
 };
 
-function StarsRow({ n, max = 3 }: { n: number; max?: number }) {
-  return (
-    <span className="wm-quest__stars" aria-label={`${n} of ${max} stars`}>
-      {Array.from({ length: max }).map((_, i) => (
-        <Star
-          key={i}
-          className={`wm-quest__star ${i < n ? 'wm-quest__star--on' : ''}`}
-          fill={i < n ? 'currentColor' : 'none'}
-        />
-      ))}
-    </span>
-  );
+function catIcon(cat: ShopCategory) {
+  if (cat === 'car') return Car;
+  if (cat === 'property') return Building2;
+  if (cat === 'watch') return Watch;
+  return Gauge;
 }
 
 export default function MentorArena({
@@ -94,322 +68,212 @@ export default function MentorArena({
   onChartMarks,
   onPlayingChange,
 }: MentorArenaProps) {
-  const [quest, setQuest] = useState<QuestProgress>(() => loadQuestProgress(ownerKey));
-  const [phase, setPhase] = useState<Phase>('hub');
-  const [activeLevel, setActiveLevel] = useState<QuestLevel | null>(null);
-  const [survivalMode, setSurvivalMode] = useState(false);
-  const [armed, setArmed] = useState<ArmedPowerUps>({ heart: false, clock: false, shield: false });
-  const [loot, setLoot] = useState<ChestLoot | null>(null);
-  const [unlockedNext, setUnlockedNext] = useState<number | null>(null);
-  const [gameConfig, setGameConfig] = useState<TapeGameConfig | null>(null);
-  const [countdown, setCountdown] = useState(3);
-  const [chestOpen, setChestOpen] = useState(false);
-  const [lastRun, setLastRun] = useState<TapeGameResult | null>(null);
-  const [livesMax, setLivesMax] = useState(3);
+  const [empire, setEmpire] = useState<DeskEmpireState>(() => loadDeskEmpire(ownerKey));
+  const [phase, setPhase] = useState<Phase>('lobby');
+  const [scenario, setScenario] = useState<EmpireScenario | null>(null);
+  const [bars, setBars] = useState<EmpireBar[]>([]);
+  const [stake, setStake] = useState<number>(STAKE_OPTIONS[1]);
+  const [side, setSide] = useState<EmpireSide | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ReturnType<typeof resolveEmpireCall> | null>(null);
+  const [shopFilter, setShopFilter] = useState<ShopCategory | 'all'>('all');
+  const [buyMsg, setBuyMsg] = useState('');
 
   useEffect(() => {
-    setQuest(loadQuestProgress(ownerKey));
+    setEmpire(loadDeskEmpire(ownerKey));
   }, [ownerKey]);
 
+  const playing = phase === 'play' || phase === 'decide' || phase === 'resolve';
   useEffect(() => {
-    onPlayingChange?.(phase === 'countdown' || phase === 'fight');
-  }, [phase, onPlayingChange]);
-
-  useEffect(() => {
-    if (phase === 'hub' || phase === 'loadout') onChartMarks([], []);
-  }, [phase, onChartMarks]);
-
-  const equipped = titleName(quest.equippedTitle);
-  const firstName = studentName.split(' ')[0] || 'Trader';
-  const arenaStats = useMemo(
-    () => loadArenaStats(ownerKey),
-    [ownerKey, quest.totalStars, quest.coins],
-  );
-
-  const refreshQuest = () => setQuest(loadQuestProgress(ownerKey));
-
-  const openBrief = (level: QuestLevel) => {
-    if (!isLevelUnlocked(level.id, quest)) return;
-    setSurvivalMode(false);
-    setActiveLevel(level);
-    setArmed({ heart: false, clock: false, shield: false });
-    setPhase('brief');
-  };
-
-  const toggleArm = (id: PowerUpId) => {
-    if ((quest.powerups[id] || 0) <= 0 && !armed[id]) return;
-    setArmed((a) => ({ ...a, [id]: !a[id] }));
-  };
-
-  const startMission = () => {
-    const level = activeLevel;
-    const isSurvival = survivalMode || !level;
-    let baseLives = isSurvival ? 3 : level!.lives;
-    if (armed.heart && consumePowerUp('heart', ownerKey)) baseLives += 1;
-    else if (armed.heart) setArmed((a) => ({ ...a, heart: false }));
-    // clock → longer track / slightly slower for learning
-    let trackBoost = 0;
-    if (armed.clock && consumePowerUp('clock', ownerKey)) trackBoost = 400;
-    else if (armed.clock) setArmed((a) => ({ ...a, clock: false }));
-    if (armed.shield && consumePowerUp('shield', ownerKey)) baseLives += 1;
-    else if (armed.shield) setArmed((a) => ({ ...a, shield: false }));
-
-    refreshQuest();
-    touchArenaStreak(ownerKey);
-
-    const cfg = tapeConfigFromLevel(
-      isSurvival
-        ? {
-            id: 99,
-            title: 'Survival Raid',
-            mode: 'rush',
-            lives: baseLives,
-            topics: ['candle', 'candle_psych', 'psych', 'liquidity', 'structure'],
-          }
-        : {
-            id: level!.id,
-            title: level!.title,
-            mode: level!.mode,
-            lives: baseLives,
-            topics: level!.topics,
-          },
-    );
-    cfg.trackLength += trackBoost;
-    setLivesMax(baseLives);
-    setGameConfig(cfg);
-    setLoot(null);
-    setUnlockedNext(null);
-    setChestOpen(false);
-    setLastRun(null);
-    setCountdown(3);
-    setPhase('countdown');
-  };
-
-  const onGameFinish = useCallback(
-    (result: TapeGameResult) => {
-      setLastRun(result);
-      const gateAcc = result.gatesTotal > 0 ? result.gatesCorrect / result.gatesTotal : 1;
-      const pseudoCorrect = Math.round(
-        (result.cleared ? 0.7 : 0.3) * 10 + gateAcc * 5 + (result.coins > 8 ? 2 : 0),
-      );
-      const pseudoTotal = 10;
-
-      recordArenaRound(
-        {
-          correct: result.cleared ? pseudoCorrect : Math.max(1, result.gatesCorrect),
-          total: pseudoTotal,
-          comboMax: result.comboMax,
-          xpEarned: Math.round(result.score / 10),
-          score: result.score,
-          wave: activeLevel?.id || 1,
-          timedOut: !result.cleared,
-          survived: result.cleared,
-        },
-        ownerKey,
-      );
-
-      if (!result.cleared) {
-        playArenaSfx('over');
-        setPhase('fail');
-        onRoundTeach(
-          [
-            `[TAPE RUNNER FAIL] ${activeLevel?.title || 'Survival'}. Score ${result.score}.`,
-            'Encourage retry. Tip: jump early on spikes, land on correct GATE pads. No Entry/Stop/Target.',
-          ].join(' '),
-        );
-        return;
-      }
-
-      const stars = computeStars({
-        correct: Math.round(gateAcc * pseudoTotal),
-        total: pseudoTotal,
-        livesLeft: result.livesLeft,
-        livesMax: result.livesMax || livesMax,
-        comboMax: result.comboMax,
-        cleared: true,
-      });
-
-      if (survivalMode || !activeLevel) {
-        const coins = Math.max(10, Math.round(result.score / 25) + result.coins);
-        setLoot({
-          coins,
-          powerUpQty: 0,
-          firstClear: false,
-          stars,
-          bestStars: stars,
-          newBest: false,
-        });
-        setQuest(addQuestCoins(coins, ownerKey));
-        setPhase('chest');
-        setChestOpen(false);
-        window.setTimeout(() => {
-          setChestOpen(true);
-          playArenaSfx('chest');
-        }, 400);
-        return;
-      }
-
-      const applied = applyLevelClear(activeLevel.id, Math.max(1, stars), ownerKey);
-      setQuest(applied.progress);
-      setLoot(applied.loot);
-      setUnlockedNext(applied.unlockedNext);
-      setPhase('chest');
-      setChestOpen(false);
-      window.setTimeout(() => {
-        setChestOpen(true);
-        playArenaSfx('chest');
-        if (applied.loot.stars >= 2) playArenaSfx('star');
-        if (applied.unlockedNext) window.setTimeout(() => playArenaSfx('unlock'), 500);
-      }, 450);
-
-      onRoundTeach(
-        [
-          `[TAPE RUNNER CLEAR] ${activeLevel.title}. ${stars}★. Score ${result.score}. Gates ${result.gatesCorrect}/${result.gatesTotal}.`,
-          applied.loot.badge ? `Badge: ${applied.loot.badge.name}.` : '',
-          'Hype the run + 1 process tip from the level theme. No Entry/Stop/Target.',
-        ]
-          .filter(Boolean)
-          .join(' '),
-      );
-    },
-    [ownerKey, onRoundTeach, activeLevel, survivalMode, livesMax],
-  );
+    onPlayingChange?.(playing);
+  }, [playing, onPlayingChange]);
 
   useEffect(() => {
-    if (phase !== 'countdown') return;
-    if (countdown <= 0) {
-      playArenaSfx('go');
-      setPhase('fight');
+    if (!scenario || phase === 'lobby' || phase === 'shop' || phase === 'garage') {
+      onChartMarks([], []);
       return;
     }
-    playArenaSfx('hit');
-    const t = window.setTimeout(() => setCountdown((c) => c - 1), 700);
-    return () => window.clearTimeout(t);
-  }, [phase, countdown]);
+    const levels: ChartLevel[] = scenario.levels.map((l) => ({
+      price: l.price,
+      kind: 'pivot' as const,
+      label: l.label,
+    }));
+    onChartMarks(levels.slice(0, 6), []);
+  }, [scenario, phase, onChartMarks]);
 
-  const onBuy = (id: PowerUpId) => {
-    const next = buyPowerUp(id, ownerKey);
-    if (next) {
-      playArenaSfx('hit');
-      setQuest(next);
+  const firstName = studentName.split(' ')[0] || 'Trader';
+
+  const startSession = async () => {
+    if (empire.bank < STAKE_OPTIONS[0]) {
+      setBuyMsg('Bank low — smaller stakes or keep collecting.');
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+    setSide(null);
+    setBuyMsg('');
+    playArenaSfx('go');
+    try {
+      const sc = await loadEmpireScenario(detective);
+      setScenario(sc);
+      setPhase('play');
+      // Warmup: reveal bars gradually
+      setBars(sc.visible.slice(0, Math.max(8, Math.floor(sc.visible.length * 0.45))));
+      const full = sc.visible;
+      let i = Math.max(8, Math.floor(full.length * 0.45));
+      const tick = window.setInterval(() => {
+        i += 1;
+        setBars(full.slice(0, i));
+        if (i >= full.length) {
+          window.clearInterval(tick);
+          playArenaSfx('wave');
+          setPhase('decide');
+        }
+      }, 140);
+    } catch {
+      setPhase('lobby');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const onEquip = (titleId: string) => {
-    setQuest(equipTitle(titleId, ownerKey));
+  const placeCall = useCallback(
+    (call: EmpireSide) => {
+      if (!scenario || phase !== 'decide') return;
+      if (stake > empire.bank) {
+        setBuyMsg('Stake > bank — pick a smaller size.');
+        return;
+      }
+      setSide(call);
+      setPhase('resolve');
+      playArenaSfx('hit');
+
+      const base = scenario.visible;
+      const fut = scenario.future;
+      let j = 0;
+      setBars([...base]);
+      const tick = window.setInterval(() => {
+        j += 1;
+        setBars([...base, ...fut.slice(0, j)]);
+        if (j >= fut.length) {
+          window.clearInterval(tick);
+          const resolved = resolveEmpireCall(scenario, call, stake);
+          setResult(resolved);
+          const next = applyRoundPnl(resolved.pnl, ownerKey);
+          setEmpire(next);
+          playArenaSfx(resolved.won ? 'chest' : 'miss');
+          setPhase('result');
+          onRoundTeach(
+            [
+              `[DESK EMPIRE] ${call.toUpperCase()} on ${scenario.symbol}.`,
+              `PnL ${resolved.pnl}. ${resolved.teach}`,
+              'Hype or coach 2 lines. No Entry/Stop/Target.',
+            ].join(' '),
+          );
+        }
+      }, 110);
+    },
+    [scenario, phase, stake, empire.bank, ownerKey, onRoundTeach],
+  );
+
+  const onBuy = (item: ShopItem) => {
+    const next = buyShopItem(item.id, ownerKey);
+    if (!next) {
+      setBuyMsg(empire.inventory.includes(item.id) ? 'Already owned.' : 'Not enough desk cash.');
+      playArenaSfx('miss');
+      return;
+    }
+    setEmpire(next);
+    setBuyMsg(`Owned: ${item.name}`);
     playArenaSfx('star');
   };
 
-  const playing = phase === 'countdown' || phase === 'fight';
+  const garage = ownedItems(empire);
+  const catalog =
+    shopFilter === 'all' ? SHOP_CATALOG : SHOP_CATALOG.filter((x) => x.category === shopFilter);
 
   return (
-    <div className={`wm-arena wm-quest ${playing ? 'wm-arena--live wm-arena--playing wm-quest--game' : ''}`}>
-      {!playing ? (
-        <div className="wm-arena__hud wm-quest__top">
-          <div className="wm-arena__hud-main">
-            <p className="wm-arena__eyebrow">Wolf Trade Quest · Most Wanted</p>
+    <div className={`wm-arena wm-empire ${playing ? 'wm-arena--live wm-arena--playing wm-empire--play' : ''}`}>
+      {phase === 'lobby' || phase === 'shop' || phase === 'garage' || phase === 'result' ? (
+        <div className="wm-empire__top">
+          <div>
+            <p className="wm-arena__eyebrow">Wolf Desk Empire</p>
             <h2 className="wm-arena__title">
-              {firstName}
-              {equipped ? (
-                <>
-                  , <span>{equipped}</span>
-                </>
-              ) : (
-                <>
-                  , <span>you are wanted</span>
-                </>
-              )}
+              {firstName}, <span>trade the freeze</span>
             </h2>
             <p className="wm-arena__lead">
-              Night freeway racer — switch lanes, nitro past FOMO cars, hit checkpoint answer lanes,
-              finish for the chest.
+              Chart chalta hai → rukta hai → liquidity hint se UP/DOWN → virtual PnL → luxury shop
             </p>
           </div>
-          <div className="wm-quest__wallet">
-            <div className="wm-quest__coin">
-              <Coins className="h-4 w-4" />
-              <b>{quest.coins}</b>
+          <div className="wm-empire__wallet">
+            <div>
+              <em>BANK</em>
+              <b>{formatDeskCash(empire.bank)}</b>
             </div>
-            <div className="wm-quest__coin">
-              <Star className="h-4 w-4" />
-              <b>{quest.totalStars}</b>
-              <span>stars</span>
+            <div>
+              <em>STREAK</em>
+              <b>{empire.streak}</b>
             </div>
-            <div className="wm-quest__coin">
-              <Trophy className="h-4 w-4" />
-              <b>{arenaStats.highScore}</b>
+            <div>
+              <em>W / R</em>
+              <b>
+                {empire.wins}/{empire.rounds}
+              </b>
             </div>
           </div>
         </div>
       ) : null}
 
       <AnimatePresence mode="wait">
-        {phase === 'hub' ? (
+        {phase === 'lobby' ? (
           <motion.div
-            key="hub"
-            className="wm-arena__panel wm-quest__hub"
+            key="lobby"
+            className="wm-arena__panel wm-empire__lobby"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            exit={{ opacity: 0 }}
           >
-            <div className="wm-quest__hub-actions">
-              <button type="button" className="wm-arena__chip" onClick={() => setPhase('loadout')}>
-                <Package className="h-3.5 w-3.5" />
-                Collection
-              </button>
-              {quest.survivalUnlocked ? (
-                <button
-                  type="button"
-                  className="wm-arena__chip"
-                  onClick={() => {
-                    setSurvivalMode(true);
-                    setActiveLevel(null);
-                    setArmed({ heart: false, clock: false, shield: false });
-                    setPhase('brief');
-                  }}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Survival Raid
-                </button>
-              ) : null}
-            </div>
-
-            <div className="wm-quest__path">
-              {CAMPAIGN_LEVELS.map((level) => {
-                const unlocked = isLevelUnlocked(level.id, quest);
-                const stars = quest.cleared[String(level.id)] || 0;
-                const boss = level.mode === 'boss';
-                return (
+            <div className="wm-empire__stake">
+              <p>Session stake</p>
+              <div className="wm-empire__stake-row">
+                {STAKE_OPTIONS.map((s) => (
                   <button
-                    key={level.id}
+                    key={s}
                     type="button"
-                    disabled={!unlocked}
-                    className={`wm-quest__node ${unlocked ? 'wm-quest__node--open' : 'wm-quest__node--lock'} ${
-                      boss ? 'wm-quest__node--boss' : ''
-                    } ${stars > 0 ? 'wm-quest__node--cleared' : ''}`}
-                    onClick={() => openBrief(level)}
+                    className={`wm-empire__stake-btn ${stake === s ? 'on' : ''}`}
+                    disabled={s > empire.bank}
+                    onClick={() => setStake(s)}
                   >
-                    <div className="wm-quest__node-num">
-                      {unlocked ? level.id : <Lock className="h-3.5 w-3.5" />}
-                    </div>
-                    <div className="wm-quest__node-body">
-                      <em>{level.world}</em>
-                      <b>{level.title}</b>
-                      <span>
-                        {modeLabel(level.mode)} RACE · {level.lives}♥ · lanes + nitro
-                      </span>
-                      {unlocked ? <StarsRow n={stars} /> : <span className="wm-quest__need">Clear previous</span>}
-                    </div>
-                    <div className="wm-quest__node-loot">
-                      <Gift className="h-3.5 w-3.5" />
-                      <small>{level.reward.badge?.name || `${level.reward.coins}c`}</small>
-                    </div>
+                    {formatDeskCash(s)}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
 
-            <div className="wm-arena__quick">
+            <button
+              type="button"
+              className="wm-arena__play"
+              onClick={() => void startSession()}
+              disabled={loading || empire.bank < STAKE_OPTIONS[0]}
+            >
+              <Play className="h-5 w-5" />
+              <span>
+                <strong>{loading ? 'LOADING TAPE…' : 'START SESSION'}</strong>
+                <small>
+                  {detective?.symbol || 'NIFTY'} · replay → freeze → call
+                </small>
+              </span>
+            </button>
+
+            <div className="wm-empire__lobby-actions">
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('shop')}>
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Luxury Shop
+              </button>
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('garage')}>
+                <Package className="h-3.5 w-3.5" />
+                Garage ({garage.length})
+              </button>
               <button type="button" className="wm-arena__chip" onClick={onOpenCurriculum}>
                 <Target className="h-3.5 w-3.5" />
                 Curriculum
@@ -419,319 +283,204 @@ export default function MentorArena({
                 Lab
               </button>
             </div>
+            {buyMsg ? <p className="wm-empire__msg">{buyMsg}</p> : null}
           </motion.div>
         ) : null}
 
-        {phase === 'loadout' ? (
+        {phase === 'play' || phase === 'decide' || phase === 'resolve' ? (
           <motion.div
-            key="loadout"
-            className="wm-arena__panel wm-quest__loadout"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            key="session"
+            className="wm-empire__stage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
-              ← Back to map
-            </button>
+            <div className="wm-empire__session-hud">
+              <span>{scenario?.symbol}</span>
+              <span>{phase === 'play' ? 'TAPE RUNNING…' : phase === 'decide' ? 'FROZEN — CALL NOW' : 'RESOLVING…'}</span>
+              <span>Stake {formatDeskCash(stake)}</span>
+            </div>
 
-            <h3 className="wm-quest__section">Titles</h3>
-            <div className="wm-quest__grid">
-              {ALL_TITLES.map((t) => {
-                const owned = quest.titles.includes(t.id);
-                const on = quest.equippedTitle === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    disabled={!owned}
-                    className={`wm-quest__collect ${owned ? '' : 'wm-quest__collect--lock'} ${
-                      on ? 'wm-quest__collect--on' : ''
-                    }`}
-                    onClick={() => owned && onEquip(t.id)}
-                  >
-                    <b>{t.name}</b>
-                    <span>{owned ? (on ? 'Equipped' : 'Tap to equip') : 'Locked'}</span>
+            <DeskEmpireChart
+              bars={bars}
+              scenario={scenario}
+              entryLine={phase === 'resolve' || phase === 'decide' ? scenario?.entry : null}
+              showLevels={phase !== 'play'}
+              pulse={phase === 'decide'}
+            />
+
+            {phase === 'decide' && scenario ? (
+              <div className="wm-empire__decide">
+                <p className="wm-empire__ask">{scenario.ask}</p>
+                <div className="wm-empire__hints">
+                  {scenario.hints.map((h) => (
+                    <span key={h}>{h}</span>
+                  ))}
+                </div>
+                <div className="wm-empire__calls">
+                  <button type="button" className="wm-empire__call wm-empire__call--up" onClick={() => placeCall('up')}>
+                    <TrendingUp className="h-5 w-5" />
+                    LONG / UP
                   </button>
-                );
-              })}
-            </div>
-
-            <h3 className="wm-quest__section">Badges</h3>
-            <div className="wm-quest__grid">
-              {ALL_BADGES.map((b) => {
-                const owned = quest.badges.includes(b.id);
-                return (
-                  <div
-                    key={b.id}
-                    className={`wm-quest__collect ${owned ? 'wm-quest__collect--badge' : 'wm-quest__collect--lock'}`}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <b>{b.name}</b>
-                    <span>{owned ? b.blurb : '???'}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <h3 className="wm-quest__section">Power-up shop</h3>
-            <div className="wm-quest__shop">
-              {(Object.keys(POWERUP_SHOP) as PowerUpId[]).map((id) => (
-                <div key={id} className="wm-quest__shop-row">
-                  <div>
-                    <b>
-                      {id === 'clock' ? 'Longer Track' : POWERUP_SHOP[id].name}
-                    </b>
-                    <span>
-                      {id === 'clock'
-                        ? 'Extra distance / breathing room'
-                        : id === 'shield'
-                          ? '+1 life (armor)'
-                          : POWERUP_SHOP[id].blurb}{' '}
-                      · own {quest.powerups[id] || 0}
-                    </span>
-                  </div>
                   <button
                     type="button"
-                    className="wm-arena__chip"
-                    disabled={quest.coins < POWERUP_SHOP[id].cost}
-                    onClick={() => onBuy(id)}
+                    className="wm-empire__call wm-empire__call--down"
+                    onClick={() => placeCall('down')}
                   >
-                    <Coins className="h-3.5 w-3.5" />
-                    {POWERUP_SHOP[id].cost}
+                    <TrendingDown className="h-5 w-5" />
+                    SHORT / DOWN
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : null}
+
+            {phase === 'play' ? (
+              <p className="wm-empire__running">Watch the tape — freeze incoming…</p>
+            ) : null}
+            {phase === 'resolve' && side ? (
+              <p className="wm-empire__running">
+                Position: {side.toUpperCase()} @ {scenario?.entry.toFixed(1)} — revealing…
+              </p>
+            ) : null}
           </motion.div>
         ) : null}
 
-        {phase === 'brief' ? (
+        {phase === 'result' && result ? (
           <motion.div
-            key="brief"
-            className="wm-arena__panel wm-quest__brief"
+            key="result"
+            className="wm-arena__panel wm-empire__result"
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
           >
-            <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
-              ← Map
-            </button>
-            <div className="wm-quest__brief-hero">
-              <em>{survivalMode ? 'Survival Raid' : activeLevel?.world}</em>
-              <h3>{survivalMode ? 'Endless tape run' : activeLevel?.title}</h3>
-              <p>
-                {survivalMode
-                  ? 'Faster night race · dodge FOMO rivals · checkpoint answer lanes · nitro to the finish'
-                  : `${activeLevel?.blurb} — NFS-style race: lanes, nitro, heat. Learning at checkpoints.`}
-              </p>
-              {!survivalMode && activeLevel ? (
-                <p className="wm-quest__reward-line">
-                  <Gift className="h-3.5 w-3.5" />
-                  Clear reward: {rewardPreview(activeLevel)}
-                </p>
-              ) : null}
+            <div className={`wm-empire__pnl ${result.won ? 'win' : 'lose'}`}>
+              {result.pnl >= 0 ? '+' : ''}
+              {formatDeskCash(result.pnl)}
             </div>
-
-            <div className="wm-quest__howto-run">
-              <div>
-                <b>← →</b>
-                <span>Change lane</span>
-              </div>
-              <div>
-                <b>SPACE</b>
-                <span>Nitro boost</span>
-              </div>
-              <div>
-                <b>CHECKPOINT</b>
-                <span>Drive correct lane</span>
-              </div>
-              <div>
-                <b>FINISH</b>
-                <span>Clear for chest</span>
-              </div>
+            <p className="wm-empire__teach">{result.teach}</p>
+            <p className="wm-empire__meta">
+              Exit {result.exit.toFixed(1)} · move {(result.movePct * 100).toFixed(2)}% · bank{' '}
+              {formatDeskCash(empire.bank)}
+            </p>
+            <div className="wm-arena__result-actions">
+              <button type="button" className="wm-arena__play wm-arena__play--sm" onClick={() => void startSession()}>
+                <Play className="h-4 w-4" />
+                Next Tape
+              </button>
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('shop')}>
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Spend in Shop
+              </button>
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('lobby')}>
+                Lobby
+              </button>
             </div>
+          </motion.div>
+        ) : null}
 
-            <div className="wm-quest__arm">
-              <p>Arm power-ups (consumed on start)</p>
-              {(Object.keys(POWERUP_SHOP) as PowerUpId[]).map((id) => {
-                const Icon = id === 'heart' ? Heart : id === 'clock' ? Timer : Shield;
-                const own = quest.powerups[id] || 0;
+        {phase === 'shop' ? (
+          <motion.div
+            key="shop"
+            className="wm-arena__panel wm-empire__shop"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="wm-empire__shop-head">
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('lobby')}>
+                ← Lobby
+              </button>
+              <b>Luxury Shop · {formatDeskCash(empire.bank)}</b>
+            </div>
+            <div className="wm-empire__filters">
+              {(['all', 'watch', 'car', 'property', 'desk'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  className={`wm-empire__filter ${shopFilter === f ? 'on' : ''}`}
+                  onClick={() => setShopFilter(f)}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <div className="wm-empire__grid">
+              {catalog.map((item) => {
+                const owned = empire.inventory.includes(item.id);
+                const Icon = catIcon(item.category);
                 return (
-                  <button
-                    key={id}
-                    type="button"
-                    disabled={own <= 0 && !armed[id]}
-                    className={`wm-quest__arm-btn ${armed[id] ? 'wm-quest__arm-btn--on' : ''}`}
-                    onClick={() => toggleArm(id)}
+                  <div
+                    key={item.id}
+                    className={`wm-empire__card ${owned ? 'owned' : ''}`}
+                    style={{ ['--tone' as string]: item.tone }}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    {id === 'clock' ? 'Longer Track' : POWERUP_SHOP[id].name}
-                    <small>×{own}</small>
-                  </button>
+                    <div className="wm-empire__card-art">
+                      <Icon className="h-8 w-8" />
+                    </div>
+                    <b>{item.name}</b>
+                    <span>{item.blurb}</span>
+                    <div className="wm-empire__card-foot">
+                      <em>{formatDeskCash(item.price)}</em>
+                      <button
+                        type="button"
+                        disabled={owned || empire.bank < item.price}
+                        onClick={() => onBuy(item)}
+                      >
+                        {owned ? 'Owned' : 'Buy'}
+                        {!owned ? <ChevronRight className="h-3.5 w-3.5" /> : null}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
+            {buyMsg ? <p className="wm-empire__msg">{buyMsg}</p> : null}
+          </motion.div>
+        ) : null}
 
-            <button type="button" className="wm-arena__play" onClick={startMission}>
-              <Play className="h-5 w-5" />
-              <span>
-                <strong>START RACE</strong>
-                <small>Tutorial pehle · phir ← → nitro · finish line</small>
-              </span>
+        {phase === 'garage' ? (
+          <motion.div
+            key="garage"
+            className="wm-arena__panel wm-empire__shop"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="wm-empire__shop-head">
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('lobby')}>
+                ← Lobby
+              </button>
+              <b>Garage / Collection</b>
+            </div>
+            {garage.length === 0 ? (
+              <p className="wm-empire__empty">Abhi khali hai — shop se pehli flex item lo.</p>
+            ) : (
+              <div className="wm-empire__grid">
+                {garage.map((item) => {
+                  const Icon = catIcon(item.category);
+                  return (
+                    <div
+                      key={item.id}
+                      className="wm-empire__card owned"
+                      style={{ ['--tone' as string]: item.tone }}
+                    >
+                      <div className="wm-empire__card-art">
+                        <Icon className="h-8 w-8" />
+                      </div>
+                      <b>{item.name}</b>
+                      <span>{item.blurb}</span>
+                      <div className="wm-empire__card-foot">
+                        <em>Owned</em>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button type="button" className="wm-arena__chip" onClick={() => setPhase('shop')}>
+              <ShoppingBag className="h-3.5 w-3.5" />
+              Open Shop
             </button>
-          </motion.div>
-        ) : null}
-
-        {phase === 'countdown' ? (
-          <motion.div
-            key="cd"
-            className="wm-arena__panel wm-arena__panel--countdown wm-quest__countdown"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              key={countdown}
-              className="wm-arena__cd-num"
-              initial={{ scale: 1.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 18 }}
-            >
-              {countdown > 0 ? countdown : 'GO'}
-            </motion.div>
-            <p>{gameConfig?.title || 'Race'} · engines hot</p>
-          </motion.div>
-        ) : null}
-
-        {phase === 'fight' && gameConfig ? (
-          <motion.div
-            key={`run-${gameConfig.levelId}-${gameConfig.lives}`}
-            className="wm-quest__stage"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <WolfTapeGame config={gameConfig} onFinish={onGameFinish} />
-          </motion.div>
-        ) : null}
-
-        {phase === 'chest' && loot ? (
-          <motion.div
-            key="chest"
-            className="wm-arena__panel wm-quest__chest"
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className={`wm-quest__chest-box ${chestOpen ? 'wm-quest__chest-box--open' : ''}`}>
-              <Gift className="h-10 w-10" />
-              <b>{chestOpen ? 'RACE WON!' : 'Opening chest…'}</b>
-            </div>
-            {chestOpen ? (
-              <motion.div
-                className="wm-quest__loot"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <StarsRow n={loot.stars} />
-                {lastRun ? (
-                  <p className="wm-quest__loot-sub">
-                    Score {lastRun.score} · coins grabbed {lastRun.coins} · gates{' '}
-                    {lastRun.gatesCorrect}/{lastRun.gatesTotal}
-                  </p>
-                ) : null}
-                {loot.coins > 0 ? (
-                  <p className="wm-quest__loot-row">
-                    <Coins className="h-4 w-4" /> +{loot.coins} Wolf Coins
-                  </p>
-                ) : null}
-                {loot.badge ? (
-                  <p className="wm-quest__loot-row wm-quest__loot-row--rare">
-                    <Sparkles className="h-4 w-4" /> Badge: {loot.badge.name}
-                  </p>
-                ) : null}
-                {loot.title ? (
-                  <p className="wm-quest__loot-row wm-quest__loot-row--rare">
-                    <Trophy className="h-4 w-4" /> Title: {loot.title.name}
-                  </p>
-                ) : null}
-                {loot.powerUp ? (
-                  <p className="wm-quest__loot-row">
-                    <Zap className="h-4 w-4" /> {POWERUP_SHOP[loot.powerUp].name} ×{loot.powerUpQty}
-                  </p>
-                ) : null}
-                {unlockedNext ? <p className="wm-quest__unlock">Level {unlockedNext} unlocked!</p> : null}
-              </motion.div>
-            ) : null}
-            <div className="wm-arena__result-actions">
-              {unlockedNext ? (
-                <button
-                  type="button"
-                  className="wm-arena__play wm-arena__play--sm"
-                  onClick={() => {
-                    const next = CAMPAIGN_LEVELS.find((l) => l.id === unlockedNext);
-                    if (next) openBrief(next);
-                    else setPhase('hub');
-                  }}
-                >
-                  <Play className="h-4 w-4" />
-                  Next Level
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="wm-arena__play wm-arena__play--sm"
-                  onClick={() => {
-                    if (activeLevel) openBrief(activeLevel);
-                    else setPhase('hub');
-                  }}
-                >
-                  <Play className="h-4 w-4" />
-                  Replay Run
-                </button>
-              )}
-              <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
-                World Map
-              </button>
-            </div>
-          </motion.div>
-        ) : null}
-
-        {phase === 'fail' ? (
-          <motion.div
-            key="fail"
-            className="wm-arena__panel wm-arena__panel--result"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="wm-arena__result-badge">BUSTED</div>
-            <h3 className="wm-arena__result-score">{lastRun?.score ?? 0}</h3>
-            <p className="wm-arena__result-sub">
-              Coins {lastRun?.coins ?? 0} · gates {lastRun?.gatesCorrect ?? 0}/
-              {lastRun?.gatesTotal ?? 0} · combo x{lastRun?.comboMax ?? 0}
-            </p>
-            <p className="wm-quest__fail-tip">
-              Tip: ← → se lane badlo, FOMO cars se bacho, checkpoint pe sahi answer lane mein ghus
-              jao, SPACE se nitro.
-            </p>
-            <div className="wm-arena__result-actions">
-              <button
-                type="button"
-                className="wm-arena__play wm-arena__play--sm"
-                onClick={() => {
-                  if (survivalMode) setPhase('brief');
-                  else if (activeLevel) openBrief(activeLevel);
-                  else setPhase('hub');
-                }}
-              >
-                <Play className="h-4 w-4" />
-                Retry Run
-              </button>
-              <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
-                World Map
-              </button>
-            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>

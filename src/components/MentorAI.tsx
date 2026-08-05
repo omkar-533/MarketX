@@ -750,7 +750,7 @@ export default function MentorAI() {
         />
       ) : deskView === 'arena' ? (
         <div
-          className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live wm-desk__body--tape-game' : ''}`}
+          className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live wm-desk__body--empire' : ''}`}
         >
           {!arenaPlaying ? (
             <section className="wm-desk__chart" aria-label="Arena chart">
@@ -776,7 +776,7 @@ export default function MentorAI() {
               />
             </section>
           ) : null}
-          <aside className={`wm-desk__side wm-desk__side--arena ${arenaPlaying ? 'wm-desk__side--tape' : ''}`}>
+          <aside className={`wm-desk__side wm-desk__side--arena ${arenaPlaying ? 'wm-desk__side--empire' : ''}`}>
             <MentorArena
               ownerKey={ownerKey}
               detective={detective}
