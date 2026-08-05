@@ -58,6 +58,7 @@ import {
   type MentorStudentProfile,
 } from '../services/mentorStudentProfile';
 import {
+  buildDrillChartMarks,
   buildDrillFromDetective,
   gradePromptForDrill,
   isDrillAnswerCorrect,
@@ -280,6 +281,14 @@ export default function MentorAI() {
     }, 6_000);
     return () => window.clearTimeout(t);
   }, [deskView, detective?.symbol, detective?.ltp, detective?.zone, activeDrill, busy, effectiveBias]);
+
+  // Live desk process checks also need chart drawings with the question.
+  useEffect(() => {
+    if (deskView !== 'desk' || !activeDrill || !detective) return;
+    const marks = buildDrillChartMarks(detective, activeDrill);
+    setChartLevels(marks.levels);
+    setChartShapes(marks.shapes);
+  }, [deskView, activeDrill, detective]);
 
   useEffect(() => {
     if (deskView !== 'desk' || !detective || busy) return;
@@ -782,6 +791,10 @@ export default function MentorAI() {
               }
               onRoundTeach={(summary) => {
                 void askCoach(summary, { title: 'Arena debrief', trainingGrade: true });
+              }}
+              onChartMarks={(levels, shapes) => {
+                setChartLevels(levels);
+                setChartShapes(shapes);
               }}
             />
             <section className="wm-desk__coach wm-desk__coach--arena" aria-live="polite">

@@ -1,5 +1,7 @@
 /** Live + historical Decision Training drills + local result log for skill scoring. */
 
+import type { ChartLevel, ChartShape } from '../utils/chartAnnotations';
+
 export type DrillOption = { id: string; label: string };
 export type DrillScope = 'live' | 'historical' | 'teach';
 
@@ -115,7 +117,7 @@ function liveProcessDrill(d: DetectiveCard): MentorDrill {
     reason,
     symbol: d.symbol,
     createdAt: new Date().toISOString(),
-    drawHint: `Mark current LTP ${Number(d.ltp).toFixed(1)}, session high/low, and label the ${d.zone} zone on the chart.`,
+    drawHint: `Shade session Premium (mid→Day High) and Discount (Day Low→mid). Highlight active ${d.zone} zone. Mark LTP ${Number(d.ltp).toFixed(1)}, Day High ${d.dayHigh ?? ''}, Day Low ${d.dayLow ?? ''}.`,
   };
 }
 
@@ -288,6 +290,175 @@ export function isDrillAnswerCorrect(drill: MentorDrill, chosenId: string): bool
     return true;
   }
   return false;
+}
+
+/**
+ * Draw the lesson on the chart BEFORE the student answers — otherwise the
+ * question (“premium zone”) has nothing visual to read.
+ */
+export function buildDrillChartMarks(
+  d: DetectiveCard,
+  drill: MentorDrill,
+): { levels: ChartLevel[]; shapes: ChartShape[] } {
+  const levels: ChartLevel[] = [];
+  const shapes: ChartShape[] = [];
+  const ltp = Number(d.ltp) || 0;
+  const hi = Number(d.dayHigh) || 0;
+  const lo = Number(d.dayLow) || 0;
+  const mid = hi > 0 && lo > 0 && hi > lo ? (hi + lo) / 2 : 0;
+  const ask = `${drill.question} ${drill.drawHint || ''}`;
+
+  if (ltp > 0) {
+    levels.push({ price: ltp, kind: 'pivot', label: 'LTP' });
+  }
+
+  const wantsRange =
+    drill.scope === 'live' ||
+    /premium|discount|zone|session|range|day high|day low/i.test(ask);
+
+  if (wantsRange && hi > 0 && lo > 0 && mid > 0) {
+    const premiumOn = d.zone === 'premium';
+    const discountOn = d.zone === 'discount';
+
+    shapes.push({
+      type: 'zone',
+      p1: hi,
+      p2: mid,
+      x1: -55,
+      label: premiumOn ? 'Premium zone' : 'Premium',
+      tone: 'bear',
+      borderColor: '#ff4d4d',
+      fillColor: premiumOn ? 'rgba(255,77,77,0.22)' : 'rgba(255,77,77,0.08)',
+      color: '#ff4d4d',
+    });
+    shapes.push({
+      type: 'zone',
+      p1: mid,
+      p2: lo,
+      x1: -55,
+      label: discountOn ? 'Discount zone' : 'Discount',
+      tone: 'bull',
+      borderColor: '#00ff9d',
+      fillColor: discountOn ? 'rgba(0,255,157,0.22)' : 'rgba(0,255,157,0.08)',
+      color: '#00ff9d',
+    });
+    shapes.push({
+      type: 'hray',
+      p1: hi,
+      x1: -40,
+      label: 'Day High',
+      tone: 'bear',
+      color: '#ef5350',
+      lineStyle: 'dotted',
+    });
+    shapes.push({
+      type: 'hray',
+      p1: lo,
+      x1: -40,
+      label: 'Day Low',
+      tone: 'bull',
+      color: '#26a69a',
+      lineStyle: 'dotted',
+    });
+    shapes.push({
+      type: 'hray',
+      p1: mid,
+      x1: -35,
+      label: 'EQ',
+      tone: 'neutral',
+      color: '#787b86',
+      lineStyle: 'dotted',
+    });
+    if (ltp > 0) {
+      shapes.push({
+        type: 'label',
+        p1: ltp,
+        x1: -3,
+        label: `Price · ${d.zone || 'range'}`,
+        tone: premiumOn ? 'bear' : discountOn ? 'bull' : 'neutral',
+      });
+    }
+  }
+
+  if (drill.scope === 'historical') {
+    const priceMatch =
+      drill.question.match(/(?:near|at)\s+(\d+(?:\.\d+)?)/i) ||
+      drill.drawHint?.match(/at\s+(\d+(?:\.\d+)?)/i);
+    const price = priceMatch ? Number(priceMatch[1]) : 0;
+    const events = d.eventDetails || [];
+    const swings = d.swings || [];
+    const ev =
+      events.find((e) => price > 0 && Math.abs(e.price - price) < Math.max(2, price * 0.001)) ||
+      events[0];
+    const sw =
+      swings.find((s) => price > 0 && Math.abs(s.price - price) < Math.max(2, price * 0.001)) ||
+      swings[swings.length - 1];
+
+    if (ev && /BOS|CHOCH/i.test(ev.label)) {
+      shapes.push({
+        type: 'vline',
+        x1: -Math.abs(ev.barsAgo || 12),
+        label: ev.label,
+        tone: /bull/i.test(ev.label) ? 'bull' : 'bear',
+      });
+      shapes.push({
+        type: 'label',
+        p1: ev.price,
+        x1: -Math.abs(ev.barsAgo || 12),
+        label: ev.label,
+        tone: /bull/i.test(ev.label) ? 'bull' : 'bear',
+      });
+      levels.push({
+        price: ev.price,
+        kind: 'pivot',
+        label: ev.label,
+      });
+    } else if (sw) {
+      shapes.push({
+        type: 'hray',
+        p1: sw.price,
+        x1: -Math.abs(sw.barsAgo || 12),
+        label: sw.label || 'Swing',
+        tone: /HH|LH/i.test(sw.label || '') ? 'bear' : 'bull',
+        lineStyle: 'dotted',
+      });
+      shapes.push({
+        type: 'label',
+        p1: sw.price,
+        x1: -Math.abs(sw.barsAgo || 12),
+        label: sw.label || 'Swing',
+        tone: /HH|LH/i.test(sw.label || '') ? 'bear' : 'bull',
+      });
+    }
+
+    for (const s of swings.slice(-5)) {
+      if (sw && s.price === sw.price && s.barsAgo === sw.barsAgo) continue;
+      shapes.push({
+        type: 'label',
+        p1: s.price,
+        x1: -Math.abs(s.barsAgo || 8),
+        label: s.label,
+        tone: /HH|LH/i.test(s.label) ? 'bear' : 'bull',
+      });
+    }
+  }
+
+  if (drill.scope === 'teach' && /swing|structure/i.test(ask)) {
+    for (const s of (d.swings || []).slice(-6)) {
+      shapes.push({
+        type: 'label',
+        p1: s.price,
+        x1: -Math.abs(s.barsAgo || 8),
+        label: s.label,
+        tone: /HH|LH/i.test(s.label) ? 'bear' : 'bull',
+      });
+    }
+  }
+
+  return {
+    levels: levels.slice(0, 8),
+    shapes: shapes.slice(0, 18),
+  };
 }
 
 /** Prompt fragment when grading — forces mistake callout + chart draw. */

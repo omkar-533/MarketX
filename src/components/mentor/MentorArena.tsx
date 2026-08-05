@@ -20,6 +20,7 @@ import {
   type ArenaStats,
 } from '../../services/mentorArena';
 import {
+  buildDrillChartMarks,
   buildDrillFromDetective,
   isDrillAnswerCorrect,
   saveDrillResult,
@@ -27,6 +28,7 @@ import {
   type MentorDrill,
 } from '../../services/mentorDrills';
 import { buildTraderSkillProfile } from '../../services/traderSkillProfile';
+import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 
 type Phase = 'lobby' | 'round' | 'result';
 
@@ -44,6 +46,8 @@ type MentorArenaProps = {
   onOpenCurriculum: () => void;
   onOpenLab: () => void;
   onRoundTeach: (summary: string) => void;
+  /** Paint the quiz context on the live chart (zones / swings) as soon as Q shows. */
+  onChartMarks: (levels: ChartLevel[], shapes: ChartShape[]) => void;
 };
 
 export default function MentorArena({
@@ -53,6 +57,7 @@ export default function MentorArena({
   onOpenCurriculum,
   onOpenLab,
   onRoundTeach,
+  onChartMarks,
 }: MentorArenaProps) {
   const [stats, setStats] = useState<ArenaStats>(() => loadArenaStats(ownerKey));
   const [phase, setPhase] = useState<Phase>('lobby');
@@ -86,6 +91,16 @@ export default function MentorArena({
     if (!detective) return null;
     return buildDrillFromDetective(detective, 'auto');
   }, [detective]);
+
+  // Every question paints its lesson on the chart — no blank “premium zone” quiz.
+  useEffect(() => {
+    if (phase === 'round' && drill && detective) {
+      const marks = buildDrillChartMarks(detective, drill);
+      onChartMarks(marks.levels, marks.shapes);
+      return;
+    }
+    if (phase === 'lobby') onChartMarks([], []);
+  }, [phase, drill, detective, onChartMarks]);
 
   const finishRound = useCallback(
     (timedOut: boolean, correct: number, total: number, maxCombo: number, xp: number) => {
@@ -311,6 +326,7 @@ export default function MentorArena({
               <i style={{ width: `${timerPct}%` }} />
             </div>
             <p className="wm-arena__q">{drill.question}</p>
+            <p className="wm-arena__hint">Chart pe zone / swings mark ho chuke hain — pehle wahan dekho, phir answer do.</p>
             <div className="wm-arena__opts">
               {drill.options.map((o, i) => (
                 <button
