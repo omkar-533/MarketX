@@ -8658,6 +8658,425 @@ html.dark .wm-arena__opt,
   margin-top: 0.9rem;
 }
 
+/* —— Wolf Trade Quest campaign —— */
+.wm-quest__top {
+  margin-bottom: 0.75rem;
+}
+
+.wm-quest__wallet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.wm-quest__coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.1);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #d4af37;
+}
+
+.wm-quest__coin b {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-quest__coin span {
+  color: var(--tf-muted, #94a3b8);
+  font-weight: 600;
+}
+
+.wm-quest__hub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.wm-quest__path {
+  display: grid;
+  gap: 0.5rem;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding-right: 0.15rem;
+  margin-bottom: 0.75rem;
+}
+
+.wm-quest__node {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--tf-border);
+  background: rgba(148, 163, 184, 0.06);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.wm-quest__node--open:hover {
+  border-color: rgba(52, 211, 153, 0.45);
+  transform: translateY(-1px);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.wm-quest__node--boss.wm-quest__node--open {
+  border-color: rgba(248, 113, 113, 0.4);
+  background:
+    radial-gradient(80% 120% at 100% 0%, rgba(248, 113, 113, 0.12), transparent 55%),
+    rgba(148, 163, 184, 0.05);
+}
+
+.wm-quest__node--cleared {
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.wm-quest__node--lock {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wm-quest__node-num {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 0.85rem;
+  background: linear-gradient(135deg, #34d399, #d4af37);
+  color: #0b1220;
+}
+
+.wm-quest__node--lock .wm-quest__node-num {
+  background: rgba(148, 163, 184, 0.25);
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__node-body {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.wm-quest__node-body em {
+  font-style: normal;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.wm-quest__node-body b {
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.wm-quest__node-body > span {
+  font-size: 0.62rem;
+  color: var(--tf-muted, #94a3b8);
+  font-weight: 600;
+}
+
+.wm-quest__need {
+  font-size: 0.6rem !important;
+  color: #f87171 !important;
+}
+
+.wm-quest__node-loot {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  color: #d4af37;
+  font-size: 0.58rem;
+  font-weight: 700;
+  max-width: 4.5rem;
+  text-align: center;
+}
+
+.wm-quest__stars {
+  display: inline-flex;
+  gap: 0.12rem;
+  margin-top: 0.15rem;
+}
+
+.wm-quest__star {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: rgba(148, 163, 184, 0.35);
+}
+
+.wm-quest__star--on {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.45));
+}
+
+.wm-quest__section {
+  margin: 0.85rem 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.wm-quest__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wm-quest__collect {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--tf-border);
+  background: rgba(148, 163, 184, 0.05);
+  font-size: 0.68rem;
+}
+
+.wm-quest__collect b {
+  font-size: 0.74rem;
+}
+
+.wm-quest__collect span {
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__collect--on {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.wm-quest__collect--badge {
+  border-color: rgba(212, 175, 55, 0.35);
+}
+
+.wm-quest__collect--lock {
+  opacity: 0.45;
+}
+
+.wm-quest__shop {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.wm-quest__shop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--tf-border);
+}
+
+.wm-quest__shop-row b {
+  display: block;
+  font-size: 0.75rem;
+}
+
+.wm-quest__shop-row span {
+  font-size: 0.62rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__brief-hero {
+  margin: 0.65rem 0 0.85rem;
+}
+
+.wm-quest__brief-hero em {
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d4af37;
+}
+
+.wm-quest__brief-hero h3 {
+  margin: 0.2rem 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.wm-quest__brief-hero p {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tf-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.wm-quest__reward-line {
+  display: flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.55rem !important;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.6rem;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  color: #d4af37 !important;
+  font-weight: 700;
+  font-size: 0.7rem !important;
+}
+
+.wm-quest__arm {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.wm-quest__arm > p {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__arm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--tf-border);
+  background: rgba(148, 163, 184, 0.06);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.wm-quest__arm-btn--on {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.14);
+  color: #34d399;
+}
+
+.wm-quest__arm-btn small {
+  margin-left: auto;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__shield-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.wm-quest__lesson {
+  max-width: 14rem;
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3;
+  opacity: 0.92;
+}
+
+.wm-quest__chest {
+  text-align: center;
+  min-height: 14rem;
+}
+
+.wm-quest__chest-box {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin: 0.5rem auto 0.85rem;
+  padding: 1.1rem;
+  width: min(100%, 14rem);
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(251, 191, 36, 0.25), transparent 60%),
+    rgba(15, 23, 42, 0.35);
+  color: #fbbf24;
+  animation: wm-quest-pulse 1.1s ease infinite;
+}
+
+.wm-quest__chest-box--open {
+  animation: none;
+  border-color: rgba(52, 211, 153, 0.5);
+  color: #34d399;
+}
+
+@keyframes wm-quest-pulse {
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 24px rgba(251, 191, 36, 0.25);
+  }
+}
+
+.wm-quest__loot {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.wm-quest__loot-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.wm-quest__loot-row--rare {
+  color: #fbbf24;
+}
+
+.wm-quest__loot-sub {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--tf-muted, #94a3b8);
+}
+
+.wm-quest__unlock {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #34d399;
+  text-shadow: 0 0 16px rgba(52, 211, 153, 0.4);
+}
+
+.wm-quest__fail-tip {
+  margin: 0.5rem auto 0;
+  max-width: 18rem;
+  font-size: 0.72rem;
+  color: var(--tf-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+  .wm-quest__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wm-quest__node {
+    grid-template-columns: auto 1fr;
+  }
+
+  .wm-quest__node-loot {
+    display: none;
+  }
+}
+
 /* —— Module 1 AI Teacher (curriculum) —— */
 .wm-desk__body--learn {
   grid-template-columns: minmax(0, 1fr);

@@ -147,8 +147,19 @@ export function arenaRankTitle(stats: ArenaStats): string {
   return 'New Challenger';
 }
 
+export type ArenaSfx =
+  | 'hit'
+  | 'miss'
+  | 'combo'
+  | 'go'
+  | 'wave'
+  | 'over'
+  | 'chest'
+  | 'star'
+  | 'unlock';
+
 /** Tiny WebAudio beeps — no asset files needed. */
-export function playArenaSfx(kind: 'hit' | 'miss' | 'combo' | 'go' | 'wave' | 'over') {
+export function playArenaSfx(kind: ArenaSfx) {
   if (typeof window === 'undefined') return;
   try {
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -159,23 +170,27 @@ export function playArenaSfx(kind: 'hit' | 'miss' | 'combo' | 'go' | 'wave' | 'o
     o.connect(g);
     g.connect(ctx.destination);
     const now = ctx.currentTime;
-    const table: Record<string, { f: number; t: number; type: OscillatorType }> = {
+    const table: Record<string, { f: number; t: number; type: OscillatorType; f2?: number }> = {
       hit: { f: 660, t: 0.08, type: 'square' },
       miss: { f: 140, t: 0.16, type: 'sawtooth' },
       combo: { f: 880, t: 0.12, type: 'triangle' },
       go: { f: 520, t: 0.14, type: 'square' },
       wave: { f: 740, t: 0.18, type: 'triangle' },
       over: { f: 110, t: 0.28, type: 'sine' },
+      chest: { f: 420, t: 0.22, type: 'triangle', f2: 840 },
+      star: { f: 990, t: 0.16, type: 'square', f2: 1320 },
+      unlock: { f: 360, t: 0.26, type: 'triangle', f2: 720 },
     };
     const cfg = table[kind] || table.hit;
     o.type = cfg.type;
     o.frequency.setValueAtTime(cfg.f, now);
+    if (cfg.f2) o.frequency.exponentialRampToValueAtTime(cfg.f2, now + cfg.t * 0.7);
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.09, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.1, now + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, now + cfg.t);
     o.start(now);
     o.stop(now + cfg.t + 0.02);
-    window.setTimeout(() => void ctx.close(), 400);
+    window.setTimeout(() => void ctx.close(), 500);
   } catch {
     /* ignore audio failures */
   }

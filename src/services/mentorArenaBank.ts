@@ -915,7 +915,43 @@ function toDrill(d: DetectiveCard, item: ArenaBankItem): MentorDrill {
   };
 }
 
-/** Weighted Arena builder — not stuck on premium/discount. */
+/** Mission-locked drill — only topics for this campaign level. */
+export function buildArenaDrillForLevel(
+  d: DetectiveCard,
+  topics: ArenaTopic[],
+  opts?: {
+    topicWeights?: Partial<Record<ArenaTopic, number>>;
+    allowLiveTape?: boolean;
+    liveDrill?: (card: DetectiveCard) => MentorDrill;
+    histDrill?: (card: DetectiveCard) => MentorDrill | null;
+  },
+): MentorDrill {
+  if (opts?.allowLiveTape && opts.liveDrill && opts.histDrill && Math.random() < 0.18) {
+    if (Math.random() < 0.45) {
+      return { ...opts.liveDrill(d), topic: 'live' as ArenaTopic };
+    }
+    const h = opts.histDrill(d);
+    if (h) return { ...h, topic: 'historical' as ArenaTopic };
+  }
+
+  const usable = topics.filter((t) => (BY_TOPIC[t] || []).length > 0);
+  const poolTopics = usable.length ? usable : (['candle'] as ArenaTopic[]);
+  const weights = poolTopics.map((t) => opts?.topicWeights?.[t] ?? 1);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  let pickTopic = poolTopics[0];
+  for (let i = 0; i < poolTopics.length; i++) {
+    r -= weights[i];
+    if (r <= 0) {
+      pickTopic = poolTopics[i];
+      break;
+    }
+  }
+  const items = BY_TOPIC[pickTopic] || CANDLE;
+  return toDrill(d, pickItem(items));
+}
+
+/** Weighted Arena builder — Survival Raid / free play. */
 export function buildArenaDrill(
   d: DetectiveCard,
   liveDrill: (card: DetectiveCard) => MentorDrill,
@@ -954,7 +990,6 @@ export function buildArenaDrill(
     'risk',
     'psych',
   ];
-  // Keep SMC (incl. premium/discount) as a small slice inside "other"
   const weights = [1.1, 1.2, 1.1, 1.1, 1.2, 0.55, 1.1, 1.1, 1.2];
   const total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;

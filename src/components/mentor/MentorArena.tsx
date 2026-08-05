@@ -1,29 +1,55 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Coins,
   Flame,
+  Gift,
   Heart,
+  Lock,
+  Package,
   Play,
   RotateCcw,
+  Shield,
   Sparkles,
+  Star,
   Target,
+  Timer,
   Trophy,
   Zap,
 } from 'lucide-react';
 import {
-  ARENA_LIVES,
-  ARENA_MAX_WAVES,
-  ARENA_Q_SECONDS,
-  ARENA_WAVE_SIZE,
-  arenaRankTitle,
-  loadArenaStats,
   playArenaSfx,
   recordArenaRound,
   scoreArenaHit,
   touchArenaStreak,
-  type ArenaStats,
+  loadArenaStats,
 } from '../../services/mentorArena';
-import { buildArenaDrill, arenaTopicLabel } from '../../services/mentorArenaBank';
+import {
+  ALL_BADGES,
+  ALL_TITLES,
+  CAMPAIGN_LEVELS,
+  POWERUP_SHOP,
+  addQuestCoins,
+  applyLevelClear,
+  buyPowerUp,
+  computeStars,
+  consumePowerUp,
+  equipTitle,
+  isLevelUnlocked,
+  loadQuestProgress,
+  modeLabel,
+  rewardPreview,
+  titleName,
+  type ChestLoot,
+  type PowerUpId,
+  type QuestLevel,
+  type QuestProgress,
+} from '../../services/mentorArenaCampaign';
+import {
+  arenaTopicLabel,
+  buildArenaDrill,
+  buildArenaDrillForLevel,
+} from '../../services/mentorArenaBank';
 import {
   buildDrillChartMarks,
   historicalStructureDrill,
@@ -33,19 +59,24 @@ import {
   type DetectiveCard,
   type MentorDrill,
 } from '../../services/mentorDrills';
-import { buildTraderSkillProfile } from '../../services/traderSkillProfile';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 
-type Phase = 'lobby' | 'countdown' | 'fight' | 'waveClear' | 'result';
+type Phase = 'hub' | 'loadout' | 'brief' | 'countdown' | 'fight' | 'chest' | 'fail';
 
 type Feedback = {
   correct: boolean;
   points: number;
-  xp: number;
   combo: number;
   speedBonus: number;
   label: string;
+  lesson?: string;
 } | null;
+
+type ArmedPowerUps = {
+  heart: boolean;
+  clock: boolean;
+  shield: boolean;
+};
 
 type MentorArenaProps = {
   ownerKey: string;
@@ -55,9 +86,22 @@ type MentorArenaProps = {
   onOpenLab: () => void;
   onRoundTeach: (summary: string) => void;
   onChartMarks: (levels: ChartLevel[], shapes: ChartShape[]) => void;
-  /** True while countdown / fight / wave — hide desk chrome for immersion */
   onPlayingChange?: (playing: boolean) => void;
 };
+
+function StarsRow({ n, max = 3 }: { n: number; max?: number }) {
+  return (
+    <span className="wm-quest__stars" aria-label={`${n} of ${max} stars`}>
+      {Array.from({ length: max }).map((_, i) => (
+        <Star
+          key={i}
+          className={`wm-quest__star ${i < n ? 'wm-quest__star--on' : ''}`}
+          fill={i < n ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+}
 
 export default function MentorArena({
   ownerKey,
@@ -69,117 +113,131 @@ export default function MentorArena({
   onChartMarks,
   onPlayingChange,
 }: MentorArenaProps) {
-  const [stats, setStats] = useState<ArenaStats>(() => loadArenaStats(ownerKey));
-  const [phase, setPhase] = useState<Phase>('lobby');
+  const [quest, setQuest] = useState<QuestProgress>(() => loadQuestProgress(ownerKey));
+  const [phase, setPhase] = useState<Phase>('hub');
+  const [activeLevel, setActiveLevel] = useState<QuestLevel | null>(null);
+  const [survivalMode, setSurvivalMode] = useState(false);
+  const [armed, setArmed] = useState<ArmedPowerUps>({ heart: false, clock: false, shield: false });
+  const [loot, setLoot] = useState<ChestLoot | null>(null);
+  const [unlockedNext, setUnlockedNext] = useState<number | null>(null);
+
   const [drill, setDrill] = useState<MentorDrill | null>(null);
   const [qIndex, setQIndex] = useState(0);
-  const [wave, setWave] = useState(1);
-  const [lives, setLives] = useState(ARENA_LIVES);
+  const [lives, setLives] = useState(3);
+  const [livesMax, setLivesMax] = useState(3);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [askedCount, setAskedCount] = useState(0);
   const [combo, setCombo] = useState(0);
   const [comboMax, setComboMax] = useState(0);
   const [xpRound, setXpRound] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(ARENA_Q_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(18);
+  const [qSeconds, setQSeconds] = useState(18);
+  const [targetQuestions, setTargetQuestions] = useState(5);
   const [countdown, setCountdown] = useState(3);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [locked, setLocked] = useState(false);
   const [shake, setShake] = useState(false);
   const [pickedId, setPickedId] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<{
-    correct: number;
-    total: number;
-    xp: number;
-    score: number;
-    comboMax: number;
-    wave: number;
-    survived: boolean;
-    newRecord: boolean;
-  } | null>(null);
+  const [shieldLeft, setShieldLeft] = useState(0);
+  const [chestOpen, setChestOpen] = useState(false);
   const scoreRef = useRef(0);
-
-  const skill = useMemo(
-    () => buildTraderSkillProfile(ownerKey),
-    [ownerKey, stats.totalCorrect, stats.roundsPlayed, stats.highScore],
-  );
+  const shieldRef = useRef(0);
 
   useEffect(() => {
-    setStats(loadArenaStats(ownerKey));
+    setQuest(loadQuestProgress(ownerKey));
   }, [ownerKey]);
 
-  const playing = phase === 'countdown' || phase === 'fight' || phase === 'waveClear';
   useEffect(() => {
-    onPlayingChange?.(playing);
-  }, [playing, onPlayingChange]);
+    onPlayingChange?.(phase === 'countdown' || phase === 'fight');
+  }, [phase, onPlayingChange]);
+
+  const equipped = titleName(quest.equippedTitle);
+  const firstName = studentName.split(' ')[0] || 'Trader';
 
   const nextDrill = useCallback(() => {
     if (!detective) return null;
-    return buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill);
-  }, [detective]);
+    if (survivalMode || !activeLevel) {
+      return buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill);
+    }
+    return buildArenaDrillForLevel(detective, activeLevel.topics, {
+      topicWeights: activeLevel.topicWeights,
+      allowLiveTape: activeLevel.allowLiveTape,
+      liveDrill: liveProcessDrill,
+      histDrill: historicalStructureDrill,
+    });
+  }, [detective, survivalMode, activeLevel]);
 
   useEffect(() => {
-    if ((phase === 'fight' || phase === 'waveClear') && drill && detective) {
+    if (phase === 'fight' && drill && detective) {
       const marks = buildDrillChartMarks(detective, drill);
       onChartMarks(marks.levels, marks.shapes);
       return;
     }
-    if (phase === 'lobby') onChartMarks([], []);
+    if (phase === 'hub' || phase === 'loadout') onChartMarks([], []);
   }, [phase, drill, detective, onChartMarks]);
 
-  const finishGame = useCallback(
-    (survived: boolean, correct: number, total: number, maxCombo: number, xp: number, finalScore: number, finalWave: number) => {
-      playArenaSfx(survived ? 'wave' : 'over');
-      const recorded = recordArenaRound(
-        {
-          correct,
-          total,
-          comboMax: maxCombo,
-          xpEarned: xp,
-          score: finalScore,
-          wave: finalWave,
-          timedOut: !survived && total > 0,
-          survived,
-        },
-        ownerKey,
-      );
-      setStats(recorded);
-      setLastResult({
-        correct,
-        total,
-        xp,
-        score: finalScore,
-        comboMax: maxCombo,
-        wave: finalWave,
-        survived,
-        newRecord: finalScore > (stats.highScore || 0),
-      });
-      setPhase('result');
-      setDrill(null);
-      onRoundTeach(
-        [
-          `[ARENA SURVIVAL] Score ${finalScore}. ${correct}/${total} correct. Wave ${finalWave}.`,
-          survived ? 'Player CLEARED all waves.' : 'Player out of lives.',
-          `Max combo x${maxCombo}.`,
-          'Hype 3 lines + 1 process tip. Draw one lesson if useful. No Entry/Stop/Target.',
-        ].join(' '),
-      );
-    },
-    [ownerKey, onRoundTeach, stats.highScore],
-  );
+  const refreshQuest = () => setQuest(loadQuestProgress(ownerKey));
 
-  const startGame = () => {
+  const openBrief = (level: QuestLevel) => {
+    if (!isLevelUnlocked(level.id, quest)) return;
+    setSurvivalMode(false);
+    setActiveLevel(level);
+    setArmed({ heart: false, clock: false, shield: false });
+    setPhase('brief');
+  };
+
+  const toggleArm = (id: PowerUpId) => {
+    if ((quest.powerups[id] || 0) <= 0 && !armed[id]) return;
+    setArmed((a) => ({ ...a, [id]: !a[id] }));
+  };
+
+  const startMission = () => {
     if (!detective) return;
-    const first = nextDrill();
-    if (!first) return;
+    const level = activeLevel;
+    const isSurvival = survivalMode || !level;
+
+    let baseLives = isSurvival ? 3 : level!.lives;
+    let baseSec = isSurvival ? 16 : level!.qSeconds;
+    let questions = isSurvival ? 12 : level!.questions;
+
+    if (armed.heart && consumePowerUp('heart', ownerKey)) {
+      baseLives += 1;
+    } else if (armed.heart) {
+      setArmed((a) => ({ ...a, heart: false }));
+    }
+    if (armed.clock && consumePowerUp('clock', ownerKey)) {
+      baseSec += 5;
+    } else if (armed.clock) {
+      setArmed((a) => ({ ...a, clock: false }));
+    }
+    let shield = 0;
+    if (armed.shield && consumePowerUp('shield', ownerKey)) {
+      shield = 1;
+    } else if (armed.shield) {
+      setArmed((a) => ({ ...a, shield: false }));
+    }
+
+    refreshQuest();
     touchArenaStreak(ownerKey);
-    setStats(loadArenaStats(ownerKey));
-    setPhase('countdown');
-    setCountdown(3);
+
+    const first = isSurvival
+      ? buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill)
+      : buildArenaDrillForLevel(detective, level!.topics, {
+          topicWeights: level!.topicWeights,
+          allowLiveTape: level!.allowLiveTape,
+          liveDrill: liveProcessDrill,
+          histDrill: historicalStructureDrill,
+        });
+    if (!first) return;
+
     setDrill(first);
     setQIndex(0);
-    setWave(1);
-    setLives(ARENA_LIVES);
+    setLives(baseLives);
+    setLivesMax(baseLives);
+    setQSeconds(baseSec);
+    setSecondsLeft(baseSec);
+    setTargetQuestions(questions);
     setScore(0);
     scoreRef.current = 0;
     setCorrectCount(0);
@@ -187,127 +245,206 @@ export default function MentorArena({
     setCombo(0);
     setComboMax(0);
     setXpRound(0);
-    setSecondsLeft(ARENA_Q_SECONDS);
     setFeedback(null);
     setLocked(false);
     setPickedId(null);
-    setLastResult(null);
     setShake(false);
+    setShieldLeft(shield);
+    shieldRef.current = shield;
+    setLoot(null);
+    setUnlockedNext(null);
+    setChestOpen(false);
+    setCountdown(3);
+    setPhase('countdown');
   };
 
-  // 3-2-1-GO
+  const finishFail = useCallback(
+    (correct: number, total: number, maxCombo: number, xp: number, finalScore: number) => {
+      playArenaSfx('over');
+      recordArenaRound(
+        {
+          correct,
+          total,
+          comboMax: maxCombo,
+          xpEarned: xp,
+          score: finalScore,
+          wave: 1,
+          timedOut: true,
+          survived: false,
+        },
+        ownerKey,
+      );
+      setPhase('fail');
+      setDrill(null);
+      onRoundTeach(
+        [
+          `[QUEST FAIL] ${activeLevel?.title || 'Survival'}. ${correct}/${total} correct.`,
+          'Encourage retry. 2 tip lines. No Entry/Stop/Target.',
+        ].join(' '),
+      );
+    },
+    [ownerKey, onRoundTeach, activeLevel],
+  );
+
+  const finishClear = useCallback(
+    (correct: number, total: number, maxCombo: number, xp: number, finalScore: number, livesLeft: number) => {
+      playArenaSfx('wave');
+      recordArenaRound(
+        {
+          correct,
+          total,
+          comboMax: maxCombo,
+          xpEarned: xp,
+          score: finalScore,
+          wave: activeLevel?.id || 1,
+          timedOut: false,
+          survived: true,
+        },
+        ownerKey,
+      );
+
+      if (survivalMode || !activeLevel) {
+        const coins = Math.round(finalScore / 20);
+        const stars = computeStars({
+          correct,
+          total,
+          livesLeft,
+          livesMax,
+          comboMax: maxCombo,
+          cleared: true,
+        });
+        setLoot({
+          coins,
+          powerUpQty: 0,
+          firstClear: false,
+          stars,
+          bestStars: stars,
+          newBest: false,
+        });
+        setQuest(addQuestCoins(coins, ownerKey));
+        setPhase('chest');
+        setChestOpen(false);
+        window.setTimeout(() => {
+          setChestOpen(true);
+          playArenaSfx('chest');
+        }, 400);
+        return;
+      }
+
+      const stars = computeStars({
+        correct,
+        total,
+        livesLeft,
+        livesMax,
+        comboMax: maxCombo,
+        cleared: true,
+      });
+      const result = applyLevelClear(activeLevel.id, stars, ownerKey);
+      setQuest(result.progress);
+      setLoot(result.loot);
+      setUnlockedNext(result.unlockedNext);
+      setPhase('chest');
+      setChestOpen(false);
+      window.setTimeout(() => {
+        setChestOpen(true);
+        playArenaSfx('chest');
+        if (result.loot.stars >= 2) playArenaSfx('star');
+        if (result.unlockedNext) {
+          window.setTimeout(() => playArenaSfx('unlock'), 500);
+        }
+      }, 450);
+
+      onRoundTeach(
+        [
+          `[QUEST CLEAR] ${activeLevel.title}. ${stars}★. ${correct}/${total}.`,
+          result.loot.badge ? `Unlocked badge ${result.loot.badge.name}.` : '',
+          'Celebrate + 1 process tip. No Entry/Stop/Target.',
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
+    },
+    [ownerKey, onRoundTeach, activeLevel, survivalMode, livesMax],
+  );
+
+  // Countdown
   useEffect(() => {
     if (phase !== 'countdown') return;
     if (countdown <= 0) {
       playArenaSfx('go');
       setPhase('fight');
-      setSecondsLeft(Math.max(12, ARENA_Q_SECONDS - (wave - 1) * 2));
+      setSecondsLeft(qSeconds);
       return;
     }
     playArenaSfx('hit');
     const t = window.setTimeout(() => setCountdown((c) => c - 1), 700);
     return () => window.clearTimeout(t);
-  }, [phase, countdown, wave]);
+  }, [phase, countdown, qSeconds]);
 
-  // Per-question timer
-  useEffect(() => {
-    if (phase !== 'fight' || locked) return;
-    if (secondsLeft <= 0) {
-      // Timeout = miss
-      setLocked(true);
-      playArenaSfx('miss');
-      setShake(true);
-      const nextLives = lives - 1;
-      setLives(nextLives);
-      setCombo(0);
-      setFeedback({
-        correct: false,
-        points: 0,
-        xp: 0,
-        combo: 0,
-        speedBonus: 0,
-        label: 'TIME UP · -1 life',
-      });
-      window.setTimeout(() => {
-        setShake(false);
-        setFeedback(null);
-        const asked = askedCount + 1;
-        setAskedCount(asked);
-        if (nextLives <= 0) {
-          finishGame(false, correctCount, asked, comboMax, xpRound, scoreRef.current, wave);
-          return;
-        }
-        const d = nextDrill();
-        setDrill(d);
-        setQIndex((q) => q + 1);
-        setSecondsLeft(Math.max(12, ARENA_Q_SECONDS - (wave - 1) * 2));
-        setLocked(false);
-        setPickedId(null);
-      }, 850);
-      return;
-    }
-    const t = window.setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => window.clearTimeout(t);
-  }, [
-    phase,
-    secondsLeft,
-    locked,
-    lives,
-    askedCount,
-    correctCount,
-    comboMax,
-    xpRound,
-    wave,
-    finishGame,
-    nextDrill,
-  ]);
-
-  const advanceAfterHit = (
+  const advanceMission = (
     nextCorrect: number,
     nextAsked: number,
-    nextCombo: number,
+    _nextCombo: number,
     nextMax: number,
     nextXp: number,
     nextScore: number,
     nextLives: number,
   ) => {
-    // Wave clear every WAVE_SIZE correct answers in the run's progress by questions answered in wave
-    const inWave = (nextAsked % ARENA_WAVE_SIZE) === 0;
-    if (inWave && nextLives > 0) {
-      const nextWave = wave + 1;
-      if (nextWave > ARENA_MAX_WAVES) {
-        finishGame(true, nextCorrect, nextAsked, nextMax, nextXp, nextScore, wave);
-        return;
-      }
-      playArenaSfx('wave');
-      setPhase('waveClear');
-      setWave(nextWave);
-      window.setTimeout(() => {
-        const d = nextDrill();
-        setDrill(d);
-        setQIndex(0);
-        setSecondsLeft(Math.max(12, ARENA_Q_SECONDS - nextWave * 2));
-        setLocked(false);
-        setPickedId(null);
-        setFeedback(null);
-        setPhase('fight');
-      }, 1400);
-      return;
-    }
-
     if (nextLives <= 0) {
-      finishGame(false, nextCorrect, nextAsked, nextMax, nextXp, nextScore, wave);
+      finishFail(nextCorrect, nextAsked, nextMax, nextXp, nextScore);
       return;
     }
-
+    if (nextAsked >= targetQuestions) {
+      finishClear(nextCorrect, nextAsked, nextMax, nextXp, nextScore, nextLives);
+      return;
+    }
     const d = nextDrill();
     setDrill(d);
-    setQIndex((q) => q + 1);
-    setSecondsLeft(Math.max(12, ARENA_Q_SECONDS - (wave - 1) * 2));
+    setQIndex(nextAsked);
+    setSecondsLeft(qSeconds);
     setLocked(false);
     setPickedId(null);
     setFeedback(null);
   };
+
+  // Timer
+  useEffect(() => {
+    if (phase !== 'fight' || locked) return;
+    if (secondsLeft <= 0) {
+      setLocked(true);
+      playArenaSfx('miss');
+      setShake(true);
+      let nextLives = lives;
+      let usedShield = false;
+      if (shieldRef.current > 0) {
+        shieldRef.current -= 1;
+        setShieldLeft(shieldRef.current);
+        usedShield = true;
+      } else {
+        nextLives = lives - 1;
+        setLives(nextLives);
+      }
+      setCombo(0);
+      setFeedback({
+        correct: false,
+        points: 0,
+        combo: 0,
+        speedBonus: 0,
+        label: usedShield ? 'SHIELD BLOCKED TIME-UP' : 'TIME UP · -1 life',
+        lesson: drill?.reason,
+      });
+      window.setTimeout(() => {
+        setShake(false);
+        const asked = askedCount + 1;
+        setAskedCount(asked);
+        advanceMission(correctCount, asked, 0, comboMax, xpRound, scoreRef.current, nextLives);
+      }, 900);
+      return;
+    }
+    const t = window.setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, secondsLeft, locked, lives, askedCount, correctCount, comboMax, xpRound, drill]);
 
   const pickOption = (optionId: string) => {
     if (!drill || locked || phase !== 'fight') return;
@@ -325,15 +462,25 @@ export default function MentorArena({
       ownerKey,
     );
 
-    const qSec = Math.max(12, ARENA_Q_SECONDS - (wave - 1) * 2);
-    const scored = scoreArenaHit(combo, ok, secondsLeft, qSec);
+    const scored = scoreArenaHit(combo, ok, secondsLeft, qSeconds);
     const nextCorrect = correctCount + (ok ? 1 : 0);
     const nextAsked = askedCount + 1;
     const nextCombo = scored.nextCombo;
     const nextMax = Math.max(comboMax, nextCombo);
     const nextXp = xpRound + scored.xp;
     const nextScore = score + scored.points;
-    const nextLives = ok ? lives : lives - 1;
+
+    let nextLives = lives;
+    let usedShield = false;
+    if (!ok) {
+      if (shieldRef.current > 0) {
+        shieldRef.current -= 1;
+        setShieldLeft(shieldRef.current);
+        usedShield = true;
+      } else {
+        nextLives = lives - 1;
+      }
+    }
 
     scoreRef.current = nextScore;
     setCorrectCount(nextCorrect);
@@ -349,7 +496,6 @@ export default function MentorArena({
       setFeedback({
         correct: true,
         points: scored.points,
-        xp: scored.xp,
         combo: nextCombo,
         speedBonus: scored.speedBonus,
         label: nextCombo >= 3 ? `ON FIRE x${nextCombo}` : nextCombo >= 2 ? `COMBO x${nextCombo}` : 'NICE HIT',
@@ -360,20 +506,23 @@ export default function MentorArena({
       setFeedback({
         correct: false,
         points: 0,
-        xp: 0,
         combo: 0,
         speedBonus: 0,
-        label: nextLives <= 0 ? 'KO · GAME OVER' : 'MISS · -1 LIFE',
+        label: usedShield
+          ? 'SHIELD SAVED YOU'
+          : nextLives <= 0
+            ? 'KO · MISSION FAIL'
+            : 'MISS · -1 LIFE',
+        lesson: drill.reason,
       });
       window.setTimeout(() => setShake(false), 450);
     }
 
     window.setTimeout(() => {
-      advanceAfterHit(nextCorrect, nextAsked, nextCombo, nextMax, nextXp, nextScore, nextLives);
-    }, ok ? 750 : 950);
+      advanceMission(nextCorrect, nextAsked, nextCombo, nextMax, nextXp, nextScore, nextLives);
+    }, ok ? 700 : 1100);
   };
 
-  // Keyboard 1-4 / A-D
   useEffect(() => {
     if (phase !== 'fight' || !drill || locked) return;
     const onKey = (e: KeyboardEvent) => {
@@ -387,102 +536,131 @@ export default function MentorArena({
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const qSec = Math.max(12, ARENA_Q_SECONDS - (wave - 1) * 2);
-  const timerPct = Math.max(0, (secondsLeft / qSec) * 100);
-  const rank = arenaRankTitle(stats);
+  const timerPct = Math.max(0, (secondsLeft / qSeconds) * 100);
   const urgent = secondsLeft <= 5;
+  const arenaStats = useMemo(() => loadArenaStats(ownerKey), [ownerKey, quest.totalStars, quest.coins]);
+
+  const onBuy = (id: PowerUpId) => {
+    const next = buyPowerUp(id, ownerKey);
+    if (next) {
+      playArenaSfx('hit');
+      setQuest(next);
+    }
+  };
+
+  const onEquip = (titleId: string) => {
+    setQuest(equipTitle(titleId, ownerKey));
+    playArenaSfx('star');
+  };
 
   return (
     <div
-      className={`wm-arena ${playing || phase === 'result' ? 'wm-arena--live' : ''} ${
-        playing ? 'wm-arena--playing' : ''
-      } ${shake ? 'wm-arena--shake' : ''} ${urgent && phase === 'fight' ? 'wm-arena--urgent' : ''}`}
+      className={`wm-arena wm-quest ${phase === 'fight' || phase === 'countdown' ? 'wm-arena--live wm-arena--playing' : ''} ${
+        shake ? 'wm-arena--shake' : ''
+      } ${urgent && phase === 'fight' ? 'wm-arena--urgent' : ''}`}
     >
-      {!playing ? (
-        <div className="wm-arena__hud">
+      {phase === 'hub' || phase === 'loadout' || phase === 'brief' ? (
+        <div className="wm-arena__hud wm-quest__top">
           <div className="wm-arena__hud-main">
-            <p className="wm-arena__eyebrow">Wolf Mentor · Survival Arena</p>
+            <p className="wm-arena__eyebrow">Wolf Trade Quest</p>
             <h2 className="wm-arena__title">
-              {studentName.split(' ')[0] || 'Trader'}, <span>lock in</span>
+              {firstName}
+              {equipped ? (
+                <>
+                  , <span>{equipped}</span>
+                </>
+              ) : (
+                <>
+                  , <span>begin the path</span>
+                </>
+              )}
             </h2>
             <p className="wm-arena__lead">
-              Full trading desk quiz — 40% candles + candle psych · 10% chart psych · structure,
-              liquidity, risk, SMC & more
+              10 story levels · badges · titles · power-ups — clear missions, open chests, unlock the desk
             </p>
           </div>
-          <div className="wm-arena__stats">
-            <div className="wm-arena__stat">
+          <div className="wm-quest__wallet">
+            <div className="wm-quest__coin">
+              <Coins className="h-4 w-4" />
+              <b>{quest.coins}</b>
+            </div>
+            <div className="wm-quest__coin">
+              <Star className="h-4 w-4" />
+              <b>{quest.totalStars}</b>
+              <span>stars</span>
+            </div>
+            <div className="wm-quest__coin">
               <Trophy className="h-4 w-4" />
-              <div>
-                <b>{stats.highScore}</b>
-                <span>High score</span>
-              </div>
-            </div>
-            <div className="wm-arena__stat">
-              <Flame className="h-4 w-4" />
-              <div>
-                <b>{stats.streakDays}d</b>
-                <span>Streak</span>
-              </div>
-            </div>
-            <div className="wm-arena__stat">
-              <Zap className="h-4 w-4" />
-              <div>
-                <b>{rank}</b>
-                <span>{skill.xp} desk XP</span>
-              </div>
+              <b>{arenaStats.highScore}</b>
             </div>
           </div>
         </div>
       ) : null}
 
       <AnimatePresence mode="wait">
-        {phase === 'lobby' ? (
+        {phase === 'hub' ? (
           <motion.div
-            key="lobby"
-            className="wm-arena__panel wm-arena__panel--lobby"
-            initial={{ opacity: 0, y: 12 }}
+            key="hub"
+            className="wm-arena__panel wm-quest__hub"
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: -8 }}
           >
-            <div className="wm-arena__modes">
-              <div className="wm-arena__mode-card wm-arena__mode-card--on">
-                <Sparkles className="h-4 w-4" />
-                <div>
-                  <b>Survival · Full Desk</b>
-                  <p>
-                    {ARENA_LIVES} lives · {ARENA_MAX_WAVES} waves · candles-heavy mix
-                  </p>
-                </div>
-              </div>
+            <div className="wm-quest__hub-actions">
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('loadout')}>
+                <Package className="h-3.5 w-3.5" />
+                Collection
+              </button>
+              {quest.survivalUnlocked ? (
+                <button
+                  type="button"
+                  className="wm-arena__chip"
+                  onClick={() => {
+                    setSurvivalMode(true);
+                    setActiveLevel(null);
+                    setArmed({ heart: false, clock: false, shield: false });
+                    setPhase('brief');
+                  }}
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Survival Raid
+                </button>
+              ) : null}
             </div>
 
-            <button
-              type="button"
-              className="wm-arena__play"
-              onClick={startGame}
-              disabled={!detective}
-            >
-              <Play className="h-5 w-5" />
-              <span>
-                <strong>START GAME</strong>
-                <small>{detective ? 'Live tape loaded · press to fight' : 'Loading market tape…'}</small>
-              </span>
-            </button>
-
-            <div className="wm-arena__howto">
-              <div>
-                <em>1</em>
-                <span>Chart pe zone dekho</span>
-              </div>
-              <div>
-                <em>2</em>
-                <span>Keys 1–4 ya tap</span>
-              </div>
-              <div>
-                <em>3</em>
-                <span>Jaldi = zyada score</span>
-              </div>
+            <div className="wm-quest__path">
+              {CAMPAIGN_LEVELS.map((level) => {
+                const unlocked = isLevelUnlocked(level.id, quest);
+                const stars = quest.cleared[String(level.id)] || 0;
+                const boss = level.mode === 'boss';
+                return (
+                  <button
+                    key={level.id}
+                    type="button"
+                    disabled={!unlocked}
+                    className={`wm-quest__node ${unlocked ? 'wm-quest__node--open' : 'wm-quest__node--lock'} ${
+                      boss ? 'wm-quest__node--boss' : ''
+                    } ${stars > 0 ? 'wm-quest__node--cleared' : ''}`}
+                    onClick={() => openBrief(level)}
+                  >
+                    <div className="wm-quest__node-num">
+                      {unlocked ? level.id : <Lock className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="wm-quest__node-body">
+                      <em>{level.world}</em>
+                      <b>{level.title}</b>
+                      <span>
+                        {modeLabel(level.mode)} · {level.questions}Q · {level.lives}♥
+                      </span>
+                      {unlocked ? <StarsRow n={stars} /> : <span className="wm-quest__need">Clear previous</span>}
+                    </div>
+                    <div className="wm-quest__node-loot">
+                      <Gift className="h-3.5 w-3.5" />
+                      <small>{level.reward.badge?.name || `${level.reward.coins}c`}</small>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="wm-arena__quick">
@@ -495,6 +673,149 @@ export default function MentorArena({
                 Lab
               </button>
             </div>
+          </motion.div>
+        ) : null}
+
+        {phase === 'loadout' ? (
+          <motion.div
+            key="loadout"
+            className="wm-arena__panel wm-quest__loadout"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
+              ← Back to map
+            </button>
+
+            <h3 className="wm-quest__section">Titles</h3>
+            <div className="wm-quest__grid">
+              {ALL_TITLES.map((t) => {
+                const owned = quest.titles.includes(t.id);
+                const on = quest.equippedTitle === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={!owned}
+                    className={`wm-quest__collect ${owned ? '' : 'wm-quest__collect--lock'} ${
+                      on ? 'wm-quest__collect--on' : ''
+                    }`}
+                    onClick={() => owned && onEquip(t.id)}
+                  >
+                    <b>{t.name}</b>
+                    <span>{owned ? (on ? 'Equipped' : 'Tap to equip') : 'Locked'}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <h3 className="wm-quest__section">Badges</h3>
+            <div className="wm-quest__grid">
+              {ALL_BADGES.map((b) => {
+                const owned = quest.badges.includes(b.id);
+                return (
+                  <div
+                    key={b.id}
+                    className={`wm-quest__collect ${owned ? 'wm-quest__collect--badge' : 'wm-quest__collect--lock'}`}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <b>{b.name}</b>
+                    <span>{owned ? b.blurb : '???'}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <h3 className="wm-quest__section">Power-up shop</h3>
+            <div className="wm-quest__shop">
+              {(Object.keys(POWERUP_SHOP) as PowerUpId[]).map((id) => (
+                <div key={id} className="wm-quest__shop-row">
+                  <div>
+                    <b>{POWERUP_SHOP[id].name}</b>
+                    <span>
+                      {POWERUP_SHOP[id].blurb} · own {quest.powerups[id] || 0}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="wm-arena__chip"
+                    disabled={quest.coins < POWERUP_SHOP[id].cost}
+                    onClick={() => onBuy(id)}
+                  >
+                    <Coins className="h-3.5 w-3.5" />
+                    {POWERUP_SHOP[id].cost}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+
+        {phase === 'brief' ? (
+          <motion.div
+            key="brief"
+            className="wm-arena__panel wm-quest__brief"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
+              ← Map
+            </button>
+            <div className="wm-quest__brief-hero">
+              <em>{survivalMode ? 'Survival Raid' : activeLevel?.world}</em>
+              <h3>{survivalMode ? 'Endless desk mix' : activeLevel?.title}</h3>
+              <p>
+                {survivalMode
+                  ? '12 questions · full trading mix · earn coins from score'
+                  : activeLevel?.blurb}
+              </p>
+              {!survivalMode && activeLevel ? (
+                <p className="wm-quest__reward-line">
+                  <Gift className="h-3.5 w-3.5" />
+                  Clear reward: {rewardPreview(activeLevel)}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="wm-quest__arm">
+              <p>Arm power-ups (consumed on start)</p>
+              {(Object.keys(POWERUP_SHOP) as PowerUpId[]).map((id) => {
+                const Icon = id === 'heart' ? Heart : id === 'clock' ? Timer : Shield;
+                const own = quest.powerups[id] || 0;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={own <= 0 && !armed[id]}
+                    className={`wm-quest__arm-btn ${armed[id] ? 'wm-quest__arm-btn--on' : ''}`}
+                    onClick={() => toggleArm(id)}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {POWERUP_SHOP[id].name}
+                    <small>×{own}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="wm-arena__play"
+              onClick={startMission}
+              disabled={!detective}
+            >
+              <Play className="h-5 w-5" />
+              <span>
+                <strong>START MISSION</strong>
+                <small>
+                  {detective
+                    ? `${survivalMode ? '12' : activeLevel?.questions}Q · keys 1–4`
+                    : 'Loading tape…'}
+                </small>
+              </span>
+            </button>
           </motion.div>
         ) : null}
 
@@ -515,41 +836,32 @@ export default function MentorArena({
             >
               {countdown > 0 ? countdown : 'GO'}
             </motion.div>
-            <p>Wave {wave} · get ready</p>
-          </motion.div>
-        ) : null}
-
-        {phase === 'waveClear' ? (
-          <motion.div
-            key="wave"
-            className="wm-arena__panel wm-arena__panel--wave"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <b>WAVE {wave - 1} CLEAR</b>
-            <p>+speed pressure · Wave {wave} incoming</p>
-            <span className="wm-arena__score-big">{score}</span>
+            <p>{survivalMode ? 'Survival Raid' : activeLevel?.title} · get ready</p>
           </motion.div>
         ) : null}
 
         {phase === 'fight' && drill ? (
           <motion.div
-            key={`fight-${drill.id}`}
+            key={`fight-${drill.id}-${qIndex}`}
             className={`wm-arena__panel wm-arena__panel--fight ${urgent ? 'wm-arena__panel--urgent' : ''}`}
-            initial={{ opacity: 0, x: 16 }}
+            initial={{ opacity: 0, x: 14 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
+            exit={{ opacity: 0, x: -10 }}
           >
             <div className="wm-arena__fight-hud">
               <div className="wm-arena__hearts" aria-label={`${lives} lives`}>
-                {Array.from({ length: ARENA_LIVES }).map((_, i) => (
+                {Array.from({ length: livesMax }).map((_, i) => (
                   <Heart
                     key={i}
                     className={`wm-arena__heart ${i < lives ? 'wm-arena__heart--on' : ''}`}
                     fill={i < lives ? 'currentColor' : 'none'}
                   />
                 ))}
+                {shieldLeft > 0 ? (
+                  <span className="wm-quest__shield-pill">
+                    <Shield className="h-3 w-3" />×{shieldLeft}
+                  </span>
+                ) : null}
               </div>
               <div className="wm-arena__scoreboard">
                 <span>
@@ -562,26 +874,30 @@ export default function MentorArena({
             </div>
 
             <div className="wm-arena__round-top">
-              <span className="wm-arena__wave-pill">WAVE {wave}/{ARENA_MAX_WAVES}</span>
+              <span className="wm-arena__wave-pill">
+                {survivalMode ? 'RAID' : `L${activeLevel?.id}`}
+              </span>
               <span className="wm-arena__topic-pill">{arenaTopicLabel(drill.topic)}</span>
               <span>
-                Q{(qIndex % ARENA_WAVE_SIZE) + 1}/{ARENA_WAVE_SIZE}
+                Q{qIndex + 1}/{targetQuestions}
               </span>
-              <span className={`wm-arena__clock ${urgent ? 'wm-arena__clock--hot' : ''}`}>{secondsLeft}s</span>
+              <span className={`wm-arena__clock ${urgent ? 'wm-arena__clock--hot' : ''}`}>
+                {secondsLeft}s
+              </span>
             </div>
             <div className={`wm-arena__timer ${urgent ? 'wm-arena__timer--hot' : ''}`}>
               <i style={{ width: `${timerPct}%` }} />
             </div>
 
             <p className="wm-arena__q">{drill.question}</p>
-            <p className="wm-arena__hint">Chart marks = answer · keys 1–4</p>
+            <p className="wm-arena__hint">Chart marks · keys 1–4</p>
+
             {feedback?.correct ? (
               <motion.span
                 key={`pop-${score}`}
                 className="wm-arena__score-pop"
                 initial={{ opacity: 0, y: 8, scale: 0.7 }}
                 animate={{ opacity: 1, y: -28, scale: 1.15 }}
-                exit={{ opacity: 0 }}
               >
                 +{feedback.points}
               </motion.span>
@@ -621,18 +937,15 @@ export default function MentorArena({
                   className={`wm-arena__flash ${
                     feedback.correct ? 'wm-arena__flash--ok' : 'wm-arena__flash--bad'
                   }`}
-                  initial={{ opacity: 0, y: 20, scale: 0.85 }}
+                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
+                  exit={{ opacity: 0 }}
                 >
                   <b>{feedback.label}</b>
                   {feedback.correct ? (
-                    <span>
-                      +{feedback.points}
-                      {feedback.speedBonus > 40 ? ' SPEED' : ''}
-                    </span>
+                    <span>+{feedback.points}</span>
                   ) : (
-                    <span>{lives > 0 ? `${lives} left` : 'OUT'}</span>
+                    <span className="wm-quest__lesson">{feedback.lesson || `${lives} left`}</span>
                   )}
                 </motion.div>
               ) : null}
@@ -640,35 +953,132 @@ export default function MentorArena({
           </motion.div>
         ) : null}
 
-        {phase === 'result' && lastResult ? (
+        {phase === 'chest' && loot ? (
           <motion.div
-            key="result"
-            className="wm-arena__panel wm-arena__panel--result"
-            initial={{ opacity: 0, scale: 0.96 }}
+            key="chest"
+            className="wm-arena__panel wm-quest__chest"
+            initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className={`wm-arena__result-badge ${lastResult.survived ? 'wm-arena__result-badge--win' : ''}`}>
-              {lastResult.survived ? 'ALL WAVES CLEAR' : 'GAME OVER'}
+            <div className={`wm-quest__chest-box ${chestOpen ? 'wm-quest__chest-box--open' : ''}`}>
+              <Gift className="h-10 w-10" />
+              <b>{chestOpen ? 'REWARDS!' : 'Opening chest…'}</b>
             </div>
-            {lastResult.newRecord ? <p className="wm-arena__record">NEW HIGH SCORE</p> : null}
-            <h3 className="wm-arena__result-score">{lastResult.score}</h3>
+
+            {chestOpen ? (
+              <motion.div
+                className="wm-quest__loot"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <StarsRow n={loot.stars} />
+                {loot.coins > 0 ? (
+                  <p className="wm-quest__loot-row">
+                    <Coins className="h-4 w-4" /> +{loot.coins} Wolf Coins
+                  </p>
+                ) : null}
+                {loot.badge ? (
+                  <p className="wm-quest__loot-row wm-quest__loot-row--rare">
+                    <Sparkles className="h-4 w-4" /> Badge: {loot.badge.name}
+                  </p>
+                ) : null}
+                {loot.title ? (
+                  <p className="wm-quest__loot-row wm-quest__loot-row--rare">
+                    <Trophy className="h-4 w-4" /> Title: {loot.title.name}
+                  </p>
+                ) : null}
+                {loot.powerUp ? (
+                  <p className="wm-quest__loot-row">
+                    <Zap className="h-4 w-4" /> {POWERUP_SHOP[loot.powerUp].name} ×{loot.powerUpQty}
+                  </p>
+                ) : null}
+                {unlockedNext ? (
+                  <p className="wm-quest__unlock">Level {unlockedNext} unlocked!</p>
+                ) : null}
+                {!loot.firstClear && loot.stars > 0 ? (
+                  <p className="wm-quest__loot-sub">
+                    {loot.newBest ? 'New best stars!' : 'Replay bonus'}
+                  </p>
+                ) : null}
+              </motion.div>
+            ) : null}
+
+            <div className="wm-arena__result-actions">
+              {unlockedNext ? (
+                <button
+                  type="button"
+                  className="wm-arena__play wm-arena__play--sm"
+                  onClick={() => {
+                    const next = CAMPAIGN_LEVELS.find((l) => l.id === unlockedNext);
+                    if (next) openBrief(next);
+                    else setPhase('hub');
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                  Next Level
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="wm-arena__play wm-arena__play--sm"
+                  onClick={() => {
+                    if (activeLevel) openBrief(activeLevel);
+                    else setPhase('hub');
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                  Replay
+                </button>
+              )}
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
+                World Map
+              </button>
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('loadout')}>
+                Collection
+              </button>
+            </div>
+          </motion.div>
+        ) : null}
+
+        {phase === 'fail' ? (
+          <motion.div
+            key="fail"
+            className="wm-arena__panel wm-arena__panel--result"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="wm-arena__result-badge">MISSION FAILED</div>
+            <h3 className="wm-arena__result-score">{score}</h3>
             <p className="wm-arena__result-sub">
-              {lastResult.correct}/{lastResult.total} hits · Wave {lastResult.wave} · combo x
-              {lastResult.comboMax} · +{lastResult.xp} XP
+              {correctCount}/{askedCount || targetQuestions} hits · combo x{comboMax}
+            </p>
+            <p className="wm-quest__fail-tip">
+              Tip: arm a Miss Shield from Collection, or re-read the lesson flashes.
             </p>
             <div className="wm-arena__result-actions">
-              <button type="button" className="wm-arena__play wm-arena__play--sm" onClick={startGame}>
+              <button
+                type="button"
+                className="wm-arena__play wm-arena__play--sm"
+                onClick={() => {
+                  if (survivalMode) {
+                    setPhase('brief');
+                  } else if (activeLevel) openBrief(activeLevel);
+                  else setPhase('hub');
+                }}
+              >
                 <Play className="h-4 w-4" />
-                Rematch
+                Retry
               </button>
-              <button type="button" className="wm-arena__chip" onClick={onOpenCurriculum}>
-                Learn mode
+              <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
+                World Map
               </button>
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
+
     </div>
   );
 }
