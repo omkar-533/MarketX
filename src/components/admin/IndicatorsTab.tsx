@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
+  ChevronDown,
+  ChevronUp,
   ImagePlus,
   Loader2,
   Pencil,
@@ -12,6 +14,7 @@ import {
   adminCreateIndicator,
   adminDeleteIndicator,
   adminListIndicators,
+  adminReorderIndicators,
   adminSetIndicatorHowToVideo,
   adminUpdateIndicator,
   type IndicatorItem,
@@ -59,6 +62,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
   const [form, setForm] = useState<FormState>(emptyForm);
   const [showForm, setShowForm] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -230,14 +234,44 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
     }
   };
 
+  const moveRow = async (id: string, direction: -1 | 1) => {
+    const index = rows.findIndex((row) => row.id === id);
+    const swapWith = index + direction;
+    if (index < 0 || swapWith < 0 || swapWith >= rows.length) return;
+
+    const next = [...rows];
+    const a = next[index];
+    next[index] = next[swapWith];
+    next[swapWith] = a;
+    setRows(next);
+    setReorderingId(id);
+    setError('');
+    setMsg('');
+    try {
+      const saved = await adminReorderIndicators(
+        next.map((row) => row.id),
+        adminEmail,
+        adminPassword,
+      );
+      setRows(saved);
+      setMsg('Order updated — members see this sequence on Indicators.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reorder');
+      await load();
+    } finally {
+      setReorderingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add title, description, invite link, optional how-to video, and cover image. Members open
-            the link during the {TRIAL_DAYS}-day demo; after that you approve longer access.
+            Add title, description, invite link, optional how-to video, and cover image. Use ↑ ↓ on
+            each row to place cards where you want on the member Indicators page ({TRIAL_DAYS}-day
+            demo, then desk approval).
           </p>
         </div>
         <button
@@ -317,6 +351,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                     value={form.sortOrder}
                     onChange={(e) => setForm((p) => ({ ...p, sortOrder: e.target.value }))}
                   />
+                  <p className="text-[10px] text-slate-600 mt-1">
+                    Lower = higher on the grid. Or use ↑ ↓ arrows in the list below.
+                  </p>
                 </div>
                 <label className="flex items-end gap-2 pb-2 text-xs text-slate-300 cursor-pointer">
                   <input
@@ -449,19 +486,48 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           </div>
         ) : (
           <div className="divide-y divide-[#1a1f2e]">
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <div
                 key={row.id}
                 className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 hover:bg-[#121520]/50"
               >
-                <div className="w-full sm:w-24 h-16 rounded-lg overflow-hidden bg-[#121520] border border-[#1a1f2e] shrink-0">
-                  {row.imageUrl ? (
-                    <img src={row.imageUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-600">
-                      No img
-                    </div>
-                  )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="w-7 text-center text-[11px] font-bold text-[#d4af37]/80">
+                    #{index + 1}
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      aria-label="Move up"
+                      disabled={index === 0 || reorderingId !== null}
+                      onClick={() => void moveRow(row.id, -1)}
+                      className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                    >
+                      {reorderingId === row.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move down"
+                      disabled={index === rows.length - 1 || reorderingId !== null}
+                      onClick={() => void moveRow(row.id, 1)}
+                      className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="w-20 sm:w-24 h-16 rounded-lg overflow-hidden bg-[#121520] border border-[#1a1f2e]">
+                    {row.imageUrl ? (
+                      <img src={row.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-600">
+                        No img
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -475,7 +541,6 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                     >
                       {row.published ? 'Live' : 'Draft'}
                     </span>
-                    <span className="text-[10px] text-slate-600">sort {row.sortOrder}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
                     {row.link || row.description || 'No link'}

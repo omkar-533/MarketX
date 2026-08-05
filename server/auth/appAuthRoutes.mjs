@@ -48,6 +48,7 @@ import {
   getIndicatorById,
   listAllIndicators,
   listPublishedIndicators,
+  reorderIndicators,
   setIndicatorHowToVideo,
   updateIndicator,
 } from './indicatorsStore.mjs';
@@ -828,6 +829,17 @@ async function handleAdminIndicatorUpdate(req, res) {
     return failed(res, err, 'Could not update indicator');
   }
 }
+
+/** PUT /api/app-auth/admin/indicators/reorder — MUST be before /:id */
+router.put('/admin/indicators/reorder', requireAdmin, async (req, res) => {
+  try {
+    const orderedIds = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : [];
+    const indicators = await reorderIndicators(orderedIds);
+    return res.json({ ok: true, indicators: indicators.map(publicIndicator) });
+  } catch (err) {
+    return failed(res, err, 'Could not reorder indicators');
+  }
+});
 
 /** PUT + PATCH — PUT preferred (CORS allow-list historically missed PATCH). */
 router.put('/admin/indicators/:id', requireAdmin, handleAdminIndicatorUpdate);

@@ -174,6 +174,25 @@ export async function adminDeleteIndicator(
   await readJson(res, 'Could not delete indicator');
 }
 
+/** Persist member-grid order (top → bottom). */
+export async function adminReorderIndicators(
+  orderedIds: string[],
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+): Promise<IndicatorItem[]> {
+  const res = await apiFetch(
+    '/api/app-auth/admin/indicators/reorder',
+    {
+      method: 'PUT',
+      headers: authHeaders(adminEmail, adminPassword),
+      body: JSON.stringify({ orderedIds }),
+    },
+    ADMIN_WRITE_OPTS,
+  );
+  const data = await readJson(res, 'Could not reorder indicators');
+  return (data.indicators || []) as IndicatorItem[];
+}
+
 /** Submit TradingView username for manual invite — admin Approves to unlock invite link. */
 export async function submitTradingViewAccess(
   indicatorId: string,

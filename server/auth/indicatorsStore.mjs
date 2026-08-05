@@ -451,6 +451,52 @@ export async function updateIndicator(id, patch = {}) {
   return fromRow(data, await signImage(db, data));
 }
 
+/**
+ * Reorder indicators for the member grid. `orderedIds` is top→bottom display order.
+ * Writes sort_order = 0..n-1 so Admin Up/Down and the public list stay in sync.
+ */
+export async function reorderIndicators(orderedIds = []) {
+  const ids = [...new Set((orderedIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+  if (!ids.length) {
+    throw Object.assign(new Error('Pass the indicator order'), { status: 400 });
+  }
+
+  const now = new Date().toISOString();
+  const db = getAdminClient();
+
+  if (!db) {
+    const byId = new Map(readRows().map((row) => [row.id, row]));
+    const missing = ids.filter((id) => !byId.has(id));
+    if (missing.length) {
+      throw Object.assign(new Error('One or more indicators were not found'), { status: 404 });
+    }
+    const rest = readRows().filter((row) => !ids.includes(row.id));
+    const reordered = [
+      ...ids.map((id, index) => ({
+        ...byId.get(id),
+        sort_order: index,
+        updated_at: now,
+      })),
+      ...rest.map((row, index) => ({
+        ...row,
+        sort_order: ids.length + index,
+        updated_at: now,
+      })),
+    ];
+    writeRows(reordered);
+    return listAllIndicators();
+  }
+
+  for (let index = 0; index < ids.length; index += 1) {
+    const { error } = await db
+      .from(TABLE)
+      .update({ sort_order: index, updated_at: now })
+      .eq('id', ids[index]);
+    if (error) throw storeError(error);
+  }
+  return listAllIndicators();
+}
+
 export async function deleteIndicator(id) {
   const current = await getIndicatorById(id);
   if (!current) {
