@@ -1074,25 +1074,48 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         parsed.text ||
         (marked ? (hindi ? 'Chart par marking kar di hai.' : 'Marked on the chart.') : responseText);
 
-      // A screenshot only tells us the instrument once the model has read it,
-      // so the matching live chart is built here rather than before the send.
-      // Markings with nowhere to go would be lost, so they get their own card.
+      // Mark asks must show a FRESH chart next to this reply. Updating only the
+      // older chart above leaves the user staring at prose that says "marked"
+      // with no drawings in view ("trendline mark nahi hui").
+      const markAskFreshChart =
+        isChartMarkupRequest(userText) ||
+        /\b(trend\s*lines?|trendlines?|order\s*blocks?|\bob\b|liquidity|support|resistance)\b/i.test(
+          userText,
+        );
+
       let replyChart: Message | null = null;
-      if (!chartMessageId && (parsed.symbol || marked)) {
-        const symbol = parsed.symbol ?? chartSymbol;
-        const interval = parsed.interval ?? chartInterval;
+      const drawSymbol =
+        parsed.symbol || chartTarget?.symbol || chartSymbol;
+      const drawInterval =
+        parsed.interval || chartTarget?.interval || chartInterval;
+      if (marked && (markAskFreshChart || !chartMessageId)) {
         replyChart = makeChartMessage({
-          symbol,
-          interval,
+          symbol: drawSymbol,
+          interval: drawInterval,
+          study: chartTarget?.study || chartStudy,
+          levels: parsed.levels,
+          shapes: parsed.shapes,
+        });
+        setChartSymbol(drawSymbol);
+        setChartInterval(drawInterval);
+      } else if (!chartMessageId && (parsed.symbol || marked)) {
+        replyChart = makeChartMessage({
+          symbol: drawSymbol,
+          interval: drawInterval,
           study: chartStudy,
           levels: parsed.levels,
           shapes: parsed.shapes,
         });
-        setChartSymbol(symbol);
-        setChartInterval(interval);
+        setChartSymbol(drawSymbol);
+        setChartInterval(drawInterval);
       } else if (chartMessageId && parsed.interval) {
-        // The user's wording won; a timeframe the model read off the image wins back.
         updateChartMessage(chartMessageId, { interval: parsed.interval });
+      }
+
+      if (markAskFreshChart && !marked) {
+        responseText += hindi
+          ? '\n\nChart marking tape se confirm nahi hui — ek baar phir “trend line mark karo” likhiye.'
+          : '\n\nChart markings could not be confirmed from tape — please ask once more to mark the trend line.';
       }
 
       const aiMsg: Message = {
@@ -1102,6 +1125,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         timestamp: new Date(),
       };
       setMessages((prev) => {
+        // Keep the older chart in sync too, but the fresh card below is what the user sees.
         const next =
           marked && chartMessageId
             ? prev.map((m) =>
@@ -1110,7 +1134,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   : m,
               )
             : prev;
-        return [...next, ...(replyChart ? [replyChart] : []), aiMsg];
+        // Chart card immediately under the answer so drawings are in view.
+        return [...next, aiMsg, ...(replyChart ? [replyChart] : [])];
       });
 
       if (autoSpeak) speakText(responseText);

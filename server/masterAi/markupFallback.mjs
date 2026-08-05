@@ -31,6 +31,42 @@ export function wolfchartHasDrawings(reply) {
   }
 }
 
+/** True when reply already has diagonal trend/ray drawings (not OB zones / S-R hrays). */
+function replyHasTrendRays(reply) {
+  const text = String(reply || '');
+  const fenced = text.match(/```\s*wolfchart\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/(\{[^{}]*"(?:levels|shapes)"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*$/i)?.[1];
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw.trim());
+    const shapes = Array.isArray(parsed?.shapes) ? parsed.shapes : [];
+    return shapes.some((s) => {
+      const type = String(s?.type || '').toLowerCase();
+      const label = String(s?.label || '');
+      const p1 = Number(s?.p1);
+      const p2 = Number(s?.p2);
+      if (!(p1 > 0) || !(p2 > 0) || p1 === p2) return false;
+      return type === 'trend' || type === 'ray' || /trend|channel/i.test(label);
+    });
+  } catch {
+    return false;
+  }
+}
+
+/** Pull two prices from prose like "24427.95 aur 24443.60" when engines are empty. */
+function pricesFromProse(prose) {
+  const text = String(prose || '');
+  const pair =
+    text.match(
+      /(?:uptrend|downtrend|trend\s*line|channel\s*high|channel\s*low)[^0-9]{0,40}(\d{3,7}(?:\.\d+)?)(?:\s*(?:aur|and|&|,|–|-|to)\s*)(\d{3,7}(?:\.\d+)?)/i,
+    ) || text.match(/(\d{4,7}(?:\.\d+)?)\s*(?:aur|and|&)\s*(\d{4,7}(?:\.\d+)?)/i);
+  if (!pair) return null;
+  const a = Number(pair[1]);
+  const b = Number(pair[2]);
+  if (!(a > 0) || !(b > 0) || a === b) return null;
+  return { a, b, rising: /uptrend|higher\s*low/i.test(text) || b > a };
+}
+
 function roundPrice(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
@@ -311,6 +347,86 @@ export function synthesizeTrendWolfchart(meta = {}) {
     }
   }
 
+  // Live quote / day range — structure OHLC may have timed out; still draw something real.
+  if (!shapes.length) {
+    const q = meta.quote || {};
+    const px = Number(meta.lastClose) || Number(q.price) || 0;
+    const lo =
+      Number(meta.rangeLow) ||
+      Number(q.low) ||
+      Number(q.dayLow) ||
+      (px > 0 ? roundPrice(px * 0.997) : 0);
+    const hi =
+      Number(meta.rangeHigh) ||
+      Number(q.high) ||
+      Number(q.dayHigh) ||
+      (px > 0 ? roundPrice(px * 1.003) : 0);
+    const loAgo = Math.max(12, Number(meta.rangeLowBarsAgo) || 36);
+    const hiAgo = Math.max(10, Number(meta.rangeHighBarsAgo) || 28);
+    if (px > 0 && lo > 0 && hi > lo) {
+      const rising = px >= (lo + hi) / 2 || px > lo * 1.0005;
+      if (rising) {
+        const p2 = roundPrice(Math.min(px * 0.9992, lo + (px - lo) * 0.62));
+        if (p2 && p2 > lo) {
+          shapes.push({
+            type: 'ray',
+            p1: roundPrice(lo),
+            p2,
+            x1: -loAgo,
+            x2: -5,
+            label: 'Uptrend line',
+            tone: 'bull',
+          });
+        }
+        const hp2 = roundPrice(Math.max(px * 1.0003, hi - (hi - px) * 0.4));
+        if (hp2 && hi > hp2) {
+          shapes.push({
+            type: 'ray',
+            p1: roundPrice(hi),
+            p2: hp2,
+            x1: -hiAgo,
+            x2: -4,
+            label: 'Channel high',
+            tone: 'bear',
+          });
+        }
+      } else {
+        const p2 = roundPrice(Math.max(px * 1.0008, hi - (hi - px) * 0.55));
+        if (p2 && p2 < hi) {
+          shapes.push({
+            type: 'ray',
+            p1: roundPrice(hi),
+            p2,
+            x1: -hiAgo,
+            x2: -5,
+            label: 'Downtrend line',
+            tone: 'bear',
+          });
+        }
+      }
+    }
+  }
+
+  // Last resort: prices the model already named in prose.
+  if (!shapes.length) {
+    const fromProse = pricesFromProse(meta.prose || '');
+    if (fromProse) {
+      const low = Math.min(fromProse.a, fromProse.b);
+      const high = Math.max(fromProse.a, fromProse.b);
+      if (fromProse.rising || high > low) {
+        shapes.push({
+          type: 'ray',
+          p1: roundPrice(low),
+          p2: roundPrice(high),
+          x1: -32,
+          x2: -6,
+          label: fromProse.rising !== false ? 'Uptrend line' : 'Downtrend line',
+          tone: fromProse.rising !== false ? 'bull' : 'bear',
+        });
+      }
+    }
+  }
+
   if (!shapes.length) return null;
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 3) });
 }
@@ -436,13 +552,14 @@ export function ensureWolfchartReply(reply, meta) {
   if (!text) return text;
 
   if (meta?.style === 'trend') {
-    const block = synthesizeTrendWolfchart(meta);
-    // Always strip any SUPPORT/RESISTANCE dump the model added — never leave horizontals.
     const cleaned = stripWolfchart(text);
+    // Prefer engine/quote rays. Pass prose so we can recover prices the model named.
+    const block = synthesizeTrendWolfchart({ ...meta, prose: cleaned });
+    // Always strip any SUPPORT/RESISTANCE / OB dump — never leave the previous tool up.
     if (!block) {
-      console.warn('[Wolf AI] trend ask but no channel pair — stripped S/R markup');
-      // Never return empty — client treats blank as 502. Keep model drawings if any.
-      if (wolfchartHasDrawings(text)) return text;
+      console.warn('[Wolf AI] trend ask but no channel pair — stripped non-trend markup');
+      // Keep ONLY if the model already drew diagonal trend rays (not OB zones).
+      if (replyHasTrendRays(text)) return text;
       return (
         cleaned ||
         text ||
