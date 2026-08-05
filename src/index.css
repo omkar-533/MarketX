@@ -6835,6 +6835,10 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: 1rem;
   font-size: 0.82rem;
   font-weight: 700;
+  border: 0;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .lux-ind__guide-stage.is-shielded .lux-ind__guide-media {
