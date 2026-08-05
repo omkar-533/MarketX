@@ -67,6 +67,10 @@ create table if not exists public.app_access_requests (
   created_at timestamptz not null default now()
 );
 
+-- Optional legacy column (demat is primarily stored in note). Safe if already absent.
+alter table public.app_access_requests
+  add column if not exists trading_view_id text;
+
 create index if not exists app_access_requests_status_idx
   on public.app_access_requests (status, created_at desc);
 

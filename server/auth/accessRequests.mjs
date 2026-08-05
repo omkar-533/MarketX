@@ -185,6 +185,7 @@ export async function createAccessRequest({
   if (!db) {
     const row = {
       ...base,
+      // File store only — live Supabase table has no trading_view_id column.
       trading_view_id: demat,
       screenshot_path: null,
       screenshot_data: screenshot,
@@ -210,15 +211,22 @@ export async function createAccessRequest({
     screenshotData = String(screenshot).slice(0, MAX_BYTES * 2);
   }
 
+  // Live schema (supabase/app_access.sql): demat lives in `note`, not trading_view_id.
   const row = {
     ...base,
-    trading_view_id: demat,
     screenshot_path: screenshotPath,
     screenshot_data: screenshotData,
   };
-  const { error } = await db.from(TABLE).insert(row);
+  let { error } = await db.from(TABLE).insert(row);
+  // Older deploys may still send trading_view_id — never fail the user on schema cache.
+  if (error && /trading_view_id/i.test(error.message || '')) {
+    ({ error } = await db.from(TABLE).insert(row));
+  }
   if (error) throw storeError(error);
-  return fromRow(row, screenshotPath ? await signScreenshot(db, row) : screenshotData);
+  return fromRow(
+    { ...row, trading_view_id: demat },
+    screenshotPath ? await signScreenshot(db, row) : screenshotData,
+  );
 }
 
 export async function latestRequestForUser(userId) {
