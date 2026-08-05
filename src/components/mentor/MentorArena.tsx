@@ -307,7 +307,7 @@ export default function MentorArena({
       {!playing ? (
         <div className="wm-arena__hud wm-quest__top">
           <div className="wm-arena__hud-main">
-            <p className="wm-arena__eyebrow">Wolf Trade Quest · Tape Runner</p>
+            <p className="wm-arena__eyebrow">Wolf Trade Quest · Most Wanted</p>
             <h2 className="wm-arena__title">
               {firstName}
               {equipped ? (
@@ -316,13 +316,13 @@ export default function MentorArena({
                 </>
               ) : (
                 <>
-                  , <span>run the tape</span>
+                  , <span>you are wanted</span>
                 </>
               )}
             </h2>
             <p className="wm-arena__lead">
-              Real runner game — jump spikes, grab coins, nail GATE pads, finish the flag. Mario energy,
-              trading lessons.
+              Night freeway racer — switch lanes, nitro past FOMO cars, hit checkpoint answer lanes,
+              finish for the chest.
             </p>
           </div>
           <div className="wm-quest__wallet">
@@ -396,7 +396,7 @@ export default function MentorArena({
                       <em>{level.world}</em>
                       <b>{level.title}</b>
                       <span>
-                        {modeLabel(level.mode)} RUN · {level.lives}♥ · jump & dodge
+                        {modeLabel(level.mode)} RACE · {level.lives}♥ · lanes + nitro
                       </span>
                       {unlocked ? <StarsRow n={stars} /> : <span className="wm-quest__need">Clear previous</span>}
                     </div>
@@ -521,8 +521,8 @@ export default function MentorArena({
               <h3>{survivalMode ? 'Endless tape run' : activeLevel?.title}</h3>
               <p>
                 {survivalMode
-                  ? 'Faster runner · dodge FOMO spikes · clear GATE pads · grab the flag'
-                  : `${activeLevel?.blurb} — play as a side-scrolling runner, not a quiz.`}
+                  ? 'Faster night race · dodge FOMO rivals · checkpoint answer lanes · nitro to the finish'
+                  : `${activeLevel?.blurb} — NFS-style race: lanes, nitro, heat. Learning at checkpoints.`}
               </p>
               {!survivalMode && activeLevel ? (
                 <p className="wm-quest__reward-line">
@@ -534,20 +534,20 @@ export default function MentorArena({
 
             <div className="wm-quest__howto-run">
               <div>
-                <b>SPACE / TAP</b>
-                <span>Jump (double jump)</span>
+                <b>← →</b>
+                <span>Change lane</span>
               </div>
               <div>
-                <b>↓</b>
-                <span>Fast fall</span>
+                <b>SPACE</b>
+                <span>Nitro boost</span>
               </div>
               <div>
-                <b>GATE</b>
-                <span>Land on correct pad</span>
+                <b>CHECKPOINT</b>
+                <span>Drive correct lane</span>
               </div>
               <div>
-                <b>FLAG</b>
-                <span>Finish to clear</span>
+                <b>FINISH</b>
+                <span>Clear for chest</span>
               </div>
             </div>
 
@@ -575,8 +575,8 @@ export default function MentorArena({
             <button type="button" className="wm-arena__play" onClick={startMission}>
               <Play className="h-5 w-5" />
               <span>
-                <strong>START RUN</strong>
-                <small>{detective ? '3-2-1 then you control the wolf' : 'Loading…'}</small>
+                <strong>START RACE</strong>
+                <small>Tutorial pehle · phir ← → nitro · finish line</small>
               </span>
             </button>
           </motion.div>
@@ -599,7 +599,7 @@ export default function MentorArena({
             >
               {countdown > 0 ? countdown : 'GO'}
             </motion.div>
-            <p>{gameConfig?.title || 'Run'} · jump ready</p>
+            <p>{gameConfig?.title || 'Race'} · engines hot</p>
           </motion.div>
         ) : null}
 
@@ -625,7 +625,7 @@ export default function MentorArena({
           >
             <div className={`wm-quest__chest-box ${chestOpen ? 'wm-quest__chest-box--open' : ''}`}>
               <Gift className="h-10 w-10" />
-              <b>{chestOpen ? 'RUN CLEARED!' : 'Opening chest…'}</b>
+              <b>{chestOpen ? 'RACE WON!' : 'Opening chest…'}</b>
             </div>
             {chestOpen ? (
               <motion.div
@@ -705,15 +705,15 @@ export default function MentorArena({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="wm-arena__result-badge">RUN FAILED</div>
+            <div className="wm-arena__result-badge">BUSTED</div>
             <h3 className="wm-arena__result-score">{lastRun?.score ?? 0}</h3>
             <p className="wm-arena__result-sub">
               Coins {lastRun?.coins ?? 0} · gates {lastRun?.gatesCorrect ?? 0}/
               {lastRun?.gatesTotal ?? 0} · combo x{lastRun?.comboMax ?? 0}
             </p>
             <p className="wm-quest__fail-tip">
-              Tip: double-jump over spikes, skip pits, and land on the correct GATE pad when the prompt
-              appears.
+              Tip: ← → se lane badlo, FOMO cars se bacho, checkpoint pe sahi answer lane mein ghus
+              jao, SPACE se nitro.
             </p>
             <div className="wm-arena__result-actions">
               <button
