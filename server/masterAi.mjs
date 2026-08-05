@@ -2192,14 +2192,14 @@ export function createMasterAiRouter(apiKey) {
       // The client tags the message when a live chart is already sitting next to
       // the chat; that chart is what "mark it" refers to.
       const chartOnScreen = /CHART OPEN BESIDE THIS CHAT/i.test(String(message || ''));
+      // Intent ONLY from bare user ask (+ optional client markTool). Never from
+      // appended [CHART OPEN…] hints — those say "ALWAYS draw" and would falsely
+      // set explicitMark → wrong tool inheritance from history.
+      const userAsk = extractUserAsk(message);
       const explicitMark =
         /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark(?:ing)?\s*(kar|kr|kro|krdo|kardo|ke|dena|dijiye|karva|karwa)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
-          String(message || ''),
+          userAsk,
         );
-      // Intent ONLY from bare user ask (+ optional client markTool). Never from
-      // appended [CHART OPEN…] hints — those historically said "SUPPORT/RESISTANCE"
-      // inside a trendline instruction and forced style:'sr'.
-      const userAsk = extractUserAsk(message);
       // Prior turns: bare "mark kar do" inherits the last tool from recent chat.
       const historyBlob = Array.isArray(history)
         ? history

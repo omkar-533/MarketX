@@ -351,16 +351,26 @@ export interface ParsedReply {
 
 /** Find the markup block whatever fence the model decided to use. */
 function extractBlock(source: string): { raw: string; json: string } | null {
-  const tagged = source.match(TAGGED_RE);
-  if (tagged) return { raw: tagged[0], json: tagged[1] };
+  // Prefer the LAST wolfchart fence — the server enforcer appends the correct
+  // tool at the end; taking the first kept stale OB/SR when a trend block followed.
+  const taggedRe = new RegExp(TAGGED_RE.source, 'gi');
+  const taggedAll = [...source.matchAll(taggedRe)];
+  if (taggedAll.length) {
+    const last = taggedAll[taggedAll.length - 1];
+    return { raw: last[0], json: last[1] };
+  }
 
+  let lastFenced: { raw: string; json: string } | null = null;
   for (const match of source.matchAll(FENCED_RE)) {
     try {
-      if (hasMarkup(JSON.parse(match[1].trim()))) return { raw: match[0], json: match[1] };
+      if (hasMarkup(JSON.parse(match[1].trim()))) {
+        lastFenced = { raw: match[0], json: match[1] };
+      }
     } catch {
       /* not our block */
     }
   }
+  if (lastFenced) return lastFenced;
 
   const bare = source.match(BARE_RE);
   return bare ? { raw: bare[0], json: bare[1] } : null;
@@ -431,10 +441,18 @@ export function shapesNearPrice(shapes: ChartShape[], reference: number): ChartS
     price === undefined || Math.abs(price - reference) / reference <= band;
 
   return shapes.filter((shape) => {
+    // Pine liquidity / structural levels can sit farther than a 25% band (PDH…).
+    if (
+      shape.type === 'hray' ||
+      shape.type === 'hline' ||
+      /^(BSL|SSL|PDH|PDL|PWH|PWL|PMH|PML|support|resistance)\b/i.test(shape.label || '')
+    ) {
+      return near(shape.p1, 0.5);
+    }
     // Trend / ray: older swing can be far below LTP — keep if either end is
     // near OR the projected price at the latest bar is near.
     if (shape.type === 'trend' || shape.type === 'ray' || shape.type === 'arrow') {
-      if (near(shape.p1, 0.35) || near(shape.p2, 0.35)) return true;
+      if (near(shape.p1, 0.45) || near(shape.p2, 0.45)) return true;
       if (
         shape.p1 !== undefined &&
         shape.p2 !== undefined &&
@@ -446,11 +464,11 @@ export function shapesNearPrice(shapes: ChartShape[], reference: number): ChartS
         if (Number.isFinite(x1) && Number.isFinite(x2) && x2 !== x1) {
           const t = (0 - x1) / (x2 - x1);
           const projected = shape.p1 + (shape.p2 - shape.p1) * t;
-          if (near(projected, 0.2)) return true;
+          if (near(projected, 0.35)) return true;
         }
       }
       return false;
     }
-    return near(shape.p1) && near(shape.p2);
+    return near(shape.p1, 0.35) && near(shape.p2, 0.35);
   });
 }

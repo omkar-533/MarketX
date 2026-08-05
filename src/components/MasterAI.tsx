@@ -789,13 +789,17 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         // markings land somewhere the user has already scrolled past.
         const stillOnScreen =
           lastChart !== undefined && messages.slice(-3).some((m) => m.id === lastChart.id);
+        chartTarget = { symbol, interval, study };
         if (!chartReq && stillOnScreen && lastChart?.chart?.symbol === symbol) {
           chartMessageId = lastChart.id;
+        } else if (marksExisting) {
+          // Mark ask: do NOT insert an empty chart now — a drawn card is added
+          // under the AI reply after wolfchart parse (avoids blank double charts).
+          chartMessageId = lastChart?.chart?.symbol === symbol ? lastChart.id : null;
         } else {
           chartMsg = makeChartMessage({ symbol, interval, study });
           chartMessageId = chartMsg.id;
         }
-        chartTarget = { symbol, interval, study };
       }
     }
 
@@ -1192,7 +1196,15 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                 ? langMode === 'auto'
                   ? `Ready · Auto · ${selectedLang.nativeLabel}`
                   : `Ready · ${selectedLang.nativeLabel}`
-                : aiStatus.message}
+                : /offline|reconnect|unreachable|starting|pahunch|temporarily/i.test(
+                      aiStatus.message,
+                    )
+                  ? aiStatus.message
+                  : /api key|configured|Profile/i.test(aiStatus.message)
+                    ? aiStatus.message
+                    : langMode === 'auto'
+                      ? `Connecting · Auto · ${selectedLang.nativeLabel}`
+                      : 'Connecting…'}
             </p>
           </div>
         </div>

@@ -143,7 +143,34 @@ export function useChartDrawings({
     const timeScale = chart.timeScale();
     const toX = (time: number): number | null =>
       timeScale.logicalToCoordinate(timeToLogical(barsRef.current, time) as Logical);
-    const toY = (price: number): number | null => series.priceToCoordinate(price);
+    const toY = (price: number): number | null => {
+      const direct = series.priceToCoordinate(price);
+      if (direct !== null) return direct;
+      // Autoscale lag / extreme AI prices — map via bar range so marks still paint.
+      const bars = barsRef.current;
+      if (!bars.length || !(price > 0)) return null;
+      let min = Infinity;
+      let max = -Infinity;
+      for (const b of bars) {
+        if (b.low < min) min = b.low;
+        if (b.high > max) max = b.high;
+      }
+      for (const s of aiRef.current) {
+        if (typeof s.p1 === 'number' && s.p1 > 0) {
+          min = Math.min(min, s.p1);
+          max = Math.max(max, s.p1);
+        }
+        if (typeof s.p2 === 'number' && s.p2 > 0) {
+          min = Math.min(min, s.p2);
+          max = Math.max(max, s.p2);
+        }
+      }
+      if (!(max > min)) return null;
+      const paneH = chart.panes()[0]?.getHeight() ?? host.clientHeight;
+      const top = paneH * 0.08;
+      const usable = paneH * 0.68;
+      return top + ((max - price) / (max - min)) * usable;
+    };
     const pixelOf = (p: DrawPoint): Pixel | null => {
       const x = toX(p.time);
       const y = toY(p.price);
@@ -555,11 +582,11 @@ export function useChartDrawings({
           continue;
         }
 
-        // trend / ray / arrow
+        // trend / ray / arrow — never skip when timescale isn't ready yet;
+        // clamp to the pane so "marked" replies always paint visible lines.
         if (y1 === null || y2 === null) continue;
-        const x1 = anchorX(shape.x1, -45);
-        const x2 = anchorX(shape.x2, 0);
-        if (x1 === null || x2 === null) continue;
+        const x1 = anchorX(shape.x1, -45) ?? 8;
+        const x2 = anchorX(shape.x2, 0) ?? Math.max(x1 + 40, paneWidth - 8);
         const isTrend =
           shape.type === 'trend' ||
           (shape.type === 'ray' && /trend/i.test(shape.label || '')) ||

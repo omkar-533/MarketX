@@ -1,5 +1,5 @@
 import { apiFetch } from '../config/api';
-import { hasRemoteApi, masterAiOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
+import { hasRemoteApi, masterAiOfflineMessage } from '../constants/brandLabels';
 import {
   calculateMaxPain,
   getFuturesOIData,
@@ -1188,6 +1188,7 @@ export async function fetchMasterAiStatus(): Promise<{
       { retries: 1, timeoutMs: 45_000 },
     );
     if (!res.ok) {
+      // Transport blip ≠ missing key — never tell the user to re-add a Profile key.
       return { configured: false, message: masterAiOfflineMessage(), keySource: 'none' };
     }
     const data = await res.json();
@@ -1206,7 +1207,7 @@ export async function fetchMasterAiStatus(): Promise<{
   } catch {
     return {
       configured: false,
-      message: serverUnreachableMessage(),
+      message: masterAiOfflineMessage(),
       keySource: 'none',
     };
   }

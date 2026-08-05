@@ -390,18 +390,31 @@ const MARKUP_INTENT = new RegExp(
     '\\b(mark|marking|markings|markup|draw|annotate|highlight|plot)\\b',
     // Hindi / Hinglish: mark kar do / mark kr ke do / mark kar dena / marking krdo
     'mark(?:ing)?\\s*(kar|kr|kro|krdo|kardo|ke|dena|dijiye|karva|karwa)',
-    'order\\s*block|\\bob\\b|supply|demand|\\bfvg\\b|imbalance|liquidity',
+    // Tool names alone imply "draw this" on the open chart
+    'order\\s*block|\\bob\\b|\\bfvg\\b|imbalance|liquidity',
     '\\bbos\\b|choch|break\\s*of\\s*structure',
-    'trend\\s*line|trendlines?|trend\\s*live|channel|neckline',
+    'trend\\s*line|trendlines?|trend\\s*live|trend\\s*channel|price\\s*channel|neckline',
     '\\bfib\\b|fibonacci|retracement',
-    'support|resistance|\\bzone\\b|\\blevels?\\b|pivot',
     'khinch|khich|laga\\s*do|lagao|bana\\s*do|dikha(?:\\s*do)?|dikhado',
+    // S/R only with a mark/draw verb — "support kya hai" is a lesson, not a mark ask
+    '(?:support|resistance|s\\/r|\\bzone\\b|\\blevels?\\b|pivot).{0,24}(?:mark|draw|khinch|laga|dikha)',
+    '(?:mark|draw|khinch|laga|dikha).{0,24}(?:support|resistance|s\\/r|\\bzone\\b|\\blevels?\\b|pivot)',
   ].join('|'),
   'i',
 );
 
 export function isChartMarkupRequest(text: string): boolean {
-  return MARKUP_INTENT.test(String(text || ''));
+  const t = String(text || '');
+  // Pure concept lessons stay text-only.
+  if (
+    /\b(kya\s+(hai|hota|hoti)|what\s+is|what\s+are|explain|samjha|samjhao|meaning|definition)\b/i.test(
+      t,
+    ) &&
+    !/\b(mark|draw|khinch|laga|dikha|annotate|plot)\b/i.test(t)
+  ) {
+    return false;
+  }
+  return MARKUP_INTENT.test(t);
 }
 
 /**

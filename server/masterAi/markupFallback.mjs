@@ -81,6 +81,45 @@ function stripWolfchart(reply) {
     .trim();
 }
 
+/** Append a wolfchart block without ever re-attaching a stripped older fence. */
+function withWolfchart(prose, block, stub = 'Chart par marking kar di hai.') {
+  const cleaned = stripWolfchart(prose);
+  return `${cleaned || stub}${block}`;
+}
+
+function replyHasObZones(reply) {
+  const text = String(reply || '');
+  const fenced = text.match(/```\s*wolfchart\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/(\{[^{}]*"(?:levels|shapes)"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*$/i)?.[1];
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw.trim());
+    const shapes = Array.isArray(parsed?.shapes) ? parsed.shapes : [];
+    return shapes.some((s) => {
+      const type = String(s?.type || '').toLowerCase();
+      const label = String(s?.label || '');
+      return type === 'zone' && /^(demand|supply|bull|bear)\s*ob\b/i.test(label);
+    });
+  } catch {
+    return false;
+  }
+}
+
+function replyHasLiqRays(reply) {
+  const text = String(reply || '');
+  const fenced = text.match(/```\s*wolfchart\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/(\{[^{}]*"(?:levels|shapes)"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*$/i)?.[1];
+  if (!raw) return false;
+  try {
+    const shapes = Array.isArray(JSON.parse(raw.trim())?.shapes) ? JSON.parse(raw.trim()).shapes : [];
+    return shapes.some((s) =>
+      /^(BSL|SSL|PDH|PDL|PWH|PWL|PMH|PML)\b/i.test(String(s?.label || '')),
+    );
+  } catch {
+    return false;
+  }
+}
+
 function fence(payload) {
   return `\n\n\`\`\`wolfchart\n${JSON.stringify(payload)}\n\`\`\``;
 }
@@ -553,28 +592,21 @@ export function ensureWolfchartReply(reply, meta) {
 
   if (meta?.style === 'trend') {
     const cleaned = stripWolfchart(text);
-    // Prefer engine/quote rays. Pass prose so we can recover prices the model named.
     const block = synthesizeTrendWolfchart({ ...meta, prose: cleaned });
-    // Always strip any SUPPORT/RESISTANCE / OB dump — never leave the previous tool up.
     if (!block) {
       console.warn('[Wolf AI] trend ask but no channel pair — stripped non-trend markup');
-      // Keep ONLY if the model already drew diagonal trend rays (not OB zones).
       if (replyHasTrendRays(text)) return text;
-      return (
-        cleaned ||
-        text ||
-        'Trend channel tape unavailable — clean levels nahi mile, marking skip.'
-      );
+      return cleaned || 'Trend channel tape unavailable — clean levels nahi mile, marking skip.';
     }
     console.info('[Wolf AI] enforced both-side trend channel rays');
-    return `${cleaned || text}${block}`;
+    return withWolfchart(text, block);
   }
 
   if (meta?.style === 'sr') {
     const block = synthesizeSrWolfchart(meta);
     if (!block) return text;
     console.info('[Wolf AI] enforced LTP-sided SUPPORT/RESISTANCE hlines');
-    return `${stripWolfchart(text) || text}${block}`;
+    return withWolfchart(text, block);
   }
 
   if (meta?.style === 'ob') {
@@ -582,15 +614,11 @@ export function ensureWolfchartReply(reply, meta) {
     const cleaned = stripWolfchart(text);
     if (!block) {
       console.warn('[Wolf AI] OB ask but engine found no active Demand/Supply OB');
-      if (wolfchartHasDrawings(text)) return text;
-      return (
-        cleaned ||
-        text ||
-        'Order block tape unavailable — active Demand/Supply OB nahi mila.'
-      );
+      if (replyHasObZones(text)) return text;
+      return cleaned || 'Order block tape unavailable — active Demand/Supply OB nahi mila.';
     }
     console.info('[Wolf AI] enforced Demand OB / Supply OB (never FVG gap)');
-    return `${cleaned || text}${block}`;
+    return withWolfchart(text, block);
   }
 
   // Model often invents "Supply FVG" / marks the gap instead of the OB candle —
@@ -604,7 +632,7 @@ export function ensureWolfchartReply(reply, meta) {
     const block = synthesizeObWolfchart(meta);
     if (block) {
       console.info('[Wolf AI] replaced FVG-as-supply dump with Demand/Supply OB tape');
-      return `${stripWolfchart(text)}${block}`;
+      return withWolfchart(text, block);
     }
   }
 
@@ -613,15 +641,11 @@ export function ensureWolfchartReply(reply, meta) {
     const cleaned = stripWolfchart(text);
     if (!block) {
       console.warn('[Wolf AI] liquidity ask but no BSL/SSL pools found');
-      if (wolfchartHasDrawings(text)) return text;
-      return (
-        cleaned ||
-        text ||
-        'Liquidity tape unavailable — BSL/SSL pools nahi mile.'
-      );
+      if (replyHasLiqRays(text)) return text;
+      return cleaned || 'Liquidity tape unavailable — BSL/SSL pools nahi mile.';
     }
     console.info('[Wolf AI] enforced Pine shortcut liquidity hrays');
-    return `${cleaned || text}${block}`;
+    return withWolfchart(text, block);
   }
 
   // Model often invents "Resistance Liquidity (BSL)" — rewrite to Pine shortcuts,
@@ -631,7 +655,7 @@ export function ensureWolfchartReply(reply, meta) {
       const block = synthesizeLiqWolfchart(meta);
       if (block) {
         console.info('[Wolf AI] replaced verbose liquidity labels with Pine engine tape');
-        return `${stripWolfchart(text)}${block}`;
+        return withWolfchart(text, block);
       }
     }
     return rewriteLiquidityLabelsInReply(text);
@@ -648,7 +672,7 @@ export function ensureWolfchartReply(reply, meta) {
       return cleaned || text;
     }
     console.info('[Wolf AI] enforced first-reply mark (auto/force)');
-    return `${cleaned}${block}`;
+    return withWolfchart(text, block);
   }
 
   if (replyHasWolfchart(text)) return text;

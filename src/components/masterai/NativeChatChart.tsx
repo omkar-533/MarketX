@@ -748,6 +748,41 @@ export default function NativeChatChart({
       );
   }, [levels, view, chartEpoch]);
 
+  // Keep AI drawings inside the visible price scale — otherwise priceToCoordinate
+  // returns null and trend/OB/liq marks silently vanish off-canvas.
+  useEffect(() => {
+    const series = priceSeriesRef.current;
+    if (!series) return;
+    const prices: number[] = [];
+    for (const s of shapes ?? []) {
+      if (typeof s.p1 === 'number' && s.p1 > 0) prices.push(s.p1);
+      if (typeof s.p2 === 'number' && s.p2 > 0) prices.push(s.p2);
+    }
+    for (const l of levels ?? []) {
+      if (typeof l.price === 'number' && l.price > 0) prices.push(l.price);
+    }
+    if (!prices.length) {
+      series.applyOptions({ autoscaleInfoProvider: undefined });
+      return;
+    }
+    const lo = Math.min(...prices);
+    const hi = Math.max(...prices);
+    series.applyOptions({
+      autoscaleInfoProvider: (original) => {
+        const base = original();
+        if (!base?.priceRange) {
+          return { priceRange: { minValue: lo * 0.998, maxValue: hi * 1.002 } };
+        }
+        return {
+          priceRange: {
+            minValue: Math.min(base.priceRange.minValue, lo),
+            maxValue: Math.max(base.priceRange.maxValue, hi),
+          },
+        };
+      },
+    });
+  }, [shapes, levels, chartEpoch]);
+
   const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
   const aiShapes = useMemo(
     () => (shapes?.length ? shapesNearPrice(shapes, lastClose) : []),
