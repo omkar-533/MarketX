@@ -1605,7 +1605,8 @@ NOT zones. NOT full-width lines. NOT nearest mid pivots.
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
 const OB_MARK_HINT = `ORDER BLOCK MARK (mandatory — Pine FVG + high-volume logic):
-STRICT: Copy ORDER BLOCK TAPE zones exactly.
+STRICT: Copy ORDER BLOCK TAPE zones exactly — usually ONE Bull OB + ONE Bear OB (nearest LTP).
+Never draw two same-side OBs on the same/overlapping band. If tape has only one side, draw only that.
 Rules: bullFVG = low > high[2] · bearFVG = high < low[2] · volume[2] > SMA(volume,20)×1.5.
 OB = full candle[2] (high→low). Bull cleanup when low <= top; bear when high >= bottom.
 Visual: zone extend.right · bull border/fill #00ff9d · bear #ff4d4d (labels Bull OB / Bear OB).
@@ -2363,10 +2364,13 @@ export function createMasterAiRouter(apiKey) {
             const obCtx = await buildOrderBlockContext(message || userTextBase, {
               symbol: structureMeta.symbol || undefined,
               interval: structureMeta.interval || undefined,
+              ltp: structureMeta.lastClose || primaryQuote?.price || 0,
+              markMode: Boolean(wantsObMark),
               mtf: /\b(mtf|multi\s*time|higher\s*time|weekly|monthly|4h|daily)\b/i.test(userAsk),
             });
             obBlock = obCtx.block || '';
             structureMeta.orderBlocks = obCtx.orderBlocks || [];
+            if (obCtx.lastClose && !structureMeta.lastClose) structureMeta.lastClose = obCtx.lastClose;
             if (!structureMeta.symbol && obCtx.symbol) structureMeta.symbol = obCtx.symbol;
             if (!structureMeta.interval && obCtx.interval) structureMeta.interval = obCtx.interval;
             if (obBlock) {

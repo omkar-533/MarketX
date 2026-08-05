@@ -163,19 +163,17 @@ export function detectOrderBlocks(bars, opts = {}) {
     }
   }
 
-  // Deduplicate near-identical boxes (keep newest)
-  const deduped = [];
-  for (let i = active.length - 1; i >= 0; i -= 1) {
-    const ob = active[i];
-    const twin = deduped.find(
-      (d) =>
-        d.side === ob.side &&
-        Math.abs(d.high - ob.high) / Math.max(ob.high, 1) < 0.0003 &&
-        Math.abs(d.low - ob.low) / Math.max(ob.low, 1) < 0.0003,
-    );
-    if (!twin) deduped.push(ob);
-  }
-  deduped.reverse();
+  // Overlap merge — near-identical / nested same-side boxes collapse (keep newest).
+  const deduped = mergeOverlappingOrderBlocks(
+    active.map((ob) => ({
+      side: ob.side,
+      high: ob.high,
+      low: ob.low,
+      birth: ob.birth,
+      formIndex: ob.formIndex,
+      barsAgo: barsAgoOf(bars, ob.birth),
+    })),
+  );
 
   return deduped.slice(-maxBlocks).map((ob) => {
     const bull = ob.side === 'bull';
@@ -214,49 +212,131 @@ export function detectOrderBlocks(bars, opts = {}) {
   });
 }
 
+/** True when two boxes share most of their price range (same visual band). */
+export function zonesOverlap(a, b, minRatio = 0.45) {
+  const aHi = Math.max(Number(a.high ?? a.p1), Number(a.low ?? a.p2));
+  const aLo = Math.min(Number(a.high ?? a.p1), Number(a.low ?? a.p2));
+  const bHi = Math.max(Number(b.high ?? b.p1), Number(b.low ?? b.p2));
+  const bLo = Math.min(Number(b.high ?? b.p1), Number(b.low ?? b.p2));
+  if (![aHi, aLo, bHi, bLo].every((n) => Number.isFinite(n))) return false;
+  const overlap = Math.max(0, Math.min(aHi, bHi) - Math.max(aLo, bLo));
+  if (overlap <= 0) return false;
+  const smaller = Math.min(aHi - aLo, bHi - bLo) || 1;
+  return overlap / smaller >= minRatio;
+}
+
+/** Collapse overlapping same-side boxes — keep the newest (smallest barsAgo). */
+export function mergeOverlappingOrderBlocks(blocks) {
+  const list = [...(blocks || [])].sort(
+    (a, b) => (Number(a.barsAgo) || 0) - (Number(b.barsAgo) || 0),
+  );
+  const out = [];
+  for (const ob of list) {
+    const twinIdx = out.findIndex(
+      (d) =>
+        (d.side || d.tone) === (ob.side || ob.tone) &&
+        zonesOverlap(d, ob, 0.4),
+    );
+    if (twinIdx < 0) {
+      out.push(ob);
+      continue;
+    }
+    // Prefer fresher (smaller barsAgo); tighter box only as tie-breaker
+    const prev = out[twinIdx];
+    const a = Number(ob.barsAgo) || 0;
+    const b = Number(prev.barsAgo) || 0;
+    const tighter =
+      Math.abs(Number(ob.high) - Number(ob.low)) < Math.abs(Number(prev.high) - Number(prev.low));
+    if (a < b || (a === b && tighter)) out[twinIdx] = ob;
+  }
+  return out;
+}
+
+/**
+ * For chart marks: at most one Bull OB + one Bear OB nearest LTP.
+ * Never dumps a stack of same-side twins on one ask.
+ */
+export function selectDisplayOrderBlocks(orderBlocks, opts = {}) {
+  const ltp = Number(opts.ltp) || 0;
+  const maxPerSide = Math.max(1, Number(opts.maxPerSide) || 1);
+  const maxTotal = Math.max(1, Number(opts.maxTotal) || maxPerSide * 2);
+  const active = mergeOverlappingOrderBlocks(
+    (orderBlocks || []).filter((o) => o && o.status !== 'mitigated'),
+  );
+
+  const score = (o) => {
+    const mid = (Number(o.high) + Number(o.low)) / 2;
+    const dist = ltp > 0 ? Math.abs(mid - ltp) / ltp : Number(o.barsAgo) || 0;
+    // Prefer closer to LTP, then fresher
+    return dist * 1000 + (Number(o.barsAgo) || 0) * 0.01;
+  };
+
+  const bulls = active
+    .filter((o) => o.side === 'bull' || o.tone === 'bull')
+    .sort((a, b) => score(a) - score(b))
+    .slice(0, maxPerSide);
+  const bears = active
+    .filter((o) => o.side === 'bear' || o.tone === 'bear')
+    .sort((a, b) => score(a) - score(b))
+    .slice(0, maxPerSide);
+
+  const picked = [...bulls, ...bears].sort((a, b) => score(a) - score(b)).slice(0, maxTotal);
+  // Keep visual order: bull below / bear above when possible
+  return picked.sort((a, b) => Number(b.high) - Number(a.high));
+}
+
 export function detectOrderBlocksMultiTf(barsByTf, opts = {}) {
   const all = [];
   for (const [tf, bars] of Object.entries(barsByTf || {})) {
     if (!Array.isArray(bars) || bars.length < 10) continue;
-    for (const ob of detectOrderBlocks(bars, { ...opts, timeframe: tf })) {
+    for (const ob of detectOrderBlocks(bars, { ...opts, timeframe: tf, maxBlocks: 8 })) {
       all.push(ob);
     }
   }
-  return all
+  const merged = mergeOverlappingOrderBlocks(all);
+  return merged
     .sort((a, b) => a.barsAgo - b.barsAgo)
     .slice(0, opts.maxBlocks ?? 12);
 }
 
 export function orderBlocksToShapes(orderBlocks, opts = {}) {
-  const max = opts.max ?? 10;
-  return (orderBlocks || [])
-    .filter((o) => o && o.status === 'active')
-    .slice(0, max)
-    .map((o) => ({
-      type: 'zone',
-      p1: o.high,
-      p2: o.low,
-      x1: o.x1 ?? -o.barsAgo,
-      tone: o.tone,
-      label: o.label,
-      color: o.borderColor,
-      borderColor: o.borderColor,
-      fillColor: o.fillColor,
-    }));
+  const max = opts.max ?? 4;
+  const selected = opts.balanced
+    ? selectDisplayOrderBlocks(orderBlocks, {
+        ltp: opts.ltp,
+        maxPerSide: opts.maxPerSide ?? 1,
+        maxTotal: max,
+      })
+    : (orderBlocks || []).filter((o) => o && o.status === 'active').slice(0, max);
+  return selected.map((o) => ({
+    type: 'zone',
+    p1: o.high,
+    p2: o.low,
+    x1: o.x1 ?? -o.barsAgo,
+    tone: o.tone,
+    label: o.label,
+    color: o.borderColor,
+    borderColor: o.borderColor,
+    fillColor: o.fillColor,
+  }));
 }
 
-export function formatObTape(orderBlocks, symbol = '', interval = '') {
+export function formatObTape(orderBlocks, symbol = '', interval = '', opts = {}) {
   const rows = orderBlocks || [];
   if (!rows.length) {
     return `ORDER BLOCK TAPE (${symbol} ${interval}): none — no high-vol FVG Order Blocks (Pine: FVG + vol>SMA20×1.5, unmitigated).`;
   }
+  const bullN = rows.filter((o) => o.side === 'bull' || o.tone === 'bull').length;
+  const bearN = rows.filter((o) => o.side === 'bear' || o.tone === 'bear').length;
   const lines = [
-    `ORDER BLOCK TAPE (${symbol} ${interval}) — Pine FVG OB: bullFVG=low>high[2] · bearFVG=high<low[2] · vol[2]>SMA20×1.5 · OB=candle[2] full range · mitigate bull low<=top / bear high>=bottom:`,
-    ...rows.slice(0, 12).map(
+    `ORDER BLOCK TAPE (${symbol} ${interval}) — display set (bull=${bullN}, bear=${bearN}). Pine FVG OB: bullFVG=low>high[2] · bearFVG=high<low[2] · vol[2]>SMA20×1.5 · OB=candle[2] full range:`,
+    ...rows.slice(0, 6).map(
       (o) =>
         `- ${o.label} ${o.low.toFixed(2)}-${o.high.toFixed(2)} barsAgo=${o.barsAgo} → {"type":"zone","p1":${o.high},"p2":${o.low},"x1":${o.x1},"tone":"${o.tone}","label":"${o.label}","borderColor":"${o.borderColor}","fillColor":"${o.fillColor}"}`,
     ),
-    'Draw ALL tape zones (extend right). Exact Pine colors. No Entry/Stop/Target.',
+    opts.markMode
+      ? 'Draw ONLY these tape zones (max 1 Bull OB + 1 Bear OB). Never stack two same-side OBs on the same band. Exact Pine colors. No Entry/Stop/Target.'
+      : 'Draw ONLY the listed tape zones (already de-duplicated). Exact Pine colors. No Entry/Stop/Target.',
   ];
   return lines.join('\n');
 }
@@ -293,32 +373,44 @@ export async function buildOrderBlockContext(message, opts = {}) {
           }
         }),
       );
-      const orderBlocks = detectOrderBlocksMultiTf(Object.fromEntries(packs), {
+      const raw = detectOrderBlocksMultiTf(Object.fromEntries(packs), {
         maxBlocks: opts.maxBlocks ?? 12,
       });
+      const mtfBars = packs.find(([, b]) => Array.isArray(b) && b.length)?.[1] || [];
+      const ltp =
+        Number(opts.ltp) || Number(mtfBars[mtfBars.length - 1]?.close) || 0;
+      const orderBlocks = opts.markMode
+        ? selectDisplayOrderBlocks(raw, { ltp, maxPerSide: 1, maxTotal: 2 })
+        : selectDisplayOrderBlocks(raw, { ltp, maxPerSide: 2, maxTotal: 4 });
       return {
-        block: formatObTape(orderBlocks, symbol, 'MTF'),
+        block: formatObTape(orderBlocks, symbol, 'MTF', { markMode: Boolean(opts.markMode) }),
         orderBlocks,
         symbol,
         interval,
         htfBias: 'neutral',
+        lastClose: ltp,
       };
     }
 
     const data = await fetchOhlc(symbol, interval);
     const bars = Array.isArray(data?.bars) ? data.bars.slice(-300) : [];
-    const orderBlocks = detectOrderBlocks(bars, {
+    const raw = detectOrderBlocks(bars, {
       timeframe: interval,
       maxBlocks: opts.maxBlocks ?? 12,
       volLen: DEFAULT_VOL_LEN,
       volMult: DEFAULT_VOL_MULT,
     });
+    const ltp = Number(opts.ltp) || Number(bars[bars.length - 1]?.close) || 0;
+    const orderBlocks = opts.markMode
+      ? selectDisplayOrderBlocks(raw, { ltp, maxPerSide: 1, maxTotal: 2 })
+      : selectDisplayOrderBlocks(raw, { ltp, maxPerSide: 2, maxTotal: 4 });
     return {
-      block: formatObTape(orderBlocks, symbol, interval),
+      block: formatObTape(orderBlocks, symbol, interval, { markMode: Boolean(opts.markMode) }),
       orderBlocks,
       symbol,
       interval,
       htfBias: 'neutral',
+      lastClose: ltp,
     };
   } catch (err) {
     console.warn('[Wolf AI] order block context failed:', err?.message || err);

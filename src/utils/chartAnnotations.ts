@@ -311,7 +311,29 @@ export function sanitizeShapes(raw: unknown): ChartShape[] {
     ? raw
     : ((raw as Record<string, unknown> | null)?.shapes as unknown[]) ?? [];
   if (!Array.isArray(rows)) return [];
-  return rows.map(toShape).filter((s): s is ChartShape => s !== null).slice(0, MAX_SHAPES);
+  const shapes = rows.map(toShape).filter((s): s is ChartShape => s !== null);
+
+  // Collapse near-duplicate zones (same tone + overlapping price band)
+  const out: ChartShape[] = [];
+  for (const s of shapes) {
+    if (s.type !== 'zone' || s.p1 == null || s.p2 == null) {
+      out.push(s);
+      continue;
+    }
+    const hi = Math.max(s.p1, s.p2);
+    const lo = Math.min(s.p1, s.p2);
+    const twin = out.find((u) => {
+      if (u.type !== 'zone' || u.p1 == null || u.p2 == null) return false;
+      if ((u.tone || '') !== (s.tone || '')) return false;
+      const uHi = Math.max(u.p1, u.p2);
+      const uLo = Math.min(u.p1, u.p2);
+      const overlap = Math.max(0, Math.min(hi, uHi) - Math.max(lo, uLo));
+      const smaller = Math.min(hi - lo, uHi - uLo) || 1;
+      return overlap / smaller >= 0.4;
+    });
+    if (!twin) out.push(s);
+  }
+  return out.slice(0, MAX_SHAPES);
 }
 
 export interface ParsedReply {

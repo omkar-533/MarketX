@@ -7,6 +7,7 @@
  */
 
 import { looksLikeLiquidityLabel, normalizePineLiqLabel } from './liquidityEngine.mjs';
+import { selectDisplayOrderBlocks } from './orderBlockEngine.mjs';
 
 export function replyHasWolfchart(reply) {
   const text = String(reply || '');
@@ -354,9 +355,14 @@ export function synthesizeObWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
   const blocks = Array.isArray(meta.orderBlocks) ? meta.orderBlocks : [];
-  const shapes = blocks
-    .filter((o) => o && o.status === 'active')
-    .slice(0, 12)
+  // Balanced mark: 1 Bull + 1 Bear nearest LTP — never a same-side twin stack.
+  const selected = selectDisplayOrderBlocks(blocks, {
+    ltp: Number(meta.lastClose) || 0,
+    maxPerSide: 1,
+    maxTotal: 2,
+  });
+
+  const shapes = selected
     .map((o) => {
       const high = roundPrice(o.high ?? o.p1);
       const low = roundPrice(o.low ?? o.p2);
@@ -375,8 +381,20 @@ export function synthesizeObWolfchart(meta = {}) {
       };
     })
     .filter(Boolean);
-  if (!shapes.length) return null;
-  return fence({ symbol, tf, levels: [], shapes });
+
+  // Drop accidental same-tone near-duplicates after rounding
+  const unique = [];
+  for (const s of shapes) {
+    const twin = unique.find(
+      (u) =>
+        u.tone === s.tone &&
+        Math.abs(u.p1 - s.p1) / Math.max(Math.abs(s.p1), 1) < 0.0015 &&
+        Math.abs(u.p2 - s.p2) / Math.max(Math.abs(s.p2), 1) < 0.0015,
+    );
+    if (!twin) unique.push(s);
+  }
+  if (!unique.length) return null;
+  return fence({ symbol, tf, levels: [], shapes: unique.slice(0, 2) });
 }
 
 /**
