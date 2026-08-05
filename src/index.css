@@ -8018,11 +8018,93 @@ input[type="number"] { -moz-appearance: textfield; }
   .wm-desk__body--arena-live {
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
   }
+
+  .wm-desk__body--tape-game {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .wm-desk__body--arena-live .wm-desk__chart {
   border-radius: 1rem;
   box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.22), 0 18px 48px rgba(2, 6, 23, 0.28);
+}
+
+.wm-desk__body--tape-game {
+  min-height: min(72vh, 640px);
+}
+
+.wm-desk__side--tape {
+  min-height: min(68vh, 600px);
+}
+
+.wm-quest--game {
+  height: 100%;
+  min-height: min(68vh, 600px);
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.wm-quest__stage {
+  flex: 1;
+  min-height: min(62vh, 560px);
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: #020617;
+}
+
+.wm-tape {
+  width: 100%;
+  height: 100%;
+  min-height: min(62vh, 560px);
+  touch-action: manipulation;
+}
+
+.wm-tape__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.wm-quest__countdown {
+  min-height: min(62vh, 560px);
+}
+
+.wm-quest__howto-run {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.wm-quest__howto-run > div {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--tf-border);
+  text-align: center;
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.wm-quest__howto-run b {
+  font-size: 0.68rem;
+  color: #34d399;
+}
+
+.wm-quest__howto-run span {
+  font-size: 0.58rem;
+  color: var(--tf-muted, #94a3b8);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .wm-quest__howto-run {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .wm-desk__side--arena {

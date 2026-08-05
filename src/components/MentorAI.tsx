@@ -749,30 +749,34 @@ export default function MentorAI() {
           onComplete={onOnboarded}
         />
       ) : deskView === 'arena' ? (
-        <div className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live' : ''}`}>
-          <section className="wm-desk__chart" aria-label="Arena chart">
-            <ChatChartPanel
-              symbol={symbol}
-              interval={interval}
-              study={study}
-              onSymbolChange={(s) => {
-                setSymbol(s);
-                setChartLevels([]);
-                setChartShapes([]);
-              }}
-              onIntervalChange={(tf) => {
-                setInterval(tf);
-                setChartLevels([]);
-                setChartShapes([]);
-              }}
-              onStudyChange={setStudy}
-              onClose={() => undefined}
-              hideClose
-              levels={chartLevels}
-              shapes={chartShapes}
-            />
-          </section>
-          <aside className="wm-desk__side wm-desk__side--arena">
+        <div
+          className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live wm-desk__body--tape-game' : ''}`}
+        >
+          {!arenaPlaying ? (
+            <section className="wm-desk__chart" aria-label="Arena chart">
+              <ChatChartPanel
+                symbol={symbol}
+                interval={interval}
+                study={study}
+                onSymbolChange={(s) => {
+                  setSymbol(s);
+                  setChartLevels([]);
+                  setChartShapes([]);
+                }}
+                onIntervalChange={(tf) => {
+                  setInterval(tf);
+                  setChartLevels([]);
+                  setChartShapes([]);
+                }}
+                onStudyChange={setStudy}
+                onClose={() => undefined}
+                hideClose
+                levels={chartLevels}
+                shapes={chartShapes}
+              />
+            </section>
+          ) : null}
+          <aside className={`wm-desk__side wm-desk__side--arena ${arenaPlaying ? 'wm-desk__side--tape' : ''}`}>
             <MentorArena
               ownerKey={ownerKey}
               detective={detective}

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Coins,
-  Flame,
   Gift,
   Heart,
   Lock,
@@ -20,7 +19,6 @@ import {
 import {
   playArenaSfx,
   recordArenaRound,
-  scoreArenaHit,
   touchArenaStreak,
   loadArenaStats,
 } from '../../services/mentorArena';
@@ -45,32 +43,15 @@ import {
   type QuestLevel,
   type QuestProgress,
 } from '../../services/mentorArenaCampaign';
-import {
-  arenaTopicLabel,
-  buildArenaDrill,
-  buildArenaDrillForLevel,
-} from '../../services/mentorArenaBank';
-import {
-  buildDrillChartMarks,
-  historicalStructureDrill,
-  isDrillAnswerCorrect,
-  liveProcessDrill,
-  saveDrillResult,
-  type DetectiveCard,
-  type MentorDrill,
-} from '../../services/mentorDrills';
+import WolfTapeGame, {
+  tapeConfigFromLevel,
+  type TapeGameConfig,
+  type TapeGameResult,
+} from './WolfTapeGame';
+import type { DetectiveCard } from '../../services/mentorDrills';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 
 type Phase = 'hub' | 'loadout' | 'brief' | 'countdown' | 'fight' | 'chest' | 'fail';
-
-type Feedback = {
-  correct: boolean;
-  points: number;
-  combo: number;
-  speedBonus: number;
-  label: string;
-  lesson?: string;
-} | null;
 
 type ArmedPowerUps = {
   heart: boolean;
@@ -120,29 +101,11 @@ export default function MentorArena({
   const [armed, setArmed] = useState<ArmedPowerUps>({ heart: false, clock: false, shield: false });
   const [loot, setLoot] = useState<ChestLoot | null>(null);
   const [unlockedNext, setUnlockedNext] = useState<number | null>(null);
-
-  const [drill, setDrill] = useState<MentorDrill | null>(null);
-  const [qIndex, setQIndex] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [livesMax, setLivesMax] = useState(3);
-  const [score, setScore] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [askedCount, setAskedCount] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [comboMax, setComboMax] = useState(0);
-  const [xpRound, setXpRound] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(18);
-  const [qSeconds, setQSeconds] = useState(18);
-  const [targetQuestions, setTargetQuestions] = useState(5);
+  const [gameConfig, setGameConfig] = useState<TapeGameConfig | null>(null);
   const [countdown, setCountdown] = useState(3);
-  const [feedback, setFeedback] = useState<Feedback>(null);
-  const [locked, setLocked] = useState(false);
-  const [shake, setShake] = useState(false);
-  const [pickedId, setPickedId] = useState<string | null>(null);
-  const [shieldLeft, setShieldLeft] = useState(0);
   const [chestOpen, setChestOpen] = useState(false);
-  const scoreRef = useRef(0);
-  const shieldRef = useRef(0);
+  const [lastRun, setLastRun] = useState<TapeGameResult | null>(null);
+  const [livesMax, setLivesMax] = useState(3);
 
   useEffect(() => {
     setQuest(loadQuestProgress(ownerKey));
@@ -152,30 +115,16 @@ export default function MentorArena({
     onPlayingChange?.(phase === 'countdown' || phase === 'fight');
   }, [phase, onPlayingChange]);
 
+  useEffect(() => {
+    if (phase === 'hub' || phase === 'loadout') onChartMarks([], []);
+  }, [phase, onChartMarks]);
+
   const equipped = titleName(quest.equippedTitle);
   const firstName = studentName.split(' ')[0] || 'Trader';
-
-  const nextDrill = useCallback(() => {
-    if (!detective) return null;
-    if (survivalMode || !activeLevel) {
-      return buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill);
-    }
-    return buildArenaDrillForLevel(detective, activeLevel.topics, {
-      topicWeights: activeLevel.topicWeights,
-      allowLiveTape: activeLevel.allowLiveTape,
-      liveDrill: liveProcessDrill,
-      histDrill: historicalStructureDrill,
-    });
-  }, [detective, survivalMode, activeLevel]);
-
-  useEffect(() => {
-    if (phase === 'fight' && drill && detective) {
-      const marks = buildDrillChartMarks(detective, drill);
-      onChartMarks(marks.levels, marks.shapes);
-      return;
-    }
-    if (phase === 'hub' || phase === 'loadout') onChartMarks([], []);
-  }, [phase, drill, detective, onChartMarks]);
+  const arenaStats = useMemo(
+    () => loadArenaStats(ownerKey),
+    [ownerKey, quest.totalStars, quest.coins],
+  );
 
   const refreshQuest = () => setQuest(loadQuestProgress(ownerKey));
 
@@ -193,126 +142,95 @@ export default function MentorArena({
   };
 
   const startMission = () => {
-    if (!detective) return;
     const level = activeLevel;
     const isSurvival = survivalMode || !level;
-
     let baseLives = isSurvival ? 3 : level!.lives;
-    let baseSec = isSurvival ? 16 : level!.qSeconds;
-    let questions = isSurvival ? 12 : level!.questions;
-
-    if (armed.heart && consumePowerUp('heart', ownerKey)) {
-      baseLives += 1;
-    } else if (armed.heart) {
-      setArmed((a) => ({ ...a, heart: false }));
-    }
-    if (armed.clock && consumePowerUp('clock', ownerKey)) {
-      baseSec += 5;
-    } else if (armed.clock) {
-      setArmed((a) => ({ ...a, clock: false }));
-    }
-    let shield = 0;
-    if (armed.shield && consumePowerUp('shield', ownerKey)) {
-      shield = 1;
-    } else if (armed.shield) {
-      setArmed((a) => ({ ...a, shield: false }));
-    }
+    if (armed.heart && consumePowerUp('heart', ownerKey)) baseLives += 1;
+    else if (armed.heart) setArmed((a) => ({ ...a, heart: false }));
+    // clock → longer track / slightly slower for learning
+    let trackBoost = 0;
+    if (armed.clock && consumePowerUp('clock', ownerKey)) trackBoost = 400;
+    else if (armed.clock) setArmed((a) => ({ ...a, clock: false }));
+    if (armed.shield && consumePowerUp('shield', ownerKey)) baseLives += 1;
+    else if (armed.shield) setArmed((a) => ({ ...a, shield: false }));
 
     refreshQuest();
     touchArenaStreak(ownerKey);
 
-    const first = isSurvival
-      ? buildArenaDrill(detective, liveProcessDrill, historicalStructureDrill)
-      : buildArenaDrillForLevel(detective, level!.topics, {
-          topicWeights: level!.topicWeights,
-          allowLiveTape: level!.allowLiveTape,
-          liveDrill: liveProcessDrill,
-          histDrill: historicalStructureDrill,
-        });
-    if (!first) return;
-
-    setDrill(first);
-    setQIndex(0);
-    setLives(baseLives);
+    const cfg = tapeConfigFromLevel(
+      isSurvival
+        ? {
+            id: 99,
+            title: 'Survival Raid',
+            mode: 'rush',
+            lives: baseLives,
+            topics: ['candle', 'candle_psych', 'psych', 'liquidity', 'structure'],
+          }
+        : {
+            id: level!.id,
+            title: level!.title,
+            mode: level!.mode,
+            lives: baseLives,
+            topics: level!.topics,
+          },
+    );
+    cfg.trackLength += trackBoost;
     setLivesMax(baseLives);
-    setQSeconds(baseSec);
-    setSecondsLeft(baseSec);
-    setTargetQuestions(questions);
-    setScore(0);
-    scoreRef.current = 0;
-    setCorrectCount(0);
-    setAskedCount(0);
-    setCombo(0);
-    setComboMax(0);
-    setXpRound(0);
-    setFeedback(null);
-    setLocked(false);
-    setPickedId(null);
-    setShake(false);
-    setShieldLeft(shield);
-    shieldRef.current = shield;
+    setGameConfig(cfg);
     setLoot(null);
     setUnlockedNext(null);
     setChestOpen(false);
+    setLastRun(null);
     setCountdown(3);
     setPhase('countdown');
   };
 
-  const finishFail = useCallback(
-    (correct: number, total: number, maxCombo: number, xp: number, finalScore: number) => {
-      playArenaSfx('over');
-      recordArenaRound(
-        {
-          correct,
-          total,
-          comboMax: maxCombo,
-          xpEarned: xp,
-          score: finalScore,
-          wave: 1,
-          timedOut: true,
-          survived: false,
-        },
-        ownerKey,
+  const onGameFinish = useCallback(
+    (result: TapeGameResult) => {
+      setLastRun(result);
+      const gateAcc = result.gatesTotal > 0 ? result.gatesCorrect / result.gatesTotal : 1;
+      const pseudoCorrect = Math.round(
+        (result.cleared ? 0.7 : 0.3) * 10 + gateAcc * 5 + (result.coins > 8 ? 2 : 0),
       );
-      setPhase('fail');
-      setDrill(null);
-      onRoundTeach(
-        [
-          `[QUEST FAIL] ${activeLevel?.title || 'Survival'}. ${correct}/${total} correct.`,
-          'Encourage retry. 2 tip lines. No Entry/Stop/Target.',
-        ].join(' '),
-      );
-    },
-    [ownerKey, onRoundTeach, activeLevel],
-  );
+      const pseudoTotal = 10;
 
-  const finishClear = useCallback(
-    (correct: number, total: number, maxCombo: number, xp: number, finalScore: number, livesLeft: number) => {
-      playArenaSfx('wave');
       recordArenaRound(
         {
-          correct,
-          total,
-          comboMax: maxCombo,
-          xpEarned: xp,
-          score: finalScore,
+          correct: result.cleared ? pseudoCorrect : Math.max(1, result.gatesCorrect),
+          total: pseudoTotal,
+          comboMax: result.comboMax,
+          xpEarned: Math.round(result.score / 10),
+          score: result.score,
           wave: activeLevel?.id || 1,
-          timedOut: false,
-          survived: true,
+          timedOut: !result.cleared,
+          survived: result.cleared,
         },
         ownerKey,
       );
+
+      if (!result.cleared) {
+        playArenaSfx('over');
+        setPhase('fail');
+        onRoundTeach(
+          [
+            `[TAPE RUNNER FAIL] ${activeLevel?.title || 'Survival'}. Score ${result.score}.`,
+            'Encourage retry. Tip: jump early on spikes, land on correct GATE pads. No Entry/Stop/Target.',
+          ].join(' '),
+        );
+        return;
+      }
+
+      const stars = computeStars({
+        correct: Math.round(gateAcc * pseudoTotal),
+        total: pseudoTotal,
+        livesLeft: result.livesLeft,
+        livesMax: result.livesMax || livesMax,
+        comboMax: result.comboMax,
+        cleared: true,
+      });
 
       if (survivalMode || !activeLevel) {
-        const coins = Math.round(finalScore / 20);
-        const stars = computeStars({
-          correct,
-          total,
-          livesLeft,
-          livesMax,
-          comboMax: maxCombo,
-          cleared: true,
-        });
+        const coins = Math.max(10, Math.round(result.score / 25) + result.coins);
         setLoot({
           coins,
           powerUpQty: 0,
@@ -331,34 +249,24 @@ export default function MentorArena({
         return;
       }
 
-      const stars = computeStars({
-        correct,
-        total,
-        livesLeft,
-        livesMax,
-        comboMax: maxCombo,
-        cleared: true,
-      });
-      const result = applyLevelClear(activeLevel.id, stars, ownerKey);
-      setQuest(result.progress);
-      setLoot(result.loot);
-      setUnlockedNext(result.unlockedNext);
+      const applied = applyLevelClear(activeLevel.id, Math.max(1, stars), ownerKey);
+      setQuest(applied.progress);
+      setLoot(applied.loot);
+      setUnlockedNext(applied.unlockedNext);
       setPhase('chest');
       setChestOpen(false);
       window.setTimeout(() => {
         setChestOpen(true);
         playArenaSfx('chest');
-        if (result.loot.stars >= 2) playArenaSfx('star');
-        if (result.unlockedNext) {
-          window.setTimeout(() => playArenaSfx('unlock'), 500);
-        }
+        if (applied.loot.stars >= 2) playArenaSfx('star');
+        if (applied.unlockedNext) window.setTimeout(() => playArenaSfx('unlock'), 500);
       }, 450);
 
       onRoundTeach(
         [
-          `[QUEST CLEAR] ${activeLevel.title}. ${stars}★. ${correct}/${total}.`,
-          result.loot.badge ? `Unlocked badge ${result.loot.badge.name}.` : '',
-          'Celebrate + 1 process tip. No Entry/Stop/Target.',
+          `[TAPE RUNNER CLEAR] ${activeLevel.title}. ${stars}★. Score ${result.score}. Gates ${result.gatesCorrect}/${result.gatesTotal}.`,
+          applied.loot.badge ? `Badge: ${applied.loot.badge.name}.` : '',
+          'Hype the run + 1 process tip from the level theme. No Entry/Stop/Target.',
         ]
           .filter(Boolean)
           .join(' '),
@@ -367,178 +275,17 @@ export default function MentorArena({
     [ownerKey, onRoundTeach, activeLevel, survivalMode, livesMax],
   );
 
-  // Countdown
   useEffect(() => {
     if (phase !== 'countdown') return;
     if (countdown <= 0) {
       playArenaSfx('go');
       setPhase('fight');
-      setSecondsLeft(qSeconds);
       return;
     }
     playArenaSfx('hit');
     const t = window.setTimeout(() => setCountdown((c) => c - 1), 700);
     return () => window.clearTimeout(t);
-  }, [phase, countdown, qSeconds]);
-
-  const advanceMission = (
-    nextCorrect: number,
-    nextAsked: number,
-    _nextCombo: number,
-    nextMax: number,
-    nextXp: number,
-    nextScore: number,
-    nextLives: number,
-  ) => {
-    if (nextLives <= 0) {
-      finishFail(nextCorrect, nextAsked, nextMax, nextXp, nextScore);
-      return;
-    }
-    if (nextAsked >= targetQuestions) {
-      finishClear(nextCorrect, nextAsked, nextMax, nextXp, nextScore, nextLives);
-      return;
-    }
-    const d = nextDrill();
-    setDrill(d);
-    setQIndex(nextAsked);
-    setSecondsLeft(qSeconds);
-    setLocked(false);
-    setPickedId(null);
-    setFeedback(null);
-  };
-
-  // Timer
-  useEffect(() => {
-    if (phase !== 'fight' || locked) return;
-    if (secondsLeft <= 0) {
-      setLocked(true);
-      playArenaSfx('miss');
-      setShake(true);
-      let nextLives = lives;
-      let usedShield = false;
-      if (shieldRef.current > 0) {
-        shieldRef.current -= 1;
-        setShieldLeft(shieldRef.current);
-        usedShield = true;
-      } else {
-        nextLives = lives - 1;
-        setLives(nextLives);
-      }
-      setCombo(0);
-      setFeedback({
-        correct: false,
-        points: 0,
-        combo: 0,
-        speedBonus: 0,
-        label: usedShield ? 'SHIELD BLOCKED TIME-UP' : 'TIME UP · -1 life',
-        lesson: drill?.reason,
-      });
-      window.setTimeout(() => {
-        setShake(false);
-        const asked = askedCount + 1;
-        setAskedCount(asked);
-        advanceMission(correctCount, asked, 0, comboMax, xpRound, scoreRef.current, nextLives);
-      }, 900);
-      return;
-    }
-    const t = window.setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, secondsLeft, locked, lives, askedCount, correctCount, comboMax, xpRound, drill]);
-
-  const pickOption = (optionId: string) => {
-    if (!drill || locked || phase !== 'fight') return;
-    setLocked(true);
-    setPickedId(optionId);
-    const ok = isDrillAnswerCorrect(drill, optionId);
-    saveDrillResult(
-      {
-        drillId: drill.id,
-        chosenId: optionId,
-        correct: ok,
-        at: new Date().toISOString(),
-        symbol: drill.symbol,
-      },
-      ownerKey,
-    );
-
-    const scored = scoreArenaHit(combo, ok, secondsLeft, qSeconds);
-    const nextCorrect = correctCount + (ok ? 1 : 0);
-    const nextAsked = askedCount + 1;
-    const nextCombo = scored.nextCombo;
-    const nextMax = Math.max(comboMax, nextCombo);
-    const nextXp = xpRound + scored.xp;
-    const nextScore = score + scored.points;
-
-    let nextLives = lives;
-    let usedShield = false;
-    if (!ok) {
-      if (shieldRef.current > 0) {
-        shieldRef.current -= 1;
-        setShieldLeft(shieldRef.current);
-        usedShield = true;
-      } else {
-        nextLives = lives - 1;
-      }
-    }
-
-    scoreRef.current = nextScore;
-    setCorrectCount(nextCorrect);
-    setAskedCount(nextAsked);
-    setCombo(nextCombo);
-    setComboMax(nextMax);
-    setXpRound(nextXp);
-    setScore(nextScore);
-    setLives(nextLives);
-
-    if (ok) {
-      playArenaSfx(nextCombo >= 2 ? 'combo' : 'hit');
-      setFeedback({
-        correct: true,
-        points: scored.points,
-        combo: nextCombo,
-        speedBonus: scored.speedBonus,
-        label: nextCombo >= 3 ? `ON FIRE x${nextCombo}` : nextCombo >= 2 ? `COMBO x${nextCombo}` : 'NICE HIT',
-      });
-    } else {
-      playArenaSfx('miss');
-      setShake(true);
-      setFeedback({
-        correct: false,
-        points: 0,
-        combo: 0,
-        speedBonus: 0,
-        label: usedShield
-          ? 'SHIELD SAVED YOU'
-          : nextLives <= 0
-            ? 'KO · MISSION FAIL'
-            : 'MISS · -1 LIFE',
-        lesson: drill.reason,
-      });
-      window.setTimeout(() => setShake(false), 450);
-    }
-
-    window.setTimeout(() => {
-      advanceMission(nextCorrect, nextAsked, nextCombo, nextMax, nextXp, nextScore, nextLives);
-    }, ok ? 700 : 1100);
-  };
-
-  useEffect(() => {
-    if (phase !== 'fight' || !drill || locked) return;
-    const onKey = (e: KeyboardEvent) => {
-      const map: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 };
-      const idx = map[e.key.toLowerCase()];
-      if (idx == null || !drill.options[idx]) return;
-      e.preventDefault();
-      pickOption(drill.options[idx].id);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
-  const timerPct = Math.max(0, (secondsLeft / qSeconds) * 100);
-  const urgent = secondsLeft <= 5;
-  const arenaStats = useMemo(() => loadArenaStats(ownerKey), [ownerKey, quest.totalStars, quest.coins]);
+  }, [phase, countdown]);
 
   const onBuy = (id: PowerUpId) => {
     const next = buyPowerUp(id, ownerKey);
@@ -553,16 +300,14 @@ export default function MentorArena({
     playArenaSfx('star');
   };
 
+  const playing = phase === 'countdown' || phase === 'fight';
+
   return (
-    <div
-      className={`wm-arena wm-quest ${phase === 'fight' || phase === 'countdown' ? 'wm-arena--live wm-arena--playing' : ''} ${
-        shake ? 'wm-arena--shake' : ''
-      } ${urgent && phase === 'fight' ? 'wm-arena--urgent' : ''}`}
-    >
-      {phase === 'hub' || phase === 'loadout' || phase === 'brief' ? (
+    <div className={`wm-arena wm-quest ${playing ? 'wm-arena--live wm-arena--playing wm-quest--game' : ''}`}>
+      {!playing ? (
         <div className="wm-arena__hud wm-quest__top">
           <div className="wm-arena__hud-main">
-            <p className="wm-arena__eyebrow">Wolf Trade Quest</p>
+            <p className="wm-arena__eyebrow">Wolf Trade Quest · Tape Runner</p>
             <h2 className="wm-arena__title">
               {firstName}
               {equipped ? (
@@ -571,12 +316,13 @@ export default function MentorArena({
                 </>
               ) : (
                 <>
-                  , <span>begin the path</span>
+                  , <span>run the tape</span>
                 </>
               )}
             </h2>
             <p className="wm-arena__lead">
-              10 story levels · badges · titles · power-ups — clear missions, open chests, unlock the desk
+              Real runner game — jump spikes, grab coins, nail GATE pads, finish the flag. Mario energy,
+              trading lessons.
             </p>
           </div>
           <div className="wm-quest__wallet">
@@ -650,7 +396,7 @@ export default function MentorArena({
                       <em>{level.world}</em>
                       <b>{level.title}</b>
                       <span>
-                        {modeLabel(level.mode)} · {level.questions}Q · {level.lives}♥
+                        {modeLabel(level.mode)} RUN · {level.lives}♥ · jump & dodge
                       </span>
                       {unlocked ? <StarsRow n={stars} /> : <span className="wm-quest__need">Clear previous</span>}
                     </div>
@@ -732,9 +478,16 @@ export default function MentorArena({
               {(Object.keys(POWERUP_SHOP) as PowerUpId[]).map((id) => (
                 <div key={id} className="wm-quest__shop-row">
                   <div>
-                    <b>{POWERUP_SHOP[id].name}</b>
+                    <b>
+                      {id === 'clock' ? 'Longer Track' : POWERUP_SHOP[id].name}
+                    </b>
                     <span>
-                      {POWERUP_SHOP[id].blurb} · own {quest.powerups[id] || 0}
+                      {id === 'clock'
+                        ? 'Extra distance / breathing room'
+                        : id === 'shield'
+                          ? '+1 life (armor)'
+                          : POWERUP_SHOP[id].blurb}{' '}
+                      · own {quest.powerups[id] || 0}
                     </span>
                   </div>
                   <button
@@ -765,11 +518,11 @@ export default function MentorArena({
             </button>
             <div className="wm-quest__brief-hero">
               <em>{survivalMode ? 'Survival Raid' : activeLevel?.world}</em>
-              <h3>{survivalMode ? 'Endless desk mix' : activeLevel?.title}</h3>
+              <h3>{survivalMode ? 'Endless tape run' : activeLevel?.title}</h3>
               <p>
                 {survivalMode
-                  ? '12 questions · full trading mix · earn coins from score'
-                  : activeLevel?.blurb}
+                  ? 'Faster runner · dodge FOMO spikes · clear GATE pads · grab the flag'
+                  : `${activeLevel?.blurb} — play as a side-scrolling runner, not a quiz.`}
               </p>
               {!survivalMode && activeLevel ? (
                 <p className="wm-quest__reward-line">
@@ -777,6 +530,25 @@ export default function MentorArena({
                   Clear reward: {rewardPreview(activeLevel)}
                 </p>
               ) : null}
+            </div>
+
+            <div className="wm-quest__howto-run">
+              <div>
+                <b>SPACE / TAP</b>
+                <span>Jump (double jump)</span>
+              </div>
+              <div>
+                <b>↓</b>
+                <span>Fast fall</span>
+              </div>
+              <div>
+                <b>GATE</b>
+                <span>Land on correct pad</span>
+              </div>
+              <div>
+                <b>FLAG</b>
+                <span>Finish to clear</span>
+              </div>
             </div>
 
             <div className="wm-quest__arm">
@@ -793,27 +565,18 @@ export default function MentorArena({
                     onClick={() => toggleArm(id)}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    {POWERUP_SHOP[id].name}
+                    {id === 'clock' ? 'Longer Track' : POWERUP_SHOP[id].name}
                     <small>×{own}</small>
                   </button>
                 );
               })}
             </div>
 
-            <button
-              type="button"
-              className="wm-arena__play"
-              onClick={startMission}
-              disabled={!detective}
-            >
+            <button type="button" className="wm-arena__play" onClick={startMission}>
               <Play className="h-5 w-5" />
               <span>
-                <strong>START MISSION</strong>
-                <small>
-                  {detective
-                    ? `${survivalMode ? '12' : activeLevel?.questions}Q · keys 1–4`
-                    : 'Loading tape…'}
-                </small>
+                <strong>START RUN</strong>
+                <small>{detective ? '3-2-1 then you control the wolf' : 'Loading…'}</small>
               </span>
             </button>
           </motion.div>
@@ -822,7 +585,7 @@ export default function MentorArena({
         {phase === 'countdown' ? (
           <motion.div
             key="cd"
-            className="wm-arena__panel wm-arena__panel--countdown"
+            className="wm-arena__panel wm-arena__panel--countdown wm-quest__countdown"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
@@ -836,120 +599,19 @@ export default function MentorArena({
             >
               {countdown > 0 ? countdown : 'GO'}
             </motion.div>
-            <p>{survivalMode ? 'Survival Raid' : activeLevel?.title} · get ready</p>
+            <p>{gameConfig?.title || 'Run'} · jump ready</p>
           </motion.div>
         ) : null}
 
-        {phase === 'fight' && drill ? (
+        {phase === 'fight' && gameConfig ? (
           <motion.div
-            key={`fight-${drill.id}-${qIndex}`}
-            className={`wm-arena__panel wm-arena__panel--fight ${urgent ? 'wm-arena__panel--urgent' : ''}`}
-            initial={{ opacity: 0, x: 14 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
+            key={`run-${gameConfig.levelId}-${gameConfig.lives}`}
+            className="wm-quest__stage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            <div className="wm-arena__fight-hud">
-              <div className="wm-arena__hearts" aria-label={`${lives} lives`}>
-                {Array.from({ length: livesMax }).map((_, i) => (
-                  <Heart
-                    key={i}
-                    className={`wm-arena__heart ${i < lives ? 'wm-arena__heart--on' : ''}`}
-                    fill={i < lives ? 'currentColor' : 'none'}
-                  />
-                ))}
-                {shieldLeft > 0 ? (
-                  <span className="wm-quest__shield-pill">
-                    <Shield className="h-3 w-3" />×{shieldLeft}
-                  </span>
-                ) : null}
-              </div>
-              <div className="wm-arena__scoreboard">
-                <span>
-                  SCORE <b>{score}</b>
-                </span>
-                <span className={combo >= 2 ? 'wm-arena__combo wm-arena__combo--hot' : 'wm-arena__combo'}>
-                  <Flame className="h-3.5 w-3.5" />x{combo}
-                </span>
-              </div>
-            </div>
-
-            <div className="wm-arena__round-top">
-              <span className="wm-arena__wave-pill">
-                {survivalMode ? 'RAID' : `L${activeLevel?.id}`}
-              </span>
-              <span className="wm-arena__topic-pill">{arenaTopicLabel(drill.topic)}</span>
-              <span>
-                Q{qIndex + 1}/{targetQuestions}
-              </span>
-              <span className={`wm-arena__clock ${urgent ? 'wm-arena__clock--hot' : ''}`}>
-                {secondsLeft}s
-              </span>
-            </div>
-            <div className={`wm-arena__timer ${urgent ? 'wm-arena__timer--hot' : ''}`}>
-              <i style={{ width: `${timerPct}%` }} />
-            </div>
-
-            <p className="wm-arena__q">{drill.question}</p>
-            <p className="wm-arena__hint">Chart marks · keys 1–4</p>
-
-            {feedback?.correct ? (
-              <motion.span
-                key={`pop-${score}`}
-                className="wm-arena__score-pop"
-                initial={{ opacity: 0, y: 8, scale: 0.7 }}
-                animate={{ opacity: 1, y: -28, scale: 1.15 }}
-              >
-                +{feedback.points}
-              </motion.span>
-            ) : null}
-
-            <div className="wm-arena__opts">
-              {drill.options.map((o, i) => {
-                const state =
-                  pickedId == null
-                    ? ''
-                    : o.id === pickedId
-                      ? feedback?.correct
-                        ? 'wm-arena__opt--good'
-                        : 'wm-arena__opt--bad'
-                      : pickedId && o.id === drill.correctId && feedback && !feedback.correct
-                        ? 'wm-arena__opt--reveal'
-                        : '';
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    disabled={locked}
-                    className={`wm-arena__opt ${state}`}
-                    onClick={() => pickOption(o.id)}
-                  >
-                    <em>{i + 1}</em>
-                    {o.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <AnimatePresence>
-              {feedback ? (
-                <motion.div
-                  key="fb"
-                  className={`wm-arena__flash ${
-                    feedback.correct ? 'wm-arena__flash--ok' : 'wm-arena__flash--bad'
-                  }`}
-                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <b>{feedback.label}</b>
-                  {feedback.correct ? (
-                    <span>+{feedback.points}</span>
-                  ) : (
-                    <span className="wm-quest__lesson">{feedback.lesson || `${lives} left`}</span>
-                  )}
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
+            <WolfTapeGame config={gameConfig} onFinish={onGameFinish} />
           </motion.div>
         ) : null}
 
@@ -963,9 +625,8 @@ export default function MentorArena({
           >
             <div className={`wm-quest__chest-box ${chestOpen ? 'wm-quest__chest-box--open' : ''}`}>
               <Gift className="h-10 w-10" />
-              <b>{chestOpen ? 'REWARDS!' : 'Opening chest…'}</b>
+              <b>{chestOpen ? 'RUN CLEARED!' : 'Opening chest…'}</b>
             </div>
-
             {chestOpen ? (
               <motion.div
                 className="wm-quest__loot"
@@ -973,6 +634,12 @@ export default function MentorArena({
                 animate={{ opacity: 1, y: 0 }}
               >
                 <StarsRow n={loot.stars} />
+                {lastRun ? (
+                  <p className="wm-quest__loot-sub">
+                    Score {lastRun.score} · coins grabbed {lastRun.coins} · gates{' '}
+                    {lastRun.gatesCorrect}/{lastRun.gatesTotal}
+                  </p>
+                ) : null}
                 {loot.coins > 0 ? (
                   <p className="wm-quest__loot-row">
                     <Coins className="h-4 w-4" /> +{loot.coins} Wolf Coins
@@ -993,17 +660,9 @@ export default function MentorArena({
                     <Zap className="h-4 w-4" /> {POWERUP_SHOP[loot.powerUp].name} ×{loot.powerUpQty}
                   </p>
                 ) : null}
-                {unlockedNext ? (
-                  <p className="wm-quest__unlock">Level {unlockedNext} unlocked!</p>
-                ) : null}
-                {!loot.firstClear && loot.stars > 0 ? (
-                  <p className="wm-quest__loot-sub">
-                    {loot.newBest ? 'New best stars!' : 'Replay bonus'}
-                  </p>
-                ) : null}
+                {unlockedNext ? <p className="wm-quest__unlock">Level {unlockedNext} unlocked!</p> : null}
               </motion.div>
             ) : null}
-
             <div className="wm-arena__result-actions">
               {unlockedNext ? (
                 <button
@@ -1028,14 +687,11 @@ export default function MentorArena({
                   }}
                 >
                   <Play className="h-4 w-4" />
-                  Replay
+                  Replay Run
                 </button>
               )}
               <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
                 World Map
-              </button>
-              <button type="button" className="wm-arena__chip" onClick={() => setPhase('loadout')}>
-                Collection
               </button>
             </div>
           </motion.div>
@@ -1049,27 +705,28 @@ export default function MentorArena({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="wm-arena__result-badge">MISSION FAILED</div>
-            <h3 className="wm-arena__result-score">{score}</h3>
+            <div className="wm-arena__result-badge">RUN FAILED</div>
+            <h3 className="wm-arena__result-score">{lastRun?.score ?? 0}</h3>
             <p className="wm-arena__result-sub">
-              {correctCount}/{askedCount || targetQuestions} hits · combo x{comboMax}
+              Coins {lastRun?.coins ?? 0} · gates {lastRun?.gatesCorrect ?? 0}/
+              {lastRun?.gatesTotal ?? 0} · combo x{lastRun?.comboMax ?? 0}
             </p>
             <p className="wm-quest__fail-tip">
-              Tip: arm a Miss Shield from Collection, or re-read the lesson flashes.
+              Tip: double-jump over spikes, skip pits, and land on the correct GATE pad when the prompt
+              appears.
             </p>
             <div className="wm-arena__result-actions">
               <button
                 type="button"
                 className="wm-arena__play wm-arena__play--sm"
                 onClick={() => {
-                  if (survivalMode) {
-                    setPhase('brief');
-                  } else if (activeLevel) openBrief(activeLevel);
+                  if (survivalMode) setPhase('brief');
+                  else if (activeLevel) openBrief(activeLevel);
                   else setPhase('hub');
                 }}
               >
                 <Play className="h-4 w-4" />
-                Retry
+                Retry Run
               </button>
               <button type="button" className="wm-arena__chip" onClick={() => setPhase('hub')}>
                 World Map
@@ -1078,7 +735,6 @@ export default function MentorArena({
           </motion.div>
         ) : null}
       </AnimatePresence>
-
     </div>
   );
 }
