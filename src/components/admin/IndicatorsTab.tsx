@@ -30,6 +30,7 @@ type FormState = {
   title: string;
   description: string;
   link: string;
+  howToVideoUrl: string;
   sortOrder: string;
   published: boolean;
   image: string | null;
@@ -40,6 +41,7 @@ const emptyForm = (): FormState => ({
   title: '',
   description: '',
   link: '',
+  howToVideoUrl: '',
   sortOrder: '0',
   published: true,
   image: null,
@@ -88,6 +90,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       title: row.title,
       description: row.description,
       link: row.link,
+      howToVideoUrl: row.howToVideoUrl || '',
       sortOrder: String(row.sortOrder ?? 0),
       published: row.published,
       image: null,
@@ -121,6 +124,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         title: form.title,
         description: form.description,
         link: form.link,
+        howToVideoUrl: form.howToVideoUrl.trim(),
         sortOrder: Number(form.sortOrder) || 0,
         published: form.published,
         ...(form.clearImage
@@ -171,8 +175,8 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add title, description, invite link and cover image. Members open the link during the{' '}
-            {TRIAL_DAYS}-day demo; after that you approve longer access.
+            Add title, description, invite link, optional how-to video, and cover image. Members open
+            the link during the {TRIAL_DAYS}-day demo; after that you approve longer access.
           </p>
         </div>
         <button
@@ -300,6 +304,22 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                 </div>
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className={LABEL}>How to use video URL (optional)</label>
+            <input
+              type="url"
+              className={FIELD}
+              value={form.howToVideoUrl}
+              onChange={(e) => setForm((p) => ({ ...p, howToVideoUrl: e.target.value }))}
+              placeholder="https://… YouTube / Vimeo / direct .mp4 link"
+              spellCheck={false}
+            />
+            <p className="text-[10px] text-slate-600 mt-1.5">
+              Shown as watch-only guidance on the indicator page. Prefer unlisted YouTube / Vimeo or
+              a private .mp4 host.
+            </p>
           </div>
 
           <div>

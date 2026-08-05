@@ -6726,6 +6726,128 @@ input[type="number"] { -moz-appearance: textfield; }
   backdrop-filter: blur(8px);
 }
 
+.lux-ind__guide {
+  margin-top: 1rem;
+  padding: 1rem 1.05rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.08), transparent 40%),
+    var(--tf-elevated, #0b0e17);
+}
+
+.lux-ind__guide-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: #d4af37;
+  margin-bottom: 0.85rem;
+}
+
+.lux-ind__guide-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--tf-text, #e2e8f0);
+}
+
+.lux-ind__guide-head p {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--tf-text-secondary, #94a3b8);
+}
+
+.lux-ind__guide-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: #05070d;
+  border: 1px solid var(--tf-border, #1a1f2e);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lux-ind__guide-media {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+.lux-ind__guide-media--embed {
+  border: 0;
+}
+
+.lux-ind__guide-fallback {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding: 1rem;
+}
+
+.lux-ind__guide-fallback a {
+  color: #d4af37;
+  font-weight: 700;
+}
+
+.lux-ind__guide-watermark {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-content: space-around;
+  opacity: 0.22;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  transform: rotate(-18deg) scale(1.2);
+  z-index: 2;
+}
+
+.lux-ind__guide-watermark span {
+  text-align: center;
+  line-height: 1.35;
+  padding: 0.5rem;
+}
+
+.lux-ind__guide-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(5, 7, 13, 0.92);
+  color: #fde68a;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.lux-ind__guide-stage.is-shielded .lux-ind__guide-media {
+  filter: blur(10px) brightness(0.35);
+}
+
+.lux-ind__guide-note {
+  margin: 0.7rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--tf-muted, #64748b);
+}
+
 .lux-ind__dot {
   width: 0.45rem;
   height: 0.45rem;

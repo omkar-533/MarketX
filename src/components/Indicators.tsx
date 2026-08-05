@@ -14,6 +14,7 @@ import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, ty
 import { BRAND } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
 import { openExternalUrl } from '../utils/openExternalUrl';
+import ProtectedGuideVideo from './indicators/ProtectedGuideVideo';
 import WolfLoader from './WolfLoader';
 
 /** Split admin description into overview + optional ## sections (Usage / Details / FAQ). */
@@ -269,6 +270,10 @@ export default function Indicators({
                   </div>
                 )}
               </div>
+
+              {active.howToVideoUrl ? (
+                <ProtectedGuideVideo url={active.howToVideoUrl} title={active.title} />
+              ) : null}
 
               <div className="lux-ind__tags">
                 <span className="lux-ind__tag lux-ind__tag--brand">Wolf Trade Advance Indicator</span>

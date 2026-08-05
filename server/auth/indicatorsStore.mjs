@@ -50,6 +50,10 @@ function rowLink(row) {
   return '';
 }
 
+function rowHowToVideo(row) {
+  return String(row?.how_to_video_url || row?.howToVideoUrl || '').trim();
+}
+
 function fromRow(row, signedUrl = null) {
   if (!row) return null;
   return {
@@ -57,6 +61,7 @@ function fromRow(row, signedUrl = null) {
     title: row.title,
     description: row.description ?? '',
     link: rowLink(row),
+    howToVideoUrl: rowHowToVideo(row) || null,
     sortOrder: Number(row.sort_order || 0),
     published: row.published !== false,
     createdAt: row.created_at,
@@ -81,28 +86,35 @@ async function mapRows(db, rows) {
   return Promise.all(rows.map(async (row) => fromRow(row, await signImage(db, row))));
 }
 
-function validateFields({ title, description, link }) {
+function validateHttpUrl(value, label) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  let parsed;
+  try {
+    parsed = new URL(clean);
+  } catch {
+    throw Object.assign(new Error(`Enter a valid ${label} URL`), { status: 400 });
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw Object.assign(new Error(`${label} must start with http:// or https://`), { status: 400 });
+  }
+  return clean.slice(0, 2000);
+}
+
+function validateFields({ title, description, link, howToVideoUrl }) {
   const cleanTitle = String(title || '').trim();
   if (cleanTitle.length < 2) {
     throw Object.assign(new Error('Enter a title for the indicator'), { status: 400 });
   }
-  const cleanLink = String(link || '').trim();
+  const cleanLink = validateHttpUrl(link, 'invite link');
   if (!cleanLink) {
     throw Object.assign(new Error('Paste the indicator invite / share link'), { status: 400 });
-  }
-  let parsed;
-  try {
-    parsed = new URL(cleanLink);
-  } catch {
-    throw Object.assign(new Error('Enter a valid http(s) link'), { status: 400 });
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw Object.assign(new Error('Link must start with http:// or https://'), { status: 400 });
   }
   return {
     title: cleanTitle.slice(0, 120),
     description: String(description || '').slice(0, 4000),
-    link: cleanLink.slice(0, 2000),
+    link: cleanLink,
+    howToVideoUrl: validateHttpUrl(howToVideoUrl, 'how-to video'),
   };
 }
 
@@ -192,12 +204,13 @@ export async function createIndicator({
   title,
   description,
   link,
+  howToVideoUrl = '',
   image,
   sortOrder = 0,
   published = true,
   createdBy = 'admin',
 }) {
-  const fields = validateFields({ title, description, link });
+  const fields = validateFields({ title, description, link, howToVideoUrl });
   const id = `ind_${randomBytes(9).toString('hex')}`;
   const now = new Date().toISOString();
   const db = getAdminClient();
@@ -208,6 +221,7 @@ export async function createIndicator({
     title: fields.title,
     description: fields.description,
     link: fields.link,
+    how_to_video_url: fields.howToVideoUrl,
     // Keep legacy column in sync so older schemas without `link` still work via code.
     code: fields.link,
     image_path: media.path,
@@ -225,9 +239,15 @@ export async function createIndicator({
   }
 
   let { data, error } = await db.from(TABLE).insert(row).select().single();
+  if (error && /how_to_video_url/i.test(error.message || '')) {
+    const withoutVideo = { ...row };
+    delete withoutVideo.how_to_video_url;
+    ({ data, error } = await db.from(TABLE).insert(withoutVideo).select().single());
+  }
   if (error && /link/i.test(error.message || '')) {
     const legacy = { ...row };
     delete legacy.link;
+    delete legacy.how_to_video_url;
     ({ data, error } = await db.from(TABLE).insert(legacy).select().single());
   }
   if (error) throw storeError(error);
@@ -244,6 +264,8 @@ export async function updateIndicator(id, patch = {}) {
     title: patch.title ?? current.title,
     description: patch.description ?? current.description,
     link: patch.link ?? current.link,
+    howToVideoUrl:
+      patch.howToVideoUrl === undefined ? current.howToVideoUrl || '' : patch.howToVideoUrl,
   });
 
   const db = getAdminClient();
@@ -265,6 +287,7 @@ export async function updateIndicator(id, patch = {}) {
     title: fields.title,
     description: fields.description,
     link: fields.link,
+    how_to_video_url: fields.howToVideoUrl,
     code: fields.link,
     sort_order:
       patch.sortOrder === undefined ? current.sortOrder : Number(patch.sortOrder) || 0,
@@ -283,6 +306,7 @@ export async function updateIndicator(id, patch = {}) {
           title: next.title,
           description: next.description,
           link: next.link,
+          how_to_video_url: next.how_to_video_url,
           code: next.code,
           sort_order: next.sort_order,
           published: next.published,
@@ -302,6 +326,7 @@ export async function updateIndicator(id, patch = {}) {
     title: next.title,
     description: next.description,
     link: next.link,
+    how_to_video_url: next.how_to_video_url,
     code: next.code,
     sort_order: next.sort_order,
     published: next.published,
@@ -313,9 +338,15 @@ export async function updateIndicator(id, patch = {}) {
   }
 
   let { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
+  if (error && /how_to_video_url/i.test(error.message || '')) {
+    const withoutVideo = { ...cloudPatch };
+    delete withoutVideo.how_to_video_url;
+    ({ data, error } = await db.from(TABLE).update(withoutVideo).eq('id', id).select().maybeSingle());
+  }
   if (error && /link/i.test(error.message || '')) {
     const legacy = { ...cloudPatch };
     delete legacy.link;
+    delete legacy.how_to_video_url;
     ({ data, error } = await db.from(TABLE).update(legacy).eq('id', id).select().maybeSingle());
   }
   if (error) throw storeError(error);

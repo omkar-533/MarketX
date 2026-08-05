@@ -19,6 +19,9 @@ create table if not exists public.app_indicators (
 -- Existing installs: add link column and copy any old code values that look like URLs.
 alter table public.app_indicators add column if not exists link text not null default '';
 
+-- Optional how-to guidance video (YouTube / Vimeo / direct mp4 URL).
+alter table public.app_indicators add column if not exists how_to_video_url text not null default '';
+
 update public.app_indicators
 set link = code
 where coalesce(nullif(trim(link), ''), '') = ''

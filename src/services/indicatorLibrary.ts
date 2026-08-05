@@ -7,6 +7,8 @@ export type IndicatorItem = {
   description: string;
   /** Invite / share URL — only present when access + TV grant allow it. */
   link: string;
+  /** Optional how-to guidance video (YouTube / Vimeo / direct file URL). */
+  howToVideoUrl?: string | null;
   sortOrder: number;
   published: boolean;
   createdAt: string;
@@ -92,6 +94,7 @@ export type IndicatorInput = {
   title: string;
   description: string;
   link: string;
+  howToVideoUrl?: string;
   image?: string | null;
   sortOrder?: number;
   published?: boolean;
