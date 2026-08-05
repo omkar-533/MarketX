@@ -127,10 +127,12 @@ export async function adminUpdateIndicator(
   adminEmail?: string | null,
   adminPassword?: string | null,
 ): Promise<IndicatorItem> {
+  // Prefer PUT — some older API CORS configs omitted PATCH and browsers report
+  // that as a opaque "Failed to fetch". Server accepts both.
   const res = await apiFetch(
     `/api/app-auth/admin/indicators/${encodeURIComponent(id)}`,
     {
-      method: 'PATCH',
+      method: 'PUT',
       headers: authHeaders(adminEmail, adminPassword),
       body: JSON.stringify(input),
     },

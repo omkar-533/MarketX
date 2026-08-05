@@ -205,7 +205,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       setError(
         name === 'AbortError'
           ? 'Server timeout — Render wake up hone do, 10 sec baad Save dubara dabao.'
-          : msg,
+          : /failed to fetch/i.test(msg)
+            ? 'Server reach nahi ho raha (CORS/network). Hard refresh (Ctrl+Shift+R) karke 10 sec baad Save dubara try karo.'
+            : msg,
       );
     } finally {
       setSaving(false);

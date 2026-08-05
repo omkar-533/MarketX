@@ -799,8 +799,7 @@ router.post('/admin/indicators', requireAdmin, async (req, res) => {
   }
 });
 
-/** PATCH /api/app-auth/admin/indicators/:id */
-router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
+async function handleAdminIndicatorUpdate(req, res) {
   try {
     // Video-only body → dedicated writer (avoids link/title side effects).
     const keys = Object.keys(req.body || {}).filter((k) => req.body[k] !== undefined);
@@ -828,7 +827,11 @@ router.patch('/admin/indicators/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     return failed(res, err, 'Could not update indicator');
   }
-});
+}
+
+/** PUT + PATCH — PUT preferred (CORS allow-list historically missed PATCH). */
+router.put('/admin/indicators/:id', requireAdmin, handleAdminIndicatorUpdate);
+router.patch('/admin/indicators/:id', requireAdmin, handleAdminIndicatorUpdate);
 
 /** PUT /api/app-auth/admin/indicators/:id/how-to-video — video URL only */
 router.put('/admin/indicators/:id/how-to-video', requireAdmin, async (req, res) => {

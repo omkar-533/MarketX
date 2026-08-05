@@ -14,7 +14,14 @@ export function createCorsMiddleware() {
       callback(new Error(`CORS blocked: ${origin}`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-OpenRouter-Key'],
+    // PATCH is required for admin indicator/user updates from the Vercel frontend.
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-OpenRouter-Key',
+      'X-Admin-Email',
+      'X-Admin-Password',
+    ],
   });
 }
