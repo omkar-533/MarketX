@@ -463,6 +463,7 @@ export function describeMasterAiFailure(
   kind: 'chat' | 'chart' | 'image' = 'chat',
 ): string {
   const status = (err as { status?: number } | null)?.status;
+  const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err || '');
   const hindi = isHindiLang(langCode) || isHinglishLang(langCode);
   if (status === 413) {
     return hindi
@@ -479,10 +480,20 @@ export function describeMasterAiFailure(
       ? 'AI ka limit abhi full hai. Ek-do minute baad try kijiye.'
       : 'The AI quota is exhausted right now. Please try again in a minute.';
   }
-  if (err instanceof Error && /abort|timeout/i.test(`${err.name} ${err.message}`)) {
+  if (status === 502 || /empty reply|all models failed|models unavailable/i.test(msg)) {
     return hindi
-      ? 'Jawab aane me bahut time lag gaya. Ek baar phir try kijiye.'
-      : 'That took too long to answer. Please try again.';
+      ? 'AI abhi busy / empty reply aayi. 5–10 second baad ek baar phir try kijiye.'
+      : 'Wolf AI was busy or returned an empty reply. Wait a few seconds and try again.';
+  }
+  if (/abort|timeout/i.test(msg)) {
+    return hindi
+      ? 'Server wake-up / slow reply — jawab late ho gaya. Ek baar phir try kijiye (usually chalta hai).'
+      : 'That took too long (cold start or busy). Please try once more — it usually works.';
+  }
+  if (/Failed to fetch|NetworkError|network|Load failed|ECONNRESET/i.test(msg)) {
+    return hindi
+      ? 'API tak pahunch nahi paaye (network/server restart). 5–10 second baad try kijiye.'
+      : 'Could not reach the AI API (network or server restart). Wait 5–10s and try again.';
   }
   return getMasterAiSorryMessage(langCode, kind);
 }
@@ -1242,6 +1253,15 @@ export function buildConversationMemoryNote(history: ChatHistoryItem[]): string 
   return lines.length > 2 ? lines.join('\n') : '';
 }
 
+function isRetriableMasterAiError(err: unknown): boolean {
+  const status = (err as { status?: number } | null)?.status;
+  if (status === 429 || status === 502 || status === 503 || status === 504) return true;
+  const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err || '');
+  return /abort|timeout|empty reply|Failed to fetch|NetworkError|network|Load failed|ECONNRESET|overloaded|temporarily|All models failed|models unavailable/i.test(
+    msg,
+  );
+}
+
 export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketContext): Promise<MasterChatResponse> {
   const greeting = isCasualGreeting(req.message || '');
   const autoMode = req.langMode === 'auto' || !req.langMode;
@@ -1264,54 +1284,75 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
     .filter(Boolean)
     .join('\n\n');
 
-  // Chat + live tape + LLM often needs >18s on cold Render; do not abort early.
-  const res = await apiFetch(
-    '/api/chat',
-    {
-      method: 'POST',
-      headers: { ...openRouterRequestHeaders() },
-      body: JSON.stringify({
-        message: req.message,
-        model: req.model,
-        lang: req.lang,
-        langName: req.langName,
-        langMode: autoMode ? 'auto' : req.langMode,
-        imageDataUrl: req.imageDataUrl ?? null,
-        history,
-        needsWeb: req.needsWeb ?? false,
-        platformContext,
-        mentorMode: req.mentorMode ?? 'professional',
-        roomMode: Boolean(req.roomMode),
-        trainingGrade: Boolean(req.trainingGrade),
-        mentorDesk: Boolean(req.mentorDesk),
-        mentorChart: Boolean(req.mentorChart),
-        mentorCoach: Boolean(req.mentorCoach),
-        mentorLab: Boolean(req.mentorLab),
-        mentorLive: Boolean(req.mentorLive),
-        mentorMaster: Boolean(req.mentorMaster),
-        mentorLesson: req.mentorLesson || undefined,
-        markTool: req.markTool,
-      }),
-    },
-    { retries: 0, timeoutMs: 75_000 },
-  );
+  const payload = {
+    message: req.message,
+    model: req.model,
+    lang: req.lang,
+    langName: req.langName,
+    langMode: autoMode ? 'auto' : req.langMode,
+    imageDataUrl: req.imageDataUrl ?? null,
+    history,
+    needsWeb: req.needsWeb ?? false,
+    platformContext,
+    mentorMode: req.mentorMode ?? 'professional',
+    roomMode: Boolean(req.roomMode),
+    trainingGrade: Boolean(req.trainingGrade),
+    mentorDesk: Boolean(req.mentorDesk),
+    mentorChart: Boolean(req.mentorChart),
+    mentorCoach: Boolean(req.mentorCoach),
+    mentorLab: Boolean(req.mentorLab),
+    mentorLive: Boolean(req.mentorLive),
+    mentorMaster: Boolean(req.mentorMaster),
+    mentorLesson: req.mentorLesson || undefined,
+    markTool: req.markTool,
+  };
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    // The status travels with the error so the chat can explain a missing key or
-    // an oversized screenshot instead of a blanket "try again".
-    throw Object.assign(
-      new Error(typeof err?.error === 'string' ? err.error : 'AI unavailable'),
-      { status: res.status },
-    );
+  // Cold Render + live tape + LLM often needs >75s. Mark/chart paths get more
+  // room; one automatic retry covers wake-ups, 502s, and empty model replies.
+  const heavy = Boolean(req.imageDataUrl || req.markTool || req.mentorChart);
+  const timeoutMs = heavy ? 95_000 : 85_000;
+  const maxAttempts = 2;
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await apiFetch(
+        '/api/chat',
+        {
+          method: 'POST',
+          headers: { ...openRouterRequestHeaders() },
+          body: JSON.stringify(payload),
+        },
+        // apiFetch also retries 502/503/504 once; keep that for transport blips.
+        { retries: 1, timeoutMs },
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw Object.assign(
+          new Error(typeof err?.error === 'string' ? err.error : 'AI unavailable'),
+          { status: res.status },
+        );
+      }
+
+      const data = await res.json();
+      const reply = typeof data?.reply === 'string' ? data.reply.trim() : '';
+      if (!reply) {
+        throw Object.assign(new Error('Empty reply from Wolf AI'), { status: 502 });
+      }
+      return {
+        reply,
+        modelUsed: data?.modelUsed,
+        source: data?.source ?? 'openrouter',
+      };
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= maxAttempts || !isRetriableMasterAiError(err)) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
   }
 
-  const data = await res.json();
-  return {
-    reply: typeof data?.reply === 'string' ? data.reply.trim() : '',
-    modelUsed: data?.modelUsed,
-    source: data?.source ?? 'openrouter',
-  };
+  throw lastErr instanceof Error ? lastErr : new Error('AI unavailable');
 }
 
 const STORAGE_MODEL = 'master_ai_selected_model';

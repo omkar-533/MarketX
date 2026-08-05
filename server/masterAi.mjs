@@ -1392,6 +1392,14 @@ Beginners simple; experts deeper. Admit uncertainty when data is insufficient.
 MEMORY
 Full history. Follow-ups continue last setup — never re-ask for chart mid-thread. Reuse symbol/TF/bias/levels. Accept corrections. One clarifying question if needed.
 
+EXECUTION CERTAINTY (anti-confusion — mandatory)
+You are a senior desk analyst, not a confused assistant.
+- FIRST reply must fully answer the user’s exact ask. Do not stall with “I can mark / shall I?” when they already asked to mark/draw/show.
+- Prefer a decisive read with evidence over vague hedging. Soften only when LIVE MARKET DATA / structure is truly missing.
+- Never invent prices or zones; never claim confusion when tape/structure is present.
+- Mark requests: emit wolfchart on THIS reply. Empty mark = failure.
+- Keep one clear bias (bullish / bearish / range) when structure supports it; say “mixed / wait” only with a reason from tape.
+
 CHART / VISION
 Extract visible candles, structure, S/R, indicators, labels, TF, patterns.
 - FIRST answer the user’s exact question (OB, FVG, BOS, pattern, etc.). Point to approx price from Y-axis. Blurry → unclear.
@@ -1505,12 +1513,13 @@ function pickKnowledgeModules(question) {
     }
     return { text, score };
   })
-    .filter((row) => row.score >= 4)
+    .filter((row) => row.score >= 2)
     .sort((a, b) => b.score - a.score);
 
   const out = [];
   let used = 0;
-  for (const row of scored.slice(0, 2)) {
+  // Up to 3 closest modules so the desk stays expert without shipping the whole book.
+  for (const row of scored.slice(0, 3)) {
     if (used + row.text.length > MODULE_CAP_CHARS) break;
     out.push(row.text);
     used += row.text.length;
@@ -1943,11 +1952,11 @@ function isShortChat(message) {
  * prose alone gets the JSON cut in half and the chart stays blank.
  */
 export function replyTokenBudget({ hasImage, shortChat, wantsMarkup }) {
-  if (shortChat) return 120;
-  if (hasImage) return 1400;
-  // Prose + wolfchart JSON — 900 often truncates the fence and the chart stays blank.
-  if (wantsMarkup) return 1400;
-  return 420;
+  if (shortChat) return 220;
+  if (hasImage) return 1600;
+  // Prose + wolfchart JSON — too-low budgets truncate the fence → blank chart / empty feel.
+  if (wantsMarkup) return 1600;
+  return 700;
 }
 
 /** Prefer quality config; thinkingBudget 0 stops 2.5 hidden reasoning tokens when supported. */
@@ -2047,6 +2056,7 @@ async function chatWithGemini(gemini, {
 
   const configs = geminiGenerationConfigs(hasImage, shortChat, maxTokens);
   let lastError = null;
+  let sawEmpty = false;
 
   for (const modelId of models) {
     let modelFailedHard = false;
@@ -2061,21 +2071,25 @@ async function chatWithGemini(gemini, {
           generationConfig,
         });
         if (reply) {
-          console.info(`[Analyse AI] ok model=${modelId} image=${hasImage ? 1 : 0}`);
+          console.info(`[Wolf AI] ok model=${modelId} image=${hasImage ? 1 : 0}`);
           return { reply, modelUsed: modelId, source: 'gemini' };
         }
+        sawEmpty = true;
+        console.warn(`[Wolf AI] Gemini ${modelId} returned empty reply — trying next`);
+        // Empty completion: try next config/model instead of stalling.
+        break;
       } catch (err) {
         lastError = err;
         const msg = String(err?.message ?? err);
         const isLastConfig = i === configs.length - 1;
         if (isLastConfig) {
-          console.warn(`[Analyse AI] Gemini ${modelId} failed:`, msg);
+          console.warn(`[Wolf AI] Gemini ${modelId} failed:`, msg);
           modelFailedHard = true;
         } else if (/thinkingConfig|thinking_budget|Unknown name/i.test(msg)) {
-          console.warn(`[Analyse AI] Gemini ${modelId} retry without thinkingConfig`);
+          console.warn(`[Wolf AI] Gemini ${modelId} retry without thinkingConfig`);
         } else {
           // Model/auth/quota errors — skip remaining configs for this model
-          console.warn(`[Analyse AI] Gemini ${modelId} failed:`, msg);
+          console.warn(`[Wolf AI] Gemini ${modelId} failed:`, msg);
           modelFailedHard = true;
           break;
         }
@@ -2083,7 +2097,13 @@ async function chatWithGemini(gemini, {
     }
     if (modelFailedHard) continue;
   }
-  throw Object.assign(new Error(lastError?.message ?? 'AI models unavailable'), { status: 502 });
+  throw Object.assign(
+    new Error(
+      lastError?.message ??
+        (sawEmpty ? 'Empty reply from AI models' : 'AI models unavailable'),
+    ),
+    { status: 502 },
+  );
 }
 
 export function createMasterAiRouter(apiKey) {
@@ -2550,7 +2570,7 @@ export function createMasterAiRouter(apiKey) {
                     ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
-      let textBlock = `[You are Hunter — Market Analyst / Live Trading Mentor, not a signal bot. ${langLine} Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = `[You are Hunter — senior institutional market analyst / live trading mentor at Wolf Trade AI, not a confused chatbot and not a signal bot. ${langLine} Be decisive with evidence from LIVE MARKET DATA / STRUCTURE / OB / LIQ tape. Answer the exact ask in THIS reply. Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
       if (mentorDesk || mentorChart || mentorCoach || mentorLab || mentorLive || mentorMaster) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
@@ -2805,11 +2825,16 @@ export function createMasterAiRouter(apiKey) {
         ).trim();
       };
 
+      let sawEmpty = false;
       for (const modelId of models) {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const reply = await askModel(modelId);
             if (reply) return finalizeReply({ reply, modelUsed: modelId, source: provider });
+            sawEmpty = true;
+            console.warn(`[Wolf AI] ${modelId} empty reply (attempt ${attempt + 1})`);
+            // Empty once → retry same model; still empty → next model.
+            if (attempt === 0) continue;
             break;
           } catch (err) {
             lastError = err;
@@ -2821,9 +2846,17 @@ export function createMasterAiRouter(apiKey) {
             // A retired model id ("no endpoints found") says nothing useful; keep
             // the first real refusal so the error names the actual blocker.
             if (!bestError && !/no endpoints found/i.test(detail)) bestError = err;
-            console.warn(`[Analyse AI] Model ${modelId} failed:`, detail || err);
+            console.warn(`[Wolf AI] Model ${modelId} failed:`, detail || err);
             if (room && room < budget && attempt === 0) {
               budget = room;
+              continue;
+            }
+            // Transient upstream blips — one quick retry on the same model.
+            if (
+              attempt === 0 &&
+              /timeout|429|502|503|504|overloaded|temporarily|ECONNRESET|fetch failed/i.test(detail)
+            ) {
+              await new Promise((r) => setTimeout(r, 600));
               continue;
             }
             break;
@@ -2832,7 +2865,11 @@ export function createMasterAiRouter(apiKey) {
       }
 
       throw Object.assign(
-        new Error(bestError?.message ?? lastError?.message ?? 'All models failed'),
+        new Error(
+          bestError?.message ??
+            lastError?.message ??
+            (sawEmpty ? 'Empty reply from AI models' : 'All models failed'),
+        ),
         { status: 502 },
       );
     },
