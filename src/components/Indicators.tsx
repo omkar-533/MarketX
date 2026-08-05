@@ -271,13 +271,31 @@ export default function Indicators({
                 )}
               </div>
 
+              <div className="lux-ind__tags">
+                <span className="lux-ind__tag lux-ind__tag--brand">Wolf Trade Advance Indicator</span>
+                <button
+                  type="button"
+                  className="lux-ind__tag-cta"
+                  onClick={() => {
+                    const el = document.getElementById('lux-ind-access');
+                    if (!el) return;
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    el.classList.add('is-pulse');
+                    window.setTimeout(() => el.classList.remove('is-pulse'), 1400);
+                  }}
+                >
+                  {tvStatus === 'granted' && effectiveLink
+                    ? 'Open access'
+                    : tvStatus === 'pending'
+                      ? 'View status'
+                      : 'Get access'}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {active.howToVideoUrl ? (
                 <ProtectedGuideVideo url={active.howToVideoUrl} title={active.title} />
               ) : null}
-
-              <div className="lux-ind__tags">
-                <span className="lux-ind__tag lux-ind__tag--brand">Wolf Trade Advance Indicator</span>
-              </div>
 
               <section className="lux-ind__section">
                 <p className="lux-ind__overview">{detail.overview}</p>
@@ -340,7 +358,7 @@ export default function Indicators({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.16, ...softSpring }}
             >
-              <section className="lux-ind__access">
+              <section className="lux-ind__access" id="lux-ind-access">
                 <div className="lux-ind__access-copy">
                   <h2>Get access</h2>
                   <p>
