@@ -67,13 +67,16 @@ function synthBars(count = 80, seed = Date.now()): EmpireBar[] {
 }
 
 function sliceScenario(bars: EmpireBar[], symbol: string, interval: string, detective: DetectiveCard | null): EmpireScenario {
-  const need = 50;
+  const need = 80;
   const src = bars.length >= need ? bars : synthBars(need);
-  const maxStart = Math.max(0, src.length - 36);
+  // Keep a wide visible window so the chart never looks "zoomed" to 4–5 fat candles.
+  const visibleLen = 40;
+  const futureLen = 12;
+  const maxStart = Math.max(0, src.length - (visibleLen + futureLen));
   const start = Math.floor(Math.random() * (maxStart + 1));
-  const decisionIdx = Math.min(src.length - 13, start + 22);
+  const decisionIdx = start + visibleLen - 1;
   const visible = src.slice(start, decisionIdx + 1);
-  const future = src.slice(decisionIdx + 1, decisionIdx + 1 + 12);
+  const future = src.slice(decisionIdx + 1, decisionIdx + 1 + futureLen);
   const entry = visible[visible.length - 1]?.close || 0;
 
   const hi = Math.max(...visible.slice(-20).map((b) => b.high));

@@ -117,19 +117,20 @@ export default function MentorArena({
       const sc = await loadEmpireScenario(detective);
       setScenario(sc);
       setPhase('play');
-      // Warmup: reveal bars gradually
-      setBars(sc.visible.slice(0, Math.max(8, Math.floor(sc.visible.length * 0.45))));
+      // Warmup: start with most of the window already visible (avoids fat "zoomed" candles).
       const full = sc.visible;
-      let i = Math.max(8, Math.floor(full.length * 0.45));
+      let i = Math.max(24, Math.floor(full.length * 0.7));
+      setBars(full.slice(0, i));
       const tick = window.setInterval(() => {
         i += 1;
-        setBars(full.slice(0, i));
+        setBars(full.slice(0, Math.min(i, full.length)));
         if (i >= full.length) {
           window.clearInterval(tick);
+          setBars(full);
           playArenaSfx('wave');
           setPhase('decide');
         }
-      }, 140);
+      }, 90);
     } catch {
       setPhase('lobby');
     } finally {
