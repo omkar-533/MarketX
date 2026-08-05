@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, MessageCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 import AccessUnlockPanel from './AccessUnlockPanel';
@@ -30,6 +31,30 @@ export default function AccessGate({
   const isBlocked = access?.status === 'blocked';
   const whatsapp = popup?.whatsapp?.trim();
 
+  // Prevent background page from keeping a mid-scroll position under the sheet.
+  useEffect(() => {
+    if (!locked) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouch;
+    };
+  }, [locked]);
+
+  const goSeePlans = () => {
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+    onSeePlans();
+  };
+
   return (
     <AnimatePresence>
       {locked ? (
@@ -38,6 +63,7 @@ export default function AccessGate({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="access-gate-title"
@@ -46,8 +72,8 @@ export default function AccessGate({
             className="access-gate__card"
             initial={{ opacity: 0, y: 28, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           >
             {isBlocked ? (
               <div className="access-gate__blocked">
@@ -70,7 +96,7 @@ export default function AccessGate({
                 <RefreshCw className="w-3.5 h-3.5" />
                 Check again
               </button>
-              <button type="button" className="access-gate__ghost" onClick={onSeePlans}>
+              <button type="button" className="access-gate__ghost" onClick={goSeePlans}>
                 See plans
               </button>
               {whatsapp ? (

@@ -231,6 +231,23 @@ function AppWorkspace() {
     setActiveTab(next);
     setMobileMenuOpen(false);
     persistTab(next);
+    // Mobile: closing the drawer / leaving chat left a stale scrollY so Upgrade
+    // felt like “jump up then land halfway down the page”. Always pin to top.
+    const pinTop = () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelectorAll('.app-main, .page-content, .app-shell').forEach((node) => {
+        (node as HTMLElement).scrollTop = 0;
+      });
+    };
+    pinTop();
+    requestAnimationFrame(pinTop);
+    window.setTimeout(pinTop, 50);
   };
 
   const handleLogout = () => {

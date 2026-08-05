@@ -133,7 +133,10 @@ export default function Sidebar({
       <div className="p-2 border-t border-[var(--tf-border)] shrink-0 space-y-1">
         {user?.role === 'admin' && (
           <button
-            onClick={() => onTabChange('admin')}
+            onClick={() => {
+              onTabChange('admin');
+              onMobileClose?.();
+            }}
             className={`app-sidebar__link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'admin' ? navActive : navIdle
             }`}
@@ -149,7 +152,10 @@ export default function Sidebar({
           </button>
         )}
         <button
-          onClick={() => onTabChange('subscription')}
+          onClick={() => {
+            onTabChange('subscription');
+            onMobileClose?.();
+          }}
           className={`app-sidebar__link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === 'subscription' ? navActive : navIdle
           }`}

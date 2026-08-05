@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Check,
@@ -47,6 +48,16 @@ export default function Subscription({
   const whatsapp = popup?.whatsapp?.trim();
   const isTrialUser = access?.isTrial ?? Boolean(user?.trialEndsAt);
   const showUnlock = Boolean(popup && popup.enabled !== false && access?.status !== 'blocked');
+
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   return (
     <div className="space-y-5">
