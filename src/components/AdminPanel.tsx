@@ -20,6 +20,7 @@ import {
   Download,
   CalendarRange,
   ShieldCheck,
+  Search,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -195,6 +196,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [tvAlert, setTvAlert] = useState<AdminTvAccessRequest | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [userSearch, setUserSearch] = useState('');
   const tvPendingRef = useRef(-1);
 
   const adminEmail = user?.email ?? null;
@@ -217,28 +219,40 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [memberRows]);
 
   const rangeFilterActive = Boolean(dateFrom || dateTo);
+  const searchActive = Boolean(userSearch.trim());
 
   const filteredRows = useMemo(() => {
-    if (!rangeFilterActive) return rows;
+    const q = userSearch.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, '');
     const fromMs = dateFrom ? startOfLocalDay(new Date(`${dateFrom}T00:00:00`)).getTime() : 0;
     const toMs = dateTo
       ? endOfLocalDay(new Date(`${dateTo}T00:00:00`)).getTime()
       : Number.POSITIVE_INFINITY;
+
     return rows.filter((u) => {
-      if (u.role === 'admin') return true;
-      const t = parseCreatedMs(u);
-      return t >= fromMs && t <= toMs;
+      if (u.role === 'admin') return !q; // hide admins while searching members
+      if (rangeFilterActive) {
+        const t = parseCreatedMs(u);
+        if (t < fromMs || t > toMs) return false;
+      }
+      if (!q) return true;
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const phone = (u.phone || '').toLowerCase();
+      const phoneDigits = phone.replace(/\D/g, '');
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        phone.includes(q) ||
+        (qDigits.length >= 3 && phoneDigits.includes(qDigits))
+      );
     });
-  }, [rows, dateFrom, dateTo, rangeFilterActive]);
+  }, [rows, dateFrom, dateTo, rangeFilterActive, userSearch]);
 
   const rangeCount = useMemo(() => {
-    if (!rangeFilterActive) return null;
-    const fromMs = dateFrom ? startOfLocalDay(new Date(`${dateFrom}T00:00:00`)).getTime() : 0;
-    const toMs = dateTo
-      ? endOfLocalDay(new Date(`${dateTo}T00:00:00`)).getTime()
-      : Number.POSITIVE_INFINITY;
-    return countUsersInRange(memberRows, fromMs, toMs);
-  }, [memberRows, dateFrom, dateTo, rangeFilterActive]);
+    if (!rangeFilterActive && !searchActive) return null;
+    return filteredRows.filter((u) => u.role !== 'admin').length;
+  }, [filteredRows, rangeFilterActive, searchActive]);
 
   const exportVisible = () => {
     const list = filteredRows.filter((u) => u.role !== 'admin');
@@ -662,14 +676,30 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <CalendarRange className="w-4 h-4 text-[#d4af37]" />
-                Date filter
+                <Search className="w-4 h-4 text-[#d4af37]" />
+                Search &amp; filter
               </h3>
               {rangeCount !== null ? (
                 <span className="text-[11px] text-emerald-400 font-bold">
-                  {rangeCount} user{rangeCount === 1 ? '' : 's'} in range
+                  {rangeCount} user{rangeCount === 1 ? '' : 's'} match
                 </span>
               ) : null}
+            </div>
+            <label className="relative block">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <input
+                type="search"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search by name, mobile, or email…"
+                className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 placeholder:text-slate-600"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <h4 className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                <CalendarRange className="w-3.5 h-3.5 text-[#d4af37]" />
+                Date filter
+              </h4>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="text-[10px] text-slate-500 space-y-1">
@@ -739,15 +769,16 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               </button>
             </div>
             <p className="text-[10px] text-slate-600">
-              Filter by signup date. Export downloads the currently visible members (Excel .xlsx).
+              Search by name, mobile number, or email. Optional date filter by signup. Export
+              downloads currently visible members (Excel .xlsx).
             </p>
           </div>
 
           <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#1a1f2e]">
               <h3 className="text-sm font-bold text-white">
-                Users ({filteredRows.length}
-                {rangeFilterActive ? ` filtered · ${rows.length} total` : ''})
+                Users ({filteredRows.filter((u) => u.role !== 'admin').length}
+                {rangeFilterActive || searchActive ? ` filtered · ${memberRows.length} total` : ''})
                 {newUserCount ? (
                   <span className="ml-2 text-[10px] font-bold text-[#d4af37]">
                     {newUserCount} new
