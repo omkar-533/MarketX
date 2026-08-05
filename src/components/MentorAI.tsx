@@ -119,6 +119,7 @@ export default function MentorAI() {
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
   // Arena first — game loop holds attention; curriculum stays one tap away.
   const [deskView, setDeskView] = useState<MentordeskView>('arena');
+  const [arenaPlaying, setArenaPlaying] = useState(false);
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -748,7 +749,7 @@ export default function MentorAI() {
           onComplete={onOnboarded}
         />
       ) : deskView === 'arena' ? (
-        <div className="wm-desk__body wm-desk__body--arena">
+        <div className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live' : ''}`}>
           <section className="wm-desk__chart" aria-label="Arena chart">
             <ChatChartPanel
               symbol={symbol}
@@ -796,16 +797,19 @@ export default function MentorAI() {
                 setChartLevels(levels);
                 setChartShapes(shapes);
               }}
+              onPlayingChange={setArenaPlaying}
             />
-            <section className="wm-desk__coach wm-desk__coach--arena" aria-live="polite">
-              <div className="wm-desk__coach-h">
-                <span className="wm-desk__coach-title">{coachTitle}</span>
-                {busy ? <span className="wm-desk__coach-busy">Working…</span> : null}
-              </div>
-              <div className={`wm-desk__coach-body ${busy ? 'wm-desk__coach-body--busy' : ''}`}>
-                <ChatMarkdown text={coachNote} />
-              </div>
-            </section>
+            {!arenaPlaying ? (
+              <section className="wm-desk__coach wm-desk__coach--arena" aria-live="polite">
+                <div className="wm-desk__coach-h">
+                  <span className="wm-desk__coach-title">{coachTitle}</span>
+                  {busy ? <span className="wm-desk__coach-busy">Working…</span> : null}
+                </div>
+                <div className={`wm-desk__coach-body ${busy ? 'wm-desk__coach-body--busy' : ''}`}>
+                  <ChatMarkdown text={coachNote} />
+                </div>
+              </section>
+            ) : null}
           </aside>
         </div>
       ) : deskView === 'curriculum' && activeLevelId == null ? (
