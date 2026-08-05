@@ -177,6 +177,9 @@ export function detectOrderBlocks(bars, opts = {}) {
 
   return deduped.slice(-maxBlocks).map((ob) => {
     const bull = ob.side === 'bull';
+    // Training labels (Module 3 Part 4 + Module 7 Part 4):
+    // Demand OB = bullish OB (origin of up expansion). Supply OB = bearish OB.
+    // Never label the FVG gap itself as Supply/Demand.
     return {
       side: ob.side,
       high: Number(ob.high.toFixed(4)),
@@ -194,7 +197,7 @@ export function detectOrderBlocks(bars, opts = {}) {
       touches: 0,
       touchLabel: 'untouched',
       timeframe,
-      label: bull ? 'Bull OB' : 'Bear OB',
+      label: bull ? 'Demand OB' : 'Supply OB',
       tone: bull ? 'bull' : 'bear',
       borderColor: bull ? OB_PINE_COLORS.bullBorder : OB_PINE_COLORS.bearBorder,
       fillColor: bull ? OB_PINE_COLORS.bullBg : OB_PINE_COLORS.bearBg,
@@ -253,15 +256,33 @@ export function mergeOverlappingOrderBlocks(blocks) {
 }
 
 /**
- * For chart marks: at most one Bull OB + one Bear OB nearest LTP.
- * Never dumps a stack of same-side twins on one ask.
+ * Training invalidation (Module 3 Part 4):
+ * Demand — strong close below zone. Supply — strong close above zone.
+ * Also keep LTP-sided relevance: Demand below (or testing), Supply above (or testing).
+ */
+export function isObStillRelevant(o, ltp) {
+  if (!o || o.status === 'mitigated') return false;
+  const hi = Math.max(Number(o.high), Number(o.low));
+  const lo = Math.min(Number(o.high), Number(o.low));
+  if (![hi, lo].every((n) => Number.isFinite(n))) return false;
+  const bull = o.side === 'bull' || o.tone === 'bull' || /demand|bull/i.test(o.label || '');
+  if (!(ltp > 0)) return true;
+  // Closed through → drop (do not mark broken Supply as active overhead)
+  if (bull && ltp < lo) return false;
+  if (!bull && ltp > hi) return false;
+  return true;
+}
+
+/**
+ * For chart marks: at most one Demand OB (below LTP) + one Supply OB (above LTP).
+ * Never dumps a stack of same-side twins, never marks FVG gaps, never keeps broken supply.
  */
 export function selectDisplayOrderBlocks(orderBlocks, opts = {}) {
   const ltp = Number(opts.ltp) || 0;
   const maxPerSide = Math.max(1, Number(opts.maxPerSide) || 1);
   const maxTotal = Math.max(1, Number(opts.maxTotal) || maxPerSide * 2);
   const active = mergeOverlappingOrderBlocks(
-    (orderBlocks || []).filter((o) => o && o.status !== 'mitigated'),
+    (orderBlocks || []).filter((o) => isObStillRelevant(o, ltp)),
   );
 
   const score = (o) => {
@@ -271,17 +292,30 @@ export function selectDisplayOrderBlocks(orderBlocks, opts = {}) {
     return dist * 1000 + (Number(o.barsAgo) || 0) * 0.01;
   };
 
+  // Demand = support side (at/below LTP). Supply = resistance side (at/above LTP).
   const bulls = active
-    .filter((o) => o.side === 'bull' || o.tone === 'bull')
+    .filter((o) => {
+      const bull = o.side === 'bull' || o.tone === 'bull' || /demand|bull/i.test(o.label || '');
+      if (!bull) return false;
+      if (!(ltp > 0)) return true;
+      const hi = Math.max(Number(o.high), Number(o.low));
+      return hi <= ltp * 1.001; // at or below LTP (allow tiny float/test)
+    })
     .sort((a, b) => score(a) - score(b))
     .slice(0, maxPerSide);
   const bears = active
-    .filter((o) => o.side === 'bear' || o.tone === 'bear')
+    .filter((o) => {
+      const bear = o.side === 'bear' || o.tone === 'bear' || /supply|bear/i.test(o.label || '');
+      if (!bear) return false;
+      if (!(ltp > 0)) return true;
+      const lo = Math.min(Number(o.high), Number(o.low));
+      return lo >= ltp * 0.999; // at or above LTP
+    })
     .sort((a, b) => score(a) - score(b))
     .slice(0, maxPerSide);
 
   const picked = [...bulls, ...bears].sort((a, b) => score(a) - score(b)).slice(0, maxTotal);
-  // Keep visual order: bull below / bear above when possible
+  // Keep visual order: supply above / demand below
   return picked.sort((a, b) => Number(b.high) - Number(a.high));
 }
 
@@ -335,8 +369,8 @@ export function formatObTape(orderBlocks, symbol = '', interval = '', opts = {})
         `- ${o.label} ${o.low.toFixed(2)}-${o.high.toFixed(2)} barsAgo=${o.barsAgo} → {"type":"zone","p1":${o.high},"p2":${o.low},"x1":${o.x1},"tone":"${o.tone}","label":"${o.label}","borderColor":"${o.borderColor}","fillColor":"${o.fillColor}"}`,
     ),
     opts.markMode
-      ? 'Draw ONLY these tape zones (max 1 Bull OB + 1 Bear OB). Never stack two same-side OBs on the same band. Exact Pine colors. No Entry/Stop/Target.'
-      : 'Draw ONLY the listed tape zones (already de-duplicated). Exact Pine colors. No Entry/Stop/Target.',
+      ? 'Draw ONLY these tape zones (max 1 Demand OB below LTP + 1 Supply OB above LTP). OB = candle[2] full range — NEVER mark the FVG gap as Supply/Demand. Labels exactly "Demand OB" / "Supply OB". Exact Pine colors. No Entry/Stop/Target.'
+      : 'Draw ONLY the listed tape zones (already de-duplicated). Labels Demand OB / Supply OB. Never Supply FVG. Exact Pine colors. No Entry/Stop/Target.',
   ];
   return lines.join('\n');
 }
@@ -419,7 +453,7 @@ export async function buildOrderBlockContext(message, opts = {}) {
 }
 
 export function wantsOrderBlockMarkup(text) {
-  return /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*zone|demand\s*zone|fvg\s*ob|institutional\s*ob)\b/i.test(
+  return /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*\/?\s*demand|demand\s*\/?\s*supply|supply\s*zone|demand\s*zone|supply\s*ob|demand\s*ob|fvg\s*ob|institutional\s*ob)\b|\b(supply|demand)\b/i.test(
     String(text || ''),
   );
 }

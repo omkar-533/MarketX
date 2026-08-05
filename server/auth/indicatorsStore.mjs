@@ -86,14 +86,29 @@ async function mapRows(db, rows) {
   return Promise.all(rows.map(async (row) => fromRow(row, await signImage(db, row))));
 }
 
+function normalizeHttpUrl(value) {
+  let clean = String(value || '').trim();
+  if (!clean) return '';
+  if (!/^https?:\/\//i.test(clean)) {
+    if (
+      /^[a-z0-9.-]+\.[a-z]{2,}\//i.test(clean) ||
+      /^www\./i.test(clean) ||
+      /^youtu\.be\//i.test(clean)
+    ) {
+      clean = `https://${clean.replace(/^\/+/, '')}`;
+    }
+  }
+  return clean;
+}
+
 function validateHttpUrl(value, label) {
-  const clean = String(value || '').trim();
+  const clean = normalizeHttpUrl(value);
   if (!clean) return '';
   let parsed;
   try {
     parsed = new URL(clean);
   } catch {
-    throw Object.assign(new Error(`Enter a valid ${label} URL`), { status: 400 });
+    throw Object.assign(new Error(`Enter a valid ${label} URL (https://…)`), { status: 400 });
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw Object.assign(new Error(`${label} must start with http:// or https://`), { status: 400 });
@@ -240,6 +255,15 @@ export async function createIndicator({
 
   let { data, error } = await db.from(TABLE).insert(row).select().single();
   if (error && /how_to_video_url/i.test(error.message || '')) {
+    // Never silently drop a video the admin just pasted — surface the real failure.
+    if (fields.howToVideoUrl) {
+      throw Object.assign(
+        new Error(
+          'How-to video column missing on database. Run scripts/add-howto-video-column.mjs then retry.',
+        ),
+        { status: 500 },
+      );
+    }
     const withoutVideo = { ...row };
     delete withoutVideo.how_to_video_url;
     ({ data, error } = await db.from(TABLE).insert(withoutVideo).select().single());
@@ -247,7 +271,7 @@ export async function createIndicator({
   if (error && /link/i.test(error.message || '')) {
     const legacy = { ...row };
     delete legacy.link;
-    delete legacy.how_to_video_url;
+    if (!fields.howToVideoUrl) delete legacy.how_to_video_url;
     ({ data, error } = await db.from(TABLE).insert(legacy).select().single());
   }
   if (error) throw storeError(error);
@@ -339,6 +363,14 @@ export async function updateIndicator(id, patch = {}) {
 
   let { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
   if (error && /how_to_video_url/i.test(error.message || '')) {
+    if (fields.howToVideoUrl) {
+      throw Object.assign(
+        new Error(
+          'How-to video column missing on database. Run scripts/add-howto-video-column.mjs then retry.',
+        ),
+        { status: 500 },
+      );
+    }
     const withoutVideo = { ...cloudPatch };
     delete withoutVideo.how_to_video_url;
     ({ data, error } = await db.from(TABLE).update(withoutVideo).eq('id', id).select().maybeSingle());
@@ -346,7 +378,7 @@ export async function updateIndicator(id, patch = {}) {
   if (error && /link/i.test(error.message || '')) {
     const legacy = { ...cloudPatch };
     delete legacy.link;
-    delete legacy.how_to_video_url;
+    if (!fields.howToVideoUrl) delete legacy.how_to_video_url;
     ({ data, error } = await db.from(TABLE).update(legacy).eq('id', id).select().maybeSingle());
   }
   if (error) throw storeError(error);

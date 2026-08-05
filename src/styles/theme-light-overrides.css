@@ -1341,6 +1341,7 @@ html[data-theme="light"] .access-proof__label {
 }
 
 html[data-theme="light"] .access-gate__proof .access-proof__drop,
+html[data-theme="light"] .access-gate__card .access-unlock__proof .access-proof__drop,
 html[data-theme="light"] .access-proof__drop {
   background: #ffffff !important;
   border-color: rgba(15, 159, 74, 0.35) !important;
@@ -1379,7 +1380,8 @@ html[data-theme="light"] .access-proof__note {
 }
 
 html[data-theme="light"] .access-proof__submit,
-html[data-theme="light"] .access-gate__proof .access-proof__submit {
+html[data-theme="light"] .access-gate__proof .access-proof__submit,
+html[data-theme="light"] .access-gate__card .access-unlock__proof .access-proof__submit {
   color: #052e16 !important;
   background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%) !important;
 }

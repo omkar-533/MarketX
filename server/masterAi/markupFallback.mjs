@@ -350,12 +350,12 @@ export function synthesizeLiqWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 16) });
 }
 
-/** Pine FVG high-vol OB zones (extend.right, bull #00ff9d / bear #ff4d4d). */
+/** Pine FVG high-vol OB zones (extend.right) — labels Demand OB / Supply OB (never FVG). */
 export function synthesizeObWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
   const blocks = Array.isArray(meta.orderBlocks) ? meta.orderBlocks : [];
-  // Balanced mark: 1 Bull + 1 Bear nearest LTP — never a same-side twin stack.
+  // Balanced mark: 1 Demand below LTP + 1 Supply above LTP — never a broken/FVG dump.
   const selected = selectDisplayOrderBlocks(blocks, {
     ltp: Number(meta.lastClose) || 0,
     maxPerSide: 1,
@@ -367,14 +367,17 @@ export function synthesizeObWolfchart(meta = {}) {
       const high = roundPrice(o.high ?? o.p1);
       const low = roundPrice(o.low ?? o.p2);
       if (high == null || low == null) return null;
-      const bull = o.side === 'bull' || o.tone === 'bull' || /bull/i.test(o.label || '');
+      const bull =
+        o.side === 'bull' ||
+        o.tone === 'bull' ||
+        /demand|bull/i.test(o.label || '');
       return {
         type: 'zone',
         p1: Math.max(high, low),
         p2: Math.min(high, low),
         x1: o.x1 ?? (o.barsAgo != null ? -o.barsAgo : undefined),
         tone: bull ? 'bull' : 'bear',
-        label: o.label || (bull ? 'Bull OB' : 'Bear OB'),
+        label: bull ? 'Demand OB' : 'Supply OB',
         color: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
         borderColor: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
         fillColor: o.fillColor || (bull ? 'rgba(0,255,157,0.15)' : 'rgba(255,77,77,0.15)'),
@@ -439,11 +442,26 @@ export function ensureWolfchartReply(reply, meta) {
     const block = synthesizeObWolfchart(meta);
     const cleaned = stripWolfchart(text);
     if (!block) {
-      console.warn('[Wolf AI] OB ask but engine found no BOS-confirmed block');
+      console.warn('[Wolf AI] OB ask but engine found no active Demand/Supply OB');
       return cleaned;
     }
-    console.info('[Wolf AI] enforced institutional Order Block zones');
+    console.info('[Wolf AI] enforced Demand OB / Supply OB (never FVG gap)');
     return `${cleaned}${block}`;
+  }
+
+  // Model often invents "Supply FVG" / marks the gap instead of the OB candle —
+  // replace with engine Demand/Supply OB when tape exists.
+  if (
+    replyHasWolfchart(text) &&
+    Array.isArray(meta?.orderBlocks) &&
+    meta.orderBlocks.length &&
+    /supply\s*fvg|demand\s*fvg|bullish\s*fvg|bearish\s*fvg|"label"\s*:\s*"[^"]*fvg/i.test(text)
+  ) {
+    const block = synthesizeObWolfchart(meta);
+    if (block) {
+      console.info('[Wolf AI] replaced FVG-as-supply dump with Demand/Supply OB tape');
+      return `${stripWolfchart(text)}${block}`;
+    }
   }
 
   if (meta?.style === 'liq') {

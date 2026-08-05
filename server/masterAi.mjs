@@ -1604,12 +1604,14 @@ NOT zones. NOT full-width lines. NOT nearest mid pivots.
 - Use type "hray" from the swing bar to the right, labels exactly SUPPORT / RESISTANCE, levels:[].
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
-const OB_MARK_HINT = `ORDER BLOCK MARK (mandatory — Pine FVG + high-volume logic):
-STRICT: Copy ORDER BLOCK TAPE zones exactly — usually ONE Bull OB + ONE Bear OB (nearest LTP).
-Never draw two same-side OBs on the same/overlapping band. If tape has only one side, draw only that.
-Rules: bullFVG = low > high[2] · bearFVG = high < low[2] · volume[2] > SMA(volume,20)×1.5.
-OB = full candle[2] (high→low). Bull cleanup when low <= top; bear when high >= bottom.
-Visual: zone extend.right · bull border/fill #00ff9d · bear #ff4d4d (labels Bull OB / Bear OB).
+const OB_MARK_HINT = `ORDER BLOCK / SUPPLY-DEMAND MARK (mandatory — trained engine):
+STRICT: Copy ORDER BLOCK TAPE exactly. Usually ONE Demand OB (below/at LTP) + ONE Supply OB (above/at LTP).
+Demand OB = bullish OB = origin candle of up expansion (Module 3 Part 4 + Module 7 Part 4).
+Supply OB = bearish OB = origin candle of down expansion — NOT the FVG/imbalance gap.
+FORBIDDEN labels: "Supply FVG", "Demand FVG", "Bullish FVG", "Bearish FVG" as OB marks.
+If price already closed through a zone → do not mark it (Supply invalidated by close above; Demand by close below).
+Pine birth rule: bullFVG=low>high[2] · bearFVG=high<low[2] · vol[2]>SMA20×1.5 · OB=candle[2] full range (not the gap).
+Visual: zone extend.right · Demand #00ff9d · Supply #ff4d4d · labels exactly "Demand OB" / "Supply OB".
 levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target/Buy/Sell.`;
 
 const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic + Pine visuals):
@@ -2475,7 +2477,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsTrendMark
             ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsObMark
-            ? 'Task: MARK ORDER BLOCKS NOW (Pine FVG+vol). Use ORDER BLOCK TAPE only. wolfchart zones Bull OB (#00ff9d) / Bear OB (#ff4d4d) extend right. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK DEMAND OB + SUPPLY OB NOW from ORDER BLOCK TAPE only. Demand OB #00ff9d below LTP · Supply OB #ff4d4d above LTP. OB=candle[2] full range — NEVER mark FVG gap as Supply. levels:[]. No Entry/Stop/Target.'
           : wantsLiqMark
             ? 'Task: MARK LIQUIDITY NOW (Pine logic). Use LIQUIDITY TAPE. wolfchart hrays with exact labels BSL (High Vol)/SSL (High Vol)/PDH/PDL/PWH/PWL/PMH/PML. Same look as S/R rays — NOT Support/Resistance text. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark

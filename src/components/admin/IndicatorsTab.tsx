@@ -114,17 +114,43 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
     }
   };
 
+  const normalizeUrl = (raw: string) => {
+    const v = String(raw || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    // Paste without protocol (youtu.be/…, www.youtube.com/…)
+    if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(v) || /^www\./i.test(v) || /^youtu\.be\//i.test(v)) {
+      return `https://${v.replace(/^\/+/, '')}`;
+    }
+    return v;
+  };
+
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMsg('');
     setError('');
     try {
+      const howToVideoUrl = normalizeUrl(form.howToVideoUrl);
+      const link = normalizeUrl(form.link);
+      if (howToVideoUrl) {
+        let validVideo = true;
+        try {
+          void new URL(howToVideoUrl);
+        } catch {
+          validVideo = false;
+        }
+        if (!validVideo) {
+          throw new Error(
+            'How-to video URL invalid hai. Full link paste karo (https://… YouTube / Vimeo / .mp4).',
+          );
+        }
+      }
       const payload = {
-        title: form.title,
+        title: form.title.trim(),
         description: form.description,
-        link: form.link,
-        howToVideoUrl: form.howToVideoUrl.trim(),
+        link,
+        howToVideoUrl,
         sortOrder: Number(form.sortOrder) || 0,
         published: form.published,
         ...(form.clearImage
@@ -134,13 +160,17 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
             : {}),
       };
 
-      if (editingId) {
-        await adminUpdateIndicator(editingId, payload, adminEmail, adminPassword);
-        setMsg('Indicator updated.');
-      } else {
-        await adminCreateIndicator(payload, adminEmail, adminPassword);
-        setMsg('Indicator created.');
+      const saved = editingId
+        ? await adminUpdateIndicator(editingId, payload, adminEmail, adminPassword)
+        : await adminCreateIndicator(payload, adminEmail, adminPassword);
+
+      if (howToVideoUrl && !String(saved?.howToVideoUrl || '').trim()) {
+        throw new Error(
+          'Save hua lekin video URL store nahi hui. Server/DB column check karo, phir dubara try karo.',
+        );
       }
+
+      setMsg(editingId ? 'Indicator updated.' : 'Indicator created.');
       setShowForm(false);
       setEditingId(null);
       setForm(emptyForm());
@@ -202,6 +232,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
 
       {showForm ? (
         <form
+          noValidate
           onSubmit={(e) => void save(e)}
           className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 space-y-4"
         >
@@ -218,6 +249,12 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {error ? (
+            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-3">
@@ -309,7 +346,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           <div>
             <label className={LABEL}>How to use video URL (optional)</label>
             <input
-              type="url"
+              type="text"
+              inputMode="url"
+              autoComplete="off"
               className={FIELD}
               value={form.howToVideoUrl}
               onChange={(e) => setForm((p) => ({ ...p, howToVideoUrl: e.target.value }))}
@@ -325,7 +364,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           <div>
             <label className={LABEL}>Indicator link</label>
             <input
-              type="url"
+              type="text"
+              inputMode="url"
+              autoComplete="off"
               className={FIELD}
               value={form.link}
               onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}

@@ -938,7 +938,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             );
           const wantsObNow =
             !wantsTrendNow &&
-            /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*zone|demand\s*zone)\b/i.test(
+            /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*\/?\s*demand|demand\s*\/?\s*supply|supply\s*zone|demand\s*zone|supply\s*ob|demand\s*ob)\b|\b(supply|demand)\b/i.test(
               userText,
             );
           const recentLiqContext = [...messages]
@@ -968,7 +968,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                 wantsTrendNow
                   ? ' TRENDLINE ASK: draw DIAGONAL Upper + Lower trendline rays on swing highs/lows (both sides of the channel). Forbidden: horizontal S-R level rays or hray labels.'
                   : wantsObNow
-                    ? ' ORDER BLOCK ASK: Pine FVG+high-vol zones from tape — Bull OB #00ff9d / Bear OB #ff4d4d boxes extend right.'
+                    ? ' ORDER BLOCK ASK: Demand OB (#00ff9d below LTP) + Supply OB (#ff4d4d above LTP) from tape — OB candle only, never mark FVG gap as Supply.'
                     : wantsLiqNow
                       ? ' LIQUIDITY ASK: Pine logic hrays — BSL/SSL (High Vol), PDH/PDL/PWH/PWL/PMH/PML. Not SUPPORT/RESISTANCE labels.'
                       : wantsMarkNow
