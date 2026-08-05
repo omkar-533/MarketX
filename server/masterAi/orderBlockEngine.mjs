@@ -177,8 +177,8 @@ export function detectOrderBlocks(bars, opts = {}) {
 
   return deduped.slice(-maxBlocks).map((ob) => {
     const bull = ob.side === 'bull';
-    // Training labels (Module 3 Part 4 + Module 7 Part 4):
-    // Demand OB = bullish OB (origin of up expansion). Supply OB = bearish OB.
+    // Order Block ask → Bullish OB / Bearish OB (structure).
+    // Demand/Supply ask remaps labels in synthesizeObWolfchart.
     // Never label the FVG gap itself as Supply/Demand.
     return {
       side: ob.side,
@@ -197,7 +197,7 @@ export function detectOrderBlocks(bars, opts = {}) {
       touches: 0,
       touchLabel: 'untouched',
       timeframe,
-      label: bull ? 'Demand OB' : 'Supply OB',
+      label: bull ? 'Bullish OB' : 'Bearish OB',
       tone: bull ? 'bull' : 'bear',
       borderColor: bull ? OB_PINE_COLORS.bullBorder : OB_PINE_COLORS.bearBorder,
       fillColor: bull ? OB_PINE_COLORS.bullBg : OB_PINE_COLORS.bearBg,
@@ -369,8 +369,8 @@ export function formatObTape(orderBlocks, symbol = '', interval = '', opts = {})
         `- ${o.label} ${o.low.toFixed(2)}-${o.high.toFixed(2)} barsAgo=${o.barsAgo} → {"type":"zone","p1":${o.high},"p2":${o.low},"x1":${o.x1},"tone":"${o.tone}","label":"${o.label}","borderColor":"${o.borderColor}","fillColor":"${o.fillColor}"}`,
     ),
     opts.markMode
-      ? 'Draw ONLY these tape zones (max 1 Demand OB below LTP + 1 Supply OB above LTP). OB = candle[2] full range — NEVER mark the FVG gap as Supply/Demand. Labels exactly "Demand OB" / "Supply OB". Exact Pine colors. No Entry/Stop/Target.'
-      : 'Draw ONLY the listed tape zones (already de-duplicated). Labels Demand OB / Supply OB. Never Supply FVG. Exact Pine colors. No Entry/Stop/Target.',
+      ? 'Draw ONLY these tape zones (max 1 Bullish OB below LTP + 1 Bearish OB above LTP). OB = candle[2] full range — NEVER mark the FVG gap. Labels exactly "Bullish OB" / "Bearish OB" for order-block asks (or "Demand"/"Supply" if user asked demand/supply). Exact Pine colors. No Entry/Stop/Target.'
+      : 'Draw ONLY the listed tape zones (already de-duplicated). Labels Bullish OB / Bearish OB (order block) or Demand / Supply (zone ask). Never Supply FVG. Exact Pine colors. No Entry/Stop/Target.',
   ];
   return lines.join('\n');
 }

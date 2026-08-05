@@ -7,6 +7,7 @@ import {
   Loader2,
   RefreshCw,
   Volume2,
+  Zap,
 } from 'lucide-react';
 import ChatMarkdown from '../ChatMarkdown';
 import {
@@ -182,10 +183,15 @@ export default function LessonPlayer({
     } else {
       setNote(
         score === 5
-          ? 'Perfect — Level clear. Next level unlock ho gaya.'
-          : `Pass (${score}/5) — next level unlock. Revision notes padh ke aage badho.`,
+          ? '🔥 PERFECT — Level clear! +40 XP vibe. Next level unlock ho gaya.'
+          : `✅ Pass (${score}/5) — next level unlock. +25 XP vibe. Revision notes padh ke aage badho.`,
       );
     }
+  };
+
+  const jumpToQuiz = () => {
+    const quizIdx = LESSON_STEPS.findIndex((s) => s.id === 'quiz');
+    if (quizIdx >= 0) setStepIdx(quizIdx);
   };
 
   const toggleHomework = (idx: number) => {
@@ -245,6 +251,12 @@ export default function LessonPlayer({
             Step {stepIdx + 1}/{LESSON_STEPS.length}: {step.label}
           </h2>
         </div>
+        {step.id !== 'quiz' && !lp?.quizPassed ? (
+          <button type="button" className="wm-learn__chip wm-learn__chip--play" onClick={jumpToQuiz}>
+            <Zap className="h-3.5 w-3.5" />
+            Skip to Quiz
+          </button>
+        ) : null}
       </div>
 
       <div className="wm-learn__stepper" role="list">

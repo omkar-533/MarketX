@@ -1,4 +1,4 @@
-import { Check, FlaskConical, Lock, Play } from 'lucide-react';
+import { Check, FlaskConical, Lock, Play, Zap } from 'lucide-react';
 import {
   CURRICULUM_LEVELS,
   type CurriculumProgress,
@@ -12,6 +12,7 @@ type MentorRoadmapProps = {
   activeLevelId: number | null;
   onOpenLevel: (levelId: number) => void;
   onNavigate?: (handoff: MentorHandoff) => void;
+  onPlayArena?: () => void;
 };
 
 export default function MentorRoadmap({
@@ -20,6 +21,7 @@ export default function MentorRoadmap({
   activeLevelId,
   onOpenLevel,
   onNavigate,
+  onPlayArena,
 }: MentorRoadmapProps) {
   return (
     <div className="wm-learn wm-learn--roadmap">
@@ -28,13 +30,19 @@ export default function MentorRoadmap({
           <p className="wm-learn__eyebrow">Personalized learning roadmap</p>
           <h2 className="wm-learn__title">{studentName}, your Module 1 path</h2>
           <p className="wm-learn__lead">
-            Levels unlock only after you pass the quiz (4/5). Skip allowed nahi — foundation pehle.
+            Levels unlock after quiz pass (4/5). Maza chahiye? Arena me timed rounds khelo — phir yahan padho.
           </p>
         </div>
         <div className="wm-learn__roadmap-actions">
           <div className="wm-learn__progress-pill">
             Unlocked {progress.highestUnlocked}/12
           </div>
+          {onPlayArena ? (
+            <button type="button" className="wm-learn__chip wm-learn__chip--play" onClick={onPlayArena}>
+              <Zap className="h-3.5 w-3.5" />
+              Play Arena
+            </button>
+          ) : null}
           {onNavigate ? (
             <button
               type="button"

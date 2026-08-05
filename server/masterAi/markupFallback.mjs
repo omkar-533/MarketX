@@ -98,7 +98,10 @@ function replyHasObZones(reply) {
     return shapes.some((s) => {
       const type = String(s?.type || '').toLowerCase();
       const label = String(s?.label || '');
-      return type === 'zone' && /^(demand|supply|bull|bear)\s*ob\b/i.test(label);
+      return (
+        type === 'zone' &&
+        (/^(demand|supply)(\s*ob)?$/i.test(label) || /^(bullish|bearish)\s*ob\b/i.test(label))
+      );
     });
   } catch {
     return false;
@@ -521,12 +524,16 @@ export function synthesizeLiqWolfchart(meta = {}) {
   return fence({ symbol, tf, levels: [], shapes: shapes.slice(0, 16) });
 }
 
-/** Pine FVG high-vol OB zones (extend.right) — labels Demand OB / Supply OB (never FVG). */
+/**
+ * Pine FVG high-vol OB zones (extend.right).
+ * labelMode: 'ob' → Bullish OB / Bearish OB · 'zone' → Demand / Supply
+ */
 export function synthesizeObWolfchart(meta = {}) {
   const symbol = resolveSymbol(meta);
   const tf = resolveTf(meta);
   const blocks = Array.isArray(meta.orderBlocks) ? meta.orderBlocks : [];
-  // Balanced mark: 1 Demand below LTP + 1 Supply above LTP — never a broken/FVG dump.
+  const labelMode = meta.labelMode === 'zone' ? 'zone' : 'ob';
+  // Balanced mark: 1 bullish below LTP + 1 bearish above LTP — never a broken/FVG dump.
   const selected = selectDisplayOrderBlocks(blocks, {
     ltp: Number(meta.lastClose) || 0,
     maxPerSide: 1,
@@ -542,13 +549,21 @@ export function synthesizeObWolfchart(meta = {}) {
         o.side === 'bull' ||
         o.tone === 'bull' ||
         /demand|bull/i.test(o.label || '');
+      const label =
+        labelMode === 'zone'
+          ? bull
+            ? 'Demand'
+            : 'Supply'
+          : bull
+            ? 'Bullish OB'
+            : 'Bearish OB';
       return {
         type: 'zone',
         p1: Math.max(high, low),
         p2: Math.min(high, low),
         x1: o.x1 ?? (o.barsAgo != null ? -o.barsAgo : undefined),
         tone: bull ? 'bull' : 'bear',
-        label: bull ? 'Demand OB' : 'Supply OB',
+        label,
         color: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
         borderColor: o.borderColor || (bull ? '#00ff9d' : '#ff4d4d'),
         fillColor: o.fillColor || (bull ? 'rgba(0,255,157,0.15)' : 'rgba(255,77,77,0.15)'),

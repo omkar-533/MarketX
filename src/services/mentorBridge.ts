@@ -10,6 +10,7 @@ import { loadMentorMemory as loadLiveMemory } from './liveMentor';
 import type { LabMode } from './tradingLab';
 
 export type MentordeskView =
+  | 'arena'
   | 'curriculum'
   | 'chart'
   | 'coach'
@@ -266,6 +267,8 @@ function clamp(n: number, lo = 0, hi = 100) {
 
 export function handoffLabel(view: MentordeskView): string {
   switch (view) {
+    case 'arena':
+      return 'Arena';
     case 'curriculum':
       return 'Curriculum';
     case 'chart':

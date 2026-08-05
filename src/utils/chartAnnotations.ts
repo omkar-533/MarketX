@@ -242,12 +242,12 @@ function toShape(raw: unknown): ChartShape | null {
     shape.fillColor = fillRaw;
   }
   // Pine OB defaults — Demand/Bull OB green, Supply/Bear OB red (never FVG colors)
-  if (/^(demand|bull)\s*ob\b/i.test(shape.label)) {
+  if (/^(demand(\s*ob)?|bullish\s*ob|bull\s*ob)$/i.test(shape.label)) {
     shape.borderColor = shape.borderColor || '#00ff9d';
     shape.fillColor = shape.fillColor || 'rgba(0,255,157,0.15)';
     shape.color = shape.color || '#00ff9d';
     shape.tone = shape.tone || 'bull';
-  } else if (/^(supply|bear)\s*ob\b/i.test(shape.label)) {
+  } else if (/^(supply(\s*ob)?|bearish\s*ob|bear\s*ob)$/i.test(shape.label)) {
     shape.borderColor = shape.borderColor || '#ff4d4d';
     shape.fillColor = shape.fillColor || 'rgba(255,77,77,0.15)';
     shape.color = shape.color || '#ff4d4d';

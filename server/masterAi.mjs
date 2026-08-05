@@ -1617,13 +1617,14 @@ NOT zones. NOT full-width lines. NOT nearest mid pivots.
 Prose 2–3 short lines. Then wolfchart. No Entry/Stop/Target.`;
 
 const OB_MARK_HINT = `ORDER BLOCK / SUPPLY-DEMAND MARK (mandatory — trained engine):
-STRICT: Copy ORDER BLOCK TAPE exactly. Usually ONE Demand OB (below/at LTP) + ONE Supply OB (above/at LTP).
-Demand OB = bullish OB = origin candle of up expansion (Module 3 Part 4 + Module 7 Part 4).
-Supply OB = bearish OB = origin candle of down expansion — NOT the FVG/imbalance gap.
+STRICT: Copy ORDER BLOCK TAPE exactly. Usually ONE bullish zone (below/at LTP) + ONE bearish zone (above/at LTP).
+If user asked ORDER BLOCK / OB → labels exactly "Bullish OB" / "Bearish OB" (NOT Demand OB / Supply OB).
+If user asked DEMAND or SUPPLY → labels exactly "Demand" / "Supply" (no "OB" suffix).
+Bullish OB = origin candle of up expansion. Bearish OB = origin candle of down expansion — NOT the FVG gap.
 FORBIDDEN labels: "Supply FVG", "Demand FVG", "Bullish FVG", "Bearish FVG" as OB marks.
 If price already closed through a zone → do not mark it (Supply invalidated by close above; Demand by close below).
 Pine birth rule: bullFVG=low>high[2] · bearFVG=high<low[2] · vol[2]>SMA20×1.5 · OB=candle[2] full range (not the gap).
-Visual: zone extend.right · Demand #00ff9d · Supply #ff4d4d · labels exactly "Demand OB" / "Supply OB".
+Visual: zone extend.right · bullish/demand #00ff9d · bearish/supply #ff4d4d · labels match the ask (Bullish OB/Bearish OB OR Demand/Supply).
 levels:[]. Prose 2–3 lines then wolfchart. No Entry/Stop/Target/Buy/Sell.`;
 
 const LIQ_MARK_HINT = `LIQUIDITY MARK (mandatory — Pine ICT logic + Pine visuals):
@@ -2564,13 +2565,13 @@ export function createMasterAiRouter(apiKey) {
           : wantsTrendMark
             ? 'Task: MARK TREND LINE NOW (TradingView style). 2–3 short lines. Uptrend=ray under Higher Lows; Downtrend=ray over Lower Highs. Use TREND LINE DRAW PRIMARY. Optional channel ray only if natural. NEVER horizontal SUPPORT/RESISTANCE. levels:[]. No Entry/Stop/Target.'
           : wantsObMark
-            ? 'Task: MARK DEMAND OB + SUPPLY OB NOW from ORDER BLOCK TAPE only. Demand OB #00ff9d below LTP · Supply OB #ff4d4d above LTP. OB=candle[2] full range — NEVER mark FVG gap as Supply. levels:[]. No Entry/Stop/Target.'
+            ? 'Task: MARK ORDER BLOCKS NOW from ORDER BLOCK TAPE. If ask is order block/OB → labels "Bullish OB" + "Bearish OB". If ask is demand/supply → labels "Demand" + "Supply". #00ff9d below LTP · #ff4d4d above LTP. OB=candle[2] full range — NEVER FVG gap. levels:[]. No Entry/Stop/Target.'
           : wantsLiqMark
             ? 'Task: MARK LIQUIDITY NOW (Pine logic). Use LIQUIDITY TAPE. wolfchart hrays with exact labels BSL (High Vol)/SSL (High Vol)/PDH/PDL/PWH/PWL/PMH/PML. Same look as S/R rays — NOT Support/Resistance text. levels:[]. No Entry/Stop/Target.'
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
-            ? 'Task: MARK CHART NOW in THIS reply (never wait for a second message). 2–4 short lines + non-empty wolfchart. trendline→ray · OB→Demand/Supply OB zones · liquidity→BSL/SSL hrays · S/R→hrays. Forbidden: “kaunsa mark?”, confirm questions, empty shapes. NEVER ask for screenshot. No Entry/Stop/Target.'
+            ? 'Task: MARK CHART NOW in THIS reply (never wait for a second message). 2–4 short lines + non-empty wolfchart. trendline→ray · OB→Bullish/Bearish OB (or Demand/Supply if asked) · liquidity→BSL/SSL hrays · S/R→hrays. Forbidden: “kaunsa mark?”, confirm questions, empty shapes. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2779,6 +2780,12 @@ export function createMasterAiRouter(apiKey) {
               liquidityPools: structureMeta.liquidityPools,
               liquidityPair: structureMeta.liquidityPair,
               forceMark: Boolean(explicitMark || wantsTrendMark || wantsObMark || wantsLiqMark || wantsSrMark),
+              // Order block ask → Bullish/Bearish OB. Pure demand/supply ask → Demand/Supply.
+              labelMode:
+                /\b(demand|supply)\b/i.test(userAsk) &&
+                !/\border\s*blocks?\b|\bob\b/i.test(userAsk)
+                  ? 'zone'
+                  : 'ob',
               style: wantsTrendMark
                 ? 'trend'
                 : wantsObMark
