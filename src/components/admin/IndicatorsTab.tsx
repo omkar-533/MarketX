@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  GripVertical,
   ImagePlus,
   Loader2,
   Pencil,
@@ -63,6 +64,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
   const [showForm, setShowForm] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,17 +238,10 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
     }
   };
 
-  const moveRow = async (id: string, direction: -1 | 1) => {
-    const index = rows.findIndex((row) => row.id === id);
-    const swapWith = index + direction;
-    if (index < 0 || swapWith < 0 || swapWith >= rows.length) return;
-
-    const next = [...rows];
-    const a = next[index];
-    next[index] = next[swapWith];
-    next[swapWith] = a;
+  const persistOrder = async (next: IndicatorItem[], focusId?: string) => {
+    const prev = rows;
     setRows(next);
-    setReorderingId(id);
+    setReorderingId(focusId || next[0]?.id || 'all');
     setError('');
     setMsg('');
     try {
@@ -257,10 +254,63 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       setMsg('Order updated — members see this sequence on Indicators.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reorder');
+      setRows(prev);
       await load();
     } finally {
       setReorderingId(null);
     }
+  };
+
+  const moveRow = async (id: string, direction: -1 | 1) => {
+    const index = rows.findIndex((row) => row.id === id);
+    const swapWith = index + direction;
+    if (index < 0 || swapWith < 0 || swapWith >= rows.length) return;
+    const next = [...rows];
+    const a = next[index];
+    next[index] = next[swapWith];
+    next[swapWith] = a;
+    await persistOrder(next, id);
+  };
+
+  const onDragStart = (e: DragEvent, id: string) => {
+    if (reorderingId) {
+      e.preventDefault();
+      return;
+    }
+    dragIdRef.current = id;
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const onDragOverRow = (e: DragEvent, overId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragIdRef.current && dragIdRef.current !== overId) setDragOverId(overId);
+  };
+
+  const onDropRow = async (e: DragEvent, overId: string) => {
+    e.preventDefault();
+    const fromId = dragIdRef.current || e.dataTransfer.getData('text/plain');
+    setDraggingId(null);
+    setDragOverId(null);
+    dragIdRef.current = null;
+    if (!fromId || fromId === overId) return;
+
+    const from = rows.findIndex((row) => row.id === fromId);
+    const to = rows.findIndex((row) => row.id === overId);
+    if (from < 0 || to < 0) return;
+
+    const next = [...rows];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    await persistOrder(next, fromId);
+  };
+
+  const onDragEnd = () => {
+    setDraggingId(null);
+    setDragOverId(null);
+    dragIdRef.current = null;
   };
 
   return (
@@ -269,9 +319,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add title, description, invite link, optional how-to video, and cover image. Use ↑ ↓ on
-            each row to place cards where you want on the member Indicators page ({TRIAL_DAYS}-day
-            demo, then desk approval).
+            Add title, description, invite link, optional how-to video, and cover image. Drag rows
+            (grip handle) or use ↑ ↓ to place cards where you want on the member Indicators page (
+            {TRIAL_DAYS}-day demo, then desk approval).
           </p>
         </div>
         <button
@@ -352,7 +402,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                     onChange={(e) => setForm((p) => ({ ...p, sortOrder: e.target.value }))}
                   />
                   <p className="text-[10px] text-slate-600 mt-1">
-                    Lower = higher on the grid. Or use ↑ ↓ arrows in the list below.
+                    Lower = higher on the grid. Prefer drag-and-drop in the list below.
                   </p>
                 </div>
                 <label className="flex items-end gap-2 pb-2 text-xs text-slate-300 cursor-pointer">
@@ -486,86 +536,113 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           </div>
         ) : (
           <div className="divide-y divide-[#1a1f2e]">
-            {rows.map((row, index) => (
-              <div
-                key={row.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 hover:bg-[#121520]/50"
-              >
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="w-7 text-center text-[11px] font-bold text-[#d4af37]/80">
-                    #{index + 1}
-                  </span>
-                  <div className="flex flex-col gap-0.5">
+            <p className="px-3 py-2 text-[10px] text-slate-500 border-b border-[#1a1f2e]">
+              Drag the grip handle to reorder. Drop on another row to place it there.
+            </p>
+            {rows.map((row, index) => {
+              const isDragging = draggingId === row.id;
+              const isOver = dragOverId === row.id && draggingId !== row.id;
+              return (
+                <div
+                  key={row.id}
+                  onDragOver={(e) => onDragOverRow(e, row.id)}
+                  onDrop={(e) => void onDropRow(e, row.id)}
+                  className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 transition-colors ${
+                    isDragging
+                      ? 'opacity-50 bg-[#d4af37]/5'
+                      : isOver
+                        ? 'bg-[#d4af37]/12 ring-1 ring-inset ring-[#d4af37]/40'
+                        : 'hover:bg-[#121520]/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
-                      aria-label="Move up"
-                      disabled={index === 0 || reorderingId !== null}
-                      onClick={() => void moveRow(row.id, -1)}
-                      className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                      draggable={!reorderingId}
+                      onDragStart={(e) => onDragStart(e, row.id)}
+                      onDragEnd={onDragEnd}
+                      aria-label="Drag to reorder"
+                      title="Drag to reorder"
+                      disabled={Boolean(reorderingId)}
+                      className="p-1.5 rounded-lg border border-[#1a1f2e] text-slate-500 hover:text-[#d4af37] hover:border-[#d4af37]/40 cursor-grab active:cursor-grabbing disabled:opacity-30 touch-none"
                     >
                       {reorderingId === row.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5" />
+                        <GripVertical className="w-4 h-4" />
                       )}
+                    </button>
+                    <span className="w-7 text-center text-[11px] font-bold text-[#d4af37]/80">
+                      #{index + 1}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        aria-label="Move up"
+                        disabled={index === 0 || reorderingId !== null}
+                        onClick={() => void moveRow(row.id, -1)}
+                        className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move down"
+                        disabled={index === rows.length - 1 || reorderingId !== null}
+                        onClick={() => void moveRow(row.id, 1)}
+                        className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="w-20 sm:w-24 h-16 rounded-lg overflow-hidden bg-[#121520] border border-[#1a1f2e] pointer-events-none">
+                      {row.imageUrl ? (
+                        <img src={row.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-600">
+                          No img
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-100 truncate">{row.title}</h3>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                          row.published
+                            ? 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10'
+                            : 'border-slate-600 text-slate-500'
+                        }`}
+                      >
+                        {row.published ? 'Live' : 'Draft'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                      {row.link || row.description || 'No link'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(row)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1a1f2e] text-[11px] font-bold text-slate-300 hover:border-[#d4af37]/40 hover:text-[#d4af37]"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
                     </button>
                     <button
                       type="button"
-                      aria-label="Move down"
-                      disabled={index === rows.length - 1 || reorderingId !== null}
-                      onClick={() => void moveRow(row.id, 1)}
-                      className="p-1 rounded border border-[#1a1f2e] text-slate-400 hover:text-[#d4af37] hover:border-[#d4af37]/40 disabled:opacity-30"
+                      onClick={() => void remove(row.id, row.title)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/20 text-[11px] font-bold text-red-400 hover:bg-red-500/10"
                     >
-                      <ChevronDown className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
+                      Delete
                     </button>
                   </div>
-                  <div className="w-20 sm:w-24 h-16 rounded-lg overflow-hidden bg-[#121520] border border-[#1a1f2e]">
-                    {row.imageUrl ? (
-                      <img src={row.imageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-600">
-                        No img
-                      </div>
-                    )}
-                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-100 truncate">{row.title}</h3>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                        row.published
-                          ? 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10'
-                          : 'border-slate-600 text-slate-500'
-                      }`}
-                    >
-                      {row.published ? 'Live' : 'Draft'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                    {row.link || row.description || 'No link'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(row)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1a1f2e] text-[11px] font-bold text-slate-300 hover:border-[#d4af37]/40 hover:text-[#d4af37]"
-                  >
-                    <Pencil className="w-3 h-3" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void remove(row.id, row.title)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/20 text-[11px] font-bold text-red-400 hover:bg-red-500/10"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
