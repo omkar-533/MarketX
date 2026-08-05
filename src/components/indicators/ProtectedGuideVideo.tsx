@@ -88,31 +88,19 @@ export default function ProtectedGuideVideo({ url, title }: ProtectedGuideVideoP
   }, []);
 
   useEffect(() => {
-    const pause = () => {
-      setShielded(true);
-      const el = videoRef.current;
-      if (el && !el.paused) el.pause();
-    };
-    const resume = () => {
-      if (document.visibilityState === 'visible' && document.hasFocus()) {
+    // Only pause when the browser TAB is hidden — not on window blur.
+    // Clicking a YouTube/Vimeo iframe steals focus and used to false-trigger the shield.
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') {
+        setShielded(true);
+        const el = videoRef.current;
+        if (el && !el.paused) el.pause();
+      } else {
         setShielded(false);
       }
     };
-    const onVis = () => {
-      if (document.visibilityState !== 'visible') pause();
-      else resume();
-    };
-    const onBlur = () => pause();
-    const onFocus = () => resume();
-
     document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
-    };
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
   if (!source) return null;
@@ -181,10 +169,14 @@ export default function ProtectedGuideVideo({ url, title }: ProtectedGuideVideoP
         </div>
 
         {shielded ? (
-          <div className="lux-ind__guide-shield">
+          <button
+            type="button"
+            className="lux-ind__guide-shield"
+            onClick={() => setShielded(false)}
+          >
             <ShieldAlert className="w-5 h-5" />
-            <p>Playback paused — return to this tab to continue watching.</p>
-          </div>
+            <p>Playback paused — tab switch detect hua. Click to continue watching.</p>
+          </button>
         ) : null}
       </div>
 
