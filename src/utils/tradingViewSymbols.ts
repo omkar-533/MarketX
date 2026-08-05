@@ -388,7 +388,8 @@ export function resolveKnownSymbol(raw: unknown): string | null {
 const MARKUP_INTENT = new RegExp(
   [
     '\\b(mark|marking|markings|markup|draw|annotate|highlight|plot)\\b',
-    'mark\\s*(kar|kr|kro|krdo|kardo|kardo)',
+    // Hindi / Hinglish: mark kar do / mark kr ke do / mark kar dena / marking krdo
+    'mark(?:ing)?\\s*(kar|kr|kro|krdo|kardo|ke|dena|dijiye|karva|karwa)',
     'order\\s*block|\\bob\\b|supply|demand|\\bfvg\\b|imbalance|liquidity',
     '\\bbos\\b|choch|break\\s*of\\s*structure',
     'trend\\s*line|trendlines?|trend\\s*live|channel|neckline',

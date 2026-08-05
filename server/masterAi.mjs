@@ -1573,7 +1573,10 @@ Finish with exactly this, nothing after:
 \`\`\`
 No block = empty chart. No real price → say so in prose instead.`;
 
-const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST: User asked to mark/draw on the chart. Reply in 2–4 short lines max, then ALWAYS end with a complete wolfchart block matching the TOOL they named (trendline→trend/ray, S/R→hray SUPPORT/RESISTANCE, OB→zone, fib→fib). Do NOT default to SUPPORT/RESISTANCE when they asked for a trendline. Never ask which zone. Never omit the fence.`;
+const EXPLICIT_MARK_HINT = `EXPLICIT MARK REQUEST — FIRST REPLY ONLY:
+User asked to mark/draw. Do it NOW in this same answer. Forbidden: “kaunsa mark?”, “confirm karo”, “screenshot bhejo”, waiting for a second message.
+Reply 2–4 short lines max, then ALWAYS a complete wolfchart (shapes not empty) for the tool they named or the tool from prior chat (trendline→trend/ray, S/R→hray, OB→zone Demand/Supply OB, liq→BSL/SSL hrays, fib→fib).
+Never omit the fence. Never leave shapes:[].`;
 
 const TREND_MARK_HINT = `TREND LINE MARK (mandatory — TradingView Trend Line tool curriculum):
 STRICT: User asked for TREND LINE tool only. Draw DIAGONAL trend/ray shapes. NEVER use hray/hline. NEVER label SUPPORT or RESISTANCE. levels must be [].
@@ -2170,14 +2173,21 @@ export function createMasterAiRouter(apiKey) {
       // the chat; that chart is what "mark it" refers to.
       const chartOnScreen = /CHART OPEN BESIDE THIS CHAT/i.test(String(message || ''));
       const explicitMark =
-        /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark\s*(kar|kr|kro|krdo|kardo)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
+        /\b(mark|marking|markings|markup|draw|annotate|highlight|plot|khinch|khich)\b|mark(?:ing)?\s*(kar|kr|kro|krdo|kardo|ke|dena|dijiye|karva|karwa)|laga\s*do|lagao|dikha(?:\s*do)?|dikhado/i.test(
           String(message || ''),
         );
       // Intent ONLY from bare user ask (+ optional client markTool). Never from
       // appended [CHART OPEN…] hints — those historically said "SUPPORT/RESISTANCE"
       // inside a trendline instruction and forced style:'sr'.
       const userAsk = extractUserAsk(message);
-      const markTool =
+      // Prior turns: bare "mark kar do" inherits the last tool from recent chat.
+      const historyBlob = Array.isArray(history)
+        ? history
+            .slice(-8)
+            .map((h) => String(h?.content || h?.text || ''))
+            .join('\n')
+        : '';
+      const clientMarkTool =
         body?.markTool === 'trend' ||
         body?.markTool === 'sr' ||
         body?.markTool === 'ob' ||
@@ -2185,10 +2195,44 @@ export function createMasterAiRouter(apiKey) {
         body?.markTool === 'auto'
           ? body.markTool
           : null;
-      const trendAsked = asksTrendLineTool(userAsk);
-      const srAsked = asksSrLevels(userAsk);
-      const obAsked = wantsOrderBlockMarkup(userAsk);
-      const liqAsked = wantsLiquidityMarkup(userAsk);
+
+      const inferToolFromHistory = () => {
+        const checks = [
+          ['ob', /order\s*blocks?|orderblocks?|\bob\b|demand\s*ob|supply\s*ob|breaker\s*block/gi],
+          ['trend', /trend\s*lines?|trendlines?|trend\s*channel|upper\s*trend|lower\s*trend/gi],
+          ['liq', /liquidity|\bbsl\b|\bssl\b|BSL \(High Vol\)|SSL \(High Vol\)/gi],
+          ['sr', /\bsupport\b|\bresistance\b|\bs\/r\b/gi],
+        ];
+        let best = null;
+        let bestIdx = -1;
+        for (const [tool, re] of checks) {
+          re.lastIndex = 0;
+          let m;
+          while ((m = re.exec(historyBlob)) !== null) {
+            if (m.index >= bestIdx) {
+              bestIdx = m.index;
+              best = tool;
+            }
+          }
+        }
+        return best;
+      };
+
+      let markTool = clientMarkTool;
+      if (asksTrendLineTool(userAsk)) markTool = 'trend';
+      else if (wantsOrderBlockMarkup(userAsk)) markTool = 'ob';
+      else if (wantsLiquidityMarkup(userAsk)) markTool = 'liq';
+      else if (asksSrLevels(userAsk)) markTool = 'sr';
+      else if (explicitMark && (!markTool || markTool === 'auto')) {
+        markTool = inferToolFromHistory() || 'auto';
+      } else if (!markTool && explicitMark) {
+        markTool = 'auto';
+      }
+
+      const trendAsked = markTool === 'trend' || asksTrendLineTool(userAsk);
+      const obAsked = markTool === 'ob' || wantsOrderBlockMarkup(userAsk);
+      const liqAsked = markTool === 'liq' || wantsLiquidityMarkup(userAsk);
+      const srAsked = markTool === 'sr' || asksSrLevels(userAsk);
       // Strict priority: trendline > order block > liquidity > S/R.
       const wantsTrendMark = markTool === 'trend' || ((!markTool || markTool === 'auto') && trendAsked);
       const wantsObMark =
@@ -2483,7 +2527,7 @@ export function createMasterAiRouter(apiKey) {
           : wantsSrMark
             ? 'Task: MARK SUPPORT + RESISTANCE. 2–3 short lines. wolfchart: exactly two hrays (not full hlines) — high ABOVE LTP = RESISTANCE, low BELOW LTP = SUPPORT, x1=barsAgo, levels:[]. No zones. No Entry/Stop/Target.'
           : explicitMark
-            ? 'Task: MARK CHART NOW with the tool the user named. 2–4 short lines + wolfchart. If they said trendline → diagonal ray (not S/R). If order block → zones from ORDER BLOCK TAPE. If liquidity → BSL/SSL hrays from LIQUIDITY TAPE. If S/R → hrays. Do NOT ask which zone. NEVER ask for screenshot. No Entry/Stop/Target.'
+            ? 'Task: MARK CHART NOW in THIS reply (never wait for a second message). 2–4 short lines + non-empty wolfchart. trendline→ray · OB→Demand/Supply OB zones · liquidity→BSL/SSL hrays · S/R→hrays. Forbidden: “kaunsa mark?”, confirm questions, empty shapes. NEVER ask for screenshot. No Entry/Stop/Target.'
           : wantsStructure
             ? 'Task: STRUCTURE + AUTO-DRAW. Explain HH/HL/LH/LL and BOS/CHOCH bias in 4–8 short lines using STRUCTURE TAPE. Append wolfchart: label (HH/HL/LH/LL) + vline (BOS/CHOCH); optional trend/ray. Do NOT mark Supply/Demand zones unless also asked. NEVER ask for a screenshot. No Entry/Stop/Target.'
           : chartOnScreen
@@ -2683,6 +2727,7 @@ export function createMasterAiRouter(apiKey) {
               orderBlocks: structureMeta.orderBlocks,
               liquidityPools: structureMeta.liquidityPools,
               liquidityPair: structureMeta.liquidityPair,
+              forceMark: Boolean(explicitMark || wantsTrendMark || wantsObMark || wantsLiqMark || wantsSrMark),
               style: wantsTrendMark
                 ? 'trend'
                 : wantsObMark

@@ -932,37 +932,51 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             : undefined;
           // Without this the model has no idea which instrument "mark it" means.
           const wantsMarkNow = isChartMarkupRequest(userText);
+          const recentSlice = [...messages].slice(-8);
+          const recentText = recentSlice.map((m) => m.text || '').join('\n');
+          // Bare "mark kar do" after an OB/liq/trend answer must keep the same tool —
+          // otherwise first draw is wrong/blank and user has to ask again.
+          const recentObContext =
+            /order\s*block|orderblock|\bob\b|demand\s*ob|supply\s*ob|breaker\s*block|mitigation/i.test(
+              recentText,
+            );
+          const recentTrendContext =
+            /trend\s*lines?|trendlines?|trend\s*channel|upper\s*trend|lower\s*trend/i.test(
+              recentText,
+            );
+          const recentSrContext =
+            /\b(support|resistance|s\/r)\b/i.test(recentText) &&
+            !recentObContext &&
+            !recentTrendContext;
+          const recentLiqContext = /liquidity|\bbsl\b|\bssl\b|\bpdh\b|\bpdl\b|\bpwh\b|\bpwl\b|\bpmh\b|\bpml\b|BSL \(High Vol\)|SSL \(High Vol\)/i.test(
+            recentText,
+          );
           const wantsTrendNow =
             /\b(trend\s*lines?|trendlines?|trend\s*live|trend\s*channel|price\s*channel)\b|\btrend\b.*\b(mark|draw|line|channel|khinch)/i.test(
               userText,
-            );
+            ) ||
+            (wantsMarkNow && recentTrendContext && !/\b(order\s*block|\bob\b|liquidity|support|resistance)\b/i.test(userText));
           const wantsObNow =
             !wantsTrendNow &&
-            /\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*\/?\s*demand|demand\s*\/?\s*supply|supply\s*zone|demand\s*zone|supply\s*ob|demand\s*ob)\b|\b(supply|demand)\b/i.test(
+            (/\b(order\s*blocks?|orderblocks?|\bob\b|breaker\s*blocks?|mitigation\s*blocks?|supply\s*\/?\s*demand|demand\s*\/?\s*supply|supply\s*zone|demand\s*zone|supply\s*ob|demand\s*ob)\b|\b(supply|demand)\b/i.test(
               userText,
-            );
-          const recentLiqContext = [...messages]
-            .slice(-8)
-            .some((m) =>
-              /liquidity|\bbsl\b|\bssl\b|\bpdh\b|\bpdl\b|\bpwh\b|\bpwl\b|\bpmh\b|\bpml\b|BSL \(High Vol\)|SSL \(High Vol\)/i.test(
-                m.text || '',
-              ),
-            );
+            ) ||
+              (wantsMarkNow && recentObContext));
           const wantsLiqNow =
             !wantsTrendNow &&
             !wantsObNow &&
             (/\b(liquidity|liquidty|liq\b|buy[\s-]*side|sell[\s-]*side|\bbsl\b|\bssl\b|eqh|eql|equal\s*highs?|equal\s*lows?|pdh|pdl|pwh|pwl|pmh|pml)\b/i.test(
               userText,
             ) ||
-              // "chart me mark kar do" after a liquidity answer → keep Pine liq tool
               (wantsMarkNow && recentLiqContext));
           const wantsSrNow =
             !wantsTrendNow &&
             !wantsObNow &&
             !wantsLiqNow &&
-            /\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance)\b/i.test(
+            (/\b(support|resistance|s\/r|sup\s*\/\s*res|support\s*(aur|and|&)?\s*resistance)\b/i.test(
               userText,
-            );
+            ) ||
+              (wantsMarkNow && recentSrContext));
           const chartHint = chartTarget
             ? `\n\n[CHART OPEN BESIDE THIS CHAT: ${tradingViewSymbolLabel(chartTarget.symbol)} · ${chartTarget.interval}. ALWAYS draw on this chart for every answer and emit the wolfchart block. NEVER ask for a screenshot.${
                 wantsTrendNow
@@ -972,15 +986,18 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                     : wantsLiqNow
                       ? ' LIQUIDITY ASK: Pine logic hrays — BSL/SSL (High Vol), PDH/PDL/PWH/PWL/PMH/PML. Not SUPPORT/RESISTANCE labels.'
                       : wantsMarkNow
-                        ? ' EXPLICIT MARK: match the tool the user named; end with wolfchart.'
+                        ? ' EXPLICIT MARK NOW: draw on first reply — wolfchart required. Do NOT ask which zone / wait for a second message.'
                         : ''
               }]`
             : '';
-          const baseMessage = `${userText}${chartHint}`;
+          const markNowHint = wantsMarkNow
+            ? `\n\n[MARK NOW — FIRST REPLY ONLY: User asked to mark. Draw immediately with wolfchart. Never ask “kaunsa mark?” or wait for a second prompt.]`
+            : '';
+          const baseMessage = `${userText}${chartHint}${markNowHint}`;
           const textMessage = hasImage
             ? visionMessage
             : explicitLang && lastAi
-              ? `${userText}${chartHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias and marked areas. SHORT — under ~100 words. Do NOT ask for a chart.${
+              ? `${userText}${chartHint}${markNowHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias and marked areas. SHORT — under ~100 words. Do NOT ask for a chart.${
                   chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
                 }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
               : continuingThread && !journalContext && !wantsMarkNow

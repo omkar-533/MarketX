@@ -15,6 +15,22 @@ export function replyHasWolfchart(reply) {
   return /\{[^{}]*"(?:levels|shapes)"\s*:\s*\[[\s\S]*?\][\s\S]*?\}\s*$/i.test(text.trim());
 }
 
+/** True when wolfchart exists AND has at least one drawable level/shape. */
+export function wolfchartHasDrawings(reply) {
+  const text = String(reply || '');
+  const fenced = text.match(/```\s*wolfchart\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || text.match(/(\{[^{}]*"(?:levels|shapes)"\s*:\s*\[[\s\S]*?\][\s\S]*?\})\s*$/i)?.[1];
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw.trim());
+    const levels = Array.isArray(parsed?.levels) ? parsed.levels : [];
+    const shapes = Array.isArray(parsed?.shapes) ? parsed.shapes : [];
+    return levels.length + shapes.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function roundPrice(n) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return null;
@@ -486,6 +502,20 @@ export function ensureWolfchartReply(reply, meta) {
       }
     }
     return rewriteLiquidityLabelsInReply(text);
+  }
+
+  // Explicit / auto mark: never leave a clarifying prose-only reply or empty shapes[].
+  // First "mark kar do" must draw — user should not need to ask twice.
+  if (meta?.style === 'auto' || meta?.forceMark) {
+    if (wolfchartHasDrawings(text)) return text;
+    const block = synthesizeWolfchart({ ...meta, style: meta?.style === 'auto' ? 'auto' : meta?.style });
+    const cleaned = stripWolfchart(text);
+    if (!block) {
+      console.warn('[Wolf AI] mark ask but no drawable levels/shapes from engines');
+      return cleaned || text;
+    }
+    console.info('[Wolf AI] enforced first-reply mark (auto/force)');
+    return `${cleaned}${block}`;
   }
 
   if (replyHasWolfchart(text)) return text;
