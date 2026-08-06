@@ -305,7 +305,7 @@ export default function TradeXOptionChain() {
 
   const greekCols = showGreeks ? GREEK_NAMES.length : 0;
   const ceCols = QUOTE_COLS + greekCols + (showBuildup ? 1 : 0);
-  const strikeCols = 2;
+  const strikeCols = 1;
   const peCols = (showBuildup ? 1 : 0) + greekCols + QUOTE_COLS;
   const totalCols = ceCols + strikeCols + peCols;
   const tableMinW = showGreeks ? 2400 : showBuildup ? 1760 : 1680;
