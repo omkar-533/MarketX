@@ -374,25 +374,25 @@ function AppWorkspace() {
                   onClick={() => setMobileMenuOpen(false)}
                 />
               )}
-              <Sidebar
-                activeTab={activeTab}
+          <Sidebar
+            activeTab={activeTab}
                 onTabChange={handleTabChange}
-                collapsed={sidebarCollapsed}
-                onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
                 mobileOpen={mobileMenuOpen}
                 onMobileClose={() => setMobileMenuOpen(false)}
-                user={auth.user}
+            user={auth.user}
                 onLogout={handleLogout}
                 onProfile={() => setShowProfile(true)}
-              />
-              <Header
-                sidebarCollapsed={sidebarCollapsed}
-                user={auth.user}
+          />
+          <Header
+            sidebarCollapsed={sidebarCollapsed}
+            user={auth.user}
                 onMenuClick={() => setMobileMenuOpen(true)}
                 onProfile={() => setShowProfile(true)}
                 className={headerClass}
-              />
-            </>
+          />
+        </>
           </Suspense>
         )}
 
@@ -445,8 +445,8 @@ function AppWorkspace() {
                 <Suspense fallback={<PageLoader />}>{renderLoggedInContent()}</Suspense>
               </AppErrorBoundary>
             )}
-          </div>
-        </main>
+        </div>
+      </main>
 
         {auth.isLoggedIn && (
           <Suspense fallback={null}>
@@ -459,28 +459,28 @@ function AppWorkspace() {
               onUpdateAvatar={auth.updateAvatar}
               onRemoveAvatar={auth.removeAvatar}
             />
-            <AuthModal
-              isOpen={auth.showAuth}
-              onClose={() => auth.setShowAuth(false)}
-              mode={auth.authMode}
-              onLogin={auth.login}
-              onSignup={auth.signup}
-              onGoogleLogin={auth.googleLogin}
-              onOtpLogin={auth.otpLogin}
-              onForgotPassword={auth.forgotPassword}
-              onSwitchMode={auth.setAuthMode}
-            />
-            <CommandPalette
-              isOpen={isCommandPaletteOpen}
-              onClose={() => setIsCommandPaletteOpen(false)}
+      <AuthModal
+        isOpen={auth.showAuth}
+        onClose={() => auth.setShowAuth(false)}
+        mode={auth.authMode}
+        onLogin={auth.login}
+        onSignup={auth.signup}
+        onGoogleLogin={auth.googleLogin}
+        onOtpLogin={auth.otpLogin}
+        onForgotPassword={auth.forgotPassword}
+        onSwitchMode={auth.setAuthMode}
+      />
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen} 
+        onClose={() => setIsCommandPaletteOpen(false)} 
               onNavigate={(tab) => {
                 handleTabChange(tab);
                 setIsCommandPaletteOpen(false);
               }}
-            />
+      />
           </Suspense>
         )}
-      </div>
+    </div>
       {auth.isLoggedIn ? (
         <Suspense fallback={null}>
           <TrialReminderPopup

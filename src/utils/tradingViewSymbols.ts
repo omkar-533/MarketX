@@ -92,18 +92,23 @@ export const TV_TIMEFRAMES: { id: TvInterval; label: string }[] = [
 
 /** Study ids follow TradingView's tv-basicstudies naming; unknown ids are ignored by the widget. */
 export const TV_STUDY_PRESETS: { id: string; label: string; studies: string[] }[] = [
-  { id: 'ema', label: 'EMA 20/50', studies: ['MAExp@tv-basicstudies'] },
-  { id: 'sma', label: 'SMA 20/50', studies: ['MASimple@tv-basicstudies'] },
+  { id: 'ema', label: 'EMA (20, 50)', studies: ['MAExp@tv-basicstudies'] },
+  { id: 'sma', label: 'MA / SMA (20, 50)', studies: ['MASimple@tv-basicstudies'] },
   { id: 'bb', label: 'Bollinger Bands', studies: ['BB@tv-basicstudies'] },
   { id: 'vwap', label: 'VWAP', studies: ['VWAP@tv-basicstudies'] },
   { id: 'supertrend', label: 'Supertrend', studies: ['STD;Supertrend'] },
-  { id: 'ichimoku', label: 'Ichimoku', studies: ['IchimokuCloud@tv-basicstudies'] },
+  { id: 'ichimoku', label: 'Ichimoku Cloud', studies: ['IchimokuCloud@tv-basicstudies'] },
   { id: 'rsi', label: 'RSI', studies: ['RSI@tv-basicstudies'] },
   { id: 'macd', label: 'MACD', studies: ['MACD@tv-basicstudies'] },
   { id: 'stoch', label: 'Stochastic', studies: ['Stochastic@tv-basicstudies'] },
   { id: 'atr', label: 'ATR', studies: ['ATR@tv-basicstudies'] },
-  // The native chart always plots volume, so this preset is widget-only.
   { id: 'volume', label: 'Volume', studies: ['Volume@tv-basicstudies'] },
+  { id: 'cci', label: 'CCI', studies: ['CCI@tv-basicstudies'] },
+  { id: 'willr', label: 'Williams %R', studies: ['WillR@tv-basicstudies'] },
+  { id: 'obv', label: 'On Balance Volume', studies: ['OBV@tv-basicstudies'] },
+  { id: 'adx', label: 'ADX', studies: ['ADX@tv-basicstudies'] },
+  { id: 'mom', label: 'Momentum', studies: ['Mom@tv-basicstudies'] },
+  { id: 'roc', label: 'Rate of Change', studies: ['ROC@tv-basicstudies'] },
 ];
 
 /** Studies are stored as one comma-joined string so a chat message can carry them. */
@@ -234,13 +239,23 @@ const NATIVE_STUDY_IDS = new Set([
   'bb',
   'vwap',
   'supertrend',
+  'ichimoku',
   'rsi',
   'macd',
   'stoch',
   'atr',
+  'volume',
+  'cci',
+  'willr',
+  'obv',
+  'mom',
+  'roc',
 ]);
 
 export const NATIVE_STUDY_PRESETS = TV_STUDY_PRESETS.filter((s) => NATIVE_STUDY_IDS.has(s.id));
+
+/** Technicals shown in Terminal Indicators modal (full basic set). */
+export const TECHNICAL_STUDY_PRESETS = TV_STUDY_PRESETS;
 
 const FNO_SYMBOLS = new Set(FNO_UNIVERSE.map((i) => i.symbol.toUpperCase()));
 

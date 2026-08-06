@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AreaSeries,
   CandlestickSeries,
+  CrosshairMode,
   HistogramSeries,
   LineSeries,
   TickMarkType,
@@ -14,6 +15,7 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
+import { barDurationMs, countdownForInterval } from '../../utils/candleCountdown';
 import { serverUnreachableMessage } from '../../constants/brandLabels';
 import {
   levelsNearPrice,
@@ -25,18 +27,35 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   atr,
   bollinger,
+  cci,
   ema,
+  ichimoku,
   macd,
+  momentum,
+  obv,
+  roc,
   rsi,
   sma,
   stochastic,
   supertrend,
   toHeikinAshi,
   vwap,
+  williamsR,
 } from '../../services/chart/chartIndicators';
+import {
+  computeWolfConfluence,
+  computeWolfLevels,
+  computeWolfPressure,
+  computeWolfPulse,
+  computeWolfRibbon,
+  isWolfStudyId,
+  resolveWolfRecipe,
+  wolfStudyLabel,
+} from '../../services/chart/wolfIndicators';
 import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
 import {
   applyLivePriceToBars,
+  mergeLiveTipIntoHistory,
   quoteMatchesSymbol,
 } from '../../services/chart/liveCandleMerge';
 import {
@@ -46,7 +65,7 @@ import {
   subscribeFyersMarketSymbols,
   unsubscribeFyersMarketSymbols,
 } from '../../services/fyersSocketClient';
-import { isNseFnoMarketOpen } from '../../utils/marketHours';
+import { getMarketSession } from '../../utils/marketHours';
 import type { ChartBar } from '../../types/chart';
 import {
   TV_TIMEFRAMES,
@@ -57,9 +76,24 @@ import {
   type TvChartStyle,
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
+import ChartNavControls from './ChartNavControls';
+import ChartContextMenu, { type ChartCtxPayload } from './ChartContextMenu';
 import ChartToolRail from './ChartToolRail';
+import DrawingObjectToolbar from './DrawingObjectToolbar';
+import DrawingSettingsSheet from './DrawingSettingsSheet';
+import TerminalTradeStrip from '../terminal/TerminalTradeStrip';
 import { useChartDrawings } from './useChartDrawings';
-import type { DrawingTool } from '../../services/chart/chartDrawings';
+import type { Drawing, DrawingKind, DrawingTool, MagnetMode } from '../../services/chart/chartDrawings';
+import { alwaysReleaseCursor, isEphemeralKind } from '../../services/chart/chartDrawings';
+import {
+  addChartPriceAlert,
+  listChartTemplates,
+  peekCopiedPrice,
+  rememberCopiedPrice,
+  saveChartTemplate,
+} from '../../services/chart/chartContextActions';
+import type { TerminalPaperHandoff } from '../../services/paperTradingBridge';
+import { executeTerminalPaperTrade } from '../../services/paperTradingBridge';
 
 /** TradingView's own candle palette, so the chart reads exactly like theirs. */
 const UP = '#26a69a';
@@ -140,6 +174,14 @@ export type NativeChatChartProps = {
   logScale?: boolean;
   /** Terminal bottom range chips → visible logical window. */
   rangePreset?: string;
+  /** Clear overlay studies (Terminal study string). */
+  onClearIndicators?: () => void;
+  /** Apply a saved chart template's study key. */
+  onApplyStudy?: (study: string) => void;
+  /** Paper trade handoff (defaults to session queue + optional navigate). */
+  onPaperTrade?: (handoff: TerminalPaperHandoff) => void;
+  /** Navigate to another app tab (alerts / paper). */
+  onNavigate?: (tab: string) => void;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -149,7 +191,9 @@ const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
 };
 
 /** Studies drawn over the candles; everything else gets its own pane. */
-const OVERLAY_STUDIES = new Set(['ema', 'sma', 'bb', 'vwap', 'supertrend']);
+const OVERLAY_STUDIES = new Set(['ema', 'sma', 'bb', 'vwap', 'supertrend', 'ichimoku']);
+const PANE_STUDIES = new Set(['rsi', 'macd', 'stoch', 'atr', 'cci', 'willr', 'obv', 'mom', 'roc']);
+const VOLUME_STUDY = 'volume';
 
 type Legend = { o: number; h: number; l: number; c: number; prevClose: number };
 type ChartView = { source: ChartBar[]; closes: number[]; decimals: number };
@@ -173,8 +217,13 @@ export default function NativeChatChart({
   enableHistoryScroll = false,
   logScale: logScaleProp,
   rangePreset,
+  onClearIndicators,
+  onApplyStudy,
+  onPaperTrade,
+  onNavigate,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
+  const areaRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -194,18 +243,62 @@ export default function NativeChatChart({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
   const [fetchedAt, setFetchedAt] = useState('');
   const [liveStreaming, setLiveStreaming] = useState(false);
-  const [marketOpen, setMarketOpen] = useState(() => isNseFnoMarketOpen());
+  const [marketOpen, setMarketOpen] = useState(true);
+  const [marketSessionLabel, setMarketSessionLabel] = useState('Market session');
   const [legend, setLegend] = useState<Legend | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tool, setTool] = useState<DrawingTool>('cursor');
-  const [magnet, setMagnet] = useState(false);
+  const [magnetMode, setMagnetMode] = useState<MagnetMode>('weak');
+  const [snapIndicators, setSnapIndicators] = useState(false);
+  const [stayDrawing, setStayDrawing] = useState(false);
+  const [lockDrawings, setLockDrawings] = useState(false);
+  const [hideDrawings, setHideDrawings] = useState(false);
+  const [hideIndicators, setHideIndicators] = useState(false);
+  const [hidePositions, setHidePositions] = useState(false);
+  const [removeLocked, setRemoveLocked] = useState(false);
+  const [valuesTooltip, setValuesTooltip] = useState(false);
   const [logScale, setLogScale] = useState(() => Boolean(logScaleProp));
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [historyExhausted, setHistoryExhausted] = useState(false);
+  const [barCountdown, setBarCountdown] = useState<string | null>(null);
+  const [barCountdownUrgent, setBarCountdownUrgent] = useState(false);
+  /** Pixel Y of live LTP on the right axis — countdown sits just under this. */
+  const [axisCdTop, setAxisCdTop] = useState<number | null>(null);
+  const [axisCdUp, setAxisCdUp] = useState(true);
+  const [ctxMenu, setCtxMenu] = useState<ChartCtxPayload | null>(null);
+  const [cursorLocked, setCursorLocked] = useState(false);
+  const [panel, setPanel] = useState<'none' | 'settings' | 'objects' | 'table' | 'draw'>('none');
+  const [drawSettingsId, setDrawSettingsId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [templatesTick, setTemplatesTick] = useState(0);
+  const lockLineIdRef = useRef<string | null>(null);
+  const lastPointerRef = useRef<{ price: number; time: number } | null>(null);
 
   useEffect(() => {
     if (typeof logScaleProp === 'boolean') setLogScale(logScaleProp);
   }, [logScaleProp]);
+
+  // TradingView-style candle close countdown (intraday only).
+  useEffect(() => {
+    const durOk = Boolean(barDurationMs(interval));
+    if (!durOk) {
+      setBarCountdown(null);
+      return;
+    }
+    const tick = () => {
+      const last = barsRef.current[barsRef.current.length - 1];
+      const next = countdownForInterval(interval, last?.time);
+      if (!next) {
+        setBarCountdown(null);
+        return;
+      }
+      setBarCountdown(next.text);
+      setBarCountdownUrgent(next.urgent);
+    };
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [interval, bars.length, status]);
 
   const apiSymbol = apiSymbolFromTv(symbol);
   const apiInterval = nativeIntervalFor(interval);
@@ -216,8 +309,10 @@ export default function NativeChatChart({
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
   const barsRef = useRef<ChartBar[]>([]);
-  const liveThrottleRef = useRef(0);
+  /** rAF id — coalesce series paints; OHLC always accumulates every tick. */
+  const liveRafRef = useRef(0);
   const lastLiveAtRef = useRef(0);
+  const haThrottleRef = useRef(0);
   const historyBusyRef = useRef(false);
   const historyExhaustedRef = useRef(false);
   const prependShiftRef = useRef(0);
@@ -253,21 +348,51 @@ export default function NativeChatChart({
         }
         return;
       }
-      barsRef.current = next;
-      setBars(next);
+      // Background resync must keep the live tip (history often lags LTP).
+      let preserved = background ? mergeLiveTipIntoHistory(next, barsRef.current) : next;
+      const cached = getFyersCachedQuote(apiSymbol);
+      if (cached?.price) {
+        const tip = applyLivePriceToBars(preserved, cached.price, apiInterval, {
+          volume: cached.volume,
+        });
+        if (tip) preserved = tip.bars;
+      }
+      barsRef.current = preserved;
+      setBars(preserved);
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
     },
     [apiSymbol, apiInterval, onUnavailable],
   );
 
-  /** Push LTP into the forming candle + lightweight-charts tip (real-time run). */
+  const paintLiveTip = useCallback(
+    (bar: ChartBar) => {
+      const series = priceSeriesRef.current;
+      if (!series || chartStyle === '8') return;
+      try {
+        if (chartStyle === '2' || chartStyle === '3' || chartStyle === '10') {
+          series.update({ time: ts(bar.time), value: bar.close });
+        } else {
+          series.update({
+            time: ts(bar.time),
+            open: bar.open,
+            high: bar.high,
+            low: bar.low,
+            close: bar.close,
+          });
+        }
+      } catch {
+        /* mid-rebuild — tip retries on next tick / rAF */
+      }
+    },
+    [chartStyle],
+  );
+
+  /** Push LTP into the forming candle every tick; paint tip via rAF (TradingView-like). */
   const applyLivePrice = useCallback(
     (price: number, volume?: number) => {
       if (!(price > 0) || !apiInterval || !barsRef.current.length) return;
       const now = Date.now();
-      if (now - liveThrottleRef.current < 120) return;
-      liveThrottleRef.current = now;
 
       const merged = applyLivePriceToBars(barsRef.current, price, apiInterval, {
         nowMs: now,
@@ -277,30 +402,8 @@ export default function NativeChatChart({
       barsRef.current = merged.bars;
       lastLiveAtRef.current = now;
       setLiveStreaming(true);
-      setFetchedAt(new Date(now).toISOString());
 
-      const series = priceSeriesRef.current;
       const bar = merged.updated;
-      if (series && chartStyle !== '8') {
-        try {
-          if (chartStyle === '2' || chartStyle === '3' || chartStyle === '10') {
-            series.update({ time: ts(bar.time), value: bar.close });
-          } else {
-            series.update({
-              time: ts(bar.time),
-              open: bar.open,
-              high: bar.high,
-              low: bar.low,
-              close: bar.close,
-            });
-          }
-        } catch {
-          /* series may be mid-rebuild */
-        }
-      } else {
-        setBars(merged.bars);
-      }
-
       setLegend((prev) => {
         const prevClose = prev?.prevClose ?? bar.open;
         return {
@@ -311,8 +414,36 @@ export default function NativeChatChart({
           prevClose,
         };
       });
+
+      // Heikin Ashi needs a full source rebuild — soft-throttle React setBars only.
+      if (chartStyle === '8') {
+        if (merged.isNewBar || now - haThrottleRef.current >= 120) {
+          haThrottleRef.current = now;
+          setBars(merged.bars);
+        }
+        return;
+      }
+
+      // New candle: paint immediately so the tip appends without waiting a frame.
+      if (merged.isNewBar) {
+        if (liveRafRef.current) {
+          cancelAnimationFrame(liveRafRef.current);
+          liveRafRef.current = 0;
+        }
+        paintLiveTip(bar);
+        setFetchedAt(new Date(now).toISOString());
+        return;
+      }
+
+      if (!liveRafRef.current) {
+        liveRafRef.current = requestAnimationFrame(() => {
+          liveRafRef.current = 0;
+          const tip = barsRef.current[barsRef.current.length - 1];
+          if (tip) paintLiveTip(tip);
+        });
+      }
     },
-    [apiInterval, chartStyle],
+    [apiInterval, chartStyle, paintLiveTip],
   );
 
   // Refit the viewport only when the user actually switches instrument/timeframe.
@@ -378,13 +509,17 @@ export default function NativeChatChart({
     };
   }, [loadOlderBars]);
 
-  // TradingView-style session: flip OPEN ↔ CLOSE without waiting for a full reload.
+  // Per-asset session clock (NSE ≠ Gold ≠ Crypto ≠ US).
   useEffect(() => {
-    const sync = () => setMarketOpen(isNseFnoMarketOpen());
+    const sync = () => {
+      const session = getMarketSession(symbol);
+      setMarketOpen(session.open);
+      setMarketSessionLabel(session.label);
+    };
     sync();
     const timer = window.setInterval(sync, 15_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [symbol]);
 
   useEffect(() => {
     void load(false);
@@ -431,6 +566,10 @@ export default function NativeChatChart({
       unsubscribeFyersMarketSymbols([apiSymbol]);
       window.clearInterval(poll);
       window.clearInterval(stale);
+      if (liveRafRef.current) {
+        cancelAnimationFrame(liveRafRef.current);
+        liveRafRef.current = 0;
+      }
     };
   }, [apiSymbol, apiInterval, applyLivePrice, reloadKey]);
 
@@ -471,7 +610,9 @@ export default function NativeChatChart({
     const host = hostRef.current;
     if (!host || !hasData) return;
 
-    const paneStudies = studies.filter((id) => !OVERLAY_STUDIES.has(id));
+    const paneStudies = studies.filter((id) => PANE_STUDIES.has(id));
+    const wolfStudies = studies.filter((id) => isWolfStudyId(id));
+    const showVolume = studies.includes(VOLUME_STUDY);
 
     const chart = createChart(host, {
       autoSize: true,
@@ -484,17 +625,19 @@ export default function NativeChatChart({
       },
       grid: { vertLines: { color: theme.grid }, horzLines: { color: theme.grid } },
       crosshair: {
-        mode: 0,
+        mode: CrosshairMode.Normal,
         vertLine: {
           color: theme.crosshair,
           width: 1,
           style: 3,
+          labelVisible: true,
           labelBackgroundColor: theme.label,
         },
         horzLine: {
           color: theme.crosshair,
           width: 1,
           style: 3,
+          labelVisible: true,
           labelBackgroundColor: theme.label,
         },
       },
@@ -502,6 +645,19 @@ export default function NativeChatChart({
         borderColor: theme.border,
         scaleMargins: { top: 0.08, bottom: 0.24 },
         entireTextOnly: true,
+        autoScale: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: { time: true, price: true },
+        axisDoubleClickReset: { time: true, price: true },
+        mouseWheel: true,
+        pinch: true,
       },
       timeScale: {
         borderColor: theme.border,
@@ -542,13 +698,20 @@ export default function NativeChatChart({
 
     const priceSeries =
       chartStyle === '2'
-        ? chart.addSeries(LineSeries, { color: '#2962ff', lineWidth: 2 })
+        ? chart.addSeries(LineSeries, {
+            color: '#2962ff',
+            lineWidth: 2,
+            lastValueVisible: true,
+            priceLineVisible: false,
+          })
         : chartStyle === '3' || chartStyle === '10'
           ? chart.addSeries(AreaSeries, {
               lineColor: '#2962ff',
               topColor: 'rgba(41,98,255,0.28)',
               bottomColor: 'rgba(41,98,255,0.02)',
               lineWidth: 2,
+              lastValueVisible: true,
+              priceLineVisible: false,
             })
           : chart.addSeries(CandlestickSeries, {
               upColor: chartStyle === '9' ? 'transparent' : UP,
@@ -557,22 +720,29 @@ export default function NativeChatChart({
               borderDownColor: DOWN,
               wickUpColor: UP,
               wickDownColor: DOWN,
+              lastValueVisible: true,
+              priceLineVisible: false,
             });
     const isLineLike = chartStyle === '2' || chartStyle === '3' || chartStyle === '10';
 
-    const volume = chart.addSeries(HistogramSeries, {
-      priceScaleId: 'vol',
-      priceFormat: { type: 'volume' },
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    const volume = showVolume
+      ? chart.addSeries(HistogramSeries, {
+          priceScaleId: 'vol',
+          priceFormat: { type: 'volume' },
+          lastValueVisible: false,
+          priceLineVisible: false,
+        })
+      : null;
+    if (volume) {
+      chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    }
 
     /** Each study registers a feed so a data refresh updates every series at once. */
     const feeds: ((view: ChartView) => IndicatorLine[])[] = [];
     const priceFormatted: ISeriesApi<SeriesType>[] = [];
 
     for (const id of studies) {
+      if (!OVERLAY_STUDIES.has(id)) continue;
       if (id === 'ema' || id === 'sma') {
         const fn = id === 'ema' ? ema : sma;
         const fast = line('#38bdf8', 1);
@@ -583,7 +753,7 @@ export default function NativeChatChart({
           const b = fn(closes, 50);
           fast.setData(source.map((bar, i) => ({ time: ts(bar.time), value: a[i] })));
           slow.setData(source.map((bar, i) => ({ time: ts(bar.time), value: b[i] })));
-          const name = id.toUpperCase();
+          const name = id === 'ema' ? 'EMA' : 'SMA';
           return [
             { label: `${name} 20`, color: '#38bdf8', values: a, decimals },
             { label: `${name} 50`, color: '#f59e0b', values: b, decimals },
@@ -622,6 +792,50 @@ export default function NativeChatChart({
             })),
           );
           return [{ label: 'Supertrend 10/3', color: '#26a69a', values: st.line, decimals }];
+        });
+      } else if (id === 'ichimoku') {
+        const tenkan = line('#2962ff', 1);
+        const kijun = line('#ef5350', 1);
+        const spanA = line('#26a69a', 1);
+        const spanB = line('#f23645', 1);
+        const chikou = line('#787b86', 1);
+        priceFormatted.push(tenkan, kijun, spanA, spanB, chikou);
+        feeds.push(({ source, decimals }) => {
+          const cloud = ichimoku(source);
+          const displace = cloud.displacement;
+          tenkan.setData(source.map((bar, i) => ({ time: ts(bar.time), value: cloud.tenkan[i] })));
+          kijun.setData(source.map((bar, i) => ({ time: ts(bar.time), value: cloud.kijun[i] })));
+          spanA.setData(
+            source
+              .map((_, i) => {
+                const ti = i + displace;
+                if (ti >= source.length) return null;
+                return { time: ts(source[ti].time), value: cloud.spanA[i] };
+              })
+              .filter(Boolean) as { time: UTCTimestamp; value: number }[],
+          );
+          spanB.setData(
+            source
+              .map((_, i) => {
+                const ti = i + displace;
+                if (ti >= source.length) return null;
+                return { time: ts(source[ti].time), value: cloud.spanB[i] };
+              })
+              .filter(Boolean) as { time: UTCTimestamp; value: number }[],
+          );
+          chikou.setData(
+            source
+              .map((_, i) => {
+                const ti = i - displace;
+                if (ti < 0) return null;
+                return { time: ts(source[ti].time), value: cloud.chikou[i] };
+              })
+              .filter(Boolean) as { time: UTCTimestamp; value: number }[],
+          );
+          return [
+            { label: 'Tenkan', color: '#2962ff', values: cloud.tenkan, decimals },
+            { label: 'Kijun', color: '#ef5350', values: cloud.kijun, decimals },
+          ];
         });
       }
     }
@@ -694,14 +908,138 @@ export default function NativeChatChart({
           series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
           return [{ label: 'ATR 14', color: '#f59e0b', values, decimals }];
         });
+      } else if (id === 'cci') {
+        const series = line('#22d3ee', 2, pane);
+        feeds.push(({ source }) => {
+          const values = cci(source, 20);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'CCI 20', color: '#22d3ee', values, decimals: 1 }];
+        });
+      } else if (id === 'willr') {
+        const series = line('#f472b6', 2, pane);
+        series.applyOptions({ priceFormat: { type: 'price', precision: 1, minMove: 0.1 } });
+        feeds.push(({ source }) => {
+          const values = williamsR(source, 14);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'Williams %R', color: '#f472b6', values, decimals: 1 }];
+        });
+      } else if (id === 'obv') {
+        const series = line('#94a3b8', 2, pane);
+        series.applyOptions({ priceFormat: { type: 'volume' } });
+        feeds.push(({ source }) => {
+          const values = obv(source);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'OBV', color: '#94a3b8', values, decimals: 0 }];
+        });
+      } else if (id === 'mom') {
+        const series = line('#38bdf8', 2, pane);
+        feeds.push(({ source, closes }) => {
+          const values = momentum(closes, 10);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'Momentum 10', color: '#38bdf8', values, decimals: 2 }];
+        });
+      } else if (id === 'roc') {
+        const series = line('#a78bfa', 2, pane);
+        feeds.push(({ source, closes }) => {
+          const values = roc(closes, 12);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: values[j] })));
+          return [{ label: 'ROC 12', color: '#a78bfa', values, decimals: 2 }];
+        });
       }
     });
 
-    if (paneStudies.length) {
-      const share = Math.min(0.26, 0.62 / paneStudies.length);
-      paneStudies.forEach((_, i) => {
+    /* Wolf proprietary packs — plot on chart (no TradingView unlock needed). */
+    let wolfPaneCursor = paneStudies.length;
+    for (const id of wolfStudies) {
+      const recipe = resolveWolfRecipe(id);
+      const title = wolfStudyLabel(id);
+
+      if (recipe === 'cfd') {
+        const fast = line('#26a69a', 1);
+        const mid = line('#42a5f5', 1);
+        const slow = line('#ef5350', 2);
+        priceFormatted.push(fast, mid, slow);
+        feeds.push(({ source, decimals }) => {
+          const w = computeWolfConfluence(source);
+          fast.setData(source.map((bar, j) => ({ time: ts(bar.time), value: w.emaFast[j] })));
+          mid.setData(source.map((bar, j) => ({ time: ts(bar.time), value: w.emaMid[j] })));
+          slow.setData(source.map((bar, j) => ({ time: ts(bar.time), value: w.emaSlow[j] })));
+          const lean = w.lean[w.lean.length - 1] ?? 0;
+          const bull = w.bullScore[w.bullScore.length - 1] ?? 0;
+          const bear = w.bearScore[w.bearScore.length - 1] ?? 0;
+          return [
+            {
+              label: `${title} ${lean > 0 ? 'Bull' : lean < 0 ? 'Bear' : 'Flat'} ${bull}/${bear}`,
+              color: lean > 0 ? '#26a69a' : lean < 0 ? '#ef5350' : '#f0b90b',
+              values: w.emaFast,
+              decimals,
+            },
+          ];
+        });
+      } else if (recipe === 'ribbon') {
+        const a = line('#26a69a', 1);
+        const b = line('#42a5f5', 1);
+        const c = line('#ab47bc', 1);
+        const d = line('#ef5350', 2);
+        priceFormatted.push(a, b, c, d);
+        feeds.push(({ source, decimals }) => {
+          const r = computeWolfRibbon(source);
+          a.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e20[j] })));
+          b.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e50[j] })));
+          c.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e100[j] })));
+          d.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e200[j] })));
+          return [{ label: title, color: '#f0b90b', values: r.e50, decimals }];
+        });
+      } else if (recipe === 'levels') {
+        const hi = line('#ef5350', 1);
+        const lo = line('#26a69a', 1);
+        priceFormatted.push(hi, lo);
+        feeds.push(({ source, decimals }) => {
+          const lv = computeWolfLevels(source);
+          hi.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingHigh[j] })));
+          lo.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingLow[j] })));
+          return [{ label: title, color: '#f0b90b', values: lv.swingHigh, decimals }];
+        });
+      } else if (recipe === 'pulse') {
+        wolfPaneCursor += 1;
+        const pane = wolfPaneCursor;
+        const series = line('#f0b90b', 2, pane);
+        const sig = line('#42a5f5', 1, pane);
+        series.applyOptions({ priceFormat: { type: 'price', precision: 1, minMove: 0.1 } });
+        feeds.push(({ source }) => {
+          const p = computeWolfPulse(source);
+          series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: p.rsi[j] })));
+          sig.setData(source.map((bar, j) => ({ time: ts(bar.time), value: p.signal[j] })));
+          return [{ label: title, color: '#f0b90b', values: p.rsi, decimals: 1 }];
+        });
+      } else if (recipe === 'pressure') {
+        wolfPaneCursor += 1;
+        const pane = wolfPaneCursor;
+        const hist = chart.addSeries(
+          HistogramSeries,
+          { priceFormat: { type: 'price', precision: 2, minMove: 0.01 } },
+          pane,
+        );
+        feeds.push(({ source }) => {
+          const p = computeWolfPressure(source);
+          hist.setData(
+            source.map((bar, j) => ({
+              time: ts(bar.time),
+              value: p.pressure[j],
+              color: p.pressure[j] >= 0 ? UP_FILL : DOWN_FILL,
+            })),
+          );
+          return [{ label: title, color: '#f0b90b', values: p.pressure, decimals: 2 }];
+        });
+      }
+    }
+
+    if (paneStudies.length || wolfPaneCursor > paneStudies.length) {
+      const paneCount = Math.max(paneStudies.length, wolfPaneCursor);
+      const share = Math.min(0.26, 0.62 / Math.max(1, paneCount));
+      for (let i = 0; i < paneCount; i += 1) {
         chart.panes()[i + 1]?.setHeight(Math.max(52, Math.round(host.clientHeight * share)));
-      });
+      }
     }
 
     applyRef.current = (next, fit) => {
@@ -724,13 +1062,15 @@ export default function NativeChatChart({
         );
       }
 
-      volume.setData(
-        source.map((b) => ({
-          time: ts(b.time),
-          value: b.volume,
-          color: b.close >= b.open ? UP_FILL : DOWN_FILL,
-        })),
-      );
+      if (volume) {
+        volume.setData(
+          source.map((b) => ({
+            time: ts(b.time),
+            value: b.volume,
+            color: b.close >= b.open ? UP_FILL : DOWN_FILL,
+          })),
+        );
+      }
 
       indicatorRef.current = feeds.flatMap((feed) => feed({ source, closes, decimals }));
 
@@ -752,6 +1092,33 @@ export default function NativeChatChart({
       const hovered = param.time ? legendMapRef.current.get(Number(param.time)) : undefined;
       setHoverIndex(hovered ?? null);
       setLegend(legendAt(source, hovered ?? source.length - 1));
+
+      // Right price scale pans with the cursor near the edges (TradingView-like).
+      if (!param.point) return;
+      const price = priceSeries.coordinateToPrice(param.point.y);
+      if (price === null || !Number.isFinite(Number(price))) return;
+      const t =
+        param.time != null
+          ? Number(param.time)
+          : chart.timeScale().coordinateToTime(param.point.x);
+      lastPointerRef.current = {
+        price: Number(price),
+        time: typeof t === 'number' && Number.isFinite(t) ? t : Date.now() / 1000,
+      };
+      const ps = chart.priceScale('right');
+      const vis = ps.getVisibleRange();
+      if (!vis || !(vis.to > vis.from)) return;
+      const span = vis.to - vis.from;
+      const edge = span * 0.14;
+      if (price > vis.to - edge) {
+        const shift = price - (vis.to - edge);
+        ps.setAutoScale(false);
+        ps.setVisibleRange({ from: vis.from + shift, to: vis.to + shift });
+      } else if (price < vis.from + edge) {
+        const shift = vis.from + edge - price;
+        ps.setAutoScale(false);
+        ps.setVisibleRange({ from: vis.from - shift, to: vis.to - shift });
+      }
     });
 
     const onVisibleRange = () => {
@@ -917,7 +1284,7 @@ export default function NativeChatChart({
     const lo = Math.min(...prices);
     const hi = Math.max(...prices);
     series.applyOptions({
-      autoscaleInfoProvider: (original) => {
+      autoscaleInfoProvider: (original: () => { priceRange: { minValue: number; maxValue: number } } | null) => {
         const base = original();
         if (!base?.priceRange) {
           return { priceRange: { minValue: lo * 0.998, maxValue: hi * 1.002 } };
@@ -938,7 +1305,60 @@ export default function NativeChatChart({
     [shapes, lastClose],
   );
 
+  // Pin countdown under the live price label on the right price axis (TV behaviour).
+  useEffect(() => {
+    if (!barCountdown || status !== 'ready' || chartEpoch <= 0) {
+      setAxisCdTop(null);
+      return;
+    }
+
+    const sync = () => {
+      const series = priceSeriesRef.current;
+      const chart = chartRef.current;
+      const host = hostRef.current;
+      const bars = barsRef.current;
+      const last = bars[bars.length - 1];
+      if (!series || !chart || !host || !last) {
+        setAxisCdTop(null);
+        return;
+      }
+      const y = series.priceToCoordinate(last.close);
+      if (y == null || !Number.isFinite(Number(y))) {
+        setAxisCdTop(null);
+        return;
+      }
+      const paneH = chart.panes()[0]?.getHeight() ?? host.clientHeight;
+      // LWC last-value chip is ~18px tall; sit flush under it.
+      const top = Math.min(paneH - 22, Math.max(2, Number(y) + 12));
+      const prev = bars.length > 1 ? bars[bars.length - 2].close : last.open;
+      setAxisCdTop(top);
+      setAxisCdUp(last.close >= prev);
+    };
+
+    sync();
+    const id = window.setInterval(sync, 200);
+    const chart = chartRef.current;
+    const onRange = () => sync();
+    try {
+      chart?.timeScale().subscribeVisibleLogicalRangeChange(onRange);
+    } catch {
+      /* chart disposing */
+    }
+    return () => {
+      window.clearInterval(id);
+      try {
+        chart?.timeScale().unsubscribeVisibleLogicalRangeChange(onRange);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [barCountdown, status, chartEpoch, lastClose, liveStreaming]);
+
+  const stayRef = useRef(stayDrawing);
+  stayRef.current = stayDrawing;
+
   const drawings = useChartDrawings({
+    areaRef,
     hostRef,
     canvasRef,
     chartRef,
@@ -948,14 +1368,62 @@ export default function NativeChatChart({
     symbol,
     aiShapes,
     tool,
-    onShapeDone: useCallback(() => setTool('cursor'), []),
-    magnet,
+    onShapeDone: useCallback((info?: { kind: DrawingKind }) => {
+      // Measure / zoom always free the cursor. Stay-drawing only keeps other tools armed.
+      if (!info?.kind || alwaysReleaseCursor(info.kind) || !stayRef.current) {
+        setTool('cursor');
+      }
+    }, []),
+    onOpenDrawingSettings: useCallback((id: string) => {
+      setDrawSettingsId(id);
+      setPanel('draw');
+    }, []),
+    magnetMode,
+    lockDrawings,
+    hideDrawings,
+    hideIndicators,
+    removeLocked,
     isDark,
   });
 
+  const selectedDrawing =
+    drawings.selectedId != null
+      ? drawings.drawings.find((d) => d.id === drawings.selectedId) ?? null
+      : null;
+
+  const settingsDrawing =
+    drawSettingsId != null
+      ? drawings.drawings.find((d) => d.id === drawSettingsId) ?? selectedDrawing
+      : null;
+
+  const onHideMode = useCallback(
+    (mode: 'drawings' | 'indicators' | 'positions' | 'all' | 'none') => {
+      if (mode === 'none') {
+        setHideDrawings(false);
+        setHideIndicators(false);
+        setHidePositions(false);
+        return;
+      }
+      if (mode === 'all') {
+        setHideDrawings(true);
+        setHideIndicators(true);
+        setHidePositions(true);
+        return;
+      }
+      if (mode === 'drawings') setHideDrawings((v) => !v);
+      if (mode === 'indicators') setHideIndicators((v) => !v);
+      if (mode === 'positions') setHidePositions((v) => !v);
+    },
+    [],
+  );
+
   const resetView = useCallback(() => {
     touchedRef.current = false;
-    chartRef.current?.timeScale().fitContent();
+    const chart = chartRef.current;
+    if (!chart) return;
+    // TradingView reset = default zoom + realtime edge, not fit-all history.
+    chart.priceScale('right').setAutoScale(true);
+    chart.timeScale().resetTimeScale();
   }, []);
 
   const saveScreenshot = useCallback(() => {
@@ -978,6 +1446,185 @@ export default function NativeChatChart({
     link.click();
   }, [apiSymbol, interval]);
 
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast((cur) => (cur === msg ? null : cur)), 2200);
+  }, []);
+
+  const pointerPrice = useCallback(() => {
+    return (
+      lastPointerRef.current?.price ??
+      legend?.c ??
+      viewRef.current?.source[viewRef.current.source.length - 1]?.close ??
+      0
+    );
+  }, [legend]);
+
+  const paperHandoff = useCallback(
+    (partial: Omit<TerminalPaperHandoff, 'tvSymbol' | 'at'>) => {
+      const handoff: TerminalPaperHandoff = {
+        tvSymbol: symbol,
+        at: new Date().toISOString(),
+        ...partial,
+      };
+      const result = executeTerminalPaperTrade(handoff);
+      showToast(result.message);
+      onPaperTrade?.(handoff);
+    },
+    [symbol, onPaperTrade, showToast],
+  );
+
+  const copyPrice = useCallback(
+    async (price: number) => {
+      const text = price.toLocaleString('en-US', { maximumFractionDigits: 8 });
+      rememberCopiedPrice(price);
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Copied ${text}`);
+      } catch {
+        showToast('Copy failed');
+      }
+    },
+    [showToast],
+  );
+
+  const pastePriceLine = useCallback(async () => {
+    let price = peekCopiedPrice();
+    try {
+      const clip = (await navigator.clipboard.readText()).replace(/,/g, '').trim();
+      const n = Number(clip);
+      if (Number.isFinite(n) && n > 0) price = n;
+    } catch {
+      /* permission / empty */
+    }
+    if (price == null || !Number.isFinite(price)) {
+      showToast('Clipboard has no price');
+      return;
+    }
+    const bars = viewRef.current?.source ?? [];
+    const t = lastPointerRef.current?.time ?? bars[bars.length - 1]?.time ?? Date.now() / 1000;
+    drawings.addDrawing({
+      id: `paste-${Date.now()}`,
+      kind: 'hline',
+      points: [{ time: t, price }],
+      color: '#2962ff',
+      label: price.toLocaleString('en-US', { maximumFractionDigits: 4 }),
+    });
+    showToast(`Pasted line @ ${price.toLocaleString('en-US')}`);
+  }, [drawings, showToast]);
+
+  const addAlertAt = useCallback(
+    (price: number) => {
+      addChartPriceAlert(apiSymbol, price);
+      showToast(`Alert on ${apiSymbol} @ ${price.toLocaleString('en-US')}`);
+      onNavigate?.('alerts');
+    },
+    [apiSymbol, showToast, onNavigate],
+  );
+
+  const toggleLockCursor = useCallback(() => {
+    const bars = viewRef.current?.source ?? [];
+    const time = lastPointerRef.current?.time ?? bars[bars.length - 1]?.time;
+    const price = pointerPrice();
+    if (!time) return;
+    if (lockLineIdRef.current) {
+      const id = lockLineIdRef.current;
+      drawings.replaceAll(drawings.drawings.filter((d) => d.id !== id));
+      lockLineIdRef.current = null;
+      setCursorLocked(false);
+      showToast('Cursor unlocked');
+      return;
+    }
+    const id = `vlock-${Date.now()}`;
+    drawings.addDrawing({
+      id,
+      kind: 'vline',
+      points: [{ time, price }],
+      color: '#787b86',
+      label: 'Lock',
+      locked: true,
+    });
+    lockLineIdRef.current = id;
+    setCursorLocked(true);
+    showToast('Vertical cursor locked');
+  }, [drawings, pointerPrice, showToast]);
+
+  // Right-click context menu (TradingView control menu).
+  useEffect(() => {
+    const area = areaRef.current;
+    if (!area || status !== 'ready') return;
+    const onCtx = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const chart = chartRef.current;
+      const series = priceSeriesRef.current;
+      const host = hostRef.current;
+      if (!chart || !series || !host) return;
+      const rect = host.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const rawPrice = series.coordinateToPrice(y);
+      const rawTime = chart.timeScale().coordinateToTime(x);
+      const price =
+        rawPrice != null && Number.isFinite(Number(rawPrice))
+          ? Number(rawPrice)
+          : pointerPrice();
+      const time =
+        typeof rawTime === 'number' && Number.isFinite(rawTime)
+          ? rawTime
+          : lastPointerRef.current?.time ?? Date.now() / 1000;
+      lastPointerRef.current = { price, time };
+      setCtxMenu({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        price,
+        symbolLabel: tradingViewSymbolLabel(symbol),
+        shortSymbol: apiSymbol,
+        drawingCount: drawings.drawings.filter((d) => !isEphemeralKind(d.kind)).length,
+        indicatorCount: studies.length,
+        cursorLocked,
+      });
+    };
+    area.addEventListener('contextmenu', onCtx);
+    return () => area.removeEventListener('contextmenu', onCtx);
+  }, [status, chartEpoch, symbol, apiSymbol, drawings.drawings, studies.length, pointerPrice]);
+
+  // Chart hotkeys (same shortcuts as TradingView menu).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      if (!areaRef.current) return;
+      const price = pointerPrice();
+      if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        resetView();
+        return;
+      }
+      if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        addAlertAt(price);
+        return;
+      }
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        paperHandoff({ side: 'SELL', qty: 1, price, orderType: 'LIMIT' });
+        return;
+      }
+      if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        paperHandoff({ side: 'BUY', qty: 1, price, orderType: 'LIMIT' });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        void pastePriceLine();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pointerPrice, resetView, addAlertAt, paperHandoff, pastePriceLine, showToast]);
+
   const label = tradingViewSymbolLabel(symbol);
   const decimals = view?.decimals ?? 2;
   const change = legend ? legend.c - legend.prevClose : 0;
@@ -987,6 +1634,8 @@ export default function NativeChatChart({
   const drawnLevels =
     (levels?.length && view ? levelsNearPrice(levels, lastClose).length : 0) + aiShapes.length;
   const readAt = hoverIndex ?? (view ? view.source.length - 1 : 0);
+  const templates = listChartTemplates();
+  void templatesTick;
 
   return (
     <div
@@ -996,16 +1645,49 @@ export default function NativeChatChart({
         <ChartToolRail
           tool={tool}
           onToolChange={setTool}
-          magnet={magnet}
-          onMagnetToggle={() => setMagnet((v) => !v)}
+          magnetMode={magnetMode}
+          onMagnetMode={setMagnetMode}
+          snapIndicators={snapIndicators}
+          onSnapIndicators={setSnapIndicators}
+          stayDrawing={stayDrawing}
+          onStayDrawing={setStayDrawing}
+          lockDrawings={lockDrawings}
+          onLockDrawings={setLockDrawings}
+          hideDrawings={hideDrawings}
+          hideIndicators={hideIndicators}
+          hidePositions={hidePositions}
+          onHideMode={onHideMode}
+          drawingCount={drawings.drawings.length}
+          indicatorCount={studies.length}
           onUndo={drawings.undo}
-          onClear={drawings.clear}
-          canUndo={drawings.drawings.length > 0}
+          onClearDrawings={drawings.clear}
+          onClearIndicators={() => {
+            /* studies live on parent study prop — clear via rail stub */
+          }}
+          onClearAll={() => {
+            drawings.clear();
+          }}
+          removeLocked={removeLocked}
+          onRemoveLocked={setRemoveLocked}
+          valuesTooltip={valuesTooltip}
+          onValuesTooltip={setValuesTooltip}
           variant={fillHeight ? 'desk' : 'chat'}
         />
       ) : null}
 
-      <div className="mai-nc__area" data-drawing={tool === 'cursor' ? undefined : 'on'}>
+      <div
+        ref={areaRef}
+        className="mai-nc__area"
+        data-drawing={
+          tool === 'cursor' || tool === 'crosshair' || tool === 'dot' || tool === 'arrowCursor'
+            ? undefined
+            : 'on'
+        }
+        data-tool={tool}
+        data-cursor={tool === 'dot' ? 'dot' : tool === 'arrowCursor' ? 'arrow' : undefined}
+        data-tooltip={valuesTooltip ? 'on' : undefined}
+        data-hide-pos={hidePositions ? 'on' : undefined}
+      >
         <div ref={hostRef} className="mai-tv__host" />
         <canvas ref={canvasRef} className="mai-nc__draw" />
 
@@ -1020,16 +1702,36 @@ export default function NativeChatChart({
 
         {legend && status === 'ready' ? (
           <div className="mai-nc__legend">
-            <span className="mai-nc__legend-sym">{label}</span>
-            <span className="mai-nc__legend-tf">{intervalLabel}</span>
-            {!marketOpen ? (
-              <span className="mai-nc__session mai-nc__session--closed" title="NSE cash / F&O session closed">
-                CLOSE
-              </span>
-            ) : liveStreaming ? (
-              <span className="mai-nc__session mai-nc__session--live" title="Live market feed">
-                LIVE
-              </span>
+            <div className="mai-nc__legend-head">
+              <span className="mai-nc__legend-sym">{label}</span>
+              <span className="mai-nc__legend-tf">{intervalLabel}</span>
+              {!marketOpen ? (
+                <span className="mai-nc__session mai-nc__session--closed" title={marketSessionLabel}>
+                  CLOSE
+                </span>
+              ) : liveStreaming ? (
+                <span className="mai-nc__session mai-nc__session--live" title={marketSessionLabel}>
+                  LIVE
+                </span>
+              ) : (
+                <span className="mai-nc__session mai-nc__session--live" title={marketSessionLabel}>
+                  OPEN
+                </span>
+              )}
+            </div>
+            {fillHeight ? (
+              <TerminalTradeStrip
+                symbol={symbol}
+                variant="legend"
+                onTrade={(side, qty, livePx) =>
+                  paperHandoff({
+                    side,
+                    qty,
+                    price: livePx && livePx > 0 ? livePx : legend.c,
+                    orderType: 'MARKET',
+                  })
+                }
+              />
             ) : null}
             <span className="mai-nc__legend-ohlc">
               <b>O</b>
@@ -1040,7 +1742,7 @@ export default function NativeChatChart({
               <span className={tone}>{legend.l.toFixed(decimals)}</span>
               <b>C</b>
               <span className={tone}>{legend.c.toFixed(decimals)}</span>
-              <span className={tone}>
+              <span className={`mai-nc__legend-chg ${tone}`}>
                 {change >= 0 ? '+' : ''}
                 {change.toFixed(decimals)} ({change >= 0 ? '+' : ''}
                 {changePct.toFixed(2)}%)
@@ -1060,6 +1762,18 @@ export default function NativeChatChart({
                 ))}
               </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {status === 'ready' && barCountdown && axisCdTop != null ? (
+          <div
+            className={`mai-nc__bar-cd mai-nc__bar-cd--axis ${
+              barCountdownUrgent ? 'mai-nc__bar-cd--urgent' : ''
+            } ${axisCdUp ? 'mai-nc__bar-cd--up' : 'mai-nc__bar-cd--dn'}`}
+            style={{ top: axisCdTop }}
+            title="Time until this candle closes"
+          >
+            <span className="mai-nc__bar-cd-val">{barCountdown}</span>
           </div>
         ) : null}
 
@@ -1098,6 +1812,34 @@ export default function NativeChatChart({
           </div>
         ) : null}
 
+        {status === 'ready' && chartEpoch > 0 ? (
+          <ChartNavControls
+            chart={chartRef.current}
+            anchorRef={areaRef}
+            onReset={resetView}
+            onInteract={() => {
+              touchedRef.current = true;
+            }}
+          />
+        ) : null}
+
+        {status === 'ready' && selectedDrawing ? (
+          <DrawingObjectToolbar
+            drawing={selectedDrawing}
+            anchorRef={areaRef}
+            onPatch={(patch) => {
+              if (selectedDrawing) drawings.updateDrawing(selectedDrawing.id, patch);
+            }}
+            onOpenSettings={() => {
+              setDrawSettingsId(selectedDrawing.id);
+              setPanel('draw');
+            }}
+            onClone={() => drawings.cloneSelected()}
+            onRemove={() => drawings.removeSelected()}
+            onReorder={(dir) => drawings.reorderSelected(dir)}
+          />
+        ) : null}
+
         {status === 'ready' ? (
           <div
             className={`mai-nc__stamp ${
@@ -1110,11 +1852,11 @@ export default function NativeChatChart({
             title={
               marketOpen
                 ? liveStreaming
-                  ? 'Live market feed'
+                  ? marketSessionLabel
                   : fetchedAt
-                    ? `Last feed ${istFull.format(new Date(fetchedAt))} IST`
-                    : 'Waiting for ticks'
-                : 'NSE cash / F&O session closed'
+                    ? `Last feed ${istFull.format(new Date(fetchedAt))} IST · ${marketSessionLabel}`
+                    : marketSessionLabel
+                : marketSessionLabel
             }
           >
             {!marketOpen ? (
@@ -1150,7 +1892,228 @@ export default function NativeChatChart({
             )}
           </div>
         ) : null}
+
+        {toast ? <div className="mai-nc__toast">{toast}</div> : null}
+
+        {panel === 'settings' ? (
+          <div className="mai-nc__sheet" role="dialog" aria-label="Chart settings">
+            <header className="mai-nc__sheet-h">
+              <b>Settings</b>
+              <button type="button" onClick={() => setPanel('none')}>
+                Close
+              </button>
+            </header>
+            <div className="mai-nc__sheet-body">
+              <button
+                type="button"
+                className={logScale ? 'on' : ''}
+                onClick={() => setLogScale((v) => !v)}
+              >
+                Logarithmic scale
+              </button>
+              <button type="button" onClick={resetView}>
+                Auto price scale + reset time
+              </button>
+              <button type="button" onClick={() => setHideDrawings((v) => !v)}>
+                {hideDrawings ? 'Show drawings' : 'Hide drawings'}
+              </button>
+              <button type="button" onClick={() => setHideIndicators((v) => !v)}>
+                {hideIndicators ? 'Show indicators' : 'Hide indicators'}
+              </button>
+              <button type="button" onClick={saveScreenshot}>
+                Save screenshot (PNG)
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {panel === 'draw' && settingsDrawing ? (
+          <DrawingSettingsSheet
+            drawing={settingsDrawing}
+            onPatch={(patch) => drawings.updateDrawing(settingsDrawing.id, patch)}
+            onClose={() => {
+              setPanel('none');
+              setDrawSettingsId(null);
+            }}
+            onClone={() => {
+              drawings.selectDrawing(settingsDrawing.id);
+              drawings.cloneSelected();
+            }}
+            onRemove={() => {
+              drawings.selectDrawing(settingsDrawing.id);
+              drawings.removeSelected();
+              setPanel('none');
+              setDrawSettingsId(null);
+            }}
+          />
+        ) : null}
+
+        {panel === 'objects' ? (
+          <div className="mai-nc__sheet" role="dialog" aria-label="Object tree">
+            <header className="mai-nc__sheet-h">
+              <b>Object tree</b>
+              <button type="button" onClick={() => setPanel('none')}>
+                Close
+              </button>
+            </header>
+            <div className="mai-nc__sheet-body mai-nc__sheet-body--list">
+              {!drawings.drawings.length ? (
+                <p className="mai-nc__sheet-empty">No drawings on this chart</p>
+              ) : (
+                drawings.drawings.map((d) => (
+                  <div
+                    key={d.id}
+                    className={`mai-nc__obj-row ${drawings.selectedId === d.id ? 'on' : ''} ${
+                      d.visible === false ? 'is-hidden' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="mai-nc__obj-pick"
+                      onClick={() => {
+                        drawings.selectDrawing(d.id);
+                        setTool('cursor');
+                      }}
+                    >
+                      <span
+                        className="mai-nc__obj-dot"
+                        style={{ background: d.color }}
+                        aria-hidden
+                      />
+                      {d.kind}
+                      {d.label ? ` · ${d.label}` : ''}
+                      {d.locked ? ' · locked' : ''}
+                      {d.visible === false ? ' · hidden' : ''}
+                    </button>
+                    <button
+                      type="button"
+                      title="Settings"
+                      onClick={() => {
+                        drawings.selectDrawing(d.id);
+                        setDrawSettingsId(d.id);
+                        setPanel('draw');
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        drawings.replaceAll(drawings.drawings.filter((x) => x.id !== d.id))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {panel === 'table' && legend ? (
+          <div className="mai-nc__sheet mai-nc__sheet--table" role="dialog" aria-label="Table view">
+            <header className="mai-nc__sheet-h">
+              <b>Table view · {label}</b>
+              <button type="button" onClick={() => setPanel('none')}>
+                Close
+              </button>
+            </header>
+            <div className="mai-nc__sheet-body">
+              <table className="mai-nc__ohlc-table">
+                <tbody>
+                  <tr>
+                    <th>Open</th>
+                    <td>{legend.o.toFixed(decimals)}</td>
+                  </tr>
+                  <tr>
+                    <th>High</th>
+                    <td>{legend.h.toFixed(decimals)}</td>
+                  </tr>
+                  <tr>
+                    <th>Low</th>
+                    <td>{legend.l.toFixed(decimals)}</td>
+                  </tr>
+                  <tr>
+                    <th>Close</th>
+                    <td>{legend.c.toFixed(decimals)}</td>
+                  </tr>
+                  <tr>
+                    <th>Change</th>
+                    <td className={tone}>
+                      {change >= 0 ? '+' : ''}
+                      {change.toFixed(decimals)} ({changePct.toFixed(2)}%)
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      <ChartContextMenu
+        open={ctxMenu}
+        onClose={() => setCtxMenu(null)}
+        decimals={decimals}
+        onResetView={resetView}
+        onCopyPrice={(p) => void copyPrice(p)}
+        onPaste={() => void pastePriceLine()}
+        onAddAlert={addAlertAt}
+        onSellLimit={(p) => {
+          paperHandoff({ side: 'SELL', qty: 1, price: p, orderType: 'LIMIT' });
+        }}
+        onBuyStop={(p) => {
+          paperHandoff({ side: 'BUY', qty: 1, price: p, orderType: 'STOP' });
+        }}
+        onAddOrder={(p) => {
+          paperHandoff({ side: 'BUY', qty: 1, price: p, orderType: 'LIMIT' });
+        }}
+        onToggleLockCursor={toggleLockCursor}
+        onTableView={() => setPanel('table')}
+        onObjectTree={() => setPanel('objects')}
+        onRemoveDrawings={() => {
+          drawings.clear();
+          lockLineIdRef.current = null;
+          setCursorLocked(false);
+          showToast('Drawings removed');
+        }}
+        onRemoveIndicators={() => {
+          onClearIndicators?.();
+          showToast(onClearIndicators ? 'Indicators removed' : 'Open Terminal to clear indicators');
+        }}
+        onSettings={() => setPanel('settings')}
+        templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+        onSaveTemplate={() => {
+          saveChartTemplate({
+            name: `${apiSymbol} · ${new Date().toLocaleString('en-IN')}`,
+            drawingsJson: JSON.stringify(drawings.drawings),
+            study,
+          });
+          setTemplatesTick((n) => n + 1);
+          showToast('Template saved');
+        }}
+        onApplyTemplate={(id) => {
+          const tpl = listChartTemplates().find((t) => t.id === id);
+          if (!tpl) return;
+          if (tpl.drawingsJson) {
+            try {
+              const parsed = JSON.parse(tpl.drawingsJson) as Drawing[];
+              if (Array.isArray(parsed)) drawings.replaceAll(parsed);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (tpl.study) onApplyStudy?.(tpl.study);
+          showToast(`Applied ${tpl.name}`);
+        }}
+        onClearTemplateLayout={() => {
+          drawings.clear();
+          lockLineIdRef.current = null;
+          setCursorLocked(false);
+          showToast('Layout cleared');
+        }}
+      />
     </div>
   );
 }

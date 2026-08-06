@@ -7,10 +7,10 @@ import type { TvChartStyle, TvInterval } from '../utils/tradingViewSymbols';
 export type TerminalRightPanel =
   | 'watchlist'
   | 'alerts'
-  | 'data'
-  | 'news'
+  | 'screeners'
   | 'calendar'
-  | 'ideas'
+  | 'news'
+  | 'notifications'
   | null;
 
 export type TerminalState = {
@@ -38,13 +38,20 @@ const DEFAULT_WATCHLIST = [
   'OANDA:XAUUSD',
 ];
 
-const RIGHT_PANELS = new Set(['watchlist', 'alerts', 'data', 'news', 'calendar', 'ideas']);
+const RIGHT_PANELS = new Set([
+  'watchlist',
+  'alerts',
+  'screeners',
+  'calendar',
+  'news',
+  'notifications',
+]);
 
 export function defaultTerminalState(): TerminalState {
   return {
     symbol: 'NSE:NIFTY',
     interval: '5',
-    study: 'ema,rsi',
+    study: 'ema,rsi,volume',
     chartStyle: '1',
     watchlist: [...DEFAULT_WATCHLIST],
     rightPanel: 'watchlist',

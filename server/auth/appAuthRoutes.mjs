@@ -554,17 +554,29 @@ function publicIndicator(row) {
 /**
  * Invite link visibility:
  * - Admin: always
- * - Unlocked + never requested TV access: show (legacy / browse)
- * - Unlocked + granted: show (after admin Approve)
- * - Pending / dismissed / locked workspace: hide
+ * - Active paid subscription (`access.status === 'granted'`): all published indicators
+ * - Trial / other unlocked: only after desk Approves that indicator's TV request
+ * - Locked workspace: never
  */
-function withInviteGate(pub, { isAdmin, unlocked, tvStatus }) {
-  const next = { ...pub, tvAccessStatus: tvStatus || null };
-  if (isAdmin) return next;
-  // Invite URL only after desk Approves — never leak for users with no TV request yet.
-  const showLink = unlocked && tvStatus === 'granted';
+function withInviteGate(pub, { isAdmin, access, tvStatus }) {
+  const next = { ...pub };
+  const unlocked = Boolean(access?.unlocked);
+  const paidPlan = unlocked && access?.status === 'granted' && !access?.isTrial;
+  const showLink =
+    isAdmin || paidPlan || (unlocked && tvStatus === 'granted');
+
+  next.tvAccessStatus =
+    isAdmin || paidPlan ? 'granted' : tvStatus || null;
+
   if (!showLink) next.link = '';
   return next;
+}
+
+function inviteUnlockedFor({ isAdmin, access, tvStatus }) {
+  if (isAdmin) return true;
+  if (!access?.unlocked) return false;
+  if (access.status === 'granted' && !access.isTrial) return true;
+  return tvStatus === 'granted';
 }
 
 /** GET /api/app-auth/indicators — published library for signed-in members */
@@ -581,7 +593,7 @@ router.get('/indicators', requireUser, async (req, res) => {
       const tvStatus = statusMap.get(row.id) || null;
       return withInviteGate(pub, {
         isAdmin,
-        unlocked: access.unlocked,
+        access,
         tvStatus,
       });
     });
@@ -592,6 +604,10 @@ router.get('/indicators', requireUser, async (req, res) => {
         isTrial: access.isTrial,
         daysLeft: access.daysLeft,
         reason: access.reason,
+        status: access.status,
+        indicatorsUnlocked: Boolean(
+          isAdmin || (access.unlocked && access.status === 'granted' && !access.isTrial),
+        ),
       },
     });
   } catch (err) {
@@ -612,7 +628,7 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
     const tvStatus = latest?.status || null;
     const pub = withInviteGate(publicIndicator(row), {
       isAdmin,
-      unlocked: access.unlocked,
+      access,
       tvStatus,
     });
     if (!access.unlocked && !isAdmin) {
@@ -624,10 +640,23 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
           isTrial: access.isTrial,
           daysLeft: access.daysLeft,
           reason: access.reason,
+          status: access.status,
+          indicatorsUnlocked: false,
         },
       });
     }
-    return res.json({ indicator: pub, tvAccess: latest });
+    return res.json({
+      indicator: pub,
+      tvAccess: latest,
+      access: {
+        unlocked: access.unlocked,
+        isTrial: access.isTrial,
+        daysLeft: access.daysLeft,
+        reason: access.reason,
+        status: access.status,
+        indicatorsUnlocked: inviteUnlockedFor({ isAdmin, access, tvStatus }),
+      },
+    });
   } catch (err) {
     return failed(res, err, 'Could not load indicator');
   }
@@ -650,7 +679,13 @@ router.get('/tv-access/grants', requireUser, async (req, res) => {
         ? await getIndicatorById(request.indicatorId, { publishedOnly: true })
         : null;
       // Approve alone is not enough — a locked workspace must never receive the invite link.
-      const inviteLink = access.unlocked ? indicator?.link || '' : '';
+      // Paid subscribers always get the invite; trial users need TV grant + unlocked.
+      const show = inviteUnlockedFor({
+        isAdmin: false,
+        access,
+        tvStatus: 'granted',
+      });
+      const inviteLink = show ? indicator?.link || '' : '';
       grants.push({
         id: request.id,
         indicatorId: request.indicatorId,
@@ -682,11 +717,15 @@ router.get('/indicators/:id/tv-access', requireUser, async (req, res) => {
       ? null
       : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
     const tvStatus = latest?.status || null;
-    const showLink = isAdmin || (access.unlocked && tvStatus === 'granted');
+    const showLink = inviteUnlockedFor({ isAdmin, access, tvStatus });
+    const effectiveStatus =
+      isAdmin || (access.unlocked && access.status === 'granted' && !access.isTrial)
+        ? 'granted'
+        : tvStatus;
 
     return res.json({
       ok: true,
-      status: tvStatus,
+      status: effectiveStatus,
       request: latest,
       inviteUnlocked: Boolean(showLink && row.link),
       inviteLink: showLink ? row.link || '' : '',
@@ -695,6 +734,10 @@ router.get('/indicators/:id/tv-access', requireUser, async (req, res) => {
         isTrial: access.isTrial,
         daysLeft: access.daysLeft,
         reason: access.reason,
+        status: access.status,
+        indicatorsUnlocked: Boolean(
+          isAdmin || (access.unlocked && access.status === 'granted' && !access.isTrial),
+        ),
       },
     });
   } catch (err) {
@@ -754,7 +797,12 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
       }
     }
 
-    const alreadyGranted = request?.status === 'granted' && accessStateFor(user).unlocked;
+    const alreadyGranted =
+      inviteUnlockedFor({
+        isAdmin: req.appUser?.role === 'admin',
+        access: accessStateFor(user),
+        tvStatus: request?.status || null,
+      });
     return res.json({
       ok: true,
       request,

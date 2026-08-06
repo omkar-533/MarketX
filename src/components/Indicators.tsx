@@ -74,10 +74,15 @@ export default function Indicators({
     setTvMsg('');
     setTvErr('');
     setTvDone(false);
+    const unlocked = item.tvAccessStatus === 'granted' && Boolean(item.link);
     setTvStatus(item.tvAccessStatus || null);
-    // The list payload can be stale; the invite only comes from the live status poll below.
-    setInviteLink('');
-    setActive({ ...item, link: '' });
+    // Paid plans already ship the invite on the list payload — keep it for instant unlock.
+    setInviteLink(unlocked ? item.link : '');
+    setActive(unlocked ? item : { ...item, link: '' });
+    if (unlocked) {
+      setTvDone(true);
+      setTvMsg('Included with your Wolf AI plan — open the invite below.');
+    }
   }, []);
 
   useEffect(() => {
@@ -146,7 +151,9 @@ export default function Indicators({
           setTvDone(true);
           setTvMsg(
             status.inviteLink
-              ? 'Access approved — open the invite link below.'
+              ? status.access?.indicatorsUnlocked
+                ? 'Included with your Wolf AI plan — open the invite below.'
+                : 'Access approved — open the invite link below.'
               : 'Approved on TradingView. The invite unlocks once your plan access is active.',
           );
         }
@@ -333,8 +340,9 @@ export default function Indicators({
                 <div className="lux-ind__faq-item">
                   <h3>How do I access this indicator?</h3>
                   <p>
-                    Enter your <strong>TradingView username</strong> and submit. After the desk
-                    Approves, the invite link unlocks on this page — open it to add the indicator.
+                    With an active Wolf AI subscription, every published indicator unlocks
+                    automatically in this section — open the invite link to add it on TradingView.
+                    Trial users still submit a TradingView username for desk approval first.
                   </p>
                 </div>
                 <div className="lux-ind__faq-item">
@@ -368,7 +376,7 @@ export default function Indicators({
                       ? 'Approved on TradingView. The invite appears here once your plan access is active.'
                       : tvStatus === 'pending'
                         ? 'Request is with the desk. Invite unlocks here as soon as they Approve.'
-                        : 'Submit your TradingView username. After desk approval, the invite link unlocks here — no WhatsApp needed.'}
+                        : 'Active Wolf AI plans unlock every indicator here automatically. Trial users submit a TradingView username for desk approval.'}
                   </p>
                 </div>
 

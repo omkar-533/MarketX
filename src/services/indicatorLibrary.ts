@@ -29,6 +29,14 @@ export type TvAccessStatusPayload = {
     status: 'pending' | 'granted' | 'dismissed';
     createdAt: string;
   } | null;
+  access?: {
+    unlocked: boolean;
+    isTrial: boolean;
+    daysLeft: number | null;
+    reason: string | null;
+    status?: string;
+    indicatorsUnlocked?: boolean;
+  };
 };
 
 function sessionHeaders(): HeadersInit {
@@ -231,6 +239,7 @@ export async function getTradingViewAccessStatus(
     inviteUnlocked: Boolean(data.inviteUnlocked),
     inviteLink: typeof data.inviteLink === 'string' ? data.inviteLink : '',
     request: (data.request as TvAccessStatusPayload['request']) || null,
+    access: (data.access as TvAccessStatusPayload['access']) || undefined,
   };
 }
 

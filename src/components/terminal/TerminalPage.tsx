@@ -4,13 +4,11 @@ import {
   saveTerminalState,
   type TerminalState,
 } from '../../services/terminalState';
-import { queueTerminalPaperTrade } from '../../services/paperTradingBridge';
 import { usesNativeChart, type TvChartStyle, type TvInterval } from '../../utils/tradingViewSymbols';
 import TerminalTopBar from './TerminalTopBar';
 import TerminalChartHost from './TerminalChartHost';
 import TerminalTvEmbed from './TerminalTvEmbed';
 import TerminalRightDock, { type RightPanel } from './TerminalRightDock';
-import TerminalTradeStrip from './TerminalTradeStrip';
 import TerminalBottomBar from './TerminalBottomBar';
 
 export type TerminalPageProps = {
@@ -49,19 +47,6 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
     });
   }, []);
 
-  const goPaper = useCallback(
-    (side: 'BUY' | 'SELL', qty = 1) => {
-      queueTerminalPaperTrade({
-        tvSymbol: state.symbol,
-        side,
-        qty: Math.max(1, Math.round(qty) || 1),
-        at: new Date().toISOString(),
-      });
-      onNavigate?.('papertrading');
-    },
-    [onNavigate, state.symbol],
-  );
-
   const chart = native ? (
     <TerminalChartHost
       symbol={state.symbol}
@@ -73,6 +58,9 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
       logScale={state.logScale}
       rangePreset={state.activeRange}
       onNativeUnavailable={() => setNativeFailed(true)}
+      onClearIndicators={() => patch({ study: '' })}
+      onApplyStudy={(study) => patch({ study })}
+      onNavigate={onNavigate}
     />
   ) : (
     <TerminalTvEmbed
@@ -102,7 +90,7 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
         onChartStyleChange={(chartStyle: TvChartStyle) => patch({ chartStyle })}
         onReload={() => setReloadKey((k) => k + 1)}
         onExitApp={() => onNavigate?.('wolf-ai')}
-        onTrade={() => goPaper('BUY', 1)}
+        onNavigate={onNavigate}
       />
 
       <div className="wolf-term__body">
@@ -130,13 +118,6 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
                   : prev.watchlist.filter((s) => s !== tv),
             }))
           }
-        />
-      </div>
-
-      <div className="wolf-term__trade-row">
-        <TerminalTradeStrip
-          symbol={state.symbol}
-          onTrade={(side, qty) => goPaper(side, qty)}
         />
       </div>
 

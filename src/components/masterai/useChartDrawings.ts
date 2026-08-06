@@ -2,13 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi, Logical, SeriesType } from 'lightweight-charts';
 import type { ChartAnchor, ChartShape } from '../../utils/chartAnnotations';
 import {
-  DRAW_COLOR,
-  FIB_RATIOS,
   POINTS_NEEDED,
   SHAPE_TONE,
-  distanceToRect,
-  distanceToSegment,
+  FIB_RATIOS,
+  defaultColorFor,
+  defaultLabelFor,
   drawingsKey,
+  formatMeasureLabel,
+  isContinuousKind,
+  isDrawingKind,
+  isEphemeralKind,
   loadDrawings,
   logicalToTime,
   newDrawingId,
@@ -17,18 +20,32 @@ import {
   timeToLogical,
   type Drawing,
   type DrawPoint,
+  type DrawingKind,
   type DrawingTool,
+  type MagnetMode,
   type Pixel,
 } from '../../services/chart/chartDrawings';
+import { hitUserDrawing, paintUserDrawing } from '../../services/chart/chartDrawPaint';
 import type { ChartBar } from '../../types/chart';
 
-const HIT_PX = 7;
-const HANDLE_PX = 4;
+const HIT_PX_FINE = 8;
+const HIT_PX_COARSE = 16;
+const HANDLE_R = 4.5;
+
+function hitRadiusPx(): number {
+  if (typeof window === 'undefined') return HIT_PX_FINE;
+  try {
+    return window.matchMedia('(pointer: coarse)').matches ? HIT_PX_COARSE : HIT_PX_FINE;
+  } catch {
+    return HIT_PX_FINE;
+  }
+}
 
 type Drag =
   | { mode: 'new'; id: string; index: number }
   | { mode: 'handle'; id: string; index: number }
   | { mode: 'move'; id: string; from: DrawPoint }
+  | { mode: 'zoom'; a: Pixel; b: Pixel }
   | null;
 
 export interface ChartDrawingsApi {
@@ -37,9 +54,23 @@ export interface ChartDrawingsApi {
   undo: () => void;
   clear: () => void;
   removeSelected: () => void;
+  /** Replace the whole drawing set (templates / paste). */
+  replaceAll: (next: Drawing[]) => void;
+  /** Append one drawing. */
+  addDrawing: (drawing: Drawing) => void;
+  /** Patch one drawing by id (style / lock / points…). */
+  updateDrawing: (id: string, patch: Partial<Drawing>) => void;
+  /** Patch the selected drawing. */
+  updateSelected: (patch: Partial<Drawing>) => void;
+  selectDrawing: (id: string | null) => void;
+  cloneSelected: () => void;
+  /** Visual order — TradingView bring to front / send to back. */
+  reorderSelected: (dir: 'front' | 'forward' | 'backward' | 'back') => void;
 }
 
 export interface UseChartDrawingsOptions {
+  /** Chart + overlay container — pointer capture attaches here so tools always receive clicks. */
+  areaRef: React.RefObject<HTMLDivElement | null>;
   hostRef: React.RefObject<HTMLDivElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   chartRef: React.MutableRefObject<IChartApi | null>;
@@ -52,8 +83,14 @@ export interface UseChartDrawingsOptions {
   aiShapes: ChartShape[];
   tool: DrawingTool;
   /** Called once a shape is complete so the toolbar can fall back to cursor. */
-  onShapeDone: () => void;
-  magnet: boolean;
+  onShapeDone: (info?: { kind: DrawingKind }) => void;
+  /** Double-click a drawing → open properties (TradingView). */
+  onOpenDrawingSettings?: (id: string) => void;
+  magnetMode: MagnetMode;
+  lockDrawings: boolean;
+  hideDrawings: boolean;
+  hideIndicators: boolean;
+  removeLocked: boolean;
   isDark: boolean;
 }
 
@@ -62,6 +99,7 @@ export interface UseChartDrawingsOptions {
  * painting, on a transparent canvas stacked over the chart.
  */
 export function useChartDrawings({
+  areaRef,
   hostRef,
   canvasRef,
   chartRef,
@@ -72,7 +110,12 @@ export function useChartDrawings({
   aiShapes,
   tool,
   onShapeDone,
-  magnet,
+  onOpenDrawingSettings,
+  magnetMode,
+  lockDrawings,
+  hideDrawings,
+  hideIndicators,
+  removeLocked,
   isDark,
 }: UseChartDrawingsOptions): ChartDrawingsApi {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
@@ -84,10 +127,17 @@ export function useChartDrawings({
   const barsRef = useRef<ChartBar[]>(bars);
   const aiRef = useRef<ChartShape[]>(aiShapes);
   const toolRef = useRef<DrawingTool>(tool);
-  const magnetRef = useRef(magnet);
+  const magnetRef = useRef<MagnetMode>(magnetMode);
+  const lockRef = useRef(lockDrawings);
+  const hideDrawRef = useRef(hideDrawings);
+  const hideIndRef = useRef(hideIndicators);
+  const removeLockedRef = useRef(removeLocked);
   const dragRef = useRef<Drag>(null);
+  const placeRef = useRef<{ id: string; nextIndex: number; needed: number } | null>(null);
   const doneRef = useRef(onShapeDone);
+  const openSettingsRef = useRef(onOpenDrawingSettings);
   const aiRevisionRef = useRef(0);
+  const drawRevisionRef = useRef(0);
 
   drawingsRef.current = drawings;
   selectedRef.current = selectedId;
@@ -95,8 +145,17 @@ export function useChartDrawings({
   if (aiRef.current !== aiShapes) aiRevisionRef.current += 1;
   aiRef.current = aiShapes;
   toolRef.current = tool;
-  magnetRef.current = magnet;
+  magnetRef.current = magnetMode;
+  lockRef.current = lockDrawings;
+  hideDrawRef.current = hideDrawings;
+  hideIndRef.current = hideIndicators;
+  removeLockedRef.current = removeLocked;
   doneRef.current = onShapeDone;
+  openSettingsRef.current = onOpenDrawingSettings;
+
+  useEffect(() => {
+    placeRef.current = null;
+  }, [tool]);
 
   // Each symbol/timeframe keeps its own set, the way a TradingView layout does.
   useEffect(() => {
@@ -107,6 +166,7 @@ export function useChartDrawings({
   const commit = useCallback(
     (next: Drawing[]) => {
       drawingsRef.current = next;
+      drawRevisionRef.current += 1;
       setDrawings(next);
       saveDrawings(storageKey, next);
     },
@@ -119,9 +179,13 @@ export function useChartDrawings({
   }, [commit]);
 
   const clear = useCallback(() => {
-    commit([]);
+    if (removeLocked) {
+      commit([]);
+    } else {
+      commit(drawingsRef.current.filter((d) => d.locked));
+    }
     setSelectedId(null);
-  }, [commit]);
+  }, [commit, removeLocked]);
 
   const removeSelected = useCallback(() => {
     const id = selectedRef.current;
@@ -130,12 +194,90 @@ export function useChartDrawings({
     setSelectedId(null);
   }, [commit]);
 
+  const replaceAll = useCallback(
+    (next: Drawing[]) => {
+      commit(next);
+      setSelectedId(null);
+    },
+    [commit],
+  );
+
+  const addDrawing = useCallback(
+    (drawing: Drawing) => {
+      commit([...drawingsRef.current, drawing]);
+    },
+    [commit],
+  );
+
+  const updateDrawing = useCallback(
+    (id: string, patch: Partial<Drawing>) => {
+      const next = drawingsRef.current.map((d) => (d.id === id ? { ...d, ...patch, id: d.id, kind: d.kind } : d));
+      commit(next);
+    },
+    [commit],
+  );
+
+  const updateSelected = useCallback(
+    (patch: Partial<Drawing>) => {
+      const id = selectedRef.current;
+      if (!id) return;
+      updateDrawing(id, patch);
+    },
+    [updateDrawing],
+  );
+
+  const selectDrawing = useCallback((id: string | null) => {
+    setSelectedId(id);
+  }, []);
+
+  const cloneSelected = useCallback(() => {
+    const id = selectedRef.current;
+    if (!id) return;
+    const src = drawingsRef.current.find((d) => d.id === id);
+    if (!src) return;
+    const clone: Drawing = {
+      ...src,
+      id: newDrawingId(),
+      points: src.points.map((p) => ({
+        time: p.time,
+        price: p.price * 1.0000, // keep nums
+      })),
+      locked: false,
+    };
+    // Nudge so the clone isn't fully stacked.
+    if (clone.points.length) {
+      const bars = barsRef.current;
+      const step = bars.length > 1 ? Math.abs(bars[1].time - bars[0].time) : 60;
+      clone.points = clone.points.map((p) => ({ time: p.time + step * 2, price: p.price }));
+    }
+    commit([...drawingsRef.current, clone]);
+    setSelectedId(clone.id);
+  }, [commit]);
+
+  const reorderSelected = useCallback(
+    (dir: 'front' | 'forward' | 'backward' | 'back') => {
+      const id = selectedRef.current;
+      if (!id) return;
+      const list = [...drawingsRef.current];
+      const idx = list.findIndex((d) => d.id === id);
+      if (idx < 0) return;
+      const [item] = list.splice(idx, 1);
+      if (dir === 'front') list.push(item);
+      else if (dir === 'back') list.unshift(item);
+      else if (dir === 'forward') list.splice(Math.min(list.length, idx + 1), 0, item);
+      else list.splice(Math.max(0, idx - 1), 0, item);
+      commit(list);
+    },
+    [commit],
+  );
+
   useEffect(() => {
+    const area = areaRef.current;
     const host = hostRef.current;
     const canvas = canvasRef.current;
     const chart = chartRef.current;
     const series = seriesRef.current;
-    if (!host || !canvas || !chart || !series) return;
+    if (!area || !host || !canvas || !chart || !series) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -182,46 +324,45 @@ export function useChartDrawings({
       const x = clientX - rect.left;
       const y = clientY - rect.top;
       const logical = timeScale.coordinateToLogical(x);
-      const price = series.coordinateToPrice(y);
-      if (logical === null || price === null) return null;
-      const value = magnetRef.current ? snapToBar(barsRef.current, logical, price) : price;
+      let price: number | null = series.coordinateToPrice(y);
+      if (logical === null) return null;
+      // Off-pane / scale lag — fall back so tools still place.
+      if (price === null || !Number.isFinite(price)) {
+        const bars = barsRef.current;
+        if (!bars.length) return null;
+        let min = Infinity;
+        let max = -Infinity;
+        for (const b of bars) {
+          if (b.low < min) min = b.low;
+          if (b.high > max) max = b.high;
+        }
+        if (!(max > min)) return null;
+        const paneH = chart.panes()[0]?.getHeight() ?? host.clientHeight;
+        const top = paneH * 0.08;
+        const usable = Math.max(1, paneH * 0.68);
+        const t = Math.min(1, Math.max(0, (y - top) / usable));
+        price = max - t * (max - min);
+      }
+      const value = snapToBar(barsRef.current, logical, price, magnetRef.current);
       return { time: logicalToTime(barsRef.current, logical), price: value };
     };
 
     const hitTest = (at: Pixel): { drawing: Drawing; handle: number | null } | null => {
-      // Topmost first so the most recently drawn shape wins.
       for (let i = drawingsRef.current.length - 1; i >= 0; i -= 1) {
         const drawing = drawingsRef.current[i];
+        // Hidden objects are only reachable from object tree / settings.
+        if (drawing.visible === false && drawing.id !== selectedRef.current) continue;
         const pts = drawing.points.map(pixelOf);
         if (pts.some((p) => p === null)) continue;
         const px = pts as Pixel[];
 
-        const handle = px.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) <= HIT_PX);
+        const hitPx = hitRadiusPx();
+        const handle = px.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) <= hitPx);
         if (handle >= 0) return { drawing, handle };
 
-        let distance = Infinity;
-        if (drawing.kind === 'hline') distance = Math.abs(at.y - px[0].y);
-        else if (drawing.kind === 'vline') distance = Math.abs(at.x - px[0].x);
-        else if (drawing.kind === 'rect') distance = distanceToRect(at, px[0], px[1]);
-        else if (drawing.kind === 'fib') {
-          const left = Math.min(px[0].x, px[1].x);
-          const right = Math.max(px[0].x, px[1].x);
-          distance = FIB_RATIOS.reduce((best, ratio) => {
-            const y = px[0].y + (px[1].y - px[0].y) * ratio;
-            const gap =
-              at.x >= left - HIT_PX && at.x <= right + HIT_PX ? Math.abs(at.y - y) : Infinity;
-            return Math.min(best, gap);
-          }, Infinity);
-        } else if (drawing.kind === 'ray') {
-          const dx = px[1].x - px[0].x;
-          const dy = px[1].y - px[0].y;
-          const far = { x: px[1].x + dx * 400, y: px[1].y + dy * 400 };
-          distance = distanceToSegment(at, px[0], far);
-        } else {
-          distance = distanceToSegment(at, px[0], px[1]);
+        if (hitUserDrawing(at, drawing, px, host.clientWidth, host.clientHeight) <= hitPx) {
+          return { drawing, handle: null };
         }
-
-        if (distance <= HIT_PX) return { drawing, handle: null };
       }
       return null;
     };
@@ -684,76 +825,88 @@ export function useChartDrawings({
       ctx.rect(0, 0, paneWidth, paneHeight);
       ctx.clip();
 
-      paintAiShapes(paneWidth, paneHeight);
+      if (!hideIndRef.current) paintAiShapes(paneWidth, paneHeight);
 
-      for (const drawing of drawingsRef.current) {
-        const pts = drawing.points.map(pixelOf);
-        if (pts.some((p) => p === null)) continue;
-        const px = pts as Pixel[];
-        const selected = drawing.id === selectedRef.current;
+      if (!hideDrawRef.current) {
+        for (const drawing of drawingsRef.current) {
+          const selected = drawing.id === selectedRef.current;
+          if (drawing.visible === false && !selected) continue;
+          const pts = drawing.points.map(pixelOf);
+          if (pts.some((p) => p === null)) continue;
+          const px = pts as Pixel[];
+          paintUserDrawing(ctx, drawing, px, paneWidth, paneHeight, labelColor, selected, {
+            bars: barsRef.current,
+            map: {
+              priceToY: (price) => {
+                const y = series.priceToCoordinate(price);
+                return y == null || !Number.isFinite(Number(y)) ? null : Number(y);
+              },
+              timeToX: (time) => {
+                const x = timeScale.logicalToCoordinate(
+                  timeToLogical(barsRef.current, time) as Logical,
+                );
+                return x == null || !Number.isFinite(Number(x)) ? null : Number(x);
+              },
+            },
+          });
 
-        ctx.strokeStyle = drawing.color;
-        ctx.lineWidth = selected ? 2 : 1.5;
-        ctx.setLineDash([]);
-        ctx.beginPath();
+          if (selected && !lockRef.current && !drawing.locked) {
+            px.forEach((p) => {
+              // TradingView-style handle: white fill + blue ring.
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, HANDLE_R + 1.5, 0, Math.PI * 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = drawing.color || '#2962ff';
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+              ctx.fillStyle = drawing.color || '#2962ff';
+              ctx.fill();
+            });
+          }
+        }
+      }
 
-        if (drawing.kind === 'hline') {
-          ctx.moveTo(0, px[0].y);
-          ctx.lineTo(paneWidth, px[0].y);
-          ctx.stroke();
-        } else if (drawing.kind === 'vline') {
-          ctx.moveTo(px[0].x, 0);
-          ctx.lineTo(px[0].x, paneHeight);
-          ctx.stroke();
-        } else if (drawing.kind === 'rect') {
-          const x = Math.min(px[0].x, px[1].x);
-          const y = Math.min(px[0].y, px[1].y);
-          const w = Math.abs(px[1].x - px[0].x);
-          const h = Math.abs(px[1].y - px[0].y);
-          ctx.fillStyle = 'rgba(41,98,255,0.12)';
-          ctx.fillRect(x, y, w, h);
-          ctx.strokeRect(x, y, w, h);
-        } else if (drawing.kind === 'fib') {
-          const left = Math.min(px[0].x, px[1].x);
-          const right = Math.max(px[0].x, px[1].x);
-          const priceSpan = drawing.points[1].price - drawing.points[0].price;
-          ctx.font = '10px "Trebuchet MS", Roboto, sans-serif';
-          ctx.textBaseline = 'bottom';
-          FIB_RATIOS.forEach((ratio, i) => {
-            const y = px[0].y + (px[1].y - px[0].y) * ratio;
-            if (i > 0) {
-              const prevY = px[0].y + (px[1].y - px[0].y) * FIB_RATIOS[i - 1];
-              ctx.fillStyle = i % 2 ? 'rgba(41,98,255,0.06)' : 'rgba(41,98,255,0.12)';
-              ctx.fillRect(left, Math.min(prevY, y), right - left, Math.abs(y - prevY));
-            }
+      // Rubber-band crosshair tip while placing.
+      const placing = placeRef.current;
+      if (placing) {
+        const d = drawingsRef.current.find((x) => x.id === placing.id);
+        const tip = d?.points[placing.nextIndex];
+        if (tip) {
+          const p = pixelOf(tip);
+          if (p) {
+            ctx.save();
+            ctx.setLineDash([4, 3]);
+            ctx.strokeStyle = 'rgba(41,98,255,0.55)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(left, y);
-            ctx.lineTo(right, y);
+            ctx.moveTo(p.x, 0);
+            ctx.lineTo(p.x, paneHeight);
+            ctx.moveTo(0, p.y);
+            ctx.lineTo(paneWidth, p.y);
             ctx.stroke();
-            const price = drawing.points[0].price + priceSpan * ratio;
-            ctx.fillStyle = labelColor;
-            ctx.fillText(`${ratio.toFixed(3)}  ${price.toFixed(2)}`, left + 4, y - 2);
-          });
-        } else if (drawing.kind === 'ray') {
-          const dx = px[1].x - px[0].x;
-          const dy = px[1].y - px[0].y;
-          ctx.moveTo(px[0].x, px[0].y);
-          ctx.lineTo(px[1].x + dx * 400, px[1].y + dy * 400);
-          ctx.stroke();
-        } else {
-          ctx.moveTo(px[0].x, px[0].y);
-          ctx.lineTo(px[1].x, px[1].y);
-          ctx.stroke();
-        }
-
-        if (selected) {
-          ctx.fillStyle = drawing.color;
-          px.forEach((p) => {
+            ctx.setLineDash([]);
             ctx.beginPath();
-            ctx.arc(p.x, p.y, HANDLE_PX, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#2962ff';
             ctx.fill();
-          });
+            ctx.restore();
+          }
         }
+      }
+
+      const zoomDrag = dragRef.current;
+      if (zoomDrag && zoomDrag.mode === 'zoom') {
+        const x = Math.min(zoomDrag.a.x, zoomDrag.b.x);
+        const y = Math.min(zoomDrag.a.y, zoomDrag.b.y);
+        const w = Math.abs(zoomDrag.b.x - zoomDrag.a.x);
+        const h = Math.abs(zoomDrag.b.y - zoomDrag.a.y);
+        ctx.fillStyle = 'rgba(41,98,255,0.12)';
+        ctx.strokeStyle = '#2962ff';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
       }
 
       ctx.restore();
@@ -783,12 +936,23 @@ export function useChartDrawings({
         probe ? series.priceToCoordinate(probe.close) : 0,
         probe ? series.priceToCoordinate(probe.close * 1.01) : 0,
         drawingsRef.current.length,
+        drawRevisionRef.current,
         // A fresh set of AI shapes can be the same length as the old one, and
         // bar-offset anchors move as soon as a new candle arrives.
         aiRevisionRef.current,
         barsRef.current.length,
         lastBar ? lastBar.time : 0,
         selectedRef.current,
+        hideDrawRef.current ? 1 : 0,
+        hideIndRef.current ? 1 : 0,
+        dragRef.current?.mode === 'zoom' ? 1 : 0,
+        placeRef.current
+          ? `${placeRef.current.id}:${placeRef.current.nextIndex}:${
+              drawingsRef.current.find((d) => d.id === placeRef.current!.id)?.points[
+                placeRef.current.nextIndex
+              ]?.price ?? 0
+            }`
+          : '',
       ].join('|');
       if (next !== signature) {
         signature = next;
@@ -801,26 +965,103 @@ export function useChartDrawings({
       signature = '';
     };
 
+    const finishShape = (kind: DrawingKind) => {
+      placeRef.current = null;
+      dragRef.current = null;
+      saveDrawings(storageKey, drawingsRef.current);
+      doneRef.current({ kind });
+      repaint();
+    };
+
+    const updateRubberBand = (point: DrawPoint) => {
+      const pending = placeRef.current;
+      if (!pending) return false;
+      const next = drawingsRef.current.map((d) => {
+        if (d.id !== pending.id) return d;
+        const points = [...d.points];
+        while (points.length < pending.needed) points.push({ ...point });
+        points[pending.nextIndex] = point;
+        for (let i = pending.nextIndex + 1; i < pending.needed; i += 1) points[i] = { ...point };
+        if (d.kind === 'measure' && points[0] && points[1]) {
+          return {
+            ...d,
+            points: points.slice(0, pending.needed),
+            label: formatMeasureLabel(points[0], points[1], barsRef.current),
+          };
+        }
+        return { ...d, points: points.slice(0, pending.needed) };
+      });
+      drawingsRef.current = next;
+      setDrawings(next);
+      repaint();
+      return true;
+    };
+
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      const t = event.target as Node | null;
+      if (t && !host.contains(t) && t !== canvas && !canvas.contains(t)) return;
+
       const rect = host.getBoundingClientRect();
       const at: Pixel = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       const point = pointAt(event.clientX, event.clientY);
       if (!point) return;
 
       const activeTool = toolRef.current;
-      if (activeTool === 'cursor') {
+      const isSelect =
+        activeTool === 'cursor' ||
+        activeTool === 'crosshair' ||
+        activeTool === 'dot' ||
+        activeTool === 'arrowCursor';
+
+      if (activeTool === 'eraser') {
+        const hit = hitTest(at);
+        if (!hit) return;
+        event.stopPropagation();
+        event.preventDefault();
+        if (hit.drawing.locked && !removeLockedRef.current) return;
+        commit(drawingsRef.current.filter((d) => d.id !== hit.drawing.id));
+        setSelectedId(null);
+        repaint();
+        return;
+      }
+
+      if (activeTool === 'zoomIn') {
+        event.stopPropagation();
+        event.preventDefault();
+        try {
+          area.setPointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
+        dragRef.current = { mode: 'zoom', a: at, b: at };
+        repaint();
+        return;
+      }
+
+      if (isSelect) {
         const hit = hitTest(at);
         if (!hit) {
+          const hadMeasure = drawingsRef.current.some((d) => isEphemeralKind(d.kind));
+          if (hadMeasure) commit(drawingsRef.current.filter((d) => !isEphemeralKind(d.kind)));
           if (selectedRef.current) {
             setSelectedId(null);
             repaint();
-          }
-          return; // let the chart pan
+          } else if (hadMeasure) repaint();
+          return;
         }
         event.stopPropagation();
         event.preventDefault();
+        try {
+          area.setPointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
         setSelectedId(hit.drawing.id);
+        if (lockRef.current || hit.drawing.locked) {
+          repaint();
+          return;
+        }
         dragRef.current =
           hit.handle === null
             ? { mode: 'move', id: hit.drawing.id, from: point }
@@ -829,31 +1070,115 @@ export function useChartDrawings({
         return;
       }
 
+      if (!isDrawingKind(activeTool)) return;
+
       event.stopPropagation();
       event.preventDefault();
 
-      const needed = POINTS_NEEDED[activeTool];
+      const kind = activeTool;
+      const needed = POINTS_NEEDED[kind];
+      if (!(needed > 0)) return;
+      const color = defaultColorFor(kind);
+
+      // TradingView: click → move (rubber-band, no hold) → click to finish.
+      const pending = placeRef.current;
+      if (pending && drawingsRef.current.some((d) => d.id === pending.id)) {
+        updateRubberBand(point);
+        const lockedIndex = pending.nextIndex;
+        if (lockedIndex >= needed - 1) {
+          const shape = drawingsRef.current.find((d) => d.id === pending.id);
+          if (shape?.kind === 'measure') {
+            const [a, b] = shape.points;
+            if (a && b && a.time === b.time && a.price === b.price) {
+              commit(drawingsRef.current.filter((d) => d.id !== pending.id));
+              placeRef.current = null;
+              doneRef.current({ kind: 'measure' });
+              repaint();
+              return;
+            }
+          }
+          finishShape(kind);
+          return;
+        }
+        placeRef.current = { id: pending.id, nextIndex: lockedIndex + 1, needed };
+        updateRubberBand(point);
+        return;
+      }
+
+      if (isContinuousKind(kind)) {
+        try {
+          area.setPointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
+        const id = newDrawingId();
+        commit([...drawingsRef.current, { id, kind, points: [point], color }]);
+        setSelectedId(id);
+        dragRef.current = { mode: 'new', id, index: 0 };
+        repaint();
+        return;
+      }
+
+      let label = defaultLabelFor(kind);
+      if (
+        kind === 'text' ||
+        kind === 'anchoredText' ||
+        kind === 'note' ||
+        kind === 'anchoredNote' ||
+        kind === 'callout' ||
+        kind === 'comment' ||
+        kind === 'priceLabel' ||
+        kind === 'priceNote' ||
+        kind === 'table'
+      ) {
+        label = window.prompt('Label', label || 'Text') || label;
+      }
+      if (kind === 'sticker') {
+        label = window.prompt('Emoji / sticker', '⭐') || '⭐';
+      }
+
       const id = newDrawingId();
+      const points: DrawPoint[] = Array.from({ length: needed }, () => ({ ...point }));
+      const base = isEphemeralKind(kind)
+        ? drawingsRef.current.filter((d) => !isEphemeralKind(d.kind))
+        : drawingsRef.current;
       const shape: Drawing = {
         id,
-        kind: activeTool,
-        points: needed === 1 ? [point] : [point, point],
-        color: DRAW_COLOR,
+        kind,
+        points,
+        color,
+        label: kind === 'measure' ? formatMeasureLabel(point, point, barsRef.current) : label,
       };
-      commit([...drawingsRef.current, shape]);
+      commit([...base, shape]);
       setSelectedId(id);
+
       if (needed === 1) {
-        doneRef.current();
-      } else {
-        dragRef.current = { mode: 'new', id, index: 1 };
+        finishShape(kind);
+        return;
       }
+
+      placeRef.current = { id, nextIndex: 1, needed };
+      dragRef.current = null;
       repaint();
     };
 
     const onPointerMove = (event: PointerEvent) => {
+      const point = pointAt(event.clientX, event.clientY);
+
+      if (placeRef.current && point && !dragRef.current) {
+        updateRubberBand(point);
+        return;
+      }
+
       const drag = dragRef.current;
       if (!drag) return;
-      const point = pointAt(event.clientX, event.clientY);
+      const rect = host.getBoundingClientRect();
+      const at: Pixel = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      if (drag.mode === 'zoom') {
+        dragRef.current = { ...drag, b: at };
+        repaint();
+        return;
+      }
       if (!point) return;
       event.preventDefault();
 
@@ -863,6 +1188,17 @@ export function useChartDrawings({
           const dt = point.time - drag.from.time;
           const dp = point.price - drag.from.price;
           return { ...d, points: d.points.map((p) => ({ time: p.time + dt, price: p.price + dp })) };
+        }
+        if (isContinuousKind(d.kind) && drag.mode === 'new') {
+          const last = d.points[d.points.length - 1];
+          if (
+            last &&
+            Math.abs(last.time - point.time) < 1 &&
+            Math.abs(last.price - point.price) / Math.max(1, Math.abs(point.price)) < 0.00005
+          ) {
+            return d;
+          }
+          return { ...d, points: [...d.points, point] };
         }
         const points = [...d.points];
         points[drag.index] = point;
@@ -874,29 +1210,57 @@ export function useChartDrawings({
       repaint();
     };
 
-    const onPointerUp = () => {
+    const onPointerUp = (event: PointerEvent) => {
+      try {
+        if (area.hasPointerCapture(event.pointerId)) area.releasePointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
       const drag = dragRef.current;
       if (!drag) return;
-      dragRef.current = null;
 
-      // A click without a drag leaves a zero-length shape; drop it.
-      if (drag.mode === 'new') {
-        const shape = drawingsRef.current.find((d) => d.id === drag.id);
-        const [a, b] = shape?.points ?? [];
-        if (a && b && a.time === b.time && a.price === b.price) {
-          drawingsRef.current = drawingsRef.current.filter((d) => d.id !== drag.id);
-          setDrawings(drawingsRef.current);
-          setSelectedId(null);
+      if (drag.mode === 'zoom') {
+        dragRef.current = null;
+        const left = Math.min(drag.a.x, drag.b.x);
+        const right = Math.max(drag.a.x, drag.b.x);
+        if (right - left > 12) {
+          const from = timeScale.coordinateToLogical(left);
+          const to = timeScale.coordinateToLogical(right);
+          if (from !== null && to !== null) {
+            timeScale.setVisibleLogicalRange({ from, to });
+          }
         }
+        doneRef.current();
+        repaint();
+        return;
       }
 
+      if (drag.mode === 'new') {
+        const shape = drawingsRef.current.find((d) => d.id === drag.id);
+        dragRef.current = null;
+        if (!shape) return;
+        if (isContinuousKind(shape.kind)) {
+          if (shape.points.length < 2) commit(drawingsRef.current.filter((d) => d.id !== drag.id));
+          else finishShape(shape.kind);
+          return;
+        }
+        return;
+      }
+
+      dragRef.current = null;
       saveDrawings(storageKey, drawingsRef.current);
-      if (drag.mode === 'new') doneRef.current();
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        const pending = placeRef.current;
+        if (pending) {
+          commit(drawingsRef.current.filter((d) => d.id !== pending.id));
+          placeRef.current = null;
+        }
+        dragRef.current = null;
         setSelectedId(null);
+        doneRef.current();
         repaint();
         return;
       }
@@ -904,28 +1268,52 @@ export function useChartDrawings({
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       if (!selectedRef.current) return;
+      const sel = drawingsRef.current.find((d) => d.id === selectedRef.current);
+      if (sel?.locked && !removeLockedRef.current) return;
       event.preventDefault();
       commit(drawingsRef.current.filter((d) => d.id !== selectedRef.current));
       setSelectedId(null);
       repaint();
     };
 
-    /**
-     * The chart also listens for mouse/touch events of its own, which pointer
-     * events do not cancel — they have to be swallowed separately or the chart
-     * pans underneath the shape being drawn.
-     */
+    const onDblClick = (event: MouseEvent) => {
+      const t = event.target as Node | null;
+      if (t && !host.contains(t) && t !== canvas && !canvas.contains(t)) return;
+      const activeTool = toolRef.current;
+      const isSelect =
+        activeTool === 'cursor' ||
+        activeTool === 'crosshair' ||
+        activeTool === 'dot' ||
+        activeTool === 'arrowCursor';
+      if (!isSelect) return;
+
+      const rect = host.getBoundingClientRect();
+      const at: Pixel = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      const hit = hitTest(at);
+      if (!hit) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedId(hit.drawing.id);
+      openSettingsRef.current?.(hit.drawing.id);
+      repaint();
+    };
+
     const blockChartGesture = (event: Event) => {
-      if (toolRef.current === 'cursor' && !dragRef.current) return;
+      const t = toolRef.current;
+      const selecting =
+        t === 'cursor' || t === 'crosshair' || t === 'dot' || t === 'arrowCursor';
+      if (selecting && !dragRef.current && !placeRef.current) return;
+      const target = event.target as Node | null;
+      if (target && !host.contains(target) && target !== canvas && !canvas.contains(target)) return;
       event.stopPropagation();
       if (event.cancelable) event.preventDefault();
     };
 
-    // Capture phase: a drawing gesture must win before the chart starts panning.
-    host.addEventListener('pointerdown', onPointerDown, true);
-    host.addEventListener('mousedown', blockChartGesture, true);
-    host.addEventListener('touchstart', blockChartGesture, { capture: true, passive: false });
-    host.addEventListener('touchmove', blockChartGesture, { capture: true, passive: false });
+    area.addEventListener('pointerdown', onPointerDown, true);
+    area.addEventListener('dblclick', onDblClick, true);
+    area.addEventListener('mousedown', blockChartGesture, true);
+    area.addEventListener('touchstart', blockChartGesture, { capture: true, passive: false });
+    area.addEventListener('touchmove', blockChartGesture, { capture: true, passive: false });
     window.addEventListener('pointermove', onPointerMove, true);
     window.addEventListener('pointerup', onPointerUp, true);
     window.addEventListener('pointercancel', onPointerUp, true);
@@ -933,17 +1321,32 @@ export function useChartDrawings({
 
     return () => {
       cancelAnimationFrame(raf);
-      host.removeEventListener('pointerdown', onPointerDown, true);
-      host.removeEventListener('mousedown', blockChartGesture, true);
-      host.removeEventListener('touchstart', blockChartGesture, true);
-      host.removeEventListener('touchmove', blockChartGesture, true);
+      area.removeEventListener('pointerdown', onPointerDown, true);
+      area.removeEventListener('dblclick', onDblClick, true);
+      area.removeEventListener('mousedown', blockChartGesture, true);
+      area.removeEventListener('touchstart', blockChartGesture, true);
+      area.removeEventListener('touchmove', blockChartGesture, true);
       window.removeEventListener('pointermove', onPointerMove, true);
       window.removeEventListener('pointerup', onPointerUp, true);
       window.removeEventListener('pointercancel', onPointerUp, true);
       window.removeEventListener('keydown', onKeyDown);
       dragRef.current = null;
     };
-  }, [hostRef, canvasRef, chartRef, seriesRef, epoch, commit, storageKey, isDark]);
 
-  return { drawings, selectedId, undo, clear, removeSelected };
+  }, [areaRef, hostRef, canvasRef, chartRef, seriesRef, epoch, commit, storageKey, isDark]);
+
+  return {
+    drawings,
+    selectedId,
+    undo,
+    clear,
+    removeSelected,
+    replaceAll,
+    addDrawing,
+    updateDrawing,
+    updateSelected,
+    selectDrawing,
+    cloneSelected,
+    reorderSelected,
+  };
 }

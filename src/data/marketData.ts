@@ -915,17 +915,17 @@ function buildFuturesOIRow(symbol: string): FuturesOIData {
   const { price: spotPrice, changePercent: priceChange } = resolveSpotForSymbol(sym);
   const premBump = spotPrice > 40000 ? 80 : spotPrice > 15000 ? 35 : spotPrice > 3000 ? 12 : 4;
   const futuresPrice = spotPrice > 0 ? spotPrice + premBump * 0.15 : 0;
-  return {
+    return {
     symbol: sym,
     spotPrice,
-    futuresPrice: Math.round(futuresPrice * 100) / 100,
+      futuresPrice: Math.round(futuresPrice * 100) / 100,
     premiumDiscount: Math.round((futuresPrice - spotPrice) * 100) / 100,
     futuresOi: 0,
     futuresOiChange: 0,
     futuresVolume: getLiveQuote(sym)?.volume ?? 0,
     rolloverPercent: 0,
     expiryShift: 'Connect TradeX Live for NSE futures OI',
-    priceChange,
+      priceChange,
     signal: 'Neutral',
     trendStrength: 'Weak',
   };

@@ -14,6 +14,11 @@ import {
   getStocks,
 } from '../data/marketData';
 import { openRouterRequestHeaders } from './openRouterKey';
+import {
+  isForexMarketOpen,
+  isMcxMarketOpen,
+  isNseFnoMarketOpen,
+} from '../utils/marketHours';
 
 export interface MasterAiModel {
   id: string;
@@ -378,28 +383,19 @@ function buildLanguageDirective(langCode: string, autoMode = false): string {
 
 function istSessionNote(): string {
   try {
+    const now = new Date();
     const parts = new Intl.DateTimeFormat('en-IN', {
       timeZone: 'Asia/Kolkata',
       weekday: 'short',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).formatToParts(new Date());
+    }).formatToParts(now);
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-    const hour = Number(get('hour'));
-    const minute = Number(get('minute'));
-    const mins = hour * 60 + minute;
-    const weekday = get('weekday');
-    const isWeekday = !['Sat', 'Sun'].includes(weekday);
-    const open = mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
-    const session = !isWeekday
-      ? 'Weekend — cash market closed'
-      : open
-        ? 'Cash market OPEN (NSE regular session)'
-        : mins < 9 * 60 + 15
-          ? 'Pre-open / before cash open'
-          : 'Cash market CLOSED (after hours)';
-    return `IST now ${get('hour')}:${get('minute')} (${weekday}) · ${session}`;
+    const nse = isNseFnoMarketOpen(now);
+    const fx = isForexMarketOpen(now);
+    const mcx = isMcxMarketOpen(now);
+    return `IST now ${get('hour')}:${get('minute')} (${get('weekday')}) · NSE ${nse ? 'OPEN' : 'CLOSED'} · MCX ${mcx ? 'OPEN' : 'CLOSED'} · FX/Metals ${fx ? 'OPEN' : 'CLOSED'} · Crypto 24/7`;
   } catch {
     return 'Session clock unavailable';
   }

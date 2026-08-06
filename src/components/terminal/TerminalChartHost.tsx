@@ -1,5 +1,6 @@
 import NativeChatChart from '../masterai/NativeChatChart';
 import TradingViewChatChart from '../masterai/TradingViewChatChart';
+import type { TerminalPaperHandoff } from '../../services/paperTradingBridge';
 import { usesNativeChart, type TvChartStyle, type TvInterval } from '../../utils/tradingViewSymbols';
 
 export type TerminalChartHostProps = {
@@ -12,6 +13,10 @@ export type TerminalChartHostProps = {
   logScale?: boolean;
   rangePreset?: string;
   onNativeUnavailable: () => void;
+  onClearIndicators?: () => void;
+  onApplyStudy?: (study: string) => void;
+  onPaperTrade?: (handoff: TerminalPaperHandoff) => void;
+  onNavigate?: (tab: string) => void;
 };
 
 /**
@@ -28,6 +33,10 @@ export default function TerminalChartHost({
   logScale = false,
   rangePreset,
   onNativeUnavailable,
+  onClearIndicators,
+  onApplyStudy,
+  onPaperTrade,
+  onNavigate,
 }: TerminalChartHostProps) {
   const preferNative = usesNativeChart(symbol);
 
@@ -51,6 +60,10 @@ export default function TerminalChartHost({
         logScale={logScale}
         rangePreset={rangePreset}
         onUnavailable={onNativeUnavailable}
+        onClearIndicators={onClearIndicators}
+        onApplyStudy={onApplyStudy}
+        onPaperTrade={onPaperTrade}
+        onNavigate={onNavigate}
       />
     );
   }

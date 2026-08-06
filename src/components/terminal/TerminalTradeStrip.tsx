@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
   getFyersCachedQuote,
   onFyersMarketTicks,
@@ -7,11 +7,14 @@ import {
   unsubscribeFyersMarketSymbols,
 } from '../../services/fyersSocketClient';
 import { fetchMarketQuotes } from '../../services/marketApiService';
-import { apiSymbolFromTv } from '../../utils/tradingViewSymbols';
+import { apiSymbolFromTv, tradingViewSymbolLabel } from '../../utils/tradingViewSymbols';
 
 export type TerminalTradeStripProps = {
   symbol: string;
-  onTrade?: (side: 'BUY' | 'SELL', qty: number) => void;
+  onTrade?: (side: 'BUY' | 'SELL', qty: number, price?: number) => void;
+  /** Embed under chart symbol legend (default look). */
+  variant?: 'legend' | 'bar';
+  className?: string;
 };
 
 function fmt(n: number) {
@@ -21,9 +24,16 @@ function fmt(n: number) {
     : n.toFixed(n >= 100 ? 2 : 4);
 }
 
-/** Floating Sell / Buy strip — routes to Paper Trading. */
-export default function TerminalTradeStrip({ symbol, onTrade }: TerminalTradeStripProps) {
+/** Compact Sell / Buy strip — Paper Trading handoff. */
+export default function TerminalTradeStrip({
+  symbol,
+  onTrade,
+  variant = 'legend',
+  className = '',
+}: TerminalTradeStripProps) {
+  const qtyId = useId();
   const api = useMemo(() => apiSymbolFromTv(symbol), [symbol]);
+  const label = useMemo(() => tradingViewSymbolLabel(symbol), [symbol]);
   const [price, setPrice] = useState(0);
   const [qty, setQty] = useState('1');
 
@@ -63,31 +73,42 @@ export default function TerminalTradeStrip({ symbol, onTrade }: TerminalTradeStr
   const qtyNum = Math.max(1, Number(qty) || 1);
 
   return (
-    <div className="wolf-term__trade" aria-label="Quick trade">
+    <div
+      className={`wolf-term__trade wolf-term__trade--${variant} ${className}`.trim()}
+      aria-label="Quick trade"
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         className="wolf-term__trade-sell"
-        title="Paper sell"
-        onClick={() => onTrade?.('SELL', qtyNum)}
+        title={`Paper sell ${label}`}
+        onClick={() => onTrade?.('SELL', qtyNum, price > 0 ? price : undefined)}
       >
-        <span>Sell</span>
-        <b>{px}</b>
+        <em>S</em>
+        <span>{px}</span>
       </button>
-      <input
-        className="wolf-term__trade-qty"
-        value={qty}
-        onChange={(e) => setQty(e.target.value.replace(/[^\d.]/g, ''))}
-        aria-label="Quantity"
-        inputMode="decimal"
-      />
+
+      <div className="wolf-term__trade-mid">
+        <input
+          id={qtyId}
+          className="wolf-term__trade-qty"
+          value={qty}
+          onChange={(e) => setQty(e.target.value.replace(/[^\d.]/g, ''))}
+          aria-label="Quantity"
+          inputMode="decimal"
+          title="Quantity"
+        />
+      </div>
+
       <button
         type="button"
         className="wolf-term__trade-buy"
-        title="Paper buy"
-        onClick={() => onTrade?.('BUY', qtyNum)}
+        title={`Paper buy ${label}`}
+        onClick={() => onTrade?.('BUY', qtyNum, price > 0 ? price : undefined)}
       >
-        <span>Buy</span>
-        <b>{px}</b>
+        <em>B</em>
+        <span>{px}</span>
       </button>
     </div>
   );

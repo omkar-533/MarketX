@@ -75,6 +75,8 @@ import {
   clearPendingStrategy,
   consumePendingStrategy,
   consumeTerminalPaperTrade,
+  loadPaperBook,
+  PAPER_STATE_UPDATED_EVENT,
   peekPendingStrategy,
   strategyPayloadToPaperGroup,
   type StrategyBuilderPaperPayload,
@@ -269,6 +271,7 @@ export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
       setStatusMessage(`Strategy "${pending.strategyName}" ready — confirm to execute.`);
     }
 
+    // Legacy: old Terminal queue opened the order ticket. Prefer auto-fill from Terminal now.
     const terminalTrade = consumeTerminalPaperTrade();
     if (terminalTrade) {
       const plain = apiSymbolFromTv(terminalTrade.tvSymbol).toUpperCase();
@@ -303,12 +306,26 @@ export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
         });
         const draft = defaultOrderDraft(item, terminalTrade.side);
         draft.quantity = Math.max(1, terminalTrade.qty || 1);
+        if (terminalTrade.price && terminalTrade.price > 0) {
+          if (terminalTrade.orderType === 'STOP') {
+            draft.orderType = 'SL-M';
+            draft.triggerPrice = terminalTrade.price;
+            draft.price = terminalTrade.price;
+          } else if (terminalTrade.orderType === 'LIMIT') {
+            draft.orderType = 'LIMIT';
+            draft.price = terminalTrade.price;
+          } else {
+            draft.price = terminalTrade.price;
+          }
+        }
         setSelectedSymbol(item);
         setOrderSide(terminalTrade.side);
         setOrderDraft(draft);
         setShowOrderModal(true);
         setStatusMessage(
-          `Terminal ${terminalTrade.side} · ${plain} — confirm paper order.`,
+          terminalTrade.price
+            ? `Terminal ${terminalTrade.side} ${terminalTrade.orderType ?? 'MARKET'} · ${plain} @ ${terminalTrade.price} — confirm paper order.`
+            : `Terminal ${terminalTrade.side} · ${plain} — confirm paper order.`,
         );
       } else {
         setStatusMessage(
@@ -317,6 +334,17 @@ export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
       }
     }
   }, [user]);
+
+  useEffect(() => {
+    const onExternal = () => {
+      const next = loadPaperBook(user?.id ?? 'guest');
+      setPaperState(next);
+      setStatusMessage('Paper book updated from Terminal trade.');
+      setActiveTab('positions');
+    };
+    window.addEventListener(PAPER_STATE_UPDATED_EVENT, onExternal);
+    return () => window.removeEventListener(PAPER_STATE_UPDATED_EVENT, onExternal);
+  }, [user?.id]);
 
   watchlistSymbolsRef.current = paperState.watchlist.map((w) => w.symbol);
 

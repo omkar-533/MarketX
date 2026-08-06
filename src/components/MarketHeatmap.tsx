@@ -534,10 +534,10 @@ export default function MarketHeatmap() {
             </div>
           </>
         )}
-      </div>
-
+        </div>
+        
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
         {tab === 'stocks' && (
           <div className="flex flex-wrap gap-1 p-1 app-card">
             {SECTORS.slice(0, 8).map((s) => (
@@ -566,9 +566,9 @@ export default function MarketHeatmap() {
                 }`}
               >
                 {sym}
-              </button>
+          </button>
             ))}
-          </div>
+        </div>
         )}
       </div>
 
@@ -582,7 +582,7 @@ export default function MarketHeatmap() {
             {['#b45309', '#fbbf24', '#fde68a', '#ddd6fe', '#c084fc', '#7c3aed'].map((c) => (
               <div key={c} className="flex-1" style={{ background: c }} />
             ))}
-          </div>
+         </div>
         ) : (
           <div
             className="flex-1 flex h-2 rounded-full overflow-hidden min-w-[140px]"
@@ -595,7 +595,7 @@ export default function MarketHeatmap() {
           <span className="text-red-400">−3%+ weak</span>
           <span className="text-slate-500">flat</span>
           <span className="text-emerald-400">+3%+ strong</span>
-        </div>
+         </div>
       </div>
 
       {/* Heatmap body */}
@@ -607,7 +607,7 @@ export default function MarketHeatmap() {
         )}
         <AnimatePresence mode="wait">
           {tab === 'stocks' && (
-            <motion.div
+              <motion.div
               key="stocks"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -616,7 +616,7 @@ export default function MarketHeatmap() {
             >
               {sortedStocks.map((item) => (
                 <GridHeatmapCell
-                  key={item.symbol}
+                key={item.symbol}
                   title={shortStockName(item.name)}
                   changePercent={item.changePercent}
                   subtitle={item.sector}
@@ -631,7 +631,7 @@ export default function MarketHeatmap() {
           )}
 
           {tab === 'sectors' && (
-            <motion.div
+                <motion.div 
               key="sectors"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -683,7 +683,7 @@ export default function MarketHeatmap() {
                   ))}
                 </tbody>
               </table>
-            </motion.div>
+              </motion.div>
           )}
         </AnimatePresence>
       </div>
@@ -760,7 +760,7 @@ export default function MarketHeatmap() {
           </motion.div>
         )}
         {hovered && 'strike' in hovered && (
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
