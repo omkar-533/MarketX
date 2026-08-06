@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Brain, Radar, Target, TrendingUp, Zap, Activity, PieChart as PieIcon } from 'lucide-react';
+import { Brain, Radar, Target, TrendingUp, Zap, Activity, PieChart as PieIcon } from 'lucide-react';
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   type FuturesOIData,
-  type OIAlert,
   type OIIntelligenceData,
   type OIScannerRow,
 } from '../data/marketData';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
   getLiveFuturesOIData,
-  getLiveOIAlerts,
   getLiveOIIntelligence,
   getLiveOIIntradayScanner,
   getOiIntelFeedStatus,
@@ -22,7 +20,7 @@ import type { LiveSymbolQuote } from '../services/symbolLiveService';
 import SymbolMarketPicker from './strategy/SymbolMarketPicker';
 import WolfLoader from './WolfLoader';
 
-type OITab = 'overview' | 'writing' | 'scanner' | 'alerts';
+type OITab = 'overview' | 'writing' | 'scanner';
 
 interface OIIntelligenceProps {
   onNavigate?: (tab: string) => void;
@@ -54,7 +52,6 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
   const [data, setData] = useState<OIIntelligenceData>(() => getLiveOIIntelligence('NIFTY'));
   const [futures, setFutures] = useState<FuturesOIData[]>(() => getLiveFuturesOIData());
   const [scanner, setScanner] = useState<OIScannerRow[]>(() => getLiveOIIntradayScanner());
-  const [alerts, setAlerts] = useState<OIAlert[]>(() => getLiveOIAlerts());
   const [feedLabel, setFeedLabel] = useState(() => getOiIntelFeedStatus().message);
   const [feedMode, setFeedMode] = useState(() => getOiIntelFeedStatus().mode);
   const [loading, setLoading] = useState(true);
@@ -68,7 +65,6 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
     setData(getLiveOIIntelligence(sym));
     setFutures(getLiveFuturesOIData());
     setScanner(getLiveOIIntradayScanner());
-    setAlerts(getLiveOIAlerts());
     const status = getOiIntelFeedStatus();
     setFeedLabel(status.message);
     setFeedMode(status.mode);
@@ -188,7 +184,6 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
               ['overview', 'Overview'],
               ['writing', 'Writing Zones'],
               ['scanner', 'OI Scanner'],
-              ['alerts', 'Alerts'],
             ] as [OITab, string][]).map(([id, label]) => (
               <button
                 key={id}
@@ -470,32 +465,6 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
         </motion.div>
       )}
 
-      {tab === 'alerts' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {alerts.map((alert, index) => (
-            <motion.div 
-              key={alert.id} 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05 }}
-              className={`bg-[#0b0e17] border rounded-xl p-5 hover:translate-y-[-2px] transition-transform ${alert.severity === 'High' ? 'border-red-500/30 bg-red-500/5' : alert.severity === 'Medium' ? 'border-[#d4af37]/30 bg-[#d4af37]/5' : 'border-[#1a1f2e]'}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className={`w-4 h-4 ${alert.severity === 'High' ? 'text-red-400' : 'text-[#d4af37]'}`} />
-                  <span className="text-[10px] text-slate-500 font-mono">{alert.time}</span>
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${alert.severity === 'High' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-[#d4af37]/10 text-[#d4af37] border-[#d4af37]/20'}`}>
-                  {alert.severity}
-                </span>
-              </div>
-              <div className="text-base font-bold text-white mb-1">{alert.symbol}</div>
-              <div className="text-xs font-bold text-[#d4af37] mb-3">{alert.alertType}</div>
-              <p className="text-xs text-slate-400 leading-relaxed">{alert.message}</p>
-            </motion.div>
-          ))}
-        </div>
-      )}
       </div>
         )}
       </div>
