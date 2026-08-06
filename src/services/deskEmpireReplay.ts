@@ -843,6 +843,56 @@ export function buildPlan(scenario: EmpireScenario, answers: PlanAnswers): Trade
   };
 }
 
+/** Player dragged Entry / SL / Target on the chart — RR derived from geometry. */
+export function buildPlanFromDraft(
+  scenario: EmpireScenario,
+  side: EmpireSide,
+  draft: { entry: number; stop: number; target: number },
+  manage = 'fixed',
+): TradePlan {
+  const long = side === 'long';
+  let entryPrice = draft.entry;
+  let stopPrice = draft.stop;
+  let targetPrice = draft.target;
+
+  // Normalize: stop must be on the risk side, target on the reward side.
+  if (long) {
+    if (stopPrice >= entryPrice) stopPrice = entryPrice - Math.max(scenario.analysis.atr * 0.4, entryPrice * 0.0005);
+    if (targetPrice <= entryPrice) targetPrice = entryPrice + Math.abs(entryPrice - stopPrice) * 2;
+  } else {
+    if (stopPrice <= entryPrice) stopPrice = entryPrice + Math.max(scenario.analysis.atr * 0.4, entryPrice * 0.0005);
+    if (targetPrice >= entryPrice) targetPrice = entryPrice - Math.abs(entryPrice - stopPrice) * 2;
+  }
+
+  const risk = Math.max(1e-9, Math.abs(entryPrice - stopPrice));
+  const reward = Math.abs(targetPrice - entryPrice);
+  const rr = Math.round((reward / risk) * 10) / 10;
+
+  return {
+    side,
+    entryPrice,
+    stopPrice,
+    targetPrice,
+    risk,
+    rr: Math.max(0.5, rr),
+    entryModel: 'market',
+    manageModel: manage,
+  };
+}
+
+/** Seed default draft lines from analysis (structure stop + ~2R target). */
+export function defaultDraftLevels(scenario: EmpireScenario, side: EmpireSide) {
+  const long = side === 'long';
+  const entry = scenario.entry;
+  const a = scenario.analysis;
+  const stop = long
+    ? Math.min(a.structuralStopLong, entry - a.atr * 0.5)
+    : Math.max(a.structuralStopShort, entry + a.atr * 0.5);
+  const risk = Math.abs(entry - stop);
+  const target = long ? entry + risk * 2 : entry - risk * 2;
+  return { entry, stop, target };
+}
+
 type SimCore = {
   filled: boolean;
   fillIndex: number;
@@ -1003,19 +1053,57 @@ export function resolveEmpireRound(
   answers: PlanAnswers,
   stake: number,
   streak = 0,
+  planOverride?: TradePlan | null,
 ): EmpireResolve {
-  const plan = buildPlan(scenario, answers);
+  const plan = planOverride ?? buildPlan(scenario, answers);
   const sim = simulate(scenario, plan);
 
-  const reviews: StepReview[] = scenario.steps.map((s) => ({
-    key: s.key,
-    topic: s.topic,
-    question: s.question,
-    picked: OPTION_LABEL(s, answers[s.key]),
-    best: OPTION_LABEL(s, s.bestId),
-    correct: answers[s.key] === s.bestId,
-    why: s.why,
-  }));
+  const ideal = buildPlan(scenario, {
+    ...answers,
+    bias: answers.bias === 'skip' ? answers.bias : scenario.steps[0]?.bestId === 'skip' ? 'skip' : scenario.analysis.bias,
+    entry: scenario.steps.find((s) => s.key === 'entry')?.bestId,
+    stop: scenario.steps.find((s) => s.key === 'stop')?.bestId,
+    rr: scenario.steps.find((s) => s.key === 'rr')?.bestId,
+    manage: scenario.steps.find((s) => s.key === 'manage')?.bestId ?? answers.manage,
+  });
+
+  const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
+  const atr = scenario.analysis.atr;
+
+  const reviews: StepReview[] = scenario.steps.map((s) => {
+    if (planOverride && (s.key === 'entry' || s.key === 'stop' || s.key === 'rr')) {
+      let correct = false;
+      let picked = '—';
+      if (s.key === 'entry') {
+        correct = near(plan.entryPrice, ideal.entryPrice, atr * 0.35);
+        picked = `ENTRY ${plan.entryPrice.toFixed(2)}`;
+      } else if (s.key === 'stop') {
+        correct = near(plan.stopPrice, ideal.stopPrice, atr * 0.45);
+        picked = `SL ${plan.stopPrice.toFixed(2)}`;
+      } else {
+        correct = Math.abs(plan.rr - ideal.rr) <= 0.6;
+        picked = `1:${plan.rr}`;
+      }
+      return {
+        key: s.key,
+        topic: s.topic,
+        question: s.question,
+        picked,
+        best: OPTION_LABEL(s, s.bestId),
+        correct,
+        why: s.why,
+      };
+    }
+    return {
+      key: s.key,
+      topic: s.topic,
+      question: s.question,
+      picked: OPTION_LABEL(s, answers[s.key]),
+      best: OPTION_LABEL(s, s.bestId),
+      correct: answers[s.key] === s.bestId,
+      why: s.why,
+    };
+  });
   const edgePct = Math.round((reviews.filter((r) => r.correct).length / reviews.length) * 100);
 
   const riskPct = riskPctOf(answers, scenario.steps);

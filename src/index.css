@@ -8144,14 +8144,19 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .wm-empire__chart {
   flex: 1 1 auto;
-  height: min(38vh, 330px);
-  min-height: 220px;
-  max-height: 340px;
-  border-radius: 0.85rem;
+  height: min(52vh, 480px);
+  min-height: 320px;
+  max-height: 520px;
+  border-radius: 0.5rem;
   overflow: hidden;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  background: #070b14;
+  border: 1px solid rgba(42, 46, 57, 0.95);
+  background: #131722;
   position: relative;
+}
+
+.wm-empire__chart--edit {
+  cursor: ns-resize;
+  box-shadow: inset 0 0 0 1px rgba(240, 185, 11, 0.25);
 }
 
 .wm-empire__canvas {
@@ -8164,6 +8169,79 @@ input[type="number"] { -moz-appearance: textfield; }
 
 .wm-empire__decide {
   padding: 0.65rem 0.25rem 0.25rem;
+}
+
+.wm-empire__decide--compact {
+  padding-top: 0.4rem;
+}
+
+.wm-empire__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.4rem 0.1rem 0.2rem;
+}
+
+.wm-empire__tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.wm-empire__tool {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  min-width: 5.2rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--tool) 55%, transparent);
+  background: color-mix(in srgb, var(--tool) 12%, #131722);
+  color: #d1d4dc;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+.wm-empire__tool em {
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--tool);
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-empire__tool.on {
+  box-shadow: 0 0 0 1px var(--tool);
+  background: color-mix(in srgb, var(--tool) 22%, #131722);
+}
+
+.wm-empire__tool-rr {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #f0b90b;
+}
+
+.wm-empire__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(240, 185, 11, 0.45);
+  background: linear-gradient(180deg, #f0b90b, #c99700);
+  color: #0b0e11;
+  font-weight: 900;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.wm-empire__lock:active {
+  transform: scale(0.99);
 }
 
 .wm-empire__ask {
@@ -8680,8 +8758,12 @@ input[type="number"] { -moz-appearance: textfield; }
     grid-template-columns: 1fr 1fr;
   }
   .wm-empire__chart {
-    height: min(34vh, 260px);
-    min-height: 200px;
+    height: min(42vh, 340px);
+    min-height: 260px;
+  }
+  .wm-empire__tool-rr {
+    margin-left: 0;
+    width: 100%;
   }
 }
 
