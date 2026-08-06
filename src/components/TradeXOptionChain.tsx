@@ -117,6 +117,7 @@ export default function TradeXOptionChain() {
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState('');
   const [chainSource, setChainSource] = useState('');
+  const [chainAligned, setChainAligned] = useState(false);
   const atmRowRef = useRef<HTMLTableRowElement>(null);
   const atmStrikeCellRef = useRef<HTMLTableCellElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
@@ -212,11 +213,16 @@ export default function TradeXOptionChain() {
     return rows;
   }, [strikes, searchStrike, strikeFilter, atmStrike, spotPrice]);
 
-  // Open on ATM / STRIKE — center both axes (not left-aligned CE columns)
+  // Open on ATM / STRIKE — jump straight to center (no left→center animation)
   useEffect(() => {
-    if (tab !== 'chain' || chainLoading || filtered.length === 0) return;
+    if (tab !== 'chain' || chainLoading || filtered.length === 0) {
+      setChainAligned(false);
+      return;
+    }
 
     let cancelled = false;
+    setChainAligned(false);
+
     const centerAtm = () => {
       if (cancelled) return;
       const hScroller = hScrollRef.current;
@@ -232,7 +238,7 @@ export default function TradeXOptionChain() {
           (cellRect.left - hRect.left) -
           hRect.width / 2 +
           cellRect.width / 2;
-        hScroller.scrollTo({ left: Math.max(0, nextLeft), behavior: 'smooth' });
+        hScroller.scrollLeft = Math.max(0, nextLeft);
       }
 
       if (vScroller) {
@@ -243,13 +249,20 @@ export default function TradeXOptionChain() {
           (cellRect.top - vRect.top) -
           vRect.height / 2 +
           cellRect.height / 2;
-        vScroller.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+        vScroller.scrollTop = Math.max(0, nextTop);
       }
+
+      setChainAligned(true);
     };
 
+    // Layout first, then snap — still before paint is visible to user
     const t = window.setTimeout(() => {
-      requestAnimationFrame(() => requestAnimationFrame(centerAtm));
-    }, 80);
+      requestAnimationFrame(() => {
+        centerAtm();
+        // One more pass after sticky header/fonts settle
+        requestAnimationFrame(centerAtm);
+      });
+    }, 0);
 
     return () => {
       cancelled = true;
@@ -526,7 +539,9 @@ export default function TradeXOptionChain() {
             {/* Horizontal bar always at panel bottom; vertical scrolls inside */}
             <div
               ref={hScrollRef}
-              className="oc-chain-hscroll flex-1 min-h-0 overflow-x-scroll overflow-y-hidden"
+              className={`oc-chain-hscroll flex-1 min-h-0 overflow-x-scroll overflow-y-hidden transition-opacity duration-75 ${
+                chainAligned || filtered.length === 0 ? 'opacity-100' : 'opacity-0'
+              }`}
             >
               <div
                 ref={vScrollRef}
