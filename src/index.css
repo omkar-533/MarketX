@@ -20268,6 +20268,20 @@ body:has(.app-main--terminal-immersive) #root {
     font-size: 0.7rem;
   }
 
+  .wolf-term__brand-copy {
+    display: none;
+  }
+
+  .wolf-term__back span {
+    display: none;
+  }
+
+  .wolf-term__back {
+    width: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+
   .wolf-term__chip--symbol {
     max-width: 7.5rem;
     font-size: 0.7rem;
