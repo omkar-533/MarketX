@@ -1907,3 +1907,127 @@ html[data-theme="light"] .mai-chat__chip:not(.mai-chat__chip--accent):not(.mai-c
 html[data-theme="light"] .mai-chat__lang-label {
   color: #0a0a0a !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Option Chain — light mode: all cells / chips readable
+   ═══════════════════════════════════════════════════════════ */
+html[data-theme="light"] .page-content--optionchain,
+html[data-theme="light"] .option-chain-page {
+  color: #0a0a0a;
+  background-color: transparent;
+}
+
+html[data-theme="light"] .option-chain-page .app-card,
+html[data-theme="light"] .option-chain-page table,
+html[data-theme="light"] .option-chain-page thead,
+html[data-theme="light"] .option-chain-page tbody,
+html[data-theme="light"] .option-chain-page tfoot {
+  color: #0a0a0a;
+}
+
+html[data-theme="light"] .option-chain-page td,
+html[data-theme="light"] .option-chain-page th {
+  color: #0a0a0a;
+}
+
+html[data-theme="light"] .option-chain-page .text-dark-muted,
+html[data-theme="light"] .option-chain-page .text-slate-400,
+html[data-theme="light"] .option-chain-page .text-slate-500,
+html[data-theme="light"] .option-chain-page .text-slate-300 {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-slate-100,
+html[data-theme="light"] .option-chain-page .text-slate-200,
+html[data-theme="light"] .option-chain-page .text-white {
+  color: #0a0a0a !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-gold,
+html[data-theme="light"] .option-chain-page .text-gold\/80,
+html[data-theme="light"] .option-chain-page .hover\:text-gold:hover {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-amber-200,
+html[data-theme="light"] .option-chain-page .text-amber-200\/80,
+html[data-theme="light"] .option-chain-page .text-amber-200\/90,
+html[data-theme="light"] .option-chain-page .text-amber-400 {
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-blue-300,
+html[data-theme="light"] .option-chain-page .text-blue-300\/90,
+html[data-theme="light"] .option-chain-page .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-red-300,
+html[data-theme="light"] .option-chain-page .text-red-400,
+html[data-theme="light"] .option-chain-page .text-red-400\/90,
+html[data-theme="light"] .option-chain-page .text-rose-400 {
+  color: #be123c !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-emerald-300,
+html[data-theme="light"] .option-chain-page .text-emerald-400,
+html[data-theme="light"] .option-chain-page .text-emerald-400\/90 {
+  color: #047857 !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-purple-300,
+html[data-theme="light"] .option-chain-page .text-purple-400,
+html[data-theme="light"] .option-chain-page .text-cyan-300,
+html[data-theme="light"] .option-chain-page .text-cyan-600 {
+  color: #6d28d9 !important;
+}
+
+html[data-theme="light"] .option-chain-page .text-cyan-600 {
+  color: #0e7490 !important;
+}
+
+html[data-theme="light"] .option-chain-page thead th.text-red-400,
+html[data-theme="light"] .option-chain-page .text-red-400 {
+  color: #be123c !important;
+}
+
+html[data-theme="light"] .option-chain-page thead th.text-emerald-400,
+html[data-theme="light"] .option-chain-page .text-emerald-400 {
+  color: #047857 !important;
+}
+
+html[data-theme="light"] .option-chain-page .bg-dark-elevated,
+html[data-theme="light"] .option-chain-page .bg-dark-bg,
+html[data-theme="light"] .option-chain-page .bg-dark-surface,
+html[data-theme="light"] .option-chain-page .bg-dark-surface\/80,
+html[data-theme="light"] .option-chain-page .bg-dark-bg\/90 {
+  background-color: #ffffff !important;
+  color: #0a0a0a;
+}
+
+html[data-theme="light"] .option-chain-page thead tr.bg-dark-elevated,
+html[data-theme="light"] .option-chain-page thead tr.bg-dark-bg,
+html[data-theme="light"] .option-chain-page tfoot {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-theme="light"] .option-chain-page tr:hover {
+  background-color: #eef2f7 !important;
+}
+
+html[data-theme="light"] .option-chain-page .border-dark-border,
+html[data-theme="light"] .option-chain-page .border-dark-border\/50 {
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .option-chain-page .tf-field {
+  background-color: #ffffff !important;
+  color: #0a0a0a !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .page-content--optionchain {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(180, 83, 9, 0.06), transparent 55%),
+    #f0f3f8;
+}

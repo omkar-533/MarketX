@@ -73,11 +73,11 @@ function greekVal(row: EnhancedOptionRow, side: 'CE' | 'PE', name: (typeof GREEK
 }
 
 function greekClass(name: (typeof GREEK_NAMES)[number]) {
-  if (name === 'Theta') return 'text-red-400/90';
-  if (name === 'Vega') return 'text-blue-300/90';
-  if (name === 'Gamma') return 'text-purple-300/90';
-  if (name === 'Rho') return 'text-cyan-300/90';
-  return 'text-slate-400';
+  if (name === 'Theta') return 'text-red-400';
+  if (name === 'Vega') return 'text-blue-400';
+  if (name === 'Gamma') return 'text-purple-400';
+  if (name === 'Rho') return 'text-cyan-600';
+  return 'text-slate-500';
 }
 
 function BuildupPill({ label }: { label: OiBuildup }) {
@@ -382,7 +382,7 @@ export default function TradeXOptionChain() {
           <div className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-lg bg-dark-elevated border border-dark-border">
             <div>
               <div className="text-[9px] text-dark-muted uppercase">Spot</div>
-              <div className="text-sm font-bold tabular-nums text-slate-100">{fmtPrice(spotPrice)}</div>
+              <div className="text-sm font-bold tabular-nums text-slate-100 oc-spot-price">{fmtPrice(spotPrice)}</div>
             </div>
             <span
               className={`text-xs font-bold flex items-center gap-0.5 ${
@@ -472,13 +472,13 @@ export default function TradeXOptionChain() {
           { l: 'PCR', v: pcr.toFixed(2), c: pcr > 1 ? 'text-emerald-400' : 'text-red-400' },
           { l: 'Bias', v: bias, c: bias === 'Bullish' ? 'text-emerald-400' : bias === 'Bearish' ? 'text-red-400' : 'text-slate-400' },
           { l: 'Max Pain', v: String(maxPain.maxPainStrike), c: 'text-gold' },
-          { l: 'ATM', v: String(atmStrike), c: 'text-blue-300' },
-          { l: 'DTE', v: `${dte}d`, c: 'text-slate-300' },
+          { l: 'ATM', v: String(atmStrike), c: 'text-blue-400' },
+          { l: 'DTE', v: `${dte}d`, c: 'text-slate-500' },
           { l: 'Max CE OI', v: String(maxCeStrike), c: 'text-red-400' },
           { l: 'Max PE OI', v: String(maxPeStrike), c: 'text-emerald-400' },
-          { l: 'CE OI', v: fmtK(totals.ceOi), c: 'text-red-300' },
-          { l: 'PE OI', v: fmtK(totals.peOi), c: 'text-emerald-300' },
-          { l: 'Lot', v: String(inst?.lotSize ?? '—'), c: 'text-slate-400' },
+          { l: 'CE OI', v: fmtK(totals.ceOi), c: 'text-red-400' },
+          { l: 'PE OI', v: fmtK(totals.peOi), c: 'text-emerald-400' },
+          { l: 'Lot', v: String(inst?.lotSize ?? '—'), c: 'text-slate-500' },
         ].map((x) => (
           <div key={x.l} className="app-card px-3 py-1.5 shrink-0 min-w-[72px]">
             <div className="text-[8px] text-dark-muted uppercase font-bold">{x.l}</div>
@@ -530,7 +530,7 @@ export default function TradeXOptionChain() {
                     <WolfLoader fullscreen={false} label="Loading Option Chain" />
                   ) : chainError || strikes.length === 0 ? (
                     <>
-                      <p className="text-sm text-amber-200/90 max-w-md">{chainError || 'Data nahi mila.'}</p>
+                      <p className="text-sm text-amber-400 max-w-md">{chainError || 'Data nahi mila.'}</p>
                       <button
                         type="button"
                         onClick={() => refresh({ force: true })}
@@ -578,7 +578,7 @@ export default function TradeXOptionChain() {
                       <th className="px-1.5 py-1 text-right">LTP</th>
                       {showGreeks &&
                         GREEK_NAMES.map((g) => (
-                          <th key={`ce-h-${g}`} className="px-1 py-1 text-right text-amber-200/80">
+                          <th key={`ce-h-${g}`} className="px-1 py-1 text-right text-amber-400">
                             {g}
                           </th>
                         ))}
@@ -590,7 +590,7 @@ export default function TradeXOptionChain() {
                       {showBuildup && <th className="px-1 py-1 text-left">Buildup</th>}
                       {showGreeks &&
                         [...GREEK_NAMES].reverse().map((g) => (
-                          <th key={`pe-h-${g}`} className="px-1 py-1 text-left text-amber-200/80">
+                          <th key={`pe-h-${g}`} className="px-1 py-1 text-left text-amber-400">
                             {g}
                           </th>
                         ))}
@@ -623,7 +623,7 @@ export default function TradeXOptionChain() {
                             } ${isAtm ? 'bg-gold/5' : ''}`}
                           >
                             <td
-                              className={`px-1.5 py-0.5 text-right ${ceMax ? 'text-red-300 font-bold' : ''}`}
+                              className={`px-1.5 py-0.5 text-right tabular-nums ${ceMax ? 'text-red-400 font-bold' : 'text-slate-100'}`}
                               style={heatmap ? { backgroundColor: `rgba(239,68,68,${ceHeat * 0.3})` } : undefined}
                             >
                               <div>{fmtK(row.ceOi)}</div>
@@ -637,11 +637,11 @@ export default function TradeXOptionChain() {
                               {row.ceOiChg >= 0 ? '+' : ''}
                               {fmtK(row.ceOiChg)}
                             </td>
-                            <td className="px-1.5 py-0.5 text-right text-dark-muted">{fmtK(row.ceVolume)}</td>
-                            <td className="px-1.5 py-0.5 text-right text-dark-muted">{row.ceIv}</td>
+                            <td className="px-1.5 py-0.5 text-right text-dark-muted tabular-nums">{fmtK(row.ceVolume)}</td>
+                            <td className="px-1.5 py-0.5 text-right text-dark-muted tabular-nums">{row.ceIv}</td>
                             <td className="px-1.5 py-0.5 text-right text-slate-500 tabular-nums">{row.ceBid}</td>
                             <td className="px-1.5 py-0.5 text-right text-slate-500 tabular-nums">{row.ceAsk}</td>
-                            <td className="px-1.5 py-0.5 text-right text-red-300 font-bold tabular-nums">
+                            <td className="px-1.5 py-0.5 text-right text-red-400 font-bold tabular-nums">
                               {row.ceLtp.toFixed(2)}
                             </td>
                             {showGreeks &&
@@ -688,13 +688,13 @@ export default function TradeXOptionChain() {
                                   {fmtGreek(greekVal(row, 'PE', g), g)}
                                 </td>
                               ))}
-                            <td className="px-1.5 py-0.5 text-left text-emerald-300 font-bold tabular-nums">
+                            <td className="px-1.5 py-0.5 text-left text-emerald-400 font-bold tabular-nums">
                               {row.peLtp.toFixed(2)}
                             </td>
                             <td className="px-1.5 py-0.5 text-left text-slate-500 tabular-nums">{row.peBid}</td>
                             <td className="px-1.5 py-0.5 text-left text-slate-500 tabular-nums">{row.peAsk}</td>
-                            <td className="px-1.5 py-0.5 text-left text-dark-muted">{row.peIv}</td>
-                            <td className="px-1.5 py-0.5 text-left text-dark-muted">{fmtK(row.peVolume)}</td>
+                            <td className="px-1.5 py-0.5 text-left text-dark-muted tabular-nums">{row.peIv}</td>
+                            <td className="px-1.5 py-0.5 text-left text-dark-muted tabular-nums">{fmtK(row.peVolume)}</td>
                             <td
                               className={`px-1.5 py-0.5 text-left tabular-nums ${
                                 row.peOiChg >= 0 ? 'text-emerald-400' : 'text-red-400'
@@ -704,7 +704,7 @@ export default function TradeXOptionChain() {
                               {fmtK(row.peOiChg)}
                             </td>
                             <td
-                              className={`px-1.5 py-0.5 text-left ${peMax ? 'text-emerald-300 font-bold' : ''}`}
+                              className={`px-1.5 py-0.5 text-left tabular-nums ${peMax ? 'text-emerald-400 font-bold' : 'text-slate-100'}`}
                               style={heatmap ? { backgroundColor: `rgba(16,185,129,${peHeat * 0.3})` } : undefined}
                             >
                               <div>{fmtK(row.peOi)}</div>
@@ -714,7 +714,7 @@ export default function TradeXOptionChain() {
                           {showSpotLine && (
                             <tr className="bg-blue-500/10 border-y border-blue-500/40">
                               <td colSpan={totalCols} className="py-0.5 text-center">
-                                <span className="text-[10px] font-bold text-blue-300 inline-flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-blue-400 inline-flex items-center gap-1">
                                   <ChevronDown className="w-3 h-3" />
                                   Spot {fmtPrice(spotPrice)} · {fmtPct(spotChangePct)}
                                 </span>
