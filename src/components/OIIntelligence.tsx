@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Brain, Radar, Target, TrendingUp, Zap, Activity, PieChart as PieIcon } from 'lucide-react';
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -19,6 +19,7 @@ import {
 } from '../services/oiIntelligenceLiveService';
 import type { LiveSymbolQuote } from '../services/symbolLiveService';
 import SymbolMarketPicker from './strategy/SymbolMarketPicker';
+import WolfLoader from './WolfLoader';
 
 type OITab = 'overview' | 'writing' | 'scanner' | 'alerts';
 
@@ -55,24 +56,48 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
   const [alerts, setAlerts] = useState<OIAlert[]>(() => getLiveOIAlerts());
   const [feedLabel, setFeedLabel] = useState(() => getOiIntelFeedStatus().message);
   const [feedMode, setFeedMode] = useState(() => getOiIntelFeedStatus().mode);
+  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
+  const inflightRef = useRef(0);
+  const symbolRef = useRef(symbol);
+  const readyRef = useRef(false);
+  symbolRef.current = symbol;
 
-  const update = () => {
-    void refreshOiIntelligenceLive().then(() => {
-      setData(getLiveOIIntelligence(symbol));
-      setFutures(getLiveFuturesOIData());
-      setScanner(getLiveOIIntradayScanner());
-      setAlerts(getLiveOIAlerts());
-      const status = getOiIntelFeedStatus();
-      setFeedLabel(status.message);
-      setFeedMode(status.mode);
-    });
-  };
+  const applySnapshot = useCallback((sym: string) => {
+    setData(getLiveOIIntelligence(sym));
+    setFutures(getLiveFuturesOIData());
+    setScanner(getLiveOIIntradayScanner());
+    setAlerts(getLiveOIAlerts());
+    const status = getOiIntelFeedStatus();
+    setFeedLabel(status.message);
+    setFeedMode(status.mode);
+  }, []);
+
+  const update = useCallback(async () => {
+    inflightRef.current += 1;
+    setLoading(true);
+    const sym = symbolRef.current;
+    try {
+      await refreshOiIntelligenceLive();
+      applySnapshot(sym);
+      readyRef.current = true;
+      setReady(true);
+    } finally {
+      inflightRef.current = Math.max(0, inflightRef.current - 1);
+      if (inflightRef.current === 0) setLoading(false);
+    }
+  }, [applySnapshot]);
 
   useEffect(() => {
-    update();
-  }, [symbol]);
+    readyRef.current = false;
+    setReady(false);
+    void update();
+  }, [symbol, update]);
 
-  useAutoRefresh(update);
+  useAutoRefresh(() => {
+    if (!readyRef.current) return;
+    void update();
+  });
 
   const oiDistribution = useMemo(() => [
     { name: 'Call OI', value: data.totalCeOi, color: '#ef4444' },
@@ -101,9 +126,8 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
   })), [futures]);
 
   return (
-    <div className="animate-in fade-in duration-500 space-y-6">
-      <div className="space-y-6">
-      {/* Header */}
+    <div className="animate-in fade-in duration-500 space-y-6 min-h-[50vh]">
+      {/* Header — always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#0b0e17] p-4 rounded-xl border border-[#1a1f2e]">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -114,6 +138,11 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
             <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-emerald-500/35 bg-emerald-500/10 text-emerald-400">
               NSE Live
             </span>
+            {loading ? (
+              <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-gold/30 bg-gold/10 text-gold animate-pulse">
+                Loading…
+              </span>
+            ) : null}
           </h2>
           <p className="text-sm text-slate-500 mt-1">Smart money tracking, buildup analysis, and institutional positioning</p>
           <p className="text-[10px] mt-1">
@@ -126,7 +155,7 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
                     : 'border-slate-600 text-slate-500'
               }`}
             >
-              {feedLabel}
+              {loading ? 'Fetching NSE live OI…' : feedLabel}
             </span>
           </p>
         </div>
@@ -142,9 +171,9 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
               ['scanner', 'OI Scanner'],
               ['alerts', 'Alerts'],
             ] as [OITab, string][]).map(([id, label]) => (
-              <button 
-                key={id} 
-                onClick={() => setTab(id)} 
+              <button
+                key={id}
+                onClick={() => setTab(id)}
                 className={`px-4 py-2 rounded-md text-xs font-bold uppercase transition-all ${tab === id ? 'bg-[#d4af37] text-[#0b0e17]' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 {label}
@@ -154,6 +183,21 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
         </div>
       </div>
 
+      <div className="relative min-h-[48vh]">
+        {loading ? (
+          <div
+            className={`z-30 flex items-center justify-center rounded-xl ${
+              ready
+                ? 'absolute inset-0 bg-[#070a12]/75 backdrop-blur-[2px]'
+                : 'min-h-[48vh] border border-[#1a1f2e] bg-[#0b0e17]/80'
+            }`}
+          >
+            <WolfLoader fullscreen={false} label="Loading AI Intelligence" />
+          </div>
+        ) : null}
+
+        {!ready && loading ? null : (
+        <div className={`space-y-6 ${loading ? 'pointer-events-none opacity-35' : ''}`}>
       {/* Top Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
         {[
@@ -433,6 +477,8 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
           ))}
         </div>
       )}
+      </div>
+        )}
       </div>
     </div>
   );
