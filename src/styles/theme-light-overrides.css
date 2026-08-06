@@ -2203,3 +2203,561 @@ html[data-theme="light"] .wolf-term__ind-link:hover {
   border-color: #2563eb !important;
   color: #1e3a8a !important;
 }
+
+/* Hardcoded leftovers inside Terminal chrome */
+html[data-theme="light"] .wolf-term__symbol-input,
+html[data-theme="light"] .wolf-term__ind-search input,
+html[data-theme="light"] .wolf-term__trade-qty {
+  background: #f7f9fc !important;
+  color: #0f172a !important;
+  border-color: #c5d0de !important;
+}
+
+html[data-theme="light"] .wolf-term__chip,
+html[data-theme="light"] .wolf-term__icon-btn,
+html[data-theme="light"] .wolf-term__text-btn,
+html[data-theme="light"] .wolf-term__tf-pill,
+html[data-theme="light"] .wolf-term__dock-btn {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .wolf-term__chip:hover,
+html[data-theme="light"] .wolf-term__icon-btn:hover:not(:disabled),
+html[data-theme="light"] .wolf-term__text-btn:hover:not(:disabled),
+html[data-theme="light"] .wolf-term__dock-btn:hover {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__text-btn.on,
+html[data-theme="light"] .wolf-term__dock-btn.on {
+  color: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__dock-btn.on::before {
+  background: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__dock-label,
+html[data-theme="light"] .wolf-term__brand-copy em,
+html[data-theme="light"] .wolf-term__layout-name {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__dock-btn.on .wolf-term__dock-label {
+  color: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__chart {
+  background: #ffffff !important;
+}
+
+html[data-theme="light"] .wolf-term__trade {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__trade-mid,
+html[data-theme="light"] .wolf-term__rp-empty,
+html[data-theme="light"] .wolf-term__watch-empty,
+html[data-theme="light"] .wolf-term__ind-empty,
+html[data-theme="light"] .wolf-term__search-empty {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__watch-list li,
+html[data-theme="light"] .wolf-term__rp-row,
+html[data-theme="light"] .wolf-term__ind-row {
+  color: #0f172a !important;
+  border-color: #e6edf5 !important;
+}
+
+html[data-theme="light"] .wolf-term__watch-list li:hover,
+html[data-theme="light"] .wolf-term__ind-row:hover {
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-tabs button,
+html[data-theme="light"] .wolf-term__rp-tabs button {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-tabs button.on,
+html[data-theme="light"] .wolf-term__rp-tabs button.on {
+  color: #0f172a !important;
+  border-color: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-star {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-star.on {
+  color: #d97706 !important;
+}
+
+html[data-theme="light"] .wolf-term__bottom-brand b,
+html[data-theme="light"] .wolf-term__rp-head,
+html[data-theme="light"] .wolf-term__watch-head {
+  color: #0f172a !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__btn-trade {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-ico {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-modal-foot button,
+html[data-theme="light"] .wolf-term__sym-head button {
+  color: #475569 !important;
+  border-color: #d5dee9 !important;
+  background: #f8fafc !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-modal-foot button.primary {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Native chart tools (mai-nc) — left rail, sheets, flyouts
+   ═══════════════════════════════════════════════════════════ */
+html[data-theme="light"] .mai-nc__rail,
+html[data-theme="light"] .mai-nc__rail--desk {
+  --nc-rail-bg: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  --nc-rail-edge: #d5dee9;
+  --nc-rail-accent: #2563eb;
+  background: var(--nc-rail-bg) !important;
+  border-right-color: var(--nc-rail-edge) !important;
+  box-shadow: 1px 0 0 rgba(15, 23, 42, 0.03) inset !important;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+html[data-theme="light"] .mai-nc__rail-btn,
+html[data-theme="light"] .mai-nc__rail--desk .mai-nc__rail-btn {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-btn:hover:not(:disabled) {
+  color: #0f172a !important;
+  background: linear-gradient(180deg, #ffffff 0%, #e8eef6 100%) !important;
+  border-color: #c5d0de !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-btn--on {
+  color: #1d4ed8 !important;
+  background: linear-gradient(180deg, #eff4ff 0%, #dbe7ff 100%) !important;
+  border-color: color-mix(in srgb, #2563eb 40%, #c5d0de) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #2563eb 22%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-btn--menu {
+  color: #ffffff !important;
+  background: linear-gradient(180deg, #3d63e8 0%, #2563eb 100%) !important;
+  border-color: #93b0ff !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-sep {
+  background: linear-gradient(90deg, transparent, #c5d0de, transparent) !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-group--fly {
+  background: rgba(15, 23, 42, 0.03) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-group--fly:hover {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: #c5d0de !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-group--on {
+  border-color: color-mix(in srgb, #2563eb 40%, #c5d0de) !important;
+  background: color-mix(in srgb, #2563eb 10%, #ffffff) !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-group--open {
+  border-color: color-mix(in srgb, #2563eb 55%, #c5d0de) !important;
+  background: color-mix(in srgb, #2563eb 14%, #ffffff) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #2563eb 18%, transparent) !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-caret {
+  border-left-color: #d5dee9 !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), transparent) !important;
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-caret:hover {
+  color: #0f172a !important;
+  background: linear-gradient(180deg, #e8eef6 0%, #dce5f0 100%) !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-caret.on {
+  color: #ffffff !important;
+  background: linear-gradient(180deg, #3d63e8 0%, #2563eb 100%) !important;
+  border-color: #93b0ff !important;
+}
+
+html[data-theme="light"] .mai-nc__rail-group--fly:hover .mai-nc__rail-caret:not(.on) {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout.mai-nc__flyout--tv,
+html[data-theme="light"] .mai-nc__flyout--tv {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%) !important;
+  border-color: #c5d0de !important;
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
+  scrollbar-color: #cbd5e1 transparent;
+  color: #0f172a;
+}
+
+html[data-theme="light"] .mai-nc__flyout-block + .mai-nc__flyout-block {
+  border-top-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-sec {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-item {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-item:hover {
+  background: #e8eef6 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-item.on {
+  background: color-mix(in srgb, #2563eb 14%, #ffffff) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #2563eb 28%, transparent) !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-trail,
+html[data-theme="light"] .mai-nc__flyout-item kbd {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__flyout-check {
+  color: #2563eb !important;
+}
+
+html[data-theme="light"] .mai-nc__legend {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .mai-nc__legend-sym,
+html[data-theme="light"] .mai-nc__legend-ohlc b,
+html[data-theme="light"] .mai-nc__study-name {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__legend-tf,
+html[data-theme="light"] .mai-nc__legend-ohlc,
+html[data-theme="light"] .mai-nc__study-detail {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__study-chip {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: #d5dee9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__study-chip.is-open,
+html[data-theme="light"] .mai-nc__study-chip:hover {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border-color: #93b0ff !important;
+}
+
+html[data-theme="light"] .mai-nc__study-chip-acts button {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__study-chip-acts button:hover {
+  color: #0f172a !important;
+  background: #e8eef6 !important;
+}
+
+html[data-theme="light"] .mai-nc__quick {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .mai-nc__quick-btn {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .mai-nc__quick-btn:hover,
+html[data-theme="light"] .mai-nc__quick-btn--on {
+  color: #0f172a !important;
+  background: #e8eef6 !important;
+}
+
+html[data-theme="light"] .mai-nc__navfab {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1) !important;
+}
+
+html[data-theme="light"] .mai-nc__navfab-btn {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .mai-nc__navfab-btn:hover {
+  color: #0f172a !important;
+  background: #e8eef6 !important;
+}
+
+html[data-theme="light"] .mai-nc__navfab-sep {
+  background: #d5dee9 !important;
+}
+
+html[data-theme="light"] .mai-nc__sheet,
+html[data-theme="light"] .mai-nc__study-sheet,
+html[data-theme="light"] .mai-nc__objbar,
+html[data-theme="light"] .mai-nc__objbar-pop {
+  background: #ffffff !important;
+  border-color: #c5d0de !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12) !important;
+}
+
+html[data-theme="light"] .mai-nc__sheet-h,
+html[data-theme="light"] .mai-nc__study-sheet-head,
+html[data-theme="light"] .mai-nc__draw-tabs {
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__sheet-h button,
+html[data-theme="light"] .mai-nc__study-sheet-head button,
+html[data-theme="light"] .mai-nc__objbar-btn,
+html[data-theme="light"] .mai-nc__draw-tabs button,
+html[data-theme="light"] .mai-nc__draw-seg button {
+  color: #475569 !important;
+  background: transparent !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .mai-nc__sheet-body > button:hover,
+html[data-theme="light"] .mai-nc__sheet-body > button.on,
+html[data-theme="light"] .mai-nc__objbar-btn:hover,
+html[data-theme="light"] .mai-nc__objbar-btn.on,
+html[data-theme="light"] .mai-nc__draw-tabs button.on,
+html[data-theme="light"] .mai-nc__draw-seg button.on,
+html[data-theme="light"] .mai-nc__obj-row:hover,
+html[data-theme="light"] .mai-nc__obj-row.on,
+html[data-theme="light"] .mai-nc__objbar-row:hover,
+html[data-theme="light"] .mai-nc__objbar-row.on {
+  background: #e8eef6 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__sheet-body > button,
+html[data-theme="light"] .mai-nc__obj-row,
+html[data-theme="light"] .mai-nc__objbar-row {
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .mai-nc__study-sheet-blurb,
+html[data-theme="light"] .mai-nc__study-sheet-hint,
+html[data-theme="light"] .mai-nc__sheet-empty {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-nc__study-sheet-actions button {
+  color: #0f172a !important;
+  background: #f8fafc !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .mai-nc__study-sheet-actions button:hover {
+  background: #e8eef6 !important;
+}
+
+html[data-theme="light"] .mai-nc__study-sheet-actions button.danger {
+  color: #e11d48 !important;
+  border-color: rgba(225, 29, 72, 0.35) !important;
+}
+
+html[data-theme="light"] .mai-nc__draw-field input[type='text'],
+html[data-theme="light"] .mai-nc__draw-field input[type='range'],
+html[data-theme="light"] .mai-nc__draw-seg {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__toast {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .mai-nc__stamp,
+html[data-theme="light"] .mai-nc__aoi,
+html[data-theme="light"] .mai-nc__history-load {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #d5dee9 !important;
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .mai-nc__bar-cd--axis {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #d5dee9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__msg {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .mai-nc__retry {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .mai-tv--fs,
+html[data-theme="light"] .mai-tv--fs .mai-tv__bar,
+html[data-theme="light"] .wolf-term .mai-tv__frame--fill {
+  background: #ffffff !important;
+}
+
+html[data-theme="light"] .mai-tv--fs .mai-tv__bar {
+  border-bottom-color: #d5dee9 !important;
+}
+
+/* Context menu + floating portals (body-level) */
+html[data-theme="light"] .mai-ctx,
+html[data-theme="light"] .mai-ctx__fly {
+  background: #ffffff !important;
+  border-color: #c5d0de !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14) !important;
+}
+
+html[data-theme="light"] .mai-ctx__ico,
+html[data-theme="light"] .mai-ctx__kbd,
+html[data-theme="light"] .mai-ctx__chev,
+html[data-theme="light"] .mai-ctx__empty {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .mai-ctx__sep {
+  background: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .mai-ctx__row:hover:not(:disabled) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .mai-ctx__row:hover:not(:disabled) .mai-ctx__ico,
+html[data-theme="light"] .mai-ctx__row:hover:not(:disabled) .mai-ctx__kbd {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Terminal panel chrome helpers */
+html[data-theme="light"] .wolf-term__panel-chrome,
+html[data-theme="light"] .term-panel,
+html[data-theme="light"] .term-panel__head,
+html[data-theme="light"] .term-panel__body {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .term-panel__head,
+html[data-theme="light"] .term-panel__muted {
+  color: #64748b !important;
+}
+
+/* Indicator settings form (member + Terminal study sheet) */
+.wolf-ind-setting__field {
+  background: #121520;
+  border-color: #1a1f2e;
+  color: #e2e8f0;
+}
+
+.wolf-ind-setting__label,
+.wolf-ind-setting__empty,
+.wolf-ind-setting__hint {
+  color: #94a3b8;
+}
+
+.wolf-ind-setting__check {
+  color: #cbd5e1;
+}
+
+.wolf-ind-setting__group {
+  color: rgba(212, 175, 55, 0.85);
+}
+
+html[data-theme="light"] .wolf-ind-setting__field {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-ind-setting__label,
+html[data-theme="light"] .wolf-ind-setting__empty,
+html[data-theme="light"] .wolf-ind-setting__hint {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-ind-setting__check {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-ind-setting__group {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .wolf-term__rp-close,
+html[data-theme="light"] .wolf-term__rp-head-actions button {
+  color: #475569 !important;
+  border-color: #d5dee9 !important;
+  background: #f8fafc !important;
+}
+
+html[data-theme="light"] .wolf-term__rp-close:hover,
+html[data-theme="light"] .wolf-term__rp-head-actions button:hover {
+  color: #0f172a !important;
+  background: #e8eef6 !important;
+}
+
+html[data-theme="light"] .wolf-term__rp-body,
+html[data-theme="light"] .wolf-term__watch-search,
+html[data-theme="light"] .wolf-term__watch-add {
+  color: #0f172a !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__watch-add {
+  background: #f8fafc !important;
+}
+
+html[data-theme="light"] .wolf-term__dock-badge {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+
