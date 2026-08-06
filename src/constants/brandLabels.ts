@@ -44,7 +44,7 @@ export const PAGE_NAMES: Record<string, string> = {
   trafi: AI_PRODUCT_NAME,
   'mentor-ai': 'Wolf Mentor',
   arena: 'Wolf Arena',
-  terminal: 'Terminal',
+  terminal: 'Wolf Terminal',
   indicators: 'Indicators',
 };
 

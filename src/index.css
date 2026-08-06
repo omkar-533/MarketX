@@ -17749,7 +17749,62 @@ body:has(.app-main--terminal-immersive) #root {
 
 .wolf-term__brand {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   flex-shrink: 0;
+  padding-right: 0.15rem;
+}
+
+.wolf-term__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.55rem 0 0.4rem;
+  border: 1px solid rgba(240, 185, 11, 0.28);
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(240, 185, 11, 0.14), rgba(41, 98, 255, 0.08));
+  color: #f0b90b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.wolf-term__back:hover {
+  border-color: rgba(240, 185, 11, 0.55);
+  background: linear-gradient(135deg, rgba(240, 185, 11, 0.22), rgba(41, 98, 255, 0.12));
+  color: #ffe08a;
+}
+
+.wolf-term__brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wolf-term__brand-copy b {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #f0b90b;
+}
+
+.wolf-term__brand-copy em {
+  font-style: normal;
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wt-muted);
 }
 
 .wolf-term__logo {
@@ -17758,19 +17813,20 @@ body:has(.app-main--terminal-immersive) #root {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: 7px;
   border: 0;
-  background: transparent;
-  color: var(--wt-text);
+  background: linear-gradient(145deg, rgba(240, 185, 11, 0.22), rgba(41, 98, 255, 0.18));
+  color: #f0b90b;
   font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
   letter-spacing: -0.02em;
+  box-shadow: inset 0 0 0 1px rgba(240, 185, 11, 0.25);
 }
 
 .wolf-term__logo:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: linear-gradient(145deg, rgba(240, 185, 11, 0.32), rgba(41, 98, 255, 0.22));
+  color: #ffe08a;
 }
 
 .wolf-term__brand-menu {

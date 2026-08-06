@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   Camera,
   CandlestickChart,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
+import { AI_PRODUCT_NAME } from '../../constants/brandLabels';
 import {
   NATIVE_STUDY_PRESETS,
   NATIVE_TIMEFRAMES,
@@ -276,16 +278,30 @@ export default function TerminalTopBar({
     <>
       <header className="wolf-term__bar">
         <div className="wolf-term__bar-left">
+          <button
+            type="button"
+            className="wolf-term__back"
+            title={`Back to ${AI_PRODUCT_NAME}`}
+            onClick={() => onExitApp?.()}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
+            <span>Back to {AI_PRODUCT_NAME}</span>
+          </button>
+
           <div className="wolf-term__brand" ref={menuRef}>
             <button
               type="button"
               className="wolf-term__logo"
-              title="Wolf menu"
+              title={`${AI_PRODUCT_NAME} menu`}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >
               W
             </button>
+            <div className="wolf-term__brand-copy" aria-hidden>
+              <b>{AI_PRODUCT_NAME}</b>
+              <em>Terminal</em>
+            </div>
             {menuOpen ? (
               <div className="wolf-term__brand-menu" role="menu">
                 <button
@@ -296,7 +312,7 @@ export default function TerminalTopBar({
                     onExitApp?.();
                   }}
                 >
-                  Exit Terminal
+                  Back to {AI_PRODUCT_NAME}
                 </button>
                 <button
                   type="button"

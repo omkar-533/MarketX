@@ -27,6 +27,62 @@ export function tvZoom(chart: IChartApi, direction: 'in' | 'out') {
 }
 
 /**
+ * TradingView-style wheel on the right price axis: zoom price range in/out
+ * around an optional anchor (cursor price), otherwise the visible midpoint.
+ */
+export function tvZoomPrice(
+  chart: IChartApi,
+  direction: 'in' | 'out',
+  anchorPrice?: number | null,
+) {
+  const ps = chart.priceScale('right');
+  const vis = ps.getVisibleRange();
+  if (!vis || !(vis.to > vis.from)) return;
+
+  ps.setAutoScale(false);
+  const span = vis.to - vis.from;
+  if (!(span > 0)) return;
+
+  const mid =
+    typeof anchorPrice === 'number' && Number.isFinite(anchorPrice)
+      ? anchorPrice
+      : (vis.from + vis.to) / 2;
+  const factor = direction === 'in' ? 0.88 : 1.14;
+  const nextSpan = Math.max(span * 1e-12, span * factor);
+  const topShare = Math.max(0.05, Math.min(0.95, (vis.to - mid) / span));
+  const botShare = 1 - topShare;
+  const from = mid - nextSpan * botShare;
+  const to = mid + nextSpan * topShare;
+  if (!(to > from)) return;
+  ps.setVisibleRange({ from, to });
+}
+
+/**
+ * Soft-expand a locked price window so a live tip outside the view stays visible
+ * without re-enabling autoScale thrash.
+ */
+export function ensurePriceVisible(
+  chart: IChartApi,
+  high: number,
+  low: number,
+  padRatio = 0.04,
+) {
+  if (!(high >= low) || !Number.isFinite(high) || !Number.isFinite(low)) return;
+  const ps = chart.priceScale('right');
+  const vis = ps.getVisibleRange();
+  if (!vis || !(vis.to > vis.from)) return;
+  const pad = (vis.to - vis.from) * padRatio;
+  let from = vis.from;
+  let to = vis.to;
+  if (high > to - pad) to = high + pad;
+  if (low < from + pad) from = low - pad;
+  if (from === vis.from && to === vis.to) return;
+  if (!(to > from)) return;
+  ps.setAutoScale(false);
+  ps.setVisibleRange({ from, to });
+}
+
+/**
  * Scroll ← older / → newer by ~½ viewport (TV date-nav feel).
  * Instant (not 1s LWC animation) so hold-to-repeat stays crisp like TradingView.
  * scrollPosition = rightOffset: larger → more history (left); smaller → realtime.

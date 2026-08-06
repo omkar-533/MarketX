@@ -53,6 +53,10 @@ import {
   wolfStudyBlurb,
   wolfStudyLabel,
 } from '../../services/chart/wolfIndicators';
+import {
+  ensurePriceVisible,
+  tvZoomPrice,
+} from '../../services/chart/chartNavActions';
 import { Eye, EyeOff, Settings2, X } from 'lucide-react';
 import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
 import {
@@ -290,6 +294,8 @@ export default function NativeChatChart({
   const needFitRef = useRef(true);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
   const touchedRef = useRef(false);
+  /** After first layout / user price zoom, freeze Y so live ticks do not bounce the scale. */
+  const priceLockedRef = useRef(false);
 
   const [bars, setBars] = useState<ChartBar[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'empty'>('loading');
@@ -330,14 +336,18 @@ export default function NativeChatChart({
     if (typeof logScaleProp === 'boolean') setLogScale(logScaleProp);
   }, [logScaleProp]);
 
-  // TradingView-style candle close countdown (intraday only).
+  // TradingView-style candle close countdown — only while the market session is open.
   useEffect(() => {
     const durOk = Boolean(barDurationMs(interval));
-    if (!durOk) {
+    if (!durOk || !marketOpen) {
       setBarCountdown(null);
       return;
     }
     const tick = () => {
+      if (!marketOpen) {
+        setBarCountdown(null);
+        return;
+      }
       const last = barsRef.current[barsRef.current.length - 1];
       const next = countdownForInterval(interval, last?.time);
       if (!next) {
@@ -350,7 +360,7 @@ export default function NativeChatChart({
     tick();
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
-  }, [interval, bars.length, status]);
+  }, [interval, bars.length, status, marketOpen]);
 
   const apiSymbol = apiSymbolFromTv(symbol);
   const apiInterval = nativeIntervalFor(interval);
@@ -437,6 +447,10 @@ export default function NativeChatChart({
             close: bar.close,
           });
         }
+        const chart = chartRef.current;
+        if (chart && priceLockedRef.current) {
+          ensurePriceVisible(chart, bar.high, bar.low);
+        }
       } catch {
         /* mid-rebuild — tip retries on next tick / rAF */
       }
@@ -515,6 +529,7 @@ export default function NativeChatChart({
   useEffect(() => {
     needFitRef.current = true;
     touchedRef.current = false;
+    priceLockedRef.current = false;
     historyBusyRef.current = false;
     historyExhaustedRef.current = false;
     setHistoryExhausted(false);
@@ -744,7 +759,7 @@ export default function NativeChatChart({
       createTextWatermark(mainPane, {
         horzAlign: 'center',
         vertAlign: 'center',
-        lines: [{ text: 'Wolf Trade AI', color: theme.watermark, fontSize: 34, fontStyle: 'bold' }],
+        lines: [{ text: 'Wolf AI', color: theme.watermark, fontSize: 34, fontStyle: 'bold' }],
       });
     }
 
@@ -1150,7 +1165,23 @@ export default function NativeChatChart({
         // The card animates in, so the first layout pass can be narrower than final.
         requestAnimationFrame(() => {
           if (!touchedRef.current) chart.timeScale().fitContent();
+          // Freeze Y after the initial fit so live tip updates do not bounce the scale.
+          if (!priceLockedRef.current) {
+            try {
+              chart.priceScale('right').setAutoScale(false);
+              priceLockedRef.current = true;
+            } catch {
+              /* ignore */
+            }
+          }
         });
+      } else if (priceLockedRef.current) {
+        // Preserve locked range after full setData resyncs.
+        try {
+          chart.priceScale('right').setAutoScale(false);
+        } catch {
+          /* ignore */
+        }
       }
     };
 
@@ -1161,7 +1192,8 @@ export default function NativeChatChart({
       setHoverIndex(hovered ?? null);
       setLegend(legendAt(source, hovered ?? source.length - 1));
 
-      // Right price scale pans with the cursor near the edges (TradingView-like).
+      // Track pointer for context actions — do NOT edge-pan the price scale on hover
+      // (that was fighting autoScale / live tip and bouncing the chart).
       if (!param.point) return;
       const price = priceSeries.coordinateToPrice(param.point.y);
       if (price === null || !Number.isFinite(Number(price))) return;
@@ -1173,20 +1205,6 @@ export default function NativeChatChart({
         price: Number(price),
         time: typeof t === 'number' && Number.isFinite(t) ? t : Date.now() / 1000,
       };
-      const ps = chart.priceScale('right');
-      const vis = ps.getVisibleRange();
-      if (!vis || !(vis.to > vis.from)) return;
-      const span = vis.to - vis.from;
-      const edge = span * 0.14;
-      if (price > vis.to - edge) {
-        const shift = price - (vis.to - edge);
-        ps.setAutoScale(false);
-        ps.setVisibleRange({ from: vis.from + shift, to: vis.to + shift });
-      } else if (price < vis.from + edge) {
-        const shift = vis.from + edge - price;
-        ps.setAutoScale(false);
-        ps.setVisibleRange({ from: vis.from - shift, to: vis.to - shift });
-      }
     });
 
     const onVisibleRange = () => {
@@ -1211,7 +1229,27 @@ export default function NativeChatChart({
     const markTouched = () => {
       touchedRef.current = true;
     };
-    host.addEventListener('wheel', markTouched, { passive: true });
+    const onWheel = (e: WheelEvent) => {
+      touchedRef.current = true;
+      const axisW = Math.max(48, chart.priceScale('right').width() || 56);
+      const rect = host.getBoundingClientRect();
+      const overPriceAxis = e.clientX >= rect.right - axisW - 2;
+      if (!overPriceAxis) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const direction = e.deltaY < 0 ? 'in' : 'out';
+      let anchor: number | null = null;
+      try {
+        const y = e.clientY - rect.top;
+        const p = priceSeries.coordinateToPrice(y);
+        if (p !== null && Number.isFinite(Number(p))) anchor = Number(p);
+      } catch {
+        anchor = null;
+      }
+      priceLockedRef.current = true;
+      tvZoomPrice(chart, direction, anchor);
+    };
+    host.addEventListener('wheel', onWheel, { passive: false, capture: true });
     host.addEventListener('pointerdown', markTouched);
 
     let lastWidth = host.clientWidth;
@@ -1251,7 +1289,8 @@ export default function NativeChatChart({
 
     return () => {
       observer.disconnect();
-      host.removeEventListener('wheel', markTouched);
+      host.removeEventListener('wheel', onWheel, true);
+      host.removeEventListener('pointerdown', markTouched);
       host.removeEventListener('pointerdown', markTouched);
       applyRef.current = null;
       chartRef.current = null;
@@ -1489,11 +1528,21 @@ export default function NativeChatChart({
 
   const resetView = useCallback(() => {
     touchedRef.current = false;
+    priceLockedRef.current = false;
     const chart = chartRef.current;
     if (!chart) return;
     // TradingView reset = default zoom + realtime edge, not fit-all history.
     chart.priceScale('right').setAutoScale(true);
     chart.timeScale().resetTimeScale();
+    // Re-lock after a frame so live ticks do not immediately bounce Y again.
+    requestAnimationFrame(() => {
+      try {
+        chart.priceScale('right').setAutoScale(false);
+        priceLockedRef.current = true;
+      } catch {
+        /* ignore */
+      }
+    });
   }, []);
 
   const saveScreenshot = useCallback(() => {
@@ -1908,7 +1957,7 @@ export default function NativeChatChart({
           </div>
         ) : null}
 
-        {status === 'ready' && barCountdown && axisCdTop != null ? (
+        {status === 'ready' && marketOpen && barCountdown && axisCdTop != null ? (
           <div
             className={`mai-nc__bar-cd mai-nc__bar-cd--axis ${
               barCountdownUrgent ? 'mai-nc__bar-cd--urgent' : ''
