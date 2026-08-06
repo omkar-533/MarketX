@@ -107,13 +107,13 @@ export default function TradeXOptionChain() {
   const [spotPrice, setSpotPrice] = useState(0);
   const [spotChangePct, setSpotChangePct] = useState(0);
   const [searchStrike, setSearchStrike] = useState('');
-  const [showGreeks, setShowGreeks] = useState(true);
-  const [showBuildup, setShowBuildup] = useState(true);
+  const [showGreeks, setShowGreeks] = useState(false);
+  const [showBuildup, setShowBuildup] = useState(false);
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [tab, setTab] = useState<TabId>('chain');
   const [strikeRange, setStrikeRange] = useState<StrikeRange>('ATM10');
   const [strikeFilter, setStrikeFilter] = useState<StrikeFilter>('ALL');
-  const [heatmap, setHeatmap] = useState(true);
+  const [heatmap, setHeatmap] = useState(false);
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState('');
   const [chainSource, setChainSource] = useState('');
