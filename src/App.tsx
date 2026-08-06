@@ -4,7 +4,7 @@ import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import WolfLoader from './components/WolfLoader';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
-import { SHOW_INDICATORS } from './constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_TERMINAL } from './constants/featureFlags';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -51,6 +51,7 @@ const HIDDEN_TABS = new Set([
   'heatmap',
   'scanner',
   ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
+  ...(SHOW_TERMINAL ? [] : (['terminal'] as const)),
 ]);
 const DEFAULT_TAB = 'wolf-ai';
 const TAB_STORAGE_KEY = 'wolf_active_tab';

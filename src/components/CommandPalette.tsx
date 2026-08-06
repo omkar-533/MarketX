@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Command, ArrowRight } from 'lucide-react';
-import { SHOW_INDICATORS } from '../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_TERMINAL } from '../constants/featureFlags';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -13,7 +13,7 @@ const commands = [
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'mentor-ai', label: 'Open Wolf Mentor', shortcut: 'T' },
   { id: 'arena', label: 'Open Wolf Arena', shortcut: 'A' },
-  { id: 'terminal', label: 'Open Terminal', shortcut: 'C' },
+  ...(SHOW_TERMINAL ? [{ id: 'terminal', label: 'Open Terminal', shortcut: 'C' }] : []),
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' },

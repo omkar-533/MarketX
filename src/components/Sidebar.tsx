@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
-import { SHOW_INDICATORS } from '../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_TERMINAL } from '../constants/featureFlags';
 import BrandMark from './BrandMark';
 
 interface SidebarProps {
@@ -25,7 +25,7 @@ const navItems = [
   { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   { id: 'arena', label: PAGE_NAMES.arena, icon: Swords },
-  { id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart },
+  ...(SHOW_TERMINAL ? [{ id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart }] : []),
   ...(SHOW_INDICATORS
     ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
     : []),
