@@ -119,7 +119,8 @@ export default function TradeXOptionChain() {
   const [chainSource, setChainSource] = useState('');
   const atmRowRef = useRef<HTMLTableRowElement>(null);
   const atmStrikeCellRef = useRef<HTMLTableCellElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const hScrollRef = useRef<HTMLDivElement>(null);
+  const vScrollRef = useRef<HTMLDivElement>(null);
 
   const windowSize =
     strikeRange === 'ALL'
@@ -218,29 +219,32 @@ export default function TradeXOptionChain() {
     let cancelled = false;
     const centerAtm = () => {
       if (cancelled) return;
-      const scroller = scrollRef.current;
+      const hScroller = hScrollRef.current;
+      const vScroller = vScrollRef.current;
       const cell = atmStrikeCellRef.current ?? atmRowRef.current;
-      if (!scroller || !cell) return;
+      if (!cell) return;
 
-      const scrollerRect = scroller.getBoundingClientRect();
-      const cellRect = cell.getBoundingClientRect();
+      if (hScroller) {
+        const hRect = hScroller.getBoundingClientRect();
+        const cellRect = cell.getBoundingClientRect();
+        const nextLeft =
+          hScroller.scrollLeft +
+          (cellRect.left - hRect.left) -
+          hRect.width / 2 +
+          cellRect.width / 2;
+        hScroller.scrollTo({ left: Math.max(0, nextLeft), behavior: 'smooth' });
+      }
 
-      const nextLeft =
-        scroller.scrollLeft +
-        (cellRect.left - scrollerRect.left) -
-        scrollerRect.width / 2 +
-        cellRect.width / 2;
-      const nextTop =
-        scroller.scrollTop +
-        (cellRect.top - scrollerRect.top) -
-        scrollerRect.height / 2 +
-        cellRect.height / 2;
-
-      scroller.scrollTo({
-        left: Math.max(0, nextLeft),
-        top: Math.max(0, nextTop),
-        behavior: 'smooth',
-      });
+      if (vScroller) {
+        const vRect = vScroller.getBoundingClientRect();
+        const cellRect = cell.getBoundingClientRect();
+        const nextTop =
+          vScroller.scrollTop +
+          (cellRect.top - vRect.top) -
+          vRect.height / 2 +
+          cellRect.height / 2;
+        vScroller.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+      }
     };
 
     const t = window.setTimeout(() => {
@@ -519,10 +523,16 @@ export default function TradeXOptionChain() {
       <div className="flex-1 min-h-0 flex flex-col app-card overflow-hidden p-0 relative">
         {tab === 'chain' && (
           <>
+            {/* Horizontal bar always at panel bottom; vertical scrolls inside */}
             <div
-              ref={scrollRef}
-              className="oc-chain-scroll flex-1 min-h-0 overflow-x-auto overflow-y-auto overscroll-contain"
+              ref={hScrollRef}
+              className="oc-chain-hscroll flex-1 min-h-0 overflow-x-scroll overflow-y-hidden"
             >
+              <div
+                ref={vScrollRef}
+                className="oc-chain-vscroll h-full overflow-y-auto overflow-x-hidden overscroll-contain"
+                style={{ minWidth: tableMinW, width: tableMinW }}
+              >
               {filtered.length === 0 ? (
                 <div
                   className={`flex flex-col items-center justify-center gap-3 px-4 text-center ${
@@ -553,8 +563,8 @@ export default function TradeXOptionChain() {
                 </div>
               ) : (
                 <table
-                  className="w-full text-[11px] border-collapse"
-                  style={{ minWidth: tableMinW }}
+                  className="text-[11px] border-collapse"
+                  style={{ minWidth: tableMinW, width: tableMinW }}
                 >
                   <thead className="sticky top-0 z-20">
                     <tr className="bg-dark-elevated text-[10px] uppercase text-dark-muted">
@@ -743,6 +753,7 @@ export default function TradeXOptionChain() {
                   </tfoot>
                 </table>
               )}
+              </div>
             </div>
 
             {selected && (

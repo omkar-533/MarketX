@@ -101,7 +101,72 @@ body {
   }
 }
 
-/* Option Chain table: always-visible left/right (+ vertical) scrollbars */
+/* Option Chain: dedicated bottom horizontal scrollbar (never covered by sticky footer) */
+.oc-chain-hscroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(212, 175, 55, 0.85) rgba(26, 31, 46, 0.75);
+}
+
+.oc-chain-hscroll::-webkit-scrollbar {
+  height: 14px;
+  width: 0;
+}
+
+.oc-chain-hscroll::-webkit-scrollbar-track {
+  background: rgba(26, 31, 46, 0.85);
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.oc-chain-hscroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.75), rgba(232, 192, 74, 0.95));
+  border-radius: 8px;
+  border: 2px solid rgba(26, 31, 46, 0.85);
+  min-width: 48px;
+}
+
+.oc-chain-hscroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 192, 74, 1);
+}
+
+.oc-chain-vscroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.55) transparent;
+}
+
+.oc-chain-vscroll::-webkit-scrollbar {
+  width: 8px;
+  height: 0;
+}
+
+.oc-chain-vscroll::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.55);
+  border-radius: 6px;
+}
+
+html[data-theme="light"] .oc-chain-hscroll {
+  scrollbar-color: rgba(146, 64, 14, 0.75) #dbe3ee;
+}
+
+html[data-theme="light"] .oc-chain-hscroll::-webkit-scrollbar-track {
+  background: #dbe3ee;
+  border-top-color: #b45309;
+}
+
+html[data-theme="light"] .oc-chain-hscroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #b45309, #92400e);
+  border-color: #dbe3ee;
+}
+
+html[data-theme="light"] .oc-chain-vscroll {
+  scrollbar-color: rgba(146, 64, 14, 0.55) transparent;
+}
+
+html[data-theme="light"] .oc-chain-vscroll::-webkit-scrollbar-thumb {
+  background: rgba(146, 64, 14, 0.55);
+}
+
+/* Legacy combined scroll (kept for safety) */
 .oc-chain-scroll {
   scrollbar-gutter: stable both-edges;
   scrollbar-width: auto;
