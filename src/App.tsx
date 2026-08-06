@@ -36,6 +36,7 @@ const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const MentorAI = lazy(() => import('./components/MentorAI'));
+const TerminalPage = lazy(() => import('./components/terminal/TerminalPage'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 
@@ -66,6 +67,7 @@ const VALID_TABS = new Set([
   'footprint',
   'wolf-ai',
   'mentor-ai',
+  'terminal',
   'trafi', // legacy alias → normalized to wolf-ai
   'indicators',
   'papertrading',
@@ -296,6 +298,8 @@ function AppWorkspace() {
         return <MasterAI />;
       case 'mentor-ai':
         return <MentorAI />;
+      case 'terminal':
+        return <TerminalPage onNavigate={handleTabChange} />;
       case 'indicators':
         return (
           <Indicators
@@ -340,9 +344,11 @@ function AppWorkspace() {
   };
 
   const mainClass = auth.isLoggedIn
-    ? `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}${
-        activeTab === 'wolf-ai' ? ' app-main--chat' : ''
-      }`
+    ? activeTab === 'terminal'
+      ? 'app-main app-main--terminal-immersive'
+      : `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}${
+          activeTab === 'wolf-ai' ? ' app-main--chat' : ''
+        }`
     : 'app-main';
 
   const headerClass = auth.isLoggedIn
@@ -352,7 +358,7 @@ function AppWorkspace() {
   return (
     <AutoRefreshProvider enabled={auth.isLoggedIn}>
       <div className="app-shell">
-        {auth.isLoggedIn && (
+        {auth.isLoggedIn && activeTab !== 'terminal' && (
           <Suspense fallback={null}>
             <>
               {mobileMenuOpen && (
@@ -395,7 +401,9 @@ function AppWorkspace() {
                     ? 'page-content page-content--chat'
                     : activeTab === 'mentor-ai'
                       ? 'page-content page-content--full page-content--mentor'
-                      : 'page-content page-content--full'
+                      : activeTab === 'terminal'
+                        ? 'page-content page-content--terminal'
+                        : 'page-content page-content--full'
                 : ''
             }
           >

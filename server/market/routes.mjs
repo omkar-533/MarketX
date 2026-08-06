@@ -50,11 +50,13 @@ router.get('/ohlc', async (req, res) => {
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   const interval = String(req.query.interval || '15m').trim();
   const range = String(req.query.range || '').trim() || undefined;
+  const barsRaw = Number(req.query.bars);
+  const bars = Number.isFinite(barsRaw) && barsRaw > 0 ? Math.min(8000, Math.floor(barsRaw)) : undefined;
   if (!symbol) {
     return res.status(400).json({ error: 'symbol query required' });
   }
   try {
-    const data = await fetchOhlc(symbol, interval, range);
+    const data = await fetchOhlc(symbol, interval, range, bars ? { bars } : undefined);
     return res.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'OHLC fetch failed';

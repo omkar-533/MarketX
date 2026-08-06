@@ -153,7 +153,8 @@ export async function fetchOhlc(symbol, timeframe = '15m', rangeOverride, opts =
   const sym = String(symbol).trim().toUpperCase();
   if (!toTvSymbol(sym)) throw new Error(`Unknown symbol ${sym}`);
 
-  const cacheKey = `ohlc:${sym}:${timeframe}:${rangeOverride || ''}`;
+  const barsOverride = Number(opts?.bars);
+  const cacheKey = `ohlc:${sym}:${timeframe}:${rangeOverride || ''}:${Number.isFinite(barsOverride) && barsOverride > 0 ? barsOverride : ''}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < OHLC_CACHE_MS) return hit.data;
 

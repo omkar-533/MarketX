@@ -30,6 +30,8 @@ export type ChartToolRailProps = {
   onUndo: () => void;
   onClear: () => void;
   canUndo: boolean;
+  /** Layout hint from chat vs terminal desk; currently unused. */
+  variant?: 'chat' | 'desk';
 };
 
 /** TradingView's left drawing rail, trimmed to the tools that matter in chat. */
@@ -41,6 +43,7 @@ export default function ChartToolRail({
   onUndo,
   onClear,
   canUndo,
+  variant: _variant = 'chat',
 }: ChartToolRailProps) {
   return (
     <div className="mai-nc__rail" role="toolbar" aria-label="Drawing tools">

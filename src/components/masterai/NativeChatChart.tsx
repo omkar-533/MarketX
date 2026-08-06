@@ -130,6 +130,12 @@ export type NativeChatChartProps = {
   shapes?: ChartShape[];
   /** Our feed has no data for this symbol — the panel can fall back elsewhere. */
   onUnavailable?: () => void;
+  /** Stretch the chart frame to fill its parent (Terminal desk). */
+  fillHeight?: boolean;
+  /** Show the left drawing rail (default true). */
+  showRail?: boolean;
+  /** When the left edge is visible, fetch older bars and prepend. */
+  enableHistoryScroll?: boolean;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -158,6 +164,9 @@ export default function NativeChatChart({
   levels,
   shapes,
   onUnavailable,
+  fillHeight = false,
+  showRail = true,
+  enableHistoryScroll = false,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -185,6 +194,8 @@ export default function NativeChatChart({
   const [tool, setTool] = useState<DrawingTool>('cursor');
   const [magnet, setMagnet] = useState(false);
   const [logScale, setLogScale] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyExhausted, setHistoryExhausted] = useState(false);
 
   const apiSymbol = apiSymbolFromTv(symbol);
   const apiInterval = nativeIntervalFor(interval);
@@ -197,6 +208,10 @@ export default function NativeChatChart({
   const barsRef = useRef<ChartBar[]>([]);
   const liveThrottleRef = useRef(0);
   const lastLiveAtRef = useRef(0);
+  const historyBusyRef = useRef(false);
+  const historyExhaustedRef = useRef(false);
+  const prependShiftRef = useRef(0);
+  const loadOlderRef = useRef<() => void>(() => undefined);
 
   const load = useCallback(
     async (background: boolean) => {
@@ -294,9 +309,64 @@ export default function NativeChatChart({
   useEffect(() => {
     needFitRef.current = true;
     touchedRef.current = false;
+    historyBusyRef.current = false;
+    historyExhaustedRef.current = false;
+    setHistoryExhausted(false);
+    setLoadingOlder(false);
     setLegend(null);
     setLiveStreaming(false);
   }, [apiSymbol, apiInterval]);
+
+  const loadOlderBars = useCallback(async () => {
+    if (!enableHistoryScroll || !apiInterval || historyBusyRef.current || historyExhaustedRef.current) {
+      return;
+    }
+    const current = barsRef.current;
+    if (current.length < 40) return;
+
+    historyBusyRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const nextCount = Math.min(8000, current.length + 1200);
+      const range =
+        apiInterval === '1d' || apiInterval === '1w' || apiInterval === '1M'
+          ? '1y'
+          : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
+            ? '1y'
+            : '6mo';
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, nextCount);
+      const fetched = res?.bars ?? [];
+      if (!fetched.length) {
+        historyExhaustedRef.current = true;
+        setHistoryExhausted(true);
+        return;
+      }
+      const firstTime = current[0]?.time ?? 0;
+      const older = fetched.filter((b) => b.time < firstTime);
+      if (!older.length) {
+        historyExhaustedRef.current = true;
+        setHistoryExhausted(true);
+        return;
+      }
+      const merged = [...older, ...current];
+      const byTime = new Map<number, ChartBar>();
+      for (const b of merged) byTime.set(b.time, b);
+      const next = [...byTime.values()].sort((a, b) => a.time - b.time);
+      const added = next.length - current.length;
+      if (added > 0) prependShiftRef.current = added;
+      barsRef.current = next;
+      setBars(next);
+    } finally {
+      historyBusyRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [enableHistoryScroll, apiInterval, apiSymbol]);
+
+  useEffect(() => {
+    loadOlderRef.current = () => {
+      void loadOlderBars();
+    };
+  }, [loadOlderBars]);
 
   // TradingView-style session: flip OPEN ↔ CLOSE without waiting for a full reload.
   useEffect(() => {
@@ -430,8 +500,8 @@ export default function NativeChatChart({
         rightOffset: 6,
         barSpacing: 6,
         minBarSpacing: 1.5,
-        // Do not leave a blank void past the first historical bar when zooming out.
-        fixLeftEdge: true,
+        // Terminal can pan into older history; chat chart keeps a solid left edge.
+        fixLeftEdge: !enableHistoryScroll,
         tickMarkFormatter: formatTickMark,
       },
       localization: { timeFormatter: (t: Time) => istFull.format(Number(t) * 1000) },
@@ -674,6 +744,15 @@ export default function NativeChatChart({
       setLegend(legendAt(source, hovered ?? source.length - 1));
     });
 
+    const onVisibleRange = () => {
+      if (!enableHistoryScroll) return;
+      const range = chart.timeScale().getVisibleLogicalRange();
+      if (!range) return;
+      // Near the left edge of loaded history — pull older bars.
+      if (range.from < 8) loadOlderRef.current();
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRange);
+
     priceSeriesRef.current = priceSeries;
     setChartEpoch((n) => n + 1);
 
@@ -712,12 +791,22 @@ export default function NativeChatChart({
     };
     // studyKey stands in for the studies array, which is rebuilt on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasData, chartStyle, studyKey, theme, intraday]);
+  }, [hasData, chartStyle, studyKey, theme, intraday, enableHistoryScroll]);
 
   useEffect(() => {
     if (!view || !applyRef.current) return;
+    const chart = chartRef.current;
+    const shift = prependShiftRef.current;
+    const range = shift > 0 ? chart?.timeScale().getVisibleLogicalRange() : null;
     applyRef.current(view, needFitRef.current);
     needFitRef.current = false;
+    if (shift > 0 && range && chart) {
+      prependShiftRef.current = 0;
+      chart.timeScale().setVisibleLogicalRange({
+        from: range.from + shift,
+        to: range.to + shift,
+      });
+    }
   }, [view]);
 
   useEffect(() => {
@@ -840,20 +929,34 @@ export default function NativeChatChart({
   const readAt = hoverIndex ?? (view ? view.source.length - 1 : 0);
 
   return (
-    <div className="mai-tv__frame mai-tv__frame--tools">
-      <ChartToolRail
-        tool={tool}
-        onToolChange={setTool}
-        magnet={magnet}
-        onMagnetToggle={() => setMagnet((v) => !v)}
-        onUndo={drawings.undo}
-        onClear={drawings.clear}
-        canUndo={drawings.drawings.length > 0}
-      />
+    <div
+      className={`mai-tv__frame mai-tv__frame--tools ${fillHeight ? 'mai-tv__frame--fill' : ''}`}
+    >
+      {showRail ? (
+        <ChartToolRail
+          tool={tool}
+          onToolChange={setTool}
+          magnet={magnet}
+          onMagnetToggle={() => setMagnet((v) => !v)}
+          onUndo={drawings.undo}
+          onClear={drawings.clear}
+          canUndo={drawings.drawings.length > 0}
+          variant={fillHeight ? 'desk' : 'chat'}
+        />
+      ) : null}
 
       <div className="mai-nc__area" data-drawing={tool === 'cursor' ? undefined : 'on'}>
         <div ref={hostRef} className="mai-tv__host" />
         <canvas ref={canvasRef} className="mai-nc__draw" />
+
+        {loadingOlder ? (
+          <div className="mai-nc__history-load" aria-live="polite">
+            Loading older bars…
+          </div>
+        ) : null}
+        {historyExhausted && enableHistoryScroll ? (
+          <div className="mai-nc__history-load mai-nc__history-load--done">Oldest loaded</div>
+        ) : null}
 
         {legend && status === 'ready' ? (
           <div className="mai-nc__legend">

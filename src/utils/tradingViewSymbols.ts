@@ -172,9 +172,10 @@ export function apiSymbolFromTv(tvSymbol: string): string {
   return tradingViewSymbolLabel(tvSymbol).toUpperCase();
 }
 
-/** Timeframes our OHLC backend can resolve; 3m and monthly have no mapping. */
+/** Timeframes our OHLC backend can resolve. */
 const NATIVE_INTERVAL: Partial<Record<TvInterval, string>> = {
   '1': '1m',
+  '3': '3m',
   '5': '5m',
   '15': '15m',
   '30': '30m',
@@ -183,6 +184,7 @@ const NATIVE_INTERVAL: Partial<Record<TvInterval, string>> = {
   '240': '4h',
   D: '1d',
   W: '1w',
+  M: '1M',
 };
 
 export function nativeIntervalFor(interval: TvInterval): string | null {

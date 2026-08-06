@@ -310,8 +310,8 @@ export default function MentorArena({
               {firstName}, <span>run the desk</span>
             </h2>
             <p className="wm-arena__lead">
-              Real TradingView history chalti hai → freeze → pura pre-trade checklist (bias, entry,
-              SL, RR, management) → tape resolve → cash → luxury
+              Real TradingView history → freeze → 6-step pre-trade plan (bias, entry, SL, RR,
+              management + SMC/ICT/risk context) → R-multiple resolve → luxury shop
             </p>
           </div>
           <div className="wm-empire__wallet">

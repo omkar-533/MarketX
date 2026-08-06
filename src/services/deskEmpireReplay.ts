@@ -505,6 +505,42 @@ const CONTEXT_STEPS = (a: TapeAnalysis): PlanStep[] => [
     bestId: 'skip',
     why: 'Har candle par trade nahi hoti. B-grade setups hi long-run me account slow-bleed karte hain.',
   },
+  {
+    key: 'context',
+    topic: 'SMC',
+    question: 'Is tape me FVG / Order Block ka role kya hai?',
+    hint: a.fvg
+      ? `FVG ${a.fvg.dir} unfilled`
+      : a.ob
+        ? `${a.ob.dir === 'long' ? 'Demand' : 'Supply'} OB paas me`
+        : 'Koi clear imbalance nahi dikha',
+    options: [
+      { id: 'magnet', label: 'Magnet — price fill ke liye laut sakta hai', sub: 'imbalance fill' },
+      { id: 'ignore', label: 'Ignore — structure hi decide kare', sub: 'sirf HH/HL' },
+      { id: 'chase', label: 'Abhi chase through the gap', sub: 'extended entry' },
+    ],
+    bestId: a.fvg || a.ob ? 'magnet' : 'ignore',
+    why: 'FVG/OB location + stop ka foundation hote hain — chase se RR kharab hota hai.',
+  },
+  {
+    key: 'context',
+    topic: 'ICT',
+    question: 'Agla draw of liquidity kaha pehle likely hai?',
+    hint: a.equalHighs
+      ? 'Equal highs upar'
+      : a.equalLows
+        ? 'Equal lows neeche'
+        : a.bias === 'long'
+          ? 'Bias long — buy-side pool'
+          : 'Bias short — sell-side pool',
+    options: [
+      { id: 'bsl', label: 'Buy-side liquidity (above highs)', sub: 'stops of shorts' },
+      { id: 'ssl', label: 'Sell-side liquidity (below lows)', sub: 'stops of longs' },
+      { id: 'mid', label: 'EQ pehle, phir decide', sub: 'range mid' },
+    ],
+    bestId: a.equalHighs ? 'bsl' : a.equalLows ? 'ssl' : a.bias === 'long' ? 'bsl' : 'ssl',
+    why: 'Price liquidity pool se pool chalta hai. Draw pehle clear ho, tab target banta hai.',
+  },
 ];
 
 function buildSteps(a: TapeAnalysis, entry: number): PlanStep[] {

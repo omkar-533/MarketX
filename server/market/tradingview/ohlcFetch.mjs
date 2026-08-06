@@ -9,6 +9,7 @@ const WS_URL = 'wss://data.tradingview.com/socket.io/websocket?from=chart%2F';
 
 const INTERVAL_MAP = {
   '1m': '1',
+  '3m': '3',
   '5m': '5',
   '15m': '15',
   '30m': '30',
@@ -74,8 +75,9 @@ function candleCountFor(timeframe, rangeOverride) {
 
 /**
  * @param {string} [rangeOverride]
- * @param {{ timeoutMs?: number }} [opts] — AI chat path uses a shorter timeout so
+ * @param {{ timeoutMs?: number, bars?: number }} [opts] — AI chat path uses a shorter timeout so
  *   sequential tape stages cannot burn the whole browser budget before the LLM runs.
+ *   `bars` overrides the default candle count (Terminal pan-left history).
  * @returns {Promise<{ bars: Array<{time:number,open:number,high:number,low:number,close:number,volume:number}> }>}
  */
 export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride, opts = {}) {
@@ -83,7 +85,11 @@ export function fetchTvOhlcBars(symbol, timeframe = '15m', rangeOverride, opts =
   if (!tvSym) return Promise.reject(new Error(`Unknown symbol ${symbol}`));
 
   const resolution = INTERVAL_MAP[timeframe] || INTERVAL_MAP['15m'];
-  const numbCandles = candleCountFor(timeframe, rangeOverride);
+  const overrideBars = Number(opts?.bars);
+  const numbCandles =
+    Number.isFinite(overrideBars) && overrideBars > 0
+      ? Math.min(8000, Math.floor(overrideBars))
+      : candleCountFor(timeframe, rangeOverride);
   const timeoutMs = Number(opts?.timeoutMs) > 0 ? Number(opts.timeoutMs) : 28_000;
 
   return new Promise((resolve, reject) => {
