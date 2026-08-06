@@ -6,6 +6,12 @@ import { subscribeLiveSymbols } from './marketTickStream';
 import { getMarketConnectionState } from './marketConnection';
 import { serverOfflineMessage } from '../constants/brandLabels';
 import { applyStreamQuotes, getLiveQuote } from './symbolLiveService';
+import {
+  CORE_GLOBAL_LIVE_SYMBOLS,
+  GLOBAL_SYMBOL_ALIASES,
+  toGlobalLiveSymbol,
+} from '../data/coreGlobalLiveSymbols';
+import { ensureSiteWideLiveFeed } from './siteWideLiveFeed';
 
 export type PaperFeedMode = 'live' | 'offline' | 'loading';
 
@@ -21,18 +27,7 @@ const equityQuoteCache = new Map<string, MarketQuoteDto>();
 const registeredSymbols = new Set<string>();
 
 /** Map UI / watchlist symbols → TradingView API tickers. */
-const API_ALIAS: Record<string, string> = {
-  BTC: 'BTC',
-  BITCOIN: 'BTC',
-  BTCUSDT: 'BTC',
-  'BTC/USDT': 'BTC',
-  'BTC/USD': 'BTC',
-  ETH: 'ETH',
-  ETHEREUM: 'ETH',
-  ETHUSDT: 'ETH',
-  'ETH/USDT': 'ETH',
-  'ETH/USD': 'ETH',
-};
+const API_ALIAS: Record<string, string> = { ...GLOBAL_SYMBOL_ALIASES };
 
 export function isPaperTradingLiveMode(): boolean {
   return import.meta.env.VITE_PAPER_TRADING_LIVE !== 'false';
@@ -60,6 +55,10 @@ export function getPaperEquityLiveQuote(symbol: string): MarketQuoteDto | null {
 export function toApiSymbol(symbol: string): string {
   const raw = String(symbol || '').trim().toUpperCase();
   if (!raw) return '';
+  const global = toGlobalLiveSymbol(raw);
+  if (global && (API_ALIAS[raw] || API_ALIAS[global] || CORE_GLOBAL_LIVE_SYMBOLS.includes(global))) {
+    return global;
+  }
   if (API_ALIAS[raw]) return API_ALIAS[raw];
   const noslash = raw.replace(/\s+/g, '');
   if (API_ALIAS[noslash]) return API_ALIAS[noslash];
@@ -127,6 +126,7 @@ function liveRowFor(symbol: string): MarketQuoteDto | null {
   };
 }
 
+/** Prefer TradingView live; only mock if tape cold. */
 export function applyLiveQuoteToMarketItem(item: MarketItem): MarketItem {
   const live = liveRowFor(item.symbol);
   if (live?.price) {
@@ -144,6 +144,9 @@ export function applyLiveQuoteToMarketItem(item: MarketItem): MarketItem {
 
   // Only simulate when no live tape at all (forex pairs without TV map, etc.).
   if (item.assetMarket === 'crypto' || item.assetMarket === 'forex') {
+    // Keep last paper price steady briefly instead of random-walking over TV
+    // until the first websocket/REST quote lands.
+    if (item.price > 0) return item;
     return tickGlobalPaperQuote(item);
   }
 
@@ -182,8 +185,9 @@ export async function refreshPaperTradingLiveQuotes(
     };
   }
 
-  registerPaperTradingSymbols(watchlistSymbols);
-  const originals = [...new Set([...watchlistSymbols, ...registeredSymbols])]
+  ensureSiteWideLiveFeed();
+  registerPaperTradingSymbols([...watchlistSymbols, ...CORE_GLOBAL_LIVE_SYMBOLS]);
+  const originals = [...new Set([...watchlistSymbols, ...registeredSymbols, ...CORE_GLOBAL_LIVE_SYMBOLS])]
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean);
 

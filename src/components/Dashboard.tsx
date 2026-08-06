@@ -16,6 +16,10 @@ import {
 } from 'lucide-react';
 import { getMarketBreadth } from '../data/marketData';
 import { CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
+import {
+  FOREX_WATCH_META,
+  CRYPTO_WATCH_META,
+} from '../data/coreGlobalLiveSymbols';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useFyersWebSocket } from '../hooks/useFyersWebSocket';
 import { BRAND } from '../constants/brandLabels';
@@ -48,29 +52,9 @@ type MarketScope = 'all' | 'india' | 'forex' | 'crypto';
 
 const HIDDEN_INDEX_SYMBOLS = new Set(['NIFTYNXT50']);
 
-const FOREX_WATCH = [
-  { symbol: 'EURUSD', label: 'EUR/USD', name: 'Euro / Dollar' },
-  { symbol: 'GBPUSD', label: 'GBP/USD', name: 'Pound / Dollar' },
-  { symbol: 'USDJPY', label: 'USD/JPY', name: 'Dollar / Yen' },
-  { symbol: 'USDINR', label: 'USD/INR', name: 'Dollar / Rupee' },
-  { symbol: 'AUDUSD', label: 'AUD/USD', name: 'Aussie / Dollar' },
-  { symbol: 'USDCAD', label: 'USD/CAD', name: 'Dollar / Cad' },
-  { symbol: 'USDCHF', label: 'USD/CHF', name: 'Dollar / Franc' },
-  { symbol: 'XAUUSD', label: 'XAU/USD', name: 'Gold' },
-  { symbol: 'XAGUSD', label: 'XAG/USD', name: 'Silver' },
-  { symbol: 'DXY', label: 'DXY', name: 'US Dollar Index' },
-] as const;
+const FOREX_WATCH = FOREX_WATCH_META;
 
-const CRYPTO_WATCH = [
-  { symbol: 'BTC', label: 'BTC/USDT', name: 'Bitcoin' },
-  { symbol: 'ETH', label: 'ETH/USDT', name: 'Ethereum' },
-  { symbol: 'SOL', label: 'SOL/USDT', name: 'Solana' },
-  { symbol: 'BNB', label: 'BNB/USDT', name: 'BNB' },
-  { symbol: 'XRP', label: 'XRP/USDT', name: 'Ripple' },
-  { symbol: 'DOGE', label: 'DOGE/USDT', name: 'Dogecoin' },
-  { symbol: 'ADA', label: 'ADA/USDT', name: 'Cardano' },
-  { symbol: 'AVAX', label: 'AVAX/USDT', name: 'Avalanche' },
-] as const;
+const CRYPTO_WATCH = CRYPTO_WATCH_META;
 
 const GLOBAL_QUOTE_SYMBOLS = [
   ...FOREX_WATCH.map((x) => x.symbol),

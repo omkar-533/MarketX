@@ -1,6 +1,7 @@
 /** NSE F&O universe — indices + stock FNO (base refs for live simulation) */
 
 import { buildExtendedFnoStocks } from './fnoStocksExtended';
+import { CORE_GLOBAL_LIVE_SYMBOLS } from './coreGlobalLiveSymbols';
 
 export type FnoInstrumentType = 'index' | 'stock';
 
@@ -121,6 +122,18 @@ export const CORE_LIVE_SYMBOLS: string[] = [
     ...FNO_STOCKS.slice(0, 32).map((i) => i.symbol),
     'VIX',
   ]),
+];
+
+/** Re-export global TV forex/crypto — single source of truth for site-wide live tape */
+export {
+  CORE_GLOBAL_LIVE_SYMBOLS,
+  CORE_FOREX_LIVE_SYMBOLS,
+  CORE_CRYPTO_LIVE_SYMBOLS,
+} from './coreGlobalLiveSymbols';
+
+/** India F&O + TradingView forex/crypto — subscribed on app boot */
+export const ALL_CORE_LIVE_SYMBOLS: string[] = [
+  ...new Set([...CORE_LIVE_SYMBOLS, ...CORE_GLOBAL_LIVE_SYMBOLS]),
 ];
 
 const bySymbol = new Map(FNO_UNIVERSE.map((i) => [i.symbol, i]));

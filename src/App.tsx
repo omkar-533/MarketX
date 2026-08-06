@@ -5,6 +5,7 @@ import AppErrorBoundary from './components/AppErrorBoundary';
 import WolfLoader from './components/WolfLoader';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
 import { SHOW_INDICATORS, SHOW_OI_INTELLIGENCE, SHOW_OPTION_CHAIN, SHOW_TERMINAL } from './constants/featureFlags';
+import { ensureSiteWideLiveFeed } from './services/siteWideLiveFeed';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -208,6 +209,11 @@ function AppWorkspace() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [auth.isLoggedIn, activeTab]);
+
+  useEffect(() => {
+    if (!auth.isLoggedIn) return;
+    ensureSiteWideLiveFeed();
+  }, [auth.isLoggedIn]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;

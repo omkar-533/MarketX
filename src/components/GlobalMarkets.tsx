@@ -1,11 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Clock, Sunrise, Sunset, Crown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Sunrise, Sunset, Crown, Bitcoin, Globe2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getIndices } from '../data/marketData';
 import { fetchGlobalQuotes } from '../services/marketApiService';
 import { getLiveIntradayData, isLiveSectionsActive } from '../services/liveMarketSections';
+import {
+  FOREX_WATCH_META,
+  CRYPTO_WATCH_META,
+} from '../data/coreGlobalLiveSymbols';
+import { getLiveQuote } from '../services/symbolLiveService';
+import { ensureSiteWideLiveFeed } from '../services/siteWideLiveFeed';
+import { subscribeMarketLive } from '../services/marketLiveStore';
 
 interface GlobalIndex {
   name: string;
@@ -80,6 +87,7 @@ export default function GlobalMarkets() {
   const [selected, setSelected] = useState('NIFTY 50');
   const [chartData, setChartData] = useState<{ time: string; price: number }[]>([]);
   const [time, setTime] = useState(new Date());
+  const [liveTick, setLiveTick] = useState(0);
 
   const refresh = () => {
     void mergeIndices().then(setIndices);
@@ -91,10 +99,40 @@ export default function GlobalMarkets() {
   };
 
   useEffect(() => {
+    ensureSiteWideLiveFeed();
     refresh();
+    const unsub = subscribeMarketLive(() => {
+      setLiveTick((n) => n + 1);
+      setTime(new Date());
+    });
+    return unsub;
   }, []);
 
   useAutoRefresh(refresh);
+
+  const forexRows = useMemo(() => {
+    void liveTick;
+    return FOREX_WATCH_META.map((w) => {
+      const q = getLiveQuote(w.symbol);
+      return {
+        ...w,
+        price: q?.price ?? 0,
+        changePercent: q?.changePercent ?? 0,
+      };
+    });
+  }, [liveTick, time]);
+
+  const cryptoRows = useMemo(() => {
+    void liveTick;
+    return CRYPTO_WATCH_META.map((w) => {
+      const q = getLiveQuote(w.symbol);
+      return {
+        ...w,
+        price: q?.price ?? 0,
+        changePercent: q?.changePercent ?? 0,
+      };
+    });
+  }, [liveTick, time]);
 
   const sel = indices.find((i) => i.name === selected) ?? indices[0];
   const pos = sel ? sel.change >= 0 : true;
@@ -108,8 +146,50 @@ export default function GlobalMarkets() {
             Global Markets
           </h2>
           <p className="text-sm text-slate-500">
-            TradeX Live — India indices · {time.toLocaleTimeString('en-IN')}
+            TradingView live — India · Forex · Crypto · {time.toLocaleTimeString('en-IN')}
           </p>
+        </div>
+      </div>
+
+      <div className="app-card p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Globe2 className="w-3.5 h-3.5 text-sky-400" />
+          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Forex & Metals</h3>
+          <span className="text-[9px] text-emerald-400 font-bold">TV LIVE</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {forexRows.map((r) => (
+            <div key={r.symbol} className="rounded-lg border border-dark-border bg-dark-elevated/50 px-2.5 py-2">
+              <div className="text-[10px] text-slate-500 font-bold">{r.label}</div>
+              <div className="text-sm font-bold text-slate-100 tabular-nums">
+                {r.price > 0 ? r.price.toLocaleString('en-US', { maximumFractionDigits: 5 }) : '—'}
+              </div>
+              <div className={`text-[10px] font-bold ${r.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {r.price > 0 ? `${r.changePercent >= 0 ? '+' : ''}${r.changePercent.toFixed(2)}%` : '—'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="app-card p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Bitcoin className="w-3.5 h-3.5 text-orange-400" />
+          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Crypto</h3>
+          <span className="text-[9px] text-emerald-400 font-bold">TV LIVE</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {cryptoRows.map((r) => (
+            <div key={r.symbol} className="rounded-lg border border-dark-border bg-dark-elevated/50 px-2.5 py-2">
+              <div className="text-[10px] text-slate-500 font-bold">{r.label}</div>
+              <div className="text-sm font-bold text-slate-100 tabular-nums">
+                {r.price > 0 ? r.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}
+              </div>
+              <div className={`text-[10px] font-bold ${r.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {r.price > 0 ? `${r.changePercent >= 0 ? '+' : ''}${r.changePercent.toFixed(2)}%` : '—'}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import {
   FNO_INDICES,
   FNO_STOCKS,
   FNO_UNIVERSE,
-  CORE_LIVE_SYMBOLS,
+  ALL_CORE_LIVE_SYMBOLS,
   getDefaultIv,
   getFnoInstrument,
   getStrikeIntervalForSpot,
@@ -65,7 +65,7 @@ let liveCache: LiveSymbolQuote[] = [];
 const extraLiveCache = new Map<string, LiveSymbolQuote>();
 let refreshInFlight: Promise<LiveSymbolQuote[]> | null = null;
 
-const PRIORITY_SYMBOLS = CORE_LIVE_SYMBOLS;
+const PRIORITY_SYMBOLS = ALL_CORE_LIVE_SYMBOLS;
 
 function changeEpsilon(price: number): number {
   const p = Math.abs(Number(price) || 0);
@@ -307,6 +307,14 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   const unique = [...new Set(PRIORITY_SYMBOLS)];
   const conn = getMarketConnectionState();
 
+  const hydrateExtras = (quoteMap: Map<string, MarketTickDto>) => {
+    const extras: MarketTickDto[] = [];
+    for (const [sym, q] of quoteMap) {
+      if (!FNO_BY_SYMBOL.has(sym) && q?.price) extras.push(q);
+    }
+    if (extras.length) applyStreamQuotes(extras);
+  };
+
   if (conn.streamActive) {
     const hasLive = liveCache.length > 0 || extraLiveCache.size > 0;
     if (hasLive) {
@@ -316,7 +324,8 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
     const ticks = await fetchMarketTicks(unique);
     const quoteMap = mergeQuoteMap(ticks, undefined);
     liveCache = buildCacheFromQuoteMap(quoteMap);
-    publishLiveSnapshot(liveCache);
+    hydrateExtras(quoteMap);
+    publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
     return liveCache;
   }
 
@@ -324,15 +333,17 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   const quoteMap = mergeQuoteMap(ticks, undefined);
   if (quoteMap.size >= unique.length * 0.5) {
     liveCache = buildCacheFromQuoteMap(quoteMap);
-    publishLiveSnapshot(liveCache);
+    hydrateExtras(quoteMap);
+    publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
     return liveCache;
   }
 
   const res = await fetchMarketQuotes(unique);
   const merged = mergeQuoteMap(ticks, res?.quotes);
   liveCache = buildCacheFromQuoteMap(merged);
+  hydrateExtras(merged);
   publishLiveSnapshot(
-    liveCache,
+    [...liveCache, ...extraLiveCache.values()],
     res?.errors?.length ? `${res.errors.length} symbols delayed` : '',
   );
   return liveCache;
