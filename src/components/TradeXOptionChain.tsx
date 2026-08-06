@@ -727,13 +727,13 @@ export default function TradeXOptionChain() {
                   </tbody>
                   <tfoot className="sticky bottom-0 z-10 bg-dark-elevated border-t-2 border-gold/40 text-[10px] font-bold">
                     <tr>
-                      <td colSpan={ceCols} className="px-2 py-1.5 text-right text-red-300">
+                      <td colSpan={ceCols} className="px-2 py-1.5 text-right text-red-400">
                         CE {fmtK(totals.ceOi)} · Δ {fmtK(totals.ceOiChg)} · Vol {fmtK(totals.ceVol)}
                       </td>
                       <td colSpan={strikeCols} className="px-2 py-1.5 text-center text-gold border-x-2 border-gold/30">
                         PCR {pcr.toFixed(2)} · ATM {atmStrike}
                       </td>
-                      <td colSpan={peCols} className="px-2 py-1.5 text-left text-emerald-300">
+                      <td colSpan={peCols} className="px-2 py-1.5 text-left text-emerald-400">
                         PE {fmtK(totals.peOi)} · Δ {fmtK(totals.peOiChg)} · Vol {fmtK(totals.peVol)}
                       </td>
                     </tr>
