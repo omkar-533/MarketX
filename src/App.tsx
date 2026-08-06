@@ -403,7 +403,9 @@ function AppWorkspace() {
                         ? 'page-content page-content--full page-content--arena'
                         : activeTab === 'terminal'
                           ? 'page-content page-content--terminal'
-                          : 'page-content page-content--full'
+                          : activeTab === 'optionchain'
+                            ? 'page-content page-content--optionchain'
+                            : 'page-content page-content--full'
                 : ''
             }
           >

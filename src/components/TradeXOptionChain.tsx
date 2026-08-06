@@ -263,7 +263,7 @@ export default function TradeXOptionChain() {
   const tableMinW = showGreeks ? 2280 : 1520;
 
   return (
-    <div className="option-chain-page flex flex-col gap-2 h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden -m-1 sm:m-0">
+    <div className="option-chain-page mx-auto w-full max-w-[1440px] flex flex-col gap-2 h-[calc(100dvh-4.25rem)] min-h-0 overflow-hidden">
       {/* Toolbar */}
       <div className="shrink-0 app-card px-3 py-2.5 border-gold/20">
         <div className="flex flex-wrap items-center gap-2">
