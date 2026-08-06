@@ -1,4 +1,5 @@
 import {
+  calculateMaxPain,
   getOIIntelligence as getStaticOIIntelligence,
   getOIIntradayScanner as getStaticOIIntradayScanner,
   type BuildupSignal,
@@ -7,8 +8,12 @@ import {
   type OIIntelligenceData,
   type OIScannerRow,
 } from '../data/marketData';
-import { FNO_INDICES, FNO_STOCKS_ALL } from '../data/fnoUniverse';
+import { FNO_INDICES, FNO_STOCKS_ALL, getFnoInstrument, getStrikeIntervalForSpot } from '../data/fnoUniverse';
 import { buildOptionChain } from './optionChainEngine';
+import {
+  fetchOptionChainLive,
+  getCachedOptionChain,
+} from './optionChainLiveService';
 import { fetchFnoHistory, fetchFnoOiBatch } from './marketApiService';
 import { getMarketConnectionState } from './marketConnection';
 import { isNseFnoMarketOpen, marketSessionLabel } from '../utils/marketHours';
@@ -199,8 +204,115 @@ export function getLiveFuturesOIForSymbol(symbol: string): FuturesOIData {
 export function getLiveOIIntelligence(symbol: string): OIIntelligenceData {
   const sym = symbol.trim().toUpperCase();
   const q = quoteFor(sym);
-  if (!q?.price) return getStaticOIIntelligence(sym);
-  return getStaticOIIntelligence(sym);
+  const spotPrice = q?.price ?? 0;
+  const changePercent = q?.changePercent ?? 0;
+  const inst = getFnoInstrument(sym);
+  const chain = getCachedOptionChain(sym, undefined, 0);
+
+  if (!chain.length) {
+    // Cache empty — kick async fetch; show static structure only as last resort
+    void fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 0 });
+    return getStaticOIIntelligence(sym);
+  }
+
+  const interval = getStrikeIntervalForSpot(spotPrice || (inst?.basePrice ?? 24580), inst);
+  const atmStrike = Math.round((spotPrice || chain[Math.floor(chain.length / 2)]?.strike || 0) / interval) * interval;
+  const totalCeOi = chain.reduce((sum, s) => sum + s.ceOi, 0);
+  const totalPeOi = chain.reduce((sum, s) => sum + s.peOi, 0);
+  const totalCeOiChange = chain.reduce((sum, s) => sum + s.ceOiChg, 0);
+  const totalPeOiChange = chain.reduce((sum, s) => sum + s.peOiChg, 0);
+  const atm =
+    chain.find((s) => s.strike === atmStrike) ??
+    chain.reduce((best, r) =>
+      Math.abs(r.strike - atmStrike) < Math.abs(best.strike - atmStrike) ? r : best,
+    chain[Math.floor(chain.length / 2)]);
+  const maxPain = calculateMaxPain(chain).maxPainStrike;
+  const topCe = [...chain].sort((a, b) => b.ceOi - a.ceOi).slice(0, 5);
+  const topPe = [...chain].sort((a, b) => b.peOi - a.peOi).slice(0, 5);
+  const callWriting = chain
+    .filter((s) => s.ceOiChg > 0)
+    .sort((a, b) => b.ceOiChg - a.ceOiChg)
+    .slice(0, 4)
+    .map((s) => ({ strike: s.strike, oi: s.ceOi, change: s.ceOiChg }));
+  const putWriting = chain
+    .filter((s) => s.peOiChg > 0)
+    .sort((a, b) => b.peOiChg - a.peOiChg)
+    .slice(0, 4)
+    .map((s) => ({ strike: s.strike, oi: s.peOi, change: s.peOiChg }));
+  const callUnwinding = chain
+    .filter((s) => s.ceOiChg < 0)
+    .sort((a, b) => a.ceOiChg - b.ceOiChg)
+    .slice(0, 4)
+    .map((s) => ({ strike: s.strike, oi: s.ceOi, change: s.ceOiChg }));
+  const putUnwinding = chain
+    .filter((s) => s.peOiChg < 0)
+    .sort((a, b) => a.peOiChg - b.peOiChg)
+    .slice(0, 4)
+    .map((s) => ({ strike: s.strike, oi: s.peOi, change: s.peOiChg }));
+  const overallPcr = totalPeOi / Math.max(totalCeOi, 1);
+  const atmPcr = (atm?.peOi ?? 0) / Math.max(atm?.ceOi ?? 1, 1);
+  const callPressure = totalCeOiChange - totalPeOiChange;
+  const marketBias: OIIntelligenceData['marketBias'] =
+    overallPcr > 1.35 && totalPeOiChange > totalCeOiChange
+      ? 'Highly Bullish'
+      : overallPcr > 1.05
+        ? 'Bullish'
+        : overallPcr < 0.75 && callPressure > 0
+          ? 'Highly Bearish'
+          : overallPcr < 0.95
+            ? 'Bearish'
+            : 'Neutral';
+  const oiSpike = Math.abs(totalCeOiChange + totalPeOiChange) / Math.max(totalCeOi + totalPeOi, 1) > 0.025;
+  const sidewaysWithRisingOi = Math.abs(changePercent) < 0.25 && totalCeOiChange + totalPeOiChange > 250000;
+  const marketOpen = isNseFnoMarketOpen();
+  const smartMoneySignal = !marketOpen
+    ? 'Market closed — OI from NSE last session'
+    : oiSpike
+      ? 'Institutional buildup detected (NSE OI)'
+      : sidewaysWithRisingOi
+        ? 'Hidden accumulation, possible directional expansion'
+        : callPressure > 0
+          ? 'Aggressive call writing pressure'
+          : 'Balanced positioning (NSE live chain)';
+
+  return {
+    symbol: sym,
+    spotPrice: spotPrice || atmStrike,
+    atmStrike,
+    totalCeOi,
+    totalPeOi,
+    totalCeOiChange,
+    totalPeOiChange,
+    overallPcr: Math.round(overallPcr * 100) / 100,
+    atmPcr: Math.round(atmPcr * 100) / 100,
+    maxPain,
+    strongestSupport: topPe[0]?.strike || atmStrike,
+    strongestResistance: topCe[0]?.strike || atmStrike,
+    marketBias,
+    smartMoneySignal,
+    institutionalPositioning: oiSpike ? 'Active' : 'Passive',
+    reversalProbability:
+      Math.round(Math.min(90, Math.abs(overallPcr - 1) * 85 + (sidewaysWithRisingOi ? 25 : 10)) * 10) / 10,
+    fakeBreakoutRisk: Math.round((sidewaysWithRisingOi ? 72 : 25) * 10) / 10,
+    oiTrapRisk: Math.round((callPressure > 250000 && changePercent > 0 ? 70 : 20) * 10) / 10,
+    callWriting,
+    putWriting,
+    callUnwinding,
+    putUnwinding,
+    expiryZones: [
+      {
+        label: 'Support',
+        strike: topPe[0]?.strike || atmStrike,
+        strength: Math.round(((topPe[0]?.peOi || 1) / Math.max(totalPeOi, 1)) * 1000) / 10,
+      },
+      {
+        label: 'Resistance',
+        strike: topCe[0]?.strike || atmStrike,
+        strength: Math.round(((topCe[0]?.ceOi || 1) / Math.max(totalCeOi, 1)) * 1000) / 10,
+      },
+      { label: 'Max Pain', strike: maxPain, strength: 78 },
+    ],
+  };
 }
 
 export function getLiveOIIntradayScanner(): OIScannerRow[] {
@@ -253,14 +365,23 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
     const symbols = [...FNO_INDICES.map((i) => i.symbol)];
     subscribeLiveSymbols(symbols);
 
+    // Warm NSE option chains (broker-free) — feeds PCR / writing / scanner
+    await Promise.all(
+      symbols.map((sym) =>
+        fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 0 }).catch(() => null),
+      ),
+    );
+
     const to = new Date().toISOString().split('T')[0];
     const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
     let histCount = 0;
+    let chainCount = 0;
     const rows: FuturesOIData[] = [];
 
     await Promise.all(
       symbols.map(async (sym) => {
+        if (getCachedOptionChain(sym, undefined, 0).length) chainCount += 1;
         try {
           const hist = await fetchFnoHistory(sym, from, to);
           if (hist?.rows?.length) {
@@ -293,20 +414,30 @@ export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
     futuresCache = rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
     const liveQuotes = symbols.filter((s) => quoteFor(s)?.price).length;
     const histSource = histCount > 0;
+    const chainSource = chainCount > 0;
 
     const session = marketSessionLabel();
     const closedNote = isNseFnoMarketOpen() ? '' : ' · OI frozen (EOD)';
 
     feedStatus = {
-      mode: liveQuotes > 0 && histSource ? 'live' : liveQuotes > 0 ? 'mixed' : 'offline',
-      message:
-        liveQuotes > 0 && histSource
-          ? `${session} · TradeX LTP + history (${histCount})${closedNote}`
+      mode:
+        (liveQuotes > 0 || chainSource) && (histSource || chainSource)
+          ? liveQuotes > 0 && (histSource || chainSource)
+            ? 'live'
+            : 'mixed'
           : liveQuotes > 0
-            ? `${session} · TradeX Live (LTP + option chain OI)${closedNote}`
-            : conn.serverOk
-              ? `${session} — connect TradeX Live for LTP`
-              : serverOfflineMessage(),
+            ? 'mixed'
+            : 'offline',
+      message:
+        chainSource && liveQuotes > 0
+          ? `${session} · NSE option chain + LTP${histSource ? ` + history (${histCount})` : ''}${closedNote}`
+          : chainSource
+            ? `${session} · NSE option chain OI (no LTP yet)${closedNote}`
+            : liveQuotes > 0
+              ? `${session} · Live LTP (option chain warming…)${closedNote}`
+              : conn.serverOk
+                ? `${session} — waiting for NSE / live quotes`
+                : serverOfflineMessage(),
       fyersHistorySymbols: histCount,
     };
   })().finally(() => {

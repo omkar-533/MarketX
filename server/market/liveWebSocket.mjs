@@ -1,11 +1,11 @@
 import { WebSocketServer } from 'ws';
 import { getActiveMarketProvider } from './provider.mjs';
 import {
-  getTickSnapshot,
-  subscribeTickBroadcast,
-  subscribeWsStatus,
-  subscribeTvSymbols,
-} from './tradingview/tvWsManager.mjs';
+  getLiveTickSnapshot as getTickSnapshot,
+  subscribeLiveTickBroadcast as subscribeTickBroadcast,
+  subscribeLiveWsStatus as subscribeWsStatus,
+  subscribeLiveSymbols,
+} from './liveFeed.mjs';
 
 function buildPayload() {
   return {
@@ -16,7 +16,7 @@ function buildPayload() {
   };
 }
 
-/** Legacy raw WS — relays TradingView ticks (Socket.IO is primary) */
+/** Legacy raw WS — relays live ticks (Socket.IO is primary) */
 export function attachMarketWebSocket(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/api/market/ws' });
 
@@ -54,7 +54,7 @@ export function attachMarketWebSocket(httpServer) {
       try {
         const msg = JSON.parse(String(raw));
         if (msg?.type === 'subscribe' && Array.isArray(msg.symbols)) {
-          subscribeTvSymbols(msg.symbols);
+          void subscribeLiveSymbols(msg.symbols);
           send();
         }
       } catch {

@@ -3,10 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
   GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart, Swords,
+  Layers, Brain,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
-import { SHOW_INDICATORS, SHOW_TERMINAL } from '../constants/featureFlags';
+import {
+  SHOW_INDICATORS,
+  SHOW_OI_INTELLIGENCE,
+  SHOW_OPTION_CHAIN,
+  SHOW_TERMINAL,
+} from '../constants/featureFlags';
 import BrandMark from './BrandMark';
 
 interface SidebarProps {
@@ -26,6 +32,12 @@ const navItems = [
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   { id: 'arena', label: PAGE_NAMES.arena, icon: Swords },
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart }] : []),
+  ...(SHOW_OPTION_CHAIN
+    ? [{ id: 'optionchain', label: PAGE_NAMES.optionchain, icon: Layers }]
+    : []),
+  ...(SHOW_OI_INTELLIGENCE
+    ? [{ id: 'oiintelligence', label: PAGE_NAMES.oiintelligence, icon: Brain }]
+    : []),
   ...(SHOW_INDICATORS
     ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
     : []),

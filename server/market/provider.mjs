@@ -1,10 +1,13 @@
 import * as tvProvider from './tradingview/tvProvider.mjs';
-import {
-  ensureTvSocket,
-  resetTvSocket,
-  subscribeTvSymbols,
-} from './tradingview/tvWsManager.mjs';
 import { getFnoSymbolList } from './universe.mjs';
+import { isKiteConfigured } from './kite/kiteConfig.mjs';
+import {
+  activeUpstream,
+  ensureLiveSocket,
+  resetLiveSocket,
+  subscribeLiveSymbols,
+  getLiveWsStatus,
+} from './liveFeed.mjs';
 
 const BOOT_SYMBOLS_MAX = Math.max(8, Number(process.env.TV_BOOT_SYMBOLS_MAX || 24));
 
@@ -12,24 +15,24 @@ function getBootSymbols() {
   return getFnoSymbolList().slice(0, BOOT_SYMBOLS_MAX);
 }
 
-/** Platform market data — TradingView quote stream only */
+/** Active primary tick feed: kite (true WS) or tradingview (fallback) + NSE for OC */
 export function getActiveMarketProvider() {
-  return 'tradingview';
+  return isKiteConfigured() ? 'kite+nse' : 'tradingview+nse';
 }
 
 export function initMarketProvider() {
   const symbols = getFnoSymbolList();
   const bootSymbols = getBootSymbols();
-  ensureTvSocket(bootSymbols);
+  const upstream = ensureLiveSocket(bootSymbols);
   console.log(
-    `[Market] Provider: TradingView (${bootSymbols.length} boot symbols, ${symbols.length} total)`,
+    `[Market] Feed: ${upstream} ticks + NSE option-chain (${bootSymbols.length} boot, ${symbols.length} universe)${isKiteConfigured() ? '' : ' — set KITE_API_KEY + KITE_ACCESS_TOKEN for Zerodha WebSocket'}`,
   );
-  return 'tradingview';
+  return getActiveMarketProvider();
 }
 
 export function restartMarketStream() {
-  resetTvSocket();
-  ensureTvSocket(getBootSymbols());
+  resetLiveSocket();
+  ensureLiveSocket(getBootSymbols());
 }
 
 /** @deprecated */
@@ -38,15 +41,24 @@ export function restartFyersMarketStream() {
 }
 
 export async function fetchQuotes(symbols, opts) {
-  subscribeTvSymbols(symbols);
+  void subscribeLiveSymbols(symbols);
   return tvProvider.fetchQuotes(symbols, opts);
 }
 
 export async function fetchOhlc(symbol, timeframe, range, opts) {
-  subscribeTvSymbols([symbol]);
+  void subscribeLiveSymbols([symbol]);
   return tvProvider.fetchOhlc(symbol, timeframe, range, opts);
 }
 
 export function getMarketHealth() {
-  return { status: 'ok', ...tvProvider.getMarketHealth() };
+  const ws = getLiveWsStatus();
+  return {
+    status: 'ok',
+    ...tvProvider.getMarketHealth(),
+    provider: getActiveMarketProvider(),
+    upstream: activeUpstream(),
+    websocket: ws.connected,
+    kiteConfigured: isKiteConfigured(),
+    optionChain: 'nse',
+  };
 }

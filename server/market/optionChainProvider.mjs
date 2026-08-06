@@ -1,13 +1,10 @@
-/** Option chain is not available on the TradingView feed. */
-export async function fetchOptionChain(symbol) {
-  const err = new Error(
-    'TradingView feed does not provide option chain — this endpoint is unavailable',
-  );
-  err.status = 503;
-  err.symbol = symbol;
-  throw err;
+import { fetchNseOptionChain } from './nseOptionChain.mjs';
+
+/** Option chain via NSE India unofficial endpoints (near-live poll). */
+export async function fetchOptionChain(symbol, expiry) {
+  return fetchNseOptionChain(symbol, expiry);
 }
 
 export function isOptionChainAvailable() {
-  return false;
+  return true;
 }

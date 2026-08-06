@@ -163,9 +163,13 @@ export default function TradeXOptionChain() {
             return;
           }
           setChainSource(
-            snap.source?.startsWith('fyers')
-              ? `TradeX${snap.error || snap.source.includes('cached') ? ' (cache)' : ''}`
-              : snap.source,
+            snap.source === 'nse' || String(snap.source || '').includes('nse')
+              ? 'NSE Live'
+              : snap.source?.startsWith('fyers')
+                ? `TradeX${snap.error || snap.source.includes('cached') ? ' (cache)' : ''}`
+                : snap.source === 'kite' || String(snap.source || '').startsWith('kite')
+                  ? 'Live ticks'
+                  : snap.source || 'Live',
           );
           setStrikes(snap.rows);
           if (!snap.rows.length) {
@@ -265,7 +269,12 @@ export default function TradeXOptionChain() {
           <div className="flex items-center gap-2 min-w-0 mr-1">
             <Layers className="w-4 h-4 text-gold shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-gold leading-tight">Option Chain</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-gold leading-tight">Option Chain</h2>
+                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border border-emerald-500/35 bg-emerald-500/10 text-emerald-400">
+                  NSE Live
+                </span>
+              </div>
               <p className="text-[10px] text-dark-muted truncate">{inst?.name ?? symbol}</p>
             </div>
           </div>

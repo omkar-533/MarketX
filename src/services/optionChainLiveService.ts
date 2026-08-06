@@ -3,14 +3,59 @@ import type { OptionData } from '../data/marketData';
 import { sanitizeDisplayMessage } from '../constants/brandLabels';
 import { calculateGreeks } from './optionPricing';
 import type { EnhancedOptionRow } from './optionChainEngine';
+import { getLiveQuote } from './symbolLiveService';
+import {
+  onOptionChainUpdate,
+  startFyersSocketClient,
+  subscribeOptionChainLive,
+  subscribeFyersMarketSymbols,
+} from './fyersSocketClient';
 
 function daysToExpiry(expiryLabel: string): number {
   const parsed = new Date(expiryLabel).getTime();
   if (Number.isNaN(parsed)) return 7;
   return Math.max(1, Math.ceil((parsed - Date.now()) / 86400000));
 }
+function ingestSocketOptionChain(payload: Record<string, unknown>) {
+  const sym = String(payload.symbol || '').trim().toUpperCase();
+  if (!sym || !Array.isArray(payload.rows) || !payload.rows.length) return;
+  const exp = String(payload.expiry || '');
+  const spot =
+    Number(payload.spot) ||
+    getLiveQuote(sym)?.price ||
+    0;
+  const dte = daysToExpiry(exp);
+  const sourceRows = payload.rows.filter((row): row is OptionData => row != null);
+  const allRows = sourceRows.map((r) =>
+    enrichRow(
+      {
+        ...r,
+        pcr: r.pcr ?? r.peOi / Math.max(r.ceOi, 1),
+      },
+      spot,
+      dte,
+    ),
+  );
+  const snap: OptionChainSnapshot = {
+    symbol: sym,
+    spot,
+    expiry: exp,
+    expiries: Array.isArray(payload.expiries) ? (payload.expiries as string[]) : [],
+    rows: allRows,
+    source: String(payload.source || 'nse'),
+    fetchedAt: String(payload.fetchedAt || new Date().toISOString()),
+  };
+  cache.set(cacheKey(sym, exp), snap);
+  cache.set(cacheKey(sym, ''), snap);
+}
 
-import { getLiveQuote } from './symbolLiveService';
+let socketOcWired = false;
+function ensureOptionChainSocket() {
+  if (socketOcWired) return;
+  socketOcWired = true;
+  startFyersSocketClient();
+  onOptionChainUpdate(ingestSocketOptionChain);
+}
 
 function buildOptionExpiries(count = 8): string[] {
   const out: string[] = [];
@@ -146,6 +191,9 @@ export async function fetchOptionChainLive(
     }
 
     try {
+    ensureOptionChainSocket();
+    subscribeOptionChainLive(sym, expiry);
+    subscribeFyersMarketSymbols([sym]);
     const q = new URLSearchParams({ symbol: sym });
     if (expiry) q.set('expiry', expiry);
     const res = await apiFetch(`/api/market/option-chain?${q}`);
@@ -166,12 +214,16 @@ export async function fetchOptionChainLive(
         error: sanitizeDisplayMessage(data?.error ?? `HTTP ${res.status}`),
       };
     }
-    if (
-      data.source &&
-      data.source !== 'fyers' &&
-      data.source !== 'fyers-cached' &&
-      data.source !== 'tradingview'
-    ) {
+    const allowedSources = new Set([
+      'fyers',
+      'fyers-cached',
+      'tradingview',
+      'nse',
+      'kite',
+      'kite+nse',
+      'tradingview+nse',
+    ]);
+    if (data.source && !allowedSources.has(String(data.source))) {
       return {
         symbol: sym,
         spot: 0,
@@ -180,7 +232,7 @@ export async function fetchOptionChainLive(
         rows: [],
         source: data.source,
         fetchedAt: new Date().toISOString(),
-        error: 'Option chain sirf TradeX Live se available hai.',
+        error: 'Option chain source supported nahi hai.',
       };
     }
     const spot =

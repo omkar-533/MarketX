@@ -21,7 +21,9 @@ import {
 import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
 import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
 import { buildDetectiveOnly } from './server/masterAi/intelPack.mjs';
-import { getTvWsStatus } from './server/market/tradingview/tvWsManager.mjs';
+import { getLiveWsStatus } from './server/market/liveFeed.mjs';
+import { getActiveMarketProvider } from './server/market/provider.mjs';
+import { isKiteConfigured } from './server/market/kite/kiteConfig.mjs';
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)));
 
@@ -49,16 +51,19 @@ if (!envOpenRouterKey) {
 }
 
 app.get('/api/health', (_req, res) => {
-  const ws = getTvWsStatus();
+  const ws = getLiveWsStatus();
   res.json({
     status: 'ok',
     env: config.nodeEnv,
     live: {
-      provider: 'tradingview',
+      provider: getActiveMarketProvider(),
       configured: true,
+      kiteConfigured: isKiteConfigured(),
+      optionChain: 'nse',
       wsStatus: ws.status,
       wsConnected: ws.connected,
       hasTicks: ws.hasTicks,
+      upstream: ws.upstream,
     },
   });
 });

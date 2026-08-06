@@ -111,6 +111,9 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
               <Brain className="w-6 h-6 text-[#d4af37]" />
             </div>
             AI Intelligence
+            <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-emerald-500/35 bg-emerald-500/10 text-emerald-400">
+              NSE Live
+            </span>
           </h2>
           <p className="text-sm text-slate-500 mt-1">Smart money tracking, buildup analysis, and institutional positioning</p>
           <p className="text-[10px] mt-1">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Command, ArrowRight } from 'lucide-react';
-import { SHOW_INDICATORS, SHOW_TERMINAL } from '../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_OI_INTELLIGENCE, SHOW_OPTION_CHAIN, SHOW_TERMINAL } from '../constants/featureFlags';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -17,7 +17,10 @@ const commands = [
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
   { id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' },
-  { id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' },
+  ...(SHOW_OPTION_CHAIN ? [{ id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' }] : []),
+  ...(SHOW_OI_INTELLIGENCE
+    ? [{ id: 'oiintelligence', label: 'Open AI Intelligence', shortcut: 'Q' }]
+    : []),
   { id: 'optionsimulator', label: 'Open Option Simulator', shortcut: 'V' },
   { id: 'strategy', label: 'Strategy Builder', shortcut: 'S' },
   { id: 'futures', label: 'Futures Analytics', shortcut: 'F' },

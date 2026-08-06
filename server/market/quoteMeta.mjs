@@ -92,6 +92,7 @@ export function mergeTickIntoMeta(symbol, tick) {
     changePercent = round(changePercent, 4);
   }
 
+  const src = String(tick?.source || prev?.source || 'tradingview').trim() || 'tradingview';
   const merged = {
     symbol: sym,
     price: round(ltp, digits),
@@ -108,7 +109,7 @@ export function mergeTickIntoMeta(symbol, tick) {
     askQty: askQty || prev?.askQty || 0,
     oi: oi || prev?.oi || 0,
     oiChange: oiChange || prev?.oiChange || 0,
-    source: 'tradingview',
+    source: src,
     lastUpdated: new Date().toISOString(),
     at: Date.now(),
   };

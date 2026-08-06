@@ -19,6 +19,7 @@ const TICK_BATCH_MS = 0;
 type StatusHandler = (s: FyersConnectionPayload) => void;
 type TickHandler = (payload: FyersTickPayload) => void;
 type TokenInvalidHandler = () => void;
+type OptionChainHandler = (payload: Record<string, unknown>) => void;
 
 let socket: Socket | null = null;
 let started = false;
@@ -27,10 +28,12 @@ let reconnectAttempt = 0;
 
 const subscribedSymbols = new Set<string>();
 const symbolRefCount = new Map<string, number>();
+const optionChainSubs = new Set<string>();
 
 const statusHandlers = new Set<StatusHandler>();
 const tickHandlers = new Set<TickHandler>();
 const tokenInvalidHandlers = new Set<TokenInvalidHandler>();
+const optionChainHandlers = new Set<OptionChainHandler>();
 
 let connectionStatus: FyersWsConnectionStatus = 'disconnected';
 let lastError = '';
@@ -132,8 +135,39 @@ function removeRefs(symbols: string[]) {
 }
 
 function flushSubscribe() {
-  if (!socket?.connected || !subscribedSymbols.size) return;
-  socket.emit('market:subscribe', { symbols: [...subscribedSymbols] });
+  if (!socket?.connected) return;
+  if (subscribedSymbols.size) {
+    socket.emit('market:subscribe', { symbols: [...subscribedSymbols] });
+  }
+  for (const key of optionChainSubs) {
+    const [symbol, expiry] = key.split(':');
+    socket.emit('optionchain:subscribe', { symbol, expiry: expiry || undefined });
+  }
+}
+
+export function subscribeOptionChainLive(symbol: string, expiry?: string): void {
+  const sym = symbol.trim().toUpperCase();
+  if (!sym) return;
+  const key = `${sym}:${expiry || ''}`;
+  optionChainSubs.add(key);
+  startFyersSocketClient();
+  if (socket?.connected) {
+    socket.emit('optionchain:subscribe', { symbol: sym, expiry: expiry || undefined });
+  }
+}
+
+export function unsubscribeOptionChainLive(symbol: string, expiry?: string): void {
+  const sym = symbol.trim().toUpperCase();
+  const key = `${sym}:${expiry || ''}`;
+  optionChainSubs.delete(key);
+  if (socket?.connected) {
+    socket.emit('optionchain:unsubscribe', { symbol: sym, expiry: expiry || undefined });
+  }
+}
+
+export function onOptionChainUpdate(fn: OptionChainHandler): () => void {
+  optionChainHandlers.add(fn);
+  return () => optionChainHandlers.delete(fn);
 }
 
 function startClientPing() {
@@ -228,6 +262,16 @@ function connectSocket() {
   socket.on('market:tick', (payload: FyersTickPayload) => {
     if (!payload?.quotes?.length) return;
     queueTickBroadcast(payload);
+  });
+
+  socket.on('optionchain:update', (payload: Record<string, unknown>) => {
+    for (const fn of optionChainHandlers) {
+      try {
+        fn(payload);
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   socket.on('market:pong', () => {

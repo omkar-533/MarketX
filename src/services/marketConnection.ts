@@ -48,9 +48,15 @@ export function isStrictLiveMode(): boolean {
 }
 
 export function isMarketLiveActive(): boolean {
+  const p = state.provider || '';
+  const known =
+    p === 'tradingview' ||
+    p.startsWith('tradingview') ||
+    p.startsWith('kite') ||
+    p.includes('nse');
   return (
     state.serverOk &&
-    (state.provider === 'tradingview' || state.provider.startsWith('tradingview')) &&
+    known &&
     state.liveConnected &&
     (state.streamActive || state.wsStatus === 'connected')
   );

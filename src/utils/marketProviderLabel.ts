@@ -5,8 +5,9 @@ export function getMarketProviderLabel(_provider?: string | null): string {
 /** Map market provider id → price source tag used in UI */
 export function priceSourceFromMarket(
   provider?: string | null,
-): 'tradingview' | 'fyers' | 'none' {
+): 'tradingview' | 'fyers' | 'kite' | 'none' {
   if (!provider) return 'none';
+  if (provider.startsWith('kite')) return 'kite';
   if (provider.startsWith('tradingview')) return 'tradingview';
   if (provider.startsWith('fyers')) return 'fyers';
   return 'none';
