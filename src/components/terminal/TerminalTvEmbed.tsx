@@ -5,6 +5,7 @@ import {
   type TvChartStyle,
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
+import { useTheme } from '../../context/ThemeContext';
 
 const TV_SCRIPT_SRC = 'https://s3.tradingview.com/tv.js';
 
@@ -69,10 +70,15 @@ export default function TerminalTvEmbed({
   chartStyle,
   reloadKey,
 }: TerminalTvEmbedProps) {
+  const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
   const containerId = useRef(`wolf_term_tv_${Math.random().toString(36).slice(2, 10)}`);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const studies = useMemo(() => tvStudyIds(parseStudies(study)), [study]);
+  const tvTheme = isDark ? 'dark' : 'light';
+  const toolbarBg = isDark ? '#131722' : '#ffffff';
+  const chartBg = isDark ? '#131722' : '#ffffff';
+  const gridColor = isDark ? 'rgba(42, 46, 57, 0.55)' : 'rgba(15, 23, 42, 0.08)';
 
   useEffect(() => {
     let cancelled = false;
@@ -100,10 +106,10 @@ export default function TerminalTvEmbed({
           symbol,
           interval,
           timezone: 'Asia/Kolkata',
-          theme: 'dark',
+          theme: tvTheme,
           style: chartStyle,
           locale: 'in',
-          toolbar_bg: '#131722',
+          toolbar_bg: toolbarBg,
           enable_publishing: false,
           allow_symbol_change: true,
           hide_top_toolbar: false,
@@ -119,8 +125,8 @@ export default function TerminalTvEmbed({
           popup_height: '100%',
           autosize: true,
           studies,
-          backgroundColor: '#131722',
-          gridColor: 'rgba(42, 46, 57, 0.55)',
+          backgroundColor: chartBg,
+          gridColor,
         });
         setStatus('ready');
       })
@@ -132,7 +138,7 @@ export default function TerminalTvEmbed({
       cancelled = true;
       if (hostRef.current) hostRef.current.innerHTML = '';
     };
-  }, [symbol, interval, chartStyle, studies, reloadKey]);
+  }, [symbol, interval, chartStyle, studies, reloadKey, tvTheme, toolbarBg, chartBg, gridColor]);
 
   return (
     <div className="wolf-term__tv-desk">
