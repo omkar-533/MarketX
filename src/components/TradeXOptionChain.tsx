@@ -34,6 +34,7 @@ import {
   type EnhancedOptionRow,
   type OiBuildup,
 } from '../services/optionChainEngine';
+import WolfLoader from './WolfLoader';
 
 const fmtK = (v: number) =>
   Math.abs(v) >= 100_000 ? `${(v / 100_000).toFixed(2)}L` : `${(v / 1000).toFixed(1)}K`;
@@ -476,12 +477,13 @@ export default function TradeXOptionChain() {
           <>
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto overscroll-contain">
               {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 h-48 px-4 text-center">
+                <div
+                  className={`flex flex-col items-center justify-center gap-3 px-4 text-center ${
+                    chainLoading ? 'min-h-[48vh]' : 'h-48'
+                  }`}
+                >
                   {chainLoading ? (
-                    <>
-                      <RefreshCw className="w-8 h-8 text-gold animate-spin" />
-                      <p className="text-sm text-dark-muted">Option chain load ho rahi hai…</p>
-                    </>
+                    <WolfLoader fullscreen={false} label="Loading Option Chain" />
                   ) : chainError || strikes.length === 0 ? (
                     <>
                       <p className="text-sm text-amber-200/90 max-w-md">{chainError || 'Data nahi mila.'}</p>

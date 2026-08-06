@@ -10,6 +10,7 @@ import {
 import type { ChainStrikeRow, TerminalAlert } from '../../hooks/useScalpingTerminal';
 import type { OiBuildupLabel } from '../../services/ltpCalculatorEngine';
 import { AnimatedPrice } from './LtpCalculatorPanels';
+import WolfLoader from '../WolfLoader';
 
 export function ScalpSignalBadge({ signal }: { signal: ScalpSignal }) {
   return (
@@ -251,8 +252,8 @@ export function PremiumSpeedPanel({ series, phase }: { series: number[]; phase: 
 export function OptionChainMini({ rows, spot }: { rows: ChainStrikeRow[]; spot: number }) {
   if (!rows.length) {
     return (
-      <div className="rounded-xl border border-dark-border/60 p-4 text-center text-[10px] text-slate-500">
-        Loading option chain…
+      <div className="rounded-xl border border-dark-border/60 min-h-[140px] flex items-center justify-center">
+        <WolfLoader fullscreen={false} label="Loading Option Chain" />
       </div>
     );
   }
