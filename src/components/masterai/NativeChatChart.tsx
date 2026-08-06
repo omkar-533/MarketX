@@ -50,8 +50,10 @@ import {
   computeWolfRibbon,
   isWolfStudyId,
   resolveWolfRecipe,
+  wolfStudyBlurb,
   wolfStudyLabel,
 } from '../../services/chart/wolfIndicators';
+import { Eye, EyeOff, Settings2, X } from 'lucide-react';
 import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
 import {
   applyLivePriceToBars,
@@ -70,8 +72,10 @@ import type { ChartBar } from '../../types/chart';
 import {
   TV_TIMEFRAMES,
   apiSymbolFromTv,
+  joinStudies,
   nativeIntervalFor,
   parseStudies,
+  technicalStudyLabel,
   tradingViewSymbolLabel,
   type TvChartStyle,
   type TvInterval,
@@ -176,6 +180,8 @@ export type NativeChatChartProps = {
   rangePreset?: string;
   /** Clear overlay studies (Terminal study string). */
   onClearIndicators?: () => void;
+  /** Replace the full study key (comma-joined ids). */
+  onStudyChange?: (study: string) => void;
   /** Apply a saved chart template's study key. */
   onApplyStudy?: (study: string) => void;
   /** Paper trade handoff (defaults to session queue + optional navigate). */
@@ -197,7 +203,49 @@ const VOLUME_STUDY = 'volume';
 
 type Legend = { o: number; h: number; l: number; c: number; prevClose: number };
 type ChartView = { source: ChartBar[]; closes: number[]; decimals: number };
-type IndicatorLine = { label: string; color: string; values: number[]; decimals: number };
+type IndicatorLine = {
+  studyId?: string;
+  label: string;
+  color: string;
+  values: number[];
+  decimals: number;
+  detail?: string;
+};
+
+const TECH_LABEL_HINTS: Record<string, string[]> = {
+  ema: ['EMA'],
+  sma: ['SMA'],
+  bb: ['BB'],
+  vwap: ['VWAP'],
+  supertrend: ['SUPERTREND'],
+  ichimoku: ['TENKAN', 'KIJUN'],
+  rsi: ['RSI'],
+  macd: ['MACD'],
+  stoch: ['STOCH'],
+  atr: ['ATR'],
+  volume: ['VOL'],
+  cci: ['CCI'],
+  willr: ['WILLIAMS'],
+  obv: ['OBV'],
+  mom: ['MOM'],
+  roc: ['ROC'],
+};
+
+function displayStudyName(id: string): string {
+  if (isWolfStudyId(id)) return wolfStudyLabel(id);
+  return technicalStudyLabel(id);
+}
+
+function linesForStudy(id: string, lines: IndicatorLine[]): IndicatorLine[] {
+  const tagged = lines.filter((l) => l.studyId === id);
+  if (tagged.length) return tagged;
+  if (isWolfStudyId(id)) {
+    const name = wolfStudyLabel(id);
+    return lines.filter((l) => l.label === name || l.label.startsWith(name));
+  }
+  const hints = TECH_LABEL_HINTS[id] || [id.toUpperCase()];
+  return lines.filter((l) => hints.some((h) => l.label.toUpperCase().includes(h)));
+}
 
 /**
  * Candles drawn from our own market feed. Used for NSE/BSE/MCX symbols, which
@@ -218,6 +266,7 @@ export default function NativeChatChart({
   logScale: logScaleProp,
   rangePreset,
   onClearIndicators,
+  onStudyChange,
   onApplyStudy,
   onPaperTrade,
   onNavigate,
@@ -234,6 +283,9 @@ export default function NativeChatChart({
   const priceSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const levelLinesRef = useRef<IPriceLine[]>([]);
   const indicatorRef = useRef<IndicatorLine[]>([]);
+  const [studyLegend, setStudyLegend] = useState<IndicatorLine[]>([]);
+  const [hiddenStudyIds, setHiddenStudyIds] = useState<string[]>([]);
+  const [studySettingsId, setStudySettingsId] = useState<string | null>(null);
   const [chartEpoch, setChartEpoch] = useState(0);
   const needFitRef = useRef(true);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
@@ -304,7 +356,11 @@ export default function NativeChatChart({
   const apiInterval = nativeIntervalFor(interval);
   const intraday = interval !== 'D' && interval !== 'W' && interval !== 'M';
   const studies = useMemo(() => parseStudies(study), [study]);
-  const studyKey = studies.join(',');
+  const plotStudies = useMemo(
+    () => studies.filter((id) => !hiddenStudyIds.includes(id)),
+    [studies, hiddenStudyIds],
+  );
+  const studyKey = `${studies.join(',')}|hide:${hiddenStudyIds.slice().sort().join(',')}`;
 
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
@@ -445,6 +501,15 @@ export default function NativeChatChart({
     },
     [apiInterval, chartStyle, paintLiveTip],
   );
+
+  // Drop hide flags for studies that were removed from the desk.
+  useEffect(() => {
+    setHiddenStudyIds((prev) => {
+      const next = prev.filter((id) => studies.includes(id));
+      return next.length === prev.length ? prev : next;
+    });
+    setStudySettingsId((cur) => (cur && studies.includes(cur) ? cur : null));
+  }, [studies]);
 
   // Refit the viewport only when the user actually switches instrument/timeframe.
   useEffect(() => {
@@ -610,9 +675,9 @@ export default function NativeChatChart({
     const host = hostRef.current;
     if (!host || !hasData) return;
 
-    const paneStudies = studies.filter((id) => PANE_STUDIES.has(id));
-    const wolfStudies = studies.filter((id) => isWolfStudyId(id));
-    const showVolume = studies.includes(VOLUME_STUDY);
+    const paneStudies = plotStudies.filter((id) => PANE_STUDIES.has(id));
+    const wolfStudies = plotStudies.filter((id) => isWolfStudyId(id));
+    const showVolume = plotStudies.includes(VOLUME_STUDY);
 
     const chart = createChart(host, {
       autoSize: true,
@@ -741,7 +806,7 @@ export default function NativeChatChart({
     const feeds: ((view: ChartView) => IndicatorLine[])[] = [];
     const priceFormatted: ISeriesApi<SeriesType>[] = [];
 
-    for (const id of studies) {
+    for (const id of plotStudies) {
       if (!OVERLAY_STUDIES.has(id)) continue;
       if (id === 'ema' || id === 'sma') {
         const fn = id === 'ema' ? ema : sma;
@@ -969,7 +1034,9 @@ export default function NativeChatChart({
           const bear = w.bearScore[w.bearScore.length - 1] ?? 0;
           return [
             {
-              label: `${title} ${lean > 0 ? 'Bull' : lean < 0 ? 'Bear' : 'Flat'} ${bull}/${bear}`,
+              studyId: id,
+              label: title,
+              detail: `${lean > 0 ? 'Bull' : lean < 0 ? 'Bear' : 'Flat'} ${bull}/${bear}`,
               color: lean > 0 ? '#26a69a' : lean < 0 ? '#ef5350' : '#f0b90b',
               values: w.emaFast,
               decimals,
@@ -988,7 +1055,7 @@ export default function NativeChatChart({
           b.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e50[j] })));
           c.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e100[j] })));
           d.setData(source.map((bar, j) => ({ time: ts(bar.time), value: r.e200[j] })));
-          return [{ label: title, color: '#f0b90b', values: r.e50, decimals }];
+          return [{ studyId: id, label: title, detail: 'EMA ribbon', color: '#f0b90b', values: r.e50, decimals }];
         });
       } else if (recipe === 'levels') {
         const hi = line('#ef5350', 1);
@@ -998,7 +1065,7 @@ export default function NativeChatChart({
           const lv = computeWolfLevels(source);
           hi.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingHigh[j] })));
           lo.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingLow[j] })));
-          return [{ label: title, color: '#f0b90b', values: lv.swingHigh, decimals }];
+          return [{ studyId: id, label: title, detail: 'Structure', color: '#f0b90b', values: lv.swingHigh, decimals }];
         });
       } else if (recipe === 'pulse') {
         wolfPaneCursor += 1;
@@ -1010,7 +1077,7 @@ export default function NativeChatChart({
           const p = computeWolfPulse(source);
           series.setData(source.map((bar, j) => ({ time: ts(bar.time), value: p.rsi[j] })));
           sig.setData(source.map((bar, j) => ({ time: ts(bar.time), value: p.signal[j] })));
-          return [{ label: title, color: '#f0b90b', values: p.rsi, decimals: 1 }];
+          return [{ studyId: id, label: title, detail: 'RSI pulse', color: '#f0b90b', values: p.rsi, decimals: 1 }];
         });
       } else if (recipe === 'pressure') {
         wolfPaneCursor += 1;
@@ -1029,7 +1096,7 @@ export default function NativeChatChart({
               color: p.pressure[j] >= 0 ? UP_FILL : DOWN_FILL,
             })),
           );
-          return [{ label: title, color: '#f0b90b', values: p.pressure, decimals: 2 }];
+          return [{ studyId: id, label: title, detail: 'Vol pressure', color: '#f0b90b', values: p.pressure, decimals: 2 }];
         });
       }
     }
@@ -1073,6 +1140,7 @@ export default function NativeChatChart({
       }
 
       indicatorRef.current = feeds.flatMap((feed) => feed({ source, closes, decimals }));
+      setStudyLegend(indicatorRef.current);
 
       legendMapRef.current = new Map(source.map((b, i) => [b.time, i]));
       setHoverIndex(null);
@@ -1190,6 +1258,8 @@ export default function NativeChatChart({
       priceSeriesRef.current = null;
       levelLinesRef.current = [];
       indicatorRef.current = [];
+      setStudyLegend([]);
+      setStudySettingsId(null);
       chart.remove();
     };
     // studyKey stands in for the studies array, which is rebuilt on every render.
@@ -1637,6 +1707,39 @@ export default function NativeChatChart({
   const templates = listChartTemplates();
   void templatesTick;
 
+  const studyChips = studies.map((id) => {
+    const lines = linesForStudy(id, studyLegend);
+    const primary = lines[0];
+    const hidden = hiddenStudyIds.includes(id);
+    const values = lines
+      .slice(0, 3)
+      .map((line) => {
+        const v = line.values[readAt];
+        return Number.isFinite(v) ? v.toFixed(line.decimals) : '—';
+      })
+      .join(' · ');
+    return {
+      id,
+      name: displayStudyName(id),
+      color: primary?.color || (isWolfStudyId(id) ? '#f0b90b' : '#38bdf8'),
+      values: hidden ? 'hidden' : values || '—',
+      detail: primary?.detail,
+      hidden,
+      wolf: isWolfStudyId(id),
+    };
+  });
+
+  const removeStudy = (id: string) => {
+    const next = studies.filter((s) => s !== id);
+    onStudyChange?.(joinStudies(next));
+    setHiddenStudyIds((prev) => prev.filter((x) => x !== id));
+    setStudySettingsId((cur) => (cur === id ? null : cur));
+  };
+
+  const toggleStudyHidden = (id: string) => {
+    setHiddenStudyIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   return (
     <div
       className={`mai-tv__frame mai-tv__frame--tools ${fillHeight ? 'mai-tv__frame--fill' : ''}`}
@@ -1748,19 +1851,59 @@ export default function NativeChatChart({
                 {changePct.toFixed(2)}%)
               </span>
             </span>
-            {indicatorRef.current.length ? (
-              <span className="mai-nc__legend-ind">
-                {indicatorRef.current.map((ind) => (
-                  <span key={ind.label} className="mai-nc__ind">
-                    {ind.label}
-                    <b style={{ color: ind.color }}>
-                      {Number.isFinite(ind.values[readAt])
-                        ? ind.values[readAt].toFixed(ind.decimals)
-                        : '—'}
-                    </b>
-                  </span>
+            {studyChips.length ? (
+              <div className="mai-nc__legend-studies">
+                {studyChips.map((chip) => (
+                  <div
+                    key={chip.id}
+                    className={`mai-nc__study-chip ${chip.wolf ? 'mai-nc__study-chip--wolf' : ''} ${
+                      chip.hidden ? 'is-hidden' : ''
+                    } ${studySettingsId === chip.id ? 'is-open' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="mai-nc__study-chip-main"
+                      title={chip.name}
+                      onClick={() =>
+                        setStudySettingsId((cur) => (cur === chip.id ? null : chip.id))
+                      }
+                    >
+                      <i className="mai-nc__study-swatch" style={{ background: chip.color }} />
+                      <span className="mai-nc__study-name">{chip.name}</span>
+                      {chip.detail ? <em className="mai-nc__study-detail">{chip.detail}</em> : null}
+                      <b style={{ color: chip.color }}>{chip.values}</b>
+                    </button>
+                    <span className="mai-nc__study-chip-acts">
+                      <button
+                        type="button"
+                        title={chip.hidden ? 'Show' : 'Hide'}
+                        aria-label={chip.hidden ? 'Show indicator' : 'Hide indicator'}
+                        onClick={() => toggleStudyHidden(chip.id)}
+                      >
+                        {chip.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
+                      <button
+                        type="button"
+                        title="Settings"
+                        aria-label="Indicator settings"
+                        onClick={() =>
+                          setStudySettingsId((cur) => (cur === chip.id ? null : chip.id))
+                        }
+                      >
+                        <Settings2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Remove"
+                        aria-label="Remove indicator"
+                        onClick={() => removeStudy(chip.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  </div>
                 ))}
-              </span>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -1894,6 +2037,45 @@ export default function NativeChatChart({
         ) : null}
 
         {toast ? <div className="mai-nc__toast">{toast}</div> : null}
+
+        {studySettingsId && status === 'ready' ? (
+          <div className="mai-nc__study-sheet" role="dialog" aria-label="Indicator settings">
+            <div className="mai-nc__study-sheet-head">
+              <b>{displayStudyName(studySettingsId)}</b>
+              <button type="button" onClick={() => setStudySettingsId(null)} aria-label="Close">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="mai-nc__study-sheet-blurb">
+              {isWolfStudyId(studySettingsId)
+                ? wolfStudyBlurb(studySettingsId)
+                : technicalStudyLabel(studySettingsId)}
+            </p>
+            <div className="mai-nc__study-sheet-actions">
+              <button type="button" onClick={() => toggleStudyHidden(studySettingsId)}>
+                {hiddenStudyIds.includes(studySettingsId) ? (
+                  <>
+                    <Eye className="h-3.5 w-3.5" /> Show on chart
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="h-3.5 w-3.5" /> Hide on chart
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => removeStudy(studySettingsId)}
+              >
+                <X className="h-3.5 w-3.5" /> Remove
+              </button>
+            </div>
+            <p className="mai-nc__study-sheet-hint">
+              TradingView-style study controls — visibility & remove. More style inputs coming next.
+            </p>
+          </div>
+        ) : null}
 
         {panel === 'settings' ? (
           <div className="mai-nc__sheet" role="dialog" aria-label="Chart settings">

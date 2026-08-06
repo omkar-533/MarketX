@@ -44,10 +44,55 @@ export function wolfStudyIdFor(item: { id: string; title: string }): string {
 export function wolfStudyLabel(id: string): string {
   const known = WOLF_NATIVE_PRESETS.find((p) => p.id === id);
   if (known) return known.label;
+  const remembered = readStudyLabels()[id];
+  if (remembered) return remembered;
   return id
     .replace(/^wolf_/, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const STUDY_LABELS_KEY = 'wolf.terminal.study.labels';
+
+function readStudyLabels(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STUDY_LABELS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Persist CMS / UI titles so chart legend shows the real Wolf indicator name. */
+export function rememberWolfStudyTitle(id: string, title: string): void {
+  const clean = String(title || '').trim();
+  if (!id || !clean) return;
+  try {
+    const next = { ...readStudyLabels(), [id]: clean };
+    localStorage.setItem(STUDY_LABELS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function wolfStudyBlurb(id: string): string {
+  const recipe = resolveWolfRecipe(id);
+  switch (recipe) {
+    case 'cfd':
+      return 'Confluence score + EMA 21 / 55 / 200 stack';
+    case 'ribbon':
+      return 'Trend ribbon — EMA 20 / 50 / 100 / 200';
+    case 'pulse':
+      return 'Momentum pulse — RSI with signal line';
+    case 'pressure':
+      return 'Volume pressure histogram vs average participation';
+    case 'levels':
+      return 'Swing structure highs & lows';
+    default:
+      return 'Wolf proprietary pack';
+  }
 }
 
 export type WolfConfluenceResult = {

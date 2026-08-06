@@ -15,6 +15,7 @@ export type TerminalChartHostProps = {
   onNativeUnavailable: () => void;
   onClearIndicators?: () => void;
   onApplyStudy?: (study: string) => void;
+  onStudyChange?: (study: string) => void;
   onPaperTrade?: (handoff: TerminalPaperHandoff) => void;
   onNavigate?: (tab: string) => void;
 };
@@ -35,6 +36,7 @@ export default function TerminalChartHost({
   onNativeUnavailable,
   onClearIndicators,
   onApplyStudy,
+  onStudyChange,
   onPaperTrade,
   onNavigate,
 }: TerminalChartHostProps) {
@@ -62,6 +64,7 @@ export default function TerminalChartHost({
         onUnavailable={onNativeUnavailable}
         onClearIndicators={onClearIndicators}
         onApplyStudy={onApplyStudy}
+        onStudyChange={onStudyChange}
         onPaperTrade={onPaperTrade}
         onNavigate={onNavigate}
       />

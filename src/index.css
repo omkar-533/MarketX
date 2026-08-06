@@ -18468,6 +18468,193 @@ body:has(.app-main--terminal-immersive) #root {
   margin-left: 0.35rem;
 }
 
+.mai-nc__legend-studies {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.22rem;
+  max-width: min(420px, 72vw);
+}
+
+.mai-nc__study-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  border-radius: 4px;
+  border: 1px solid rgba(120, 123, 134, 0.35);
+  background: rgba(19, 23, 34, 0.72);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.mai-nc__study-chip--wolf {
+  border-color: rgba(240, 185, 11, 0.4);
+  background: rgba(240, 185, 11, 0.08);
+}
+
+.mai-nc__study-chip.is-hidden {
+  opacity: 0.45;
+}
+
+.mai-nc__study-chip.is-open {
+  border-color: rgba(41, 98, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(41, 98, 255, 0.2);
+}
+
+.mai-nc__study-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  padding: 0.16rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: #d1d4dc;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mai-nc__study-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.mai-nc__study-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.mai-nc__study-detail {
+  font-style: normal;
+  font-size: 0.58rem;
+  color: #787b86;
+  white-space: nowrap;
+}
+
+.mai-nc__study-chip-main b {
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mai-nc__study-chip-acts {
+  display: inline-flex;
+  align-items: stretch;
+  border-left: 1px solid rgba(120, 123, 134, 0.28);
+}
+
+.mai-nc__study-chip-acts button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  border: 0;
+  background: transparent;
+  color: #787b86;
+  cursor: pointer;
+}
+
+.mai-nc__study-chip-acts button:hover {
+  color: #f0b90b;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mai-nc__study-sheet {
+  position: absolute;
+  top: 4.5rem;
+  left: 0.65rem;
+  z-index: 8;
+  width: min(280px, calc(100% - 1.2rem));
+  padding: 0.65rem 0.7rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 123, 134, 0.35);
+  background: rgba(19, 23, 34, 0.94);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  color: #d1d4dc;
+}
+
+.mai-nc__study-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.mai-nc__study-sheet-head b {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mai-nc__study-sheet-head button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #787b86;
+  cursor: pointer;
+}
+
+.mai-nc__study-sheet-head button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mai-nc__study-sheet-blurb {
+  margin: 0 0 0.55rem;
+  font-size: 0.68rem;
+  color: #787b86;
+  line-height: 1.4;
+}
+
+.mai-nc__study-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.mai-nc__study-sheet-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(120, 123, 134, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #d1d4dc;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mai-nc__study-sheet-actions button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mai-nc__study-sheet-actions button.danger {
+  color: #ef5350;
+  border-color: rgba(239, 83, 80, 0.35);
+}
+
+.mai-nc__study-sheet-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.6rem;
+  color: #5d606b;
+  line-height: 1.35;
+}
+
 .mai-nc__wolf-chip {
   display: inline-flex;
   align-items: center;

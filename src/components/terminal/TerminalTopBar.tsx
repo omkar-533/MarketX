@@ -34,6 +34,7 @@ import {
   WOLF_NATIVE_PRESETS,
   isWolfStudyId,
   wolfStudyIdFor,
+  rememberWolfStudyTitle,
 } from '../../services/chart/wolfIndicators';
 
 type IndCategory = 'technicals' | 'wolf' | 'favourites';
@@ -83,7 +84,7 @@ export default function TerminalTopBar({
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [indQuery, setIndQuery] = useState('');
-  const [indCategory, setIndCategory] = useState<IndCategory>('technicals');
+  const [indCategory, setIndCategory] = useState<IndCategory>('wolf');
   const [favorites, setFavorites] = useState<IndicatorFav[]>(() => loadIndicatorFavorites());
   const [wolfItems, setWolfItems] = useState<IndicatorItem[]>([]);
   const [wolfLoading, setWolfLoading] = useState(false);
@@ -198,7 +199,7 @@ export default function TerminalTopBar({
 
   useEffect(() => {
     if (indicatorsOpen) {
-      setIndCategory('technicals');
+      setIndCategory('wolf');
       setIndQuery('');
     }
   }, [indicatorsOpen]);
@@ -255,7 +256,8 @@ export default function TerminalTopBar({
     onStudyChange(joinStudies(next));
   };
 
-  const toggleWolfStudy = (studyId: string) => {
+  const toggleWolfStudy = (studyId: string, title?: string) => {
+    if (title) rememberWolfStudyTitle(studyId, title);
     toggleStudy(studyId);
   };
 
@@ -442,10 +444,11 @@ export default function TerminalTopBar({
               <aside>
                 <button
                   type="button"
-                  className={indCategory === 'favourites' ? 'on' : ''}
-                  onClick={() => setIndCategory('favourites')}
+                  className={indCategory === 'wolf' ? 'on' : ''}
+                  onClick={() => setIndCategory('wolf')}
+                  title="Wolf AI proprietary indicators"
                 >
-                  Favourites
+                  Wolf
                 </button>
                 <button
                   type="button"
@@ -456,11 +459,10 @@ export default function TerminalTopBar({
                 </button>
                 <button
                   type="button"
-                  className={indCategory === 'wolf' ? 'on' : ''}
-                  onClick={() => setIndCategory('wolf')}
-                  title="Wolf AI proprietary indicators"
+                  className={indCategory === 'favourites' ? 'on' : ''}
+                  onClick={() => setIndCategory('favourites')}
                 >
-                  Wolf
+                  Favourites
                 </button>
               </aside>
               <div className="wolf-term__ind-list">
@@ -513,7 +515,7 @@ export default function TerminalTopBar({
                             <input
                               type="checkbox"
                               checked={on}
-                              onChange={() => toggleWolfStudy(row.studyId)}
+                              onChange={() => toggleWolfStudy(row.studyId, row.title)}
                             />
                             <span className="wolf-term__ind-copy">
                               <b>{row.title}</b>
@@ -579,7 +581,7 @@ export default function TerminalTopBar({
                               <input
                                 type="checkbox"
                                 checked={on}
-                                onChange={() => toggleWolfStudy(studyId)}
+                                onChange={() => toggleWolfStudy(studyId, item.title)}
                               />
                               <span className="wolf-term__ind-copy">
                                 <b>{item.title}</b>
@@ -609,7 +611,7 @@ export default function TerminalTopBar({
                                 <input
                                   type="checkbox"
                                   checked={on}
-                                  onChange={() => toggleWolfStudy(preset.id)}
+                                  onChange={() => toggleWolfStudy(preset.id, preset.label)}
                                 />
                                 <span className="wolf-term__ind-copy">
                                   <b>{preset.label}</b>

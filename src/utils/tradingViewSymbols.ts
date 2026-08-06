@@ -123,6 +123,11 @@ export function joinStudies(list: string[]): string {
   return list.length ? list.join(',') : 'none';
 }
 
+/** Human label for a study id (technical preset or raw id). */
+export function technicalStudyLabel(id: string): string {
+  return TV_STUDY_PRESETS.find((s) => s.id === id)?.label ?? id.toUpperCase();
+}
+
 export function tvStudyIds(list: string[]): string[] {
   return list.flatMap((id) => TV_STUDY_PRESETS.find((s) => s.id === id)?.studies ?? []);
 }

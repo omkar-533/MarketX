@@ -58,8 +58,9 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
       logScale={state.logScale}
       rangePreset={state.activeRange}
       onNativeUnavailable={() => setNativeFailed(true)}
-      onClearIndicators={() => patch({ study: '' })}
+      onClearIndicators={() => patch({ study: 'none' })}
       onApplyStudy={(study) => patch({ study })}
+      onStudyChange={(study) => patch({ study })}
       onNavigate={onNavigate}
     />
   ) : (
