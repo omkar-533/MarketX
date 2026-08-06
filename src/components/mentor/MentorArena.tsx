@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Building2,
   Car,
+  CheckCircle2,
   ChevronRight,
   Gauge,
   Package,
   Play,
   ShoppingBag,
   Target,
-  TrendingDown,
-  TrendingUp,
   Watch,
+  XCircle,
   RotateCcw,
 } from 'lucide-react';
 import { playArenaSfx } from '../../services/mentorArena';
@@ -28,17 +28,20 @@ import {
   type ShopItem,
 } from '../../services/deskEmpire';
 import {
+  buildPlan,
   loadEmpireScenario,
-  resolveEmpireCall,
+  resolveEmpireRound,
   type EmpireBar,
+  type EmpireResolve,
   type EmpireScenario,
-  type EmpireSide,
+  type PlanAnswers,
+  type TradePlan,
 } from '../../services/deskEmpireReplay';
 import type { DetectiveCard } from '../../services/mentorDrills';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import DeskEmpireChart from './DeskEmpireChart';
 
-type Phase = 'lobby' | 'play' | 'decide' | 'resolve' | 'result' | 'shop' | 'garage';
+type Phase = 'lobby' | 'play' | 'plan' | 'resolve' | 'result' | 'shop' | 'garage';
 
 type MentorArenaProps = {
   ownerKey: string;
@@ -50,6 +53,8 @@ type MentorArenaProps = {
   onChartMarks: (levels: ChartLevel[], shapes: ChartShape[]) => void;
   onPlayingChange?: (playing: boolean) => void;
 };
+
+const STEP_SECONDS = 22;
 
 function catIcon(cat: ShopCategory) {
   if (cat === 'car') return Car;
@@ -73,114 +78,208 @@ export default function MentorArena({
   const [scenario, setScenario] = useState<EmpireScenario | null>(null);
   const [bars, setBars] = useState<EmpireBar[]>([]);
   const [stake, setStake] = useState<number>(STAKE_OPTIONS[1]);
-  const [side, setSide] = useState<EmpireSide | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [answers, setAnswers] = useState<PlanAnswers>({});
+  const [livePlan, setLivePlan] = useState<TradePlan | null>(null);
+  const [liveR, setLiveR] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(STEP_SECONDS);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ReturnType<typeof resolveEmpireCall> | null>(null);
+  const [result, setResult] = useState<EmpireResolve | null>(null);
   const [shopFilter, setShopFilter] = useState<ShopCategory | 'all'>('all');
   const [buyMsg, setBuyMsg] = useState('');
+  const tickRef = useRef<number | null>(null);
+  const deadlineRef = useRef(0);
+
+  // The parent passes fresh inline callbacks on every render; keeping them in refs
+  // stops effects from re-firing (and re-marking the chart) in a loop.
+  const marksRef = useRef(onChartMarks);
+  const teachRef = useRef(onRoundTeach);
+  const playingCbRef = useRef(onPlayingChange);
+  useEffect(() => {
+    marksRef.current = onChartMarks;
+    teachRef.current = onRoundTeach;
+    playingCbRef.current = onPlayingChange;
+  });
 
   useEffect(() => {
     setEmpire(loadDeskEmpire(ownerKey));
   }, [ownerKey]);
 
-  const playing = phase === 'play' || phase === 'decide' || phase === 'resolve';
+  const playing = phase === 'play' || phase === 'plan' || phase === 'resolve';
   useEffect(() => {
-    onPlayingChange?.(playing);
-  }, [playing, onPlayingChange]);
+    playingCbRef.current?.(playing);
+  }, [playing]);
+
+  useEffect(
+    () => () => {
+      if (tickRef.current) window.clearInterval(tickRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!scenario || phase === 'lobby' || phase === 'shop' || phase === 'garage') {
-      onChartMarks([], []);
+      marksRef.current([], []);
       return;
     }
-    const levels: ChartLevel[] = scenario.levels.map((l) => ({
-      price: l.price,
-      kind: 'pivot' as const,
-      label: l.label,
-    }));
-    onChartMarks(levels.slice(0, 6), []);
-  }, [scenario, phase, onChartMarks]);
+    marksRef.current(
+      scenario.levels.slice(0, 5).map((l) => ({ price: l.price, kind: 'pivot' as const, label: l.label })),
+      [],
+    );
+  }, [scenario, phase]);
 
   const firstName = studentName.split(' ')[0] || 'Trader';
+  const step = scenario?.steps[stepIdx] ?? null;
 
-  const startSession = async () => {
+  // Once entry/stop/RR are locked, draw the ticket on the chart so the last
+  // question (management) is answered while looking at the real risk picture.
+  const previewPlan = useMemo(() => {
+    if (!scenario || phase !== 'plan') return null;
+    if (!answers.bias || answers.bias === 'skip' || !answers.stop || !answers.rr) return null;
+    return buildPlan(scenario, answers);
+  }, [scenario, phase, answers]);
+
+  /* ---------------- session ---------------- */
+
+  const startSession = useCallback(async () => {
     if (empire.bank < STAKE_OPTIONS[0]) {
-      setBuyMsg('Bank low — smaller stakes or keep collecting.');
+      setBuyMsg('Bank low — chhota stake lo ya shop me kam kharcho.');
       return;
     }
     setLoading(true);
     setResult(null);
-    setSide(null);
+    setAnswers({});
+    setStepIdx(0);
+    setLivePlan(null);
+    setLiveR(null);
     setBuyMsg('');
     playArenaSfx('go');
     try {
       const sc = await loadEmpireScenario(detective);
       setScenario(sc);
       setPhase('play');
-      // Warmup: start with most of the window already visible (avoids fat "zoomed" candles).
       const full = sc.visible;
-      let i = Math.max(24, Math.floor(full.length * 0.7));
+      let i = Math.max(30, Math.floor(full.length * 0.72));
       setBars(full.slice(0, i));
-      const tick = window.setInterval(() => {
+      if (tickRef.current) window.clearInterval(tickRef.current);
+      tickRef.current = window.setInterval(() => {
         i += 1;
         setBars(full.slice(0, Math.min(i, full.length)));
         if (i >= full.length) {
-          window.clearInterval(tick);
+          if (tickRef.current) window.clearInterval(tickRef.current);
+          tickRef.current = null;
           setBars(full);
           playArenaSfx('wave');
-          setPhase('decide');
+          setTimeLeft(STEP_SECONDS);
+          setPhase('plan');
         }
-      }, 90);
+      }, 85);
     } catch {
       setPhase('lobby');
     } finally {
       setLoading(false);
     }
-  };
+  }, [detective, empire.bank]);
 
-  const placeCall = useCallback(
-    (call: EmpireSide) => {
-      if (!scenario || phase !== 'decide') return;
-      if (stake > empire.bank) {
-        setBuyMsg('Stake > bank — pick a smaller size.');
-        return;
-      }
-      setSide(call);
+  /* ---------------- resolve ---------------- */
+
+  const runResolve = useCallback(
+    (finalAnswers: PlanAnswers) => {
+      if (!scenario) return;
+      // Even a NO TRADE round replays the tape — dekhna zaroori hai ki skip sahi tha ya nahi.
+      const skipped = finalAnswers.bias === 'skip';
+      const plan = skipped ? null : buildPlan(scenario, finalAnswers);
+      setLivePlan(plan);
       setPhase('resolve');
       playArenaSfx('hit');
 
       const base = scenario.visible;
       const fut = scenario.future;
+      const dir = plan?.side === 'short' ? -1 : 1;
       let j = 0;
       setBars([...base]);
-      const tick = window.setInterval(() => {
+      if (tickRef.current) window.clearInterval(tickRef.current);
+      tickRef.current = window.setInterval(() => {
         j += 1;
-        setBars([...base, ...fut.slice(0, j)]);
+        const slice = fut.slice(0, j);
+        setBars([...base, ...slice]);
+        if (plan) {
+          const px = slice.at(-1)?.close ?? plan.entryPrice;
+          setLiveR(((px - plan.entryPrice) * dir) / Math.max(1e-9, plan.risk));
+        }
         if (j >= fut.length) {
-          window.clearInterval(tick);
-          const resolved = resolveEmpireCall(scenario, call, stake);
-          setResult(resolved);
-          const next = applyRoundPnl(resolved.pnl, ownerKey);
-          setEmpire(next);
-          playArenaSfx(resolved.won ? 'chest' : 'miss');
+          if (tickRef.current) window.clearInterval(tickRef.current);
+          tickRef.current = null;
+          const res = resolveEmpireRound(scenario, finalAnswers, stake, empire.streak);
+          setResult(res);
+          setEmpire(applyRoundPnl(res.pnl, ownerKey));
+          playArenaSfx(res.won ? 'chest' : 'miss');
           setPhase('result');
-          onRoundTeach(
+          teachRef.current(
             [
-              `[DESK EMPIRE] ${call.toUpperCase()} on ${scenario.symbol}.`,
-              `PnL ${resolved.pnl}. ${resolved.teach}`,
-              'Hype or coach 2 lines. No Entry/Stop/Target.',
+              `[DESK EMPIRE] ${scenario.symbol} ${scenario.interval} —`,
+              skipped
+                ? 'student ne NO TRADE chuna.'
+                : `${plan?.side.toUpperCase()} plan, RR 1:${plan?.rr}, result ${res.headline}, ${res.rMultiple.toFixed(2)}R.`,
+              `Checklist edge ${res.edgePct}% (grade ${res.grade}).`,
+              'Do line me hype + ek process correction do. Koi Entry/SL/Target advice mat do.',
             ].join(' '),
           );
         }
-      }, 110);
+      }, 95);
     },
-    [scenario, phase, stake, empire.bank, ownerKey, onRoundTeach],
+    [scenario, stake, ownerKey, empire.streak],
   );
+
+  const answerStep = useCallback(
+    (optionId: string) => {
+      if (!scenario || !step || phase !== 'plan') return;
+      const next: PlanAnswers = { ...answers, [step.key]: optionId };
+      setAnswers(next);
+      const correct = optionId === step.bestId;
+      playArenaSfx(correct ? 'combo' : 'hit');
+
+      if (optionId === 'skip' && step.key === 'bias') {
+        runResolve(next);
+        return;
+      }
+      if (stepIdx + 1 >= scenario.steps.length) {
+        runResolve(next);
+        return;
+      }
+      setStepIdx(stepIdx + 1);
+    },
+    [scenario, step, phase, answers, stepIdx, runResolve],
+  );
+
+  /* ---------------- step timer ---------------- */
+
+  const answerRef = useRef(answerStep);
+  useEffect(() => {
+    answerRef.current = answerStep;
+  });
+
+  useEffect(() => {
+    if (phase !== 'plan' || !step) return undefined;
+    deadlineRef.current = Date.now() + STEP_SECONDS * 1000;
+    setTimeLeft(STEP_SECONDS);
+    const id = window.setInterval(() => {
+      const left = Math.ceil((deadlineRef.current - Date.now()) / 1000);
+      setTimeLeft(Math.max(0, left));
+      if (left <= 0) {
+        window.clearInterval(id);
+        answerRef.current(step.options[0].id);
+      }
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [phase, step, stepIdx]);
+
+  /* ---------------- shop ---------------- */
 
   const onBuy = (item: ShopItem) => {
     const next = buyShopItem(item.id, ownerKey);
     if (!next) {
-      setBuyMsg(empire.inventory.includes(item.id) ? 'Already owned.' : 'Not enough desk cash.');
+      setBuyMsg(empire.inventory.includes(item.id) ? 'Already owned.' : 'Desk cash kam hai.');
       playArenaSfx('miss');
       return;
     }
@@ -190,26 +289,39 @@ export default function MentorArena({
   };
 
   const garage = ownedItems(empire);
-  const catalog =
-    shopFilter === 'all' ? SHOP_CATALOG : SHOP_CATALOG.filter((x) => x.category === shopFilter);
+  const catalog = useMemo(
+    () => (shopFilter === 'all' ? SHOP_CATALOG : SHOP_CATALOG.filter((x) => x.category === shopFilter)),
+    [shopFilter],
+  );
+  const netWorth = useMemo(
+    () => empire.bank + garage.reduce((s, i) => s + i.price, 0),
+    [empire.bank, garage],
+  );
+
+  const showHeader = phase === 'lobby' || phase === 'shop' || phase === 'garage' || phase === 'result';
 
   return (
     <div className={`wm-arena wm-empire ${playing ? 'wm-arena--live wm-arena--playing wm-empire--play' : ''}`}>
-      {phase === 'lobby' || phase === 'shop' || phase === 'garage' || phase === 'result' ? (
+      {showHeader ? (
         <div className="wm-empire__top">
           <div>
             <p className="wm-arena__eyebrow">Wolf Desk Empire</p>
             <h2 className="wm-arena__title">
-              {firstName}, <span>trade the freeze</span>
+              {firstName}, <span>run the desk</span>
             </h2>
             <p className="wm-arena__lead">
-              Chart chalta hai → rukta hai → liquidity hint se UP/DOWN → virtual PnL → luxury shop
+              Real TradingView history chalti hai → freeze → pura pre-trade checklist (bias, entry,
+              SL, RR, management) → tape resolve → cash → luxury
             </p>
           </div>
           <div className="wm-empire__wallet">
             <div>
               <em>BANK</em>
               <b>{formatDeskCash(empire.bank)}</b>
+            </div>
+            <div>
+              <em>NET WORTH</em>
+              <b>{formatDeskCash(netWorth)}</b>
             </div>
             <div>
               <em>STREAK</em>
@@ -235,7 +347,7 @@ export default function MentorArena({
             exit={{ opacity: 0 }}
           >
             <div className="wm-empire__stake">
-              <p>Session stake</p>
+              <p>Risk per trade (1R)</p>
               <div className="wm-empire__stake-row">
                 {STAKE_OPTIONS.map((s) => (
                   <button
@@ -259,12 +371,19 @@ export default function MentorArena({
             >
               <Play className="h-5 w-5" />
               <span>
-                <strong>{loading ? 'LOADING TAPE…' : 'START SESSION'}</strong>
-                <small>
-                  {detective?.symbol || 'NIFTY'} · replay → freeze → call
-                </small>
+                <strong>{loading ? 'PULLING HISTORY…' : 'START SESSION'}</strong>
+                <small>replay → freeze → 6-step plan → simulated result</small>
               </span>
             </button>
+
+            <div className="wm-empire__checklist-peek">
+              {['Bias', 'Entry model', 'Stop', 'RR', 'Management', 'Context'].map((c, i) => (
+                <span key={c}>
+                  <b>{i + 1}</b>
+                  {c}
+                </span>
+              ))}
+            </div>
 
             <div className="wm-empire__lobby-actions">
               <button type="button" className="wm-arena__chip" onClick={() => setPhase('shop')}>
@@ -288,7 +407,7 @@ export default function MentorArena({
           </motion.div>
         ) : null}
 
-        {phase === 'play' || phase === 'decide' || phase === 'resolve' ? (
+        {phase === 'play' || phase === 'plan' || phase === 'resolve' ? (
           <motion.div
             key="session"
             className="wm-empire__stage"
@@ -297,51 +416,97 @@ export default function MentorArena({
             exit={{ opacity: 0 }}
           >
             <div className="wm-empire__session-hud">
-              <span>{scenario?.symbol}</span>
-              <span>{phase === 'play' ? 'TAPE RUNNING…' : phase === 'decide' ? 'FROZEN — CALL NOW' : 'RESOLVING…'}</span>
-              <span>Stake {formatDeskCash(stake)}</span>
+              <span>
+                {scenario?.symbol} · {scenario?.interval}
+              </span>
+              <span className={phase === 'plan' ? 'is-frozen' : ''}>
+                {phase === 'play'
+                  ? 'TAPE RUNNING…'
+                  : phase === 'plan'
+                    ? `FROZEN · PLAN ${stepIdx + 1}/${scenario?.steps.length ?? 6}`
+                    : 'POSITION LIVE…'}
+              </span>
+              <span>
+                1R = {formatDeskCash(stake)}
+                {empire.streak > 0 ? ` · streak ×${(1 + Math.min(0.75, empire.streak * 0.15)).toFixed(2)}` : ''}
+              </span>
             </div>
 
             <DeskEmpireChart
               bars={bars}
               scenario={scenario}
-              entryLine={phase === 'resolve' || phase === 'decide' ? scenario?.entry : null}
+              plan={phase === 'resolve' ? livePlan : previewPlan}
+              entryLine={phase === 'plan' && !previewPlan ? scenario?.entry : null}
               showLevels={phase !== 'play'}
-              pulse={phase === 'decide'}
+              pulse={phase === 'plan'}
+              liveR={phase === 'resolve' ? liveR : null}
             />
 
-            {phase === 'decide' && scenario ? (
+            {phase === 'plan' && scenario && step ? (
               <div className="wm-empire__decide">
-                <p className="wm-empire__ask">{scenario.ask}</p>
+                <div className="wm-empire__steps">
+                  {scenario.steps.map((s, i) => (
+                    <span
+                      key={`${s.key}-${i}`}
+                      className={i < stepIdx ? 'done' : i === stepIdx ? 'on' : ''}
+                    />
+                  ))}
+                  <em className={timeLeft <= 5 ? 'hot' : ''}>{timeLeft}s</em>
+                </div>
+                <div
+                  className="wm-empire__timerbar"
+                  style={{ ['--p' as string]: `${(timeLeft / STEP_SECONDS) * 100}%` }}
+                />
+
+                <p className="wm-empire__topic">{step.topic}</p>
+                <p className="wm-empire__ask">{step.question}</p>
                 <div className="wm-empire__hints">
-                  {scenario.hints.map((h) => (
-                    <span key={h}>{h}</span>
+                  <span className="key">{step.hint}</span>
+                  {scenario.hints.slice(0, 3).map((h, i) => (
+                    <span key={`${i}-${h}`}>{h}</span>
                   ))}
                 </div>
-                <div className="wm-empire__calls">
-                  <button type="button" className="wm-empire__call wm-empire__call--up" onClick={() => placeCall('up')}>
-                    <TrendingUp className="h-5 w-5" />
-                    LONG / UP
-                  </button>
-                  <button
-                    type="button"
-                    className="wm-empire__call wm-empire__call--down"
-                    onClick={() => placeCall('down')}
-                  >
-                    <TrendingDown className="h-5 w-5" />
-                    SHORT / DOWN
-                  </button>
+
+                <div className={`wm-empire__opts ${step.options.length > 3 ? 'four' : ''}`}>
+                  {step.options.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      className={`wm-empire__opt ${step.key === 'bias' ? `bias-${o.id}` : ''}`}
+                      onClick={() => answerStep(o.id)}
+                    >
+                      <b>{o.label}</b>
+                      {o.sub ? <small>{o.sub}</small> : null}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : null}
 
             {phase === 'play' ? (
-              <p className="wm-empire__running">Watch the tape — freeze incoming…</p>
+              <p className="wm-empire__running">Tape padho — freeze aa raha hai…</p>
             ) : null}
-            {phase === 'resolve' && side ? (
+
+            {phase === 'resolve' && !livePlan ? (
               <p className="wm-empire__running">
-                Position: {side.toUpperCase()} @ {scenario?.entry.toFixed(1)} — revealing…
+                NO TRADE — dekhte hain skip sahi tha ya nahi…
               </p>
+            ) : null}
+
+            {phase === 'resolve' && livePlan ? (
+              <div className="wm-empire__ticket">
+                <span className={livePlan.side === 'long' ? 'long' : 'short'}>
+                  {livePlan.side.toUpperCase()}
+                </span>
+                <span>Entry {livePlan.entryPrice.toFixed(2)}</span>
+                <span>SL {livePlan.stopPrice.toFixed(2)}</span>
+                <span>TP {livePlan.targetPrice.toFixed(2)}</span>
+                <span>1:{livePlan.rr}</span>
+                <span className={(liveR ?? 0) >= 0 ? 'long' : 'short'}>
+                  {(liveR ?? 0) >= 0 ? '+' : ''}
+                  {(liveR ?? 0).toFixed(2)}R
+                </span>
+              </div>
             ) : null}
           </motion.div>
         ) : null}
@@ -354,17 +519,59 @@ export default function MentorArena({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className={`wm-empire__pnl ${result.won ? 'win' : 'lose'}`}>
-              {result.pnl >= 0 ? '+' : ''}
-              {formatDeskCash(result.pnl)}
+            <div className="wm-empire__result-head">
+              <div className={`wm-empire__grade g-${result.grade}`}>
+                <b>{result.grade}</b>
+                <em>{result.edgePct}% edge</em>
+              </div>
+              <div>
+                <p className="wm-empire__headline">{result.headline}</p>
+                <div className={`wm-empire__pnl ${result.pnl >= 0 ? 'win' : 'lose'}`}>
+                  {result.pnl >= 0 ? '+' : ''}
+                  {formatDeskCash(result.pnl)}
+                </div>
+                <p className="wm-empire__meta">
+                  {result.filled
+                    ? `${result.rMultiple >= 0 ? '+' : ''}${result.rMultiple.toFixed(2)}R · MFE ${result.mfeR.toFixed(1)}R · MAE ${result.maeR.toFixed(1)}R`
+                    : 'Risk par kuch gaya hi nahi'}
+                  {result.processBonus ? ` · process bonus ${formatDeskCash(result.processBonus)}` : ''}
+                  {result.streakMult > 1 && result.pnl > 0
+                    ? ` · streak ×${result.streakMult.toFixed(2)}`
+                    : ''}
+                  {' · bank '}
+                  {formatDeskCash(empire.bank)}
+                </p>
+              </div>
             </div>
+
             <p className="wm-empire__teach">{result.teach}</p>
-            <p className="wm-empire__meta">
-              Exit {result.exit.toFixed(1)} · move {(result.movePct * 100).toFixed(2)}% · bank{' '}
-              {formatDeskCash(empire.bank)}
-            </p>
+
+            <div className="wm-empire__debrief">
+              {result.reviews.map((r, i) => (
+                <div key={`${r.key}-${i}`} className={`wm-empire__review ${r.correct ? 'ok' : 'no'}`}>
+                  <div className="wm-empire__review-head">
+                    {r.correct ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    <b>{r.topic}</b>
+                    <span>
+                      {r.picked}
+                      {r.correct ? '' : ` → ${r.best}`}
+                    </span>
+                  </div>
+                  <p>{r.why}</p>
+                </div>
+              ))}
+            </div>
+
             <div className="wm-arena__result-actions">
-              <button type="button" className="wm-arena__play wm-arena__play--sm" onClick={() => void startSession()}>
+              <button
+                type="button"
+                className="wm-arena__play wm-arena__play--sm"
+                onClick={() => void startSession()}
+              >
                 <Play className="h-4 w-4" />
                 Next Tape
               </button>
@@ -451,7 +658,7 @@ export default function MentorArena({
               <button type="button" className="wm-arena__chip" onClick={() => setPhase('lobby')}>
                 ← Lobby
               </button>
-              <b>Garage / Collection</b>
+              <b>Garage · net worth {formatDeskCash(netWorth)}</b>
             </div>
             {garage.length === 0 ? (
               <p className="wm-empire__empty">Abhi khali hai — shop se pehli flex item lo.</p>

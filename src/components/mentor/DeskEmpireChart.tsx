@@ -1,23 +1,28 @@
 import { useEffect, useRef } from 'react';
-import type { EmpireBar, EmpireScenario } from '../../services/deskEmpireReplay';
+import type { EmpireBar, EmpireScenario, TradePlan } from '../../services/deskEmpireReplay';
 
 type DeskEmpireChartProps = {
   bars: EmpireBar[];
   scenario: EmpireScenario | null;
+  plan?: TradePlan | null;
   entryLine?: number | null;
   showLevels?: boolean;
   pulse?: boolean;
+  /** Live R while the future tape is being revealed */
+  liveR?: number | null;
 };
 
 /** Always lay out this many candle slots so bars never look "zoomed"/fat. */
-const SLOT_COUNT = 48;
+const SLOT_COUNT = 56;
 
 export default function DeskEmpireChart({
   bars,
   scenario,
+  plan,
   entryLine,
   showLevels = true,
   pulse = false,
+  liveR,
 }: DeskEmpireChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -61,7 +66,7 @@ export default function DeskEmpireChart({
 
       ctx.strokeStyle = 'rgba(148,163,184,0.08)';
       ctx.lineWidth = 1;
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 6; i += 1) {
         const y = (H / 6) * i;
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -69,10 +74,14 @@ export default function DeskEmpireChart({
         ctx.stroke();
       }
 
-      ctx.fillStyle = 'rgba(212,175,55,0.35)';
+      ctx.fillStyle = 'rgba(212,175,55,0.55)';
       ctx.font = 'bold 11px ui-sans-serif, system-ui, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(scenario?.symbol || 'DESK TAPE', 10, 16);
+      ctx.fillText(
+        `${scenario?.symbol || 'DESK TAPE'} · ${scenario?.interval || ''}${scenario?.source === 'tradingview' ? ' · TradingView history' : ' · sim'}`,
+        10,
+        16,
+      );
 
       if (!bars.length) {
         ctx.fillStyle = '#94a3b8';
@@ -87,52 +96,50 @@ export default function DeskEmpireChart({
       const padT = 26;
       const padB = 20;
       const padL = 8;
-      const padR = 52;
+      const padR = 58;
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
       const slot = plotW / SLOT_COUNT;
-      const bodyW = Math.min(9, Math.max(2.5, slot * 0.55));
+      const bodyW = Math.min(9, Math.max(2.5, slot * 0.58));
       const startSlot = SLOT_COUNT - shown.length;
 
       let min = Math.min(...shown.map((b) => b.low));
       let max = Math.max(...shown.map((b) => b.high));
-      if (showLevels && scenario) {
-        for (const lv of scenario.levels) {
-          if (Number.isFinite(lv.price)) {
-            min = Math.min(min, lv.price);
-            max = Math.max(max, lv.price);
-          }
+      const extras: number[] = [];
+      if (showLevels && scenario) extras.push(...scenario.levels.map((l) => l.price));
+      if (entryLine != null && entryLine > 0) extras.push(entryLine);
+      if (plan) extras.push(plan.entryPrice, plan.stopPrice, plan.targetPrice);
+      for (const p of extras) {
+        if (Number.isFinite(p)) {
+          min = Math.min(min, p);
+          max = Math.max(max, p);
         }
-      }
-      if (entryLine != null && entryLine > 0) {
-        min = Math.min(min, entryLine);
-        max = Math.max(max, entryLine);
       }
 
       // Prevent Y micro-zoom when range is tiny (huge candles look).
       const mid = (min + max) / 2 || 1;
       const rawSpan = Math.max(1e-9, max - min);
-      const minSpan = Math.max(mid * 0.004, rawSpan * 1.35, mid * 0.0015);
+      const minSpan = Math.max(mid * 0.004, rawSpan * 1.2, mid * 0.0015);
       if (rawSpan < minSpan) {
         const half = minSpan / 2;
         min = mid - half;
         max = mid + half;
       } else {
-        const pad = rawSpan * 0.12;
+        const pad = rawSpan * 0.1;
         min -= pad;
         max += pad;
       }
 
       const yFor = (p: number) => padT + ((max - p) / (max - min)) * plotH;
+      const decimals = mid > 500 ? 1 : 2;
 
-      // price axis ticks
       ctx.fillStyle = 'rgba(148,163,184,0.65)';
       ctx.font = '9px ui-sans-serif, system-ui';
       ctx.textAlign = 'right';
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 4; i += 1) {
         const p = max - ((max - min) * i) / 3;
         const y = yFor(p);
-        ctx.fillText(p.toFixed(0), W - 6, y + 3);
+        ctx.fillText(p.toFixed(decimals), W - 6, y + 3);
         ctx.strokeStyle = 'rgba(148,163,184,0.06)';
         ctx.beginPath();
         ctx.moveTo(padL, y);
@@ -147,10 +154,10 @@ export default function DeskEmpireChart({
           if (y < padT - 4 || y > H - padB + 4) continue;
           ctx.strokeStyle =
             lv.tone === 'bull'
-              ? 'rgba(52,211,153,0.5)'
+              ? 'rgba(52,211,153,0.45)'
               : lv.tone === 'bear'
-                ? 'rgba(248,113,113,0.5)'
-                : 'rgba(148,163,184,0.4)';
+                ? 'rgba(248,113,113,0.45)'
+                : 'rgba(148,163,184,0.35)';
           ctx.setLineDash([4, 4]);
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -165,7 +172,35 @@ export default function DeskEmpireChart({
         }
       }
 
-      if (entryLine != null && entryLine > 0) {
+      // Risk / reward shading once the plan is locked
+      if (plan) {
+        const yE = yFor(plan.entryPrice);
+        const yS = yFor(plan.stopPrice);
+        const yT = yFor(plan.targetPrice);
+        ctx.fillStyle = 'rgba(248,113,113,0.12)';
+        ctx.fillRect(padL, Math.min(yE, yS), plotW, Math.abs(yS - yE));
+        ctx.fillStyle = 'rgba(52,211,153,0.12)';
+        ctx.fillRect(padL, Math.min(yE, yT), plotW, Math.abs(yT - yE));
+
+        const line = (y: number, color: string, label: string) => {
+          if (y < padT - 6 || y > H - padB + 6) return;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([6, 3]);
+          ctx.beginPath();
+          ctx.moveTo(padL, y);
+          ctx.lineTo(W - padR, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = color;
+          ctx.font = 'bold 9px ui-sans-serif, system-ui';
+          ctx.textAlign = 'right';
+          ctx.fillText(label, W - padR - 3, y - 3);
+        };
+        line(yT, '#34d399', `TARGET ${plan.targetPrice.toFixed(decimals)} · 1:${plan.rr}`);
+        line(yE, '#d4af37', `ENTRY ${plan.entryPrice.toFixed(decimals)}`);
+        line(yS, '#f87171', `SL ${plan.stopPrice.toFixed(decimals)}`);
+      } else if (entryLine != null && entryLine > 0) {
         const y = yFor(entryLine);
         ctx.strokeStyle = '#d4af37';
         ctx.lineWidth = 1.5;
@@ -178,13 +213,13 @@ export default function DeskEmpireChart({
         ctx.fillStyle = '#d4af37';
         ctx.font = 'bold 9px ui-sans-serif, system-ui';
         ctx.textAlign = 'right';
-        ctx.fillText(`ENTRY ${entryLine.toFixed(1)}`, W - padR - 2, y - 3);
+        ctx.fillText(`DECISION ${entryLine.toFixed(decimals)}`, W - padR - 3, y - 3);
       }
 
       shown.forEach((b, i) => {
         const x = padL + (startSlot + i + 0.5) * slot;
         const bull = b.close >= b.open;
-        const color = bull ? '#34d399' : '#f87171';
+        const color = bull ? '#26a69a' : '#ef5350';
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
         ctx.lineWidth = 1;
@@ -208,6 +243,14 @@ export default function DeskEmpireChart({
         ctx.arc(x, y, rad, 0, Math.PI * 2);
         ctx.stroke();
       }
+
+      if (liveR != null && shown.length) {
+        const txt = `${liveR >= 0 ? '+' : ''}${liveR.toFixed(2)}R`;
+        ctx.font = 'bold 15px ui-sans-serif, system-ui';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = liveR >= 0 ? '#34d399' : '#f87171';
+        ctx.fillText(txt, W - padR - 4, padT + 2);
+      }
     };
 
     const loop = () => {
@@ -220,7 +263,6 @@ export default function DeskEmpireChart({
     if (pulse) raf = requestAnimationFrame(loop);
 
     const ro = new ResizeObserver(() => {
-      // debounce via rAF
       cancelAnimationFrame(raf);
       if (pulse) raf = requestAnimationFrame(loop);
       else draw();
@@ -232,7 +274,7 @@ export default function DeskEmpireChart({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [bars, scenario, entryLine, showLevels, pulse]);
+  }, [bars, scenario, plan, entryLine, showLevels, pulse, liveR]);
 
   return (
     <div className="wm-empire__chart" ref={wrapRef}>
