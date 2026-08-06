@@ -89,6 +89,7 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
       className={`wolf-term wolf-term--pro ${native ? 'wolf-term--native' : 'wolf-term--tv'}${
         state.rightPanel ? '' : ' wolf-term--panel-closed'
       }`}
+      style={{ height: '100%', minHeight: 0 }}
     >
       <TerminalTopBar
         symbol={state.symbol}

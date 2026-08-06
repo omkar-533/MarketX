@@ -16750,42 +16750,64 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
 
 
 /* ─── Wolf Terminal desk (pro charting chrome) ─────────────────────── */
+/* Fixed fullscreen — percentage height chains break under app-shell/min-height. */
+html:has(.app-main--terminal-immersive),
+body:has(.app-main--terminal-immersive),
+body:has(.app-main--terminal-immersive) #root {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.app-shell:has(.app-main--terminal-immersive) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .app-main--terminal-immersive {
+  position: fixed !important;
+  inset: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
   width: 100% !important;
   max-width: none !important;
-  height: 100vh !important;
+  height: 100% !important;
   height: 100dvh !important;
-  max-height: 100vh !important;
   max-height: 100dvh !important;
   overflow: hidden;
   background: #131722;
   display: flex !important;
   flex-direction: column;
+  z-index: 50;
 }
 
 .page-content--terminal {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  height: 100%;
-  max-height: 100%;
-  min-height: 0;
+  width: 100%;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   overflow: hidden;
   background: #131722;
 }
 
-/* Error boundary / Suspense wrappers must pass height down or chart collapses to ~40%. */
+/* Error boundary / Suspense wrappers must pass height down. */
 .page-content--terminal > .app-error-boundary,
 .page-content--terminal > .app-error-boundary > * {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .wolf-term {
@@ -16799,11 +16821,12 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
   --wt-green: #089981;
   --wt-red: #f23645;
   position: relative;
-  display: grid;
-  grid-template-rows: 38px minmax(0, 1fr) 36px 26px;
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
+  display: grid !important;
+  grid-template-rows: 38px minmax(0, 1fr) 36px 26px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100%;
   background: var(--wt-bg);
   color: var(--wt-text);
   font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
@@ -17397,12 +17420,20 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
 }
 
 .mai-tv__frame--fill {
-  display: flex;
+  display: flex !important;
   align-items: stretch;
-  flex: 1 1 auto;
+  flex: 1 1 auto !important;
   width: 100%;
-  height: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.mai-tv__frame--fill .mai-nc__area {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
+  height: 100%;
+  position: relative;
 }
 
 /* Desk drawing rail + flyouts */
@@ -17947,9 +17978,9 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
 /* ─── Wolf Terminal TV / native modifiers (same 4-row shell) ───────── */
 .wolf-term--tv,
 .wolf-term--native {
-  grid-template-rows: 38px minmax(0, 1fr) 36px 26px;
-  height: 100%;
-  min-height: 0;
+  grid-template-rows: 38px minmax(0, 1fr) 36px 26px !important;
+  height: 100% !important;
+  min-height: 0 !important;
   background: #131722;
 }
 
@@ -17958,6 +17989,7 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -17971,9 +18003,10 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
   position: relative;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: 100% !important;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .mai-nc__history-load {
