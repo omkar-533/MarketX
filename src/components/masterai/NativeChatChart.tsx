@@ -110,8 +110,10 @@ const UP_FILL = 'rgba(38,166,154,0.5)';
 const DOWN_FILL = 'rgba(239,83,80,0.5)';
 /** Full OHLC resync (history/volume). Live LTP uses WS + fast quote poll. */
 const OHLC_RESYNC_MS = 120_000;
-/** Fallback LTP poll when socket is quiet (keeps candle tip moving). */
-const QUOTE_POLL_MS = 2_000;
+/** Fallback quotes when socket is quiet — keep snappy for tip motion. */
+const QUOTE_POLL_MS = 500;
+/** Soft-expand locked price scale at most this often (ms). */
+const PRICE_ENSURE_MS = 180;
 
 const IST = 'Asia/Kolkata';
 const istTime = new Intl.DateTimeFormat('en-IN', {
@@ -375,8 +377,11 @@ export default function NativeChatChart({
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
   const barsRef = useRef<ChartBar[]>([]);
-  /** rAF id — coalesce series paints; OHLC always accumulates every tick. */
+  /** rAF id — coalesce legend React updates only; tip paints sync. */
   const liveRafRef = useRef(0);
+  const liveStreamingRef = useRef(false);
+  const pendingLegendBarRef = useRef<ChartBar | null>(null);
+  const lastEnsureMsRef = useRef(0);
   const lastLiveAtRef = useRef(0);
   const haThrottleRef = useRef(0);
   const historyBusyRef = useRef(false);
@@ -448,17 +453,19 @@ export default function NativeChatChart({
           });
         }
         const chart = chartRef.current;
-        if (chart && priceLockedRef.current) {
+        const now = Date.now();
+        if (chart && priceLockedRef.current && now - lastEnsureMsRef.current >= PRICE_ENSURE_MS) {
+          lastEnsureMsRef.current = now;
           ensurePriceVisible(chart, bar.high, bar.low);
         }
       } catch {
-        /* mid-rebuild — tip retries on next tick / rAF */
+        /* mid-rebuild — tip retries on next tick */
       }
     },
     [chartStyle],
   );
 
-  /** Push LTP into the forming candle every tick; paint tip via rAF (TradingView-like). */
+  /** Push LTP into the forming candle — series.update sync (TradingView-tight tip). */
   const applyLivePrice = useCallback(
     (price: number, volume?: number) => {
       if (!(price > 0) || !apiInterval || !barsRef.current.length) return;
@@ -471,46 +478,75 @@ export default function NativeChatChart({
       if (!merged) return;
       barsRef.current = merged.bars;
       lastLiveAtRef.current = now;
-      setLiveStreaming(true);
 
       const bar = merged.updated;
-      setLegend((prev) => {
-        const prevClose = prev?.prevClose ?? bar.open;
-        return {
-          o: bar.open,
-          h: bar.high,
-          l: bar.low,
-          c: bar.close,
-          prevClose,
-        };
-      });
 
       // Heikin Ashi needs a full source rebuild — soft-throttle React setBars only.
       if (chartStyle === '8') {
-        if (merged.isNewBar || now - haThrottleRef.current >= 120) {
+        if (!liveStreamingRef.current) {
+          liveStreamingRef.current = true;
+          setLiveStreaming(true);
+        }
+        if (merged.isNewBar || now - haThrottleRef.current >= 80) {
           haThrottleRef.current = now;
           setBars(merged.bars);
         }
-        return;
-      }
-
-      // New candle: paint immediately so the tip appends without waiting a frame.
-      if (merged.isNewBar) {
-        if (liveRafRef.current) {
-          cancelAnimationFrame(liveRafRef.current);
-          liveRafRef.current = 0;
+        pendingLegendBarRef.current = bar;
+        if (!liveRafRef.current) {
+          liveRafRef.current = requestAnimationFrame(() => {
+            liveRafRef.current = 0;
+            const tip = pendingLegendBarRef.current;
+            if (!tip) return;
+            setLegend((prev) => ({
+              o: tip.open,
+              h: tip.high,
+              l: tip.low,
+              c: tip.close,
+              prevClose: prev?.prevClose ?? tip.open,
+            }));
+          });
         }
-        paintLiveTip(bar);
-        setFetchedAt(new Date(now).toISOString());
         return;
       }
 
+      // Paint candle tip immediately — do not wait for React / rAF.
+      paintLiveTip(bar);
+
+      if (!liveStreamingRef.current) {
+        liveStreamingRef.current = true;
+        setLiveStreaming(true);
+      }
+
+      // Legend OHLC via rAF so React re-renders never starve series.update.
+      pendingLegendBarRef.current = bar;
       if (!liveRafRef.current) {
         liveRafRef.current = requestAnimationFrame(() => {
           liveRafRef.current = 0;
-          const tip = barsRef.current[barsRef.current.length - 1];
-          if (tip) paintLiveTip(tip);
+          const tip = pendingLegendBarRef.current;
+          if (!tip) return;
+          setLegend((prev) => {
+            if (
+              prev &&
+              prev.o === tip.open &&
+              prev.h === tip.high &&
+              prev.l === tip.low &&
+              prev.c === tip.close
+            ) {
+              return prev;
+            }
+            return {
+              o: tip.open,
+              h: tip.high,
+              l: tip.low,
+              c: tip.close,
+              prevClose: prev?.prevClose ?? tip.open,
+            };
+          });
         });
+      }
+
+      if (merged.isNewBar) {
+        setFetchedAt(new Date(now).toISOString());
       }
     },
     [apiInterval, chartStyle, paintLiveTip],
@@ -536,6 +572,7 @@ export default function NativeChatChart({
     setLoadingOlder(false);
     setLegend(null);
     setLiveStreaming(false);
+    liveStreamingRef.current = false;
   }, [apiSymbol, apiInterval]);
 
   const loadOlderBars = useCallback(async () => {
@@ -625,9 +662,10 @@ export default function NativeChatChart({
 
     const poll = window.setInterval(() => {
       if (document.hidden) return;
-      // Prefer cache; if quiet > 3s, hit REST quotes.
+      const quietMs = Date.now() - lastLiveAtRef.current;
       const cachedNow = getFyersCachedQuote(apiSymbol);
-      if (cachedNow?.price && Date.now() - lastLiveAtRef.current < 3_000) {
+      // While ticks are fresh, keep painting tip from hottest cache (no REST wait).
+      if (cachedNow?.price && quietMs < 1_500) {
         applyLivePrice(cachedNow.price, cachedNow.volume);
         return;
       }
@@ -638,7 +676,10 @@ export default function NativeChatChart({
     }, QUOTE_POLL_MS);
 
     const stale = window.setInterval(() => {
-      if (Date.now() - lastLiveAtRef.current > 8_000) setLiveStreaming(false);
+      if (Date.now() - lastLiveAtRef.current > 8_000) {
+        liveStreamingRef.current = false;
+        setLiveStreaming(false);
+      }
     }, 2_000);
 
     return () => {

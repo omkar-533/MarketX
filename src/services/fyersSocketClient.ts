@@ -13,7 +13,8 @@ import type {
 
 const RECONNECT_DELAYS = [2000, 5000, 10000, 15000, 20000, 25000, 30000];
 const CLIENT_PING_MS = 25_000;
-const TICK_BATCH_MS = 48;
+/** Keep low — higher values make the live candle feel sticky vs TradingView. */
+const TICK_BATCH_MS = 8;
 
 type StatusHandler = (s: FyersConnectionPayload) => void;
 type TickHandler = (payload: FyersTickPayload) => void;
