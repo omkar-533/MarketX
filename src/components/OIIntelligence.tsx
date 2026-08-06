@@ -15,6 +15,7 @@ import {
   getLiveOIIntelligence,
   getLiveOIIntradayScanner,
   getOiIntelFeedStatus,
+  hasOiIntelligenceCache,
   refreshOiIntelligenceLive,
 } from '../services/oiIntelligenceLiveService';
 import type { LiveSymbolQuote } from '../services/symbolLiveService';
@@ -73,12 +74,21 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
     setFeedMode(status.mode);
   }, []);
 
-  const update = useCallback(async () => {
+  const update = useCallback(async (opts?: { soft?: boolean }) => {
     inflightRef.current += 1;
-    setLoading(true);
     const sym = symbolRef.current;
+    const cached = hasOiIntelligenceCache(sym);
+    // Cache-first: paint instantly, only show wolf when cache is cold
+    const showLoader = !opts?.soft && !cached;
+    if (showLoader) setLoading(true);
+    else if (cached) {
+      applySnapshot(sym);
+      readyRef.current = true;
+      setReady(true);
+      setLoading(false);
+    }
     try {
-      await refreshOiIntelligenceLive();
+      await refreshOiIntelligenceLive({ symbol: sym, force: !opts?.soft && !cached });
       applySnapshot(sym);
       readyRef.current = true;
       setReady(true);
@@ -89,14 +99,23 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
   }, [applySnapshot]);
 
   useEffect(() => {
+    const cached = hasOiIntelligenceCache(symbol);
+    if (cached) {
+      applySnapshot(symbol);
+      readyRef.current = true;
+      setReady(true);
+      setLoading(false);
+      void update({ soft: true });
+      return;
+    }
     readyRef.current = false;
     setReady(false);
-    void update();
-  }, [symbol, update]);
+    void update({ soft: false });
+  }, [symbol, update, applySnapshot]);
 
   useAutoRefresh(() => {
     if (!readyRef.current) return;
-    void update();
+    void update({ soft: true });
   });
 
   const oiDistribution = useMemo(() => [

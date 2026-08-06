@@ -8,13 +8,11 @@ import {
   type OIIntelligenceData,
   type OIScannerRow,
 } from '../data/marketData';
-import { FNO_INDICES, FNO_STOCKS_ALL, getFnoInstrument, getStrikeIntervalForSpot } from '../data/fnoUniverse';
-import { buildOptionChain } from './optionChainEngine';
+import { FNO_STOCKS_ALL, getFnoInstrument, getStrikeIntervalForSpot } from '../data/fnoUniverse';
 import {
   fetchOptionChainLive,
   getCachedOptionChain,
 } from './optionChainLiveService';
-import { fetchFnoHistory, fetchFnoOiBatch } from './marketApiService';
 import { getMarketConnectionState } from './marketConnection';
 import { isNseFnoMarketOpen, marketSessionLabel } from '../utils/marketHours';
 import { subscribeLiveSymbols } from './marketTickStream';
@@ -27,9 +25,14 @@ export type OiIntelFeedStatus = {
   fyersHistorySymbols: number;
 };
 
+/** Only warm these on the critical path — keeps first paint fast. */
+const FAST_INDEX_SET = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'] as const;
+
 let futuresCache: FuturesOIData[] = [];
 let feedStatus: OiIntelFeedStatus = { mode: 'offline', message: serverOfflineMessage(), fyersHistorySymbols: 0 };
 let refreshInFlight: Promise<void> | null = null;
+let refreshFocus = '';
+let backgroundWarmInFlight = false;
 
 function getBuildupSignal(priceChange: number, oiChange: number): BuildupSignal {
   if (priceChange > 0.15 && oiChange > 0) return 'Long Buildup';
@@ -56,39 +59,24 @@ function quoteFor(symbol: string) {
   return null;
 }
 
-function buildFuturesRow(symbol: string, histRows?: { totalOi: number; volume?: number; futClose?: number }[]): FuturesOIData {
-  const sym = symbol.trim().toUpperCase();
+/** Build futures row from live quote + optional NSE option-chain OI (no history round-trip). */
+function buildFuturesRow(symbol: string): FuturesOIData {
+  const sym = String(symbol || '').trim().toUpperCase();
   const q = quoteFor(sym);
   const spotPrice = q?.price ?? 0;
   const priceChange = q?.changePercent ?? 0;
-
+  const chain = getCachedOptionChain(sym, undefined, 0);
   let futuresOi = 0;
   let futuresOiChange = 0;
-  let futuresVolume = q?.volume ?? 0;
-  let futuresPrice = spotPrice;
-
-  if (histRows && histRows.length >= 1) {
-    const latest = histRows[histRows.length - 1] as {
-      totalOi: number;
-      volume?: number;
-      futClose?: number;
-      oiChange?: number;
-    };
-    const prev = histRows.length >= 2 ? histRows[histRows.length - 2] : latest;
-    futuresOi = latest.totalOi || futuresOi;
-    futuresOiChange =
-      latest.oiChange ??
-      (latest.totalOi || 0) - ((prev as { totalOi?: number }).totalOi || 0);
-    futuresVolume = latest.volume ?? futuresVolume;
-    if (latest.futClose) futuresPrice = latest.futClose;
-    if (!isNseFnoMarketOpen()) futuresOiChange = 0;
-  } else if (q) {
-    futuresOiChange = 0;
+  for (const row of chain) {
+    futuresOi += (row.ceOi || 0) + (row.peOi || 0);
+    futuresOiChange += (row.ceOiChg || 0) + (row.peOiChg || 0);
   }
+  if (!isNseFnoMarketOpen()) futuresOiChange = 0;
 
+  const futuresVolume = q?.volume ?? 0;
   const premBump = spotPrice > 40000 ? 80 : spotPrice > 15000 ? 35 : spotPrice > 3000 ? 12 : 4;
-  if (!futuresPrice && spotPrice) futuresPrice = spotPrice + premBump * 0.12;
-
+  const futuresPrice = spotPrice ? spotPrice + premBump * 0.12 : 0;
   const signal = getBuildupSignal(priceChange, futuresOiChange);
   const absOi = Math.abs(futuresOiChange / Math.max(futuresOi, 1)) * 100;
 
@@ -120,7 +108,7 @@ type ScannerInput = {
 function buildScannerRows(): OIScannerRow[] {
   const liveQuotes = getFnoLiveQuotes().filter((q) => q.type === 'stock');
   const list: ScannerInput[] = liveQuotes.length
-    ? liveQuotes.slice(0, 24).map((q) => ({
+    ? liveQuotes.slice(0, 12).map((q) => ({
         symbol: q.symbol,
         name: q.name,
         price: q.price,
@@ -128,7 +116,7 @@ function buildScannerRows(): OIScannerRow[] {
         volume: q.volume,
         vwap: q.vwap ?? q.price,
       }))
-    : FNO_STOCKS_ALL.slice(0, 18).flatMap((inst) => {
+    : FNO_STOCKS_ALL.slice(0, 10).flatMap((inst) => {
         const q = quoteFor(inst.symbol);
         if (!q?.price) return [];
         return [
@@ -145,7 +133,8 @@ function buildScannerRows(): OIScannerRow[] {
 
   return list
     .map((row) => {
-      const chain = buildOptionChain(row.symbol, row.price, undefined, 15);
+      // Cache-only — never kick N parallel NSE option-chain fetches from the scanner
+      const chain = getCachedOptionChain(row.symbol, undefined, 15);
       const oiChange = chain.reduce((s, r) => s + r.ceOiChg + r.peOiChg, 0);
       const priceChange = row.changePercent;
       const signal = getBuildupSignal(priceChange, oiChange);
@@ -157,14 +146,16 @@ function buildScannerRows(): OIScannerRow[] {
       const closed = !isNseFnoMarketOpen();
       let reason = closed
         ? `Market closed — EOD OI snapshot (no live OI change)`
-        : `${signal}: price ${priceChange >= 0 ? 'up' : 'down'} with OI ${oiChange >= 0 ? 'rising' : 'falling'}`;
-      if (!closed && oiSpike && highVolume) {
+        : chain.length
+          ? `${signal}: price ${priceChange >= 0 ? 'up' : 'down'} with OI ${oiChange >= 0 ? 'rising' : 'falling'}`
+          : `Price ${priceChange >= 0 ? 'up' : 'down'} ${Math.abs(priceChange).toFixed(2)}% (OI warming…)`;
+      if (!closed && chain.length && oiSpike && highVolume) {
         scannerSignal = 'Volume + OI Confirmation';
-        reason = 'High volume with OI expansion (live LTP + chain model)';
-      } else if (!closed && oiSpike) {
+        reason = 'High volume with OI expansion (live LTP + chain)';
+      } else if (!closed && chain.length && oiSpike) {
         scannerSignal = 'OI Spike';
-        reason = 'Sharp OI change vs spot (chain model at live price)';
-      } else if (!closed && vwapHold) {
+        reason = 'Sharp OI change vs spot';
+      } else if (!closed && chain.length && vwapHold) {
         scannerSignal = 'Smart Money Activity';
         reason = 'Price above VWAP with OI buildup';
       } else if (closed) {
@@ -193,12 +184,115 @@ export function getOiIntelFeedStatus(): OiIntelFeedStatus {
 
 export function getLiveFuturesOIData(): FuturesOIData[] {
   if (futuresCache.length) return futuresCache;
-  return FNO_INDICES.map((i) => buildFuturesRow(i.symbol));
+  return FAST_INDEX_SET.map((s) => buildFuturesRow(s));
 }
 
 export function getLiveFuturesOIForSymbol(symbol: string): FuturesOIData {
   const sym = symbol.trim().toUpperCase();
   return futuresCache.find((r) => r.symbol === sym) ?? buildFuturesRow(sym);
+}
+
+export function hasOiIntelligenceCache(symbol: string): boolean {
+  return getCachedOptionChain(symbol.trim().toUpperCase(), undefined, 0).length > 0;
+}
+
+function rebuildFuturesCache(symbols: string[]) {
+  const rows = symbols
+    .map((sym) => buildFuturesRow(sym))
+    .filter((r) => r.spotPrice > 0 || r.futuresOi > 0);
+  futuresCache = rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
+}
+
+function updateFeedStatus(symbols: string[]) {
+  const liveQuotes = symbols.filter((s) => quoteFor(s)?.price).length;
+  const chainCount = symbols.filter((s) => getCachedOptionChain(s, undefined, 0).length > 0).length;
+  const session = marketSessionLabel();
+  const closedNote = isNseFnoMarketOpen() ? '' : ' · OI frozen (EOD)';
+  const chainSource = chainCount > 0;
+
+  feedStatus = {
+    mode: chainSource || liveQuotes > 0 ? (chainSource && liveQuotes > 0 ? 'live' : 'mixed') : 'offline',
+    message:
+      chainSource && liveQuotes > 0
+        ? `${session} · NSE chain + LTP${closedNote}`
+        : chainSource
+          ? `${session} · NSE option chain${closedNote}`
+          : liveQuotes > 0
+            ? `${session} · LTP ready (chain warming…)${closedNote}`
+            : getMarketConnectionState().serverOk
+              ? `${session} — fetching NSE…`
+              : serverOfflineMessage(),
+    fyersHistorySymbols: 0,
+  };
+}
+
+/** Non-blocking: warm sister indices + a few stocks for scanner. */
+function warmBackground(focus: string, peerSymbols: string[]) {
+  if (backgroundWarmInFlight) return;
+  backgroundWarmInFlight = true;
+  void (async () => {
+    try {
+      for (const sym of peerSymbols) {
+        if (sym === focus) continue;
+        await fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 0 }).catch(() => null);
+        rebuildFuturesCache([focus, ...peerSymbols]);
+        updateFeedStatus([focus, ...peerSymbols]);
+      }
+      const stocks = getFnoLiveQuotes()
+        .filter((q) => q.type === 'stock')
+        .slice(0, 4)
+        .map((q) => q.symbol);
+      for (const sym of stocks) {
+        await fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 15 }).catch(() => null);
+      }
+    } finally {
+      backgroundWarmInFlight = false;
+    }
+  })();
+}
+
+/**
+ * Fast refresh: only await the focused symbol's NSE option chain.
+ * Sister indices warm in the background so first paint stays quick.
+ */
+export async function refreshOiIntelligenceLive(opts?: {
+  symbol?: string;
+  force?: boolean;
+}): Promise<OiIntelFeedStatus> {
+  const focus = String(opts?.symbol || 'NIFTY').trim().toUpperCase() || 'NIFTY';
+
+  if (refreshInFlight && refreshFocus === focus) {
+    await refreshInFlight;
+    return feedStatus;
+  }
+
+  refreshFocus = focus;
+  refreshInFlight = (async () => {
+    const conn = getMarketConnectionState();
+    if (!conn.serverOk) {
+      feedStatus = { mode: 'offline', message: serverUnreachableMessage(), fyersHistorySymbols: 0 };
+      return;
+    }
+
+    const peers = FAST_INDEX_SET.filter((s) => s !== focus).slice(0, 2);
+    const matrix = [focus, ...peers];
+    subscribeLiveSymbols(matrix);
+
+    await fetchOptionChainLive(focus, undefined, {
+      force: opts?.force === true,
+      strikeWindow: 0,
+    }).catch(() => null);
+
+    rebuildFuturesCache(matrix);
+    updateFeedStatus(matrix);
+    warmBackground(focus, peers);
+  })().finally(() => {
+    refreshInFlight = null;
+    refreshFocus = '';
+  });
+
+  await refreshInFlight;
+  return feedStatus;
 }
 
 export function getLiveOIIntelligence(symbol: string): OIIntelligenceData {
@@ -210,22 +304,23 @@ export function getLiveOIIntelligence(symbol: string): OIIntelligenceData {
   const chain = getCachedOptionChain(sym, undefined, 0);
 
   if (!chain.length) {
-    // Cache empty — kick async fetch; show static structure only as last resort
     void fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 0 });
     return getStaticOIIntelligence(sym);
   }
 
   const interval = getStrikeIntervalForSpot(spotPrice || (inst?.basePrice ?? 24580), inst);
-  const atmStrike = Math.round((spotPrice || chain[Math.floor(chain.length / 2)]?.strike || 0) / interval) * interval;
+  const atmStrike =
+    Math.round((spotPrice || chain[Math.floor(chain.length / 2)]?.strike || 0) / interval) * interval;
   const totalCeOi = chain.reduce((sum, s) => sum + s.ceOi, 0);
   const totalPeOi = chain.reduce((sum, s) => sum + s.peOi, 0);
   const totalCeOiChange = chain.reduce((sum, s) => sum + s.ceOiChg, 0);
   const totalPeOiChange = chain.reduce((sum, s) => sum + s.peOiChg, 0);
   const atm =
     chain.find((s) => s.strike === atmStrike) ??
-    chain.reduce((best, r) =>
-      Math.abs(r.strike - atmStrike) < Math.abs(best.strike - atmStrike) ? r : best,
-    chain[Math.floor(chain.length / 2)]);
+    chain.reduce(
+      (best, r) => (Math.abs(r.strike - atmStrike) < Math.abs(best.strike - atmStrike) ? r : best),
+      chain[Math.floor(chain.length / 2)],
+    );
   const maxPain = calculateMaxPain(chain).maxPainStrike;
   const topCe = [...chain].sort((a, b) => b.ceOi - a.ceOi).slice(0, 5);
   const topPe = [...chain].sort((a, b) => b.peOi - a.peOi).slice(0, 5);
@@ -262,7 +357,8 @@ export function getLiveOIIntelligence(symbol: string): OIIntelligenceData {
           : overallPcr < 0.95
             ? 'Bearish'
             : 'Neutral';
-  const oiSpike = Math.abs(totalCeOiChange + totalPeOiChange) / Math.max(totalCeOi + totalPeOi, 1) > 0.025;
+  const oiSpike =
+    Math.abs(totalCeOiChange + totalPeOiChange) / Math.max(totalCeOi + totalPeOi, 1) > 0.025;
   const sidewaysWithRisingOi = Math.abs(changePercent) < 0.25 && totalCeOiChange + totalPeOiChange > 250000;
   const marketOpen = isNseFnoMarketOpen();
   const smartMoneySignal = !marketOpen
@@ -292,7 +388,8 @@ export function getLiveOIIntelligence(symbol: string): OIIntelligenceData {
     smartMoneySignal,
     institutionalPositioning: oiSpike ? 'Active' : 'Passive',
     reversalProbability:
-      Math.round(Math.min(90, Math.abs(overallPcr - 1) * 85 + (sidewaysWithRisingOi ? 25 : 10)) * 10) / 10,
+      Math.round(Math.min(90, Math.abs(overallPcr - 1) * 85 + (sidewaysWithRisingOi ? 25 : 10)) * 10) /
+      10,
     fakeBreakoutRisk: Math.round((sidewaysWithRisingOi ? 72 : 25) * 10) / 10,
     oiTrapRisk: Math.round((callPressure > 250000 && changePercent > 0 ? 70 : 20) * 10) / 10,
     callWriting,
@@ -346,104 +443,4 @@ export function getLiveOIAlerts(): OIAlert[] {
       time: `${index + 1} min ago`,
     };
   });
-}
-
-export async function refreshOiIntelligenceLive(): Promise<OiIntelFeedStatus> {
-  if (refreshInFlight) {
-    await refreshInFlight;
-    return feedStatus;
-  }
-
-  refreshInFlight = (async () => {
-    const conn = getMarketConnectionState();
-    if (!conn.serverOk) {
-      feedStatus = { mode: 'offline', message: serverUnreachableMessage(), fyersHistorySymbols: 0 };
-      futuresCache = [];
-      return;
-    }
-
-    const symbols = [...FNO_INDICES.map((i) => i.symbol)];
-    subscribeLiveSymbols(symbols);
-
-    // Warm NSE option chains (broker-free) — feeds PCR / writing / scanner
-    await Promise.all(
-      symbols.map((sym) =>
-        fetchOptionChainLive(sym, undefined, { force: false, strikeWindow: 0 }).catch(() => null),
-      ),
-    );
-
-    const to = new Date().toISOString().split('T')[0];
-    const from = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-
-    let histCount = 0;
-    let chainCount = 0;
-    const rows: FuturesOIData[] = [];
-
-    await Promise.all(
-      symbols.map(async (sym) => {
-        if (getCachedOptionChain(sym, undefined, 0).length) chainCount += 1;
-        try {
-          const hist = await fetchFnoHistory(sym, from, to);
-          if (hist?.rows?.length) {
-            const built = buildFuturesRow(sym, hist.rows);
-            if (built.futuresOi > 500_000) histCount += 1;
-            rows.push(built);
-            return;
-          }
-        } catch {
-          /* fallback */
-        }
-        try {
-          const fno = await fetchFnoOiBatch([sym]);
-          const snap = fno?.snapshots?.find((s) => s.symbol === sym);
-          if (snap?.totalOi) {
-            const built = buildFuturesRow(sym);
-            built.futuresOi = snap.totalOi;
-            built.futuresOiChange = isNseFnoMarketOpen() ? snap.oiChange : 0;
-            if (built.spotPrice > 0) rows.push(built);
-            return;
-          }
-        } catch {
-          /* skip */
-        }
-        const built = buildFuturesRow(sym);
-        if (built.spotPrice > 0) rows.push(built);
-      }),
-    );
-
-    futuresCache = rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
-    const liveQuotes = symbols.filter((s) => quoteFor(s)?.price).length;
-    const histSource = histCount > 0;
-    const chainSource = chainCount > 0;
-
-    const session = marketSessionLabel();
-    const closedNote = isNseFnoMarketOpen() ? '' : ' · OI frozen (EOD)';
-
-    feedStatus = {
-      mode:
-        (liveQuotes > 0 || chainSource) && (histSource || chainSource)
-          ? liveQuotes > 0 && (histSource || chainSource)
-            ? 'live'
-            : 'mixed'
-          : liveQuotes > 0
-            ? 'mixed'
-            : 'offline',
-      message:
-        chainSource && liveQuotes > 0
-          ? `${session} · NSE option chain + LTP${histSource ? ` + history (${histCount})` : ''}${closedNote}`
-          : chainSource
-            ? `${session} · NSE option chain OI (no LTP yet)${closedNote}`
-            : liveQuotes > 0
-              ? `${session} · Live LTP (option chain warming…)${closedNote}`
-              : conn.serverOk
-                ? `${session} — waiting for NSE / live quotes`
-                : serverOfflineMessage(),
-      fyersHistorySymbols: histCount,
-    };
-  })().finally(() => {
-    refreshInFlight = null;
-  });
-
-  await refreshInFlight;
-  return feedStatus;
 }
