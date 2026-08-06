@@ -1,11 +1,13 @@
 import { randomBytes } from 'crypto';
 import { getAdminClient, storeError } from './supabaseAdmin.mjs';
 import { readJsonFile, writeJsonFile } from './jsonStore.mjs';
+import { defaultsFromSettings, parsePineSettings } from './pineSettings.mjs';
 
 const TABLE = 'app_indicators';
 const FILE = 'app-indicators.json';
 const BUCKET = 'indicators-media';
 const MAX_BYTES = 4 * 1024 * 1024;
+const PINE_MAX_CHARS = 200_000;
 const SIGNED_URL_TTL = 60 * 60;
 
 let bucketReady = false;
@@ -54,14 +56,23 @@ function rowHowToVideo(row) {
   return String(row?.how_to_video_url || row?.howToVideoUrl || '').trim();
 }
 
+function rowPineSource(row) {
+  return String(row?.pine_source ?? row?.pineSource ?? '').trim();
+}
+
 function fromRow(row, signedUrl = null) {
   if (!row) return null;
+  const pineSource = rowPineSource(row);
+  const settings = parsePineSettings(pineSource);
   return {
     id: row.id,
     title: row.title,
     description: row.description ?? '',
     link: rowLink(row),
     howToVideoUrl: rowHowToVideo(row) || null,
+    pineSource,
+    settings,
+    settingsDefaults: defaultsFromSettings(settings),
     sortOrder: Number(row.sort_order || 0),
     published: row.published !== false,
     createdAt: row.created_at,
@@ -116,20 +127,35 @@ function validateHttpUrl(value, label) {
   return clean.slice(0, 2000);
 }
 
-function validateFields({ title, description, link, howToVideoUrl }) {
+function validatePineSource(pineSource) {
+  const pine = String(pineSource ?? '').trim();
+  if (pine.length > PINE_MAX_CHARS) {
+    throw Object.assign(new Error(`Pine Script is too large (max ${PINE_MAX_CHARS} chars)`), {
+      status: 400,
+    });
+  }
+  return pine;
+}
+
+function validateFields({ title, description, link, howToVideoUrl, pineSource, requireDelivery = true }) {
   const cleanTitle = String(title || '').trim();
   if (cleanTitle.length < 2) {
     throw Object.assign(new Error('Enter a title for the indicator'), { status: 400 });
   }
   const cleanLink = validateHttpUrl(link, 'invite link');
-  if (!cleanLink) {
-    throw Object.assign(new Error('Paste the indicator invite / share link'), { status: 400 });
+  const pine = validatePineSource(pineSource);
+  if (requireDelivery && !cleanLink && !pine) {
+    throw Object.assign(
+      new Error('Add Pine Script code and/or a TradingView invite link'),
+      { status: 400 },
+    );
   }
   return {
     title: cleanTitle.slice(0, 120),
     description: String(description || '').slice(0, 4000),
     link: cleanLink,
     howToVideoUrl: validateHttpUrl(howToVideoUrl, 'how-to video'),
+    pineSource: pine,
   };
 }
 
@@ -220,12 +246,13 @@ export async function createIndicator({
   description,
   link,
   howToVideoUrl = '',
+  pineSource = '',
   image,
   sortOrder = 0,
   published = true,
   createdBy = 'admin',
 }) {
-  const fields = validateFields({ title, description, link, howToVideoUrl });
+  const fields = validateFields({ title, description, link, howToVideoUrl, pineSource });
   const id = `ind_${randomBytes(9).toString('hex')}`;
   const now = new Date().toISOString();
   const db = getAdminClient();
@@ -238,7 +265,8 @@ export async function createIndicator({
     description: fields.description,
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
-    code: fields.link,
+    pine_source: fields.pineSource,
+    code: fields.link || 'pine',
     image_path: media.path,
     image_data: media.data,
     sort_order: Number(sortOrder) || 0,
@@ -262,6 +290,7 @@ export async function createIndicator({
     description: row.description,
     code: row.code,
     how_to_video_url: row.how_to_video_url,
+    pine_source: row.pine_source,
     image_path: row.image_path,
     image_data: row.image_data,
     sort_order: row.sort_order,
@@ -272,6 +301,19 @@ export async function createIndicator({
   };
 
   let { data, error } = await db.from(TABLE).insert(cloudRow).select().single();
+  if (error && /pine_source/i.test(error.message || '')) {
+    if (fields.pineSource) {
+      throw Object.assign(
+        new Error(
+          'Pine Script column missing on database. Run scripts/add-pine-source-column.mjs then retry.',
+        ),
+        { status: 500 },
+      );
+    }
+    const withoutPine = { ...cloudRow };
+    delete withoutPine.pine_source;
+    ({ data, error } = await db.from(TABLE).insert(withoutPine).select().single());
+  }
   if (error && /how_to_video_url/i.test(error.message || '')) {
     if (fields.howToVideoUrl) {
       throw Object.assign(
@@ -290,7 +332,7 @@ export async function createIndicator({
     await db.from(TABLE).update({ link: fields.link }).eq('id', data.id);
   }
   if (error) throw storeError(error);
-  return fromRow(data, await signImage(db, data));
+  return fromRow({ ...data, pine_source: fields.pineSource || data?.pine_source }, await signImage(db, data));
 }
 
 function pickLink(patchLink, currentLink) {
@@ -352,6 +394,7 @@ export async function updateIndicator(id, patch = {}) {
     link: pickLink(patch.link ?? patch.code, current.link),
     howToVideoUrl:
       patch.howToVideoUrl === undefined ? current.howToVideoUrl || '' : patch.howToVideoUrl,
+    pineSource: patch.pineSource === undefined ? current.pineSource || '' : patch.pineSource,
   });
 
   const db = getAdminClient();
@@ -374,7 +417,8 @@ export async function updateIndicator(id, patch = {}) {
     description: fields.description,
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
-    code: fields.link,
+    pine_source: fields.pineSource,
+    code: fields.link || 'pine',
     sort_order:
       patch.sortOrder === undefined ? current.sortOrder : Number(patch.sortOrder) || 0,
     published: patch.published === undefined ? current.published : patch.published !== false,
@@ -393,6 +437,7 @@ export async function updateIndicator(id, patch = {}) {
           description: next.description,
           link: next.link,
           how_to_video_url: next.how_to_video_url,
+          pine_source: next.pine_source,
           code: next.code,
           sort_order: next.sort_order,
           published: next.published,
@@ -413,6 +458,7 @@ export async function updateIndicator(id, patch = {}) {
     title: next.title,
     description: next.description,
     how_to_video_url: next.how_to_video_url,
+    pine_source: next.pine_source,
     code: next.code,
     sort_order: next.sort_order,
     published: next.published,
@@ -424,6 +470,19 @@ export async function updateIndicator(id, patch = {}) {
   }
 
   let { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
+  if (error && /pine_source/i.test(error.message || '')) {
+    if (fields.pineSource) {
+      throw Object.assign(
+        new Error(
+          'Pine Script column missing on database. Run scripts/add-pine-source-column.mjs then retry.',
+        ),
+        { status: 500 },
+      );
+    }
+    const withoutPine = { ...cloudPatch };
+    delete withoutPine.pine_source;
+    ({ data, error } = await db.from(TABLE).update(withoutPine).eq('id', id).select().maybeSingle());
+  }
   if (error && /how_to_video_url/i.test(error.message || '')) {
     if (fields.howToVideoUrl) {
       throw Object.assign(
@@ -448,7 +507,10 @@ export async function updateIndicator(id, patch = {}) {
     }
   }
 
-  return fromRow(data, await signImage(db, data));
+  return fromRow(
+    { ...data, pine_source: fields.pineSource || data?.pine_source },
+    await signImage(db, data),
+  );
 }
 
 /**

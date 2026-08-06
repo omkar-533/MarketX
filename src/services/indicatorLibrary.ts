@@ -1,5 +1,6 @@
 import { apiFetch } from '../config/api';
 import { loadAppSession } from './appInviteAuth';
+import type { PineSettingField } from './pineSettings';
 
 export type IndicatorItem = {
   id: string;
@@ -9,6 +10,11 @@ export type IndicatorItem = {
   link: string;
   /** Optional how-to guidance video (YouTube / Vimeo / direct file URL). */
   howToVideoUrl?: string | null;
+  /** Admin-only — Pine Script source. Never present on member list responses. */
+  pineSource?: string;
+  /** Parsed input.* settings (safe for members). */
+  settings?: PineSettingField[];
+  settingsDefaults?: Record<string, string | number | boolean>;
   sortOrder: number;
   published: boolean;
   createdAt: string;
@@ -101,8 +107,9 @@ export async function adminListIndicators(
 export type IndicatorInput = {
   title: string;
   description: string;
-  link: string;
+  link?: string;
   howToVideoUrl?: string;
+  pineSource?: string;
   image?: string | null;
   sortOrder?: number;
   published?: boolean;

@@ -548,6 +548,19 @@ function publicIndicator(row) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     imageUrl: row.imageUrl,
+    /** Parsed from admin Pine — inputs only. Never includes source. */
+    settings: Array.isArray(row.settings) ? row.settings : [],
+    settingsDefaults:
+      row.settingsDefaults && typeof row.settingsDefaults === 'object' ? row.settingsDefaults : {},
+  };
+}
+
+/** Admin payload — includes Pine Script source for editing only. */
+function adminIndicator(row) {
+  if (!row) return null;
+  return {
+    ...publicIndicator(row),
+    pineSource: String(row.pineSource || ''),
   };
 }
 
@@ -823,7 +836,7 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
 router.get('/admin/indicators', requireAdmin, async (_req, res) => {
   try {
     const indicators = await listAllIndicators();
-    return res.json({ indicators: indicators.map(publicIndicator) });
+    return res.json({ indicators: indicators.map(adminIndicator) });
   } catch (err) {
     return failed(res, err, 'Could not load indicators');
   }
@@ -837,12 +850,13 @@ router.post('/admin/indicators', requireAdmin, async (req, res) => {
       description: req.body?.description,
       link: req.body?.link ?? req.body?.code,
       howToVideoUrl: req.body?.howToVideoUrl,
+      pineSource: req.body?.pineSource ?? req.body?.pine_source ?? '',
       image: req.body?.image,
       sortOrder: req.body?.sortOrder,
       published: req.body?.published,
       createdBy: req.adminActor || 'admin',
     });
-    return res.status(201).json({ indicator: publicIndicator(indicator) });
+    return res.status(201).json({ indicator: adminIndicator(indicator) });
   } catch (err) {
     return failed(res, err, 'Could not create indicator');
   }
@@ -860,7 +874,17 @@ async function handleAdminIndicatorUpdate(req, res) {
         req.params.id,
         req.body?.howToVideoUrl ?? req.body?.how_to_video_url ?? '',
       );
-      return res.json({ indicator: publicIndicator(indicator) });
+      return res.json({ indicator: adminIndicator(indicator) });
+    }
+
+    // Visibility-only toggle (hide / publish) without revalidating pine+link.
+    const publishedOnly =
+      keys.length > 0 && keys.every((k) => k === 'published');
+    if (publishedOnly) {
+      const indicator = await updateIndicator(req.params.id, {
+        published: req.body?.published,
+      });
+      return res.json({ indicator: adminIndicator(indicator) });
     }
 
     const indicator = await updateIndicator(req.params.id, {
@@ -868,11 +892,12 @@ async function handleAdminIndicatorUpdate(req, res) {
       description: req.body?.description,
       link: req.body?.link ?? req.body?.code,
       howToVideoUrl: req.body?.howToVideoUrl,
+      pineSource: req.body?.pineSource ?? req.body?.pine_source,
       image: req.body?.image,
       sortOrder: req.body?.sortOrder,
       published: req.body?.published,
     });
-    return res.json({ indicator: publicIndicator(indicator) });
+    return res.json({ indicator: adminIndicator(indicator) });
   } catch (err) {
     return failed(res, err, 'Could not update indicator');
   }
@@ -883,7 +908,7 @@ router.put('/admin/indicators/reorder', requireAdmin, async (req, res) => {
   try {
     const orderedIds = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : [];
     const indicators = await reorderIndicators(orderedIds);
-    return res.json({ ok: true, indicators: indicators.map(publicIndicator) });
+    return res.json({ ok: true, indicators: indicators.map(adminIndicator) });
   } catch (err) {
     return failed(res, err, 'Could not reorder indicators');
   }
@@ -900,7 +925,7 @@ router.put('/admin/indicators/:id/how-to-video', requireAdmin, async (req, res) 
       req.params.id,
       req.body?.howToVideoUrl ?? req.body?.url ?? '',
     );
-    return res.json({ indicator: publicIndicator(indicator), ok: true });
+    return res.json({ indicator: adminIndicator(indicator), ok: true });
   } catch (err) {
     return failed(res, err, 'Could not save how-to video URL');
   }

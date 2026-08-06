@@ -38,6 +38,7 @@ import {
   wolfStudyIdFor,
   rememberWolfStudyTitle,
 } from '../../services/chart/wolfIndicators';
+import { rememberStudySettingsSchema } from '../../services/wolfIndicatorSettings';
 
 type IndCategory = 'technicals' | 'wolf' | 'favourites';
 
@@ -213,7 +214,14 @@ export default function TerminalTopBar({
     setWolfError(null);
     void listIndicators()
       .then((items) => {
-        if (!cancelled) setWolfItems(items.filter((i) => i.published !== false));
+        if (cancelled) return;
+        const published = items.filter((i) => i.published !== false);
+        setWolfItems(published);
+        for (const item of published) {
+          const studyId = wolfStudyIdFor(item);
+          rememberWolfStudyTitle(studyId, item.title);
+          rememberStudySettingsSchema(studyId, item.settings);
+        }
       })
       .catch((err) => {
         if (!cancelled) {

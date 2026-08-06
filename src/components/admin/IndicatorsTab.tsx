@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
   GripVertical,
   ImagePlus,
   Loader2,
@@ -20,6 +22,7 @@ import {
   adminUpdateIndicator,
   type IndicatorItem,
 } from '../../services/indicatorLibrary';
+import { parsePineSettings } from '../../services/pineSettings';
 import { TRIAL_DAYS } from '../../constants/plans';
 
 type IndicatorsTabProps = {
@@ -30,12 +33,15 @@ type IndicatorsTabProps = {
 const FIELD =
   'w-full px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 focus:outline-none focus:border-[#d4af37]/40';
 const LABEL = 'block text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold';
+const PINE_FIELD =
+  'w-full px-3 py-2 rounded-lg bg-[#0a0c12] border border-[#1a1f2e] text-[12px] font-mono text-emerald-200/90 focus:outline-none focus:border-[#d4af37]/40 min-h-[280px] resize-y leading-relaxed';
 
 type FormState = {
   title: string;
   description: string;
   link: string;
   howToVideoUrl: string;
+  pineSource: string;
   sortOrder: string;
   published: boolean;
   image: string | null;
@@ -47,6 +53,7 @@ const emptyForm = (): FormState => ({
   description: '',
   link: '',
   howToVideoUrl: '',
+  pineSource: '',
   sortOrder: '0',
   published: true,
   image: null,
@@ -67,6 +74,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
+  const pinePreviewSettings = useMemo(() => parsePineSettings(form.pineSource), [form.pineSource]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +108,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       description: row.description,
       link: row.link,
       howToVideoUrl: row.howToVideoUrl || '',
+      pineSource: row.pineSource || '',
       sortOrder: String(row.sortOrder ?? 0),
       published: row.published,
       image: null,
@@ -142,6 +151,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
     try {
       const howToVideoUrl = normalizeUrl(form.howToVideoUrl);
       const link = normalizeUrl(form.link);
+      const pineSource = form.pineSource.trim();
       if (howToVideoUrl) {
         let validVideo = true;
         try {
@@ -155,8 +165,8 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           );
         }
       }
-      if (!link) {
-        throw new Error('Indicator link required hai (TradingView / invite URL).');
+      if (!link && !pineSource) {
+        throw new Error('Pine Script code ya TradingView invite link — kam se kam ek zaroori hai.');
       }
 
       const payload = {
@@ -164,6 +174,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         description: form.description,
         link,
         howToVideoUrl,
+        pineSource,
         sortOrder: Number(form.sortOrder) || 0,
         published: form.published,
         ...(form.clearImage
@@ -190,12 +201,13 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         }
       }
 
+      const settingCount = Array.isArray(saved?.settings)
+        ? saved.settings.length
+        : parsePineSettings(pineSource).length;
       setMsg(
-        howToVideoUrl
-          ? `Saved. Video URL: ${howToVideoUrl}`
-          : editingId
-            ? 'Indicator updated.'
-            : 'Indicator created.',
+        editingId
+          ? `Updated. Members see ${settingCount} setting(s) — never Pine source.`
+          : `Created. Members see ${settingCount} setting(s) — never Pine source.`,
       );
       // Keep form open so admin can see the persisted video URL.
       setEditingId(saved.id);
@@ -203,6 +215,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         ...prev,
         howToVideoUrl: saved.howToVideoUrl || howToVideoUrl || '',
         link: saved.link || link,
+        pineSource: saved.pineSource ?? pineSource,
         image: null,
         clearImage: false,
       }));
@@ -219,6 +232,23 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleVisibility = async (row: IndicatorItem) => {
+    setError('');
+    setMsg('');
+    try {
+      await adminUpdateIndicator(
+        row.id,
+        { published: !row.published },
+        adminEmail,
+        adminPassword,
+      );
+      setMsg(row.published ? `Hidden “${row.title}” from members.` : `Published “${row.title}”.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update visibility');
     }
   };
 
@@ -319,9 +349,10 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add title, description, invite link, optional how-to video, and cover image. Drag rows
-            (grip handle) or use ↑ ↓ to place cards where you want on the member Indicators page (
-            {TRIAL_DAYS}-day demo, then desk approval).
+            Add / edit / hide indicators. Paste Pine Script here (admin only). Members never see
+            source — only settings parsed from <code className="text-slate-400">input.*</code>. Optional
+            TradingView invite link + how-to video. Drag to reorder ({TRIAL_DAYS}-day demo, then desk
+            approval for invite unlock).
           </p>
         </div>
         <button
@@ -412,7 +443,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                     onChange={(e) => setForm((p) => ({ ...p, published: e.target.checked }))}
                     className="rounded border-[#1a1f2e]"
                   />
-                  Published
+                  Visible to members
                 </label>
               </div>
             </div>
@@ -462,6 +493,43 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           </div>
 
           <div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <label className={LABEL}>Pine Script source (admin only)</label>
+              <span className="text-[10px] text-slate-500">
+                {pinePreviewSettings.length
+                  ? `${pinePreviewSettings.length} setting(s) members will see`
+                  : 'No input.* detected yet'}
+              </span>
+            </div>
+            <textarea
+              className={PINE_FIELD}
+              value={form.pineSource}
+              onChange={(e) => setForm((p) => ({ ...p, pineSource: e.target.value }))}
+              placeholder={'//@version=6\nindicator("My Wolf Pack", overlay=true)\nlookback = input.int(200, "Lookback")\n…'}
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <p className="text-[10px] text-slate-600 mt-1.5">
+              Stored server-side. Member APIs never return this field — only parsed settings.
+            </p>
+            {pinePreviewSettings.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {pinePreviewSettings.slice(0, 12).map((s) => (
+                  <span
+                    key={s.key}
+                    className="text-[10px] px-1.5 py-0.5 rounded border border-[#1a1f2e] text-slate-400"
+                  >
+                    {s.label}
+                  </span>
+                ))}
+                {pinePreviewSettings.length > 12 ? (
+                  <span className="text-[10px] text-slate-600">+{pinePreviewSettings.length - 12}</span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div>
             <label className={LABEL}>How to use video URL (optional)</label>
             <input
               type="text"
@@ -480,7 +548,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           </div>
 
           <div>
-            <label className={LABEL}>Indicator link</label>
+            <label className={LABEL}>TradingView invite link (optional if Pine is set)</label>
             <input
               type="text"
               inputMode="url"
@@ -489,11 +557,10 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
               value={form.link}
               onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}
               placeholder="https://… invite / share link"
-              required
               spellCheck={false}
             />
             <p className="text-[10px] text-slate-600 mt-1.5">
-              Paste the TradingView / invite URL users should open. No script code needed.
+              Members with access can open this invite. They still never see Pine source.
             </p>
           </div>
 
@@ -612,17 +679,31 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
                         className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                           row.published
                             ? 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10'
-                            : 'border-slate-600 text-slate-500'
+                            : 'border-amber-500/25 text-amber-400 bg-amber-500/10'
                         }`}
                       >
-                        {row.published ? 'Live' : 'Draft'}
+                        {row.published ? 'Visible' : 'Hidden'}
                       </span>
+                      {row.pineSource ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-sky-500/25 text-sky-400 bg-sky-500/10">
+                          Pine · {row.settings?.length ?? 0} inputs
+                        </span>
+                      ) : null}
                     </div>
                     <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                      {row.link || row.description || 'No link'}
+                      {row.link || row.description || 'Pine / settings only'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => void toggleVisibility(row)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#1a1f2e] text-[11px] font-bold text-slate-300 hover:border-[#d4af37]/40 hover:text-[#d4af37]"
+                      title={row.published ? 'Hide from members' : 'Show to members'}
+                    >
+                      {row.published ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {row.published ? 'Hide' : 'Show'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEdit(row)}

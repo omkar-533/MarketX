@@ -56,6 +56,13 @@ import {
   wolfStudyLabel,
 } from '../../services/chart/wolfIndicators';
 import {
+  clustersOptsFromSettings,
+  getStudySettingsSchema,
+  loadIndicatorSettings,
+  saveIndicatorSettings,
+} from '../../services/wolfIndicatorSettings';
+import IndicatorSettingsForm from '../indicators/IndicatorSettingsForm';
+import {
   ensurePriceVisible,
   tvZoomPrice,
 } from '../../services/chart/chartNavActions';
@@ -295,6 +302,10 @@ export default function NativeChatChart({
   const [studyLegend, setStudyLegend] = useState<IndicatorLine[]>([]);
   const [hiddenStudyIds, setHiddenStudyIds] = useState<string[]>([]);
   const [studySettingsId, setStudySettingsId] = useState<string | null>(null);
+  const [wolfSettingsRev, setWolfSettingsRev] = useState(0);
+  const [studyParamValues, setStudyParamValues] = useState<
+    Record<string, string | number | boolean>
+  >({});
   const [chartEpoch, setChartEpoch] = useState(0);
   const needFitRef = useRef(true);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
@@ -375,7 +386,21 @@ export default function NativeChatChart({
     () => studies.filter((id) => !hiddenStudyIds.includes(id)),
     [studies, hiddenStudyIds],
   );
-  const studyKey = `${studies.join(',')}|hide:${hiddenStudyIds.slice().sort().join(',')}`;
+  const studyKey = `${studies.join(',')}|hide:${hiddenStudyIds.slice().sort().join(',')}|cfg:${wolfSettingsRev}`;
+
+  useEffect(() => {
+    const onChange = () => setWolfSettingsRev((n) => n + 1);
+    window.addEventListener('wolf-indicator-settings-changed', onChange);
+    return () => window.removeEventListener('wolf-indicator-settings-changed', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!studySettingsId || !isWolfStudyId(studySettingsId)) {
+      setStudyParamValues({});
+      return;
+    }
+    setStudyParamValues(loadIndicatorSettings(studySettingsId));
+  }, [studySettingsId, wolfSettingsRev]);
 
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
@@ -1188,7 +1213,10 @@ export default function NativeChatChart({
               /* series torn down */
             }
           }
-          const r = computeWolfClustersVp(source);
+          const r = computeWolfClustersVp(
+            source,
+            clustersOptsFromSettings(loadIndicatorSettings(id)),
+          );
           const lookbackStart = Math.max(0, source.length - 200);
           for (let i = 0; i < pocSeries.length; i += 1) {
             const cluster = r.clusters[i];
@@ -2291,6 +2319,19 @@ export default function NativeChatChart({
                 ? wolfStudyBlurb(studySettingsId)
                 : technicalStudyLabel(studySettingsId)}
             </p>
+            {isWolfStudyId(studySettingsId) && getStudySettingsSchema(studySettingsId).length ? (
+              <div className="mai-nc__study-sheet-params">
+                <IndicatorSettingsForm
+                  dense
+                  fields={getStudySettingsSchema(studySettingsId)}
+                  values={studyParamValues}
+                  onChange={(next) => {
+                    setStudyParamValues(next);
+                    saveIndicatorSettings(studySettingsId, next);
+                  }}
+                />
+              </div>
+            ) : null}
             <div className="mai-nc__study-sheet-actions">
               <button type="button" onClick={() => toggleStudyHidden(studySettingsId)}>
                 {hiddenStudyIds.includes(studySettingsId) ? (
@@ -2312,7 +2353,7 @@ export default function NativeChatChart({
               </button>
             </div>
             <p className="mai-nc__study-sheet-hint">
-              TradingView-style study controls — visibility & remove. More style inputs coming next.
+              Adjust inputs above — Pine Script source is never shown. Hide or remove the study anytime.
             </p>
           </div>
         ) : null}

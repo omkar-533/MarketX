@@ -15,7 +15,15 @@ import { BRAND } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
 import { openExternalUrl } from '../utils/openExternalUrl';
 import ProtectedGuideVideo from './indicators/ProtectedGuideVideo';
+import IndicatorSettingsForm from './indicators/IndicatorSettingsForm';
 import WolfLoader from './WolfLoader';
+import {
+  loadIndicatorSettings,
+  rememberStudySettingsSchema,
+  saveIndicatorSettings,
+} from '../services/wolfIndicatorSettings';
+import { wolfStudyIdFor } from '../services/chart/wolfIndicators';
+import { defaultsFromSettings } from '../services/pineSettings';
 
 /** Split admin description into overview + optional ## sections (Usage / Details / FAQ). */
 function splitDescription(raw: string) {
@@ -67,6 +75,9 @@ export default function Indicators({
   const [tvDone, setTvDone] = useState(false);
   const [tvStatus, setTvStatus] = useState<'pending' | 'granted' | 'dismissed' | null>(null);
   const [inviteLink, setInviteLink] = useState('');
+  const [memberSettings, setMemberSettings] = useState<
+    Record<string, string | number | boolean>
+  >({});
 
   const openDetail = useCallback((item: IndicatorItem) => {
     setCopied(false);
@@ -79,6 +90,13 @@ export default function Indicators({
     // Paid plans already ship the invite on the list payload — keep it for instant unlock.
     setInviteLink(unlocked ? item.link : '');
     setActive(unlocked ? item : { ...item, link: '' });
+    if (item.settings?.length) {
+      const studyId = wolfStudyIdFor(item);
+      rememberStudySettingsSchema(studyId, item.settings);
+      setMemberSettings(loadIndicatorSettings(studyId, item.settings));
+    } else {
+      setMemberSettings(item.settingsDefaults || defaultsFromSettings(item.settings || []));
+    }
     if (unlocked) {
       setTvDone(true);
       setTvMsg('Included with your Wolf AI plan — open the invite below.');
@@ -308,6 +326,23 @@ export default function Indicators({
                 <p className="lux-ind__overview">{detail.overview}</p>
               </section>
 
+              {active.settings && active.settings.length > 0 ? (
+                <section className="lux-ind__section">
+                  <h2>Settings</h2>
+                  <p className="lux-ind__prose" style={{ marginBottom: 12 }}>
+                    Tune inputs for this indicator. Source code is never shown — only these settings.
+                  </p>
+                  <IndicatorSettingsForm
+                    fields={active.settings}
+                    values={memberSettings}
+                    onChange={(next) => {
+                      setMemberSettings(next);
+                      saveIndicatorSettings(wolfStudyIdFor(active), next);
+                    }}
+                  />
+                </section>
+              ) : null}
+
               {detail.sections.length > 0 ? (
                 detail.sections.map((section) => (
                   <section key={section.title} className="lux-ind__section">
@@ -328,8 +363,8 @@ export default function Indicators({
                   <section className="lux-ind__section">
                     <h2>Details</h2>
                     <div className="lux-ind__prose">
-                      This tool is distributed as a share / invite link rather than raw script code.
-                      Access stays on during your demo window and extends after admin approval.
+                      This tool is distributed via invite access. Settings above control how you
+                      apply it — raw script code is never exposed in the app.
                     </div>
                   </section>
                 </>
