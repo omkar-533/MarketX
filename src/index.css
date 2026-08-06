@@ -82,6 +82,68 @@ body {
   overflow: auto;
 }
 
+.page-content--arena {
+  padding: 0.65rem 0.75rem 1.25rem;
+  overflow: auto;
+}
+
+.wolf-arena {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: min(78vh, 820px);
+}
+
+.wolf-arena__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.15rem 0.15rem;
+}
+
+.wolf-arena__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.wolf-arena__mark {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.7rem;
+  color: #d4af37;
+  background: linear-gradient(145deg, rgba(212, 175, 55, 0.18), rgba(15, 23, 42, 0.45));
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  flex-shrink: 0;
+}
+
+.wolf-arena__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--tf-text);
+}
+
+.wolf-arena__sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tf-muted);
+}
+
+.wolf-arena__stage {
+  flex: 1;
+  min-height: 0;
+}
+
+.wolf-arena__stage .wm-arena {
+  min-height: min(70vh, 740px);
+}
+
 /* Analyse AI ? ChatGPT-style full viewport chat */
 .page-content--chat {
   max-width: none;

@@ -36,6 +36,7 @@ const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const MentorAI = lazy(() => import('./components/MentorAI'));
+const WolfArenaPage = lazy(() => import('./components/WolfArenaPage'));
 const TerminalPage = lazy(() => import('./components/terminal/TerminalPage'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
@@ -67,6 +68,7 @@ const VALID_TABS = new Set([
   'footprint',
   'wolf-ai',
   'mentor-ai',
+  'arena',
   'terminal',
   'trafi', // legacy alias → normalized to wolf-ai
   'indicators',
@@ -297,7 +299,9 @@ function AppWorkspace() {
       case 'wolf-ai':
         return <MasterAI />;
       case 'mentor-ai':
-        return <MentorAI />;
+        return <MentorAI onNavigate={handleTabChange} />;
+      case 'arena':
+        return <WolfArenaPage onNavigate={handleTabChange} />;
       case 'terminal':
         return <TerminalPage onNavigate={handleTabChange} />;
       case 'indicators':
@@ -401,9 +405,11 @@ function AppWorkspace() {
                     ? 'page-content page-content--chat'
                     : activeTab === 'mentor-ai'
                       ? 'page-content page-content--full page-content--mentor'
-                      : activeTab === 'terminal'
-                        ? 'page-content page-content--terminal'
-                        : 'page-content page-content--full'
+                      : activeTab === 'arena'
+                        ? 'page-content page-content--full page-content--arena'
+                        : activeTab === 'terminal'
+                          ? 'page-content page-content--terminal'
+                          : 'page-content page-content--full'
                 : ''
             }
           >

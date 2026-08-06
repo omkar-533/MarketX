@@ -30,7 +30,7 @@ export default function MentorRoadmap({
           <p className="wm-learn__eyebrow">Personalized learning roadmap</p>
           <h2 className="wm-learn__title">{studentName}, your Module 1 path</h2>
           <p className="wm-learn__lead">
-            Levels unlock after quiz pass (4/5). Maza chahiye? Arena me timed rounds khelo — phir yahan padho.
+            Levels unlock after quiz pass (4/5). Game chahiye? Sidebar se Wolf Arena kholo — phir yahan padho.
           </p>
         </div>
         <div className="wm-learn__roadmap-actions">
@@ -40,7 +40,7 @@ export default function MentorRoadmap({
           {onPlayArena ? (
             <button type="button" className="wm-learn__chip wm-learn__chip--play" onClick={onPlayArena}>
               <Zap className="h-3.5 w-3.5" />
-              Play Arena
+              Play Wolf Arena
             </button>
           ) : null}
           {onNavigate ? (

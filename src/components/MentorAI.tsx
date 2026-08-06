@@ -20,7 +20,6 @@ import {
   Swords,
   Target,
   Trophy,
-  Zap,
 } from 'lucide-react';
 import ChatMarkdown from './ChatMarkdown';
 import ChatChartPanel from './masterai/ChatChartPanel';
@@ -33,10 +32,10 @@ import TradingLabPanel from './mentor/TradingLabPanel';
 import LiveMentorPanel from './mentor/LiveMentorPanel';
 import TradingMasterPanel from './mentor/TradingMasterPanel';
 import MentorEcosystemBar from './mentor/MentorEcosystemBar';
-import MentorArena from './mentor/MentorArena';
 import { useAuth } from '../hooks/useAuth';
 import {
   buildEcosystemSnapshot,
+  consumeMentorHandoff,
   type MentordeskView,
   type MentorHandoff,
 } from '../services/mentorBridge';
@@ -100,8 +99,9 @@ const WOLF_MENTOR = 'Wolf Mentor';
 /**
  * Wolf Mentor — professional training desk (not a chatbot).
  * Chart + process checks + mentor briefings. Hunter / Wolf AI stays separate for analysis.
+ * Arena lives on its own sidebar page (Wolf Arena).
  */
-export default function MentorAI() {
+export default function MentorAI({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const { user } = useAuth();
   const ownerKey = user?.id || user?.email || 'guest';
   const initialMode = loadLanguageMode();
@@ -117,9 +117,7 @@ export default function MentorAI() {
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
-  // Arena first — game loop holds attention; curriculum stays one tap away.
-  const [deskView, setDeskView] = useState<MentordeskView>('arena');
-  const [arenaPlaying, setArenaPlaying] = useState(false);
+  const [deskView, setDeskView] = useState<MentordeskView>('curriculum');
   const [student, setStudent] = useState<MentorStudentProfile | null>(() => loadStudentProfile(ownerKey));
   const [curriculum, setCurriculum] = useState<CurriculumProgress>(() => loadCurriculumProgress(ownerKey));
   const [activeLevelId, setActiveLevelId] = useState<number | null>(null);
@@ -233,20 +231,32 @@ export default function MentorAI() {
     [ownerKey, skillProfile, curriculum.highestUnlocked, skillTick],
   );
 
-  const applyHandoff = useCallback((handoff: MentorHandoff) => {
-    setDeskView(handoff.view);
-    if (handoff.view === 'curriculum') {
-      setActiveLevelId(handoff.levelId ?? null);
-    } else {
-      setActiveLevelId(null);
-    }
-    if (handoff.view === 'lab') {
-      setLabHandoff(handoff);
-    } else {
-      setLabHandoff(null);
-    }
-    setSkillTick((n) => n + 1);
-  }, []);
+  const applyHandoff = useCallback(
+    (handoff: MentorHandoff) => {
+      if (handoff.view === 'arena') {
+        onNavigate?.('arena');
+        return;
+      }
+      setDeskView(handoff.view);
+      if (handoff.view === 'curriculum') {
+        setActiveLevelId(handoff.levelId ?? null);
+      } else {
+        setActiveLevelId(null);
+      }
+      if (handoff.view === 'lab') {
+        setLabHandoff(handoff);
+      } else {
+        setLabHandoff(null);
+      }
+      setSkillTick((n) => n + 1);
+    },
+    [onNavigate],
+  );
+
+  useEffect(() => {
+    const pending = consumeMentorHandoff();
+    if (pending) applyHandoff(pending);
+  }, [applyHandoff]);
 
   useEffect(() => {
     const refresh = () =>
@@ -445,9 +455,7 @@ export default function MentorAI() {
     interval === 'D' || interval === 'W' || interval === 'M' ? interval : `${interval}m`;
   const sessionLine = !student
     ? 'Module 1 AI Teacher · complete onboarding to unlock your roadmap'
-    : deskView === 'arena'
-      ? `Arena · ${student.name} · timed process rounds · combo XP`
-      : deskView === 'curriculum'
+    : deskView === 'curriculum'
       ? `Module 1 · ${student.name} · Level ${curriculum.highestUnlocked}/12 unlocked`
       : deskView === 'chart'
         ? `Module 2 Chart Mentor · ${tradingViewSymbolLabel(symbol)} · ${tfLabel}`
@@ -472,7 +480,7 @@ export default function MentorAI() {
       setMentorMode('beginner');
       saveMentorMode('beginner');
     }
-    setDeskView('arena');
+    setDeskView('curriculum');
     setActiveLevelId(null);
   };
 
@@ -487,9 +495,7 @@ export default function MentorAI() {
             <div className="wm-desk__title-row">
               <h1 className="wm-desk__title">{WOLF_MENTOR}</h1>
               <span className="wm-desk__badge">
-                {deskView === 'arena'
-                  ? 'Arena · Play'
-                  : deskView === 'curriculum'
+                {deskView === 'curriculum'
                   ? 'AI Teacher · Module 1'
                   : deskView === 'chart'
                     ? 'Chart Mentor · Module 2'
@@ -613,20 +619,8 @@ export default function MentorAI() {
 
       {student ? (
         <nav className="wm-desk__nav" aria-label="Mentor modules">
-          <p className="wm-desk__nav-label">Arena se khelo · modules se seekho</p>
+          <p className="wm-desk__nav-label">Modules se seekho · game ke liye Wolf Arena</p>
           <div className="wm-desk__nav-row">
-            <button
-              type="button"
-              className={`wm-desk__nav-btn ${deskView === 'arena' ? 'wm-desk__nav-btn--on' : ''} wm-desk__nav-btn--start`}
-              onClick={() => {
-                setDeskView('arena');
-                setActiveLevelId(null);
-              }}
-            >
-              <Zap className="h-4 w-4" />
-              <span>Arena</span>
-              <small>PLAY NOW</small>
-            </button>
             <button
               type="button"
               className={`wm-desk__nav-btn ${deskView === 'curriculum' ? 'wm-desk__nav-btn--on' : ''}`}
@@ -748,74 +742,6 @@ export default function MentorAI() {
           defaultLanguage={selectedLang.code.startsWith('hi') ? 'hi-IN' : 'en-IN'}
           onComplete={onOnboarded}
         />
-      ) : deskView === 'arena' ? (
-        <div
-          className={`wm-desk__body wm-desk__body--arena ${arenaPlaying ? 'wm-desk__body--arena-live wm-desk__body--empire' : ''}`}
-        >
-          {!arenaPlaying ? (
-            <section className="wm-desk__chart" aria-label="Arena chart">
-              <ChatChartPanel
-                symbol={symbol}
-                interval={interval}
-                study={study}
-                onSymbolChange={(s) => {
-                  setSymbol(s);
-                  setChartLevels([]);
-                  setChartShapes([]);
-                }}
-                onIntervalChange={(tf) => {
-                  setInterval(tf);
-                  setChartLevels([]);
-                  setChartShapes([]);
-                }}
-                onStudyChange={setStudy}
-                onClose={() => undefined}
-                hideClose
-                levels={chartLevels}
-                shapes={chartShapes}
-              />
-            </section>
-          ) : null}
-          <aside className={`wm-desk__side wm-desk__side--arena ${arenaPlaying ? 'wm-desk__side--empire' : ''}`}>
-            <MentorArena
-              ownerKey={ownerKey}
-              detective={detective}
-              studentName={student.name}
-              onOpenCurriculum={() => {
-                setDeskView('curriculum');
-                setActiveLevelId(null);
-              }}
-              onOpenLab={() =>
-                applyHandoff({
-                  view: 'lab',
-                  labMissionId: 'mistake_replay',
-                  labMode: 'challenge',
-                  mistakeReplay: true,
-                  reason: 'Arena → Lab challenge',
-                })
-              }
-              onRoundTeach={(summary) => {
-                void askCoach(summary, { title: 'Arena debrief', trainingGrade: true });
-              }}
-              onChartMarks={(levels, shapes) => {
-                setChartLevels(levels);
-                setChartShapes(shapes);
-              }}
-              onPlayingChange={setArenaPlaying}
-            />
-            {!arenaPlaying ? (
-              <section className="wm-desk__coach wm-desk__coach--arena" aria-live="polite">
-                <div className="wm-desk__coach-h">
-                  <span className="wm-desk__coach-title">{coachTitle}</span>
-                  {busy ? <span className="wm-desk__coach-busy">Working…</span> : null}
-                </div>
-                <div className={`wm-desk__coach-body ${busy ? 'wm-desk__coach-body--busy' : ''}`}>
-                  <ChatMarkdown text={coachNote} />
-                </div>
-              </section>
-            ) : null}
-          </aside>
-        </div>
       ) : deskView === 'curriculum' && activeLevelId == null ? (
         <MentorRoadmap
           progress={curriculum}
@@ -823,10 +749,7 @@ export default function MentorAI() {
           activeLevelId={activeLevelId}
           onOpenLevel={(id) => setActiveLevelId(id)}
           onNavigate={applyHandoff}
-          onPlayArena={() => {
-            setDeskView('arena');
-            setActiveLevelId(null);
-          }}
+          onPlayArena={() => onNavigate?.('arena')}
         />
       ) : null}
 
