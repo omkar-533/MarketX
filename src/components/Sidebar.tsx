@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
   GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart, Swords,
-  Layers, Brain,
+  Layers, Brain, LayoutDashboard,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
@@ -28,6 +28,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
   { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   { id: 'arena', label: PAGE_NAMES.arena, icon: Swords },

@@ -40,13 +40,13 @@ const WolfArenaPage = lazy(() => import('./components/WolfArenaPage'));
 const TerminalPage = lazy(() => import('./components/terminal/TerminalPage'));
 const Indicators = lazy(() => import('./components/Indicators'));
 const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
 
 function PageLoader() {
   return <WolfLoader />;
 }
 
 const HIDDEN_TABS = new Set([
-  'dashboard',
   'heatmap',
   'scanner',
   ...(SHOW_OI_INTELLIGENCE ? [] : (['oiintelligence'] as const)),
@@ -54,7 +54,7 @@ const HIDDEN_TABS = new Set([
   ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
   ...(SHOW_TERMINAL ? [] : (['terminal'] as const)),
 ]);
-const DEFAULT_TAB = 'wolf-ai';
+const DEFAULT_TAB = 'dashboard';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
@@ -266,6 +266,8 @@ function AppWorkspace() {
     if (locked && !planPeek) return null;
 
     switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard onNavigate={handleTabChange} />;
       case 'ltpcalc':
         return <LtpCalculator onNavigate={handleTabChange} />;
       case 'tradingjournal':
@@ -335,7 +337,7 @@ function AppWorkspace() {
           />
         );
       default:
-        return <MasterAI />;
+        return <Dashboard onNavigate={handleTabChange} />;
     }
   };
 
@@ -424,7 +426,7 @@ function AppWorkspace() {
                 />
               </Suspense>
             ) : (
-              <AppErrorBoundary onReset={() => handleTabChange('wolf-ai')}>
+              <AppErrorBoundary onReset={() => handleTabChange('dashboard')}>
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>

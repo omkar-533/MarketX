@@ -10,6 +10,7 @@ interface CommandPaletteProps {
 }
 
 const commands = [
+  { id: 'dashboard', label: 'Open Dashboard', shortcut: 'D' },
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'mentor-ai', label: 'Open Wolf Mentor', shortcut: 'T' },
   { id: 'arena', label: 'Open Wolf Arena', shortcut: 'A' },
