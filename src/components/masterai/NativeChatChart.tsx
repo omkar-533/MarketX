@@ -780,13 +780,39 @@ export default function NativeChatChart({
     host.addEventListener('pointerdown', markTouched);
 
     let lastWidth = host.clientWidth;
+    let lastHeight = host.clientHeight;
     const observer = new ResizeObserver(() => {
-      const width = hostRef.current?.clientWidth ?? 0;
-      if (width === lastWidth) return;
+      const el = hostRef.current;
+      if (!el) return;
+      const width = el.clientWidth;
+      const height = el.clientHeight;
+      if (width === lastWidth && height === lastHeight) return;
       lastWidth = width;
+      lastHeight = height;
+      // Force light-weight charts to accept the new box (autoSize can lag on first flex settle).
+      try {
+        chart.resize(width, height, true);
+      } catch {
+        /* chart may be mid-remove */
+      }
       if (!touchedRef.current) chart.timeScale().fitContent();
     });
     observer.observe(host);
+    // First paint: flex parents often settle after createChart — nudge once more.
+    requestAnimationFrame(() => {
+      const el = hostRef.current;
+      if (!el || !chartRef.current) return;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        try {
+          chart.resize(w, h, true);
+        } catch {
+          /* ignore */
+        }
+        if (!touchedRef.current) chart.timeScale().fitContent();
+      }
+    });
 
     return () => {
       observer.disconnect();
