@@ -32,6 +32,7 @@ function isRthNow() {
   return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
 }
 
+/** TradingView-style status bar — only live controls, no dead tabs. */
 export default function TerminalBottomBar({
   activeRange = '1D',
   onRangeChange,
@@ -51,19 +52,8 @@ export default function TerminalBottomBar({
 
   return (
     <footer className="wolf-term__bottom">
-      <div className="wolf-term__bottom-tabs">
-        <button type="button" disabled>
-          Screener
-        </button>
-        <button type="button" disabled>
-          WolfScript
-        </button>
-        <button type="button" disabled>
-          Strategy Tester
-        </button>
-        <button type="button" disabled>
-          Trading Panel
-        </button>
+      <div className="wolf-term__bottom-brand" aria-hidden>
+        <span>Wolf</span>
       </div>
 
       <div className="wolf-term__ranges" role="group" aria-label="Visible range">
@@ -82,17 +72,22 @@ export default function TerminalBottomBar({
       <div className="wolf-term__bottom-right">
         <span className="wolf-term__clock">
           {clock} UTC+5:30{' '}
-          <em className={rth ? 'live' : ''}>{rth ? 'RTH' : 'CLOSED'}</em>
+          <em className={rth ? 'live' : ''}>{rth ? 'MARKET OPEN' : 'MARKET CLOSED'}</em>
         </span>
         <button
           type="button"
           className={`wolf-term__scale-btn ${logScale ? 'on' : ''}`}
           onClick={onToggleLog}
-          title="Log scale"
+          title="Logarithmic scale"
         >
           log
         </button>
-        <button type="button" className="wolf-term__scale-btn on" title="Auto scale" disabled>
+        <button
+          type="button"
+          className="wolf-term__scale-btn on"
+          title="Auto scale"
+          onClick={() => onRangeChange?.(activeRange || 'All')}
+        >
           auto
         </button>
       </div>

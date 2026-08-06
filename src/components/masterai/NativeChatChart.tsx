@@ -136,6 +136,10 @@ export type NativeChatChartProps = {
   showRail?: boolean;
   /** When the left edge is visible, fetch older bars and prepend. */
   enableHistoryScroll?: boolean;
+  /** Controlled log scale (Terminal bottom bar). */
+  logScale?: boolean;
+  /** Terminal bottom range chips → visible logical window. */
+  rangePreset?: string;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -167,6 +171,8 @@ export default function NativeChatChart({
   fillHeight = false,
   showRail = true,
   enableHistoryScroll = false,
+  logScale: logScaleProp,
+  rangePreset,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -193,9 +199,13 @@ export default function NativeChatChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tool, setTool] = useState<DrawingTool>('cursor');
   const [magnet, setMagnet] = useState(false);
-  const [logScale, setLogScale] = useState(false);
+  const [logScale, setLogScale] = useState(() => Boolean(logScaleProp));
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [historyExhausted, setHistoryExhausted] = useState(false);
+
+  useEffect(() => {
+    if (typeof logScaleProp === 'boolean') setLogScale(logScaleProp);
+  }, [logScaleProp]);
 
   const apiSymbol = apiSymbolFromTv(symbol);
   const apiInterval = nativeIntervalFor(interval);
@@ -813,6 +823,30 @@ export default function NativeChatChart({
     chartRef.current?.priceScale('right').applyOptions({ mode: logScale ? 1 : 0 });
   }, [logScale, chartEpoch]);
 
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !rangePreset) return;
+    const bars = barsRef.current.length;
+    if (bars < 2) return;
+    if (rangePreset === 'All') {
+      chart.timeScale().fitContent();
+      return;
+    }
+    const VISIBLE: Record<string, number> = {
+      '1D': 90,
+      '5D': 450,
+      '1M': 1400,
+      '3M': 2800,
+      '6M': 4000,
+      YTD: 3200,
+      '1Y': 5000,
+      '5Y': 9000,
+    };
+    const n = VISIBLE[rangePreset] ?? 120;
+    const from = Math.max(-10, bars - n);
+    chart.timeScale().setVisibleLogicalRange({ from, to: bars + 4 });
+  }, [rangePreset, chartEpoch, view]);
+
   // Areas of interest Wolf AI called out, drawn as labelled price lines.
   useEffect(() => {
     const series = priceSeriesRef.current;
@@ -1003,7 +1037,7 @@ export default function NativeChatChart({
           </div>
         ) : null}
 
-        {status === 'ready' ? (
+        {status === 'ready' && !fillHeight ? (
           <div className="mai-nc__quick">
             <button
               type="button"

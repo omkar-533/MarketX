@@ -44,6 +44,31 @@ export function clearPendingStrategy(): void {
   sessionStorage.removeItem(PENDING_KEY);
 }
 
+const TERMINAL_TRADE_KEY = 'wolf_pending_terminal_trade';
+
+/** Quick Buy/Sell from Wolf Terminal → open Paper order ticket */
+export type TerminalPaperHandoff = {
+  tvSymbol: string;
+  side: 'BUY' | 'SELL';
+  qty: number;
+  at: string;
+};
+
+export function queueTerminalPaperTrade(handoff: TerminalPaperHandoff): void {
+  sessionStorage.setItem(TERMINAL_TRADE_KEY, JSON.stringify(handoff));
+}
+
+export function consumeTerminalPaperTrade(): TerminalPaperHandoff | null {
+  try {
+    const raw = sessionStorage.getItem(TERMINAL_TRADE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(TERMINAL_TRADE_KEY);
+    return JSON.parse(raw) as TerminalPaperHandoff;
+  } catch {
+    return null;
+  }
+}
+
 /** Convert Strategy Builder legs → paper hedge group (qty = contracts/lots) */
 export function strategyPayloadToPaperGroup(payload: StrategyBuilderPaperPayload): PaperStrategyGroup {
   const sym = payload.symbol.trim().toUpperCase();

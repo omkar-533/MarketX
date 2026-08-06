@@ -11,6 +11,7 @@ import { apiSymbolFromTv } from '../../utils/tradingViewSymbols';
 
 export type TerminalTradeStripProps = {
   symbol: string;
+  onTrade?: (side: 'BUY' | 'SELL', qty: number) => void;
 };
 
 function fmt(n: number) {
@@ -20,8 +21,8 @@ function fmt(n: number) {
     : n.toFixed(n >= 100 ? 2 : 4);
 }
 
-/** Floating Sell / Buy strip — paper-ready chrome over the chart. */
-export default function TerminalTradeStrip({ symbol }: TerminalTradeStripProps) {
+/** Floating Sell / Buy strip — routes to Paper Trading. */
+export default function TerminalTradeStrip({ symbol, onTrade }: TerminalTradeStripProps) {
   const api = useMemo(() => apiSymbolFromTv(symbol), [symbol]);
   const [price, setPrice] = useState(0);
   const [qty, setQty] = useState('1');
@@ -59,10 +60,16 @@ export default function TerminalTradeStrip({ symbol }: TerminalTradeStripProps) 
   }, [api]);
 
   const px = fmt(price);
+  const qtyNum = Math.max(1, Number(qty) || 1);
 
   return (
     <div className="wolf-term__trade" aria-label="Quick trade">
-      <button type="button" className="wolf-term__trade-sell" title="Paper sell (connect later)">
+      <button
+        type="button"
+        className="wolf-term__trade-sell"
+        title="Paper sell"
+        onClick={() => onTrade?.('SELL', qtyNum)}
+      >
         <span>Sell</span>
         <b>{px}</b>
       </button>
@@ -73,7 +80,12 @@ export default function TerminalTradeStrip({ symbol }: TerminalTradeStripProps) 
         aria-label="Quantity"
         inputMode="decimal"
       />
-      <button type="button" className="wolf-term__trade-buy" title="Paper buy (connect later)">
+      <button
+        type="button"
+        className="wolf-term__trade-buy"
+        title="Paper buy"
+        onClick={() => onTrade?.('BUY', qtyNum)}
+      >
         <span>Buy</span>
         <b>{px}</b>
       </button>

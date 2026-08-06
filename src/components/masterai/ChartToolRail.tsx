@@ -43,11 +43,14 @@ export default function ChartToolRail({
   onUndo,
   onClear,
   canUndo,
-  variant: _variant = 'chat',
+  variant = 'chat',
 }: ChartToolRailProps) {
   return (
-    <div className="mai-nc__rail" role="toolbar" aria-label="Drawing tools">
-      {TOOLS.map(({ id, label, Icon }) => (
+    <div
+      className={`mai-nc__rail${variant === 'desk' ? ' mai-nc__rail--desk' : ''}`}
+      role="toolbar"
+      aria-label="Drawing tools"
+    >      {TOOLS.map(({ id, label, Icon }) => (
         <button
           key={id}
           type="button"

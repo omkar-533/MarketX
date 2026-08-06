@@ -1,29 +1,29 @@
 import {
   Bell,
   CalendarDays,
-  Layers,
   ListOrdered,
-  MessageSquare,
   Newspaper,
   PanelRight,
   Sparkles,
   Table2,
 } from 'lucide-react';
+import type { TerminalRightPanel } from '../../services/terminalState';
 import TerminalWatchlist from './TerminalWatchlist';
 
-export type RightPanel = 'watchlist' | 'alerts' | 'data' | 'news' | 'calendar' | 'ideas' | null;
+export type RightPanel = TerminalRightPanel;
 
 const DOCK: {
   id: Exclude<RightPanel, null>;
   label: string;
   Icon: typeof ListOrdered;
+  ready: boolean;
 }[] = [
-  { id: 'watchlist', label: 'Watchlist', Icon: ListOrdered },
-  { id: 'alerts', label: 'Alerts', Icon: Bell },
-  { id: 'data', label: 'Data window', Icon: Table2 },
-  { id: 'news', label: 'News', Icon: Newspaper },
-  { id: 'calendar', label: 'Calendar', Icon: CalendarDays },
-  { id: 'ideas', label: 'Ideas', Icon: Sparkles },
+  { id: 'watchlist', label: 'Watchlist', Icon: ListOrdered, ready: true },
+  { id: 'alerts', label: 'Alerts', Icon: Bell, ready: false },
+  { id: 'data', label: 'Data Window', Icon: Table2, ready: false },
+  { id: 'news', label: 'News', Icon: Newspaper, ready: false },
+  { id: 'calendar', label: 'Economic Calendar', Icon: CalendarDays, ready: false },
+  { id: 'ideas', label: 'Ideas', Icon: Sparkles, ready: false },
 ];
 
 export type TerminalRightDockProps = {
@@ -36,6 +36,7 @@ export type TerminalRightDockProps = {
   onRemove: (tvSymbol: string) => void;
 };
 
+/** Right icon rail — TradingView layout; only ready panels open content. */
 export default function TerminalRightDock({
   panel,
   onPanelChange,
@@ -45,7 +46,8 @@ export default function TerminalRightDock({
   onAdd,
   onRemove,
 }: TerminalRightDockProps) {
-  const toggle = (id: Exclude<RightPanel, null>) => {
+  const toggle = (id: Exclude<RightPanel, null>, ready: boolean) => {
+    if (!ready) return;
     onPanelChange(panel === id ? null : id);
   };
 
@@ -64,22 +66,23 @@ export default function TerminalRightDock({
           ) : (
             <div className="wolf-term__panel-placeholder">
               <b>{DOCK.find((d) => d.id === panel)?.label}</b>
-              <p>Coming in a later phase — panel chrome is ready.</p>
+              <p>Panel scaffolding ready — data wiring next.</p>
             </div>
           )}
         </div>
       ) : null}
 
       <nav className="wolf-term__dock" aria-label="Terminal panels">
-        {DOCK.map(({ id, label, Icon }) => (
+        {DOCK.map(({ id, label, Icon, ready }) => (
           <button
             key={id}
             type="button"
             className={`wolf-term__dock-btn ${panel === id ? 'on' : ''}`}
-            title={label}
+            title={ready ? label : `${label} (soon)`}
             aria-label={label}
             aria-pressed={panel === id}
-            onClick={() => toggle(id)}
+            disabled={!ready}
+            onClick={() => toggle(id, ready)}
           >
             <Icon className="h-4 w-4" />
           </button>
@@ -87,23 +90,11 @@ export default function TerminalRightDock({
         <span className="wolf-term__dock-spacer" />
         <button
           type="button"
-          className="wolf-term__dock-btn"
-          title="Object tree"
-          aria-label="Object tree"
-          disabled
-        >
-          <Layers className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
           className={`wolf-term__dock-btn ${panel ? 'on' : ''}`}
           title={panel ? 'Collapse panel' : 'Open watchlist'}
           onClick={() => onPanelChange(panel ? null : 'watchlist')}
         >
           <PanelRight className="h-4 w-4" />
-        </button>
-        <button type="button" className="wolf-term__dock-btn" title="Chat" disabled>
-          <MessageSquare className="h-4 w-4" />
         </button>
       </nav>
     </div>

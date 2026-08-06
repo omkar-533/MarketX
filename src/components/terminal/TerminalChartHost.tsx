@@ -9,6 +9,8 @@ export type TerminalChartHostProps = {
   chartStyle: TvChartStyle;
   reloadKey: number;
   nativeFailed: boolean;
+  logScale?: boolean;
+  rangePreset?: string;
   onNativeUnavailable: () => void;
 };
 
@@ -23,6 +25,8 @@ export default function TerminalChartHost({
   chartStyle,
   reloadKey,
   nativeFailed,
+  logScale = false,
+  rangePreset,
   onNativeUnavailable,
 }: TerminalChartHostProps) {
   const preferNative = usesNativeChart(symbol);
@@ -44,6 +48,8 @@ export default function TerminalChartHost({
         reloadKey={reloadKey}
         fillHeight
         enableHistoryScroll
+        logScale={logScale}
+        rangePreset={rangePreset}
         onUnavailable={onNativeUnavailable}
       />
     );

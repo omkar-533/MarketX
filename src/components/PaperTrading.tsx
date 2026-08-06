@@ -74,10 +74,12 @@ import { getJournalSymbolSelection, refreshMarketSymbols as refreshEquity } from
 import {
   clearPendingStrategy,
   consumePendingStrategy,
+  consumeTerminalPaperTrade,
   peekPendingStrategy,
   strategyPayloadToPaperGroup,
   type StrategyBuilderPaperPayload,
 } from '../services/paperTradingBridge';
+import { apiSymbolFromTv } from '../utils/tradingViewSymbols';
 import {
   getPaperEquityLiveQuote,
   refreshPaperTradingLiveQuotes,
@@ -265,6 +267,54 @@ export default function PaperTrading({ user, onNavigate }: PaperTradingProps) {
       setPendingStrategy(pending);
       setActiveTab('strategies');
       setStatusMessage(`Strategy "${pending.strategyName}" ready — confirm to execute.`);
+    }
+
+    const terminalTrade = consumeTerminalPaperTrade();
+    if (terminalTrade) {
+      const plain = apiSymbolFromTv(terminalTrade.tvSymbol).toUpperCase();
+      let item: MarketItem | null = null;
+      const journal = getJournalSymbolSelection(plain);
+      if (journal) {
+        item = journalToMarketItem(journal);
+        setInstrumentMarket('equity');
+      } else {
+        const cryptoKey = plain.includes('/')
+          ? plain
+          : plain.endsWith('USDT')
+            ? `${plain.slice(0, -4)}/USDT`
+            : plain;
+        const crypto = getGlobalInstrument('crypto', cryptoKey);
+        const forex = getGlobalInstrument('forex', plain);
+        if (crypto) {
+          item = globalToMarketItem(crypto);
+          setInstrumentMarket('crypto');
+        } else if (forex) {
+          item = globalToMarketItem(forex);
+          setInstrumentMarket('forex');
+        }
+      }
+      if (item) {
+        setPaperState((prev) => {
+          const key = watchlistKey(item!);
+          const exists = prev.watchlist.some((w) => watchlistKey(w) === key);
+          return exists
+            ? prev
+            : { ...prev, watchlist: normalizeWatchlist([item!, ...prev.watchlist]) };
+        });
+        const draft = defaultOrderDraft(item, terminalTrade.side);
+        draft.quantity = Math.max(1, terminalTrade.qty || 1);
+        setSelectedSymbol(item);
+        setOrderSide(terminalTrade.side);
+        setOrderDraft(draft);
+        setShowOrderModal(true);
+        setStatusMessage(
+          `Terminal ${terminalTrade.side} · ${plain} — confirm paper order.`,
+        );
+      } else {
+        setStatusMessage(
+          `Terminal handoff: ${plain} not in paper catalog — pick a symbol and trade.`,
+        );
+      }
     }
   }, [user]);
 

@@ -1,8 +1,17 @@
 /**
- * Wolf Terminal — local workspace state (symbol, TF, studies, watchlist).
+ * Wolf Terminal — local workspace state (symbol, TF, studies, watchlist, panels).
  */
 
 import type { TvChartStyle, TvInterval } from '../utils/tradingViewSymbols';
+
+export type TerminalRightPanel =
+  | 'watchlist'
+  | 'alerts'
+  | 'data'
+  | 'news'
+  | 'calendar'
+  | 'ideas'
+  | null;
 
 export type TerminalState = {
   symbol: string;
@@ -10,7 +19,10 @@ export type TerminalState = {
   study: string;
   chartStyle: TvChartStyle;
   watchlist: string[];
-  watchlistOpen: boolean;
+  /** Right dock open panel (`null` = chrome only). */
+  rightPanel: TerminalRightPanel;
+  activeRange: string;
+  logScale: boolean;
 };
 
 const STORAGE = 'wolf.terminal.state';
@@ -26,6 +38,8 @@ const DEFAULT_WATCHLIST = [
   'OANDA:XAUUSD',
 ];
 
+const RIGHT_PANELS = new Set(['watchlist', 'alerts', 'data', 'news', 'calendar', 'ideas']);
+
 export function defaultTerminalState(): TerminalState {
   return {
     symbol: 'NSE:NIFTY',
@@ -33,8 +47,18 @@ export function defaultTerminalState(): TerminalState {
     study: 'ema,rsi',
     chartStyle: '1',
     watchlist: [...DEFAULT_WATCHLIST],
-    watchlistOpen: true,
+    rightPanel: 'watchlist',
+    activeRange: '1D',
+    logScale: false,
   };
+}
+
+function parseRightPanel(raw: unknown, fallback: TerminalRightPanel): TerminalRightPanel {
+  if (raw === null) return null;
+  if (typeof raw === 'string' && RIGHT_PANELS.has(raw)) {
+    return raw as Exclude<TerminalRightPanel, null>;
+  }
+  return fallback;
 }
 
 export function loadTerminalState(): TerminalState {
@@ -43,7 +67,11 @@ export function loadTerminalState(): TerminalState {
   try {
     const raw = window.localStorage.getItem(STORAGE);
     if (!raw) return base;
-    const parsed = JSON.parse(raw) as Partial<TerminalState>;
+    const parsed = JSON.parse(raw) as Partial<TerminalState> & { watchlistOpen?: boolean };
+    let rightPanel = parseRightPanel(parsed.rightPanel, base.rightPanel);
+    if (parsed.rightPanel === undefined && parsed.watchlistOpen === false) {
+      rightPanel = null;
+    }
     return {
       ...base,
       ...parsed,
@@ -51,10 +79,13 @@ export function loadTerminalState(): TerminalState {
       interval: (parsed.interval || base.interval) as TvInterval,
       study: String(parsed.study ?? base.study),
       chartStyle: (parsed.chartStyle || base.chartStyle) as TvChartStyle,
-      watchlist: Array.isArray(parsed.watchlist) && parsed.watchlist.length
-        ? parsed.watchlist.map(String)
-        : base.watchlist,
-      watchlistOpen: parsed.watchlistOpen !== false,
+      watchlist:
+        Array.isArray(parsed.watchlist) && parsed.watchlist.length
+          ? parsed.watchlist.map(String)
+          : base.watchlist,
+      rightPanel,
+      activeRange: String(parsed.activeRange || base.activeRange),
+      logScale: Boolean(parsed.logScale),
     };
   } catch {
     return base;
