@@ -2031,3 +2031,175 @@ html[data-theme="light"] .page-content--optionchain {
     radial-gradient(ellipse 70% 50% at 50% 0%, rgba(180, 83, 9, 0.06), transparent 55%),
     #f0f3f8;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Wolf Terminal — full light chrome (top / sides / bottom)
+   ═══════════════════════════════════════════════════════════ */
+html[data-theme="light"] .page-content--terminal,
+html[data-theme="light"] .app-main--terminal-immersive {
+  background: #eef2f7 !important;
+}
+
+html[data-theme="light"] .wolf-term {
+  --wt-bg: #eef2f7;
+  --wt-panel: #ffffff;
+  --wt-border: #d5dee9;
+  --wt-border-2: #c5d0de;
+  --wt-text: #0f172a;
+  --wt-muted: #64748b;
+  --wt-blue: #2563eb;
+  --wt-green: #059669;
+  --wt-red: #e11d48;
+  color-scheme: light;
+  background: var(--wt-bg);
+  color: var(--wt-text);
+}
+
+html[data-theme="light"] .wolf-term__bar,
+html[data-theme="light"] .wolf-term__bottom,
+html[data-theme="light"] .wolf-term__watch,
+html[data-theme="light"] .wolf-term__panel,
+html[data-theme="light"] .wolf-term__side,
+html[data-theme="light"] .wolf-term__rp {
+  background: var(--wt-panel) !important;
+  color: var(--wt-text);
+  border-color: var(--wt-border);
+}
+
+html[data-theme="light"] .wolf-term__dock {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), transparent 28%), var(--wt-panel) !important;
+}
+
+html[data-theme="light"] .wolf-term__tf-pill:hover,
+html[data-theme="light"] .wolf-term__chip:hover,
+html[data-theme="light"] .wolf-term__icon-btn:hover:not(:disabled),
+html[data-theme="light"] .wolf-term__text-btn:hover:not(:disabled),
+html[data-theme="light"] .wolf-term__watch-add:hover,
+html[data-theme="light"] .wolf-term__sym-tabs button:hover {
+  background: rgba(15, 23, 42, 0.06) !important;
+  color: var(--wt-text) !important;
+}
+
+html[data-theme="light"] .wolf-term__tf-pill.on {
+  color: #fff !important;
+  background: var(--wt-blue) !important;
+}
+
+html[data-theme="light"] .wolf-term__brand-menu,
+html[data-theme="light"] .wolf-term__search-menu,
+html[data-theme="light"] .wolf-term__pop {
+  background: #ffffff !important;
+  border-color: var(--wt-border-2) !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12) !important;
+  color: var(--wt-text);
+}
+
+html[data-theme="light"] .wolf-term__symbol-input,
+html[data-theme="light"] .wolf-term__watch-search input,
+html[data-theme="light"] .wolf-term__rp-search input {
+  background: #f7f9fc !important;
+  color: #0f172a !important;
+  border-color: var(--wt-border-2) !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-modal,
+html[data-theme="light"] .wolf-term__ind-modal {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.16) !important;
+  color: #0f172a;
+}
+
+html[data-theme="light"] .wolf-term__sym-backdrop,
+html[data-theme="light"] .wolf-term__ind-backdrop {
+  background: rgba(15, 23, 42, 0.35) !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-head b,
+html[data-theme="light"] .wolf-term__sym-row,
+html[data-theme="light"] .wolf-term__ind-copy b,
+html[data-theme="light"] .wolf-term__watch-head b,
+html[data-theme="light"] .wolf-term__rp-head b,
+html[data-theme="light"] .wolf-term__search-item,
+html[data-theme="light"] .wolf-term__pop-item {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-search {
+  background: #f7f9fc !important;
+  border-color: #d5dee9 !important;
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-search input {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-tabs button {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-tabs button.on {
+  background: #0f172a !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-list {
+  border-top-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-copy em,
+html[data-theme="light"] .wolf-term__search-item span,
+html[data-theme="light"] .wolf-term__search-item em,
+html[data-theme="light"] .wolf-term__sym-tabs button:not(.on),
+html[data-theme="light"] .wolf-term__bottom-brand span,
+html[data-theme="light"] .wolf-term__badge {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__back {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .wolf-term__back:hover {
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .wolf-term__brand-copy b,
+html[data-theme="light"] .wolf-term__logo {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .wolf-term__tv-desk,
+html[data-theme="light"] .wolf-term__tv-host,
+html[data-theme="light"] .wolf-term__chart-wrap {
+  background: #ffffff !important;
+}
+
+html[data-theme="light"] .wolf-term__tv-status {
+  color: #64748b !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+html[data-theme="light"] .wolf-term__dock-btn.on {
+  color: var(--wt-blue) !important;
+}
+
+html[data-theme="light"] .wolf-term__watch-list li.on,
+html[data-theme="light"] .wolf-term__search-item.on,
+html[data-theme="light"] .wolf-term__search-item:hover,
+html[data-theme="light"] .wolf-term__pop-item.on,
+html[data-theme="light"] .wolf-term__pop-item:hover,
+html[data-theme="light"] .wolf-term__rp-row:hover {
+  background: rgba(37, 99, 235, 0.1) !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-link {
+  border-color: #d5dee9 !important;
+  color: #1d4ed8 !important;
+}
+
+html[data-theme="light"] .wolf-term__ind-link:hover {
+  border-color: #2563eb !important;
+  color: #1e3a8a !important;
+}
