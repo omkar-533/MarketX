@@ -5,6 +5,7 @@ import {
   CrosshairMode,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   TickMarkType,
   createChart,
   createTextWatermark,
@@ -61,6 +62,7 @@ import { Eye, EyeOff, Settings2, X } from 'lucide-react';
 import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
 import {
   applyLivePriceToBars,
+  barTimeSec,
   mergeLiveTipIntoHistory,
   quoteMatchesSymbol,
 } from '../../services/chart/liveCandleMerge';
@@ -467,13 +469,19 @@ export default function NativeChatChart({
 
   /** Push LTP into the forming candle — series.update sync (TradingView-tight tip). */
   const applyLivePrice = useCallback(
-    (price: number, volume?: number) => {
+    (
+      price: number,
+      volume?: number,
+      extremes?: { high?: number; low?: number },
+    ) => {
       if (!(price > 0) || !apiInterval || !barsRef.current.length) return;
       const now = Date.now();
 
       const merged = applyLivePriceToBars(barsRef.current, price, apiInterval, {
         nowMs: now,
         volume,
+        high: extremes?.high,
+        low: extremes?.low,
       });
       if (!merged) return;
       barsRef.current = merged.bars;
@@ -657,7 +665,29 @@ export default function NativeChatChart({
 
     const unsub = onFyersMarketTicks((payload) => {
       const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
-      if (q?.price) applyLivePrice(q.price, q.volume);
+      if (!q) return;
+
+      // Prefer forming 1m candle close when server includes it (same-TF feel).
+      const forming =
+        payload.candles?.[apiSymbol] ||
+        payload.candles?.[String(q.symbol || '').toUpperCase()] ||
+        q.candle;
+
+      let px = Number(q.price) || 0;
+      // Bid/ask mid fills gaps between sparse last-print ticks.
+      if (!(px > 0) && Number(q.bid) > 0 && Number(q.ask) > 0) {
+        px = (Number(q.bid) + Number(q.ask)) / 2;
+      }
+      if (forming?.close && apiInterval === '1m') {
+        px = forming.close;
+        applyLivePrice(px, forming.volume ?? q.volume, {
+          high: forming.high,
+          low: forming.low,
+        });
+        return;
+      }
+      if (!(px > 0) && forming?.close) px = forming.close;
+      if (px > 0) applyLivePrice(px, q.volume ?? forming?.volume);
     });
 
     const poll = window.setInterval(() => {
@@ -823,7 +853,9 @@ export default function NativeChatChart({
             color: '#2962ff',
             lineWidth: 2,
             lastValueVisible: true,
-            priceLineVisible: false,
+            priceLineVisible: true,
+            priceLineWidth: 1,
+            priceLineStyle: LineStyle.Dotted,
           })
         : chartStyle === '3' || chartStyle === '10'
           ? chart.addSeries(AreaSeries, {
@@ -832,7 +864,9 @@ export default function NativeChatChart({
               bottomColor: 'rgba(41,98,255,0.02)',
               lineWidth: 2,
               lastValueVisible: true,
-              priceLineVisible: false,
+              priceLineVisible: true,
+              priceLineWidth: 1,
+              priceLineStyle: LineStyle.Dotted,
             })
           : chart.addSeries(CandlestickSeries, {
               upColor: chartStyle === '9' ? 'transparent' : UP,
@@ -842,7 +876,9 @@ export default function NativeChatChart({
               wickUpColor: UP,
               wickDownColor: DOWN,
               lastValueVisible: true,
-              priceLineVisible: false,
+              priceLineVisible: true,
+              priceLineWidth: 1,
+              priceLineStyle: LineStyle.Dotted,
             });
     const isLineLike = chartStyle === '2' || chartStyle === '3' || chartStyle === '10';
 
@@ -1193,6 +1229,34 @@ export default function NativeChatChart({
             color: b.close >= b.open ? UP_FILL : DOWN_FILL,
           })),
         );
+      }
+
+      // Re-apply live tip after setData so OHLC resync never stalls the print.
+      const liveTip = barsRef.current[barsRef.current.length - 1];
+      const histTip = source[source.length - 1];
+      if (
+        liveTip &&
+        histTip &&
+        barTimeSec(liveTip.time) === barTimeSec(histTip.time) &&
+        (liveTip.close !== histTip.close ||
+          liveTip.high !== histTip.high ||
+          liveTip.low !== histTip.low)
+      ) {
+        try {
+          if (isLineLike) {
+            priceSeries.update({ time: ts(liveTip.time), value: liveTip.close });
+          } else {
+            priceSeries.update({
+              time: ts(liveTip.time),
+              open: liveTip.open,
+              high: liveTip.high,
+              low: liveTip.low,
+              close: liveTip.close,
+            });
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       indicatorRef.current = feeds.flatMap((feed) => feed({ source, closes, decimals }));

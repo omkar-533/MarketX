@@ -183,8 +183,10 @@ function ingestQuotePacket(payload) {
   if (!app) return;
 
   const lp = Number(v.lp ?? v.ltp ?? v.last_price ?? 0);
-  // Full snapshot may omit lp on some deltas — keep prior via mergeTickIntoMeta when possible
-  if (!lp && v.lp == null && v.ch == null && v.volume == null) return;
+  const bid = Number(v.bid ?? v.bid_price ?? 0);
+  const ask = Number(v.ask ?? v.ask_price ?? 0);
+  // Accept bid/ask-only deltas so the tip keeps moving between sparse lp prints.
+  if (!lp && !(bid > 0 && ask > 0) && v.lp == null && v.ch == null && v.volume == null) return;
 
   const tick = {
     lp: lp || undefined,
@@ -197,8 +199,8 @@ function ingestQuotePacket(payload) {
     high_price: v.high_price ?? v.high,
     low_price: v.low_price ?? v.low,
     prev_close_price: v.prev_close_price ?? v.prev_close,
-    bid: v.bid,
-    ask: v.ask,
+    bid: bid || v.bid,
+    ask: ask || v.ask,
   };
 
   const merged = mergeTickIntoMeta(app, tick);

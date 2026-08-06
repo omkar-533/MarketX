@@ -13,8 +13,8 @@ import type {
 
 const RECONNECT_DELAYS = [2000, 5000, 10000, 15000, 20000, 25000, 30000];
 const CLIENT_PING_MS = 25_000;
-/** Keep low — higher values make the live candle feel sticky vs TradingView. */
-const TICK_BATCH_MS = 8;
+/** Flush ticks immediately — any setTimeout batch makes the candle tip feel sticky. */
+const TICK_BATCH_MS = 0;
 
 type StatusHandler = (s: FyersConnectionPayload) => void;
 type TickHandler = (payload: FyersTickPayload) => void;
@@ -83,6 +83,15 @@ function queueTickBroadcast(payload: FyersTickPayload) {
     };
   } else {
     pendingTickPayload = payload;
+  }
+
+  if (TICK_BATCH_MS <= 0) {
+    if (tickBatchTimer) {
+      clearTimeout(tickBatchTimer);
+      tickBatchTimer = null;
+    }
+    flushTickBatch();
+    return;
   }
 
   if (!tickBatchTimer) {
@@ -160,8 +169,8 @@ function connectSocket() {
 
   socket = io(socketUrl(), {
     path: '/socket.io',
-    // Polling first — Render free tier WebSocket upgrade can fail on cold start
-    transports: ['polling', 'websocket'],
+    // Prefer WebSocket for lowest tick latency; polling remains as fallback.
+    transports: ['websocket', 'polling'],
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: Infinity,

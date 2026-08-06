@@ -47,10 +47,17 @@ function isSessionAmendOnly(apiInterval: string): boolean {
   return lower === '1d' || lower === '1w' || tf === '1M' || lower === '1mo' || lower === '1mth';
 }
 
-function amendTip(last: ChartBar, price: number, vol?: number): ChartBar {
+function amendTip(
+  last: ChartBar,
+  price: number,
+  vol?: number,
+  extremes?: { high?: number; low?: number },
+): ChartBar {
   const next = { ...last };
-  next.high = Math.max(next.high, price);
-  next.low = Math.min(next.low, price);
+  const hi = Number(extremes?.high);
+  const lo = Number(extremes?.low);
+  next.high = Math.max(next.high, price, Number.isFinite(hi) ? hi : price);
+  next.low = Math.min(next.low, price, Number.isFinite(lo) ? lo : price);
   next.close = price;
   if (Number.isFinite(vol) && (vol as number) > 0) {
     next.volume = Math.max(next.volume || 0, vol as number);
@@ -67,24 +74,25 @@ export function applyLivePriceToBars(
   bars: ChartBar[],
   price: number,
   apiInterval: string,
-  opts?: { nowMs?: number; volume?: number },
+  opts?: { nowMs?: number; volume?: number; high?: number; low?: number },
 ): { bars: ChartBar[]; updated: ChartBar; isNewBar: boolean } | null {
   if (!Array.isArray(bars) || !bars.length || !(price > 0)) return null;
 
   const nowMs = opts?.nowMs ?? Date.now();
   const vol = Number(opts?.volume);
+  const extremes = { high: opts?.high, low: opts?.low };
   const next = bars.slice();
   const last = { ...next[next.length - 1], time: barTimeSec(next[next.length - 1].time) };
 
   if (isSessionAmendOnly(apiInterval)) {
-    const tip = amendTip(last, price, vol);
+    const tip = amendTip(last, price, vol, extremes);
     next[next.length - 1] = tip;
     return { bars: next, updated: tip, isNewBar: false };
   }
 
   const intervalMs = intervalToMs(apiInterval);
   if (!(intervalMs > 0)) {
-    const tip = amendTip(last, price, vol);
+    const tip = amendTip(last, price, vol, extremes);
     next[next.length - 1] = tip;
     return { bars: next, updated: tip, isNewBar: false };
   }
@@ -94,7 +102,7 @@ export function applyLivePriceToBars(
 
   // Clock behind / same bar: amend tip (preserves wick extremes).
   if (elapsed < intervalMs) {
-    const tip = amendTip(last, price, vol);
+    const tip = amendTip(last, price, vol, extremes);
     next[next.length - 1] = tip;
     return { bars: next, updated: tip, isNewBar: false };
   }
@@ -102,11 +110,13 @@ export function applyLivePriceToBars(
   // Advance whole intervals from the last open (handles gaps / late ticks).
   const steps = Math.max(1, Math.floor(elapsed / intervalMs));
   const formingTime = last.time + steps * (intervalMs / 1000);
+  const hi = Number(opts?.high);
+  const lo = Number(opts?.low);
   const forming: ChartBar = {
     time: formingTime,
     open: price,
-    high: price,
-    low: price,
+    high: Math.max(price, Number.isFinite(hi) ? hi : price),
+    low: Math.min(price, Number.isFinite(lo) ? lo : price),
     close: price,
     volume: Number.isFinite(vol) && vol > 0 ? vol : 0,
   };

@@ -3,13 +3,25 @@
 const meta = new Map();
 const candles1m = new Map();
 
-function round(n) {
-  return Math.round(n * 100) / 100;
+function round(n, digits = 4) {
+  if (!Number.isFinite(n)) return 0;
+  const p = 10 ** digits;
+  return Math.round(n * p) / p;
+}
+
+/** Keep more decimals for FX/gold so tip does not stick between cents. */
+function priceDigits(price) {
+  const p = Math.abs(Number(price) || 0);
+  if (p >= 1000) return 3;
+  if (p >= 100) return 4;
+  if (p >= 1) return 5;
+  return 6;
 }
 
 function calcChange(price, prevClose) {
-  const change = round(price - prevClose);
-  const changePercent = prevClose ? round((change / prevClose) * 100) : 0;
+  const digits = priceDigits(price);
+  const change = round(price - prevClose, digits);
+  const changePercent = prevClose ? round((change / prevClose) * 100, 4) : 0;
   return { change, changePercent };
 }
 
@@ -26,10 +38,17 @@ export function mergeTickIntoMeta(symbol, tick) {
   const sym = String(symbol || '').trim().toUpperCase();
   const prev = meta.get(sym);
   let ltp = Number(tick?.ltp ?? tick?.lp ?? tick?.last_price ?? 0);
+  // Prefer bid/ask mid when print is absent — keeps tip alive between sparse lp ticks.
+  if (!ltp) {
+    const bid = Number(tick?.bid_price ?? tick?.bid ?? tick?.bbp ?? 0);
+    const ask = Number(tick?.ask_price ?? tick?.ask ?? tick?.bap ?? 0);
+    if (bid > 0 && ask > 0) ltp = (bid + ask) / 2;
+  }
   // Quote deltas may omit lp — keep prior LTP so the print does not go stale.
   if (!ltp && prev?.price) ltp = prev.price;
   if (!sym || !ltp) return null;
 
+  const digits = priceDigits(ltp);
   const prevClose = Number(
     tick?.prev_close_price ?? tick?.prev_close ?? prev?.prevClose ?? 0,
   );
@@ -61,7 +80,7 @@ export function mergeTickIntoMeta(symbol, tick) {
   const shouldRecalc =
     !Number.isFinite(change) ||
     !Number.isFinite(changePercent) ||
-    (basePrev > 0 && Math.abs(ltp - basePrev) > 0.01 && change === 0 && changePercent === 0);
+    (basePrev > 0 && Math.abs(ltp - basePrev) > 0.0001 && change === 0 && changePercent === 0);
 
   if (shouldRecalc && basePrev > 0) {
     ({ change, changePercent } = calcChange(ltp, basePrev));
@@ -69,22 +88,22 @@ export function mergeTickIntoMeta(symbol, tick) {
     change = 0;
     changePercent = 0;
   } else {
-    change = round(change);
-    changePercent = round(changePercent);
+    change = round(change, digits);
+    changePercent = round(changePercent, 4);
   }
 
   const merged = {
     symbol: sym,
-    price: round(ltp),
+    price: round(ltp, digits),
     change,
     changePercent,
-    open: round(open),
-    high: round(high),
-    low: round(low),
-    prevClose: round(pc || prev?.prevClose || ltp),
+    open: round(open, digits),
+    high: round(Math.max(high, ltp), digits),
+    low: round(Math.min(low, ltp), digits),
+    prevClose: round(pc || prev?.prevClose || ltp, digits),
     volume,
-    bid: bid > 0 ? round(bid) : prev?.bid ?? 0,
-    ask: ask > 0 ? round(ask) : prev?.ask ?? 0,
+    bid: bid > 0 ? round(bid, digits) : prev?.bid ?? 0,
+    ask: ask > 0 ? round(ask, digits) : prev?.ask ?? 0,
     bidQty: bidQty || prev?.bidQty || 0,
     askQty: askQty || prev?.askQty || 0,
     oi: oi || prev?.oi || 0,
@@ -130,7 +149,8 @@ export function overlayWsPrice(symbol, price, lastUpdated) {
   const sym = String(symbol || '').trim().toUpperCase();
   const hit = meta.get(sym);
   if (!hit?.prevClose) return hit ?? null;
-  const p = round(Number(price));
+  const digits = priceDigits(price);
+  const p = round(Number(price), digits);
   const { change, changePercent } = calcChange(p, hit.prevClose);
   const merged = {
     ...hit,
