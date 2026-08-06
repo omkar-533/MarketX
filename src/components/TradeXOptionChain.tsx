@@ -304,7 +304,7 @@ export default function TradeXOptionChain() {
   const strikeCols = 2;
   const peCols = (showBuildup ? 1 : 0) + greekCols + QUOTE_COLS;
   const totalCols = ceCols + strikeCols + peCols;
-  const tableMinW = showGreeks ? 2280 : 1520;
+  const tableMinW = showGreeks ? 2400 : showBuildup ? 1760 : 1680;
 
   return (
     <div className="option-chain-page mx-auto w-full max-w-[1440px] flex flex-col gap-2 h-[calc(100dvh-4.25rem)] min-h-0 overflow-hidden">
