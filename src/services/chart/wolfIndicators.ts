@@ -16,6 +16,11 @@ export type WolfNativePreset = {
 /** Built-in plottable Wolf packs (extend as more Pine ports land). */
 export const WOLF_NATIVE_PRESETS: WolfNativePreset[] = [
   { id: 'wolf_cfd', label: 'Wolf Confluence Desk', match: /confluence|cfd|wolf\s*cfd/i },
+  {
+    id: 'wolf_clusters_vp',
+    label: 'Clusters Volume Profile',
+    match: /clusters?\s*volume\s*profile|volume\s*profile.*cluster|cluster.*volume\s*profile/i,
+  },
   { id: 'wolf_ribbon', label: 'Wolf Trend Ribbon', match: /ribbon|trend\s*stack|ema\s*stack/i },
   { id: 'wolf_pulse', label: 'Wolf Momentum Pulse', match: /momentum|pulse|rsi\s*pulse/i },
   { id: 'wolf_pressure', label: 'Wolf Volume Pressure', match: /volume\s*pressure|participation|vol\s*flow/i },
@@ -82,6 +87,8 @@ export function wolfStudyBlurb(id: string): string {
   switch (recipe) {
     case 'cfd':
       return 'Confluence score + EMA 21 / 55 / 200 stack';
+    case 'clusters':
+      return 'K-means clusters volume profile — POC levels + membership dots';
     case 'ribbon':
       return 'Trend ribbon — EMA 20 / 50 / 100 / 200';
     case 'pulse':
@@ -225,13 +232,187 @@ export function computeWolfLevels(bars: ChartBar[]) {
   return { swingHigh, swingLow };
 }
 
+const CLUSTER_PALETTE = [
+  '#2196f3',
+  '#f44336',
+  '#4caf50',
+  '#ff9800',
+  '#9c27b0',
+  '#00bcd4',
+  '#ffeb3b',
+  '#e91e63',
+  '#795548',
+  '#607d8b',
+];
+
+export type WolfClustersVpCluster = {
+  id: number;
+  color: string;
+  poc: number;
+  min: number;
+  max: number;
+  totalVol: number;
+  pocVol: number;
+};
+
+export type WolfClustersVpResult = {
+  /** Length = bars.length; -1 outside lookback window */
+  assignments: number[];
+  clusters: WolfClustersVpCluster[];
+};
+
+/**
+ * Port of indicators/clusters-volume-profile.pine — k-means price clusters + per-cluster POC.
+ * Terminal plots POC lines + membership; full VP boxes remain in the Pine Script for TV.
+ */
+export function computeWolfClustersVp(
+  bars: ChartBar[],
+  opts?: { lookback?: number; k?: number; iters?: number; rows?: number },
+): WolfClustersVpResult {
+  const lookback = Math.min(Math.max(opts?.lookback ?? 200, 10), bars.length);
+  const k = Math.min(Math.max(opts?.k ?? 5, 2), 10);
+  const iterations = Math.min(Math.max(opts?.iters ?? 50, 5), 50);
+  const rows = Math.min(Math.max(opts?.rows ?? 20, 2), 80);
+  const n = bars.length;
+  const assignmentsOut = Array.from({ length: n }, () => -1);
+  if (lookback < 10 || n < 10) return { assignments: assignmentsOut, clusters: [] };
+
+  const start = n - lookback;
+  const prices: number[] = [];
+  const volumes: number[] = [];
+  let minP = Infinity;
+  let maxP = -Infinity;
+  for (let i = 0; i < lookback; i += 1) {
+    const bar = bars[start + i];
+    const p = (bar.high + bar.low) / 2;
+    const v = bar.volume || 0;
+    prices.push(p);
+    volumes.push(v);
+    if (p < minP) minP = p;
+    if (p > maxP) maxP = p;
+  }
+  if (!(maxP > minP)) {
+    maxP = minP + 1e-6;
+  }
+
+  const centroids = Array.from({ length: k }, (_, j) => minP + ((j + 1) * (maxP - minP)) / (k + 1));
+  const assignments = Array.from({ length: lookback }, () => 0);
+
+  for (let iter = 0; iter < iterations; iter += 1) {
+    for (let i = 0; i < lookback; i += 1) {
+      let best = 0;
+      let bestDist = Infinity;
+      const p = prices[i];
+      for (let j = 0; j < k; j += 1) {
+        const dist = Math.abs(p - centroids[j]);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = j;
+        }
+      }
+      assignments[i] = best;
+    }
+    const sumPv = Array.from({ length: k }, () => 0);
+    const sumV = Array.from({ length: k }, () => 0);
+    for (let i = 0; i < lookback; i += 1) {
+      const c = assignments[i];
+      sumPv[c] += prices[i] * volumes[i];
+      sumV[c] += volumes[i];
+    }
+    for (let j = 0; j < k; j += 1) {
+      if (sumV[j] > 0) centroids[j] = sumPv[j] / sumV[j];
+    }
+  }
+
+  for (let i = 0; i < lookback; i += 1) {
+    assignmentsOut[start + i] = assignments[i];
+  }
+
+  const mintick = Math.max((maxP - minP) / 10_000, 1e-8);
+  const clusters: WolfClustersVpCluster[] = [];
+
+  for (let cId = 0; cId < k; cId += 1) {
+    const cHighs: number[] = [];
+    const cLows: number[] = [];
+    const cVols: number[] = [];
+    let cMin = Infinity;
+    let cMax = -Infinity;
+    let totalVol = 0;
+    for (let i = 0; i < lookback; i += 1) {
+      if (assignments[i] !== cId) continue;
+      const bar = bars[start + i];
+      cHighs.push(bar.high);
+      cLows.push(bar.low);
+      cVols.push(volumes[i]);
+      cMin = Math.min(cMin, bar.low);
+      cMax = Math.max(cMax, bar.high);
+      totalVol += volumes[i];
+    }
+    if (!cHighs.length || !(cMax > cMin)) continue;
+
+    const binSize = Math.max((cMax - cMin) / rows, mintick);
+    const binVols = Array.from({ length: rows }, () => 0);
+    for (let i = 0; i < cHighs.length; i += 1) {
+      const bH = cHighs[i];
+      const bL = cLows[i];
+      const bV = cVols[i];
+      const wickRange = Math.max(bH - bL, mintick);
+      for (let b = 0; b < rows; b += 1) {
+        const binB = cMin + b * binSize;
+        const binT = binB + binSize;
+        const intersectL = Math.max(bL, binB);
+        const intersectH = Math.min(bH, binT);
+        if (intersectH > intersectL) {
+          binVols[b] += bV * ((intersectH - intersectL) / wickRange);
+        }
+      }
+    }
+    let maxBinVol = 0;
+    let pocIdx = 0;
+    for (let b = 0; b < rows; b += 1) {
+      if (binVols[b] > maxBinVol) {
+        maxBinVol = binVols[b];
+        pocIdx = b;
+      }
+    }
+    const pocBottom = cMin + pocIdx * binSize;
+    const poc = pocBottom + binSize / 2;
+    clusters.push({
+      id: cId,
+      color: CLUSTER_PALETTE[cId % CLUSTER_PALETTE.length],
+      poc,
+      min: cMin,
+      max: cMax,
+      totalVol,
+      pocVol: maxBinVol,
+    });
+  }
+
+  clusters.sort((a, b) => a.poc - b.poc);
+  return { assignments: assignmentsOut, clusters };
+}
+
 /** Resolve recipe for any wolf_* id (known presets or default ribbon). */
-export function resolveWolfRecipe(id: string): 'cfd' | 'ribbon' | 'pulse' | 'pressure' | 'levels' {
-  if (id === 'wolf_cfd' || id.includes('confluence') || id.includes('cfd')) return 'cfd';
-  if (id === 'wolf_pulse' || id.includes('pulse') || id.includes('momentum')) return 'pulse';
-  if (id === 'wolf_pressure' || id.includes('pressure') || id.includes('volume')) return 'pressure';
-  if (id === 'wolf_levels' || id.includes('structure') || id.includes('level')) return 'levels';
-  if (id === 'wolf_ribbon' || id.includes('ribbon')) return 'ribbon';
+export function resolveWolfRecipe(
+  id: string,
+): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' {
+  const key = id.toLowerCase();
+  if (id === 'wolf_cfd' || key.includes('confluence') || key.includes('cfd')) return 'cfd';
+  if (
+    id === 'wolf_clusters_vp' ||
+    key.includes('cluster') ||
+    key.includes('volume_profile') ||
+    key.includes('volume-profile') ||
+    /volume.?profile/.test(key)
+  ) {
+    return 'clusters';
+  }
+  if (id === 'wolf_pulse' || key.includes('pulse') || key.includes('momentum')) return 'pulse';
+  if (id === 'wolf_pressure' || key.includes('pressure') || key.includes('vol_flow') || key.includes('participation')) {
+    return 'pressure';
+  }
+  if (id === 'wolf_levels' || key.includes('structure') || key.includes('level')) return 'levels';
+  if (id === 'wolf_ribbon' || key.includes('ribbon')) return 'ribbon';
   // Unknown CMS rows still plot a useful ribbon pack
   return 'ribbon';
 }

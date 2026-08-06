@@ -44,6 +44,7 @@ import {
   williamsR,
 } from '../../services/chart/chartIndicators';
 import {
+  computeWolfClustersVp,
   computeWolfConfluence,
   computeWolfLevels,
   computeWolfPressure,
@@ -1158,6 +1159,91 @@ export default function NativeChatChart({
           hi.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingHigh[j] })));
           lo.setData(source.map((bar, j) => ({ time: ts(bar.time), value: lv.swingLow[j] })));
           return [{ studyId: id, label: title, detail: 'Structure', color: '#f0b90b', values: lv.swingHigh, decimals }];
+        });
+      } else if (recipe === 'clusters') {
+        const clusterColors = [
+          '#2196f3',
+          '#f44336',
+          '#4caf50',
+          '#ff9800',
+          '#9c27b0',
+          '#00bcd4',
+          '#ffeb3b',
+          '#e91e63',
+          '#795548',
+          '#607d8b',
+        ];
+        const pocLines: IPriceLine[] = [];
+        const pocSeries = clusterColors.map((color) => {
+          const s = line(color, 1);
+          s.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
+          priceFormatted.push(s);
+          return s;
+        });
+        feeds.push(({ source, decimals }) => {
+          while (pocLines.length) {
+            try {
+              priceSeries.removePriceLine(pocLines.pop()!);
+            } catch {
+              /* series torn down */
+            }
+          }
+          const r = computeWolfClustersVp(source);
+          const lookbackStart = Math.max(0, source.length - 200);
+          for (let i = 0; i < pocSeries.length; i += 1) {
+            const cluster = r.clusters[i];
+            if (!cluster) {
+              pocSeries[i].setData([]);
+              continue;
+            }
+            pocSeries[i].setData(
+              source.slice(lookbackStart).map((bar) => ({ time: ts(bar.time), value: cluster.poc })),
+            );
+            pocLines.push(
+              priceSeries.createPriceLine({
+                price: cluster.poc,
+                color: cluster.color,
+                lineWidth: 1,
+                lineStyle: LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `C${cluster.id + 1}`,
+              }),
+            );
+          }
+          try {
+            const markers = source
+              .map((bar, j) => {
+                const a = r.assignments[j];
+                if (a < 0) return null;
+                const cluster = r.clusters.find((c) => c.id === a);
+                if (!cluster) return null;
+                return {
+                  time: ts(bar.time),
+                  position: 'inBar' as const,
+                  color: cluster.color,
+                  shape: 'circle' as const,
+                  size: 0.4,
+                };
+              })
+              .filter((m): m is NonNullable<typeof m> => Boolean(m));
+            // Candlestick / line series marker API (ignore if unsupported)
+            (priceSeries as { setMarkers?: (m: typeof markers) => void }).setMarkers?.(markers);
+          } catch {
+            /* markers optional */
+          }
+          const detail = r.clusters.length
+            ? `${r.clusters.length} POC · ${r.clusters.map((c) => c.poc.toFixed(decimals)).join(' / ')}`
+            : 'No clusters';
+          return [
+            {
+              studyId: id,
+              label: title,
+              detail,
+              color: '#2196f3',
+              values: r.clusters[0] ? source.map(() => r.clusters[0].poc) : source.map((b) => b.close),
+              decimals,
+            },
+          ];
         });
       } else if (recipe === 'pulse') {
         wolfPaneCursor += 1;
