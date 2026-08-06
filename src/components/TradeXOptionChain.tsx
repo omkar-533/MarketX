@@ -118,6 +118,7 @@ export default function TradeXOptionChain() {
   const [chainError, setChainError] = useState('');
   const [chainSource, setChainSource] = useState('');
   const atmRowRef = useRef<HTMLTableRowElement>(null);
+  const atmStrikeCellRef = useRef<HTMLTableCellElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const windowSize =
@@ -196,14 +197,6 @@ export default function TradeXOptionChain() {
     setSelectedStrike(null);
   }, [symbol, expiry]);
 
-  useEffect(() => {
-    if (tab !== 'chain') return;
-    const t = window.setTimeout(() => {
-      atmRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }, 120);
-    return () => window.clearTimeout(t);
-  }, [symbol, expiry, tab, strikes.length]);
-
   const atmStrike = Math.round(spotPrice / interval) * interval;
   const dte = daysToExpiry(expiry);
 
@@ -217,6 +210,57 @@ export default function TradeXOptionChain() {
     if (strikeFilter === 'OTM') return rows.filter((r) => r.strike > spotPrice);
     return rows;
   }, [strikes, searchStrike, strikeFilter, atmStrike, spotPrice]);
+
+  // Open on ATM / STRIKE — center both axes (not left-aligned CE columns)
+  useEffect(() => {
+    if (tab !== 'chain' || chainLoading || filtered.length === 0) return;
+
+    let cancelled = false;
+    const centerAtm = () => {
+      if (cancelled) return;
+      const scroller = scrollRef.current;
+      const cell = atmStrikeCellRef.current ?? atmRowRef.current;
+      if (!scroller || !cell) return;
+
+      const scrollerRect = scroller.getBoundingClientRect();
+      const cellRect = cell.getBoundingClientRect();
+
+      const nextLeft =
+        scroller.scrollLeft +
+        (cellRect.left - scrollerRect.left) -
+        scrollerRect.width / 2 +
+        cellRect.width / 2;
+      const nextTop =
+        scroller.scrollTop +
+        (cellRect.top - scrollerRect.top) -
+        scrollerRect.height / 2 +
+        cellRect.height / 2;
+
+      scroller.scrollTo({
+        left: Math.max(0, nextLeft),
+        top: Math.max(0, nextTop),
+        behavior: 'smooth',
+      });
+    };
+
+    const t = window.setTimeout(() => {
+      requestAnimationFrame(() => requestAnimationFrame(centerAtm));
+    }, 80);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [
+    tab,
+    symbol,
+    expiry,
+    chainLoading,
+    filtered.length,
+    showGreeks,
+    showBuildup,
+    atmStrike,
+  ]);
 
   const spotInsertAfter = useMemo(() => {
     for (let i = 0; i < filtered.length - 1; i++) {
@@ -615,6 +659,7 @@ export default function TradeXOptionChain() {
                               </td>
                             )}
                             <td
+                              ref={isAtm ? atmStrikeCellRef : undefined}
                               className={`px-2 py-0.5 text-center font-black border-x-2 border-gold/25 bg-dark-surface/80 ${
                                 isAtm ? 'text-gold bg-gold/15' : 'text-slate-100'
                               }`}
