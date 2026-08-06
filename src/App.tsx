@@ -98,16 +98,6 @@ function tabFromHash(): string | null {
   return normalizeTabId(raw);
 }
 
-function tabFromStorage(): string | null {
-  try {
-    const raw = localStorage.getItem(TAB_STORAGE_KEY) || '';
-    if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
-    return normalizeTabId(raw);
-  } catch {
-    return null;
-  }
-}
-
 function shouldForceHome() {
   try {
     return sessionStorage.getItem(FORCE_HOME_KEY) === '1';
@@ -144,9 +134,9 @@ function clearPersistedTab() {
   }
 }
 
+/** Fresh visits and full reloads always land on Wolf AI — not the last page (e.g. Terminal). */
 function initialActiveTab() {
-  if (shouldForceHome()) return DEFAULT_TAB;
-  return tabFromHash() || tabFromStorage() || DEFAULT_TAB;
+  return DEFAULT_TAB;
 }
 
 function persistTab(tab: string) {
@@ -195,7 +185,7 @@ function AppWorkspace() {
     }
   }, [auth.isLoggedIn, activeTab]);
 
-  /** Keep the open page across refresh via hash + localStorage. */
+  /** Persist in-session navigation to hash/localStorage. Reload still lands on Wolf AI. */
   useEffect(() => {
     if (!auth.isLoggedIn) return;
     if (shouldForceHome()) {
