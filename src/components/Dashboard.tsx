@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -15,7 +15,9 @@ import {
   Zap,
 } from 'lucide-react';
 import { getMarketBreadth } from '../data/marketData';
+import { CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { useFyersWebSocket } from '../hooks/useFyersWebSocket';
 import { BRAND } from '../constants/brandLabels';
 import {
   calculateMaxPain,
@@ -33,8 +35,10 @@ import {
   type StockData,
 } from '../data/marketData';
 import { fetchMarketQuotes, type MarketQuoteDto } from '../services/marketApiService';
+import { startFyersSocketClient } from '../services/fyersSocketClient';
 import { subscribeLiveSymbols } from '../services/marketTickStream';
-import { getLiveQuote } from '../services/symbolLiveService';
+import { subscribeMarketLive } from '../services/marketLiveStore';
+import { getLiveQuote, refreshFnoLiveQuotesAsync } from '../services/symbolLiveService';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
@@ -72,6 +76,8 @@ const GLOBAL_QUOTE_SYMBOLS = [
   ...FOREX_WATCH.map((x) => x.symbol),
   ...CRYPTO_WATCH.map((x) => x.symbol),
 ];
+
+const DASHBOARD_LIVE_SYMBOLS = [...new Set([...CORE_LIVE_SYMBOLS, ...GLOBAL_QUOTE_SYMBOLS])];
 
 function sparklinePoints(base: number, current: number, len = 12): number[] {
   return Array.from({ length: len }, (_, i) =>
@@ -357,6 +363,106 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [sectors, setSectors] = useState<SectorHeatmapItem[]>([]);
   const [globalQuotes, setGlobalQuotes] = useState<Map<string, MarketQuoteDto>>(new Map());
   const [lastSync, setLastSync] = useState(new Date());
+  const [liveTick, setLiveTick] = useState(0);
+  const [feedLabel, setFeedLabel] = useState('Connecting live…');
+
+  const { connected, status } = useFyersWebSocket({
+    symbols: DASHBOARD_LIVE_SYMBOLS,
+    autoConnect: true,
+  });
+
+  const paintIndia = useCallback(() => {
+    setIndices(getIndices());
+    setGainers(getGainers(6));
+    setLosers(getLosers(6));
+    setActive(getMostActive(6));
+    setBreadth(getMarketBreadth());
+    setSectors(getSectorHeatmapData());
+    setLastSync(new Date());
+  }, []);
+
+  const paintGlobalFromLive = useCallback(() => {
+    setGlobalQuotes((prev) => {
+      const next = new Map(prev);
+      for (const sym of GLOBAL_QUOTE_SYMBOLS) {
+        const live = getLiveQuote(sym);
+        if (!live?.price) continue;
+        next.set(sym, {
+          symbol: sym,
+          price: live.price,
+          change: live.change,
+          changePercent: live.changePercent,
+          open: live.open,
+          high: live.high,
+          low: live.low,
+          prevClose: live.prevClose,
+          volume: live.volume,
+          source: 'live',
+          lastUpdated: live.lastUpdated || new Date().toISOString(),
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const seedRestQuotes = useCallback(async () => {
+    subscribeLiveSymbols(DASHBOARD_LIVE_SYMBOLS);
+    const res = await fetchMarketQuotes(DASHBOARD_LIVE_SYMBOLS);
+    if (!res?.quotes?.length) return;
+    const next = new Map<string, MarketQuoteDto>();
+    for (const q of res.quotes) {
+      if (q?.symbol) next.set(q.symbol.toUpperCase(), q);
+    }
+    setGlobalQuotes((prev) => {
+      const merged = new Map(prev);
+      for (const [k, v] of next) merged.set(k, v);
+      return merged;
+    });
+  }, []);
+
+  // Boot live feed + keep Socket.IO warm
+  useEffect(() => {
+    startFyersSocketClient();
+    subscribeLiveSymbols(DASHBOARD_LIVE_SYMBOLS);
+    void refreshFnoLiveQuotesAsync().then(() => {
+      paintIndia();
+      paintGlobalFromLive();
+    });
+    void seedRestQuotes();
+
+    const unsubStore = subscribeMarketLive(() => {
+      paintIndia();
+      paintGlobalFromLive();
+      setLiveTick((n) => n + 1);
+      setLastSync(new Date());
+    });
+
+    return () => {
+      unsubStore();
+    };
+  }, [paintIndia, paintGlobalFromLive, seedRestQuotes]);
+
+  useEffect(() => {
+    if (connected) {
+      setFeedLabel('Live WebSocket');
+      paintIndia();
+      paintGlobalFromLive();
+    } else if (status === 'connecting' || status === 'reconnecting') {
+      setFeedLabel('Reconnecting…');
+    } else {
+      setFeedLabel(status === 'connected' ? 'Live' : 'Live feed starting…');
+    }
+  }, [connected, status, paintIndia, paintGlobalFromLive]);
+
+  // Soft REST reseed (does not block UI) — ticks drive real-time
+  useAutoRefresh(() => {
+    paintIndia();
+    paintGlobalFromLive();
+    void seedRestQuotes();
+  });
+
+  // Force QuoteCard re-read of getLiveQuote when store ticks
+  void liveTick;
 
   const visibleIndices = useMemo(
     () => indices.filter((i) => !HIDDEN_INDEX_SYMBOLS.has(i.symbol)),
@@ -364,8 +470,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   );
 
   const oiSnap = useMemo(() => {
-    const nifty = indices.find((i) => i.symbol === 'NIFTY');
-    const spot = nifty?.price ?? 24580;
+    const niftyIx = indices.find((i) => i.symbol === 'NIFTY');
+    const spot = niftyIx?.price ?? 24580;
     const chain = getOptionChain('NIFTY', spot);
     const maxPain = calculateMaxPain(chain);
     const ceOi = chain.reduce((s, r) => s + r.ceOi, 0);
@@ -375,29 +481,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     const fut = getFuturesOIData().find((f) => f.symbol === 'NIFTY');
     const signals = getSignals().filter((s) => s.signal !== 'HOLD').slice(0, 4);
     return { pcr, maxPain: maxPain.maxPainStrike, intel, fut, signals, ceOi, peOi };
-  }, [indices, lastSync]);
-
-  const refresh = useCallback(() => {
-    setIndices(getIndices());
-    setGainers(getGainers(6));
-    setLosers(getLosers(6));
-    setActive(getMostActive(6));
-    setBreadth(getMarketBreadth());
-    setSectors(getSectorHeatmapData());
-    setLastSync(new Date());
-
-    subscribeLiveSymbols(GLOBAL_QUOTE_SYMBOLS);
-    void fetchMarketQuotes(GLOBAL_QUOTE_SYMBOLS).then((res) => {
-      if (!res?.quotes?.length) return;
-      const next = new Map<string, MarketQuoteDto>();
-      for (const q of res.quotes) {
-        if (q?.symbol) next.set(q.symbol.toUpperCase(), q);
-      }
-      setGlobalQuotes(next);
-    });
-  }, []);
-
-  useAutoRefresh(refresh);
+  }, [indices, liveTick]);
 
   const nifty = indices.find((i) => i.symbol === 'NIFTY');
   const bankNifty = indices.find((i) => i.symbol === 'BANKNIFTY');
@@ -442,6 +526,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   {BRAND}
                 </span>
                 <span className="text-[10px] text-slate-500">Multi-market pulse</span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    connected
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                      : 'border-gold/30 bg-gold/10 text-gold'
+                  }`}
+                >
+                  {feedLabel}
+                </span>
                 <span className="text-[10px] text-slate-600">
                   Updated{' '}
                   {lastSync.toLocaleTimeString('en-IN', {

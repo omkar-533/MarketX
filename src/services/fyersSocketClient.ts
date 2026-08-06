@@ -71,6 +71,34 @@ function queueTickBroadcast(payload: FyersTickPayload) {
     quoteCache.set(q.symbol, q);
   }
 
+  // Push ticks into shared live store so Dashboard / getIndices stay real-time
+  void import('./symbolLiveService')
+    .then((m) => {
+      m.applyStreamQuotes(
+        payload.quotes.map((q) => ({
+          symbol: q.symbol,
+          price: q.price,
+          change: q.change,
+          changePercent: q.changePercent,
+          open: q.open,
+          high: q.high,
+          low: q.low,
+          prevClose: q.prevClose,
+          volume: q.volume,
+          lastUpdated: q.lastUpdated || new Date().toISOString(),
+          source: q.source,
+        })),
+      );
+    })
+    .catch(() => {});
+
+  void import('./marketConnection')
+    .then((m) => {
+      m.setMarketStreamActive?.(true);
+      m.setMarketWsStatus?.('connected');
+    })
+    .catch(() => {});
+
   if (pendingTickPayload) {
     const mergedQuotes = new Map<string, FyersMarketQuote>();
     for (const q of pendingTickPayload.quotes) mergedQuotes.set(q.symbol, q);

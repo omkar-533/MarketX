@@ -27,7 +27,8 @@ import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from './apiAutoConnec
 import { setMarketLiveError, setMarketLiveSnapshot, setMarketProvider } from './marketLiveStore';
 
 const FNO_BY_SYMBOL = new Map(FNO_UNIVERSE.map((i) => [i.symbol, i]));
-const SNAPSHOT_PUBLISH_MS = 400;
+/** Throttle UI store updates — keep dashboard tippy without flooding React. */
+const SNAPSHOT_PUBLISH_MS = 80;
 let snapshotPublishTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSnapshotQuotes: LiveSymbolQuote[] | null = null;
 let pendingSnapshotError = '';
