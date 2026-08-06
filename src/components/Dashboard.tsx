@@ -5,7 +5,10 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  Bitcoin,
   Flame,
+  Globe2,
+  IndianRupee,
   TrendingDown,
   TrendingUp,
   Volume2,
@@ -29,17 +32,71 @@ import {
   type SectorHeatmapItem,
   type StockData,
 } from '../data/marketData';
+import { fetchMarketQuotes, type MarketQuoteDto } from '../services/marketApiService';
+import { subscribeLiveSymbols } from '../services/marketTickStream';
+import { getLiveQuote } from '../services/symbolLiveService';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
+type MarketScope = 'all' | 'india' | 'forex' | 'crypto';
+
 const HIDDEN_INDEX_SYMBOLS = new Set(['NIFTYNXT50']);
+
+const FOREX_WATCH = [
+  { symbol: 'EURUSD', label: 'EUR/USD', name: 'Euro / Dollar' },
+  { symbol: 'GBPUSD', label: 'GBP/USD', name: 'Pound / Dollar' },
+  { symbol: 'USDJPY', label: 'USD/JPY', name: 'Dollar / Yen' },
+  { symbol: 'USDINR', label: 'USD/INR', name: 'Dollar / Rupee' },
+  { symbol: 'AUDUSD', label: 'AUD/USD', name: 'Aussie / Dollar' },
+  { symbol: 'USDCAD', label: 'USD/CAD', name: 'Dollar / Cad' },
+  { symbol: 'USDCHF', label: 'USD/CHF', name: 'Dollar / Franc' },
+  { symbol: 'XAUUSD', label: 'XAU/USD', name: 'Gold' },
+  { symbol: 'XAGUSD', label: 'XAG/USD', name: 'Silver' },
+  { symbol: 'DXY', label: 'DXY', name: 'US Dollar Index' },
+] as const;
+
+const CRYPTO_WATCH = [
+  { symbol: 'BTC', label: 'BTC/USDT', name: 'Bitcoin' },
+  { symbol: 'ETH', label: 'ETH/USDT', name: 'Ethereum' },
+  { symbol: 'SOL', label: 'SOL/USDT', name: 'Solana' },
+  { symbol: 'BNB', label: 'BNB/USDT', name: 'BNB' },
+  { symbol: 'XRP', label: 'XRP/USDT', name: 'Ripple' },
+  { symbol: 'DOGE', label: 'DOGE/USDT', name: 'Dogecoin' },
+  { symbol: 'ADA', label: 'ADA/USDT', name: 'Cardano' },
+  { symbol: 'AVAX', label: 'AVAX/USDT', name: 'Avalanche' },
+] as const;
+
+const GLOBAL_QUOTE_SYMBOLS = [
+  ...FOREX_WATCH.map((x) => x.symbol),
+  ...CRYPTO_WATCH.map((x) => x.symbol),
+];
 
 function sparklinePoints(base: number, current: number, len = 12): number[] {
   return Array.from({ length: len }, (_, i) =>
     Math.round((base + ((current - base) * i) / Math.max(len - 1, 1)) * 100) / 100,
   );
+}
+
+function formatPrice(price: number, symbol: string) {
+  if (!Number.isFinite(price) || price <= 0) return '—';
+  if (symbol === 'BTC' || symbol === 'ETH') {
+    return price.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+  if (symbol.includes('JPY') || symbol === 'XAUUSD') {
+    return price.toLocaleString('en-US', { maximumFractionDigits: 3 });
+  }
+  if (FOREX_WATCH.some((f) => f.symbol === symbol)) {
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 5,
+    });
+  }
+  if (CRYPTO_WATCH.some((c) => c.symbol === symbol)) {
+    return price.toLocaleString('en-US', { maximumFractionDigits: price < 1 ? 5 : 3 });
+  }
+  return price.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
 function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }) {
@@ -65,7 +122,10 @@ function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }
 
 function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
   const isPositive = index.change >= 0;
-  const spark = useMemo(() => sparklinePoints(index.prevClose, index.price), [index.prevClose, index.price]);
+  const spark = useMemo(
+    () => sparklinePoints(index.prevClose || index.price, index.price),
+    [index.prevClose, index.price],
+  );
 
   return (
     <motion.div
@@ -76,7 +136,9 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{index.symbol}</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {index.symbol}
+          </span>
           <p className="text-[9px] text-slate-600 truncate">{index.name}</p>
         </div>
         <MiniSparkline data={spark} positive={isPositive} />
@@ -85,7 +147,9 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
         {index.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
       </div>
       <div className="flex items-center justify-between mt-1">
-        <span className={`text-xs font-bold flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+        <span
+          className={`text-xs font-bold flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}
+        >
           {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {isPositive ? '+' : ''}
           {index.changePercent.toFixed(2)}%
@@ -105,6 +169,80 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
         <span className="flex items-center gap-0.5">
           <Volume2 className="w-2.5 h-2.5" />
           {(index.volume / 1e6).toFixed(1)}M
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+function QuoteCard({
+  symbol,
+  label,
+  name,
+  quote,
+  delay,
+  badge,
+}: {
+  symbol: string;
+  label: string;
+  name: string;
+  quote?: MarketQuoteDto | null;
+  delay: number;
+  badge: string;
+}) {
+  const live = getLiveQuote(symbol);
+  const price = live?.price || quote?.price || 0;
+  const change = live?.change ?? quote?.change ?? 0;
+  const changePercent = live?.changePercent ?? quote?.changePercent ?? 0;
+  const high = live?.high || quote?.high || price;
+  const low = live?.low || quote?.low || price;
+  const prev = live?.prevClose || quote?.prevClose || price;
+  const isPositive = changePercent >= 0;
+  const spark = useMemo(() => sparklinePoints(prev || price, price || prev || 1), [prev, price]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: delay * 0.03 }}
+      className="app-card p-3.5 h-full hover:border-[#d4af37]/25 transition-all"
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+              {label}
+            </span>
+            <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded border border-[#1a1f2e] text-slate-500">
+              {badge}
+            </span>
+          </div>
+          <p className="text-[9px] text-slate-600 truncate">{name}</p>
+        </div>
+        <MiniSparkline data={spark} positive={isPositive} />
+      </div>
+      <div className="text-lg font-bold text-white tabular-nums leading-tight">
+        {formatPrice(price, symbol)}
+      </div>
+      <div className="flex items-center justify-between mt-1">
+        <span
+          className={`text-xs font-bold flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}
+        >
+          {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {isPositive ? '+' : ''}
+          {changePercent.toFixed(2)}%
+        </span>
+        <span className="text-[10px] text-slate-500 tabular-nums">
+          {isPositive ? '+' : ''}
+          {change.toFixed(symbol.includes('JPY') || symbol === 'XAUUSD' ? 3 : 4)}
+        </span>
+      </div>
+      <div className="mt-2 pt-2 border-t border-[#1a1f2e] flex justify-between text-[9px] text-slate-600">
+        <span>
+          H <span className="text-emerald-400/90">{formatPrice(high, symbol)}</span>
+        </span>
+        <span>
+          L <span className="text-red-400/90">{formatPrice(low, symbol)}</span>
         </span>
       </div>
     </motion.div>
@@ -191,13 +329,33 @@ function SectorGrid({ sectors }: { sectors: SectorHeatmapItem[] }) {
   );
 }
 
-export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
+function sortedQuotes(
+  watch: readonly { symbol: string }[],
+  map: Map<string, MarketQuoteDto>,
+) {
+  return [...watch]
+    .map((w) => {
+      const live = getLiveQuote(w.symbol);
+      const q = map.get(w.symbol);
+      return {
+        symbol: w.symbol,
+        changePercent: live?.changePercent ?? q?.changePercent ?? 0,
+        price: live?.price ?? q?.price ?? 0,
+      };
+    })
+    .filter((q) => q.price > 0)
+    .sort((a, b) => b.changePercent - a.changePercent);
+}
+
+export default function Dashboard({ onNavigate }: DashboardProps) {
+  const [scope, setScope] = useState<MarketScope>('all');
   const [indices, setIndices] = useState<IndexData[]>([]);
   const [gainers, setGainers] = useState<StockData[]>([]);
   const [losers, setLosers] = useState<StockData[]>([]);
   const [active, setActive] = useState<StockData[]>([]);
   const [breadth, setBreadth] = useState(getMarketBreadth());
   const [sectors, setSectors] = useState<SectorHeatmapItem[]>([]);
+  const [globalQuotes, setGlobalQuotes] = useState<Map<string, MarketQuoteDto>>(new Map());
   const [lastSync, setLastSync] = useState(new Date());
 
   const visibleIndices = useMemo(
@@ -227,12 +385,26 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
     setBreadth(getMarketBreadth());
     setSectors(getSectorHeatmapData());
     setLastSync(new Date());
+
+    subscribeLiveSymbols(GLOBAL_QUOTE_SYMBOLS);
+    void fetchMarketQuotes(GLOBAL_QUOTE_SYMBOLS).then((res) => {
+      if (!res?.quotes?.length) return;
+      const next = new Map<string, MarketQuoteDto>();
+      for (const q of res.quotes) {
+        if (q?.symbol) next.set(q.symbol.toUpperCase(), q);
+      }
+      setGlobalQuotes(next);
+    });
   }, []);
 
   useAutoRefresh(refresh);
 
   const nifty = indices.find((i) => i.symbol === 'NIFTY');
   const bankNifty = indices.find((i) => i.symbol === 'BANKNIFTY');
+  const btc = getLiveQuote('BTC') || globalQuotes.get('BTC');
+  const eurusd = getLiveQuote('EURUSD') || globalQuotes.get('EURUSD');
+  const usdinr = getLiveQuote('USDINR') || globalQuotes.get('USDINR');
+
   const pcrBias = oiSnap.pcr > 1.05 ? 'Bullish' : oiSnap.pcr < 0.95 ? 'Bearish' : 'Neutral';
   const sentimentScore = Math.round(
     50 +
@@ -243,238 +415,388 @@ export default function Dashboard({ onNavigate: _onNavigate }: DashboardProps) {
   const clampedSentiment = Math.max(0, Math.min(100, sentimentScore));
   const breadthTotal = Math.max(1, breadth.advances + breadth.declines + breadth.unchanged);
 
+  const forexSorted = useMemo(
+    () => sortedQuotes(FOREX_WATCH, globalQuotes),
+    [globalQuotes, lastSync],
+  );
+  const cryptoSorted = useMemo(
+    () => sortedQuotes(CRYPTO_WATCH, globalQuotes),
+    [globalQuotes, lastSync],
+  );
+
+  const showIndia = scope === 'all' || scope === 'india';
+  const showForex = scope === 'all' || scope === 'forex';
+  const showCrypto = scope === 'all' || scope === 'crypto';
+
   return (
     <div className="space-y-3 pb-6">
-      {/* Hero — left market pulse + right analytics strip */}
+      {/* Hero */}
       <div className="relative overflow-hidden rounded-xl border border-[#1a1f2e] bg-gradient-to-br from-[#121520] via-[#0b0e17] to-[#0a0c14] p-4 sm:p-5">
         <div className="absolute top-0 right-0 w-72 h-72 bg-[#d4af37]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
 
-        <div className="relative grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-stretch">
-          <div className="xl:col-span-5 min-w-0 flex flex-col justify-center">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">
-                {BRAND}
-              </span>
-              <span className="text-[10px] text-slate-500">
-                Updated {lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">
+                  {BRAND}
+                </span>
+                <span className="text-[10px] text-slate-500">Multi-market pulse</span>
+                <span className="text-[10px] text-slate-600">
+                  Updated{' '}
+                  {lastSync.toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-bold text-white">Market Dashboard</h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                India equities · Forex & metals · Crypto — live overview
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {nifty && (
-                <div className="rounded-lg bg-[#121520]/70 border border-[#1a1f2e] p-3">
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">NIFTY 50</div>
-                  <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums tracking-tight mt-0.5">
-                    {nifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                  </div>
-                  <div
-                    className={`text-sm font-bold tabular-nums mt-1 ${nifty.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-                  >
-                    {nifty.change >= 0 ? '+' : ''}
-                    {nifty.change.toFixed(2)} ({nifty.changePercent >= 0 ? '+' : ''}
-                    {nifty.changePercent.toFixed(2)}%)
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-slate-500">
-                    <span>
-                      O <span className="text-slate-300 tabular-nums">{nifty.open.toLocaleString('en-IN')}</span>
-                    </span>
-                    <span>
-                      H <span className="text-emerald-400 tabular-nums">{nifty.high.toLocaleString('en-IN')}</span>
-                    </span>
-                    <span>
-                      L <span className="text-red-400 tabular-nums">{nifty.low.toLocaleString('en-IN')}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {bankNifty && (
-                <div className="rounded-lg bg-[#121520]/70 border border-[#1a1f2e] p-3">
-                  <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">BANK NIFTY</div>
-                  <div className="text-2xl sm:text-3xl font-bold text-white tabular-nums tracking-tight mt-0.5">
-                    {bankNifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                  </div>
-                  <div
-                    className={`text-sm font-bold tabular-nums mt-1 ${bankNifty.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-                  >
-                    {bankNifty.change >= 0 ? '+' : ''}
-                    {bankNifty.change.toFixed(2)} ({bankNifty.changePercent >= 0 ? '+' : ''}
-                    {bankNifty.changePercent.toFixed(2)}%)
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-slate-500">
-                    <span>
-                      O <span className="text-slate-300 tabular-nums">{bankNifty.open.toLocaleString('en-IN')}</span>
-                    </span>
-                    <span>
-                      H <span className="text-emerald-400 tabular-nums">{bankNifty.high.toLocaleString('en-IN')}</span>
-                    </span>
-                    <span>
-                      L <span className="text-red-400 tabular-nums">{bankNifty.low.toLocaleString('en-IN')}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="xl:col-span-7 grid grid-cols-2 lg:grid-cols-4 gap-2 auto-rows-fr">
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[108px]">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-                <Zap className="w-3 h-3 text-[#d4af37]" /> Sentiment
-              </div>
-              <div className="text-2xl font-bold text-[#d4af37] tabular-nums">{clampedSentiment}%</div>
-              <div className="h-1.5 bg-[#1a1f2e] rounded-full overflow-hidden mt-1">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${clampedSentiment}%` }}
-                  className="h-full bg-gradient-to-r from-red-500 via-[#d4af37] to-emerald-500 rounded-full"
-                />
-              </div>
-              <div className="text-[9px] text-slate-500 mt-1">
-                {clampedSentiment >= 60 ? 'Bullish' : clampedSentiment <= 40 ? 'Bearish' : 'Neutral'} bias
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[108px]">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">PCR (OI)</div>
-              <div className={`text-2xl font-bold tabular-nums ${oiSnap.pcr > 1 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {oiSnap.pcr.toFixed(2)}
-              </div>
-              <div className="text-[10px] text-slate-400 font-semibold">{pcrBias}</div>
-              <div className="text-[9px] text-slate-600">Max pain {oiSnap.maxPain.toLocaleString('en-IN')}</div>
-            </div>
-
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[108px]">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-                <Activity className="w-3 h-3 text-[#d4af37]" /> OI Snapshot
-              </div>
-              <div className="space-y-1 text-[11px]">
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-500">CE</span>
-                  <span className="text-red-300 font-bold tabular-nums">{(oiSnap.ceOi / 1e6).toFixed(2)}M</span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-500">PE</span>
-                  <span className="text-emerald-300 font-bold tabular-nums">{(oiSnap.peOi / 1e6).toFixed(2)}M</span>
-                </div>
-              </div>
-              <div className="text-[9px] text-slate-500 truncate">{oiSnap.intel.marketBias}</div>
-            </div>
-
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[108px]">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">Futures / Levels</div>
-              <div className="text-lg font-bold text-white tabular-nums">
-                {oiSnap.fut ? oiSnap.fut.futuresPrice.toLocaleString('en-IN') : '—'}
-              </div>
-              <div className="text-[10px] text-slate-400">{oiSnap.fut?.signal ?? '—'}</div>
-              <div className="text-[9px] text-slate-600 space-y-0.5">
-                <div>
-                  S {oiSnap.intel.strongestSupport.toLocaleString('en-IN')}
-                </div>
-                <div>
-                  R {oiSnap.intel.strongestResistance.toLocaleString('en-IN')}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Indices — auto-fit, no empty columns */}
-      <div
-        className="grid gap-2.5"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
-      >
-        {visibleIndices.map((index, i) => (
-          <IndexCard key={index.symbol} index={index} delay={i} />
-        ))}
-      </div>
-
-      {/* Movers + breadth/signals — equal height row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <MoversPanel stocks={gainers} type="gainers" />
-          <MoversPanel stocks={losers} type="losers" />
-          <MoversPanel stocks={active} type="active" />
-        </div>
-
-        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
-          <div className="app-card p-3.5 h-full min-h-[160px]">
-            <h3 className="text-xs font-bold text-[#d4af37] mb-2.5 flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" />
-              Market Breadth
-            </h3>
-            <div className="space-y-2">
-              {[
-                { label: 'Advances', value: breadth.advances, color: 'bg-emerald-500' },
-                { label: 'Declines', value: breadth.declines, color: 'bg-red-500' },
-                { label: 'Unchanged', value: breadth.unchanged, color: 'bg-slate-500' },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                    <span>{item.label}</span>
-                    <span className="text-slate-300 tabular-nums font-semibold">{item.value}</span>
-                  </div>
-                  <div className="h-1.5 bg-[#1a1f2e] rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(item.value / breadthTotal) * 100}%` }}
-                      className={`${item.color} h-full rounded-full`}
-                    />
-                  </div>
-                </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {(
+                [
+                  ['all', 'All Markets', Globe2],
+                  ['india', 'India', IndianRupee],
+                  ['forex', 'Forex', Activity],
+                  ['crypto', 'Crypto', Bitcoin],
+                ] as const
+              ).map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setScope(id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border transition-colors ${
+                    scope === id
+                      ? 'bg-[#d4af37] text-[#0b0e17] border-[#d4af37]'
+                      : 'bg-[#121520] text-slate-400 border-[#1a1f2e] hover:text-slate-200'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
               ))}
             </div>
-            <div className="mt-3 pt-2.5 border-t border-[#1a1f2e] grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-base font-bold text-emerald-400 tabular-nums">{breadth.newHighs}</div>
-                <div className="text-[9px] text-slate-600">Highs</div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+              <div className="text-[9px] uppercase text-slate-500 font-semibold">NIFTY 50</div>
+              <div className="text-xl font-bold text-white tabular-nums mt-1">
+                {nifty ? nifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}
               </div>
-              <div>
-                <div className="text-base font-bold text-red-400 tabular-nums">{breadth.newLows}</div>
-                <div className="text-[9px] text-slate-600">Lows</div>
+              <div
+                className={`text-xs font-bold mt-0.5 ${(nifty?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+              >
+                {nifty
+                  ? `${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%`
+                  : '—'}
               </div>
-              <div>
-                <div className="text-base font-bold text-[#d4af37] tabular-nums">
-                  {breadth.advanceDeclineRatio.toFixed(2)}
-                </div>
-                <div className="text-[9px] text-slate-600">A/D</div>
+            </div>
+            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+              <div className="text-[9px] uppercase text-slate-500 font-semibold">BANK NIFTY</div>
+              <div className="text-xl font-bold text-white tabular-nums mt-1">
+                {bankNifty
+                  ? bankNifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                  : '—'}
+              </div>
+              <div
+                className={`text-xs font-bold mt-0.5 ${(bankNifty?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+              >
+                {bankNifty
+                  ? `${bankNifty.changePercent >= 0 ? '+' : ''}${bankNifty.changePercent.toFixed(2)}%`
+                  : '—'}
+              </div>
+            </div>
+            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+              <div className="text-[9px] uppercase text-slate-500 font-semibold">USD / INR</div>
+              <div className="text-xl font-bold text-white tabular-nums mt-1">
+                {formatPrice(usdinr?.price ?? 0, 'USDINR')}
+              </div>
+              <div
+                className={`text-xs font-bold mt-0.5 ${(usdinr?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+              >
+                {usdinr
+                  ? `${usdinr.changePercent >= 0 ? '+' : ''}${usdinr.changePercent.toFixed(2)}%`
+                  : '—'}
+              </div>
+            </div>
+            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+              <div className="text-[9px] uppercase text-slate-500 font-semibold">BTC / USDT</div>
+              <div className="text-xl font-bold text-white tabular-nums mt-1">
+                {formatPrice(btc?.price ?? 0, 'BTC')}
+              </div>
+              <div
+                className={`text-xs font-bold mt-0.5 ${(btc?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+              >
+                {btc
+                  ? `${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%`
+                  : '—'}
               </div>
             </div>
           </div>
 
-          <div className="app-card p-3.5 h-full min-h-[160px]">
-            <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Live Bias</h3>
-            {oiSnap.signals.length > 0 ? (
-              <div className="space-y-1">
-                {oiSnap.signals.map((s) => {
-                  const isBullish = s.signal === 'BUY';
-                  const biasLabel = isBullish ? 'BULLISH' : 'BEARISH';
-                  return (
-                    <div key={s.symbol} className="py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e]">
-                      <div className="flex justify-between text-xs gap-2">
-                        <span className="font-bold text-slate-200">{s.symbol}</span>
-                        <span className={isBullish ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                          {biasLabel}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-600 truncate mt-0.5">{s.reason}</div>
-                    </div>
-                  );
-                })}
+          {showIndia ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-[#d4af37]" /> India Sentiment
+                </div>
+                <div className="text-2xl font-bold text-[#d4af37] tabular-nums">
+                  {clampedSentiment}%
+                </div>
+                <div className="h-1.5 bg-[#1a1f2e] rounded-full overflow-hidden mt-1">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${clampedSentiment}%` }}
+                    className="h-full bg-gradient-to-r from-red-500 via-[#d4af37] to-emerald-500 rounded-full"
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="h-full min-h-[100px] flex items-center justify-center text-center px-3">
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  No active bullish or bearish bias right now. Market is in wait-and-watch mode.
-                </p>
+              <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                  PCR (OI)
+                </div>
+                <div
+                  className={`text-2xl font-bold tabular-nums ${oiSnap.pcr > 1 ? 'text-emerald-400' : 'text-red-400'}`}
+                >
+                  {oiSnap.pcr.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-slate-400 font-semibold">{pcrBias}</div>
               </div>
-            )}
-          </div>
+              <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                  EUR / USD
+                </div>
+                <div className="text-xl font-bold text-white tabular-nums">
+                  {formatPrice(eurusd?.price ?? 0, 'EURUSD')}
+                </div>
+                <div
+                  className={`text-[10px] font-semibold ${(eurusd?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                >
+                  {eurusd
+                    ? `${eurusd.changePercent >= 0 ? '+' : ''}${eurusd.changePercent.toFixed(2)}%`
+                    : 'Forex'}
+                </div>
+              </div>
+              <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px] gap-2">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                  Quick links
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('optionchain')}
+                    className="text-[10px] font-bold px-2 py-1 rounded border border-[#d4af37]/30 text-[#d4af37] hover:bg-[#d4af37]/10"
+                  >
+                    Option Chain
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('oiintelligence')}
+                    className="text-[10px] font-bold px-2 py-1 rounded border border-[#1a1f2e] text-slate-300 hover:bg-[#121520]"
+                  >
+                    AI Intelligence
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('global')}
+                    className="text-[10px] font-bold px-2 py-1 rounded border border-[#1a1f2e] text-slate-300 hover:bg-[#121520]"
+                  >
+                    Global
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <SectorGrid sectors={sectors} />
+      {/* India */}
+      {showIndia ? (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-0.5">
+            <IndianRupee className="w-4 h-4 text-[#d4af37]" />
+            <h2 className="text-sm font-bold text-white">India · NSE / BSE</h2>
+          </div>
+          <div
+            className="grid gap-2.5"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
+          >
+            {visibleIndices.map((index, i) => (
+              <IndexCard key={index.symbol} index={index} delay={i} />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <MoversPanel stocks={gainers} type="gainers" />
+              <MoversPanel stocks={losers} type="losers" />
+              <MoversPanel stocks={active} type="active" />
+            </div>
+
+            <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+              <div className="app-card p-3.5 h-full min-h-[160px]">
+                <h3 className="text-xs font-bold text-[#d4af37] mb-2.5 flex items-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Market Breadth
+                </h3>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Advances', value: breadth.advances, color: 'bg-emerald-500' },
+                    { label: 'Declines', value: breadth.declines, color: 'bg-red-500' },
+                    { label: 'Unchanged', value: breadth.unchanged, color: 'bg-slate-500' },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                        <span>{item.label}</span>
+                        <span className="text-slate-300 tabular-nums font-semibold">
+                          {item.value}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-[#1a1f2e] rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(item.value / breadthTotal) * 100}%` }}
+                          className={`${item.color} h-full rounded-full`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="app-card p-3.5 h-full min-h-[160px]">
+                <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Live Bias</h3>
+                {oiSnap.signals.length > 0 ? (
+                  <div className="space-y-1">
+                    {oiSnap.signals.map((s) => {
+                      const isBullish = s.signal === 'BUY';
+                      return (
+                        <div
+                          key={s.symbol}
+                          className="py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e]"
+                        >
+                          <div className="flex justify-between text-xs gap-2">
+                            <span className="font-bold text-slate-200">{s.symbol}</span>
+                            <span
+                              className={
+                                isBullish ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'
+                              }
+                            >
+                              {isBullish ? 'BULLISH' : 'BEARISH'}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-600 truncate mt-0.5">
+                            {s.reason}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 leading-relaxed py-6 text-center">
+                    No strong India bias right now — wait-and-watch.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <SectorGrid sectors={sectors} />
+        </section>
+      ) : null}
+
+      {/* Forex */}
+      {showForex ? (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-sky-400" />
+              <h2 className="text-sm font-bold text-white">Forex & Metals</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <span className="px-2 py-1 rounded border border-[#1a1f2e] text-slate-400">
+                Top{' '}
+                <span className="text-emerald-400 font-bold">
+                  {forexSorted[0]?.symbol ?? '—'}{' '}
+                  {forexSorted[0]
+                    ? `${forexSorted[0].changePercent >= 0 ? '+' : ''}${forexSorted[0].changePercent.toFixed(2)}%`
+                    : ''}
+                </span>
+              </span>
+              <span className="px-2 py-1 rounded border border-[#1a1f2e] text-slate-400">
+                Weak{' '}
+                <span className="text-red-400 font-bold">
+                  {forexSorted.at(-1)?.symbol ?? '—'}{' '}
+                  {forexSorted.at(-1)
+                    ? `${forexSorted.at(-1)!.changePercent >= 0 ? '+' : ''}${forexSorted.at(-1)!.changePercent.toFixed(2)}%`
+                    : ''}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div
+            className="grid gap-2.5"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
+          >
+            {FOREX_WATCH.map((item, i) => (
+              <QuoteCard
+                key={item.symbol}
+                symbol={item.symbol}
+                label={item.label}
+                name={item.name}
+                quote={globalQuotes.get(item.symbol)}
+                delay={i}
+                badge="FX"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Crypto */}
+      {showCrypto ? (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+            <div className="flex items-center gap-2">
+              <Bitcoin className="w-4 h-4 text-orange-400" />
+              <h2 className="text-sm font-bold text-white">Crypto</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <span className="px-2 py-1 rounded border border-[#1a1f2e] text-slate-400">
+                Leaders{' '}
+                <span className="text-emerald-400 font-bold">
+                  {cryptoSorted
+                    .slice(0, 3)
+                    .map((c) => c.symbol)
+                    .join(' · ') || '—'}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div
+            className="grid gap-2.5"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
+          >
+            {CRYPTO_WATCH.map((item, i) => (
+              <QuoteCard
+                key={item.symbol}
+                symbol={item.symbol}
+                label={item.label}
+                name={item.name}
+                quote={globalQuotes.get(item.symbol)}
+                delay={i}
+                badge="CRYPTO"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
