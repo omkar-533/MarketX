@@ -150,6 +150,46 @@ html[data-theme="light"] .oc-chain-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(146, 64, 14, 0.75);
 }
 
+/* Option Chain Greeks labels + values */
+.oc-greek-head {
+  color: #f0d78c;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.oc-g-delta { color: #93c5fd; }
+.oc-g-gamma { color: #c4b5fd; }
+.oc-g-theta { color: #fb7185; }
+.oc-g-vega { color: #7dd3fc; }
+.oc-g-rho { color: #67e8f9; }
+
+html[data-theme="light"] .oc-greek-head {
+  color: #78350f !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .option-chain-page thead .oc-greek-head,
+html[data-theme="light"] .option-chain-page th.oc-greek-head {
+  color: #78350f !important;
+}
+
+html[data-theme="light"] .oc-g-delta {
+  color: #1e3a8a !important;
+}
+html[data-theme="light"] .oc-g-gamma {
+  color: #5b21b6 !important;
+}
+html[data-theme="light"] .oc-g-theta {
+  color: #9f1239 !important;
+}
+html[data-theme="light"] .oc-g-vega {
+  color: #075985 !important;
+}
+html[data-theme="light"] .oc-g-rho {
+  color: #155e75 !important;
+}
+
 .page-content--mentor {
   padding: 0.65rem 0.75rem 1.25rem;
   overflow: auto;

@@ -73,11 +73,11 @@ function greekVal(row: EnhancedOptionRow, side: 'CE' | 'PE', name: (typeof GREEK
 }
 
 function greekClass(name: (typeof GREEK_NAMES)[number]) {
-  if (name === 'Theta') return 'text-red-400';
-  if (name === 'Vega') return 'text-blue-400';
-  if (name === 'Gamma') return 'text-purple-400';
-  if (name === 'Rho') return 'text-cyan-600';
-  return 'text-slate-500';
+  if (name === 'Delta') return 'oc-g-delta';
+  if (name === 'Gamma') return 'oc-g-gamma';
+  if (name === 'Theta') return 'oc-g-theta';
+  if (name === 'Vega') return 'oc-g-vega';
+  return 'oc-g-rho';
 }
 
 function BuildupPill({ label }: { label: OiBuildup }) {
@@ -519,7 +519,10 @@ export default function TradeXOptionChain() {
       <div className="flex-1 min-h-0 flex flex-col app-card overflow-hidden p-0 relative">
         {tab === 'chain' && (
           <>
-            <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto overscroll-contain">
+            <div
+              ref={scrollRef}
+              className="oc-chain-scroll flex-1 min-h-0 overflow-x-auto overflow-y-auto overscroll-contain"
+            >
               {filtered.length === 0 ? (
                 <div
                   className={`flex flex-col items-center justify-center gap-3 px-4 text-center ${
@@ -578,7 +581,7 @@ export default function TradeXOptionChain() {
                       <th className="px-1.5 py-1 text-right">LTP</th>
                       {showGreeks &&
                         GREEK_NAMES.map((g) => (
-                          <th key={`ce-h-${g}`} className="px-1 py-1 text-right text-amber-400">
+                          <th key={`ce-h-${g}`} className="px-1 py-1 text-right oc-greek-head">
                             {g}
                           </th>
                         ))}
@@ -590,7 +593,7 @@ export default function TradeXOptionChain() {
                       {showBuildup && <th className="px-1 py-1 text-left">Buildup</th>}
                       {showGreeks &&
                         [...GREEK_NAMES].reverse().map((g) => (
-                          <th key={`pe-h-${g}`} className="px-1 py-1 text-left text-amber-400">
+                          <th key={`pe-h-${g}`} className="px-1 py-1 text-left oc-greek-head">
                             {g}
                           </th>
                         ))}
@@ -778,8 +781,8 @@ export default function TradeXOptionChain() {
                       <div className="grid grid-cols-5 gap-1">
                         {GREEK_NAMES.map((g) => (
                           <div key={`${side}-${g}`} className="text-center p-1 rounded bg-dark-bg/90">
-                            <div className="text-[8px] text-dark-muted">{g}</div>
-                            <div className="font-bold tabular-nums">
+                            <div className="text-[8px] oc-greek-head">{g}</div>
+                            <div className={`font-bold tabular-nums ${greekClass(g)}`}>
                               {fmtGreek(greekVal(selected, side, g), g)}
                             </div>
                           </div>
