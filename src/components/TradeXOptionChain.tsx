@@ -599,7 +599,6 @@ export default function TradeXOptionChain() {
                       <th className="px-2 py-1 text-center text-gold bg-dark-surface border-x-2 border-gold/30">
                         Strike
                       </th>
-                      <th className="px-1.5 py-1 text-center">PCR</th>
                       {showBuildup && <th className="px-1 py-1 text-left">Buildup</th>}
                       {showGreeks &&
                         [...GREEK_NAMES].reverse().map((g) => (
@@ -679,13 +678,6 @@ export default function TradeXOptionChain() {
                             >
                               {row.strike}
                               {isAtm && <div className="text-[7px] text-gold/80 font-bold">ATM</div>}
-                            </td>
-                            <td
-                              className={`px-1.5 py-0.5 text-center font-bold tabular-nums ${
-                                row.strikePcr > 1 ? 'text-emerald-400' : 'text-red-400'
-                              }`}
-                            >
-                              {row.strikePcr.toFixed(2)}
                             </td>
                             {showBuildup && (
                               <td className="px-1 py-0.5 text-left">
