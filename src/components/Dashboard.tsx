@@ -85,6 +85,63 @@ function sparklinePoints(base: number, current: number, len = 12): number[] {
   );
 }
 
+function quoteChangeEpsilon(price: number) {
+  const p = Math.abs(price) || 0;
+  if (p > 0 && p < 2) return 1e-6;
+  if (p < 50) return 1e-4;
+  return 0.01;
+}
+
+/** Merge live LTP with REST day metadata so FX/crypto % does not stick at 0. */
+function resolveQuoteFields(symbol: string, rest?: MarketQuoteDto | null) {
+  const live = getLiveQuote(symbol);
+  const price = live?.price || rest?.price || 0;
+  const prevClose =
+    (live?.prevClose && live.prevClose > 0 ? live.prevClose : 0) ||
+    (rest?.prevClose && rest.prevClose > 0 ? rest.prevClose : 0) ||
+    0;
+  const open = (live?.open && live.open > 0 ? live.open : 0) || rest?.open || price;
+  const high = Math.max(live?.high || 0, rest?.high || 0, price);
+  const lowCandidates = [live?.low, rest?.low].filter((n): n is number => typeof n === 'number' && n > 0);
+  const low = lowCandidates.length ? Math.min(...lowCandidates, price || lowCandidates[0]) : price;
+
+  let change = live?.change;
+  let changePercent = live?.changePercent;
+
+  if (prevClose > 0 && price > 0) {
+    const diff = price - prevClose;
+    const eps = quoteChangeEpsilon(price);
+    if (
+      Math.abs(diff) > eps &&
+      (change == null ||
+        changePercent == null ||
+        (Math.abs(change) < eps && Math.abs(changePercent) < 0.0001))
+    ) {
+      change = diff;
+      changePercent = (diff / prevClose) * 100;
+    }
+  }
+
+  if (
+    (change == null || changePercent == null || (change === 0 && changePercent === 0)) &&
+    rest &&
+    (rest.change !== 0 || rest.changePercent !== 0)
+  ) {
+    change = rest.change;
+    changePercent = rest.changePercent;
+  }
+
+  return {
+    price,
+    change: change ?? 0,
+    changePercent: changePercent ?? 0,
+    high,
+    low,
+    prevClose: prevClose || price,
+    open,
+  };
+}
+
 function formatPrice(price: number, symbol: string) {
   if (!Number.isFinite(price) || price <= 0) return '—';
   if (symbol === 'BTC' || symbol === 'ETH') {
@@ -196,15 +253,13 @@ function QuoteCard({
   delay: number;
   badge: string;
 }) {
-  const live = getLiveQuote(symbol);
-  const price = live?.price || quote?.price || 0;
-  const change = live?.change ?? quote?.change ?? 0;
-  const changePercent = live?.changePercent ?? quote?.changePercent ?? 0;
-  const high = live?.high || quote?.high || price;
-  const low = live?.low || quote?.low || price;
-  const prev = live?.prevClose || quote?.prevClose || price;
+  const resolved = resolveQuoteFields(symbol, quote);
+  const { price, change, changePercent, high, low, prevClose } = resolved;
   const isPositive = changePercent >= 0;
-  const spark = useMemo(() => sparklinePoints(prev || price, price || prev || 1), [prev, price]);
+  const spark = useMemo(
+    () => sparklinePoints(prevClose || price || 1, price || prevClose || 1),
+    [prevClose, price],
+  );
 
   return (
     <motion.div
@@ -341,12 +396,11 @@ function sortedQuotes(
 ) {
   return [...watch]
     .map((w) => {
-      const live = getLiveQuote(w.symbol);
-      const q = map.get(w.symbol);
+      const resolved = resolveQuoteFields(w.symbol, map.get(w.symbol));
       return {
         symbol: w.symbol,
-        changePercent: live?.changePercent ?? q?.changePercent ?? 0,
-        price: live?.price ?? q?.price ?? 0,
+        changePercent: resolved.changePercent,
+        price: resolved.price,
       };
     })
     .filter((q) => q.price > 0)
@@ -387,16 +441,18 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       for (const sym of GLOBAL_QUOTE_SYMBOLS) {
         const live = getLiveQuote(sym);
         if (!live?.price) continue;
+        const rest = prev.get(sym);
+        const resolved = resolveQuoteFields(sym, rest);
         next.set(sym, {
           symbol: sym,
-          price: live.price,
-          change: live.change,
-          changePercent: live.changePercent,
-          open: live.open,
-          high: live.high,
-          low: live.low,
-          prevClose: live.prevClose,
-          volume: live.volume,
+          price: resolved.price,
+          change: resolved.change,
+          changePercent: resolved.changePercent,
+          open: resolved.open,
+          high: resolved.high,
+          low: resolved.low,
+          prevClose: resolved.prevClose,
+          volume: live.volume || rest?.volume || 0,
           source: 'live',
           lastUpdated: live.lastUpdated || new Date().toISOString(),
         });
@@ -409,13 +465,42 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     subscribeLiveSymbols(DASHBOARD_LIVE_SYMBOLS);
     const res = await fetchMarketQuotes(DASHBOARD_LIVE_SYMBOLS);
     if (!res?.quotes?.length) return;
+    // Seed live store so websocket LTP ticks keep prevClose / day change
+    const { applyStreamQuotes } = await import('../services/symbolLiveService');
+    applyStreamQuotes(
+      res.quotes.map((q) => ({
+        symbol: q.symbol,
+        price: q.price,
+        change: q.change,
+        changePercent: q.changePercent,
+        open: q.open,
+        high: q.high,
+        low: q.low,
+        prevClose: q.prevClose,
+        volume: q.volume,
+        lastUpdated: q.lastUpdated || new Date().toISOString(),
+        source: q.source || 'rest',
+      })),
+    );
     const next = new Map<string, MarketQuoteDto>();
     for (const q of res.quotes) {
       if (q?.symbol) next.set(q.symbol.toUpperCase(), q);
     }
     setGlobalQuotes((prev) => {
       const merged = new Map(prev);
-      for (const [k, v] of next) merged.set(k, v);
+      for (const [k, v] of next) {
+        const resolved = resolveQuoteFields(k, v);
+        merged.set(k, {
+          ...v,
+          price: resolved.price || v.price,
+          change: resolved.change,
+          changePercent: resolved.changePercent,
+          high: resolved.high,
+          low: resolved.low,
+          prevClose: resolved.prevClose,
+          open: resolved.open,
+        });
+      }
       return merged;
     });
   }, []);
@@ -485,9 +570,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const nifty = indices.find((i) => i.symbol === 'NIFTY');
   const bankNifty = indices.find((i) => i.symbol === 'BANKNIFTY');
-  const btc = getLiveQuote('BTC') || globalQuotes.get('BTC');
-  const eurusd = getLiveQuote('EURUSD') || globalQuotes.get('EURUSD');
-  const usdinr = getLiveQuote('USDINR') || globalQuotes.get('USDINR');
+  const btc = resolveQuoteFields('BTC', globalQuotes.get('BTC'));
+  const eurusd = resolveQuoteFields('EURUSD', globalQuotes.get('EURUSD'));
+  const usdinr = resolveQuoteFields('USDINR', globalQuotes.get('USDINR'));
 
   const pcrBias = oiSnap.pcr > 1.05 ? 'Bullish' : oiSnap.pcr < 0.95 ? 'Bearish' : 'Neutral';
   const sentimentScore = Math.round(
@@ -608,12 +693,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
               <div className="text-[9px] uppercase text-slate-500 font-semibold">USD / INR</div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
-                {formatPrice(usdinr?.price ?? 0, 'USDINR')}
+                {formatPrice(usdinr.price, 'USDINR')}
               </div>
               <div
-                className={`text-xs font-bold mt-0.5 ${(usdinr?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                className={`text-xs font-bold mt-0.5 ${usdinr.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
               >
-                {usdinr
+                {usdinr.price > 0
                   ? `${usdinr.changePercent >= 0 ? '+' : ''}${usdinr.changePercent.toFixed(2)}%`
                   : '—'}
               </div>
@@ -621,12 +706,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
               <div className="text-[9px] uppercase text-slate-500 font-semibold">BTC / USDT</div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
-                {formatPrice(btc?.price ?? 0, 'BTC')}
+                {formatPrice(btc.price, 'BTC')}
               </div>
               <div
-                className={`text-xs font-bold mt-0.5 ${(btc?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                className={`text-xs font-bold mt-0.5 ${btc.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
               >
-                {btc
+                {btc.price > 0
                   ? `${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%`
                   : '—'}
               </div>

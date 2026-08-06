@@ -67,24 +67,47 @@ let refreshInFlight: Promise<LiveSymbolQuote[]> | null = null;
 
 const PRIORITY_SYMBOLS = CORE_LIVE_SYMBOLS;
 
+function changeEpsilon(price: number): number {
+  const p = Math.abs(Number(price) || 0);
+  if (p > 0 && p < 2) return 1e-6; // FX pairs
+  if (p < 50) return 1e-4; // low-priced crypto / metals fractions
+  return 0.01; // indices / equities
+}
+
 function normalizeQuoteChange(q: {
   price: number;
   change: number;
   changePercent: number;
   prevClose: number;
 }) {
-  const prevClose = q.prevClose > 0 ? q.prevClose : q.price;
-  if (
-    q.prevClose > 0 &&
-    Math.abs(q.price - q.prevClose) > 0.01 &&
-    q.change === 0 &&
-    q.changePercent === 0
-  ) {
-    const change = Math.round((q.price - q.prevClose) * 100) / 100;
-    const changePercent = Math.round((change / q.prevClose) * 10000) / 100;
-    return { ...q, change, changePercent, prevClose };
+  const prevClose = q.prevClose > 0 ? q.prevClose : 0;
+  const price = Number(q.price) || 0;
+  let change = Number(q.change) || 0;
+  let changePercent = Number(q.changePercent) || 0;
+
+  if (prevClose > 0 && price > 0) {
+    const diff = price - prevClose;
+    const eps = changeEpsilon(price);
+    const needsRecalc =
+      Math.abs(diff) > eps &&
+      (Math.abs(change) < eps ||
+        (change === 0 && changePercent === 0) ||
+        Math.abs(change - diff) > Math.max(eps * 10, Math.abs(diff) * 0.25));
+
+    if (needsRecalc) {
+      const digits = price < 2 ? 5 : price < 100 ? 4 : 2;
+      const pow = 10 ** digits;
+      change = Math.round(diff * pow) / pow;
+      changePercent = Math.round((diff / prevClose) * 10000) / 100;
+    }
   }
-  return { ...q, prevClose };
+
+  return {
+    ...q,
+    change,
+    changePercent,
+    prevClose: prevClose > 0 ? prevClose : price,
+  };
 }
 
 function quoteToLive(inst: FnoInstrument, q: {
@@ -224,22 +247,40 @@ function schedulePublishLiveSnapshot(liveQuotes: LiveSymbolQuote[], errorMsg = '
 }
 
 function quoteFromTick(q: MarketTickDto): LiveSymbolQuote {
+  const prior = FNO_BY_SYMBOL.get(q.symbol)
+    ? liveCache.find((x) => x.symbol === q.symbol)
+    : extraLiveCache.get(q.symbol);
+
+  const enriched: MarketTickDto = {
+    ...q,
+    prevClose: q.prevClose > 0 ? q.prevClose : prior?.prevClose ?? 0,
+    open: q.open > 0 ? q.open : prior?.open ?? q.price,
+    high: Math.max(q.high || 0, prior?.high || 0, q.price || 0),
+    low: (() => {
+      const lows = [q.low, prior?.low].filter((n): n is number => typeof n === 'number' && n > 0);
+      if (!lows.length) return q.price;
+      return Math.min(...lows, q.price || lows[0]);
+    })(),
+    change: q.change,
+    changePercent: q.changePercent,
+  };
+
   const inst = FNO_BY_SYMBOL.get(q.symbol) ?? getFnoInstrument(q.symbol);
-  if (inst) return quoteToLive(inst, q);
-  const n = normalizeQuoteChange(q);
+  if (inst) return quoteToLive(inst, enriched);
+  const n = normalizeQuoteChange(enriched);
   return {
     symbol: q.symbol,
-    name: q.symbol,
+    name: prior?.name || q.symbol,
     type: 'stock',
-    sector: 'Equity',
+    sector: prior?.sector || 'Global',
     price: n.price,
     change: n.change,
     changePercent: n.changePercent,
-    open: q.open,
-    high: q.high,
-    low: q.low,
+    open: enriched.open,
+    high: enriched.high,
+    low: enriched.low,
     prevClose: n.prevClose,
-    volume: q.volume,
+    volume: q.volume || prior?.volume || 0,
     iv: 22,
     lotSize: 1,
     strikeInterval: 50,
