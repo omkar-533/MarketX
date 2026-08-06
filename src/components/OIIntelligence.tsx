@@ -270,7 +270,7 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
                     <th className="py-3 px-4 text-right">OI Chg</th>
                     <th className="py-3 px-4 text-right">OI Chg %</th>
                     <th className="py-3 px-4 text-right">Premium</th>
-                    <th className="py-3 px-4 text-center">Signal</th>
+                    <th className="py-3 px-4 text-center">Strength</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -370,7 +370,7 @@ export default function OIIntelligence(_props: OIIntelligenceProps) {
                   <th className="py-3 px-4 text-right">OI Chg</th>
                   <th className="py-3 px-4 text-right">Volume</th>
                   <th className="py-3 px-4 text-right">VWAP</th>
-                  <th className="py-3 px-4 text-center">Signal</th>
+                  <th className="py-3 px-4 text-center">Strength</th>
                   <th className="py-3 px-4 text-right">Confidence</th>
                 </tr>
               </thead>
