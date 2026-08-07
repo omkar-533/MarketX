@@ -140,16 +140,26 @@ function pineDrawingsToShapes(
   for (const s of drawings) {
     const type = toShapeType(s.type) || toShapeType('zone');
     if (!type) continue;
+    if (typeof s.p1 !== 'number' || !Number.isFinite(s.p1)) continue;
+    if ((type === 'zone' || type === 'fib' || type === 'trend' || type === 'ray') &&
+      (typeof s.p2 !== 'number' || !Number.isFinite(s.p2))) {
+      continue;
+    }
     const x1 =
       typeof s.i1 === 'number' && source[s.i1] ? barTimeSec(source[s.i1].time) : undefined;
-    const x2 =
+    let x2 =
       typeof s.i2 === 'number' && source[s.i2] ? barTimeSec(source[s.i2].time) : undefined;
+    // Extend short segments so trend stubs remain visible.
+    if (x1 != null && x2 == null && typeof s.i1 === 'number') {
+      const j = Math.min(source.length - 1, s.i1 + 12);
+      if (source[j]) x2 = barTimeSec(source[j].time);
+    }
     out.push({
       type,
       tone: s.tone || 'neutral',
       label: s.label || '',
       p1: s.p1,
-      p2: s.p2,
+      p2: s.p2 ?? s.p1,
       x1,
       x2,
       color: s.color,
@@ -159,6 +169,38 @@ function pineDrawingsToShapes(
     });
   }
   return out;
+}
+
+function wolfSmcShapesFromNative(source: ChartBar[], r: ReturnType<typeof computeWolfSmc>): ChartShape[] {
+  return r.shapes.map((s: WolfSmcShape) => {
+    const x1 =
+      typeof s.i1 === 'number' && source[s.i1] ? barTimeSec(source[s.i1].time) : undefined;
+    const x2 =
+      typeof s.i2 === 'number' && source[s.i2]
+        ? barTimeSec(source[s.i2].time)
+        : typeof s.i1 === 'number' && source[Math.min(source.length - 1, (s.i1 || 0) + 12)]
+          ? barTimeSec(source[Math.min(source.length - 1, (s.i1 || 0) + 12)].time)
+          : undefined;
+    return {
+      type: s.type,
+      tone: s.tone,
+      label: s.label,
+      p1: s.p1,
+      p2: s.p2,
+      x1,
+      x2,
+      color: s.color,
+      borderColor: s.borderColor,
+      fillColor: s.fillColor,
+      lineStyle: s.lineStyle,
+    };
+  });
+}
+
+/** Prefer pine overlays only when they actually paint structure (zones / many marks). */
+function pineShapesUsable(shapes: ChartShape[]): boolean {
+  if (shapes.length >= 8) return true;
+  return shapes.some((s) => s.type === 'zone' || s.type === 'hray');
 }
 
 const IST = 'Asia/Kolkata';
@@ -1453,6 +1495,15 @@ export default function NativeChatChart({
       } else if (recipe === 'pine') {
         const cmsId = wolfCmsIdFromStudy(id);
         if (!cmsId) continue;
+        const smcPine = isWolfSmcLabel(id, title);
+        // SMC is drawing-heavy — paint swing rails + native overlays immediately, then pine upgrades.
+        const hi = smcPine ? line('#ef5350', 1) : null;
+        const lo = smcPine ? line('#26a69a', 1) : null;
+        if (hi && lo) {
+          hi.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
+          lo.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
+          priceFormatted.push(hi, lo);
+        }
         const pineColors = ['#f0b90b', '#26a69a', '#42a5f5', '#ef5350', '#ab47bc', '#ff9800'];
         const pineSeries = pineColors.map((color, idx) => {
           const s = line(color, idx === 0 ? 2 : 1);
@@ -1460,6 +1511,30 @@ export default function NativeChatChart({
           return s;
         });
         const pineHlines: IPriceLine[] = [];
+        const paintNativeSmc = (source: ChartBar[]) => {
+          const r = computeWolfSmc(source, 5);
+          if (hi && lo) {
+            hi.setData(
+              source
+                .map((bar, j) =>
+                  Number.isFinite(r.swingHigh[j])
+                    ? { time: ts(bar.time), value: r.swingHigh[j] }
+                    : null,
+                )
+                .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
+            );
+            lo.setData(
+              source
+                .map((bar, j) =>
+                  Number.isFinite(r.swingLow[j])
+                    ? { time: ts(bar.time), value: r.swingLow[j] }
+                    : null,
+                )
+                .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
+            );
+          }
+          return wolfSmcShapesFromNative(source, r);
+        };
         feeds.push(({ source, decimals }) => {
           const tipBar = source[source.length - 1];
           // Tip by bar open time + count only — not live LTP (avoids full Pine re-run every tick).
@@ -1467,6 +1542,15 @@ export default function NativeChatChart({
           const settings = loadIndicatorSettings(id);
           const cacheKey = `${cmsId}|${JSON.stringify(settings)}`;
           const cached = pinePlotCache.get(cacheKey);
+          const shapesTip = `${id}|${tipKey}`;
+
+          // Always show native SMC overlays while pine is loading / weak — never blank chart.
+          if (smcPine && studyShapesTipRef.current !== shapesTip) {
+            studyShapesTipRef.current = shapesTip;
+            const nativeShapes = paintNativeSmc(source);
+            queueMicrotask(() => setStudyShapes(nativeShapes));
+          }
+
           if (!cached || cached.tip !== tipKey) {
             if (!pinePlotInflight.has(`${cacheKey}|${tipKey}`)) {
               pinePlotInflight.add(`${cacheKey}|${tipKey}`);
@@ -1478,95 +1562,44 @@ export default function NativeChatChart({
                 close: b.close,
                 volume: b.volume,
               }));
-                  void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
+              void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
                 .then((result) => {
                   const pineDrawings = result.drawings || [];
-                  const useNativeSmcFallback =
-                    isWolfSmcLabel(id, title) &&
-                    (pineDrawings.length === 0 ||
-                      pineDrawingsToShapes(pineDrawings, source).length === 0);
+                  const pineShapes = pineDrawingsToShapes(pineDrawings, source);
+                  const useNative = smcPine && !pineShapesUsable(pineShapes);
                   pinePlotCache.set(cacheKey, {
                     tip: tipKey,
                     plots: result.plots,
                     hlines: result.hlines,
                     drawings: pineDrawings,
                     version: result.version,
-                    nativeSmc: useNativeSmcFallback,
+                    nativeSmc: useNative,
                   });
-                  if (pineDrawings.length) {
-                    const chartShapes = pineDrawingsToShapes(pineDrawings, source);
-                    queueMicrotask(() => setStudyShapes(chartShapes));
-                  } else if (useNativeSmcFallback) {
-                    const r = computeWolfSmc(source, 5);
-                    const chartShapes: ChartShape[] = r.shapes.map((s: WolfSmcShape) => {
-                      const x1 =
-                        typeof s.i1 === 'number' && source[s.i1]
-                          ? barTimeSec(source[s.i1].time)
-                          : undefined;
-                      const x2 =
-                        typeof s.i2 === 'number' && source[s.i2]
-                          ? barTimeSec(source[s.i2].time)
-                          : typeof s.i1 === 'number' &&
-                              source[Math.min(source.length - 1, (s.i1 || 0) + 12)]
-                            ? barTimeSec(
-                                source[Math.min(source.length - 1, (s.i1 || 0) + 12)].time,
-                              )
-                            : undefined;
-                      return {
-                        type: s.type,
-                        tone: s.tone,
-                        label: s.label,
-                        p1: s.p1,
-                        p2: s.p2,
-                        x1,
-                        x2,
-                        color: s.color,
-                        borderColor: s.borderColor,
-                        fillColor: s.fillColor,
-                        lineStyle: s.lineStyle,
-                      };
-                    });
-                    queueMicrotask(() => setStudyShapes(chartShapes));
+                  if (!useNative && pineShapes.length) {
+                    studyShapesTipRef.current = shapesTip;
+                    queueMicrotask(() => setStudyShapes(pineShapes));
+                  } else if (smcPine) {
+                    const nativeShapes = paintNativeSmc(source);
+                    studyShapesTipRef.current = shapesTip;
+                    queueMicrotask(() => setStudyShapes(nativeShapes));
                   }
                   if (viewRef.current && applyRef.current) {
                     applyRef.current(viewRef.current, false);
                   }
                 })
                 .catch(() => {
-                  if (isWolfSmcLabel(id, title)) {
-                    const r = computeWolfSmc(source, 5);
-                    pinePlotCache.set(cacheKey, {
-                      tip: tipKey,
-                      plots: [],
-                      hlines: [],
-                      drawings: [],
-                      version: 0,
-                      nativeSmc: true,
-                    });
-                    const chartShapes: ChartShape[] = r.shapes.map((s: WolfSmcShape) => {
-                      const x1 =
-                        typeof s.i1 === 'number' && source[s.i1]
-                          ? barTimeSec(source[s.i1].time)
-                          : undefined;
-                      const x2 =
-                        typeof s.i2 === 'number' && source[s.i2]
-                          ? barTimeSec(source[s.i2].time)
-                          : undefined;
-                      return {
-                        type: s.type,
-                        tone: s.tone,
-                        label: s.label,
-                        p1: s.p1,
-                        p2: s.p2,
-                        x1,
-                        x2,
-                        color: s.color,
-                        borderColor: s.borderColor,
-                        fillColor: s.fillColor,
-                        lineStyle: s.lineStyle,
-                      };
-                    });
-                    queueMicrotask(() => setStudyShapes(chartShapes));
+                  pinePlotCache.set(cacheKey, {
+                    tip: tipKey,
+                    plots: [],
+                    hlines: [],
+                    drawings: [],
+                    version: 0,
+                    nativeSmc: smcPine,
+                  });
+                  if (smcPine) {
+                    const nativeShapes = paintNativeSmc(source);
+                    studyShapesTipRef.current = shapesTip;
+                    queueMicrotask(() => setStudyShapes(nativeShapes));
                     if (viewRef.current && applyRef.current) {
                       applyRef.current(viewRef.current, false);
                     }
@@ -1576,7 +1609,23 @@ export default function NativeChatChart({
                   pinePlotInflight.delete(`${cacheKey}|${tipKey}`);
                 });
             }
+          } else {
+            // Cache hit: re-paint overlays so feed refresh / remount does not wipe them.
+            const pineShapes = pineDrawingsToShapes(cached.drawings || [], source);
+            if (cached.nativeSmc && smcPine) {
+              if (studyShapesTipRef.current !== shapesTip) {
+                studyShapesTipRef.current = shapesTip;
+                queueMicrotask(() => setStudyShapes(paintNativeSmc(source)));
+              }
+            } else if (pineShapes.length && studyShapesTipRef.current !== `pine|${shapesTip}`) {
+              studyShapesTipRef.current = `pine|${shapesTip}`;
+              queueMicrotask(() => setStudyShapes(pineShapes));
+            } else if (smcPine && studyShapesTipRef.current !== shapesTip) {
+              studyShapesTipRef.current = shapesTip;
+              queueMicrotask(() => setStudyShapes(paintNativeSmc(source)));
+            }
           }
+
           const plots = cached?.plots || [];
           for (let i = 0; i < pineSeries.length; i += 1) {
             const plot = plots[i];
@@ -1622,11 +1671,21 @@ export default function NativeChatChart({
             );
           }
           const primary = plots[0];
-          const detail = cached?.nativeSmc
-            ? 'SMC · native fallback'
-            : primary
-              ? `Pine v${cached?.version || ''} · ${primary.title}`
-              : 'Running Pine…';
+          const pineShapeCount = cached
+            ? pineDrawingsToShapes(cached.drawings || [], source).length
+            : 0;
+          let detail: string;
+          if (!cached) {
+            detail = smcPine ? 'SMC · loading…' : 'Loading overlays…';
+          } else if (cached.nativeSmc) {
+            detail = 'SMC · zones & BOS';
+          } else if (primary) {
+            detail = `Pine v${cached.version || ''} · ${primary.title}`;
+          } else if (pineShapeCount > 0) {
+            detail = `Pine · ${pineShapeCount} overlays`;
+          } else {
+            detail = smcPine ? 'SMC · zones & BOS' : 'Pine ready';
+          }
           return [
             {
               studyId: id,

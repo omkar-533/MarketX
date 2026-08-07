@@ -279,16 +279,34 @@ export function createDrawingPool(ctx) {
       const drawings = [];
       for (const o of lines.values()) {
         if (!isFiniteNum(o.y1) && !isFiniteNum(o.y2)) continue;
-        drawings.push({
-          type: 'trend',
-          tone: toneFromColor(o.color),
-          label: '',
-          p1: o.y1,
-          p2: o.y2,
-          i1: o.i1,
-          i2: o.i2,
-          color: o.color,
-        });
+        const flat =
+          isFiniteNum(o.y1) && isFiniteNum(o.y2) && Math.abs(o.y1 - o.y2) < 1e-9 * Math.max(1, Math.abs(o.y1));
+        const extendRight = /right/i.test(String(o.extend || ''));
+        // Horizontal + extend.right → hray (TV liquidity / BOS style); else trend.
+        if (flat || extendRight) {
+          drawings.push({
+            type: 'hray',
+            tone: toneFromColor(o.color),
+            label: '',
+            p1: isFiniteNum(o.y1) ? o.y1 : o.y2,
+            p2: isFiniteNum(o.y1) ? o.y1 : o.y2,
+            i1: o.i1,
+            i2: o.i2,
+            color: o.color,
+            lineStyle: /dash|dot/i.test(String(o.style || '')) ? 'dotted' : 'solid',
+          });
+        } else {
+          drawings.push({
+            type: 'trend',
+            tone: toneFromColor(o.color),
+            label: '',
+            p1: o.y1,
+            p2: o.y2,
+            i1: o.i1,
+            i2: o.i2,
+            color: o.color,
+          });
+        }
       }
       for (const o of boxes.values()) {
         drawings.push({
