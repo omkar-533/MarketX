@@ -5,6 +5,10 @@ import {
   adminUpdateIndicator,
   type IndicatorItem,
 } from '../../services/indicatorLibrary';
+import {
+  looksLikePastedScriptDocs,
+  sanitizeIndicatorDescription,
+} from '../../services/indicatorCopy';
 import { parsePineSettings } from '../../services/pineSettings';
 
 export type TerminalWolfCreatePanelProps = {
@@ -26,6 +30,7 @@ export default function TerminalWolfCreatePanel({
   onSaved,
 }: TerminalWolfCreatePanelProps) {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [pineSource, setPineSource] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -34,10 +39,13 @@ export default function TerminalWolfCreatePanel({
   useEffect(() => {
     if (!open) return;
     setTitle(editing?.title || '');
+    const desc = editing?.description || '';
+    // Auto-clear junk markdown docs that were wrongly saved into description
+    setDescription(looksLikePastedScriptDocs(desc) ? '' : desc);
     setPineSource(editing?.pineSource || '');
     setError('');
     setSaving(false);
-  }, [open, editing?.id, editing?.title, editing?.pineSource]);
+  }, [open, editing?.id, editing?.title, editing?.description, editing?.pineSource]);
 
   if (!open) return null;
 
@@ -45,6 +53,7 @@ export default function TerminalWolfCreatePanel({
     e.preventDefault();
     const name = title.trim();
     const pine = pineSource.trim();
+    const blurb = sanitizeIndicatorDescription(description, '').trim();
     if (!name) {
       setError('Enter an indicator name.');
       return;
@@ -60,10 +69,11 @@ export default function TerminalWolfCreatePanel({
     setSaving(true);
     setError('');
     try {
+      const cleanDesc = blurb || 'Plots on Terminal chart';
       if (editing?.id) {
         await adminUpdateIndicator(editing.id, {
           title: name,
-          description: editing.description || 'Wolf Terminal indicator',
+          description: cleanDesc,
           pineSource: pine,
           link: editing.link || '',
           howToVideoUrl: editing.howToVideoUrl || '',
@@ -72,7 +82,7 @@ export default function TerminalWolfCreatePanel({
       } else {
         await adminCreateIndicator({
           title: name,
-          description: 'Published from Wolf Terminal',
+          description: cleanDesc,
           pineSource: pine,
           link: '',
           published: true,
@@ -106,7 +116,7 @@ export default function TerminalWolfCreatePanel({
         <header className="wolf-term__pine-head">
           <div>
             <b>{editing ? 'Edit Indicator' : 'Create Indicator'}</b>
-            <em>Name + Pine Script · publish to Wolf for everyone</em>
+            <em>Name, short list text, and full Pine Script — everything editable</em>
           </div>
           <button type="button" className="wolf-term__icon-btn" onClick={onClose} disabled={saving}>
             <X className="h-4 w-4" />
@@ -125,14 +135,48 @@ export default function TerminalWolfCreatePanel({
           />
         </label>
 
+        <label className="wolf-term__pine-field">
+          <span className="wolf-term__pine-field-row">
+            <span>2 · List description (short)</span>
+            <button
+              type="button"
+              className="wolf-term__pine-clear"
+              disabled={saving || !description}
+              onClick={() => setDescription('')}
+            >
+              Clear
+            </button>
+          </span>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Shown under the name in Indicators → Wolf (optional)"
+            maxLength={200}
+            disabled={saving}
+          />
+        </label>
+
         <label className="wolf-term__pine-field wolf-term__pine-field--code">
-          <span>2 · Pine Script (TradingView)</span>
+          <span className="wolf-term__pine-field-row">
+            <span>3 · Pine Script (TradingView)</span>
+            <button
+              type="button"
+              className="wolf-term__pine-clear"
+              disabled={saving || !pineSource}
+              onClick={() => {
+                if (window.confirm('Clear the entire Pine Script?')) setPineSource('');
+              }}
+            >
+              Clear script
+            </button>
+          </span>
           <textarea
             value={pineSource}
             onChange={(e) => setPineSource(e.target.value)}
             placeholder={`//@version=5\nindicator("My Wolf Indicator", overlay=true)\n\nlen = input.int(14, "Length")\nplot(ta.sma(close, len), "SMA")`}
             spellCheck={false}
             disabled={saving}
+            readOnly={false}
           />
         </label>
 
@@ -145,6 +189,7 @@ export default function TerminalWolfCreatePanel({
         ) : (
           <p className="wolf-term__pine-hint">
             Tip: use <code>input.*</code> so members get a settings panel without seeing your source.
+            Long Markdown docs belong in comments inside Pine — keep the list description short.
           </p>
         )}
 

@@ -50,6 +50,7 @@ import {
   rememberWolfStudyTitle,
 } from '../../services/chart/wolfIndicators';
 import { rememberStudySettingsSchema } from '../../services/wolfIndicatorSettings';
+import { sanitizeIndicatorDescription } from '../../services/indicatorCopy';
 import {
   TERMINAL_CHART_COUNTS,
   chartLayoutPreview,
@@ -200,8 +201,7 @@ export default function TerminalTopBar({
         const existing = rows.find((r) => r.studyId === studyId);
         if (existing) {
           existing.title = item.title || existing.title;
-          existing.description =
-            item.description?.slice(0, 140) || existing.description;
+          existing.description = sanitizeIndicatorDescription(item.description);
           existing.favId = item.id;
           existing.cmsId = item.id;
         }
@@ -212,9 +212,7 @@ export default function TerminalTopBar({
         key: item.id,
         studyId,
         title: item.title,
-        description: item.description
-          ? item.description.slice(0, 140) + (item.description.length > 140 ? '…' : '')
-          : 'Wolf pack — plots on Terminal chart',
+        description: sanitizeIndicatorDescription(item.description),
         favId: item.id,
         cmsId: item.id,
       });

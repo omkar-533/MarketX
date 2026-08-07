@@ -19072,6 +19072,45 @@ body:has(.app-main--terminal-immersive) #root {
   color: #94a3b8;
 }
 
+.wolf-term__pine-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.wolf-term__pine-field-row > span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-clear {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+}
+
+.wolf-term__pine-clear:hover:not(:disabled) {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.wolf-term__pine-clear:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .wolf-term__pine-field input,
 .wolf-term__pine-field textarea {
   width: 100%;
