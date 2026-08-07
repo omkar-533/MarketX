@@ -204,6 +204,40 @@ function parseStatement(lines, i, baseIndent) {
     };
   }
 
+  // for [idx, val] in arrayExpr
+  m = /^for\s*\[\s*([A-Za-z_][\w]*)\s*,\s*([A-Za-z_][\w]*)\s*\]\s+in\s+(.+)$/i.exec(text);
+  if (m) {
+    const blk = parseBlock(lines, i + 1, nextIndent);
+    return {
+      node: {
+        kind: 'forin',
+        idx: m[1],
+        val: m[2],
+        iterExpr: m[3].trim(),
+        body: blk.body,
+        lineNo,
+      },
+      next: blk.next,
+    };
+  }
+
+  // for val in arrayExpr
+  m = /^for\s+([A-Za-z_][\w]*)\s+in\s+(.+)$/i.exec(text);
+  if (m) {
+    const blk = parseBlock(lines, i + 1, nextIndent);
+    return {
+      node: {
+        kind: 'forin',
+        idx: null,
+        val: m[1],
+        iterExpr: m[2].trim(),
+        body: blk.body,
+        lineNo,
+      },
+      next: blk.next,
+    };
+  }
+
   // switch expr  (expr may be empty → condition switch)
   m = /^switch\s*(.*)$/i.exec(text);
   if (m && nextIndent > baseIndent) {
@@ -295,8 +329,42 @@ function parseStatement(lines, i, baseIndent) {
   if (m && !/^(if|for|while|switch|type|method|export|import|var|varip)\b/i.test(text)) {
     const target = m[1];
     if (!/^(if|for|while|switch)$/i.test(target)) {
+      const rhs = m[3].trim();
+      // tg = switch expr  + indented cases
+      const sw = /^switch\s*(.*)$/i.exec(rhs);
+      if (sw && nextIndent > baseIndent) {
+        const blk = parseBlock(lines, i + 1, nextIndent);
+        const cases = [];
+        let defaultBody = null;
+        for (const st of blk.body) {
+          const src = st.text || (st.kind === 'assign' ? `${st.target} = ${st.expr}` : '');
+          const cm = /^(.+?)\s*=>\s*(.*)$/.exec(src);
+          if (cm) {
+            const key = cm[1].trim();
+            const bodyText = cm[2].trim();
+            const body = bodyText ? [{ kind: 'expr', text: bodyText, lineNo: st.lineNo }] : st.body || [];
+            if (key === '_' || key === 'default') defaultBody = body;
+            else cases.push({ kind: 'case', match: key, body, lineNo: st.lineNo });
+          } else if (st.kind === 'case') {
+            if (st.isDefault) defaultBody = st.body;
+            else cases.push(st);
+          }
+        }
+        return {
+          node: {
+            kind: 'assign',
+            target,
+            op: m[2],
+            switchExpr: sw[1].trim(),
+            cases,
+            defaultBody,
+            lineNo,
+          },
+          next: blk.next,
+        };
+      }
       return {
-        node: { kind: 'assign', target, op: m[2], expr: m[3].trim(), lineNo },
+        node: { kind: 'assign', target, op: m[2], expr: rhs, lineNo },
         next: i + 1,
       };
     }

@@ -36,11 +36,28 @@ export function createDrawingPool(ctx) {
     return ctx.time[idx] || idx;
   }
 
+  function parseCoord(raw, fallback = NaN) {
+    if (raw == null || raw === '') return fallback;
+    const s = String(raw).trim();
+    if (!s || s === 'na' || s === 'NaN' || s === 'null' || s === 'undefined') return fallback;
+    const n = Number(s);
+    return isFiniteNum(n) ? n : fallback;
+  }
+
   function resolveBarIndex(x) {
-    if (typeof x === 'number' && Number.isInteger(x) && x >= 0 && x < ctx.n) return x;
-    // time value
-    const t = Number(x);
-    if (!isFiniteNum(t)) return ctx.barIndex;
+    const n = Number(x);
+    if (!isFiniteNum(n)) return ctx.barIndex;
+    // Bar-index style: small integers / near chart length — clamp, do NOT treat as unix time
+    if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9) {
+      const i = Math.round(n);
+      // Future extend (b.n+50) & past clamp
+      if (i >= ctx.n) return ctx.n - 1;
+      if (i < 0) return 0;
+      // Prefer bar-index when magnitude looks like an index (not unix ms/s)
+      if (Math.abs(i) < 1e7) return i;
+    }
+    // time value (unix seconds / ms)
+    const t = n > 1e12 ? Math.floor(n / 1000) : n;
     let best = ctx.barIndex;
     let bestD = Infinity;
     for (let i = 0; i < ctx.n; i += 1) {
@@ -64,15 +81,17 @@ export function createDrawingPool(ctx) {
         const y2 = namedOrPos(args, 'y2', 3);
         const color = namedOrPos(args, 'color', 4) || 'color.yellow';
         const id = `line_${nextId++}`;
-        const i1 = resolveBarIndex(Number(x1) || ctx.barIndex);
-        const i2 = resolveBarIndex(Number(x2) || ctx.barIndex);
+        const cx1 = parseCoord(x1, NaN);
+        const cx2 = parseCoord(x2, NaN);
+        const i1 = resolveBarIndex(isFiniteNum(cx1) ? cx1 : ctx.barIndex);
+        const i2 = resolveBarIndex(isFiniteNum(cx2) ? cx2 : ctx.barIndex);
         const obj = {
           __pine: 'line',
           id,
           i1,
           i2,
-          y1: Number(y1),
-          y2: Number(y2),
+          y1: parseCoord(y1, NaN),
+          y2: parseCoord(y2, NaN),
           color: colorToHex(color),
           extend: namedOrPos(args, 'extend', -1) || '',
           style: namedOrPos(args, 'style', -1) || '',
@@ -85,30 +104,30 @@ export function createDrawingPool(ctx) {
       set_xy1(ref, x, y) {
         const o = lines.get(ref?.id || ref);
         if (!o) return;
-        o.i1 = resolveBarIndex(Number(x));
-        o.y1 = Number(y);
+        o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
+        o.y1 = parseCoord(y, NaN);
       },
       set_xy2(ref, x, y) {
         const o = lines.get(ref?.id || ref);
         if (!o) return;
-        o.i2 = resolveBarIndex(Number(x));
-        o.y2 = Number(y);
+        o.i2 = resolveBarIndex(parseCoord(x, ctx.barIndex));
+        o.y2 = parseCoord(y, NaN);
       },
       set_x1(ref, x) {
         const o = lines.get(ref?.id || ref);
-        if (o) o.i1 = resolveBarIndex(Number(x));
+        if (o) o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
       },
       set_x2(ref, x) {
         const o = lines.get(ref?.id || ref);
-        if (o) o.i2 = resolveBarIndex(Number(x));
+        if (o) o.i2 = resolveBarIndex(parseCoord(x, ctx.barIndex));
       },
       set_y1(ref, y) {
         const o = lines.get(ref?.id || ref);
-        if (o) o.y1 = Number(y);
+        if (o) o.y1 = parseCoord(y, NaN);
       },
       set_y2(ref, y) {
         const o = lines.get(ref?.id || ref);
-        if (o) o.y2 = Number(y);
+        if (o) o.y2 = parseCoord(y, NaN);
       },
       set_color(ref, c) {
         const o = lines.get(ref?.id || ref);
@@ -118,6 +137,12 @@ export function createDrawingPool(ctx) {
         const id = ref?.id || ref;
         lines.delete(id);
         fifo = fifo.filter((x) => x !== id);
+      },
+      get_x1(ref) {
+        return lines.get(ref?.id || ref)?.i1 ?? NaN;
+      },
+      get_x2(ref) {
+        return lines.get(ref?.id || ref)?.i2 ?? NaN;
       },
       get_y1(ref) {
         return lines.get(ref?.id || ref)?.y1 ?? NaN;
@@ -133,18 +158,24 @@ export function createDrawingPool(ctx) {
         const top = namedOrPos(args, 'top', 1);
         const right = namedOrPos(args, 'right', 2);
         const bottom = namedOrPos(args, 'bottom', 3);
-        const border = namedOrPos(args, 'border_color', 4) || namedOrPos(args, 'color', 4) || 'color.blue';
-        const bg = namedOrPos(args, 'bgcolor', 5) || border;
+        const borderRaw = namedOrPos(args, 'border_color', 4) || namedOrPos(args, 'color', 4);
+        const border = borderRaw && borderRaw !== 'na' && borderRaw !== 'NaN' ? borderRaw : 'color.blue';
+        const bgRaw = namedOrPos(args, 'bgcolor', 5);
+        const bg = bgRaw && bgRaw !== 'na' && bgRaw !== 'NaN' ? bgRaw : border;
         const id = `box_${nextId++}`;
-        const i1 = resolveBarIndex(Number(left) || ctx.barIndex);
-        const i2 = resolveBarIndex(Number(right) || ctx.barIndex);
+        // Pine: box.new(na,…) creates a handle; coordinates filled later via setters.
+        // Never coerce na → barIndex for x (that collapses boxes to a zero-width stub).
+        const lx = parseCoord(left, NaN);
+        const rx = parseCoord(right, NaN);
+        const i1 = isFiniteNum(lx) ? resolveBarIndex(lx) : ctx.barIndex;
+        const i2 = isFiniteNum(rx) ? resolveBarIndex(rx) : ctx.barIndex;
         const obj = {
           __pine: 'box',
           id,
           i1,
           i2,
-          top: Number(top),
-          bottom: Number(bottom),
+          top: parseCoord(top, NaN),
+          bottom: parseCoord(bottom, NaN),
           color: colorToHex(border),
           bgcolor: colorToHex(bg),
           text: stripQuotes(namedOrPos(args, 'text', -1) || ''),
@@ -156,30 +187,30 @@ export function createDrawingPool(ctx) {
       set_lefttop(ref, x, y) {
         const o = boxes.get(ref?.id || ref);
         if (!o) return;
-        o.i1 = resolveBarIndex(Number(x));
-        o.top = Number(y);
+        o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
+        o.top = parseCoord(y, NaN);
       },
       set_rightbottom(ref, x, y) {
         const o = boxes.get(ref?.id || ref);
         if (!o) return;
-        o.i2 = resolveBarIndex(Number(x));
-        o.bottom = Number(y);
+        o.i2 = resolveBarIndex(parseCoord(x, ctx.barIndex));
+        o.bottom = parseCoord(y, NaN);
       },
       set_left(ref, x) {
         const o = boxes.get(ref?.id || ref);
-        if (o) o.i1 = resolveBarIndex(Number(x));
+        if (o) o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
       },
       set_right(ref, x) {
         const o = boxes.get(ref?.id || ref);
-        if (o) o.i2 = resolveBarIndex(Number(x));
+        if (o) o.i2 = resolveBarIndex(parseCoord(x, ctx.barIndex));
       },
       set_top(ref, y) {
         const o = boxes.get(ref?.id || ref);
-        if (o) o.top = Number(y);
+        if (o) o.top = parseCoord(y, NaN);
       },
       set_bottom(ref, y) {
         const o = boxes.get(ref?.id || ref);
-        if (o) o.bottom = Number(y);
+        if (o) o.bottom = parseCoord(y, NaN);
       },
       set_bgcolor(ref, c) {
         const o = boxes.get(ref?.id || ref);
@@ -191,12 +222,34 @@ export function createDrawingPool(ctx) {
       },
       set_text(ref, t) {
         const o = boxes.get(ref?.id || ref);
-        if (o) o.text = stripQuotes(String(t));
+        if (o) o.text = stripQuotes(String(t ?? ''));
+      },
+      set_text_size() {
+        /* visual-only */
+      },
+      set_text_halign() {
+        /* visual-only */
+      },
+      set_text_color(ref, c) {
+        const o = boxes.get(ref?.id || ref);
+        if (o && c != null) o.color = colorToHex(c);
       },
       delete(ref) {
         const id = ref?.id || ref;
         boxes.delete(id);
         fifo = fifo.filter((x) => x !== id);
+      },
+      get_left(ref) {
+        return boxes.get(ref?.id || ref)?.i1 ?? NaN;
+      },
+      get_right(ref) {
+        return boxes.get(ref?.id || ref)?.i2 ?? NaN;
+      },
+      get_top(ref) {
+        return boxes.get(ref?.id || ref)?.top ?? NaN;
+      },
+      get_bottom(ref) {
+        return boxes.get(ref?.id || ref)?.bottom ?? NaN;
       },
     },
     label: {
@@ -207,12 +260,13 @@ export function createDrawingPool(ctx) {
         const text = stripQuotes(namedOrPos(args, 'text', 2) || '');
         const color = namedOrPos(args, 'color', 3) || 'color.blue';
         const id = `label_${nextId++}`;
-        const i1 = resolveBarIndex(Number(x) || ctx.barIndex);
+        const cx = parseCoord(x, NaN);
+        const i1 = isFiniteNum(cx) ? resolveBarIndex(cx) : ctx.barIndex;
         const obj = {
           __pine: 'label',
           id,
           i1,
-          y: Number(y),
+          y: parseCoord(y, NaN),
           text,
           color: colorToHex(color),
           style: namedOrPos(args, 'style', -1) || '',
@@ -224,16 +278,16 @@ export function createDrawingPool(ctx) {
       set_xy(ref, x, y) {
         const o = labels.get(ref?.id || ref);
         if (!o) return;
-        o.i1 = resolveBarIndex(Number(x));
-        o.y = Number(y);
+        o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
+        o.y = parseCoord(y, NaN);
       },
       set_x(ref, x) {
         const o = labels.get(ref?.id || ref);
-        if (o) o.i1 = resolveBarIndex(Number(x));
+        if (o) o.i1 = resolveBarIndex(parseCoord(x, ctx.barIndex));
       },
       set_y(ref, y) {
         const o = labels.get(ref?.id || ref);
-        if (o) o.y = Number(y);
+        if (o) o.y = parseCoord(y, NaN);
       },
       set_text(ref, t) {
         const o = labels.get(ref?.id || ref);

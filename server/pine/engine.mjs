@@ -26,6 +26,24 @@ function truthy(v) {
   return !!v;
 }
 
+/** True only for a complete quoted string token — not `"a" + "b"`. */
+function isStringLiteral(expr) {
+  const s = String(expr || '').trim();
+  if (s.length < 2) return false;
+  const q = s[0];
+  if (q !== '"' && q !== "'") return false;
+  let i = 1;
+  while (i < s.length) {
+    if (s[i] === '\\') {
+      i += 2;
+      continue;
+    }
+    if (s[i] === q) return i === s.length - 1;
+    i += 1;
+  }
+  return false;
+}
+
 function resolveIdent(ctx, name) {
   if (name === 'close') return ctx.ohlc('close');
   if (name === 'open') return ctx.ohlc('open');
@@ -46,6 +64,15 @@ function resolveIdent(ctx, name) {
   if (name === 'syminfo.tickerid' || name === 'syminfo.ticker') return 'CHART';
   if (name === 'timeframe.period') return 'chart';
 
+  // barstate.* — critical for SMC last-bar zones / first-bar OB pools
+  if (name === 'barstate.islast') return ctx.barIndex === ctx.n - 1;
+  if (name === 'barstate.isfirst') return ctx.barIndex === 0;
+  if (name === 'barstate.ishistory') return ctx.barIndex < ctx.n - 1;
+  if (name === 'barstate.isrealtime') return false;
+  if (name === 'barstate.isnew') return true;
+  if (name === 'barstate.isconfirmed') return true;
+  if (name === 'barstate.islastconfirmedhistory') return ctx.barIndex === ctx.n - 1;
+
   if (ctx.inputs[name] !== undefined) {
     const v = ctx.inputs[name];
     if (typeof v === 'string' && /^(open|high|low|close|hl2|hlc3|ohlc4|volume)$/i.test(v)) {
@@ -56,6 +83,9 @@ function resolveIdent(ctx, name) {
   if (ctx.locals.has(name)) return ctx.locals.get(name);
   if (ctx.vars.has(name)) return ctx.vars.get(name);
   if (ctx.varip.has(name)) return ctx.varip.get(name);
+  // Functions/methods swap vars — still resolve script-level globals (phl, b, …)
+  if (ctx.globalVars?.has(name)) return ctx.globalVars.get(name);
+  if (ctx.globalVarip?.has(name)) return ctx.globalVarip.get(name);
   return ctx.getSeries(name, 0);
 }
 
@@ -84,7 +114,8 @@ export function evalExpr(ctx, exprRaw) {
   if (/^color\.\w+$/i.test(expr) || /^#[0-9a-fA-F]{6,8}$/.test(expr)) {
     return colorToHex(expr);
   }
-  if (/^".*"$/.test(expr) || /^'.*'$/.test(expr)) return stripQuotes(expr);
+  // Only a true single string token — NOT greedy /^".*"$/ which eats `"a" + "b"`.
+  if (isStringLiteral(expr)) return stripQuotes(expr);
 
   // Comma sequence: f(), g(), h()  (depth-aware)
   {
@@ -129,8 +160,10 @@ export function evalExpr(ctx, exprRaw) {
   }
 
   // Calls BEFORE comparisons — otherwise array.new<float>() is parsed as `<`/`>`
+  // Also normalize whitespace around `.` so `draw.mL .eL(` parses as a call.
   {
-    const call = parseCall(expr);
+    const normalized = expr.replace(/\s*\.\s*/g, '.');
+    const call = parseCall(normalized);
     if (call) return evalCall(ctx, call.callee, call.args);
   }
 
@@ -201,7 +234,7 @@ export function evalExpr(ctx, exprRaw) {
     if (balanced(expr.slice(1, -1))) return evalExpr(ctx, expr.slice(1, -1));
   }
 
-  // History: foo[n] / obj.field[n]
+  // History: foo[n] / obj.field[n] (allow whitespace before bracket)
   {
     const hm = /^(.+?)\s*\[\s*(.+)\s*\]$/.exec(expr);
     if (hm && balanced(hm[1]) !== false) {
@@ -217,13 +250,34 @@ export function evalExpr(ctx, exprRaw) {
           ? Number(ctx.locals.get('n')) - off
           : ctx.barIndex - off;
       }
+      // b.c[n] / b.h[n] aliases
+      const bm = /^b\.(c|o|h|l|v|t|n)$/i.exec(base);
+      if (bm) {
+        const key =
+          bm[1].toLowerCase() === 'c'
+            ? 'close'
+            : bm[1].toLowerCase() === 'o'
+              ? 'open'
+              : bm[1].toLowerCase() === 'h'
+                ? 'high'
+                : bm[1].toLowerCase() === 'l'
+                  ? 'low'
+                  : bm[1].toLowerCase() === 'v'
+                    ? 'volume'
+                    : bm[1].toLowerCase() === 't'
+                      ? 'time'
+                      : 'bar_index';
+        if (key === 'bar_index') return ctx.barIndex - off;
+        const arr = key === 'time' ? ctx.time : ctx[key];
+        const i = ctx.barIndex - off;
+        return i >= 0 && arr ? arr[i] : nan();
+      }
       // obj.field[n]
       if (base.includes('.')) {
         return ctx.getSeries(base, off);
       }
       if (/^[A-Za-z_][\w]*$/.test(base)) {
         if (ctx.locals.has(base) && off === 0) return ctx.locals.get(base);
-        // history of series name
         const v0 = resolveIdent(ctx, base);
         if (off === 0) return v0;
         return ctx.getSeries(base, off);
@@ -258,6 +312,9 @@ export function evalExpr(ctx, exprRaw) {
       if (parts[0] === 'font') return parts[1];
       if (parts[0] === 'chart') return parts[1] === 'bg_color' ? '#0b0e17' : '#e2e8f0';
       if (parts[0] === 'hline' && parts[1]?.startsWith('style_')) return parts[1];
+      if (parts[0] === 'barstate') {
+        return resolveIdent(ctx, `barstate.${parts[1]}`);
+      }
 
       let cur = resolveIdent(ctx, parts[0]);
       for (let i = 1; i < parts.length; i += 1) {
@@ -478,7 +535,14 @@ function evalCall(ctx, callee, argStrs) {
     if (fn === 'sqrt') return Math.sqrt(a);
     if (fn === 'log') return Math.log(a);
     if (fn === 'pow') return Math.pow(a, b);
-    if (fn === 'round') return Math.round(a);
+    if (fn === 'round') {
+      const d = Number(args[1]);
+      if (Number.isFinite(d) && d > 0) {
+        const f = 10 ** Math.min(8, Math.floor(d));
+        return Math.round(a * f) / f;
+      }
+      return Math.round(a);
+    }
     if (fn === 'floor') return Math.floor(a);
     if (fn === 'ceil') return Math.ceil(a);
     if (fn === 'sign') return Math.sign(a);
@@ -490,19 +554,32 @@ function evalCall(ctx, callee, argStrs) {
   // str.*
   if (name.startsWith('str.')) {
     const fn = name.slice(4);
-    if (fn === 'tostring') return String(args[0] ?? '');
+    if (fn === 'tostring') {
+      const v = args[0];
+      const fmt = String(args[1] ?? '').toLowerCase();
+      if (fmt.includes('volume')) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return '0';
+        const a = Math.abs(n);
+        if (a >= 1e9) return `${(n / 1e9).toFixed(3)}B`;
+        if (a >= 1e6) return `${(n / 1e6).toFixed(3)}M`;
+        if (a >= 1e3) return `${(n / 1e3).toFixed(3)}K`;
+        return String(Math.round(n));
+      }
+      return String(v ?? '');
+    }
     if (fn === 'format') return String(args[0] ?? '');
     return String(args[0] ?? '');
   }
 
-  // ta.*
+  // ta.* — keep series paths as strings so history (crossover / pivots) works.
   if (name.startsWith('ta.')) {
-    // Pass series names for first args when possible
     const taArgs = argStrs.map((raw, i) => {
       const named = /^\s*\w+\s*=\s*(.+)$/s.exec(raw);
       const e = (named ? named[1] : raw).trim();
       if (/^(open|high|low|close|volume|hl2|hlc3|ohlc4)$/i.test(e)) return e.toLowerCase();
-      if (/^[A-Za-z_][\w]*$/.test(e) && ctx.series.has(e)) return e;
+      // `b.c`, `up.p.first()` stays evaluated; plain / dotted series ids stay strings.
+      if (/^[A-Za-z_][\w]*(\.[A-Za-z_][\w]*)*$/.test(e) && !e.includes('(')) return e;
       return args[i];
     });
     return callTa(ctx, name.slice(3), taArgs);
@@ -523,7 +600,9 @@ function evalCall(ctx, callee, argStrs) {
 
   // color.t(…) transparency helper / color.new / color.rgb
   if (name === 'color.new') {
-    return colorToHex(String(args[0] || argStrs[0] || 'color.yellow'));
+    // Preserve base color; transparency is visual-only for IR (fill still maps)
+    const base = args[0] != null ? String(args[0]) : String(argStrs[0] || 'color.yellow');
+    return colorToHex(base.replace(/^\s*color\.new\s*\(\s*/i, '').split(',')[0] || base);
   }
   if (name === 'color.rgb') {
     return rgbToHex(args[0], args[1], args[2]);
@@ -613,9 +692,9 @@ function evalCall(ctx, callee, argStrs) {
     return args[0];
   }
 
-  // Type.new() — UDT constructor
-  if (name.endsWith('.new') || ctx.types.has(name.replace(/\.new$/, ''))) {
-    const typeName = name.replace(/\.new$/, '');
+  // Type.new() — UDT constructor (must be explicit `.new`, never bare TypeName())
+  if (/\.new$/i.test(name) || name.toLowerCase().endsWith('.new')) {
+    const typeName = name.replace(/\.new$/i, '');
     const tdef = ctx.types.get(typeName);
     if (tdef) {
       const obj = { __pine: 'udt', __type: typeName };
@@ -628,6 +707,13 @@ function evalCall(ctx, callee, argStrs) {
       }
       args.forEach((v, i) => {
         if (fieldNames[i]) obj[fieldNames[i]] = v;
+      });
+      // also support named field=value args
+      argStrs.forEach((raw, i) => {
+        const named = /^\s*(\w+)\s*=\s*(.+)$/s.exec(raw);
+        if (named && named[1] in obj && named[1] !== '__pine' && named[1] !== '__type') {
+          obj[named[1]] = args[i];
+        }
       });
       return obj;
     }
@@ -723,10 +809,34 @@ function handlePlotLike(ctx, name, argStrs, args) {
 }
 
 function runMethod(ctx, method, self, args) {
-  const saved = new Map(ctx.locals);
+  // Method-local `var` must persist across bars — key by method + first params so
+  // bull/bear/swing drawVOB pools do not clobber each other.
+  if (!ctx.fnState) ctx.fnState = new Map();
+  const sid =
+    typeof self === 'boolean' || typeof self === 'number' || typeof self === 'string'
+      ? String(self)
+      : self?.id || self?.__pine || 'obj';
+  const hint = args
+    .slice(0, 2)
+    .map((a) => (typeof a === 'boolean' || typeof a === 'number' ? String(a) : ''))
+    .join(':');
+  const mKey = `method:${method.name || 'anon'}:${sid}:${hint}`;
+  if (!ctx.fnState.has(mKey)) ctx.fnState.set(mKey, { vars: new Map(), varip: new Map() });
+  const state = ctx.fnState.get(mKey);
+
+  const savedLocals = ctx.locals;
+  const savedVars = ctx.vars;
+  const savedVarip = ctx.varip;
   const prevReturn = ctx.__return;
+
+  ctx.locals = new Map(savedLocals);
+  ctx.vars = state.vars;
+  ctx.varip = state.varip;
   ctx.__return = undefined;
   ctx.locals.set('this', self);
+  for (const [k, v] of ctx.vars) ctx.locals.set(k, v);
+  for (const [k, v] of ctx.varip) ctx.locals.set(k, v);
+
   const params = method.params || [];
   let ai = 0;
   for (let i = 0; i < params.length; i += 1) {
@@ -740,9 +850,17 @@ function runMethod(ctx, method, self, args) {
   let ret = null;
   try {
     ret = execBlock(ctx, method.body);
+    for (const [k] of ctx.vars) {
+      if (ctx.locals.has(k)) ctx.vars.set(k, ctx.locals.get(k));
+    }
+    for (const [k] of ctx.varip) {
+      if (ctx.locals.has(k)) ctx.varip.set(k, ctx.locals.get(k));
+    }
     if (ctx.__return !== undefined) ret = ctx.__return;
   } finally {
-    ctx.locals = saved;
+    ctx.locals = savedLocals;
+    ctx.vars = savedVars;
+    ctx.varip = savedVarip;
     ctx.__return = prevReturn;
   }
   return ret;
@@ -799,6 +917,7 @@ function assignTarget(ctx, target, value) {
   if (ctx.vars.has(target) || target.startsWith('var ')) {
     ctx.vars.set(target, value);
   }
+  if (ctx.globalVars?.has(target)) ctx.globalVars.set(target, value);
   ctx.setLocal(target, value);
   if (ctx.vars.has(target)) ctx.vars.set(target, value);
   // UDT: also track field series for history (b.h[n])
@@ -838,7 +957,20 @@ function execStmt(ctx, st) {
       return map.get(st.name);
     }
     case 'assign': {
-      let v = evalExpr(ctx, st.expr);
+      let v;
+      if (st.switchExpr != null || st.cases) {
+        // RHS switch expression: tg = switch x \n "a" => …
+        const swSt = {
+          kind: 'switch',
+          expr: st.switchExpr || '',
+          isConditionSwitch: !(st.switchExpr || '').trim(),
+          cases: st.cases || [],
+          defaultBody: st.defaultBody,
+        };
+        v = execStmt(ctx, swSt);
+      } else {
+        v = evalExpr(ctx, st.expr);
+      }
       const op = st.op || '=';
       if (op === '+=' || op === '-=' || op === '*=' || op === '/=') {
         const cur = Number(evalExpr(ctx, st.target)) || 0;
@@ -869,6 +1001,20 @@ function execStmt(ctx, st) {
       for (let i = from; step > 0 ? i <= to : i >= to; i += step) {
         ctx.checkTime();
         ctx.locals.set(st.iter, i);
+        last = execBlock(ctx, st.body);
+      }
+      return last;
+    }
+    case 'forin': {
+      const iter = evalExpr(ctx, st.iterExpr);
+      let data = [];
+      if (iter && iter.__pine === 'array') data = iter.data;
+      else if (Array.isArray(iter)) data = iter;
+      let last = null;
+      for (let i = 0; i < data.length; i += 1) {
+        ctx.checkTime();
+        if (st.idx) ctx.locals.set(st.idx, i);
+        ctx.locals.set(st.val, data[i]);
         last = execBlock(ctx, st.body);
       }
       return last;
@@ -1002,6 +1148,9 @@ export function runEngine(source, bars, inputOverrides = {}, opts = {}) {
 
   createArrayRuntime(ctx);
   createDrawingPool(ctx);
+  // Script-level var store — remain reachable from functions/methods after scope swap
+  ctx.globalVars = ctx.vars;
+  ctx.globalVarip = ctx.varip;
   if (opts.debug) ctx.__debug = true;
 
   let program;

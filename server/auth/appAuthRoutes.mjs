@@ -697,13 +697,13 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
       ),
     );
     // Cap bars for huge scripts so engine can finish before timeout (SMC ~100kb).
-    const maxRunBars = pine.length > 40_000 ? 320 : 5000;
+    const maxRunBars = pine.length > 40_000 ? 400 : 5000;
     const runBars = bars.length > maxRunBars ? bars.slice(-maxRunBars) : bars;
     const barOffset = bars.length - runBars.length;
     const result = runPineScript(pine, runBars, inputs, {
       maxBars: maxRunBars,
       timeLimitMs,
-      maxDrawings: 400,
+      maxDrawings: pine.length > 40_000 ? 500 : 400,
     });
     const remapDrawings = (result.drawings || []).map((d) => {
       if (!d || typeof d !== 'object') return d;

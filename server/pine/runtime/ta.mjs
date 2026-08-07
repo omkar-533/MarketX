@@ -169,11 +169,35 @@ export function seriesSlice(ctx, fieldOrArr) {
     if (f === 'close' || f === 'open' || f === 'high' || f === 'low' || f === 'volume') {
       return ctx[f].slice(0, ctx.barIndex + 1);
     }
+    // UDT field series e.g. b.c / b.h — prefer tracked series buffer
     const buf = ctx.series.get(fieldOrArr);
-    if (buf) return buf.data.slice();
+    if (buf && buf.data.length) return buf.data.slice(0, ctx.barIndex + 1);
+    // Fallback: map known bar aliases onto OHLC
+    const m = /^b\.(c|o|h|l|v|t|n)$/i.exec(fieldOrArr);
+    if (m) {
+      const key =
+        m[1].toLowerCase() === 'c'
+          ? 'close'
+          : m[1].toLowerCase() === 'o'
+            ? 'open'
+            : m[1].toLowerCase() === 'h'
+              ? 'high'
+              : m[1].toLowerCase() === 'l'
+                ? 'low'
+                : m[1].toLowerCase() === 'v'
+                  ? 'volume'
+                  : m[1].toLowerCase() === 't'
+                    ? 'time'
+                    : null;
+      if (key === 'time') return ctx.time.slice(0, ctx.barIndex + 1);
+      if (key) return ctx[key].slice(0, ctx.barIndex + 1);
+      // b.n → bar_index series
+      return Array.from({ length: ctx.barIndex + 1 }, (_, i) => i);
+    }
   }
   if (isFiniteNum(fieldOrArr)) {
-    return Array(ctx.barIndex + 1).fill(fieldOrArr);
+    // Constant level: use same level across history (correct when level is sticky).
+    return Array(ctx.barIndex + 1).fill(Number(fieldOrArr));
   }
   return [];
 }

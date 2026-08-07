@@ -131,6 +131,17 @@ export function createArrayRuntime(ctx) {
       if (!a || !a.data.length) return nan();
       return a.data[a.data.length - 1];
     },
+    indexof(ref, v) {
+      const a = resolve(ref);
+      if (!a) return -1;
+      return a.data.indexOf(v);
+    },
+    reverse(ref) {
+      const a = resolve(ref);
+      if (!a) return null;
+      a.data.reverse();
+      return a;
+    },
     copy(ref) {
       const a = resolve(ref);
       if (!a) return make('mixed', []);
