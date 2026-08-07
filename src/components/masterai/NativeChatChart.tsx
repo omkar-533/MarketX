@@ -2555,9 +2555,10 @@ export default function NativeChatChart({
                       type="button"
                       className="mai-nc__study-chip-main"
                       title={chip.name}
-                      onClick={() =>
-                        setStudySettingsId((cur) => (cur === chip.id ? null : chip.id))
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStudySettingsId((cur) => (cur === chip.id ? null : chip.id));
+                      }}
                     >
                       <i className="mai-nc__study-swatch" style={{ background: chip.color }} />
                       <span className="mai-nc__study-name">{chip.name}</span>
@@ -2569,7 +2570,10 @@ export default function NativeChatChart({
                         type="button"
                         title={chip.hidden ? 'Show' : 'Hide'}
                         aria-label={chip.hidden ? 'Show indicator' : 'Hide indicator'}
-                        onClick={() => toggleStudyHidden(chip.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStudyHidden(chip.id);
+                        }}
                       >
                         {chip.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                       </button>
@@ -2577,9 +2581,10 @@ export default function NativeChatChart({
                         type="button"
                         title="Settings"
                         aria-label="Indicator settings"
-                        onClick={() =>
-                          setStudySettingsId((cur) => (cur === chip.id ? null : chip.id))
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStudySettingsId((cur) => (cur === chip.id ? null : chip.id));
+                        }}
                       >
                         <Settings2 className="h-3 w-3" />
                       </button>
@@ -2587,7 +2592,10 @@ export default function NativeChatChart({
                         type="button"
                         title="Remove"
                         aria-label="Remove indicator"
-                        onClick={() => removeStudy(chip.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeStudy(chip.id);
+                        }}
                       >
                         <X className="h-3 w-3" />
                       </button>
