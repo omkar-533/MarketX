@@ -12,8 +12,8 @@ function round(n, digits = 4) {
 /** Keep more decimals for FX/gold/crypto so tip does not stick between ticks. */
 function priceDigits(price) {
   const p = Math.abs(Number(price) || 0);
-  // FX majors / minors
-  if (p > 0 && p < 50) return 5;
+  // FX majors / minors — pipette resolution so mid ticks aren't rounded away
+  if (p > 0 && p < 50) return 6;
   // Gold / silver-ish / mid equities
   if (p < 1000) return 4;
   // Crypto & indices — keep cents / pipettes

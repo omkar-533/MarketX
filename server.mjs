@@ -11,7 +11,7 @@ import { createCorsMiddleware } from './server/middleware/cors.mjs';
 import marketRoutes from './server/market/routes.mjs';
 import { initMarketProvider } from './server/market/provider.mjs';
 import { attachMarketWebSocket } from './server/market/liveWebSocket.mjs';
-import { attachSocketIo } from './server/market/socketIoServer.mjs';
+import { attachSocketIo, TICK_PULSE_MS } from './server/market/socketIoServer.mjs';
 import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
 import {
   hasAccessSchema,

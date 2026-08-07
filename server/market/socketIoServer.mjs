@@ -23,6 +23,8 @@ const clientSymbols = new Map();
 /** socketId → Set of "SYM:expiry" */
 const clientOptionChains = new Map();
 let io = null;
+/** Public — health endpoint proves which pulse build is live on Render. */
+export const TICK_PULSE_MS = 100;
 
 function symbolsForSocket(socketId) {
   return clientSymbols.get(socketId) ?? new Set();
@@ -79,7 +81,7 @@ export function attachSocketIo(httpServer) {
     const ws = getLiveWsStatus();
     if (!ws?.connected && !ws?.hasTicks) return;
     broadcastTicks();
-  }, 100);
+  }, TICK_PULSE_MS);
   const unsubStatus = subscribeLiveWsStatus((status) => {
     io?.emit('market:status', status);
   });
