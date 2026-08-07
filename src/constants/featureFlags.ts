@@ -1,14 +1,14 @@
 /** Flip to true when Indicators should be visible again in the app + landing. */
 export const SHOW_INDICATORS = true;
 
-/** Dashboard home — hidden from main site for now. */
+/** Dashboard — fully hidden from the product for now. */
 export const SHOW_DASHBOARD = false;
 
-/** Wolf Terminal — live charting desk (production + local). */
+/** Wolf Terminal — fully hidden from the product for now. */
 export const SHOW_TERMINAL = false;
 
-/** NSE live option chain (broker-free near-live poll + Socket.IO push). */
+/** Option Chain — fully hidden from the product for now. */
 export const SHOW_OPTION_CHAIN = false;
 
-/** OI Intelligence — PCR / writing / buildup from NSE option chain. */
-export const SHOW_OI_INTELLIGENCE = true;
+/** OI Intelligence — fully hidden with Option Chain for now. */
+export const SHOW_OI_INTELLIGENCE = false;

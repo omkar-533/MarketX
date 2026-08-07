@@ -67,21 +67,21 @@ const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
 const VALID_TABS = new Set([
-  'dashboard',
+  ...(SHOW_DASHBOARD ? (['dashboard'] as const) : []),
   'ltpcalc',
   'tradingjournal',
-  'optionchain',
+  ...(SHOW_OPTION_CHAIN ? (['optionchain'] as const) : []),
   'optionsimulator',
   'strategy',
   'futures',
-  'oiintelligence',
+  ...(SHOW_OI_INTELLIGENCE ? (['oiintelligence'] as const) : []),
   'footprint',
   'wolf-ai',
   'mentor-ai',
   'arena',
-  'terminal',
+  ...(SHOW_TERMINAL ? (['terminal'] as const) : []),
   'trafi', // legacy alias → normalized to wolf-ai
-  'indicators',
+  ...(SHOW_INDICATORS ? (['indicators'] as const) : []),
   'papertrading',
   'backtesting',
   'heatmap',
@@ -280,7 +280,7 @@ function AppWorkspace() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleTabChange} />;
+        return SHOW_DASHBOARD ? <Dashboard onNavigate={handleTabChange} /> : <MasterAI />;
       case 'ltpcalc':
         return <LtpCalculator onNavigate={handleTabChange} />;
       case 'tradingjournal':
@@ -292,7 +292,7 @@ function AppWorkspace() {
           />
         );
       case 'optionchain':
-        return <TradeXOptionChain />;
+        return SHOW_OPTION_CHAIN ? <TradeXOptionChain /> : <MasterAI />;
       case 'optionsimulator':
         return <OptionSimulator />;
       case 'strategy':
@@ -300,7 +300,11 @@ function AppWorkspace() {
       case 'futures':
         return <FuturesAnalytics />;
       case 'oiintelligence':
-        return <OIIntelligence onNavigate={handleTabChange} />;
+        return SHOW_OI_INTELLIGENCE ? (
+          <OIIntelligence onNavigate={handleTabChange} />
+        ) : (
+          <MasterAI />
+        );
       case 'footprint':
         return <FootprintChart />;
       case 'wolf-ai':
@@ -310,7 +314,7 @@ function AppWorkspace() {
       case 'arena':
         return <WolfArenaPage onNavigate={handleTabChange} />;
       case 'terminal':
-        return <TerminalPage onNavigate={handleTabChange} />;
+        return SHOW_TERMINAL ? <TerminalPage onNavigate={handleTabChange} /> : <MasterAI />;
       case 'indicators':
         return (
           <Indicators
@@ -350,7 +354,7 @@ function AppWorkspace() {
           />
         );
       default:
-        return <Dashboard onNavigate={handleTabChange} />;
+        return <MasterAI />;
     }
   };
 

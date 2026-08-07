@@ -10,7 +10,7 @@ type State = { error: Error | null; recoverKey: number };
 
 /**
  * Soft recovery boundary — never shows a scary "failed" screen.
- * Logs the error, remounts children, and falls back to Dashboard.
+ * Logs the error, remounts children, and falls back to the home workspace.
  */
 export default class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: null, recoverKey: 0 };

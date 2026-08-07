@@ -72,14 +72,14 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
         >
           <div className="auth-kicker auth-kicker--ai">
             <Cpu className="w-3 h-3" />
-            AI trading terminal
+            AI trading workspace
           </div>
           <h2 className="auth-ai-headline">
             <span>{BRAND}</span>
           </h2>
           <p className="auth-ai-tagline">{BRAND_TAGLINE_FULL}</p>
           <p className="auth-ai-lead">
-            AI-powered market intelligence with live LTP, option chain, OI, and signals —
+            AI-powered market intelligence with Wolf AI, Mentor, paper trading, and journaling —
             before you even sign in.
           </p>
         </motion.div>
