@@ -1,4 +1,5 @@
 import type { ChartBar } from '../../types/chart';
+import { toGlobalLiveSymbol } from '../../data/coreGlobalLiveSymbols';
 
 /** API interval string → bucket size in ms. */
 export function intervalToMs(apiInterval: string): number {
@@ -201,15 +202,18 @@ export function normalizeMarketSymbol(symbol: string): string {
   return String(symbol || '')
     .toUpperCase()
     .trim()
-    .replace(/^NSE:|^BSE:|^MCX:/, '');
+    .replace(/^NSE:|^BSE:|^MCX:|^BINANCE:|^FX_IDC:|^OANDA:|^TVC:/, '');
 }
 
 /**
  * Match quote symbol against chart API symbol.
- * Exact only after exchange prefix strip — never endsWith (BANKNIFTY must not match NIFTY).
+ * Exact after exchange strip + global aliases (BTCUSDT ↔ BTC). Never endsWith
+ * (BANKNIFTY must not match NIFTY).
  */
 export function quoteMatchesSymbol(quoteSymbol: string, apiSymbol: string): boolean {
-  const q = normalizeMarketSymbol(quoteSymbol);
-  const a = normalizeMarketSymbol(apiSymbol);
+  const qRaw = normalizeMarketSymbol(quoteSymbol);
+  const aRaw = normalizeMarketSymbol(apiSymbol);
+  const q = toGlobalLiveSymbol(qRaw) || qRaw;
+  const a = toGlobalLiveSymbol(aRaw) || aRaw;
   return Boolean(q && a && q === a);
 }

@@ -1,4 +1,5 @@
 import { FNO_UNIVERSE, type FnoInstrumentType } from '../data/fnoUniverse';
+import { toGlobalLiveSymbol } from '../data/coreGlobalLiveSymbols';
 
 /** Map app symbols → TradingView exchange symbols (NSE/BSE) */
 const INDEX_TV: Record<string, string> = {
@@ -176,13 +177,20 @@ const NATIVE_EXCHANGES = new Set([
 ]);
 
 export function usesNativeChart(tvSymbol: string): boolean {
-  const exchange = tvSymbol.includes(':') ? tvSymbol.split(':')[0] : '';
+  // Plain "BTC" / "NIFTY" must resolve to BINANCE:/NSE: before the exchange check.
+  const resolved = String(tvSymbol || '').includes(':')
+    ? String(tvSymbol)
+    : parseTradingViewInput(String(tvSymbol || ''));
+  const exchange = resolved.includes(':') ? resolved.split(':')[0] : '';
   return NATIVE_EXCHANGES.has(exchange.toUpperCase());
 }
 
-/** TV symbol → the plain name our own market API expects (NSE:NIFTY → NIFTY). */
+/** TV symbol → market API ticker (NSE:NIFTY → NIFTY, BINANCE:BTCUSDT → BTC). */
 export function apiSymbolFromTv(tvSymbol: string): string {
-  return tradingViewSymbolLabel(tvSymbol).toUpperCase();
+  const label = tradingViewSymbolLabel(tvSymbol).toUpperCase();
+  // Crypto/forex aliases: BTCUSDT/ETHUSDT → BTC/ETH (live tape + OHLC keys).
+  const global = toGlobalLiveSymbol(label);
+  return (global || label).toUpperCase();
 }
 
 /** Timeframes our OHLC backend can resolve. */
