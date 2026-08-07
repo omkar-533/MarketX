@@ -784,12 +784,20 @@ export default function TerminalTopBar({
       <TerminalWolfCreatePanel
         open={wolfCreateOpen}
         editing={wolfEditing}
+        symbol={symbol}
+        interval={interval}
         onClose={() => {
           setWolfCreateOpen(false);
           setWolfEditing(null);
         }}
         onSaved={() => {
           refreshWolfList();
+        }}
+        onApplied={(studyId) => {
+          const all = parseStudies(study);
+          const next = all.includes(studyId) ? all : [...all, studyId];
+          onStudyChange(joinStudies(next));
+          setIndicatorsOpen(false);
         }}
       />
 

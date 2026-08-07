@@ -311,6 +311,26 @@ export type PineRunResult = {
   warnings: string[];
 };
 
+export type PineDraftRunResult = PineRunResult & {
+  error?: string;
+};
+
+function mapPineRunPayload(data: Record<string, unknown>): PineDraftRunResult {
+  return {
+    ok: Boolean(data.ok),
+    version: Number(data.version) || 0,
+    overlay: data.overlay !== false,
+    plots: Array.isArray(data.plots) ? (data.plots as PineRunPlot[]) : [],
+    hlines: Array.isArray(data.hlines) ? (data.hlines as PineRunResult['hlines']) : [],
+    shapes: Array.isArray(data.shapes) ? (data.shapes as PineRunResult['shapes']) : [],
+    drawings: Array.isArray(data.drawings) ? (data.drawings as PineRunDrawing[]) : [],
+    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
+    ...(typeof data.error === 'string' && data.error.trim()
+      ? { error: data.error.trim() }
+      : {}),
+  };
+}
+
 /** Run CMS Pine on OHLC bars. Source stays on server — only plot series returned. */
 export async function runPineIndicator(
   indicatorId: string,
@@ -330,14 +350,34 @@ export async function runPineIndicator(
     }),
   });
   const data = await readJson(res, 'Could not run Pine Script');
-  return {
-    ok: Boolean(data.ok),
-    version: Number(data.version) || 0,
-    overlay: data.overlay !== false,
-    plots: Array.isArray(data.plots) ? (data.plots as PineRunPlot[]) : [],
-    hlines: Array.isArray(data.hlines) ? (data.hlines as PineRunResult['hlines']) : [],
-    shapes: Array.isArray(data.shapes) ? (data.shapes as PineRunResult['shapes']) : [],
-    drawings: Array.isArray(data.drawings) ? (data.drawings as PineRunDrawing[]) : [],
-    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
-  };
+  return mapPineRunPayload(data as Record<string, unknown>);
+}
+
+/**
+ * Admin-only: run draft Pine source against OHLC without saving.
+ * Source is never stored — engine result only.
+ */
+export async function adminRunPineDraft(payload: {
+  source: string;
+  bars: PineRunBar[];
+  inputs?: Record<string, string | number | boolean>;
+  timeLimitMs?: number;
+}): Promise<PineDraftRunResult> {
+  const pine = String(payload.source || '').trim();
+  const res = await apiFetch(
+    '/api/app-auth/indicators/pine-run',
+    {
+      method: 'POST',
+      headers: sessionHeaders(),
+      body: JSON.stringify({
+        source: pine,
+        bars: payload.bars,
+        inputs: payload.inputs || {},
+        timeLimitMs: payload.timeLimitMs,
+      }),
+    },
+    { retries: 1, timeoutMs: pine.length > 40_000 ? 45_000 : 20_000 },
+  );
+  const data = await readJson(res, 'Could not run draft Pine Script');
+  return mapPineRunPayload(data as Record<string, unknown>);
 }

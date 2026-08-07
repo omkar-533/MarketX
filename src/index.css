@@ -19176,6 +19176,327 @@ body:has(.app-main--terminal-immersive) #root {
   color: #0b0e17;
 }
 
+/* —— Full Pine IDE (near-fullscreen) —— */
+.wolf-term__pine-ide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: clamp(0.35rem, 1.2vh, 0.75rem) clamp(0.35rem, 1vw, 0.85rem);
+  background: rgba(3, 6, 12, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+.wolf-term__pine-ide {
+  width: min(1280px, 100%);
+  height: min(96vh, 100%);
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 0.55rem;
+  padding: 0.75rem 0.85rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #1e2536;
+  background: linear-gradient(180deg, #10151f 0%, #090c14 100%);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.wolf-term__pine-ide-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.wolf-term__pine-ide-titles b {
+  display: block;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+}
+
+.wolf-term__pine-ide-titles em {
+  display: block;
+  margin-top: 0.12rem;
+  font-style: normal;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-ide-meta {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.9fr) minmax(160px, 1.2fr) auto;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.wolf-term__pine-ide-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.wolf-term__pine-ide-field > span {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wolf-term__pine-ide-field input {
+  height: 32px;
+  padding: 0 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #1a1f2e;
+  background: #0b0e17;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.wolf-term__pine-ide-field input:focus {
+  border-color: #d4af37;
+}
+
+.wolf-term__pine-ide-editor {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  min-height: 0;
+  border: 1px solid #1a1f2e;
+  border-radius: 8px;
+  background: #070a11;
+  overflow: hidden;
+}
+
+.wolf-term__pine-ide-gutter {
+  overflow: hidden;
+  padding: 0.65rem 0.35rem 0.65rem 0;
+  text-align: right;
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #475569;
+  background: #0a0e16;
+  border-right: 1px solid #151a26;
+  user-select: none;
+}
+
+.wolf-term__pine-ide-gutter span {
+  display: block;
+  padding-right: 0.45rem;
+}
+
+.wolf-term__pine-ide-code {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wolf-term__pine-ide-highlight,
+.wolf-term__pine-ide-textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre;
+  tab-size: 2;
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  box-sizing: border-box;
+}
+
+.wolf-term__pine-ide-highlight {
+  color: #e2e8f0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wolf-term__pine-ide-textarea {
+  z-index: 1;
+  background: transparent;
+  color: transparent;
+  caret-color: #f0b90b;
+  -webkit-text-fill-color: transparent;
+}
+
+.wolf-term__pine-ide-textarea::placeholder {
+  color: #475569;
+  -webkit-text-fill-color: #475569;
+}
+
+.wolf-term__pine-tok--cmt {
+  color: #64748b;
+}
+
+.wolf-term__pine-tok--dir {
+  color: #38bdf8;
+}
+
+.wolf-term__pine-tok--kw {
+  color: #c084fc;
+}
+
+.wolf-term__pine-tok--ns {
+  color: #f0b90b;
+}
+
+.wolf-term__pine-tok--ctrl {
+  color: #fb7185;
+}
+
+.wolf-term__pine-tok--str {
+  color: #86efac;
+}
+
+.wolf-term__pine-ide-console {
+  min-height: 4.5rem;
+  max-height: 9rem;
+  overflow: auto;
+  padding: 0.45rem 0.65rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #1a1f2e;
+  background: #080b12;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-ide-console--running {
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.wolf-term__pine-ide-console--ok {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.wolf-term__pine-ide-console--error {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.wolf-term__pine-ide-console-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.3rem;
+  color: #64748b;
+}
+
+.wolf-term__pine-ide-console-bar b {
+  color: #e2e8f0;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wolf-term__pine-ide-console-bar kbd {
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid #1e2536;
+  background: #10151f;
+  font-size: 0.62rem;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-ide-console-bar em {
+  font-style: normal;
+  font-size: 0.62rem;
+  color: #64748b;
+}
+
+.wolf-term__pine-ide-console p {
+  margin: 0;
+  color: inherit;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.wolf-term__pine-ide-console ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: #fbbf24;
+}
+
+.wolf-term__pine-ide-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #f87171;
+}
+
+.wolf-term__pine-ide-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.wolf-term__pine-ide-foot button {
+  height: 34px;
+  padding: 0 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #1a1f2e;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wolf-term__pine-ide-foot button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wolf-term__pine-ide-foot button.primary {
+  border-color: #d4af37;
+  background: #d4af37;
+  color: #0b0e17;
+}
+
+.wolf-term__pine-ide-run {
+  border-color: #2563eb !important;
+  background: #1d4ed8 !important;
+  color: #eff6ff !important;
+}
+
+.wolf-term__pine-ide-apply {
+  border-color: #ca8a04 !important;
+  background: linear-gradient(180deg, #f0b90b, #d4af37) !important;
+}
+
+@media (max-width: 720px) {
+  .wolf-term__pine-ide-meta {
+    grid-template-columns: 1fr auto;
+  }
+
+  .wolf-term__pine-ide-field--desc {
+    grid-column: 1 / -1;
+  }
+
+  .wolf-term__pine-ide-gutter {
+    width: 40px;
+  }
+
+  .wolf-term__pine-ide-editor {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+}
+
 .wolf-term__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

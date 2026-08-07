@@ -632,6 +632,146 @@ router.get('/indicators', requireUser, async (req, res) => {
 });
 
 /**
+ * POST /api/app-auth/indicators/pine-run
+ * Admin draft run — execute pasted Pine without saving. Never stores source.
+ */
+router.post('/indicators/pine-run', requireUser, async (req, res) => {
+  try {
+    if (req.appUser?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required to run draft Pine' });
+    }
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const pine = String(body.source || '').trim();
+    if (!pine) {
+      return res.status(400).json({ error: 'source (Pine Script) required' });
+    }
+    if (pine.length > 250_000) {
+      return res.status(400).json({ error: 'Pine source too large (max 250KB)' });
+    }
+
+    const rawBars = Array.isArray(body.bars) ? body.bars : [];
+    if (!rawBars.length) {
+      return res.status(400).json({ error: 'bars[] required' });
+    }
+    if (rawBars.length > 5000) {
+      return res.status(400).json({ error: 'Too many bars (max 5000)' });
+    }
+
+    const bars = [];
+    for (const b of rawBars) {
+      if (!b || typeof b !== 'object') continue;
+      const time = Number(b.time);
+      const open = Number(b.open);
+      const high = Number(b.high);
+      const low = Number(b.low);
+      const close = Number(b.close);
+      if (![time, open, high, low, close].every(Number.isFinite)) continue;
+      bars.push({
+        time,
+        open,
+        high,
+        low,
+        close,
+        volume: Number(b.volume) || 0,
+      });
+    }
+    if (!bars.length) {
+      return res.status(400).json({ error: 'No valid OHLC bars in request' });
+    }
+
+    const inputs =
+      body.inputs && typeof body.inputs === 'object' && !Array.isArray(body.inputs)
+        ? body.inputs
+        : {};
+
+    const timeLimitMs = Math.min(
+      28000,
+      Math.max(
+        1000,
+        Number(body.timeLimitMs) || (pine.length > 40_000 ? 25000 : 8000),
+      ),
+    );
+    const maxRunBars = pine.length > 40_000 ? 400 : 5000;
+    const runBars = bars.length > maxRunBars ? bars.slice(-maxRunBars) : bars;
+    const barOffset = bars.length - runBars.length;
+    const result = runPineScript(pine, runBars, inputs, {
+      maxBars: maxRunBars,
+      timeLimitMs,
+      maxDrawings: pine.length > 40_000 ? 500 : 400,
+    });
+    const remapDrawings = (result.drawings || []).map((d) => {
+      if (!d || typeof d !== 'object') return d;
+      const out = { ...d };
+      if (typeof out.i1 === 'number' && Number.isFinite(out.i1)) out.i1 += barOffset;
+      if (typeof out.i2 === 'number' && Number.isFinite(out.i2)) out.i2 += barOffset;
+      return out;
+    });
+    const overlay =
+      typeof body.overlay === 'boolean'
+        ? body.overlay
+        : /overlay\s*=\s*true/i.test(pine) || !/overlay\s*=\s*false/i.test(pine);
+
+    const warnings = Array.isArray(result.warnings)
+      ? result.warnings.map((w) => String(w)).slice(0, 40)
+      : [];
+    const fatal =
+      result.error != null && String(result.error).trim()
+        ? String(result.error).trim()
+        : warnings.find((w) => /^(Parse error|Engine error)/i.test(w));
+
+    return res.json({
+      ok: !fatal,
+      version: result.version,
+      overlay,
+      plots: (result.plots || []).map((p) => {
+        const values = Array.isArray(p.values)
+          ? p.values.map((v) => (Number.isFinite(Number(v)) ? Number(v) : null))
+          : [];
+        const padded =
+          barOffset > 0 ? [...Array(barOffset).fill(null), ...values] : values;
+        return {
+          title: String(p.title || 'Plot'),
+          color: String(p.color || '#f0b90b'),
+          values: padded,
+        };
+      }),
+      hlines: (result.hlines || []).map((h) => ({
+        price: Number(h.price),
+        color: String(h.color || '#94a3b8'),
+      })),
+      shapes: (result.shapes || []).slice(0, 8).map((s) => ({
+        title: String(s.title || 'shape'),
+        flags: Array.isArray(s.flags)
+          ? s.flags.map((v) => (v ? 1 : 0))
+          : [],
+      })),
+      drawings: remapDrawings.slice(0, 400).map((d) => ({
+        type: String(d.type || 'zone'),
+        tone: d.tone === 'bear' || d.tone === 'bull' ? d.tone : 'neutral',
+        label: String(d.label || ''),
+        p1: Number.isFinite(Number(d.p1)) ? Number(d.p1) : undefined,
+        p2: Number.isFinite(Number(d.p2)) ? Number(d.p2) : undefined,
+        i1: Number.isFinite(Number(d.i1)) ? Number(d.i1) : undefined,
+        i2: Number.isFinite(Number(d.i2)) ? Number(d.i2) : undefined,
+        color: d.color ? String(d.color) : undefined,
+        borderColor: d.borderColor ? String(d.borderColor) : undefined,
+        fillColor: d.fillColor
+          ? String(d.fillColor)
+          : d.bgcolor
+            ? String(d.bgcolor)
+            : undefined,
+        lineStyle: d.lineStyle === 'dotted' ? 'dotted' : 'solid',
+      })),
+      warnings,
+      ...(fatal ? { error: fatal } : {}),
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not run draft Pine Script');
+  }
+});
+
+/**
  * POST /api/app-auth/indicators/:id/run
  * Execute stored Pine on OHLC bars. Returns plot series only — never pineSource.
  */
