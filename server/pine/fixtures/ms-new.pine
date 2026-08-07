@@ -1,0 +1,10 @@
+//@version=5
+indicator("t")
+type ms
+    float[] p
+    int[] n
+    float[] l
+a = array.new_float()
+array.push(a, 1)
+b = ms.new(a, array.new_int(), array.new_float())
+plot(b.p.size())

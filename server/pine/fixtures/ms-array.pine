@@ -1,0 +1,11 @@
+//@version=5
+indicator("t")
+type ms
+    float[] p
+    int[] n
+    float[] l
+structure(bool mtf) =>
+    var ms up = ms.new(array.new<float>(), array.new<int>(), array.new<float>())
+    up.p.unshift(1.5)
+    up.p.size()
+plot(structure(false))

@@ -51,6 +51,7 @@ import {
   computeWolfPulse,
   computeWolfRibbon,
   computeWolfSmc,
+  isWolfSmcLabel,
   isWolfStudyId,
   resolveWolfRecipe,
   wolfCmsIdFromStudy,
@@ -950,6 +951,7 @@ export default function NativeChatChart({
           lineStyle?: 'solid' | 'dotted';
         }>;
         version: number;
+        nativeSmc?: boolean;
       }
     >();
     const pinePlotInflight = new Set<string>();
@@ -1432,17 +1434,21 @@ export default function NativeChatChart({
                 close: b.close,
                 volume: b.volume,
               }));
-              void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
+                  void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
                 .then((result) => {
+                  const pineDrawings = result.drawings || [];
+                  const useNativeSmcFallback =
+                    isWolfSmcLabel(id, title) && pineDrawings.length === 0;
                   pinePlotCache.set(cacheKey, {
                     tip: tipKey,
                     plots: result.plots,
                     hlines: result.hlines,
-                    drawings: result.drawings || [],
+                    drawings: pineDrawings,
                     version: result.version,
+                    nativeSmc: useNativeSmcFallback,
                   });
-                  if (result.drawings?.length) {
-                    const chartShapes: ChartShape[] = result.drawings.map((s) => {
+                  if (pineDrawings.length) {
+                    const chartShapes: ChartShape[] = pineDrawings.map((s) => {
                       const x1 =
                         typeof s.i1 === 'number' && source[s.i1]
                           ? barTimeSec(source[s.i1].time)
@@ -1466,13 +1472,81 @@ export default function NativeChatChart({
                       };
                     });
                     queueMicrotask(() => setStudyShapes(chartShapes));
+                  } else if (useNativeSmcFallback) {
+                    const r = computeWolfSmc(source, 5);
+                    const chartShapes: ChartShape[] = r.shapes.map((s: WolfSmcShape) => {
+                      const x1 =
+                        typeof s.i1 === 'number' && source[s.i1]
+                          ? barTimeSec(source[s.i1].time)
+                          : undefined;
+                      const x2 =
+                        typeof s.i2 === 'number' && source[s.i2]
+                          ? barTimeSec(source[s.i2].time)
+                          : typeof s.i1 === 'number' &&
+                              source[Math.min(source.length - 1, (s.i1 || 0) + 12)]
+                            ? barTimeSec(
+                                source[Math.min(source.length - 1, (s.i1 || 0) + 12)].time,
+                              )
+                            : undefined;
+                      return {
+                        type: s.type,
+                        tone: s.tone,
+                        label: s.label,
+                        p1: s.p1,
+                        p2: s.p2,
+                        x1,
+                        x2,
+                        color: s.color,
+                        borderColor: s.borderColor,
+                        fillColor: s.fillColor,
+                        lineStyle: s.lineStyle,
+                      };
+                    });
+                    queueMicrotask(() => setStudyShapes(chartShapes));
                   }
                   if (viewRef.current && applyRef.current) {
                     applyRef.current(viewRef.current, false);
                   }
                 })
                 .catch(() => {
-                  /* keep last good plots */
+                  if (isWolfSmcLabel(id, title)) {
+                    const r = computeWolfSmc(source, 5);
+                    pinePlotCache.set(cacheKey, {
+                      tip: tipKey,
+                      plots: [],
+                      hlines: [],
+                      drawings: [],
+                      version: 0,
+                      nativeSmc: true,
+                    });
+                    const chartShapes: ChartShape[] = r.shapes.map((s: WolfSmcShape) => {
+                      const x1 =
+                        typeof s.i1 === 'number' && source[s.i1]
+                          ? barTimeSec(source[s.i1].time)
+                          : undefined;
+                      const x2 =
+                        typeof s.i2 === 'number' && source[s.i2]
+                          ? barTimeSec(source[s.i2].time)
+                          : undefined;
+                      return {
+                        type: s.type,
+                        tone: s.tone,
+                        label: s.label,
+                        p1: s.p1,
+                        p2: s.p2,
+                        x1,
+                        x2,
+                        color: s.color,
+                        borderColor: s.borderColor,
+                        fillColor: s.fillColor,
+                        lineStyle: s.lineStyle,
+                      };
+                    });
+                    queueMicrotask(() => setStudyShapes(chartShapes));
+                    if (viewRef.current && applyRef.current) {
+                      applyRef.current(viewRef.current, false);
+                    }
+                  }
                 })
                 .finally(() => {
                   pinePlotInflight.delete(`${cacheKey}|${tipKey}`);
@@ -1524,9 +1598,11 @@ export default function NativeChatChart({
             );
           }
           const primary = plots[0];
-          const detail = primary
-            ? `Pine v${cached?.version || ''} · ${primary.title}`
-            : 'Running Pine…';
+          const detail = cached?.nativeSmc
+            ? 'SMC · native fallback'
+            : primary
+              ? `Pine v${cached?.version || ''} · ${primary.title}`
+              : 'Running Pine…';
           return [
             {
               studyId: id,

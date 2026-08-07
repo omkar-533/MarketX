@@ -14,6 +14,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server.mjs",
+    "pine:smoke": "node server/pine/smoke.mjs",
     "start:api": "node server.mjs",
     "start:prod": "node server.mjs",
     "render:sync:fyers": "node scripts/sync-render-fyers.mjs",

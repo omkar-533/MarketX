@@ -1,0 +1,10 @@
+//@version=5
+indicator("Wolf FVG Box Fixture", overlay=true)
+bullFvg = low > high[2] and close > open
+if bullFvg
+    box.new(left=bar_index[2], top=low, right=bar_index, bottom=high[2], border_color=color.green, bgcolor=color.new(color.green, 80))
+    label.new(bar_index, high, text="FVG", color=color.green)
+bearFvg = high < low[2] and close < open
+if bearFvg
+    box.new(left=bar_index[2], top=low[2], right=bar_index, bottom=high, border_color=color.red, bgcolor=color.new(color.red, 80))
+plot(close, title="Close", color=color.blue)

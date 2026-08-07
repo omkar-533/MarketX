@@ -689,7 +689,15 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
         ? body.inputs
         : {};
 
-    const result = runPineScript(pine, bars, inputs);
+    const timeLimitMs = Math.min(
+      30000,
+      Math.max(1000, Number(body.timeLimitMs) || 8000),
+    );
+    const result = runPineScript(pine, bars, inputs, {
+      maxBars: 5000,
+      timeLimitMs,
+      maxDrawings: 200,
+    });
     const overlay =
       typeof body.overlay === 'boolean'
         ? body.overlay
@@ -716,7 +724,7 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
           ? s.flags.map((v) => (v ? 1 : 0))
           : [],
       })),
-      drawings: (result.drawings || []).slice(0, 60).map((d) => ({
+      drawings: (result.drawings || []).slice(0, 200).map((d) => ({
         type: String(d.type || 'zone'),
         tone: d.tone === 'bear' || d.tone === 'bull' ? d.tone : 'neutral',
         label: String(d.label || ''),
@@ -727,9 +735,10 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
         color: d.color ? String(d.color) : undefined,
         borderColor: d.borderColor ? String(d.borderColor) : undefined,
         fillColor: d.fillColor ? String(d.fillColor) : undefined,
+        bgcolor: d.bgcolor ? String(d.bgcolor) : undefined,
         lineStyle: d.lineStyle === 'dotted' ? 'dotted' : 'solid',
       })),
-      warnings: Array.isArray(result.warnings) ? result.warnings.slice(0, 20) : [],
+      warnings: Array.isArray(result.warnings) ? result.warnings.slice(0, 40) : [],
     });
   } catch (err) {
     return failed(res, err, 'Could not run Pine Script');

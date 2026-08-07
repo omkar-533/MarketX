@@ -1,0 +1,14 @@
+//@version=5
+indicator("Mini Structure", overlay=true)
+ph = ta.pivothigh(high, 2, 2)
+pl = ta.pivotlow(low, 2, 2)
+var float lastPh = na
+var float lastPl = na
+if not na(ph)
+    lastPh := ph
+    line.new(bar_index[2], ph, bar_index, ph, color=color.red)
+if not na(pl)
+    lastPl := pl
+    line.new(bar_index[2], pl, bar_index, pl, color=color.green)
+plot(lastPh, title="Last PH", color=color.red)
+plot(lastPl, title="Last PL", color=color.green)

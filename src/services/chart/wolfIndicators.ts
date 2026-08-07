@@ -422,21 +422,24 @@ export function computeWolfClustersVp(
   return { assignments: assignmentsOut, clusters };
 }
 
+/** True when a study title/id looks like Smart Money Concepts. */
+export function isWolfSmcLabel(id: string, title = ''): boolean {
+  const label = `${id} ${title} ${wolfStudyLabel(id)}`.toLowerCase();
+  return (
+    id === 'wolf_smc' ||
+    /smart\s*money|\bsmc\b|order\s*block|fair\s*value|\bfvg\b|liquidity/.test(label)
+  );
+}
+
 /** Resolve recipe for any wolf_* id (known presets or default ribbon). */
 export function resolveWolfRecipe(
   id: string,
 ): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' | 'pine' | 'smc' {
   const key = id.toLowerCase();
-  const label = `${id} ${wolfStudyLabel(id)}`.toLowerCase();
-  // SMC titles (CMS Pine or preset) → native SMC pack that draws zones like TV.
-  if (
-    id === 'wolf_smc' ||
-    /smart\s*money|\bsmc\b|order\s*block|fair\s*value|\bfvg\b|liquidity/.test(label)
-  ) {
-    return 'smc';
-  }
-  // Custom Terminal→Wolf CMS rows run through the Pine engine (exact source, server-side).
+  // CMS indicators (including Professional SMC) → Pine engine first; chart falls back to native SMC.
   if (key.startsWith('wolf_cms_') || Boolean(wolfCmsIdFromStudy(id))) return 'pine';
+  // Built-in preset only — native structure/FVG/OB pack.
+  if (id === 'wolf_smc' || isWolfSmcLabel(id)) return 'smc';
   if (id === 'wolf_cfd' || key.includes('confluence') || key.includes('cfd')) return 'cfd';
   if (
     id === 'wolf_clusters_vp' ||

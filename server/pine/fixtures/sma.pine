@@ -1,0 +1,5 @@
+//@version=5
+indicator("Wolf SMA Fixture", overlay=true)
+len = input.int(14, "Length")
+s = ta.sma(close, len)
+plot(s, title="SMA", color=color.yellow)
