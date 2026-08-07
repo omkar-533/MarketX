@@ -44,7 +44,6 @@ import {
   type IndicatorFav,
 } from '../../services/terminalIndicatorFavorites';
 import {
-  WOLF_NATIVE_PRESETS,
   isWolfStudyId,
   wolfStudyIdFor,
   rememberWolfStudyTitle,
@@ -170,7 +169,7 @@ export default function TerminalTopBar({
     return wolfItems.filter((item) => ids.has(item.id));
   }, [favorites, wolfItems]);
 
-  /** Native Wolf packs + CMS titles — every row plots on the Terminal chart. */
+  /** CMS Wolf indicators only — built-in packs stay as engines, not list rows. */
   const wolfRows = useMemo(() => {
     const rows: {
       key: string;
@@ -183,31 +182,11 @@ export default function TerminalTopBar({
     }[] = [];
     const seen = new Set<string>();
 
-    for (const preset of WOLF_NATIVE_PRESETS) {
-      seen.add(preset.id);
-      rows.push({
-        key: preset.id,
-        studyId: preset.id,
-        title: preset.label,
-        description: 'Plots on Terminal chart',
-        favId: preset.id,
-      });
-    }
-
     for (const item of wolfItems) {
       const studyId = wolfStudyIdFor(item);
-      if (seen.has(studyId)) {
-        // Prefer CMS title on the matching native pack row
-        const existing = rows.find((r) => r.studyId === studyId);
-        if (existing) {
-          existing.title = item.title || existing.title;
-          existing.description = sanitizeIndicatorDescription(item.description);
-          existing.favId = item.id;
-          existing.cmsId = item.id;
-        }
-        continue;
-      }
+      if (seen.has(studyId) || seen.has(item.id)) continue;
       seen.add(studyId);
+      seen.add(item.id);
       rows.push({
         key: item.id,
         studyId,
@@ -780,36 +759,6 @@ export default function TerminalTopBar({
                           </div>
                         );
                       })}
-                      {favorites
-                        .filter((f) => f.kind === 'wolf' && WOLF_NATIVE_PRESETS.some((p) => p.id === f.id))
-                        .filter((f) => !favouriteWolf.some((item) => wolfStudyIdFor(item) === f.id || item.id === f.id))
-                        .map((f) => {
-                          const preset = WOLF_NATIVE_PRESETS.find((p) => p.id === f.id)!;
-                          const on = activeWolfStudies.includes(preset.id);
-                          return (
-                            <div key={`wolf-preset-${preset.id}`} className="wolf-term__ind-row">
-                              <label className="wolf-term__ind-row-main">
-                                <input
-                                  type="checkbox"
-                                  checked={on}
-                                  onChange={() => toggleWolfStudy(preset.id, preset.label)}
-                                />
-                                <span className="wolf-term__ind-copy">
-                                  <b>{preset.label}</b>
-                                  <em>Wolf · plots on chart</em>
-                                </span>
-                              </label>
-                              <button
-                                type="button"
-                                className="wolf-term__ind-star on"
-                                title="Remove from favourites"
-                                onClick={() => toggleFav('wolf', preset.id)}
-                              >
-                                <Star className="h-3.5 w-3.5" fill="currentColor" />
-                              </button>
-                            </div>
-                          );
-                        })}
                     </>
                   ) : (
                     <div className="wolf-term__ind-empty">
