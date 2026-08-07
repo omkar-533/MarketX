@@ -43,12 +43,45 @@ import { startFyersSocketClient } from '../services/fyersSocketClient';
 import { subscribeLiveSymbols } from '../services/marketTickStream';
 import { subscribeMarketLive } from '../services/marketLiveStore';
 import { getLiveQuote, refreshFnoLiveQuotesAsync } from '../services/symbolLiveService';
+import DashInfoTip, { DashInfoLabel } from './ui/DashInfoTip';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
 type MarketScope = 'all' | 'india' | 'forex' | 'crypto';
+
+const SCOPE_TIPS: Record<MarketScope, string> = {
+  all: 'Poora multi-market overview — India, Forex/Metals aur Crypto ek saath.',
+  india: 'Sirf India equities & indices (NSE/BSE) — NIFTY, sectors, movers.',
+  forex: 'Currency pairs aur metals (USDINR, EURUSD, Gold, etc.).',
+  crypto: 'Major cryptocurrencies vs USDT — BTC, ETH aur alts.',
+};
+
+const BOX_TIPS = {
+  nifty: 'NIFTY 50 — India ke top 50 stocks ka benchmark index. Live LTP aur din ka % badlav.',
+  banknifty: 'BANK NIFTY — banking stocks ka index. F&O traders ke liye key benchmark.',
+  usdinr: 'USD/INR — dollar vs rupee. Import/export aur FII flow ke mood ka signal.',
+  btc: 'Bitcoin vs USDT — global crypto risk appetite ka leading pulse.',
+  sentiment:
+    'India Sentiment score — NIFTY move, PCR aur market breadth se estimated bias (0–100).',
+  pcr: 'Put-Call Ratio (OI) — puts vs calls open interest. >1 aksar bullish hedge / pe buying hint.',
+  eurusd: 'EUR/USD — dollar strength vs euro. Global FX mood ka common pair.',
+  quick:
+    'Seedha tools pe jaao — Option Chain, OI Intelligence, ya Global Markets page.',
+  feed: 'Live WebSocket / reconnect status — ticks aur quotes yahan se refresh hote hain.',
+  breadth: 'Advances vs Declines — kitne stocks up/down. Strong advance = bullish breadth.',
+  bias: 'Live Bias — short India trade signals (BUY/SELL reason ke saath).',
+  sectors: 'Sector Performance — aaj kis industry group mein zyada force hai.',
+  gainers: 'Top Gainers — aaj % ke hisaab se sabse tez upar jaane wale stocks.',
+  losers: 'Top Losers — aaj % ke hisaab se sabse tez neeche jaane wale stocks.',
+  active: 'Most Active — volume / participation ke hisaab se sabse busy stocks.',
+  indiaSec: 'India equities desk — indices, movers, breadth aur sector heatmap.',
+  forexSec: 'Forex & metals tape — major pairs aur XAU (gold) live quotes.',
+  cryptoSec: 'Crypto tape — major coins live vs USDT.',
+  indexCard: 'Index LTP, din ka change, high/low aur volume snapshot.',
+  quoteCard: 'Live price, day change, aur session high/low for this instrument.',
+} as const;
 
 const HIDDEN_INDEX_SYMBOLS = new Set(['NIFTYNXT50']);
 
@@ -183,8 +216,9 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider dash-info-label">
             {index.symbol}
+            <DashInfoTip tip={BOX_TIPS.indexCard} title={index.name || index.symbol} dense />
           </span>
           <p className="text-[9px] text-slate-600 truncate">{index.name}</p>
         </div>
@@ -255,8 +289,9 @@ function QuoteCard({
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider dash-info-label">
               {label}
+              <DashInfoTip tip={BOX_TIPS.quoteCard} title={name || label} dense />
             </span>
             <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded border border-[#1a1f2e] text-slate-500">
               {badge}
@@ -302,6 +337,8 @@ function MoversPanel({
   type: 'gainers' | 'losers' | 'active';
 }) {
   const title = type === 'gainers' ? 'Top Gainers' : type === 'losers' ? 'Top Losers' : 'Most Active';
+  const tip =
+    type === 'gainers' ? BOX_TIPS.gainers : type === 'losers' ? BOX_TIPS.losers : BOX_TIPS.active;
   const Icon = type === 'gainers' ? TrendingUp : type === 'losers' ? TrendingDown : Flame;
   const accent =
     type === 'gainers' ? 'text-emerald-400' : type === 'losers' ? 'text-red-400' : 'text-orange-400';
@@ -310,7 +347,9 @@ function MoversPanel({
     <div className="app-card p-3.5 h-full flex flex-col min-h-[280px]">
       <h3 className={`text-xs font-bold mb-2.5 flex items-center gap-1.5 ${accent}`}>
         <Icon className="w-3.5 h-3.5" />
-        {title}
+        <DashInfoLabel tip={tip} title={title}>
+          {title}
+        </DashInfoLabel>
       </h3>
       <div className="space-y-0.5 flex-1">
         {stocks.slice(0, 6).map((stock, i) => (
@@ -349,7 +388,9 @@ function SectorGrid({ sectors }: { sectors: SectorHeatmapItem[] }) {
     <div className="app-card p-3.5 h-full">
       <h3 className="text-xs font-bold text-[#d4af37] mb-2.5 flex items-center gap-1.5">
         <BarChart3 className="w-3.5 h-3.5" />
-        Sector Performance
+        <DashInfoLabel tip={BOX_TIPS.sectors} title="Sector Performance">
+          Sector Performance
+        </DashInfoLabel>
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {list.map((s) => (
@@ -596,13 +637,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </span>
                 <span className="text-[10px] text-slate-500">Multi-market pulse</span>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1 ${
                     connected
                       ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
                       : 'border-gold/30 bg-gold/10 text-gold'
                   }`}
                 >
                   {feedLabel}
+                  <DashInfoTip tip={BOX_TIPS.feed} title="Live feed" dense />
                 </span>
                 <span className="text-[10px] text-slate-600">
                   Updated{' '}
@@ -628,26 +670,31 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ['crypto', 'Crypto', Bitcoin],
                 ] as const
               ).map(([id, label, Icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setScope(id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border transition-colors ${
-                    scope === id
-                      ? 'bg-[#d4af37] text-[#0b0e17] border-[#d4af37]'
-                      : 'bg-[#121520] text-slate-400 border-[#1a1f2e] hover:text-slate-200'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
+                <span key={id} className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setScope(id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border transition-colors ${
+                      scope === id
+                        ? 'bg-[#d4af37] text-[#0b0e17] border-[#d4af37]'
+                        : 'bg-[#121520] text-slate-400 border-[#1a1f2e] hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                  </button>
+                  <DashInfoTip tip={SCOPE_TIPS[id]} title={label} dense />
+                </span>
               ))}
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
-              <div className="text-[9px] uppercase text-slate-500 font-semibold">NIFTY 50</div>
+              <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
+                NIFTY 50
+                <DashInfoTip tip={BOX_TIPS.nifty} title="NIFTY 50" dense />
+              </div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
                 {nifty ? nifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}
               </div>
@@ -660,7 +707,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
-              <div className="text-[9px] uppercase text-slate-500 font-semibold">BANK NIFTY</div>
+              <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
+                BANK NIFTY
+                <DashInfoTip tip={BOX_TIPS.banknifty} title="BANK NIFTY" dense />
+              </div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
                 {bankNifty
                   ? bankNifty.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -675,7 +725,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
-              <div className="text-[9px] uppercase text-slate-500 font-semibold">USD / INR</div>
+              <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
+                USD / INR
+                <DashInfoTip tip={BOX_TIPS.usdinr} title="USD / INR" dense />
+              </div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
                 {formatPrice(usdinr.price, 'USDINR')}
               </div>
@@ -688,7 +741,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
             <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
-              <div className="text-[9px] uppercase text-slate-500 font-semibold">BTC / USDT</div>
+              <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
+                BTC / USDT
+                <DashInfoTip tip={BOX_TIPS.btc} title="BTC / USDT" dense />
+              </div>
               <div className="text-xl font-bold text-white tabular-nums mt-1">
                 {formatPrice(btc.price, 'BTC')}
               </div>
@@ -706,7 +762,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
                 <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-[#d4af37]" /> India Sentiment
+                  <Zap className="w-3 h-3 text-[#d4af37]" />
+                  <DashInfoLabel tip={BOX_TIPS.sentiment} title="India Sentiment">
+                    India Sentiment
+                  </DashInfoLabel>
                 </div>
                 <div className="text-2xl font-bold text-[#d4af37] tabular-nums">
                   {clampedSentiment}%
@@ -720,8 +779,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               </div>
               <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold dash-info-label">
                   PCR (OI)
+                  <DashInfoTip tip={BOX_TIPS.pcr} title="PCR (OI)" dense />
                 </div>
                 <div
                   className={`text-2xl font-bold tabular-nums ${oiSnap.pcr > 1 ? 'text-emerald-400' : 'text-red-400'}`}
@@ -731,8 +791,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <div className="text-[10px] text-slate-400 font-semibold">{pcrBias}</div>
               </div>
               <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold dash-info-label">
                   EUR / USD
+                  <DashInfoTip tip={BOX_TIPS.eurusd} title="EUR / USD" dense />
                 </div>
                 <div className="text-xl font-bold text-white tabular-nums">
                   {formatPrice(eurusd?.price ?? 0, 'EURUSD')}
@@ -746,8 +807,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               </div>
               <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px] gap-2">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold dash-info-label">
                   Quick links
+                  <DashInfoTip tip={BOX_TIPS.quick} title="Quick links" dense />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <button
@@ -783,7 +845,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <section className="space-y-3">
           <div className="flex items-center gap-2 px-0.5">
             <IndianRupee className="w-4 h-4 text-[#d4af37]" />
-            <h2 className="text-sm font-bold text-white">India · NSE / BSE</h2>
+            <h2 className="text-sm font-bold text-white">
+              <DashInfoLabel tip={BOX_TIPS.indiaSec} title="India · NSE / BSE">
+                India · NSE / BSE
+              </DashInfoLabel>
+            </h2>
           </div>
           <div
             className="grid gap-2.5"
@@ -805,7 +871,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div className="app-card p-3.5 h-full min-h-[160px]">
                 <h3 className="text-xs font-bold text-[#d4af37] mb-2.5 flex items-center gap-1.5">
                   <BarChart3 className="w-3.5 h-3.5" />
-                  Market Breadth
+                  <DashInfoLabel tip={BOX_TIPS.breadth} title="Market Breadth">
+                    Market Breadth
+                  </DashInfoLabel>
                 </h3>
                 <div className="space-y-2">
                   {[
@@ -833,7 +901,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
 
               <div className="app-card p-3.5 h-full min-h-[160px]">
-                <h3 className="text-xs font-bold text-emerald-400 mb-2.5">Live Bias</h3>
+                <h3 className="text-xs font-bold text-emerald-400 mb-2.5">
+                  <DashInfoLabel tip={BOX_TIPS.bias} title="Live Bias">
+                    Live Bias
+                  </DashInfoLabel>
+                </h3>
                 {oiSnap.signals.length > 0 ? (
                   <div className="space-y-1">
                     {oiSnap.signals.map((s) => {
@@ -879,7 +951,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-sky-400" />
-              <h2 className="text-sm font-bold text-white">Forex & Metals</h2>
+              <h2 className="text-sm font-bold text-white">
+                <DashInfoLabel tip={BOX_TIPS.forexSec} title="Forex & Metals">
+                  Forex & Metals
+                </DashInfoLabel>
+              </h2>
             </div>
             <div className="flex flex-wrap gap-2 text-[10px]">
               <span className="px-2 py-1 rounded border border-[#1a1f2e] text-slate-400">
@@ -927,7 +1003,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
             <div className="flex items-center gap-2">
               <Bitcoin className="w-4 h-4 text-orange-400" />
-              <h2 className="text-sm font-bold text-white">Crypto</h2>
+              <h2 className="text-sm font-bold text-white">
+                <DashInfoLabel tip={BOX_TIPS.cryptoSec} title="Crypto">
+                  Crypto
+                </DashInfoLabel>
+              </h2>
             </div>
             <div className="flex flex-wrap gap-2 text-[10px]">
               <span className="px-2 py-1 rounded border border-[#1a1f2e] text-slate-400">

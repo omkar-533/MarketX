@@ -2820,5 +2820,34 @@ html[data-theme="light"] .wolf-term__layout-btn.open {
   color: #2563eb !important;
 }
 
+html[data-theme="light"] .dash-info__btn {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .dash-info__btn:hover,
+html[data-theme="light"] .dash-info.is-open .dash-info__btn,
+html[data-theme="light"] .dash-info__btn:focus-visible {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .dash-info__pop {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .dash-info__pop::after {
+  border-top-color: #ffffff !important;
+}
+
+html[data-theme="light"] .dash-info__pop-title {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .dash-info__pop-body {
+  color: #475569 !important;
+}
+
 
 
