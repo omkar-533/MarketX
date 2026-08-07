@@ -2251,11 +2251,6 @@ html[data-theme="light"] .wolf-term__chart {
   background: #ffffff !important;
 }
 
-html[data-theme="light"] .wolf-term__trade {
-  background: #ffffff !important;
-  border-color: #d5dee9 !important;
-}
-
 html[data-theme="light"] .wolf-term__trade-mid,
 html[data-theme="light"] .wolf-term__rp-empty,
 html[data-theme="light"] .wolf-term__watch-empty,
@@ -2456,10 +2451,22 @@ html[data-theme="light"] .mai-nc__flyout-check {
 }
 
 html[data-theme="light"] .mai-nc__legend {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
-  color: #0f172a !important;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: #334155 !important;
+  text-shadow:
+    0 0 6px rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(255, 255, 255, 0.9),
+    0 0 1px rgba(255, 255, 255, 1) !important;
+}
+
+html[data-theme="light"] .wolf-term__chart .mai-nc__legend {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 html[data-theme="light"] .mai-nc__legend-sym,
@@ -2468,16 +2475,36 @@ html[data-theme="light"] .mai-nc__study-name {
   color: #0f172a !important;
 }
 
-html[data-theme="light"] .mai-nc__legend-tf,
+html[data-theme="light"] .mai-nc__legend-tf {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #475569 !important;
+  text-shadow: none !important;
+}
+
 html[data-theme="light"] .mai-nc__legend-ohlc,
 html[data-theme="light"] .mai-nc__study-detail {
-  color: #64748b !important;
+  color: #475569 !important;
+}
+
+/* Legend Buy/Sell chip — no outer white panel rectangle */
+html[data-theme="light"] .wolf-term__trade--legend {
+  background: transparent !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .wolf-term__trade:not(.wolf-term__trade--legend) {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
 }
 
 html[data-theme="light"] .mai-nc__study-chip {
-  background: rgba(15, 23, 42, 0.04) !important;
-  border-color: #d5dee9 !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
   color: #0f172a !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(4px);
 }
 
 html[data-theme="light"] .mai-nc__study-chip.is-open,
