@@ -349,10 +349,10 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         <div>
           <h2 className="text-lg font-bold text-[#d4af37]">Indicators</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            Add / edit / hide indicators. Paste Pine Script here (admin only). Members never see
-            source — only settings parsed from <code className="text-slate-400">input.*</code>. Optional
-            TradingView invite link + how-to video. Drag to reorder ({TRIAL_DAYS}-day demo, then desk
-            approval for invite unlock).
+            Manage invite links, how-to videos, images, publish / reorder. Create Pine Script
+            indicators in <b className="text-slate-300">Terminal → Indicators → Wolf → Create
+            Indicator</b> (admin only). Members never see source — encrypted at rest; only{' '}
+            <code className="text-slate-400">input.*</code> settings are exposed.
           </p>
         </div>
         <button

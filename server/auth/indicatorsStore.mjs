@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import { getAdminClient, storeError } from './supabaseAdmin.mjs';
 import { readJsonFile, writeJsonFile } from './jsonStore.mjs';
 import { defaultsFromSettings, parsePineSettings } from './pineSettings.mjs';
+import { decryptPineSource, encryptPineSource } from './pineCrypto.mjs';
 
 const TABLE = 'app_indicators';
 const FILE = 'app-indicators.json';
@@ -57,7 +58,11 @@ function rowHowToVideo(row) {
 }
 
 function rowPineSource(row) {
-  return String(row?.pine_source ?? row?.pineSource ?? '').trim();
+  return decryptPineSource(String(row?.pine_source ?? row?.pineSource ?? '').trim());
+}
+
+function storePineSource(plain) {
+  return encryptPineSource(plain);
 }
 
 function fromRow(row, signedUrl = null) {
@@ -265,7 +270,7 @@ export async function createIndicator({
     description: fields.description,
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
-    pine_source: fields.pineSource,
+    pine_source: storePineSource(fields.pineSource),
     code: fields.link || 'pine',
     image_path: media.path,
     image_data: media.data,
@@ -332,7 +337,10 @@ export async function createIndicator({
     await db.from(TABLE).update({ link: fields.link }).eq('id', data.id);
   }
   if (error) throw storeError(error);
-  return fromRow({ ...data, pine_source: fields.pineSource || data?.pine_source }, await signImage(db, data));
+  return fromRow(
+    { ...data, pine_source: storePineSource(fields.pineSource) || data?.pine_source },
+    await signImage(db, data),
+  );
 }
 
 function pickLink(patchLink, currentLink) {
@@ -417,7 +425,7 @@ export async function updateIndicator(id, patch = {}) {
     description: fields.description,
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
-    pine_source: fields.pineSource,
+    pine_source: storePineSource(fields.pineSource),
     code: fields.link || 'pine',
     sort_order:
       patch.sortOrder === undefined ? current.sortOrder : Number(patch.sortOrder) || 0,
@@ -508,7 +516,7 @@ export async function updateIndicator(id, patch = {}) {
   }
 
   return fromRow(
-    { ...data, pine_source: fields.pineSource || data?.pine_source },
+    { ...data, pine_source: storePineSource(fields.pineSource) || data?.pine_source },
     await signImage(db, data),
   );
 }

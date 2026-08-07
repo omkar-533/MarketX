@@ -6,9 +6,12 @@ import {
   ChevronDown,
   LayoutGrid,
   Maximize2,
+  Pencil,
+  Plus,
   RefreshCw,
   Search,
   Star,
+  Trash2,
   X,
 } from 'lucide-react';
 import { AI_PRODUCT_NAME } from '../../constants/brandLabels';
@@ -26,7 +29,14 @@ import {
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
 import TerminalSymbolSearch from './TerminalSymbolSearch';
-import { listIndicators, type IndicatorItem } from '../../services/indicatorLibrary';
+import TerminalWolfCreatePanel from './TerminalWolfCreatePanel';
+import {
+  adminDeleteIndicator,
+  adminListIndicators,
+  listIndicators,
+  type IndicatorItem,
+} from '../../services/indicatorLibrary';
+import { loadAppSession } from '../../services/appInviteAuth';
 import {
   isIndicatorFavorite,
   loadIndicatorFavorites,
@@ -103,6 +113,10 @@ export default function TerminalTopBar({
   const [wolfItems, setWolfItems] = useState<IndicatorItem[]>([]);
   const [wolfLoading, setWolfLoading] = useState(false);
   const [wolfError, setWolfError] = useState<string | null>(null);
+  const [wolfCreateOpen, setWolfCreateOpen] = useState(false);
+  const [wolfEditing, setWolfEditing] = useState<IndicatorItem | null>(null);
+  const [wolfAdminBusy, setWolfAdminBusy] = useState<string | null>(null);
+  const isAdmin = loadAppSession()?.user?.role === 'admin';
 
   const styleRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -163,6 +177,8 @@ export default function TerminalTopBar({
       title: string;
       description: string;
       favId: string;
+      /** Present when backed by admin CMS indicator (editable). */
+      cmsId?: string;
     }[] = [];
     const seen = new Set<string>();
 
@@ -187,6 +203,7 @@ export default function TerminalTopBar({
           existing.description =
             item.description?.slice(0, 140) || existing.description;
           existing.favId = item.id;
+          existing.cmsId = item.id;
         }
         continue;
       }
@@ -199,6 +216,7 @@ export default function TerminalTopBar({
           ? item.description.slice(0, 140) + (item.description.length > 140 ? '…' : '')
           : 'Wolf pack — plots on Terminal chart',
         favId: item.id,
+        cmsId: item.id,
       });
     }
 
@@ -212,21 +230,11 @@ export default function TerminalTopBar({
     );
   }, [wolfItems, indQuery]);
 
-  useEffect(() => {
-    if (indicatorsOpen) {
-      setIndCategory('wolf');
-      setIndQuery('');
-    }
-  }, [indicatorsOpen]);
-
-  useEffect(() => {
-    if (!indicatorsOpen) return;
-    let cancelled = false;
+  const refreshWolfList = () => {
     setWolfLoading(true);
     setWolfError(null);
     void listIndicators()
       .then((items) => {
-        if (cancelled) return;
         const published = items.filter((i) => i.published !== false);
         setWolfItems(published);
         for (const item of published) {
@@ -236,18 +244,56 @@ export default function TerminalTopBar({
         }
       })
       .catch((err) => {
-        if (!cancelled) {
-          setWolfError(err instanceof Error ? err.message : 'Could not load Wolf indicators');
-          setWolfItems([]);
-        }
+        setWolfError(err instanceof Error ? err.message : 'Could not load Wolf indicators');
+        setWolfItems([]);
       })
-      .finally(() => {
-        if (!cancelled) setWolfLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => setWolfLoading(false));
+  };
+
+  useEffect(() => {
+    if (indicatorsOpen) {
+      setIndCategory('wolf');
+      setIndQuery('');
+    }
   }, [indicatorsOpen]);
+
+  useEffect(() => {
+    if (!indicatorsOpen) return;
+    refreshWolfList();
+  }, [indicatorsOpen]);
+
+  const openWolfCreate = () => {
+    setWolfEditing(null);
+    setWolfCreateOpen(true);
+  };
+
+  const openWolfEdit = async (cmsId: string) => {
+    setWolfAdminBusy(cmsId);
+    try {
+      const all = await adminListIndicators();
+      const hit = all.find((i) => i.id === cmsId);
+      if (!hit) throw new Error('Indicator not found');
+      setWolfEditing(hit);
+      setWolfCreateOpen(true);
+    } catch (err) {
+      setWolfError(err instanceof Error ? err.message : 'Could not load indicator for edit');
+    } finally {
+      setWolfAdminBusy(null);
+    }
+  };
+
+  const deleteWolfIndicator = async (cmsId: string, title: string) => {
+    if (!window.confirm(`Delete “${title}”? Members will lose this Wolf indicator.`)) return;
+    setWolfAdminBusy(cmsId);
+    try {
+      await adminDeleteIndicator(cmsId);
+      refreshWolfList();
+    } catch (err) {
+      setWolfError(err instanceof Error ? err.message : 'Could not delete indicator');
+    } finally {
+      setWolfAdminBusy(null);
+    }
+  };
 
   useEffect(() => {
     if (!styleOpen && !menuOpen && !indicatorsOpen && !layoutOpen) return;
@@ -334,7 +380,7 @@ export default function TerminalTopBar({
                     onExitApp?.();
                   }}
                 >
-                  Back to {AI_PRODUCT_NAME}
+                  Back to Dashboard
                 </button>
                 <button
                   type="button"
@@ -599,44 +645,85 @@ export default function TerminalTopBar({
                 ) : null}
 
                 {indCategory === 'wolf' ? (
-                  wolfLoading && !wolfRows.length ? (
-                    <div className="wolf-term__ind-empty">Loading Wolf indicators…</div>
-                  ) : wolfRows.length ? (
-                    wolfRows.map((row) => {
-                      const fav = isIndicatorFavorite(favorites, 'wolf', row.favId);
-                      const on = activeWolfStudies.includes(row.studyId);
-                      return (
-                        <div key={row.key} className="wolf-term__ind-row wolf-term__ind-row--wolf">
-                          <label className="wolf-term__ind-row-main">
-                            <input
-                              type="checkbox"
-                              checked={on}
-                              onChange={() => toggleWolfStudy(row.studyId, row.title)}
-                            />
-                            <span className="wolf-term__ind-copy">
-                              <b>{row.title}</b>
-                              <em>{row.description}</em>
-                            </span>
-                          </label>
-                          <button
-                            type="button"
-                            className={`wolf-term__ind-star ${fav ? 'on' : ''}`}
-                            title={fav ? 'Remove from favourites' : 'Add to favourites'}
-                            aria-label={fav ? 'Remove from favourites' : 'Add to favourites'}
-                            onClick={() => toggleFav('wolf', row.favId)}
-                          >
-                            <Star className="h-3.5 w-3.5" fill={fav ? 'currentColor' : 'none'} />
-                          </button>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="wolf-term__ind-empty">
-                      {wolfError
-                        ? `${wolfError} — native Wolf packs still available after reload.`
-                        : 'No Wolf indicators match your search.'}
-                    </div>
-                  )
+                  <>
+                    {isAdmin ? (
+                      <div className="wolf-term__ind-wolf-admin">
+                        <button
+                          type="button"
+                          className="wolf-term__ind-create"
+                          onClick={openWolfCreate}
+                          title="Create a Pine Script indicator for Wolf"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Create Indicator
+                        </button>
+                        <span>Admin only · source stays encrypted for members</span>
+                      </div>
+                    ) : null}
+                    {wolfLoading && !wolfRows.length ? (
+                      <div className="wolf-term__ind-empty">Loading Wolf indicators…</div>
+                    ) : wolfRows.length ? (
+                      wolfRows.map((row) => {
+                        const fav = isIndicatorFavorite(favorites, 'wolf', row.favId);
+                        const on = activeWolfStudies.includes(row.studyId);
+                        const busy = wolfAdminBusy === row.cmsId;
+                        return (
+                          <div key={row.key} className="wolf-term__ind-row wolf-term__ind-row--wolf">
+                            <label className="wolf-term__ind-row-main">
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={() => toggleWolfStudy(row.studyId, row.title)}
+                              />
+                              <span className="wolf-term__ind-copy">
+                                <b>{row.title}</b>
+                                <em>{row.description}</em>
+                              </span>
+                            </label>
+                            {isAdmin && row.cmsId ? (
+                              <div className="wolf-term__ind-admin-acts">
+                                <button
+                                  type="button"
+                                  className="wolf-term__ind-admin-btn"
+                                  title="Edit Pine Script (admin)"
+                                  disabled={busy}
+                                  onClick={() => void openWolfEdit(row.cmsId!)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="wolf-term__ind-admin-btn danger"
+                                  title="Delete indicator (admin)"
+                                  disabled={busy}
+                                  onClick={() => void deleteWolfIndicator(row.cmsId!, row.title)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={`wolf-term__ind-star ${fav ? 'on' : ''}`}
+                              title={fav ? 'Remove from favourites' : 'Add to favourites'}
+                              aria-label={fav ? 'Remove from favourites' : 'Add to favourites'}
+                              onClick={() => toggleFav('wolf', row.favId)}
+                            >
+                              <Star className="h-3.5 w-3.5" fill={fav ? 'currentColor' : 'none'} />
+                            </button>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="wolf-term__ind-empty">
+                        {wolfError
+                          ? `${wolfError} — native Wolf packs still available after reload.`
+                          : isAdmin
+                            ? 'No custom Wolf indicators yet — tap Create Indicator.'
+                            : 'No Wolf indicators match your search.'}
+                      </div>
+                    )}
+                  </>
                 ) : null}
 
                 {indCategory === 'favourites' ? (
@@ -746,6 +833,18 @@ export default function TerminalTopBar({
           </div>
         </div>
       ) : null}
+
+      <TerminalWolfCreatePanel
+        open={wolfCreateOpen}
+        editing={wolfEditing}
+        onClose={() => {
+          setWolfCreateOpen(false);
+          setWolfEditing(null);
+        }}
+        onSaved={() => {
+          refreshWolfList();
+        }}
+      />
 
       <TerminalSymbolSearch
         open={searchOpen}

@@ -18950,6 +18950,193 @@ body:has(.app-main--terminal-immersive) #root {
   color: #fff;
 }
 
+.wolf-term__ind-wolf-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem 0.35rem;
+  border-bottom: 1px solid var(--wt-border);
+}
+
+.wolf-term__ind-wolf-admin > span {
+  font-size: 0.65rem;
+  color: var(--wt-muted, #64748b);
+}
+
+.wolf-term__ind-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.12);
+  color: #e8c96a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wolf-term__ind-create:hover {
+  background: rgba(212, 175, 55, 0.2);
+}
+
+.wolf-term__ind-admin-acts {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.wolf-term__ind-admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wt-muted, #64748b);
+  cursor: pointer;
+}
+
+.wolf-term__ind-admin-btn:hover {
+  color: var(--wt-text);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.wolf-term__ind-admin-btn.danger:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.wolf-term__pine-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 8, 14, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.wolf-term__pine-sheet {
+  width: min(720px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--wt-border, #1a1f2e);
+  background: linear-gradient(180deg, #121722 0%, #0b0e17 100%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  overflow: auto;
+}
+
+.wolf-term__pine-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wolf-term__pine-head b {
+  display: block;
+  font-size: 1rem;
+  color: #f8fafc;
+}
+
+.wolf-term__pine-head em {
+  display: block;
+  margin-top: 0.15rem;
+  font-style: normal;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wolf-term__pine-field > span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.wolf-term__pine-field input,
+.wolf-term__pine-field textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #1a1f2e;
+  background: #0a0c12;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.wolf-term__pine-field textarea {
+  min-height: 280px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #a7f3d0;
+  resize: vertical;
+}
+
+.wolf-term__pine-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.wolf-term__pine-hint code {
+  color: #cbd5e1;
+}
+
+.wolf-term__pine-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #f87171;
+}
+
+.wolf-term__pine-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding-top: 0.25rem;
+}
+
+.wolf-term__pine-foot button {
+  height: 34px;
+  padding: 0 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #1a1f2e;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wolf-term__pine-foot button.primary {
+  border-color: #d4af37;
+  background: #d4af37;
+  color: #0b0e17;
+}
+
 .wolf-term__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
