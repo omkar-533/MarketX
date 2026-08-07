@@ -16,7 +16,7 @@ const CHUNK_SIZE = 40;
 const MAX_SYMBOLS = Math.max(8, Number(process.env.TV_MAX_SYMBOLS || 80));
 const HEARTBEAT_MS = 25_000;
 /** Re-poke quote_fast so TV does not hibernate subscribed symbols (FX/gold go quiet otherwise). */
-const QUOTE_FAST_PULSE_MS = 1_000;
+const QUOTE_FAST_PULSE_MS = 2_000;
 const STALE_TICK_MS = 180_000;
 const CONNECT_TIMEOUT_MS = 20_000;
 
@@ -323,12 +323,17 @@ function flushPendingSubscriptions() {
   for (let i = 0; i < add.length; i += CHUNK_SIZE) {
     const chunk = add.slice(i, i + CHUNK_SIZE);
     if (!chunk.length) continue;
-    // force_permission matches TV scraper clients and keeps delayed symbols live.
-    for (const s of chunk) {
-      send('quote_add_symbols', [quoteSession, s, { flags: ['force_permission'] }]);
-    }
+    // Batch add (same as before) — per-symbol force_permission starved qsd ticks on Render.
+    send('quote_add_symbols', [quoteSession, ...chunk]);
     send('quote_fast_symbols', [quoteSession, ...chunk]);
     chunk.forEach((s) => subscribedTv.add(s));
+  }
+}
+
+/** After reconnect, subscribedTv is cleared — re-queue active refs so poke/quotes resume. */
+function requeueActiveSymbols() {
+  for (const sym of symbolRefCount.keys()) {
+    pendingSymbols.add(sym);
   }
 }
 
@@ -379,6 +384,7 @@ function destroySocket() {
   quoteSession = '';
   connecting = false;
   subscribedTv.clear();
+  requeueActiveSymbols();
 }
 
 function scheduleReconnect() {
@@ -451,6 +457,7 @@ async function connectUpstream() {
       socket = null;
       quoteSession = '';
       subscribedTv.clear();
+      requeueActiveSymbols();
       if (!intentionalClose) {
         connectionStatus = 'reconnecting';
         emitStatus();
