@@ -413,6 +413,9 @@ export default function NativeChatChart({
   /** A slow reply for the previous instrument must never repaint the new one. */
   const requestRef = useRef(0);
   const barsRef = useRef<ChartBar[]>([]);
+  /** Keep latest callback without churning `load` identity (avoids reload flash on parent re-render). */
+  const onUnavailableRef = useRef(onUnavailable);
+  onUnavailableRef.current = onUnavailable;
   /** rAF id — coalesce legend React updates only; tip paints sync. */
   const liveRafRef = useRef(0);
   const liveStreamingRef = useRef(false);
@@ -433,8 +436,11 @@ export default function NativeChatChart({
       }
       const token = ++requestRef.current;
       if (!background) {
-        setBars([]);
-        setStatus('loading');
+        // Keep current candles visible while refetching — wiping to [] flashes "Loading…" on every
+        // parent re-render that previously recreated `load`. Only show loading on first paint.
+        if (!barsRef.current.length) {
+          setStatus('loading');
+        }
       }
       // Longer history so Wolf Mentor / pan-left still shows candles (not empty void).
       const range =
@@ -449,9 +455,11 @@ export default function NativeChatChart({
       if (!next.length) {
         // A background refresh coming back empty should not wipe a good chart.
         if (!background) {
-          setBars([]);
-          setStatus(res ? 'empty' : 'error');
-          onUnavailable?.();
+          if (!barsRef.current.length) {
+            setBars([]);
+            setStatus(res ? 'empty' : 'error');
+            onUnavailableRef.current?.();
+          }
         }
         return;
       }
@@ -469,8 +477,21 @@ export default function NativeChatChart({
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
     },
-    [apiSymbol, apiInterval, onUnavailable],
+    [apiSymbol, apiInterval],
   );
+
+  // Symbol / interval / manual reload — NOT `load` identity (parent click handlers used to recreate it).
+  useEffect(() => {
+    // Hard reset only when the instrument or timeframe actually changes.
+    barsRef.current = [];
+    setBars([]);
+    setStatus('loading');
+    void load(false);
+    const timer = window.setInterval(() => {
+      void load(true);
+    }, OHLC_RESYNC_MS);
+    return () => window.clearInterval(timer);
+  }, [apiSymbol, apiInterval, reloadKey, load]);
 
   const paintLiveTip = useCallback(
     (bar: ChartBar) => {
@@ -679,14 +700,6 @@ export default function NativeChatChart({
     const timer = window.setInterval(sync, 15_000);
     return () => window.clearInterval(timer);
   }, [symbol]);
-
-  useEffect(() => {
-    void load(false);
-    const timer = window.setInterval(() => {
-      void load(true);
-    }, OHLC_RESYNC_MS);
-    return () => window.clearInterval(timer);
-  }, [load, reloadKey]);
 
   // Real-time: Socket.IO ticks + quote poll fallback so the candle tip keeps running.
   useEffect(() => {

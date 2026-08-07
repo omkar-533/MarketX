@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import TerminalChartHost from './TerminalChartHost';
 import TerminalTvEmbed from './TerminalTvEmbed';
 import {
@@ -54,6 +54,7 @@ function PaneChart({
   onNavigate?: (tab: string) => void;
 }) {
   const [nativeFailed, setNativeFailed] = useState(false);
+  const onNativeUnavailable = useCallback(() => setNativeFailed(true), []);
   const preferNative = usesNativeChart(symbol);
   const native = preferNative && !nativeFailed;
 
@@ -69,7 +70,7 @@ function PaneChart({
         logScale={logScale}
         rangePreset={rangePreset}
         showRail={showRail}
-        onNativeUnavailable={() => setNativeFailed(true)}
+        onNativeUnavailable={onNativeUnavailable}
         onClearIndicators={onClearIndicators}
         onApplyStudy={onApplyStudy}
         onStudyChange={onStudyChange}
@@ -134,7 +135,9 @@ export default function TerminalChartGrid({
           <div
             key={`${pane.index}:${pane.symbol}`}
             className={`wolf-term__pane ${active ? 'is-active' : ''}`}
-            onMouseDown={() => onActiveIndexChange(pane.index)}
+            onMouseDown={() => {
+              if (pane.index !== activeIndex) onActiveIndexChange(pane.index);
+            }}
             role="group"
             aria-label={`Chart ${pane.index + 1}: ${tradingViewSymbolLabel(pane.symbol)}`}
           >

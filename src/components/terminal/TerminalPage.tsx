@@ -78,12 +78,20 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
   }, []);
 
   const onActiveChartIndexChange = useCallback((activeChartIndex: number) => {
-    setState((prev) => ({
-      ...prev,
-      activeChartIndex,
-      symbol: prev.chartSymbols[activeChartIndex] || prev.symbol,
-    }));
+    setState((prev) => {
+      if (prev.activeChartIndex === activeChartIndex) return prev;
+      return {
+        ...prev,
+        activeChartIndex,
+        symbol: prev.chartSymbols[activeChartIndex] || prev.symbol,
+      };
+    });
   }, []);
+
+  const onClearIndicators = useCallback(() => patch({ study: 'none' }), [patch]);
+  const onApplyStudy = useCallback((study: string) => patch({ study }), [patch]);
+  const onStudyChange = useCallback((study: string) => patch({ study }), [patch]);
+  const onReload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   return (
     <div
@@ -103,7 +111,7 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
         onStudyChange={(study) => patch({ study })}
         onChartStyleChange={(chartStyle: TvChartStyle) => patch({ chartStyle })}
         onChartCountChange={onChartCountChange}
-        onReload={() => setReloadKey((k) => k + 1)}
+        onReload={onReload}
         onExitApp={() => onNavigate?.('dashboard')}
         onNavigate={onNavigate}
       />
@@ -121,9 +129,9 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
             reloadKey={reloadKey}
             logScale={state.logScale}
             rangePreset={state.activeRange}
-            onClearIndicators={() => patch({ study: 'none' })}
-            onApplyStudy={(study) => patch({ study })}
-            onStudyChange={(study) => patch({ study })}
+            onClearIndicators={onClearIndicators}
+            onApplyStudy={onApplyStudy}
+            onStudyChange={onStudyChange}
             onNavigate={onNavigate}
           />
         </div>
