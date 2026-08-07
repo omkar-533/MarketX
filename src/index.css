@@ -20827,3 +20827,222 @@ body:has(.app-main--terminal-immersive) #root {
   }
 }
 
+
+/* -- Terminal multi-chart grid ----------------------------- */
+.wolf-term__grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  gap: 1px;
+  background: var(--wt-border);
+  overflow: hidden;
+}
+
+.wolf-term__grid--single {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.wolf-term__grid--multi {
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.wolf-term__pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--wt-bg);
+  outline: 1px solid transparent;
+}
+
+.wolf-term__pane.is-active {
+  outline-color: var(--wt-blue);
+  z-index: 1;
+}
+
+.wolf-term__pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 0.35rem;
+  border-bottom: 1px solid var(--wt-border);
+  background: var(--wt-panel);
+}
+
+.wolf-term__pane-sym {
+  border: 0;
+  background: transparent;
+  color: var(--wt-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 0;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wolf-term__pane-sym.on,
+.wolf-term__pane-sym:hover {
+  color: var(--wt-text);
+}
+
+.wolf-term__pane-meta {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--wt-muted);
+}
+
+.wolf-term__pane-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wolf-term__pane-chart .mai-tv__frame--fill,
+.wolf-term__pane-chart .wolf-term__tv-fallback {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.wolf-term__layout-wrap {
+  position: relative;
+}
+
+.wolf-term__layout-btn {
+  position: relative;
+}
+
+.wolf-term__layout-btn.on,
+.wolf-term__layout-btn.open {
+  color: var(--wt-blue);
+}
+
+.wolf-term__layout-btn em {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--wt-blue);
+  color: #fff;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 12px;
+  text-align: center;
+}
+
+.wolf-term__layout-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: min(288px, calc(100vw - 24px));
+  padding: 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--wt-border-2);
+  background: var(--wt-panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.wolf-term__layout-pop-title {
+  margin: 0 0 0.45rem 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wt-muted);
+}
+
+.wolf-term__layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.wolf-term__layout-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.4rem 0.3rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wt-muted);
+  cursor: pointer;
+}
+
+.wolf-term__layout-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--wt-text);
+}
+
+.wolf-term__layout-option.on {
+  border-color: color-mix(in srgb, var(--wt-blue) 45%, var(--wt-border));
+  background: color-mix(in srgb, var(--wt-blue) 14%, transparent);
+  color: var(--wt-text);
+}
+
+.wolf-term__layout-option b {
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.wolf-term__layout-preview {
+  display: grid;
+  width: 42px;
+  height: 28px;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 3px;
+  background: var(--wt-border);
+}
+
+.wolf-term__layout-preview i {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  background: color-mix(in srgb, var(--wt-text) 35%, var(--wt-panel));
+  border-radius: 1px;
+}
+
+.wolf-term__layout-option.on .wolf-term__layout-preview i {
+  background: color-mix(in srgb, var(--wt-blue) 55%, #fff);
+}
+
+.wolf-term--multi .mai-nc__trade,
+.wolf-term--multi .wolf-term__trade,
+.wolf-term--multi .mai-nc__navfab {
+  display: none !important;
+}
+
+.wolf-term--multi .mai-nc__legend {
+  transform: scale(0.92);
+  transform-origin: top left;
+}
+
+@media (max-width: 900px) {
+  .wolf-term__grid[data-count='8'],
+  .wolf-term__grid[data-count='10'],
+  .wolf-term__grid[data-count='12'],
+  .wolf-term__grid[data-count='16'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: auto;
+  }
+}

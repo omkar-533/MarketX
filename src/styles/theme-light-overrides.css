@@ -2760,4 +2760,65 @@ html[data-theme="light"] .wolf-term__dock-badge {
   color: #ffffff !important;
 }
 
+html[data-theme="light"] .wolf-term__layout-pop {
+  background: #ffffff !important;
+  border-color: #c5d0de !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14) !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-pop-title,
+html[data-theme="light"] .wolf-term__pane-meta {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-option {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-option:hover,
+html[data-theme="light"] .wolf-term__layout-option.on {
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-option.on {
+  border-color: color-mix(in srgb, #2563eb 45%, #d5dee9) !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-preview {
+  background: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-preview i {
+  background: #94a3b8 !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-option.on .wolf-term__layout-preview i {
+  background: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__pane-head {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+}
+
+html[data-theme="light"] .wolf-term__pane-sym {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__pane-sym.on,
+html[data-theme="light"] .wolf-term__pane-sym:hover {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__pane.is-active {
+  outline-color: #2563eb !important;
+}
+
+html[data-theme="light"] .wolf-term__layout-btn.on,
+html[data-theme="light"] .wolf-term__layout-btn.open {
+  color: #2563eb !important;
+}
+
+
 

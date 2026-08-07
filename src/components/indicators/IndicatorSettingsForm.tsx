@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { PineSettingField } from '../services/pineSettings';
+import type { PineSettingField } from '../../services/pineSettings';
 
 type Props = {
   fields: PineSettingField[];

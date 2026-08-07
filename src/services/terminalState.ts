@@ -3,6 +3,11 @@
  */
 
 import type { TvChartStyle, TvInterval } from '../utils/tradingViewSymbols';
+import {
+  isTerminalChartCount,
+  resizeChartSymbols,
+  type TerminalChartCount,
+} from './terminalChartLayouts';
 
 export type TerminalRightPanel =
   | 'watchlist'
@@ -23,6 +28,12 @@ export type TerminalState = {
   rightPanel: TerminalRightPanel;
   activeRange: string;
   logScale: boolean;
+  /** How many charts to show in the desk grid. */
+  chartCount: TerminalChartCount;
+  /** Symbol per grid pane (length matches chartCount when multi). */
+  chartSymbols: string[];
+  /** Which grid pane receives top-bar symbol / timeframe edits. */
+  activeChartIndex: number;
 };
 
 const STORAGE = 'wolf.terminal.state';
@@ -57,6 +68,9 @@ export function defaultTerminalState(): TerminalState {
     rightPanel: 'watchlist',
     activeRange: '1D',
     logScale: false,
+    chartCount: 1,
+    chartSymbols: ['NSE:NIFTY'],
+    activeChartIndex: 0,
   };
 }
 
@@ -79,20 +93,38 @@ export function loadTerminalState(): TerminalState {
     if (parsed.rightPanel === undefined && parsed.watchlistOpen === false) {
       rightPanel = null;
     }
+    const chartCount = isTerminalChartCount(Number(parsed.chartCount))
+      ? (Number(parsed.chartCount) as TerminalChartCount)
+      : base.chartCount;
+    const symbol = String(parsed.symbol || base.symbol);
+    const watchlist =
+      Array.isArray(parsed.watchlist) && parsed.watchlist.length
+        ? parsed.watchlist.map(String)
+        : base.watchlist;
+    const chartSymbols = resizeChartSymbols(
+      Array.isArray(parsed.chartSymbols) ? parsed.chartSymbols.map(String) : [symbol],
+      chartCount,
+      watchlist,
+      symbol,
+    );
+    const activeChartIndex = Math.min(
+      Math.max(0, Number(parsed.activeChartIndex) || 0),
+      Math.max(0, chartCount - 1),
+    );
     return {
       ...base,
       ...parsed,
-      symbol: String(parsed.symbol || base.symbol),
+      symbol,
       interval: (parsed.interval || base.interval) as TvInterval,
       study: String(parsed.study ?? base.study),
       chartStyle: (parsed.chartStyle || base.chartStyle) as TvChartStyle,
-      watchlist:
-        Array.isArray(parsed.watchlist) && parsed.watchlist.length
-          ? parsed.watchlist.map(String)
-          : base.watchlist,
+      watchlist,
       rightPanel,
       activeRange: String(parsed.activeRange || base.activeRange),
       logScale: Boolean(parsed.logScale),
+      chartCount,
+      chartSymbols,
+      activeChartIndex,
     };
   } catch {
     return base;

@@ -12,6 +12,8 @@ export type TerminalChartHostProps = {
   nativeFailed: boolean;
   logScale?: boolean;
   rangePreset?: string;
+  /** Drawing rail — hide on inactive multi-chart panes. */
+  showRail?: boolean;
   onNativeUnavailable: () => void;
   onClearIndicators?: () => void;
   onApplyStudy?: (study: string) => void;
@@ -33,6 +35,7 @@ export default function TerminalChartHost({
   nativeFailed,
   logScale = false,
   rangePreset,
+  showRail = true,
   onNativeUnavailable,
   onClearIndicators,
   onApplyStudy,
@@ -58,6 +61,7 @@ export default function TerminalChartHost({
         chartStyle={chartStyle}
         reloadKey={reloadKey}
         fillHeight
+        showRail={showRail}
         enableHistoryScroll
         logScale={logScale}
         rangePreset={rangePreset}

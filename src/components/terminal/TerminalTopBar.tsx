@@ -4,6 +4,7 @@ import {
   Camera,
   CandlestickChart,
   ChevronDown,
+  LayoutGrid,
   Maximize2,
   RefreshCw,
   Search,
@@ -39,6 +40,11 @@ import {
   rememberWolfStudyTitle,
 } from '../../services/chart/wolfIndicators';
 import { rememberStudySettingsSchema } from '../../services/wolfIndicatorSettings';
+import {
+  TERMINAL_CHART_COUNTS,
+  chartLayoutPreview,
+  type TerminalChartCount,
+} from '../../services/terminalChartLayouts';
 
 type IndCategory = 'technicals' | 'wolf' | 'favourites';
 
@@ -47,10 +53,12 @@ export type TerminalTopBarProps = {
   interval: TvInterval;
   study: string;
   chartStyle: TvChartStyle;
+  chartCount: TerminalChartCount;
   onSymbolChange: (symbol: string) => void;
   onIntervalChange: (interval: TvInterval) => void;
   onStudyChange: (study: string) => void;
   onChartStyleChange: (style: TvChartStyle) => void;
+  onChartCountChange: (count: TerminalChartCount) => void;
   onReload: () => void;
   onExitApp?: () => void;
   onScreenshot?: () => void;
@@ -63,10 +71,12 @@ export default function TerminalTopBar({
   interval,
   study,
   chartStyle,
+  chartCount,
   onSymbolChange,
   onIntervalChange,
   onStudyChange,
   onChartStyleChange,
+  onChartCountChange,
   onReload,
   onExitApp,
   onScreenshot,
@@ -86,6 +96,7 @@ export default function TerminalTopBar({
   const [styleOpen, setStyleOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [indQuery, setIndQuery] = useState('');
   const [indCategory, setIndCategory] = useState<IndCategory>('wolf');
   const [favorites, setFavorites] = useState<IndicatorFav[]>(() => loadIndicatorFavorites());
@@ -95,6 +106,7 @@ export default function TerminalTopBar({
 
   const styleRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSymbolInput(tradingViewSymbolLabel(symbol));
@@ -238,11 +250,12 @@ export default function TerminalTopBar({
   }, [indicatorsOpen]);
 
   useEffect(() => {
-    if (!styleOpen && !menuOpen && !indicatorsOpen) return;
+    if (!styleOpen && !menuOpen && !indicatorsOpen && !layoutOpen) return;
     const onDown = (event: MouseEvent) => {
       const t = event.target as Node;
       if (styleOpen && !styleRef.current?.contains(t)) setStyleOpen(false);
       if (menuOpen && !menuRef.current?.contains(t)) setMenuOpen(false);
+      if (layoutOpen && !layoutRef.current?.contains(t)) setLayoutOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -250,6 +263,7 @@ export default function TerminalTopBar({
         setStyleOpen(false);
         setMenuOpen(false);
         setIndicatorsOpen(false);
+        setLayoutOpen(false);
       }
     };
     document.addEventListener('mousedown', onDown);
@@ -258,7 +272,7 @@ export default function TerminalTopBar({
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [styleOpen, menuOpen, indicatorsOpen]);
+  }, [styleOpen, menuOpen, indicatorsOpen, layoutOpen]);
 
   const toggleStudy = (id: string) => {
     const all = parseStudies(study);
@@ -415,6 +429,64 @@ export default function TerminalTopBar({
               Widget
             </span>
           ) : null}
+
+          <div className="wolf-term__layout-wrap" ref={layoutRef}>
+            <button
+              type="button"
+              className={`wolf-term__icon-btn wolf-term__layout-btn ${chartCount > 1 ? 'on' : ''} ${layoutOpen ? 'open' : ''}`}
+              title="Multi chart layout"
+              aria-label="Multi chart layout"
+              aria-expanded={layoutOpen}
+              onClick={() => {
+                setLayoutOpen((v) => !v);
+                setStyleOpen(false);
+                setSearchOpen(false);
+                setMenuOpen(false);
+              }}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              {chartCount > 1 ? <em>{chartCount}</em> : null}
+            </button>
+            {layoutOpen ? (
+              <div className="wolf-term__layout-pop" role="listbox" aria-label="Chart layouts">
+                <div className="wolf-term__layout-pop-title">Charts on screen</div>
+                <div className="wolf-term__layout-grid">
+                  {TERMINAL_CHART_COUNTS.map((count) => {
+                    const { cols, rows } = chartLayoutPreview(count);
+                    return (
+                      <button
+                        key={count}
+                        type="button"
+                        role="option"
+                        aria-selected={count === chartCount}
+                        className={`wolf-term__layout-option ${count === chartCount ? 'on' : ''}`}
+                        title={`${count} chart${count === 1 ? '' : 's'}`}
+                        onClick={() => {
+                          onChartCountChange(count);
+                          setLayoutOpen(false);
+                        }}
+                      >
+                        <span
+                          className="wolf-term__layout-preview"
+                          style={{
+                            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                            gridTemplateRows: `repeat(${rows}, 1fr)`,
+                          }}
+                          aria-hidden
+                        >
+                          {Array.from({ length: count }, (_, i) => (
+                            <i key={i} />
+                          ))}
+                        </span>
+                        <b>{count}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <button type="button" className="wolf-term__icon-btn" title="Fullscreen" onClick={goFullscreen}>
             <Maximize2 className="h-4 w-4" />
           </button>
