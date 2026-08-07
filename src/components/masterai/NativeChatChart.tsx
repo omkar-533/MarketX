@@ -197,10 +197,19 @@ function wolfSmcShapesFromNative(source: ChartBar[], r: ReturnType<typeof comput
   });
 }
 
-/** Prefer pine overlays only when they actually paint structure (zones / many marks). */
+/**
+ * Prefer pine overlays only when they paint real structure.
+ * LuxAlgo-class scripts often emit dozens of short `trend` stubs that look blank
+ * on Lightweight Charts — those must NOT wipe the native SMC pack.
+ */
 function pineShapesUsable(shapes: ChartShape[]): boolean {
-  if (shapes.length >= 8) return true;
-  return shapes.some((s) => s.type === 'zone' || s.type === 'hray');
+  const zones = shapes.filter((s) => s.type === 'zone').length;
+  const hrays = shapes.filter((s) => s.type === 'hray').length;
+  const labels = shapes.filter((s) => s.type === 'label' && (s.label || '').trim()).length;
+  if (zones >= 2) return true;
+  if (zones >= 1 && (hrays >= 1 || labels >= 2)) return true;
+  if (hrays >= 4 && labels >= 2) return true;
+  return false;
 }
 
 const IST = 'Asia/Kolkata';

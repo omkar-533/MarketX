@@ -679,8 +679,94 @@ export function computeWolfSmc(bars: ChartBar[], lookback = 5): WolfSmcResult {
   }
   shapes.push(...obShapes.slice(-10));
 
-  // Keep chart readable — last / nearest marks only
-  const MAX = 36;
+  // Swing structure tags (HH / HL / LH / LL) — matches TV SMC jargon on pivots.
+  const recentSwings = swings.slice(-24);
+  for (let i = 1; i < recentSwings.length; i += 1) {
+    const cur = recentSwings[i];
+    const prevSame = [...recentSwings.slice(0, i)].reverse().find((s) => s.kind === cur.kind);
+    if (!prevSame) continue;
+    let tag = '';
+    if (cur.kind === 'h') tag = cur.price > prevSame.price ? 'HH' : 'LH';
+    else tag = cur.price > prevSame.price ? 'HL' : 'LL';
+    shapes.push({
+      type: 'label',
+      tone: cur.kind === 'h' ? 'bear' : 'bull',
+      label: tag,
+      p1: cur.price,
+      i1: cur.i,
+      color: cur.kind === 'h' ? '#ef5350' : '#26a69a',
+    });
+  }
+
+  // Premium / Equilibrium / Discount bands (TV-style range context on recent swings).
+  if (n >= 20) {
+    const from = Math.max(0, n - 120);
+    let hi = -Infinity;
+    let lo = Infinity;
+    let hiI = from;
+    let loI = from;
+    for (let i = from; i < n; i += 1) {
+      if (bars[i].high >= hi) {
+        hi = bars[i].high;
+        hiI = i;
+      }
+      if (bars[i].low <= lo) {
+        lo = bars[i].low;
+        loI = i;
+      }
+    }
+    if (Number.isFinite(hi) && Number.isFinite(lo) && hi > lo) {
+      const mid = (hi + lo) / 2;
+      const iLeft = Math.min(hiI, loI, from);
+      const band = (
+        label: string,
+        top: number,
+        bottom: number,
+        tone: 'bull' | 'bear' | 'neutral',
+        fill: string,
+        border: string,
+      ): WolfSmcShape => ({
+        type: 'zone',
+        tone,
+        label,
+        p1: top,
+        p2: bottom,
+        i1: iLeft,
+        i2: n - 1,
+        fillColor: fill,
+        borderColor: border,
+        color: border,
+      });
+      shapes.push(
+        band('Premium', hi, mid + (hi - mid) * 0.05, 'bear', 'rgba(239,83,80,0.10)', 'rgba(239,83,80,0.45)'),
+        band('Equilibrium', mid + (hi - lo) * 0.04, mid - (hi - lo) * 0.04, 'neutral', 'rgba(148,163,184,0.12)', 'rgba(148,163,184,0.4)'),
+        band('Discount', mid - (mid - lo) * 0.05, lo, 'bull', 'rgba(38,166,154,0.10)', 'rgba(38,166,154,0.45)'),
+      );
+      shapes.push(
+        {
+          type: 'hray',
+          tone: 'bear',
+          label: 'Strong High',
+          p1: hi,
+          i1: hiI,
+          color: '#ef5350',
+          lineStyle: 'dotted',
+        },
+        {
+          type: 'hray',
+          tone: 'bull',
+          label: 'Weak Low',
+          p1: lo,
+          i1: loI,
+          color: '#26a69a',
+          lineStyle: 'dotted',
+        },
+      );
+    }
+  }
+
+  // Keep chart readable — prefer structure bands + recent marks
+  const MAX = 48;
   const trimmed = shapes.length > MAX ? shapes.slice(-MAX) : shapes;
 
   return { swingHigh, swingLow, shapes: trimmed, bosCount, fvgCount, obCount };
