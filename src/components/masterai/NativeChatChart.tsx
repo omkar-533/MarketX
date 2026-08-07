@@ -394,6 +394,8 @@ export default function NativeChatChart({
   /** Zones / rays / labels from Wolf SMC (and future Pine drawings). */
   const [studyShapes, setStudyShapes] = useState<ChartShape[]>([]);
   const studyShapesTipRef = useRef('');
+  /** Bumped on chart teardown / study remove so late Pine results cannot re-paint overlays. */
+  const pineOverlayGenRef = useRef(0);
   const [studyParamValues, setStudyParamValues] = useState<
     Record<string, string | number | boolean>
   >({});
@@ -474,10 +476,13 @@ export default function NativeChatChart({
   const intraday = interval !== 'D' && interval !== 'W' && interval !== 'M';
   const studies = useMemo(() => parseStudies(study), [study]);
   const plotStudies = useMemo(
-    () => studies.filter((id) => !hiddenStudyIds.includes(id)),
-    [studies, hiddenStudyIds],
+    () =>
+      hideIndicators
+        ? []
+        : studies.filter((id) => !hiddenStudyIds.includes(id)),
+    [studies, hiddenStudyIds, hideIndicators],
   );
-  const studyKey = `${studies.join(',')}|hide:${hiddenStudyIds.slice().sort().join(',')}|cfg:${wolfSettingsRev}`;
+  const studyKey = `${studies.join(',')}|hide:${hiddenStudyIds.slice().sort().join(',')}|off:${hideIndicators ? 1 : 0}|cfg:${wolfSettingsRev}`;
 
   useEffect(() => {
     const onChange = () => setWolfSettingsRev((n) => n + 1);
@@ -889,6 +894,14 @@ export default function NativeChatChart({
   useEffect(() => {
     const host = hostRef.current;
     if (!host || !hasData) return;
+
+    const overlayGen = ++pineOverlayGenRef.current;
+    const applyStudyShapes = (nextShapes: ChartShape[]) => {
+      queueMicrotask(() => {
+        if (overlayGen !== pineOverlayGenRef.current) return;
+        setStudyShapes(nextShapes);
+      });
+    };
 
     const paneStudies = plotStudies.filter((id) => PANE_STUDIES.has(id));
     const wolfStudies = plotStudies.filter((id) => isWolfStudyId(id));
@@ -1488,7 +1501,7 @@ export default function NativeChatChart({
                 lineStyle: s.lineStyle,
               };
             });
-            queueMicrotask(() => setStudyShapes(chartShapes));
+            applyStudyShapes(chartShapes);
           }
           const detail = `SMC · ${r.bosCount} BOS · ${r.fvgCount} FVG · ${r.obCount} OB`;
           return [
@@ -1547,6 +1560,7 @@ export default function NativeChatChart({
                 timeLimitMs: smcPine ? 28000 : undefined,
               })
                 .then((result) => {
+                  if (overlayGen !== pineOverlayGenRef.current) return;
                   const pineDrawings = result.drawings || [];
                   const pineShapes = pineDrawingsToShapes(pineDrawings, source);
                   const useNative = smcPine && !pineShapesUsable(pineShapes);
@@ -1560,16 +1574,17 @@ export default function NativeChatChart({
                   });
                   if (!useNative && pineShapes.length) {
                     studyShapesTipRef.current = `pine|${shapesTip}`;
-                    queueMicrotask(() => setStudyShapes(pineShapes));
+                    applyStudyShapes(pineShapes);
                   } else if (smcPine) {
                     studyShapesTipRef.current = shapesTip;
-                    queueMicrotask(() => setStudyShapes(paintNativeSmc(source)));
+                    applyStudyShapes(paintNativeSmc(source));
                   }
                   if (viewRef.current && applyRef.current) {
                     applyRef.current(viewRef.current, false);
                   }
                 })
                 .catch(() => {
+                  if (overlayGen !== pineOverlayGenRef.current) return;
                   pinePlotCache.set(cacheKey, {
                     tip: tipKey,
                     plots: [],
@@ -1580,7 +1595,7 @@ export default function NativeChatChart({
                   });
                   if (smcPine) {
                     studyShapesTipRef.current = shapesTip;
-                    queueMicrotask(() => setStudyShapes(paintNativeSmc(source)));
+                    applyStudyShapes(paintNativeSmc(source));
                     if (viewRef.current && applyRef.current) {
                       applyRef.current(viewRef.current, false);
                     }
@@ -1596,11 +1611,11 @@ export default function NativeChatChart({
             if (cached.nativeSmc && smcPine) {
               if (studyShapesTipRef.current !== shapesTip) {
                 studyShapesTipRef.current = shapesTip;
-                queueMicrotask(() => setStudyShapes(paintNativeSmc(source)));
+                applyStudyShapes(paintNativeSmc(source));
               }
             } else if (pineShapes.length && studyShapesTipRef.current !== `pine|${shapesTip}`) {
               studyShapesTipRef.current = `pine|${shapesTip}`;
-              queueMicrotask(() => setStudyShapes(pineShapes));
+              applyStudyShapes(pineShapes);
             }
           }
 
@@ -1878,6 +1893,7 @@ export default function NativeChatChart({
     });
 
     return () => {
+      pineOverlayGenRef.current += 1;
       observer.disconnect();
       host.removeEventListener('wheel', onWheel, true);
       host.removeEventListener('pointerdown', markTouched);
@@ -1889,6 +1905,8 @@ export default function NativeChatChart({
       indicatorRef.current = [];
       setStudyLegend([]);
       setStudySettingsId(null);
+      setStudyShapes([]);
+      studyShapesTipRef.current = '';
       chart.remove();
     };
     // studyKey stands in for the studies array, which is rebuilt on every render.
@@ -2006,18 +2024,22 @@ export default function NativeChatChart({
     return [...fromChat, ...studyShapes];
   }, [shapes, studyShapes, lastClose]);
 
-  // Clear study drawings when Wolf SMC / Pine studies are turned off.
+  // Clear study drawings when Wolf SMC / Pine studies are turned off or globally hidden.
   useEffect(() => {
-    const hasDrawStudy = studies.some((id) => {
-      if (!isWolfStudyId(id)) return false;
-      const r = resolveWolfRecipe(id);
-      return r === 'smc' || r === 'pine';
-    });
+    const hasDrawStudy =
+      !hideIndicators &&
+      studies.some((id) => {
+        if (hiddenStudyIds.includes(id)) return false;
+        if (!isWolfStudyId(id)) return false;
+        const r = resolveWolfRecipe(id);
+        return r === 'smc' || r === 'pine';
+      });
     if (!hasDrawStudy) {
+      pineOverlayGenRef.current += 1;
       setStudyShapes([]);
       studyShapesTipRef.current = '';
     }
-  }, [studies]);
+  }, [studies, hiddenStudyIds, hideIndicators]);
 
   // Pin countdown under the live price label on the right price axis (TV behaviour).
   useEffect(() => {
@@ -2384,10 +2406,24 @@ export default function NativeChatChart({
   });
 
   const removeStudy = (id: string) => {
+    pineOverlayGenRef.current += 1;
+    setStudyShapes([]);
+    studyShapesTipRef.current = '';
     const next = studies.filter((s) => s !== id);
     onStudyChange?.(joinStudies(next));
     setHiddenStudyIds((prev) => prev.filter((x) => x !== id));
     setStudySettingsId((cur) => (cur === id ? null : cur));
+  };
+
+  const clearAllStudies = () => {
+    pineOverlayGenRef.current += 1;
+    setStudyShapes([]);
+    studyShapesTipRef.current = '';
+    setHiddenStudyIds([]);
+    setStudySettingsId(null);
+    setStudyLegend([]);
+    onClearIndicators?.();
+    onStudyChange?.(joinStudies([]));
   };
 
   const toggleStudyHidden = (id: string) => {
@@ -2419,10 +2455,11 @@ export default function NativeChatChart({
           onUndo={drawings.undo}
           onClearDrawings={drawings.clear}
           onClearIndicators={() => {
-            /* studies live on parent study prop — clear via rail stub */
+            clearAllStudies();
           }}
           onClearAll={() => {
             drawings.clear();
+            clearAllStudies();
           }}
           removeLocked={removeLocked}
           onRemoveLocked={setRemoveLocked}
@@ -2928,8 +2965,8 @@ export default function NativeChatChart({
           showToast('Drawings removed');
         }}
         onRemoveIndicators={() => {
-          onClearIndicators?.();
-          showToast(onClearIndicators ? 'Indicators removed' : 'Open Terminal to clear indicators');
+          clearAllStudies();
+          showToast('Indicators removed');
         }}
         onSettings={() => setPanel('settings')}
         templates={templates.map((t) => ({ id: t.id, name: t.name }))}

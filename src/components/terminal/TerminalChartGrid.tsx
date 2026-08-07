@@ -164,9 +164,9 @@ export default function TerminalChartGrid({
                 logScale={logScale}
                 rangePreset={rangePreset}
                 showRail={!multi || active}
-                onClearIndicators={active ? onClearIndicators : undefined}
-                onApplyStudy={active ? onApplyStudy : undefined}
-                onStudyChange={active ? onStudyChange : undefined}
+                onClearIndicators={onClearIndicators}
+                onApplyStudy={onApplyStudy}
+                onStudyChange={onStudyChange}
                 onNavigate={onNavigate}
               />
             </div>
