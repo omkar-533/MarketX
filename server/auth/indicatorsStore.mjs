@@ -49,6 +49,8 @@ function rowLink(row) {
   const link = String(row?.link || '').trim();
   if (link) return link;
   const legacy = String(row?.code || '').trim();
+  // Encrypted Pine or placeholder must never leak as invite URL.
+  if (!legacy || legacy === 'pine' || legacy.startsWith('enc:v1:')) return '';
   if (/^https?:\/\//i.test(legacy)) return legacy;
   return '';
 }
@@ -58,11 +60,25 @@ function rowHowToVideo(row) {
 }
 
 function rowPineSource(row) {
-  return decryptPineSource(String(row?.pine_source ?? row?.pineSource ?? '').trim());
+  const dedicated = decryptPineSource(String(row?.pine_source ?? row?.pineSource ?? '').trim());
+  if (dedicated) return dedicated;
+  // Fallback when `pine_source` column is missing — store ciphertext in `code`.
+  const legacy = String(row?.code ?? '').trim();
+  if (legacy.startsWith('enc:v1:')) return decryptPineSource(legacy);
+  return '';
 }
 
 function storePineSource(plain) {
   return encryptPineSource(plain);
+}
+
+/** `code` column value when pine_source DDL is unavailable. */
+function storeCodeField(link, pinePlain) {
+  const cleanLink = String(link || '').trim();
+  if (cleanLink) return cleanLink;
+  const pine = String(pinePlain || '').trim();
+  if (pine) return storePineSource(pine);
+  return 'pine';
 }
 
 function fromRow(row, signedUrl = null) {
@@ -271,7 +287,7 @@ export async function createIndicator({
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
     pine_source: storePineSource(fields.pineSource),
-    code: fields.link || 'pine',
+    code: storeCodeField(fields.link, fields.pineSource),
     image_path: media.path,
     image_data: media.data,
     sort_order: Number(sortOrder) || 0,
@@ -307,16 +323,10 @@ export async function createIndicator({
 
   let { data, error } = await db.from(TABLE).insert(cloudRow).select().single();
   if (error && /pine_source/i.test(error.message || '')) {
-    if (fields.pineSource) {
-      throw Object.assign(
-        new Error(
-          'Pine Script column missing on database. Run scripts/add-pine-source-column.mjs then retry.',
-        ),
-        { status: 500 },
-      );
-    }
+    // Live DB without pine_source: keep ciphertext in `code` (invite link empty).
     const withoutPine = { ...cloudRow };
     delete withoutPine.pine_source;
+    withoutPine.code = storeCodeField(fields.link, fields.pineSource);
     ({ data, error } = await db.from(TABLE).insert(withoutPine).select().single());
   }
   if (error && /how_to_video_url/i.test(error.message || '')) {
@@ -426,7 +436,7 @@ export async function updateIndicator(id, patch = {}) {
     link: fields.link,
     how_to_video_url: fields.howToVideoUrl,
     pine_source: storePineSource(fields.pineSource),
-    code: fields.link || 'pine',
+    code: storeCodeField(fields.link, fields.pineSource),
     sort_order:
       patch.sortOrder === undefined ? current.sortOrder : Number(patch.sortOrder) || 0,
     published: patch.published === undefined ? current.published : patch.published !== false,
@@ -479,16 +489,9 @@ export async function updateIndicator(id, patch = {}) {
 
   let { data, error } = await db.from(TABLE).update(cloudPatch).eq('id', id).select().maybeSingle();
   if (error && /pine_source/i.test(error.message || '')) {
-    if (fields.pineSource) {
-      throw Object.assign(
-        new Error(
-          'Pine Script column missing on database. Run scripts/add-pine-source-column.mjs then retry.',
-        ),
-        { status: 500 },
-      );
-    }
     const withoutPine = { ...cloudPatch };
     delete withoutPine.pine_source;
+    withoutPine.code = storeCodeField(fields.link, fields.pineSource);
     ({ data, error } = await db.from(TABLE).update(withoutPine).eq('id', id).select().maybeSingle());
   }
   if (error && /how_to_video_url/i.test(error.message || '')) {
