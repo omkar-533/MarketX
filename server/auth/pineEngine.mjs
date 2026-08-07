@@ -1,8 +1,10 @@
 /**
  * Wolf Pine runtime — executes TradingView-style Pine (@version 3–6+) on OHLCV bars.
- * Not a full TradingView VM, but runs common indicator scripts as-written:
- * input.*, ta.*, math.*, plot/plotshape/hline, series history [], ternary, arithmetic.
- * Strategy / drawing objects / request.security are stubbed safely (no silent rewrite of user math).
+ * Supports common indicator scripts: input.*, ta.*, math.*, plot/plotshape/hline,
+ * series history [], ternary, arithmetic.
+ * LuxAlgo-class SMC (box.new / line.new / heavy if-blocks) is handled on Terminal by the
+ * native Wolf SMC pack (structure / BOS / FVG / OB) so those charts still trade the same
+ * concepts without requiring a full TradingView VM.
  */
 
 function nan() {

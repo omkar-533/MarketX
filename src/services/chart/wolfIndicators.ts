@@ -25,6 +25,11 @@ export const WOLF_NATIVE_PRESETS: WolfNativePreset[] = [
   { id: 'wolf_pulse', label: 'Wolf Momentum Pulse', match: /momentum|pulse|rsi\s*pulse/i },
   { id: 'wolf_pressure', label: 'Wolf Volume Pressure', match: /volume\s*pressure|participation|vol\s*flow/i },
   { id: 'wolf_levels', label: 'Wolf Structure Levels', match: /structure|levels|pivot/i },
+  {
+    id: 'wolf_smc',
+    label: 'Wolf Smart Money Concepts',
+    match: /smart\s*money|\bsmc\b|order\s*block|fair\s*value|fvg|liquidity/i,
+  },
 ];
 
 export function isWolfStudyId(id: string): boolean {
@@ -118,6 +123,10 @@ export function wolfStudyBlurb(id: string): string {
       return 'Volume pressure histogram vs average participation';
     case 'levels':
       return 'Swing structure highs & lows';
+    case 'smc':
+      return 'Smart Money — structure, BOS/CHoCH, FVG zones, order blocks';
+    case 'pine':
+      return 'Custom Pine Script (server runtime)';
     default:
       return 'Wolf proprietary pack';
   }
@@ -416,8 +425,16 @@ export function computeWolfClustersVp(
 /** Resolve recipe for any wolf_* id (known presets or default ribbon). */
 export function resolveWolfRecipe(
   id: string,
-): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' | 'pine' {
+): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' | 'pine' | 'smc' {
   const key = id.toLowerCase();
+  const label = `${id} ${wolfStudyLabel(id)}`.toLowerCase();
+  // SMC titles (CMS Pine or preset) → native SMC pack that draws zones like TV.
+  if (
+    id === 'wolf_smc' ||
+    /smart\s*money|\bsmc\b|order\s*block|fair\s*value|\bfvg\b|liquidity/.test(label)
+  ) {
+    return 'smc';
+  }
   // Custom Terminal→Wolf CMS rows run through the Pine engine (exact source, server-side).
   if (key.startsWith('wolf_cms_') || Boolean(wolfCmsIdFromStudy(id))) return 'pine';
   if (id === 'wolf_cfd' || key.includes('confluence') || key.includes('cfd')) return 'cfd';
@@ -438,4 +455,230 @@ export function resolveWolfRecipe(
   if (id === 'wolf_ribbon' || key.includes('ribbon')) return 'ribbon';
   // Unknown slug rows still plot a useful ribbon pack
   return 'ribbon';
+}
+
+export type WolfSmcShape = {
+  type: 'zone' | 'hray' | 'label' | 'trend';
+  tone: 'bull' | 'bear' | 'neutral';
+  label: string;
+  p1?: number;
+  p2?: number;
+  /** Bar index (absolute in series) for left edge / start. */
+  i1?: number;
+  /** Bar index for right edge / end. */
+  i2?: number;
+  color?: string;
+  borderColor?: string;
+  fillColor?: string;
+  lineStyle?: 'solid' | 'dotted';
+};
+
+export type WolfSmcResult = {
+  swingHigh: number[];
+  swingLow: number[];
+  shapes: WolfSmcShape[];
+  bosCount: number;
+  fvgCount: number;
+  obCount: number;
+};
+
+/**
+ * Native Smart Money Concepts pack — structure, BOS/CHoCH, FVG, order blocks.
+ * Used when CMS titles look like SMC (LuxAlgo-class scripts need box/line objects;
+ * this pack draws the same classes of marks on Terminal without TradingView).
+ */
+export function computeWolfSmc(bars: ChartBar[], lookback = 5): WolfSmcResult {
+  const n = bars.length;
+  const swingHigh = new Array(n).fill(Number.NaN);
+  const swingLow = new Array(n).fill(Number.NaN);
+  const shapes: WolfSmcShape[] = [];
+  const L = Math.max(2, Math.min(20, Math.floor(lookback) || 5));
+
+  type Swing = { i: number; price: number; kind: 'h' | 'l' };
+  const swings: Swing[] = [];
+
+  for (let i = L; i < n - L; i += 1) {
+    let isH = true;
+    let isLo = true;
+    for (let j = i - L; j <= i + L; j += 1) {
+      if (j === i) continue;
+      if (bars[j].high >= bars[i].high) isH = false;
+      if (bars[j].low <= bars[i].low) isLo = false;
+    }
+    if (isH) {
+      swingHigh[i] = bars[i].high;
+      swings.push({ i, price: bars[i].high, kind: 'h' });
+    }
+    if (isLo) {
+      swingLow[i] = bars[i].low;
+      swings.push({ i, price: bars[i].low, kind: 'l' });
+    }
+  }
+
+  let lastH: Swing | null = null;
+  let lastL: Swing | null = null;
+  let bias: 1 | -1 | 0 = 0;
+  let bosCount = 0;
+
+  for (const s of swings) {
+    if (s.kind === 'h') {
+      if (lastH && s.price > lastH.price && bias >= 0) {
+        // BOS up
+        shapes.push({
+          type: 'hray',
+          tone: 'bull',
+          label: bias === 0 ? 'CHoCH' : 'BOS',
+          p1: lastH.price,
+          i1: lastH.i,
+          color: '#26a69a',
+          lineStyle: 'dotted',
+        });
+        shapes.push({
+          type: 'label',
+          tone: 'bull',
+          label: bias === 0 ? 'CHoCH ↑' : 'BOS ↑',
+          p1: lastH.price,
+          i1: s.i,
+          color: '#26a69a',
+        });
+        bias = 1;
+        bosCount += 1;
+      }
+      lastH = s;
+    } else {
+      if (lastL && s.price < lastL.price && bias <= 0) {
+        shapes.push({
+          type: 'hray',
+          tone: 'bear',
+          label: bias === 0 ? 'CHoCH' : 'BOS',
+          p1: lastL.price,
+          i1: lastL.i,
+          color: '#ef5350',
+          lineStyle: 'dotted',
+        });
+        shapes.push({
+          type: 'label',
+          tone: 'bear',
+          label: bias === 0 ? 'CHoCH ↓' : 'BOS ↓',
+          p1: lastL.price,
+          i1: s.i,
+          color: '#ef5350',
+        });
+        bias = -1;
+        bosCount += 1;
+      }
+      lastL = s;
+    }
+  }
+
+  // Fair Value Gaps (3-candle) — keep recent unmitigated-ish gaps only
+  let fvgCount = 0;
+  const fvgShapes: WolfSmcShape[] = [];
+  for (let i = 2; i < n; i += 1) {
+    const a = bars[i - 2];
+    const c = bars[i];
+    // Bullish FVG: gap up between candle[i-2].high and candle[i].low
+    if (a.high < c.low) {
+      const top = c.low;
+      const bottom = a.high;
+      if (top > bottom) {
+        fvgShapes.push({
+          type: 'zone',
+          tone: 'bull',
+          label: 'FVG',
+          p1: top,
+          p2: bottom,
+          i1: i - 2,
+          i2: Math.min(n - 1, i + 8),
+          borderColor: 'rgba(38,166,154,0.7)',
+          fillColor: 'rgba(38,166,154,0.12)',
+          color: '#26a69a',
+        });
+        fvgCount += 1;
+      }
+    }
+    // Bearish FVG
+    if (a.low > c.high) {
+      const top = a.low;
+      const bottom = c.high;
+      if (top > bottom) {
+        fvgShapes.push({
+          type: 'zone',
+          tone: 'bear',
+          label: 'FVG',
+          p1: top,
+          p2: bottom,
+          i1: i - 2,
+          i2: Math.min(n - 1, i + 8),
+          borderColor: 'rgba(239,83,80,0.7)',
+          fillColor: 'rgba(239,83,80,0.12)',
+          color: '#ef5350',
+        });
+        fvgCount += 1;
+      }
+    }
+  }
+  shapes.push(...fvgShapes.slice(-12));
+
+  // Order blocks — last opposing candle before impulse
+  let obCount = 0;
+  const obShapes: WolfSmcShape[] = [];
+  for (let i = 3; i < n - 1; i += 1) {
+    const impulseUp =
+      bars[i].close > bars[i].open &&
+      bars[i].close - bars[i].open > (bars[i].high - bars[i].low) * 0.55 &&
+      bars[i].close > bars[i - 1].high;
+    const impulseDn =
+      bars[i].close < bars[i].open &&
+      bars[i].open - bars[i].close > (bars[i].high - bars[i].low) * 0.55 &&
+      bars[i].close < bars[i - 1].low;
+
+    if (impulseUp) {
+      for (let k = i - 1; k >= Math.max(0, i - 8); k -= 1) {
+        if (bars[k].close < bars[k].open) {
+          obShapes.push({
+            type: 'zone',
+            tone: 'bull',
+            label: 'OB',
+            p1: bars[k].high,
+            p2: bars[k].low,
+            i1: k,
+            i2: Math.min(n - 1, i + 12),
+            borderColor: 'rgba(38,166,154,0.85)',
+            fillColor: 'rgba(38,166,154,0.18)',
+            color: '#26a69a',
+          });
+          obCount += 1;
+          break;
+        }
+      }
+    }
+    if (impulseDn) {
+      for (let k = i - 1; k >= Math.max(0, i - 8); k -= 1) {
+        if (bars[k].close > bars[k].open) {
+          obShapes.push({
+            type: 'zone',
+            tone: 'bear',
+            label: 'OB',
+            p1: bars[k].high,
+            p2: bars[k].low,
+            i1: k,
+            i2: Math.min(n - 1, i + 12),
+            borderColor: 'rgba(239,83,80,0.85)',
+            fillColor: 'rgba(239,83,80,0.18)',
+            color: '#ef5350',
+          });
+          obCount += 1;
+          break;
+        }
+      }
+    }
+  }
+  shapes.push(...obShapes.slice(-10));
+
+  // Keep chart readable — last / nearest marks only
+  const MAX = 36;
+  const trimmed = shapes.length > MAX ? shapes.slice(-MAX) : shapes;
+
+  return { swingHigh, swingLow, shapes: trimmed, bosCount, fvgCount, obCount };
 }

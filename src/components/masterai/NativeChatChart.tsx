@@ -50,11 +50,13 @@ import {
   computeWolfPressure,
   computeWolfPulse,
   computeWolfRibbon,
+  computeWolfSmc,
   isWolfStudyId,
   resolveWolfRecipe,
   wolfCmsIdFromStudy,
   wolfStudyBlurb,
   wolfStudyLabel,
+  type WolfSmcShape,
 } from '../../services/chart/wolfIndicators';
 import {
   clustersOptsFromSettings,
@@ -305,6 +307,9 @@ export default function NativeChatChart({
   const [hiddenStudyIds, setHiddenStudyIds] = useState<string[]>([]);
   const [studySettingsId, setStudySettingsId] = useState<string | null>(null);
   const [wolfSettingsRev, setWolfSettingsRev] = useState(0);
+  /** Zones / rays / labels from Wolf SMC (and future Pine drawings). */
+  const [studyShapes, setStudyShapes] = useState<ChartShape[]>([]);
+  const studyShapesTipRef = useRef('');
   const [studyParamValues, setStudyParamValues] = useState<
     Record<string, string | number | boolean>
   >({});
@@ -1316,6 +1321,76 @@ export default function NativeChatChart({
           );
           return [{ studyId: id, label: title, detail: 'Vol pressure', color: '#f0b90b', values: p.pressure, decimals: 2 }];
         });
+      } else if (recipe === 'smc') {
+        const hi = line('#ef5350', 1);
+        const lo = line('#26a69a', 1);
+        hi.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
+        lo.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
+        priceFormatted.push(hi, lo);
+        feeds.push(({ source, decimals }) => {
+          const r = computeWolfSmc(source, 5);
+          hi.setData(
+            source
+              .map((bar, j) =>
+                Number.isFinite(r.swingHigh[j])
+                  ? { time: ts(bar.time), value: r.swingHigh[j] }
+                  : null,
+              )
+              .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
+          );
+          lo.setData(
+            source
+              .map((bar, j) =>
+                Number.isFinite(r.swingLow[j])
+                  ? { time: ts(bar.time), value: r.swingLow[j] }
+                  : null,
+              )
+              .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
+          );
+          const tip = source.length
+            ? `${source.length}|${barTimeSec(source[source.length - 1].time)}`
+            : '0';
+          if (studyShapesTipRef.current !== `${id}|${tip}`) {
+            studyShapesTipRef.current = `${id}|${tip}`;
+            const chartShapes: ChartShape[] = r.shapes.map((s: WolfSmcShape) => {
+              const x1 =
+                typeof s.i1 === 'number' && source[s.i1]
+                  ? barTimeSec(source[s.i1].time)
+                  : undefined;
+              const x2 =
+                typeof s.i2 === 'number' && source[s.i2]
+                  ? barTimeSec(source[s.i2].time)
+                  : typeof s.i1 === 'number' && source[Math.min(source.length - 1, (s.i1 || 0) + 12)]
+                    ? barTimeSec(source[Math.min(source.length - 1, (s.i1 || 0) + 12)].time)
+                    : undefined;
+              return {
+                type: s.type,
+                tone: s.tone,
+                label: s.label,
+                p1: s.p1,
+                p2: s.p2,
+                x1,
+                x2,
+                color: s.color,
+                borderColor: s.borderColor,
+                fillColor: s.fillColor,
+                lineStyle: s.lineStyle,
+              };
+            });
+            queueMicrotask(() => setStudyShapes(chartShapes));
+          }
+          const detail = `SMC · ${r.bosCount} BOS · ${r.fvgCount} FVG · ${r.obCount} OB`;
+          return [
+            {
+              studyId: id,
+              label: title,
+              detail,
+              color: '#f0b90b',
+              values: r.swingHigh.map((v, j) => (Number.isFinite(v) ? v : source[j]?.close ?? NaN)),
+              decimals,
+            },
+          ];
+        });
       } else if (recipe === 'pine') {
         const cmsId = wolfCmsIdFromStudy(id);
         if (!cmsId) continue;
@@ -1747,10 +1822,23 @@ export default function NativeChatChart({
   }, [shapes, levels, chartEpoch]);
 
   const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
-  const aiShapes = useMemo(
-    () => (shapes?.length ? shapesNearPrice(shapes, lastClose) : []),
-    [shapes, lastClose],
-  );
+  const aiShapes = useMemo(() => {
+    const merged = [...(shapes ?? []), ...studyShapes];
+    return merged.length ? shapesNearPrice(merged, lastClose) : [];
+  }, [shapes, studyShapes, lastClose]);
+
+  // Clear study drawings when Wolf SMC / Pine studies are turned off.
+  useEffect(() => {
+    const hasDrawStudy = studies.some((id) => {
+      if (!isWolfStudyId(id)) return false;
+      const r = resolveWolfRecipe(id);
+      return r === 'smc' || r === 'pine';
+    });
+    if (!hasDrawStudy) {
+      setStudyShapes([]);
+      studyShapesTipRef.current = '';
+    }
+  }, [studies]);
 
   // Pin countdown under the live price label on the right price axis (TV behaviour).
   useEffect(() => {
