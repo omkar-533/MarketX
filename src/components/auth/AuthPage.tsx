@@ -147,6 +147,67 @@ const VISIBLE_REVIEWS = REVIEWS.filter(
   (r) => SHOW_INDICATORS || !/indicator/i.test(r.quote),
 );
 
+const STATS = SHOW_INDICATORS
+  ? ([
+      { to: 3, suffix: '', label: 'core modules' },
+      { to: 1, suffix: '', label: 'AI copilot desk' },
+      { to: 1, suffix: '', label: 'indicators library' },
+      { to: 1, suffix: '', label: 'trading journal' },
+    ] as const)
+  : ([
+      { to: 2, suffix: '', label: 'core modules' },
+      { to: 1, suffix: '', label: 'AI copilot desk' },
+      { to: 1, suffix: '', label: 'trading journal' },
+      { to: TRIAL_DAYS, suffix: '', label: 'day free trial' },
+    ] as const);
+
+const ease = EASE;
+
+function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
+  return (
+    <span className={`auth-lux__stars auth-lux__stars--${size}`} aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={i < rating ? 'is-on' : 'is-off'} />
+      ))}
+    </span>
+  );
+}
+
+function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
+  return (
+    <blockquote className="auth-lux__review">
+      <div className="auth-lux__review-top">
+        <Stars rating={review.rating} />
+        <span className="auth-lux__review-score">{review.rating.toFixed(1)}</span>
+        <Quote className="auth-lux__review-quote" aria-hidden />
+      </div>
+      <p className="auth-lux__review-text">“{review.quote}”</p>
+      <footer className="auth-lux__review-meta">
+        <img
+          className="auth-lux__review-photo"
+          src={review.photo}
+          alt={review.name}
+          width={44}
+          height={44}
+          loading="lazy"
+          decoding="async"
+        />
+        <div>
+          <cite>{review.name}</cite>
+          <span>{review.role}</span>
+        </div>
+      </footer>
+    </blockquote>
+  );
+}
+
+/** Story band with scroll-linked parallax on the visual. */
+function StoryBand({
+  band,
+  flip,
+  onCta,
+}: {
+  band: (typeof STORY_BANDS)[number];
   flip: boolean;
   onCta: () => void;
 }) {
