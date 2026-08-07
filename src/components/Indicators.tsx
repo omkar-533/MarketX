@@ -7,11 +7,12 @@ import {
   Copy,
   ImageOff,
   Loader2,
+  Search,
   Send,
   Sparkles,
 } from 'lucide-react';
 import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
-import { BRAND } from '../constants/brandLabels';
+import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { TRIAL_DAYS } from '../constants/plans';
 import { openExternalUrl } from '../utils/openExternalUrl';
 import ProtectedGuideVideo from './indicators/ProtectedGuideVideo';
@@ -66,6 +67,7 @@ export default function Indicators({
   const [items, setItems] = useState<IndicatorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
   const [active, setActive] = useState<IndicatorItem | null>(null);
   const [copied, setCopied] = useState(false);
   const [tvId, setTvId] = useState('');
@@ -198,7 +200,14 @@ export default function Indicators({
     return () => window.removeEventListener('keydown', onKey);
   }, [active]);
 
-  const filtered = items;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
+    );
+  }, [items, query]);
 
   const detail = useMemo(
     () => (active ? splitDescription(active.description) : null),
@@ -297,7 +306,9 @@ export default function Indicators({
               </div>
 
               <div className="lux-ind__tags">
-                <span className="lux-ind__tag lux-ind__tag--brand">Wolf Trade Advance Indicator</span>
+                <span className="lux-ind__tag">TradingView</span>
+                <span className="lux-ind__tag">Invite link</span>
+                <span className="lux-ind__tag">{BRAND_SHORT}</span>
                 <button
                   type="button"
                   className="lux-ind__tag-cta"
@@ -579,17 +590,42 @@ export default function Indicators({
             transition={{ delay: 0.22, ...softSpring }}
           >
             <div className="lux-lib__filters">
-              <motion.span
-                className="lux-lib__chip lux-lib__chip--brand is-active"
-                initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: 0.24, ...spring }}
-              >
-                Wolf Trade Advance Indicator
-              </motion.span>
+              {[
+                { label: BRAND_SHORT, active: true },
+                { label: 'TradingView', active: false },
+                { label: 'Invite link', active: false },
+              ].map((chip, i) => (
+                <motion.span
+                  key={chip.label}
+                  className={`lux-lib__chip ${chip.active ? 'is-active' : ''}`}
+                  initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: 0.24 + i * 0.05, ...spring }}
+                  whileHover={{ y: -2, scale: 1.04 }}
+                >
+                  {chip.label}
+                </motion.span>
+              ))}
             </div>
+            <motion.div className="lux-lib__search" whileHover={{ scale: 1.01 }}>
+              <Search className="lux-lib__search-icon" aria-hidden />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search indicators…"
+                aria-label="Search indicators"
+              />
+            </motion.div>
           </motion.div>
 
+          <motion.p
+            className="lux-lib__count"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.28 }}
+          >
+            {loading ? 'Loading…' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
+          </motion.p>
           <hr className="lux-lib__rule" />
 
           {loading ? (
@@ -602,7 +638,7 @@ export default function Indicators({
             <div className="lux-lib__state">
               {items.length === 0
                 ? 'No indicators published yet. Add invite links from Admin → Indicators.'
-                : 'No indicators to show.'}
+                : 'No matches for that search.'}
             </div>
           ) : (
             <motion.div
