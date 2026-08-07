@@ -148,7 +148,7 @@ export function sanitizeLevels(raw: unknown): ChartLevel[] {
     .slice(0, MAX_LEVELS);
 }
 
-function toShapeType(raw: unknown): ChartShapeType | null {
+export function toShapeType(raw: unknown): ChartShapeType | null {
   const type = String(raw ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
   if (
     ['zone', 'box', 'rect', 'rectangle', 'ob', 'orderblock', 'area', 'fvg', 'gap', 'ellipse'].includes(

@@ -280,7 +280,7 @@ export function createDrawingPool(ctx) {
       for (const o of lines.values()) {
         if (!isFiniteNum(o.y1) && !isFiniteNum(o.y2)) continue;
         drawings.push({
-          type: 'trendLine',
+          type: 'trend',
           tone: toneFromColor(o.color),
           label: '',
           p1: o.y1,
@@ -292,7 +292,7 @@ export function createDrawingPool(ctx) {
       }
       for (const o of boxes.values()) {
         drawings.push({
-          type: 'box',
+          type: 'zone',
           tone: toneFromColor(o.bgcolor || o.color),
           label: o.text || '',
           p1: o.top,
@@ -300,6 +300,8 @@ export function createDrawingPool(ctx) {
           i1: Math.min(o.i1, o.i2),
           i2: Math.max(o.i1, o.i2),
           color: o.color,
+          borderColor: o.color,
+          fillColor: o.bgcolor,
           bgcolor: o.bgcolor,
         });
       }

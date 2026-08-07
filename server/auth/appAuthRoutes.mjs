@@ -734,8 +734,11 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
         i2: Number.isFinite(Number(d.i2)) ? Number(d.i2) : undefined,
         color: d.color ? String(d.color) : undefined,
         borderColor: d.borderColor ? String(d.borderColor) : undefined,
-        fillColor: d.fillColor ? String(d.fillColor) : undefined,
-        bgcolor: d.bgcolor ? String(d.bgcolor) : undefined,
+        fillColor: d.fillColor
+          ? String(d.fillColor)
+          : d.bgcolor
+            ? String(d.bgcolor)
+            : undefined,
         lineStyle: d.lineStyle === 'dotted' ? 'dotted' : 'solid',
       })),
       warnings: Array.isArray(result.warnings) ? result.warnings.slice(0, 40) : [],

@@ -21,6 +21,7 @@ import { serverUnreachableMessage } from '../../constants/brandLabels';
 import {
   levelsNearPrice,
   shapesNearPrice,
+  toShapeType,
   type ChartLevel,
   type ChartShape,
 } from '../../utils/chartAnnotations';
@@ -65,7 +66,7 @@ import {
   loadIndicatorSettings,
   saveIndicatorSettings,
 } from '../../services/wolfIndicatorSettings';
-import { runPineIndicator, type PineRunPlot } from '../../services/indicatorLibrary';
+import { runPineIndicator, type PineRunDrawing, type PineRunPlot } from '../../services/indicatorLibrary';
 import IndicatorSettingsForm from '../indicators/IndicatorSettingsForm';
 import {
   ensurePriceVisible,
@@ -129,6 +130,36 @@ const OHLC_RESYNC_MS = 120_000;
 const QUOTE_POLL_MS = 500;
 /** Soft-expand locked price scale at most this often (ms). */
 const PRICE_ENSURE_MS = 180;
+
+/** Map Pine /run drawings → chart overlay shapes (normalize trendLine/box…). */
+function pineDrawingsToShapes(
+  drawings: PineRunDrawing[],
+  source: ChartBar[],
+): ChartShape[] {
+  const out: ChartShape[] = [];
+  for (const s of drawings) {
+    const type = toShapeType(s.type) || toShapeType('zone');
+    if (!type) continue;
+    const x1 =
+      typeof s.i1 === 'number' && source[s.i1] ? barTimeSec(source[s.i1].time) : undefined;
+    const x2 =
+      typeof s.i2 === 'number' && source[s.i2] ? barTimeSec(source[s.i2].time) : undefined;
+    out.push({
+      type,
+      tone: s.tone || 'neutral',
+      label: s.label || '',
+      p1: s.p1,
+      p2: s.p2,
+      x1,
+      x2,
+      color: s.color,
+      borderColor: s.borderColor || s.color,
+      fillColor: s.fillColor,
+      lineStyle: s.lineStyle,
+    });
+  }
+  return out;
+}
 
 const IST = 'Asia/Kolkata';
 const istTime = new Intl.DateTimeFormat('en-IN', {
@@ -1451,7 +1482,9 @@ export default function NativeChatChart({
                 .then((result) => {
                   const pineDrawings = result.drawings || [];
                   const useNativeSmcFallback =
-                    isWolfSmcLabel(id, title) && pineDrawings.length === 0;
+                    isWolfSmcLabel(id, title) &&
+                    (pineDrawings.length === 0 ||
+                      pineDrawingsToShapes(pineDrawings, source).length === 0);
                   pinePlotCache.set(cacheKey, {
                     tip: tipKey,
                     plots: result.plots,
@@ -1461,29 +1494,7 @@ export default function NativeChatChart({
                     nativeSmc: useNativeSmcFallback,
                   });
                   if (pineDrawings.length) {
-                    const chartShapes: ChartShape[] = pineDrawings.map((s) => {
-                      const x1 =
-                        typeof s.i1 === 'number' && source[s.i1]
-                          ? barTimeSec(source[s.i1].time)
-                          : undefined;
-                      const x2 =
-                        typeof s.i2 === 'number' && source[s.i2]
-                          ? barTimeSec(source[s.i2].time)
-                          : undefined;
-                      return {
-                        type: (s.type as ChartShape['type']) || 'zone',
-                        tone: s.tone || 'neutral',
-                        label: s.label || '',
-                        p1: s.p1,
-                        p2: s.p2,
-                        x1,
-                        x2,
-                        color: s.color,
-                        borderColor: s.borderColor,
-                        fillColor: s.fillColor,
-                        lineStyle: s.lineStyle,
-                      };
-                    });
+                    const chartShapes = pineDrawingsToShapes(pineDrawings, source);
                     queueMicrotask(() => setStudyShapes(chartShapes));
                   } else if (useNativeSmcFallback) {
                     const r = computeWolfSmc(source, 5);
@@ -1952,8 +1963,10 @@ export default function NativeChatChart({
 
   const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
   const aiShapes = useMemo(() => {
-    const merged = [...(shapes ?? []), ...studyShapes];
-    return merged.length ? shapesNearPrice(merged, lastClose) : [];
+    // Chat/Mentor annotations get a near-price sanity filter.
+    // Study/Pine drawings are intentional — never drop them (was hiding all SMC overlays).
+    const fromChat = shapes?.length ? shapesNearPrice(shapes, lastClose) : [];
+    return [...fromChat, ...studyShapes];
   }, [shapes, studyShapes, lastClose]);
 
   // Clear study drawings when Wolf SMC / Pine studies are turned off.
