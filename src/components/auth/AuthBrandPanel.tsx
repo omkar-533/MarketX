@@ -109,8 +109,7 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
           <Shield className="w-3 h-3 text-emerald-400" />
           Encrypted session
         </span>
-        <span className="auth-trust-badge">Neural feed · {BRAND_SHORT}</span>
-        <span className="auth-trust-badge">NSE · F&O</span>
+        <span className="auth-trust-badge">{BRAND_SHORT}</span>
       </div>
     </div>
   );

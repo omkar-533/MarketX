@@ -13,7 +13,6 @@ import AuthFeatureGrid from './AuthFeatureGrid';
 import AuthPricing from './AuthPricing';
 import AuthForgotForm, { type AuthForgotFormProps as ForgotFormProps } from './AuthForgotForm';
 import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './AuthSignupForm';
-import LiveHeroTerminal from './LiveHeroTerminal';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
 import { SHOW_INDICATORS } from '../../constants/featureFlags';
@@ -148,82 +147,6 @@ const VISIBLE_REVIEWS = REVIEWS.filter(
   (r) => SHOW_INDICATORS || !/indicator/i.test(r.quote),
 );
 
-const TICKER = [
-  ['NIFTY', '+0.62%', true],
-  ['BANKNIFTY', '+0.94%', true],
-  ['FINNIFTY', '-0.18%', false],
-  ['RELIANCE', '+1.24%', true],
-  ['HDFCBANK', '+0.41%', true],
-  ['INFY', '-0.33%', false],
-  ['TCS', '+0.58%', true],
-  ['ICICIBANK', '+1.06%', true],
-  ['SBIN', '+0.72%', true],
-  ['TATAMOTORS', '+1.85%', true],
-  ['AXISBANK', '-0.21%', false],
-  ['LT', '+0.49%', true],
-] as const;
-
-const STATS = SHOW_INDICATORS
-  ? ([
-      { to: 3, suffix: '', label: 'core modules' },
-      { to: 1, suffix: '', label: 'AI copilot desk' },
-      { to: 1, suffix: '', label: 'indicators library' },
-      { to: 1, suffix: '', label: 'trading journal' },
-    ] as const)
-  : ([
-      { to: 2, suffix: '', label: 'core modules' },
-      { to: 1, suffix: '', label: 'AI copilot desk' },
-      { to: 1, suffix: '', label: 'trading journal' },
-      { to: TRIAL_DAYS, suffix: '', label: 'day free trial' },
-    ] as const);
-
-const ease = EASE;
-
-function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
-  return (
-    <span className={`auth-lux__stars auth-lux__stars--${size}`} aria-hidden="true">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} className={i < rating ? 'is-on' : 'is-off'} />
-      ))}
-    </span>
-  );
-}
-
-function ReviewCard({ review }: { review: (typeof REVIEWS)[number] }) {
-  return (
-    <blockquote className="auth-lux__review">
-      <div className="auth-lux__review-top">
-        <Stars rating={review.rating} />
-        <span className="auth-lux__review-score">{review.rating.toFixed(1)}</span>
-        <Quote className="auth-lux__review-quote" aria-hidden />
-      </div>
-      <p className="auth-lux__review-text">�{review.quote}�</p>
-      <footer className="auth-lux__review-meta">
-        <img
-          className="auth-lux__review-photo"
-          src={review.photo}
-          alt={review.name}
-          width={44}
-          height={44}
-          loading="lazy"
-          decoding="async"
-        />
-        <div>
-          <cite>{review.name}</cite>
-          <span>{review.role}</span>
-        </div>
-      </footer>
-    </blockquote>
-  );
-}
-
-/** Story band with scroll-linked parallax on the visual. */
-function StoryBand({
-  band,
-  flip,
-  onCta,
-}: {
-  band: (typeof STORY_BANDS)[number];
   flip: boolean;
   onCta: () => void;
 }) {
@@ -303,10 +226,6 @@ export default function AuthPage(props: AuthPageProps) {
     target: heroRef,
     offset: ['start start', 'end start'],
   });
-  const stageRotate = useTransform(heroP, [0, 0.34], [12, 0]);
-  const stageScale = useTransform(heroP, [0, 0.34, 1], [0.93, 1, 0.94]);
-  const stageY = useTransform(heroP, [0.45, 1], [0, -120]);
-  const stageOpacity = useTransform(heroP, [0, 0.6, 1], [1, 1, 0.12]);
   const copyY = useTransform(heroP, [0, 1], [0, -140]);
   const copyOpacity = useTransform(heroP, [0, 0.55], [1, 0]);
 
@@ -440,38 +359,7 @@ export default function AuthPage(props: AuthPageProps) {
               </p>
             </motion.div>
           </motion.div>
-
-          <motion.div
-            className="auth-lux__hero-stage"
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.1, delay: 0.3, ease }}
-          >
-            <motion.div
-              className="auth-lux__hero-stage-inner"
-              style={{
-                rotateX: stageRotate,
-                scale: stageScale,
-                y: stageY,
-                opacity: stageOpacity,
-              }}
-            >
-              <LiveHeroTerminal />
-            </motion.div>
-          </motion.div>
         </section>
-
-        {/* Live ticker strip */}
-        <div className="auth-lux__ticker" aria-hidden="true">
-          <Marquee duration={38}>
-            {TICKER.map(([sym, chg, up]) => (
-              <span className="auth-lux__tick" key={sym}>
-                <b>{sym}</b>
-                <i className={up ? 'is-up' : 'is-down'}>{chg}</i>
-              </span>
-            ))}
-          </Marquee>
-        </div>
 
         {/* Story bands */}
         <section className="auth-lux__stories" id="platform" aria-label="Platform">
@@ -507,7 +395,7 @@ export default function AuthPage(props: AuthPageProps) {
             </h2>
             <Reveal delay={0.24} y={22}>
               <p className="auth-lux__section-sub">
-                What desks say after switching to a cleaner, smarter NSE workflow.
+                What desks say after switching to a cleaner, smarter workflow.
               </p>
             </Reveal>
             <Reveal delay={0.34} y={18} blur={false}>

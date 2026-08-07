@@ -14,6 +14,8 @@ import {
   Zap,
 } from 'lucide-react';
 import BrandMark from './BrandMark';
+import { BRAND_SHORT } from '../constants/brandLabels';
+import { SHOW_DASHBOARD, SHOW_OPTION_CHAIN } from '../constants/featureFlags';
 
 interface NavbarProps {
   activeTab: string;
@@ -21,8 +23,8 @@ interface NavbarProps {
 }
 
 const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'optionchain', label: 'Option Chain', icon: Layers },
+  ...(SHOW_DASHBOARD ? [{ id: 'dashboard', label: 'Dashboard', icon: BarChart3 }] : []),
+  ...(SHOW_OPTION_CHAIN ? [{ id: 'optionchain', label: 'Option Chain', icon: Layers }] : []),
   { id: 'pcr', label: 'PCR Analysis', icon: Activity },
   { id: 'maxpain', label: 'Max Pain', icon: Target },
   { id: 'strategy', label: 'Strategy Builder', icon: Zap },
@@ -68,7 +70,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gold-10 border border-gold-30 rounded-full">
               <div className="w-2 h-2 bg-gold rounded-full animate-pulse shadow-lg shadow-[#d4af37]/50" />
-              <span className="text-xs font-semibold text-gold tracking-wider uppercase">LIVE</span>
+              <span className="text-xs font-semibold text-gold tracking-wider uppercase">{BRAND_SHORT || 'Wolf'}</span>
             </div>
             <button 
               className="xl:hidden p-2 text-slate-400 hover:text-gold transition-colors"

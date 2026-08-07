@@ -112,7 +112,7 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
         onChartStyleChange={(chartStyle: TvChartStyle) => patch({ chartStyle })}
         onChartCountChange={onChartCountChange}
         onReload={onReload}
-        onExitApp={() => onNavigate?.('dashboard')}
+        onExitApp={() => onNavigate?.('wolf-ai')}
         onNavigate={onNavigate}
       />
 

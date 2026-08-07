@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Command, ArrowRight } from 'lucide-react';
-import { SHOW_INDICATORS, SHOW_OI_INTELLIGENCE, SHOW_OPTION_CHAIN, SHOW_TERMINAL } from '../constants/featureFlags';
+import {
+  SHOW_DASHBOARD,
+  SHOW_INDICATORS,
+  SHOW_OI_INTELLIGENCE,
+  SHOW_OPTION_CHAIN,
+  SHOW_TERMINAL,
+} from '../constants/featureFlags';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -10,7 +16,7 @@ interface CommandPaletteProps {
 }
 
 const commands = [
-  { id: 'dashboard', label: 'Open Dashboard', shortcut: 'D' },
+  ...(SHOW_DASHBOARD ? [{ id: 'dashboard', label: 'Open Dashboard', shortcut: 'D' }] : []),
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'mentor-ai', label: 'Open Wolf Mentor', shortcut: 'T' },
   { id: 'arena', label: 'Open Wolf Arena', shortcut: 'A' },

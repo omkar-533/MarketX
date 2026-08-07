@@ -8,6 +8,7 @@ import {
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
 import {
+  SHOW_DASHBOARD,
   SHOW_INDICATORS,
   SHOW_OI_INTELLIGENCE,
   SHOW_OPTION_CHAIN,
@@ -28,7 +29,9 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard },
+  ...(SHOW_DASHBOARD
+    ? [{ id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard }]
+    : []),
   { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   { id: 'arena', label: PAGE_NAMES.arena, icon: Swords },

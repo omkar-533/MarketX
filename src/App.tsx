@@ -4,7 +4,13 @@ import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import WolfLoader from './components/WolfLoader';
 import { BRAND, pageDocumentTitle } from './constants/brandLabels';
-import { SHOW_INDICATORS, SHOW_OI_INTELLIGENCE, SHOW_OPTION_CHAIN, SHOW_TERMINAL } from './constants/featureFlags';
+import {
+  SHOW_DASHBOARD,
+  SHOW_INDICATORS,
+  SHOW_OI_INTELLIGENCE,
+  SHOW_OPTION_CHAIN,
+  SHOW_TERMINAL,
+} from './constants/featureFlags';
 import { ensureSiteWideLiveFeed } from './services/siteWideLiveFeed';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
@@ -50,12 +56,13 @@ function PageLoader() {
 const HIDDEN_TABS = new Set([
   'heatmap',
   'scanner',
+  ...(SHOW_DASHBOARD ? [] : (['dashboard'] as const)),
   ...(SHOW_OI_INTELLIGENCE ? [] : (['oiintelligence'] as const)),
   ...(SHOW_OPTION_CHAIN ? [] : (['optionchain'] as const)),
   ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
   ...(SHOW_TERMINAL ? [] : (['terminal'] as const)),
 ]);
-const DEFAULT_TAB = 'dashboard';
+const DEFAULT_TAB = 'wolf-ai';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
@@ -434,7 +441,7 @@ function AppWorkspace() {
                 />
               </Suspense>
             ) : (
-              <AppErrorBoundary onReset={() => handleTabChange('dashboard')}>
+              <AppErrorBoundary onReset={() => handleTabChange(DEFAULT_TAB)}>
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>

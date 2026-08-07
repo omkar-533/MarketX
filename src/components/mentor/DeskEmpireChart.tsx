@@ -123,9 +123,7 @@ export default function DeskEmpireChart({
       ctx.font = '600 11px "Trebuchet MS", "Segoe UI", sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(
-        `${scenario?.symbol || 'DESK'} · ${scenario?.interval || ''}${
-          scenario?.source === 'tradingview' ? ' · TradingView' : ''
-        }`,
+        `${scenario?.symbol || 'DESK'} · ${scenario?.interval || ''}`,
         12,
         18,
       );
