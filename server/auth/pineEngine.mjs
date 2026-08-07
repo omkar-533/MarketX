@@ -354,6 +354,7 @@ export function runPineScript(source, bars, inputOverrides = {}) {
   const plots = [];
   const hlines = [];
   const shapes = [];
+  const drawings = [];
 
   const history = (series, offset) => {
     const off = Math.max(0, Math.floor(Number(offset) || 0));
@@ -362,6 +363,8 @@ export function runPineScript(source, bars, inputOverrides = {}) {
     for (let i = off; i < n; i += 1) out[i] = series[i - off];
     return out;
   };
+
+  env.bar_index = Array.from({ length: n }, (_, i) => i);
 
   function callTaFixed(name, args) {
     const fn = String(name || '').toLowerCase();
@@ -418,9 +421,115 @@ export function runPineScript(source, bars, inputOverrides = {}) {
   const evalExpr = (expr) =>
     evaluateExpression(expr, env, n, { history, callTa: callTaFixed, warnings });
 
+  function scalarAt(val, i) {
+    if (isSeries(val)) return at(val, i);
+    if (typeof val === 'number') return val;
+    if (typeof val === 'boolean') return val ? 1 : 0;
+    const num = Number(val);
+    return Number.isFinite(num) ? num : nan();
+  }
+
+  function namedOrPos(args, name, index) {
+    const hit = args.find((a) => new RegExp(`^\\s*${name}\\s*=`, 'i').test(a));
+    if (hit) return hit.replace(new RegExp(`^\\s*${name}\\s*=\\s*`, 'i'), '').trim();
+    return args[index] && !/^\s*\w+\s*=/.test(args[index]) ? args[index] : '';
+  }
+
+  function pushBox(args, barI) {
+    const leftE = namedOrPos(args, 'left', 0);
+    const topE = namedOrPos(args, 'top', 1);
+    const rightE = namedOrPos(args, 'right', 2);
+    const bottomE = namedOrPos(args, 'bottom', 3);
+    let left = Math.floor(scalarAt(evalExpr(leftE || 'bar_index'), barI));
+    let right = Math.floor(scalarAt(evalExpr(rightE || 'bar_index'), barI));
+    const top = scalarAt(evalExpr(topE || 'high'), barI);
+    const bottom = scalarAt(evalExpr(bottomE || 'low'), barI);
+    if (![left, right, top, bottom].every(Number.isFinite)) return;
+    if (left > right) [left, right] = [right, left];
+    const border =
+      args.find((a) => /border_color\s*=/.test(a))?.replace(/^[\s\S]*?=\s*/, '') || '';
+    const bg = args.find((a) => /bgcolor\s*=/.test(a))?.replace(/^[\s\S]*?=\s*/, '') || '';
+    const tone = /red|bear|#[ef]/i.test(border + bg) ? 'bear' : 'bull';
+    drawings.push({
+      type: 'zone',
+      tone,
+      label: 'BOX',
+      p1: Math.max(top, bottom),
+      p2: Math.min(top, bottom),
+      i1: Math.max(0, Math.min(n - 1, left)),
+      i2: Math.max(0, Math.min(n - 1, right)),
+      borderColor: border ? colorToHex(border) : tone === 'bull' ? '#26a69a' : '#ef5350',
+      fillColor:
+        tone === 'bull' ? 'rgba(38,166,154,0.14)' : 'rgba(239,83,80,0.14)',
+      color: tone === 'bull' ? '#26a69a' : '#ef5350',
+    });
+  }
+
+  function pushLine(args, barI) {
+    const x1 = Math.floor(scalarAt(evalExpr(namedOrPos(args, 'x1', 0) || 'bar_index'), barI));
+    const y1 = scalarAt(evalExpr(namedOrPos(args, 'y1', 1) || 'close'), barI);
+    const x2 = Math.floor(scalarAt(evalExpr(namedOrPos(args, 'x2', 2) || 'bar_index'), barI));
+    const y2 = scalarAt(evalExpr(namedOrPos(args, 'y2', 3) || 'close'), barI);
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return;
+    const col =
+      args.find((a) => /^\s*color\s*=/.test(a))?.replace(/^\s*color\s*=\s*/i, '') || '';
+    drawings.push({
+      type: Math.abs(y1 - y2) < 1e-9 ? 'hray' : 'trend',
+      tone: /red|#e/i.test(col) ? 'bear' : 'bull',
+      label: 'LINE',
+      p1: y1,
+      p2: y2,
+      i1: Math.max(0, Math.min(n - 1, x1)),
+      i2: Math.max(0, Math.min(n - 1, x2)),
+      color: col ? colorToHex(col) : '#f0b90b',
+      lineStyle: /dash|dotted/i.test(String(args.join(','))) ? 'dotted' : 'solid',
+    });
+  }
+
+  function pushLabel(args, barI) {
+    const x = Math.floor(scalarAt(evalExpr(namedOrPos(args, 'x', 0) || 'bar_index'), barI));
+    const y = scalarAt(evalExpr(namedOrPos(args, 'y', 1) || 'close'), barI);
+    const textRaw = namedOrPos(args, 'text', 2) || namedOrPos(args, 'title', 2) || 'L';
+    const text = stripQuotes(textRaw).slice(0, 24);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    drawings.push({
+      type: 'label',
+      tone: 'neutral',
+      label: text || 'L',
+      p1: y,
+      i1: Math.max(0, Math.min(n - 1, x)),
+      color: '#f0b90b',
+    });
+  }
+
+  function execDrawingCall(line, barI) {
+    const cleaned = line.replace(/^[A-Za-z_][\w]*\s*(?::=|=)\s*/, '').trim();
+    const boxM = /^box\.new\s*\(([\s\S]*)\)\s*$/i.exec(cleaned);
+    if (boxM) {
+      pushBox(splitArgs(boxM[1]), barI);
+      return true;
+    }
+    const lineM = /^line\.new\s*\(([\s\S]*)\)\s*$/i.exec(cleaned);
+    if (lineM) {
+      pushLine(splitArgs(lineM[1]), barI);
+      return true;
+    }
+    const labM = /^label\.new\s*\(([\s\S]*)\)\s*$/i.exec(cleaned);
+    if (labM) {
+      pushLabel(splitArgs(labM[1]), barI);
+      return true;
+    }
+    return false;
+  }
+
+  function truthyAt(condVal, i) {
+    const v = scalarAt(condVal, i);
+    return Number.isFinite(v) ? v !== 0 : Boolean(condVal);
+  }
+
   const statements = extractStatements(source);
-  for (const rawLine of statements) {
-    let line = rawLine
+  for (let si = 0; si < statements.length; si += 1) {
+    let line = statements[si]
       .replace(/\bvar\s+/g, '')
       .replace(/\bvarip\s+/g, '')
       .replace(/\bconst\s+/g, '')
@@ -429,10 +538,65 @@ export function runPineScript(source, bars, inputOverrides = {}) {
       if (line.startsWith('import ')) warnings.push('import/library skipped');
       continue;
     }
-    if (/^(if|for|while|switch|type|method|export)\b/i.test(line)) {
+
+    // Multi-line: if cond \n body... (body lines already flattened — handle `if cond` then look ahead)
+    const ifM = /^if\s+(.+)$/i.exec(line);
+    if (ifM) {
+      const condExpr = ifM[1].replace(/\s*then\s*$/i, '').trim();
+      // Collect body until blank sibling / next top-level keyword (statements are trim-flattened)
+      const body = [];
+      // Pine one-liners sometimes use `if cond =>` or next statements with leading tabs lost —
+      // support `if cond` followed by drawing/assignment lines until another if/for/plot/empty stop.
+      let j = si + 1;
+      while (j < statements.length) {
+        const nxt = statements[j]
+          .replace(/\bvar\s+/g, '')
+          .replace(/\bvarip\s+/g, '')
+          .replace(/\bconst\s+/g, '')
+          .trim();
+        if (!nxt) break;
+        if (/^(if|for|while|switch|type|method|export|plot|plotshape|hline|indicator)\b/i.test(nxt)) {
+          break;
+        }
+        // Flattened source loses indent — only pull drawing / drawing-assign lines into if bodies.
+        const isDraw =
+          /^(box|line|label)\.new\s*\(/i.test(nxt) ||
+          /^[A-Za-z_][\w]*\s*(?::=|=)\s*(box|line|label)\.new\s*\(/i.test(nxt);
+        if (!isDraw) break;
+        body.push(nxt);
+        j += 1;
+      }
+      if (!body.length) {
+        warnings.push(`Empty if body: ${line.slice(0, 40)}…`);
+        continue;
+      }
+      si = j - 1;
+      try {
+        const condVal = evalExpr(condExpr);
+        const maxDraw = 80;
+        for (let i = 0; i < n; i += 1) {
+          if (!truthyAt(condVal, i)) continue;
+          for (const bodyLine of body) {
+            if (drawings.length >= maxDraw) break;
+            if (execDrawingCall(bodyLine, i)) continue;
+            const asg = /^([A-Za-z_][\w]*)\s*(?::=|=)\s*([\s\S]+)$/.exec(bodyLine);
+            if (asg && /^(box|line|label)\.new\s*\(/i.test(asg[2])) {
+              execDrawingCall(bodyLine, i);
+            }
+          }
+        }
+      } catch (err) {
+        warnings.push(`if: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      continue;
+    }
+
+    if (/^(for|while|switch|type|method|export)\b/i.test(line)) {
       warnings.push(`Control flow not fully executed: ${line.slice(0, 40)}…`);
       continue;
     }
+
+    if (execDrawingCall(line, n - 1)) continue;
 
     // plot / plotshape / hline
     const plotM = /^plot\s*\(([\s\S]*)\)\s*$/i.exec(line);
@@ -475,6 +639,10 @@ export function runPineScript(source, bars, inputOverrides = {}) {
     if (asg) {
       const name = asg[1];
       if (/^input\./i.test(asg[2]) || /^input\s*\(/i.test(asg[2])) continue; // already in env
+      if (/^(box|line|label)\.new\s*\(/i.test(asg[2])) {
+        execDrawingCall(line, n - 1);
+        continue;
+      }
       try {
         env[name] = evalExpr(asg[2]);
       } catch (err) {
@@ -485,11 +653,14 @@ export function runPineScript(source, bars, inputOverrides = {}) {
   }
 
   // If script never called plot but computed a last series named like plot/out/signal — still show close SMA fallback? No — respect “as written”.
-  if (!plots.length && !warnings.length) {
-    warnings.push('No plot() calls detected — add plot(series) in your Pine to draw on chart');
+  if (!plots.length && !drawings.length && !warnings.length) {
+    warnings.push('No plot()/box.new() calls detected — add plot or drawings in your Pine');
   }
 
-  return { version, plots, hlines, shapes, warnings };
+  // Cap drawings for payload size
+  const drawingsOut = drawings.slice(-60);
+
+  return { version, plots, hlines, shapes, drawings: drawingsOut, warnings };
 }
 
 function splitArgs(raw) {

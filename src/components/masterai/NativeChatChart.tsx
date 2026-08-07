@@ -936,6 +936,19 @@ export default function NativeChatChart({
         tip: string;
         plots: PineRunPlot[];
         hlines: Array<{ price: number; color: string }>;
+        drawings: Array<{
+          type: string;
+          tone: 'bull' | 'bear' | 'neutral';
+          label: string;
+          p1?: number;
+          p2?: number;
+          i1?: number;
+          i2?: number;
+          color?: string;
+          borderColor?: string;
+          fillColor?: string;
+          lineStyle?: 'solid' | 'dotted';
+        }>;
         version: number;
       }
     >();
@@ -1425,8 +1438,35 @@ export default function NativeChatChart({
                     tip: tipKey,
                     plots: result.plots,
                     hlines: result.hlines,
+                    drawings: result.drawings || [],
                     version: result.version,
                   });
+                  if (result.drawings?.length) {
+                    const chartShapes: ChartShape[] = result.drawings.map((s) => {
+                      const x1 =
+                        typeof s.i1 === 'number' && source[s.i1]
+                          ? barTimeSec(source[s.i1].time)
+                          : undefined;
+                      const x2 =
+                        typeof s.i2 === 'number' && source[s.i2]
+                          ? barTimeSec(source[s.i2].time)
+                          : undefined;
+                      return {
+                        type: (s.type as ChartShape['type']) || 'zone',
+                        tone: s.tone || 'neutral',
+                        label: s.label || '',
+                        p1: s.p1,
+                        p2: s.p2,
+                        x1,
+                        x2,
+                        color: s.color,
+                        borderColor: s.borderColor,
+                        fillColor: s.fillColor,
+                        lineStyle: s.lineStyle,
+                      };
+                    });
+                    queueMicrotask(() => setStudyShapes(chartShapes));
+                  }
                   if (viewRef.current && applyRef.current) {
                     applyRef.current(viewRef.current, false);
                   }

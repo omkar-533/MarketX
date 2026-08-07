@@ -286,6 +286,20 @@ export type PineRunPlot = {
   values: Array<number | null>;
 };
 
+export type PineRunDrawing = {
+  type: string;
+  tone: 'bull' | 'bear' | 'neutral';
+  label: string;
+  p1?: number;
+  p2?: number;
+  i1?: number;
+  i2?: number;
+  color?: string;
+  borderColor?: string;
+  fillColor?: string;
+  lineStyle?: 'solid' | 'dotted';
+};
+
 export type PineRunResult = {
   ok: boolean;
   version: number;
@@ -293,6 +307,7 @@ export type PineRunResult = {
   plots: PineRunPlot[];
   hlines: Array<{ price: number; color: string }>;
   shapes: Array<{ title: string; flags: number[] }>;
+  drawings: PineRunDrawing[];
   warnings: string[];
 };
 
@@ -320,6 +335,7 @@ export async function runPineIndicator(
     plots: Array.isArray(data.plots) ? (data.plots as PineRunPlot[]) : [],
     hlines: Array.isArray(data.hlines) ? (data.hlines as PineRunResult['hlines']) : [],
     shapes: Array.isArray(data.shapes) ? (data.shapes as PineRunResult['shapes']) : [],
+    drawings: Array.isArray(data.drawings) ? (data.drawings as PineRunDrawing[]) : [],
     warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
   };
 }

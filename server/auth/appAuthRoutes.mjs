@@ -716,6 +716,19 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
           ? s.flags.map((v) => (v ? 1 : 0))
           : [],
       })),
+      drawings: (result.drawings || []).slice(0, 60).map((d) => ({
+        type: String(d.type || 'zone'),
+        tone: d.tone === 'bear' || d.tone === 'bull' ? d.tone : 'neutral',
+        label: String(d.label || ''),
+        p1: Number.isFinite(Number(d.p1)) ? Number(d.p1) : undefined,
+        p2: Number.isFinite(Number(d.p2)) ? Number(d.p2) : undefined,
+        i1: Number.isFinite(Number(d.i1)) ? Number(d.i1) : undefined,
+        i2: Number.isFinite(Number(d.i2)) ? Number(d.i2) : undefined,
+        color: d.color ? String(d.color) : undefined,
+        borderColor: d.borderColor ? String(d.borderColor) : undefined,
+        fillColor: d.fillColor ? String(d.fillColor) : undefined,
+        lineStyle: d.lineStyle === 'dotted' ? 'dotted' : 'solid',
+      })),
       warnings: Array.isArray(result.warnings) ? result.warnings.slice(0, 20) : [],
     });
   } catch (err) {
