@@ -128,7 +128,7 @@ const DOWN_FILL = 'rgba(239,83,80,0.5)';
 /** Full OHLC resync (history/volume). Live LTP uses WS + fast quote poll. */
 const OHLC_RESYNC_MS = 120_000;
 /** Paint tip from cache often; REST only when WS quiet. */
-const QUOTE_POLL_MS = 250;
+const QUOTE_POLL_MS = 100;
 /** Soft-expand locked price scale at most this often (ms). */
 const PRICE_ENSURE_MS = 180;
 
@@ -810,9 +810,10 @@ export default function NativeChatChart({
         (quoteMatchesSymbol(String(q.symbol || ''), apiSymbol) ? q.candle : undefined);
 
       let px = Number(q.price) || 0;
-      // Bid/ask mid fills gaps between sparse last-print ticks.
-      if (!(px > 0) && Number(q.bid) > 0 && Number(q.ask) > 0) {
-        px = (Number(q.bid) + Number(q.ask)) / 2;
+      // Bid/ask mid keeps tip moving between sparse last prints (FX/crypto).
+      if (Number(q.bid) > 0 && Number(q.ask) > 0) {
+        const mid = (Number(q.bid) + Number(q.ask)) / 2;
+        if (!(px > 0) || Math.abs(mid - px) / px < 0.002) px = mid;
       }
       if (forming?.close && apiInterval === '1m') {
         px = forming.close;

@@ -9,13 +9,16 @@ function round(n, digits = 4) {
   return Math.round(n * p) / p;
 }
 
-/** Keep more decimals for FX/gold so tip does not stick between cents. */
+/** Keep more decimals for FX/gold/crypto so tip does not stick between ticks. */
 function priceDigits(price) {
   const p = Math.abs(Number(price) || 0);
-  if (p >= 1000) return 3;
-  if (p >= 100) return 4;
-  if (p >= 1) return 5;
-  return 6;
+  // FX majors / minors
+  if (p > 0 && p < 50) return 5;
+  // Gold / silver-ish / mid equities
+  if (p < 1000) return 4;
+  // Crypto & indices — keep cents / pipettes
+  if (p < 100_000) return 3;
+  return 2;
 }
 
 function calcChange(price, prevClose) {
@@ -38,11 +41,23 @@ export function mergeTickIntoMeta(symbol, tick) {
   const sym = String(symbol || '').trim().toUpperCase();
   const prev = meta.get(sym);
   let ltp = Number(tick?.ltp ?? tick?.lp ?? tick?.last_price ?? 0);
-  // Prefer bid/ask mid when print is absent — keeps tip alive between sparse lp ticks.
-  if (!ltp) {
-    const bid = Number(tick?.bid_price ?? tick?.bid ?? tick?.bbp ?? 0);
-    const ask = Number(tick?.ask_price ?? tick?.ask ?? tick?.bap ?? 0);
-    if (bid > 0 && ask > 0) ltp = (bid + ask) / 2;
+  const bid = Number(
+    tick?.bid_price ?? tick?.bid ?? tick?.bbp ?? tick?.best_bid_price ?? prev?.bid ?? 0,
+  );
+  const ask = Number(
+    tick?.ask_price ?? tick?.ask ?? tick?.bap ?? tick?.best_ask_price ?? prev?.ask ?? 0,
+  );
+  const mid = bid > 0 && ask > 0 ? (bid + ask) / 2 : 0;
+  // Prefer mid for tip motion when last trade is sticky (FX/crypto feel) or lp missing.
+  if (mid > 0) {
+    if (!ltp) {
+      ltp = mid;
+    } else if (prev?.price && ltp === prev.price && Math.abs(mid - prev.price) > 0) {
+      ltp = mid;
+    } else if (Math.abs(mid - ltp) / ltp < 0.002) {
+      // Inside a normal spread — paint mid so tip tracks TV tape between prints.
+      ltp = mid;
+    }
   }
   // Quote deltas may omit lp — keep prior LTP so the print does not go stale.
   if (!ltp && prev?.price) ltp = prev.price;
@@ -57,12 +72,6 @@ export function mergeTickIntoMeta(symbol, tick) {
   const low = Number(tick?.low_price ?? tick?.low ?? prev?.low ?? ltp);
   const volume = Math.floor(Number(tick?.vol ?? tick?.volume ?? tick?.v ?? prev?.volume ?? 0));
 
-  const bid = Number(
-    tick?.bid_price ?? tick?.bid ?? tick?.bbp ?? tick?.best_bid_price ?? prev?.bid ?? 0,
-  );
-  const ask = Number(
-    tick?.ask_price ?? tick?.ask ?? tick?.bap ?? tick?.best_ask_price ?? prev?.ask ?? 0,
-  );
   const bidQty = Math.floor(
     Number(tick?.bid_size ?? tick?.bid_qty ?? tick?.bbq ?? prev?.bidQty ?? 0),
   );

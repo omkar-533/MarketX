@@ -79,7 +79,7 @@ export function attachSocketIo(httpServer) {
     const ws = getLiveWsStatus();
     if (!ws?.connected && !ws?.hasTicks) return;
     broadcastTicks();
-  }, 350);
+  }, 100);
   const unsubStatus = subscribeLiveWsStatus((status) => {
     io?.emit('market:status', status);
   });
