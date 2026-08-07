@@ -303,11 +303,11 @@ export default function TerminalTopBar({
           <button
             type="button"
             className="wolf-term__back"
-            title={`Back to ${AI_PRODUCT_NAME}`}
+            title="Back to Dashboard"
             onClick={() => onExitApp?.()}
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
-            <span>Back to {AI_PRODUCT_NAME}</span>
+            <span>Back to Dashboard</span>
           </button>
 
           <div className="wolf-term__brand" ref={menuRef}>
