@@ -309,6 +309,7 @@ export function createDrawingPool(ctx) {
         }
       }
       for (const o of boxes.values()) {
+        if (!isFiniteNum(o.top) || !isFiniteNum(o.bottom)) continue;
         drawings.push({
           type: 'zone',
           tone: toneFromColor(o.bgcolor || o.color),
@@ -324,6 +325,7 @@ export function createDrawingPool(ctx) {
         });
       }
       for (const o of labels.values()) {
+        if (!isFiniteNum(o.y)) continue;
         drawings.push({
           type: 'label',
           tone: toneFromColor(o.color),

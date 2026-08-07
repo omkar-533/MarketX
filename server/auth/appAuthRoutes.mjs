@@ -691,12 +691,26 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
 
     const timeLimitMs = Math.min(
       30000,
-      Math.max(1000, Number(body.timeLimitMs) || 8000),
+      Math.max(
+        1000,
+        Number(body.timeLimitMs) || (pine.length > 40_000 ? 25000 : 8000),
+      ),
     );
-    const result = runPineScript(pine, bars, inputs, {
-      maxBars: 5000,
+    // Cap bars for huge scripts so engine can finish before timeout (SMC ~100kb).
+    const maxRunBars = pine.length > 40_000 ? 320 : 5000;
+    const runBars = bars.length > maxRunBars ? bars.slice(-maxRunBars) : bars;
+    const barOffset = bars.length - runBars.length;
+    const result = runPineScript(pine, runBars, inputs, {
+      maxBars: maxRunBars,
       timeLimitMs,
-      maxDrawings: 200,
+      maxDrawings: 400,
+    });
+    const remapDrawings = (result.drawings || []).map((d) => {
+      if (!d || typeof d !== 'object') return d;
+      const out = { ...d };
+      if (typeof out.i1 === 'number' && Number.isFinite(out.i1)) out.i1 += barOffset;
+      if (typeof out.i2 === 'number' && Number.isFinite(out.i2)) out.i2 += barOffset;
+      return out;
     });
     const overlay =
       typeof body.overlay === 'boolean'
@@ -707,13 +721,18 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
       ok: true,
       version: result.version,
       overlay,
-      plots: (result.plots || []).map((p) => ({
-        title: String(p.title || 'Plot'),
-        color: String(p.color || '#f0b90b'),
-        values: Array.isArray(p.values)
+      plots: (result.plots || []).map((p) => {
+        const values = Array.isArray(p.values)
           ? p.values.map((v) => (Number.isFinite(Number(v)) ? Number(v) : null))
-          : [],
-      })),
+          : [];
+        const padded =
+          barOffset > 0 ? [...Array(barOffset).fill(null), ...values] : values;
+        return {
+          title: String(p.title || 'Plot'),
+          color: String(p.color || '#f0b90b'),
+          values: padded,
+        };
+      }),
       hlines: (result.hlines || []).map((h) => ({
         price: Number(h.price),
         color: String(h.color || '#94a3b8'),
@@ -724,7 +743,7 @@ router.post('/indicators/:id/run', requireUser, async (req, res) => {
           ? s.flags.map((v) => (v ? 1 : 0))
           : [],
       })),
-      drawings: (result.drawings || []).slice(0, 200).map((d) => ({
+      drawings: remapDrawings.slice(0, 400).map((d) => ({
         type: String(d.type || 'zone'),
         tone: d.tone === 'bear' || d.tone === 'bull' ? d.tone : 'neutral',
         label: String(d.label || ''),

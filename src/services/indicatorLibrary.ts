@@ -317,6 +317,7 @@ export async function runPineIndicator(
   payload: {
     bars: PineRunBar[];
     inputs?: Record<string, string | number | boolean>;
+    timeLimitMs?: number;
   },
 ): Promise<PineRunResult> {
   const res = await apiFetch(`/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/run`, {
@@ -325,6 +326,7 @@ export async function runPineIndicator(
     body: JSON.stringify({
       bars: payload.bars,
       inputs: payload.inputs || {},
+      timeLimitMs: payload.timeLimitMs,
     }),
   });
   const data = await readJson(res, 'Could not run Pine Script');

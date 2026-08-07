@@ -1505,14 +1505,7 @@ export default function NativeChatChart({
         const cmsId = wolfCmsIdFromStudy(id);
         if (!cmsId) continue;
         const smcPine = isWolfSmcLabel(id, title);
-        // SMC is drawing-heavy — paint swing rails + native overlays immediately, then pine upgrades.
-        const hi = smcPine ? line('#ef5350', 1) : null;
-        const lo = smcPine ? line('#26a69a', 1) : null;
-        if (hi && lo) {
-          hi.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
-          lo.applyOptions({ lineStyle: LineStyle.Dashed, lastValueVisible: false, priceLineVisible: false });
-          priceFormatted.push(hi, lo);
-        }
+        // Prefer drawings; no zig-zag swing rails (TV SMC does not paint those).
         const pineColors = ['#f0b90b', '#26a69a', '#42a5f5', '#ef5350', '#ab47bc', '#ff9800'];
         const pineSeries = pineColors.map((color, idx) => {
           const s = line(color, idx === 0 ? 2 : 1);
@@ -1522,26 +1515,6 @@ export default function NativeChatChart({
         const pineHlines: IPriceLine[] = [];
         const paintNativeSmc = (source: ChartBar[]) => {
           const r = computeWolfSmc(source, 5);
-          if (hi && lo) {
-            hi.setData(
-              source
-                .map((bar, j) =>
-                  Number.isFinite(r.swingHigh[j])
-                    ? { time: ts(bar.time), value: r.swingHigh[j] }
-                    : null,
-                )
-                .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
-            );
-            lo.setData(
-              source
-                .map((bar, j) =>
-                  Number.isFinite(r.swingLow[j])
-                    ? { time: ts(bar.time), value: r.swingLow[j] }
-                    : null,
-                )
-                .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
-            );
-          }
           return wolfSmcShapesFromNative(source, r);
         };
         feeds.push(({ source, decimals }) => {
@@ -1553,7 +1526,7 @@ export default function NativeChatChart({
           const cached = pinePlotCache.get(cacheKey);
           const shapesTip = `${id}|${tipKey}`;
 
-          // Always show native SMC overlays while pine is loading / weak — never blank chart.
+          // Clean native SMC while pine loads — never blank, never FVG carpet.
           if (smcPine && studyShapesTipRef.current !== shapesTip) {
             studyShapesTipRef.current = shapesTip;
             const nativeShapes = paintNativeSmc(source);
@@ -1571,7 +1544,11 @@ export default function NativeChatChart({
                 close: b.close,
                 volume: b.volume,
               }));
-              void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
+              void runPineIndicator(cmsId, {
+                bars: barsPayload,
+                inputs: settings,
+                timeLimitMs: smcPine ? 25000 : undefined,
+              })
                 .then((result) => {
                   const pineDrawings = result.drawings || [];
                   const pineShapes = pineDrawingsToShapes(pineDrawings, source);
@@ -1687,13 +1664,13 @@ export default function NativeChatChart({
           if (!cached) {
             detail = smcPine ? 'SMC · loading…' : 'Loading overlays…';
           } else if (cached.nativeSmc) {
-            detail = 'SMC · zones & BOS';
+            detail = 'SMC · structure · OB';
           } else if (primary) {
             detail = `Pine v${cached.version || ''} · ${primary.title}`;
           } else if (pineShapeCount > 0) {
             detail = `Pine · ${pineShapeCount} overlays`;
           } else {
-            detail = smcPine ? 'SMC · zones & BOS' : 'Pine ready';
+            detail = smcPine ? 'SMC · structure · OB' : 'Pine ready';
           }
           return [
             {
