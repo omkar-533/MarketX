@@ -3,6 +3,7 @@
  */
 
 import type { TvChartStyle, TvInterval } from '../utils/tradingViewSymbols';
+import { parseTradingViewInput } from '../utils/tradingViewSymbols';
 import {
   isTerminalChartCount,
   resizeChartSymbols,
@@ -138,4 +139,38 @@ export function saveTerminalState(state: TerminalState): void {
   } catch {
     /* ignore quota */
   }
+}
+
+/** Dispatched after {@link openTerminalWithSymbol} so a mounted Terminal can sync. */
+export const TERMINAL_OPEN_SYMBOL_EVENT = 'wolf:terminal-open-symbol';
+
+/**
+ * Persist symbol onto the active Terminal chart pane (and watchlist),
+ * then return the TradingView symbol — caller should navigate to `terminal`.
+ */
+export function openTerminalWithSymbol(rawSymbol: string): string {
+  const tv = parseTradingViewInput(rawSymbol);
+  const prev = loadTerminalState();
+  const idx = Math.min(prev.activeChartIndex, Math.max(0, prev.chartCount - 1));
+  const chartSymbols = [...prev.chartSymbols];
+  while (chartSymbols.length < prev.chartCount) {
+    chartSymbols.push(tv);
+  }
+  chartSymbols[idx] = tv;
+  const watchlist = prev.watchlist.includes(tv)
+    ? prev.watchlist
+    : [tv, ...prev.watchlist].slice(0, 40);
+  const next: TerminalState = {
+    ...prev,
+    symbol: tv,
+    chartSymbols,
+    watchlist,
+  };
+  saveTerminalState(next);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent(TERMINAL_OPEN_SYMBOL_EVENT, { detail: { symbol: tv } }),
+    );
+  }
+  return tv;
 }

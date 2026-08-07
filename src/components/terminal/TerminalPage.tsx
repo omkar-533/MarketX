@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   loadTerminalState,
   saveTerminalState,
+  TERMINAL_OPEN_SYMBOL_EVENT,
   type TerminalState,
 } from '../../services/terminalState';
 import {
@@ -47,6 +48,15 @@ export default function TerminalPage({ onNavigate }: TerminalPageProps) {
       return { ...prev, symbol, watchlist, chartSymbols };
     });
   }, []);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const sym = (e as CustomEvent<{ symbol?: string }>).detail?.symbol;
+      if (sym) onSymbolChange(String(sym));
+    };
+    window.addEventListener(TERMINAL_OPEN_SYMBOL_EVENT, onOpen);
+    return () => window.removeEventListener(TERMINAL_OPEN_SYMBOL_EVENT, onOpen);
+  }, [onSymbolChange]);
 
   const onChartCountChange = useCallback((chartCount: TerminalChartCount) => {
     setState((prev) => {

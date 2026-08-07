@@ -43,6 +43,7 @@ import { startFyersSocketClient } from '../services/fyersSocketClient';
 import { subscribeLiveSymbols } from '../services/marketTickStream';
 import { subscribeMarketLive } from '../services/marketLiveStore';
 import { getLiveQuote, refreshFnoLiveQuotesAsync } from '../services/symbolLiveService';
+import { openTerminalWithSymbol } from '../services/terminalState';
 import DashInfoTip, { DashInfoLabel } from './ui/DashInfoTip';
 
 interface DashboardProps {
@@ -200,7 +201,15 @@ function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }
   );
 }
 
-function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
+function IndexCard({
+  index,
+  delay,
+  onOpen,
+}: {
+  index: IndexData;
+  delay: number;
+  onOpen?: (symbol: string) => void;
+}) {
   const isPositive = index.change >= 0;
   const spark = useMemo(
     () => sparklinePoints(index.prevClose || index.price, index.price),
@@ -208,11 +217,14 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
   );
 
   return (
-    <motion.div
+    <motion.button
+      type="button"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delay * 0.03 }}
-      className="app-card p-3.5 h-full hover:border-[#d4af37]/25 transition-all"
+      onClick={() => onOpen?.(index.symbol)}
+      title={`Open ${index.symbol} in Terminal`}
+      className="app-card p-3.5 h-full w-full text-left hover:border-[#d4af37]/40 hover:bg-[#121520]/60 transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
@@ -252,7 +264,7 @@ function IndexCard({ index, delay }: { index: IndexData; delay: number }) {
           {(index.volume / 1e6).toFixed(1)}M
         </span>
       </div>
-    </motion.div>
+    </motion.button>
   );
 }
 
@@ -263,6 +275,7 @@ function QuoteCard({
   quote,
   delay,
   badge,
+  onOpen,
 }: {
   symbol: string;
   label: string;
@@ -270,6 +283,7 @@ function QuoteCard({
   quote?: MarketQuoteDto | null;
   delay: number;
   badge: string;
+  onOpen?: (symbol: string) => void;
 }) {
   const resolved = resolveQuoteFields(symbol, quote);
   const { price, change, changePercent, high, low, prevClose } = resolved;
@@ -280,11 +294,14 @@ function QuoteCard({
   );
 
   return (
-    <motion.div
+    <motion.button
+      type="button"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delay * 0.03 }}
-      className="app-card p-3.5 h-full hover:border-[#d4af37]/25 transition-all"
+      onClick={() => onOpen?.(symbol)}
+      title={`Open ${label} in Terminal`}
+      className="app-card p-3.5 h-full w-full text-left hover:border-[#d4af37]/40 hover:bg-[#121520]/60 transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
@@ -325,16 +342,18 @@ function QuoteCard({
           L <span className="text-red-400/90">{formatPrice(low, symbol)}</span>
         </span>
       </div>
-    </motion.div>
+    </motion.button>
   );
 }
 
 function MoversPanel({
   stocks,
   type,
+  onOpen,
 }: {
   stocks: StockData[];
   type: 'gainers' | 'losers' | 'active';
+  onOpen?: (symbol: string) => void;
 }) {
   const title = type === 'gainers' ? 'Top Gainers' : type === 'losers' ? 'Top Losers' : 'Most Active';
   const tip =
@@ -353,9 +372,12 @@ function MoversPanel({
       </h3>
       <div className="space-y-0.5 flex-1">
         {stocks.slice(0, 6).map((stock, i) => (
-          <div
+          <button
+            type="button"
             key={stock.symbol}
-            className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-[#121520] transition-colors"
+            onClick={() => onOpen?.(stock.symbol)}
+            title={`Open ${stock.symbol} in Terminal`}
+            className="flex w-full items-center justify-between py-1.5 px-2 rounded-md hover:bg-[#121520] hover:border-[#d4af37]/20 border border-transparent transition-colors text-left cursor-pointer"
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[10px] text-slate-600 w-3.5 font-bold tabular-nums">{i + 1}</span>
@@ -375,7 +397,7 @@ function MoversPanel({
                 {stock.changePercent.toFixed(2)}%
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -444,6 +466,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [lastSync, setLastSync] = useState(new Date());
   const [liveTick, setLiveTick] = useState(0);
   const [feedLabel, setFeedLabel] = useState('Connecting live…');
+
+  const openInTerminal = useCallback(
+    (symbol: string) => {
+      if (!symbol) return;
+      openTerminalWithSymbol(symbol);
+      onNavigate?.('terminal');
+    },
+    [onNavigate],
+  );
 
   const { connected, status } = useFyersWebSocket({
     symbols: DASHBOARD_LIVE_SYMBOLS,
@@ -695,7 +726,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+            <button
+              type="button"
+              onClick={() => openInTerminal('NIFTY')}
+              title="Open NIFTY in Terminal"
+              className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 text-left hover:border-[#d4af37]/40 transition-colors cursor-pointer"
+            >
               <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
                 NIFTY 50
                 <DashInfoTip tip={BOX_TIPS.nifty} title="NIFTY 50" dense />
@@ -710,8 +746,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ? `${nifty.changePercent >= 0 ? '+' : ''}${nifty.changePercent.toFixed(2)}%`
                   : '—'}
               </div>
-            </div>
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+            </button>
+            <button
+              type="button"
+              onClick={() => openInTerminal('BANKNIFTY')}
+              title="Open BANKNIFTY in Terminal"
+              className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 text-left hover:border-[#d4af37]/40 transition-colors cursor-pointer"
+            >
               <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
                 BANK NIFTY
                 <DashInfoTip tip={BOX_TIPS.banknifty} title="BANK NIFTY" dense />
@@ -728,8 +769,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ? `${bankNifty.changePercent >= 0 ? '+' : ''}${bankNifty.changePercent.toFixed(2)}%`
                   : '—'}
               </div>
-            </div>
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+            </button>
+            <button
+              type="button"
+              onClick={() => openInTerminal('USDINR')}
+              title="Open USD/INR in Terminal"
+              className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 text-left hover:border-[#d4af37]/40 transition-colors cursor-pointer"
+            >
               <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
                 USD / INR
                 <DashInfoTip tip={BOX_TIPS.usdinr} title="USD / INR" dense />
@@ -744,8 +790,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ? `${usdinr.changePercent >= 0 ? '+' : ''}${usdinr.changePercent.toFixed(2)}%`
                   : '—'}
               </div>
-            </div>
-            <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3">
+            </button>
+            <button
+              type="button"
+              onClick={() => openInTerminal('BTC')}
+              title="Open BTC in Terminal"
+              className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 text-left hover:border-[#d4af37]/40 transition-colors cursor-pointer"
+            >
               <div className="text-[9px] uppercase text-slate-500 font-semibold dash-info-label">
                 BTC / USDT
                 <DashInfoTip tip={BOX_TIPS.btc} title="BTC / USDT" dense />
@@ -760,7 +811,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ? `${btc.changePercent >= 0 ? '+' : ''}${btc.changePercent.toFixed(2)}%`
                   : '—'}
               </div>
-            </div>
+            </button>
           </div>
 
           {showIndia ? (
@@ -795,7 +846,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
                 <div className="text-[10px] text-slate-400 font-semibold">{pcrBias}</div>
               </div>
-              <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px]">
+              <button
+                type="button"
+                onClick={() => openInTerminal('EURUSD')}
+                title="Open EUR/USD in Terminal"
+                className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px] text-left hover:border-[#d4af37]/40 transition-colors cursor-pointer"
+              >
                 <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold dash-info-label">
                   EUR / USD
                   <DashInfoTip tip={BOX_TIPS.eurusd} title="EUR / USD" dense />
@@ -810,7 +866,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     ? `${eurusd.changePercent >= 0 ? '+' : ''}${eurusd.changePercent.toFixed(2)}%`
                     : 'Forex'}
                 </div>
-              </div>
+              </button>
               <div className="rounded-lg bg-[#121520]/80 border border-[#1a1f2e] p-3 flex flex-col justify-between min-h-[100px] gap-2">
                 <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold dash-info-label">
                   Quick links
@@ -861,15 +917,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
           >
             {visibleIndices.map((index, i) => (
-              <IndexCard key={index.symbol} index={index} delay={i} />
+              <IndexCard key={index.symbol} index={index} delay={i} onOpen={openInTerminal} />
             ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <MoversPanel stocks={gainers} type="gainers" />
-              <MoversPanel stocks={losers} type="losers" />
-              <MoversPanel stocks={active} type="active" />
+              <MoversPanel stocks={gainers} type="gainers" onOpen={openInTerminal} />
+              <MoversPanel stocks={losers} type="losers" onOpen={openInTerminal} />
+              <MoversPanel stocks={active} type="active" onOpen={openInTerminal} />
             </div>
 
             <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
@@ -916,9 +972,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     {oiSnap.signals.map((s) => {
                       const isBullish = s.signal === 'BUY';
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={s.symbol}
-                          className="py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e]"
+                          onClick={() => openInTerminal(s.symbol)}
+                          title={`Open ${s.symbol} in Terminal`}
+                          className="w-full text-left py-1.5 px-2 rounded-md bg-[#121520] border border-[#1a1f2e] hover:border-[#d4af37]/40 transition-colors cursor-pointer"
                         >
                           <div className="flex justify-between text-xs gap-2">
                             <span className="font-bold text-slate-200">{s.symbol}</span>
@@ -933,7 +992,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                           <div className="text-[10px] text-slate-600 truncate mt-0.5">
                             {s.reason}
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -996,6 +1055,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 quote={globalQuotes.get(item.symbol)}
                 delay={i}
                 badge="FX"
+                onOpen={openInTerminal}
               />
             ))}
           </div>
@@ -1039,6 +1099,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 quote={globalQuotes.get(item.symbol)}
                 delay={i}
                 badge="CRYPTO"
+                onOpen={openInTerminal}
               />
             ))}
           </div>
