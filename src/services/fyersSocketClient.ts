@@ -231,8 +231,11 @@ function connectSocket() {
 
   socket = io(socketUrl(), {
     path: '/socket.io',
-    // Prefer WebSocket for lowest tick latency; polling remains as fallback.
-    transports: ['websocket', 'polling'],
+    // Render free / many proxies reject Engine.IO websocket upgrades.
+    // Prefer polling first — Socket.IO will upgrade to websocket when available.
+    // websocket-first NEVER falls back to polling on this host (connect stays stuck).
+    transports: ['polling', 'websocket'],
+    upgrade: true,
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -277,13 +280,29 @@ function connectSocket() {
     emitStatus();
   });
 
-  socket.on('market:status', (status: FyersConnectionPayload) => {
-    if (status?.status) connectionStatus = status.status;
+  // Upstream (TradingView) status is informational — do NOT overwrite our Socket.IO link status.
+  // Overwriting made the UI show "Live feed starting…" while the browser↔API socket was fine,
+  // and made the watchdog call forceReconnect in a loop.
+  socket.on('market:status', (status: FyersConnectionPayload & { tokenInvalid?: boolean }) => {
     if (status?.lastError) lastError = status.lastError;
-    if (status?.tokenInvalid || status?.status === 'token_invalid') {
-      connectionStatus = 'token_invalid';
+    if (status?.tokenInvalid || (status?.status as string) === 'token_invalid') {
+      connectionStatus = 'disconnected';
+      lastError = status.lastError || 'token_invalid';
       for (const fn of tokenInvalidHandlers) fn();
+      emitStatus({ ...status, status: 'disconnected', connected: false });
+      return;
     }
+    if (socket?.connected) {
+      connectionStatus = 'connected';
+      emitStatus({
+        hasTicks: status?.hasTicks,
+        lastTickAt: status?.lastTickAt,
+        lastMessageAt: status?.lastMessageAt,
+        upstream: status?.upstream,
+      });
+      return;
+    }
+    if (status?.status) connectionStatus = status.status;
     emitStatus(status);
   });
 

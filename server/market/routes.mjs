@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { fetchGlobalIndexQuotes } from './globalQuotes.mjs';
 import { fetchOhlc, fetchQuotes, getMarketHealth } from './provider.mjs';
 import { registerLiveStreamRoutes } from './liveStream.mjs';
-import { getLiveWsStatus } from './liveFeed.mjs';
+import {
+  getLiveTickSnapshot,
+  getLiveWsStatus,
+  subscribeLiveSymbols,
+} from './liveFeed.mjs';
 import { fetchOptionChain, isOptionChainAvailable } from './optionChainProvider.mjs';
 import { fetchNseFiiDii } from './nseFiiDii.mjs';
 import { fetchNseFnoHistory } from './nseFnoProvider.mjs';
@@ -49,8 +53,36 @@ router.get('/quotes', async (req, res) => {
     .filter(Boolean)
     .slice(0, 200);
   try {
-    const data = await fetchQuotes(symbols);
-    return res.json(data);
+    // Instant path: serve warm live-tape ticks, then fill only missing via TV/OHLC.
+    // Full wait-for-all + many OHLC fallbacks used to take 30s+ and blow client timeouts.
+    void subscribeLiveSymbols(symbols);
+    const snap = getLiveTickSnapshot(symbols) || [];
+    const have = new Set(snap.map((q) => String(q.symbol || '').toUpperCase()));
+    const missing = symbols.filter((s) => !have.has(s));
+    if (!missing.length) {
+      return res.json({
+        quotes: snap,
+        errors: [],
+        source: 'live-snapshot',
+        fetchedAt: new Date().toISOString(),
+      });
+    }
+    const rest = await fetchQuotes(missing.length === symbols.length ? symbols : missing, {
+      fast: missing.length < symbols.length || symbols.length > 12,
+    });
+    const bySym = new Map();
+    for (const q of snap) {
+      if (q?.symbol) bySym.set(String(q.symbol).toUpperCase(), q);
+    }
+    for (const q of rest?.quotes || []) {
+      if (q?.symbol) bySym.set(String(q.symbol).toUpperCase(), q);
+    }
+    return res.json({
+      quotes: [...bySym.values()],
+      errors: rest?.errors || [],
+      source: snap.length ? `live+${rest?.source || 'tv'}` : rest?.source || 'tradingview',
+      fetchedAt: rest?.fetchedAt || new Date().toISOString(),
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Market fetch failed';
     return res.status(502).json({ error: msg });

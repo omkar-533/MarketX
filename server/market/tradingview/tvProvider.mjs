@@ -82,19 +82,23 @@ export async function fetchQuotes(symbols, opts = {}) {
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  // Wait for first ticks — keep Wolf AI chat under browser timeout.
+  // Wait for ticks — exit early once most symbols print (don't block 30s on stragglers).
   const waitMs = fast
     ? isTvSocketActive()
-      ? 1200
-      : 2200
+      ? 800
+      : 1500
     : isTvSocketActive()
-      ? 4500
-      : 7000;
+      ? 2200
+      : 4000;
   const deadline = Date.now() + waitMs;
+  const need = Math.max(1, Math.ceil(unique.length * (fast ? 0.5 : 0.75)));
   while (Date.now() < deadline) {
-    const ready = unique.every((sym) => Boolean(lookupTick(sym)?.data?.price));
-    if (ready) break;
-    await new Promise((r) => setTimeout(r, fast ? 200 : 350));
+    let readyCount = 0;
+    for (const sym of unique) {
+      if (lookupTick(sym)?.data?.price) readyCount += 1;
+    }
+    if (readyCount >= unique.length || readyCount >= need) break;
+    await new Promise((r) => setTimeout(r, fast ? 150 : 250));
   }
 
   const errors = [];
@@ -118,9 +122,9 @@ export async function fetchQuotes(symbols, opts = {}) {
   }
 
   // Market closed / quiet session: last WS print may be gone after restart — use OHLC.
-  // Fast path: at most 2 OHLC fallbacks so /api/chat stays under ~client timeout.
+  // Cap OHLC fallbacks — sequential TradingView history is slow and blew 18s client timeouts.
   if (missing.length) {
-    const ohlcLimit = fast ? 2 : 12;
+    const ohlcLimit = fast ? 2 : 6;
     const settled = await Promise.all(
       missing.slice(0, ohlcLimit).map(async (sym) => [sym, await quoteFromOhlcFallback(sym)]),
     );

@@ -554,15 +554,20 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   useEffect(() => {
     if (connected) {
-      setFeedLabel('Live WebSocket');
+      setFeedLabel('Live');
       paintIndia();
       paintGlobalFromLive();
     } else if (status === 'connecting' || status === 'reconnecting') {
       setFeedLabel('Reconnecting…');
+    } else if (getLiveQuote('NIFTY')?.price || getLiveQuote('BTC')?.price) {
+      // REST seed may succeed before Socket.IO finishes connecting
+      setFeedLabel('Live (REST)');
+      paintIndia();
+      paintGlobalFromLive();
     } else {
       setFeedLabel(status === 'connected' ? 'Live' : 'Live feed starting…');
     }
-  }, [connected, status, paintIndia, paintGlobalFromLive]);
+  }, [connected, status, paintIndia, paintGlobalFromLive, liveTick]);
 
   // Soft REST reseed (does not block UI) — ticks drive real-time
   useAutoRefresh(() => {

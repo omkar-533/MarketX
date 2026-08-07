@@ -71,9 +71,9 @@ export async function fetchMarketHealth(): Promise<{
     const live = data?.live ?? {};
     return {
       status: data?.status === 'ok' ? 'ok' : 'degraded',
-      provider: live.fyersConfigured ? 'fyers' : 'fyers-offline',
-      configured: Boolean(live.fyersConfigured),
-      websocket: Boolean(live.wsConnected),
+      provider: live.provider || 'tradingview',
+      configured: live.configured !== false,
+      websocket: Boolean(live.wsConnected || live.hasTicks),
       wsStatus: live.wsStatus,
     };
   } catch {
@@ -96,7 +96,12 @@ export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDt
 export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotesResponse | null> {
   if (!symbols.length) return null;
   try {
-    const res = await apiFetch(`/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`);
+    // Large batch + cold TV can exceed default 18s; prefer ticks snapshot on server now.
+    const res = await apiFetch(
+      `/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`,
+      undefined,
+      { retries: 1, timeoutMs: 35_000 },
+    );
     if (!res.ok) return null;
     return res.json();
   } catch {
