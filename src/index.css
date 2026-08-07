@@ -18813,7 +18813,7 @@ body:has(.app-main--terminal-immersive) #root {
   position: absolute;
   top: 4.5rem;
   left: 0.65rem;
-  z-index: 8;
+  z-index: 12;
   width: min(280px, calc(100% - 1.2rem));
   padding: 0.65rem 0.7rem 0.75rem;
   border-radius: 8px;
@@ -18821,6 +18821,7 @@ body:has(.app-main--terminal-immersive) #root {
   background: rgba(19, 23, 34, 0.94);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
   color: #d1d4dc;
+  pointer-events: auto;
 }
 
 .mai-nc__study-sheet-head {
