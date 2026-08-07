@@ -127,8 +127,8 @@ const UP_FILL = 'rgba(38,166,154,0.5)';
 const DOWN_FILL = 'rgba(239,83,80,0.5)';
 /** Full OHLC resync (history/volume). Live LTP uses WS + fast quote poll. */
 const OHLC_RESYNC_MS = 120_000;
-/** Fallback quotes when socket is quiet — keep snappy for tip motion. */
-const QUOTE_POLL_MS = 500;
+/** Paint tip from cache often; REST only when WS quiet. */
+const QUOTE_POLL_MS = 250;
 /** Soft-expand locked price scale at most this often (ms). */
 const PRICE_ENSURE_MS = 180;
 
@@ -829,10 +829,11 @@ export default function NativeChatChart({
     const poll = window.setInterval(() => {
       const quietMs = Date.now() - lastLiveAtRef.current;
       const cachedNow = getFyersCachedQuote(apiSymbol);
-      // While ticks are fresh, keep painting tip from hottest cache (no REST wait).
-      if (cachedNow?.price && quietMs < 1_500) {
+      // Always paint hottest cache — do not wait for REST round-trip when tape is warm.
+      if (cachedNow?.price) {
         applyLivePrice(cachedNow.price, cachedNow.volume);
-        return;
+        // Fresh WS/cache → skip REST. Only fetch when quiet/stale.
+        if (quietMs < 2_000) return;
       }
       void fetchMarketQuotes([apiSymbol]).then((res) => {
         const q = res?.quotes?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));

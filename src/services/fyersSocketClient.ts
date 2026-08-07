@@ -68,8 +68,13 @@ function flushTickBatch() {
 
 function queueTickBroadcast(payload: FyersTickPayload) {
   for (const q of payload.quotes) {
-    quoteCache.set(q.symbol, q);
+    const raw = String(q.symbol || '').trim().toUpperCase();
+    if (!raw) continue;
+    quoteCache.set(raw, q);
+    const plain = raw.replace(/^NSE:|^BSE:|^MCX:/, '');
+    if (plain && plain !== raw) quoteCache.set(plain, { ...q, symbol: plain });
   }
+
 
   // Push ticks into shared live store so Dashboard / getIndices stay real-time
   void import('./symbolLiveService')
@@ -233,7 +238,7 @@ function connectSocket() {
     path: '/socket.io',
     // Render free / many proxies reject Engine.IO websocket upgrades.
     // Prefer polling first — Socket.IO will upgrade to websocket when available.
-    // websocket-first NEVER falls back to polling on this host (connect stays stuck).
+    // websocket-first NEVER falls back reliably here (probe: 0 ticks + "websocket error").
     transports: ['polling', 'websocket'],
     upgrade: true,
     withCredentials: true,
@@ -384,7 +389,17 @@ export function onFyersTokenInvalid(fn: TokenInvalidHandler): () => void {
 }
 
 export function getFyersCachedQuote(symbol: string): FyersMarketQuote | undefined {
-  return quoteCache.get(symbol.trim().toUpperCase());
+  const raw = String(symbol || '').trim().toUpperCase();
+  if (!raw) return undefined;
+  const hit = quoteCache.get(raw);
+  if (hit) return hit;
+  const plain = raw.replace(/^NSE:|^BSE:|^MCX:/, '');
+  if (plain && plain !== raw) return quoteCache.get(plain);
+  // Last resort: scan normalized equality (rare exchange-prefix variants).
+  for (const [k, q] of quoteCache) {
+    if (k.replace(/^NSE:|^BSE:|^MCX:/, '') === plain) return q;
+  }
+  return undefined;
 }
 
 export function getFyersConnectionStatus(): FyersWsConnectionStatus {

@@ -72,6 +72,14 @@ export function attachSocketIo(httpServer) {
   });
 
   const unsubTicks = subscribeLiveTickBroadcast(() => broadcastTicks());
+  // Cadence pulse: TV can go quiet between LTP prints — keep socket clients fed
+  // from the warm snapshot so chart tip/poll doesn't wait solely on upstream notify.
+  const tickPulse = setInterval(() => {
+    if (!io || io.engine.clientsCount <= 0) return;
+    const ws = getLiveWsStatus();
+    if (!ws?.connected && !ws?.hasTicks) return;
+    broadcastTicks();
+  }, 350);
   const unsubStatus = subscribeLiveWsStatus((status) => {
     io?.emit('market:status', status);
   });
@@ -151,6 +159,7 @@ export function attachSocketIo(httpServer) {
   });
 
   io.engine.on('close', () => {
+    clearInterval(tickPulse);
     unsubTicks();
     unsubStatus();
     unsubOc();
