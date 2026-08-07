@@ -15,6 +15,8 @@ const WS_URL = 'wss://data.tradingview.com/socket.io/websocket?from=screener%2F'
 const CHUNK_SIZE = 40;
 const MAX_SYMBOLS = Math.max(8, Number(process.env.TV_MAX_SYMBOLS || 80));
 const HEARTBEAT_MS = 25_000;
+/** Re-poke quote_fast so TV does not hibernate subscribed symbols (FX/gold go quiet otherwise). */
+const QUOTE_FAST_PULSE_MS = 1_000;
 const STALE_TICK_MS = 180_000;
 const CONNECT_TIMEOUT_MS = 20_000;
 
@@ -62,6 +64,7 @@ let hasTicks = false;
 let lastTickAt = 0;
 let lastMessageAt = 0;
 let heartbeatTimer = null;
+let quoteFastTimer = null;
 let connectTimeoutTimer = null;
 /** @type {'disconnected'|'connecting'|'connected'|'reconnecting'|'degraded'} */
 let connectionStatus = 'disconnected';
@@ -183,14 +186,29 @@ function ingestQuotePacket(payload) {
   if (!app) return;
 
   const lp = Number(v.lp ?? v.ltp ?? v.last_price ?? 0);
-  const bid = Number(v.bid ?? v.bid_price ?? 0);
-  const ask = Number(v.ask ?? v.ask_price ?? 0);
-  // Accept bid/ask-only deltas so the tip keeps moving between sparse lp prints.
-  if (!lp && !(bid > 0 && ask > 0) && v.lp == null && v.ch == null && v.volume == null) return;
+  const rtc = Number(v.rtc ?? 0);
+  const bidRaw = v.bid ?? v.bid_price;
+  const askRaw = v.ask ?? v.ask_price;
+  const hasBid = bidRaw != null && Number(bidRaw) > 0;
+  const hasAsk = askRaw != null && Number(askRaw) > 0;
+  const hasLp = v.lp != null || v.ltp != null || v.last_price != null;
+  // TV often sends bid-only or ask-only deltas — never drop those (prev side fills in merge).
+  if (
+    !hasLp &&
+    !hasBid &&
+    !hasAsk &&
+    !(rtc > 0) &&
+    v.ch == null &&
+    v.volume == null &&
+    v.rchp == null
+  ) {
+    return;
+  }
 
   const tick = {
     lp: lp || undefined,
     ltp: lp || undefined,
+    rtc: rtc || undefined,
     ch: v.ch,
     chp: v.chp,
     volume: v.volume,
@@ -199,8 +217,8 @@ function ingestQuotePacket(payload) {
     high_price: v.high_price ?? v.high,
     low_price: v.low_price ?? v.low,
     prev_close_price: v.prev_close_price ?? v.prev_close,
-    bid: bid || v.bid,
-    ask: ask || v.ask,
+    bid: hasBid ? Number(bidRaw) : undefined,
+    ask: hasAsk ? Number(askRaw) : undefined,
   };
 
   const merged = mergeTickIntoMeta(app, tick);
@@ -285,6 +303,17 @@ function removeSymbolRefs(symbols) {
   }
 }
 
+function pokeQuoteFast() {
+  if (!socket || socket.readyState !== WebSocket.OPEN || !quoteSession) return;
+  const all = [...subscribedTv];
+  if (!all.length) return;
+  for (let i = 0; i < all.length; i += CHUNK_SIZE) {
+    const chunk = all.slice(i, i + CHUNK_SIZE);
+    if (!chunk.length) continue;
+    send('quote_fast_symbols', [quoteSession, ...chunk]);
+  }
+}
+
 function flushPendingSubscriptions() {
   if (!socket || socket.readyState !== WebSocket.OPEN || !quoteSession) return;
   const add = [...pendingSymbols]
@@ -294,7 +323,10 @@ function flushPendingSubscriptions() {
   for (let i = 0; i < add.length; i += CHUNK_SIZE) {
     const chunk = add.slice(i, i + CHUNK_SIZE);
     if (!chunk.length) continue;
-    send('quote_add_symbols', [quoteSession, ...chunk]);
+    // force_permission matches TV scraper clients and keeps delayed symbols live.
+    for (const s of chunk) {
+      send('quote_add_symbols', [quoteSession, s, { flags: ['force_permission'] }]);
+    }
     send('quote_fast_symbols', [quoteSession, ...chunk]);
     chunk.forEach((s) => subscribedTv.add(s));
   }
@@ -333,6 +365,10 @@ function destroySocket() {
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
+  }
+  if (quoteFastTimer) {
+    clearInterval(quoteFastTimer);
+    quoteFastTimer = null;
   }
   try {
     socket?.close?.();
@@ -398,6 +434,11 @@ async function connectUpstream() {
           scheduleReconnect();
         }
       }, HEARTBEAT_MS);
+
+      if (quoteFastTimer) clearInterval(quoteFastTimer);
+      // Keep BBO/LTP flowing — without this, FX/metals hibernate for minutes.
+      pokeQuoteFast();
+      quoteFastTimer = setInterval(pokeQuoteFast, QUOTE_FAST_PULSE_MS);
     });
 
     socket.on('message', (data) => {

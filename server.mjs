@@ -64,6 +64,8 @@ app.get('/api/health', (_req, res) => {
       wsConnected: ws.connected,
       hasTicks: ws.hasTicks,
       upstream: ws.upstream,
+      tickPulseMs: TICK_PULSE_MS,
+      tipBuild: 'fast-poke-1s',
     },
   });
 });

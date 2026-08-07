@@ -41,21 +41,35 @@ export function mergeTickIntoMeta(symbol, tick) {
   const sym = String(symbol || '').trim().toUpperCase();
   const prev = meta.get(sym);
   let ltp = Number(tick?.ltp ?? tick?.lp ?? tick?.last_price ?? 0);
-  const bid = Number(
-    tick?.bid_price ?? tick?.bid ?? tick?.bbp ?? tick?.best_bid_price ?? prev?.bid ?? 0,
-  );
-  const ask = Number(
-    tick?.ask_price ?? tick?.ask ?? tick?.bap ?? tick?.best_ask_price ?? prev?.ask ?? 0,
-  );
+  const rtc = Number(tick?.rtc ?? 0);
+  // Prefer explicit tick sides; missing side keeps prior bid/ask so mid stays valid on one-sided deltas.
+  const bid =
+    tick?.bid_price != null || tick?.bid != null
+      ? Number(tick.bid_price ?? tick.bid)
+      : Number(prev?.bid ?? 0);
+  const ask =
+    tick?.ask_price != null || tick?.ask != null
+      ? Number(tick.ask_price ?? tick.ask)
+      : Number(prev?.ask ?? 0);
   const mid = bid > 0 && ask > 0 ? (bid + ask) / 2 : 0;
-  // Prefer mid for tip motion when last trade is sticky (FX/crypto feel) or lp missing.
+
+  // Realtime calc (when exchange LTP is delayed) — bridge the gap until trade print.
+  if (rtc > 0 && (!ltp || Math.abs(rtc - (prev?.price || ltp || rtc)) > 0)) {
+    if (!ltp) ltp = rtc;
+    else if (prev?.price && ltp === prev.price && Math.abs(rtc - prev.price) > 0) ltp = rtc;
+  }
+
+  // Prefer mid for tip motion: FX/crypto/metals update BBO far more often than last trade.
   if (mid > 0) {
+    const spreadPct = Math.abs(ask - bid) / mid;
     if (!ltp) {
+      ltp = mid;
+    } else if (spreadPct < 0.01) {
+      // Normal tight spread — always paint mid so Dashboard/Terminal tip tracks the tape.
       ltp = mid;
     } else if (prev?.price && ltp === prev.price && Math.abs(mid - prev.price) > 0) {
       ltp = mid;
     } else if (Math.abs(mid - ltp) / ltp < 0.002) {
-      // Inside a normal spread — paint mid so tip tracks TV tape between prints.
       ltp = mid;
     }
   }

@@ -11,9 +11,9 @@ import { fetchMarketQuotes } from './marketApiService';
 import { API_SERVER_READY_EVENT } from './apiAutoConnect';
 
 /** REST safety net — fills gaps when WS is quiet (market closed / lag). */
-const REST_SEED_MS = 15_000;
+const REST_SEED_MS = 8_000;
 /** If connected socket has been silent this long, resubscribe / soft reconnect. */
-const SOCKET_QUIET_MS = 45_000;
+const SOCKET_QUIET_MS = 30_000;
 
 let started = false;
 let restTimer: ReturnType<typeof setInterval> | null = null;
