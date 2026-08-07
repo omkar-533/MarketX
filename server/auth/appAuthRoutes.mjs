@@ -52,6 +52,7 @@ import {
   setIndicatorHowToVideo,
   updateIndicator,
 } from './indicatorsStore.mjs';
+import { runPineScript } from './pineEngine.mjs';
 import { appendTvAccessRequest, isTvAccessSheetConfigured } from './tvAccessSheet.mjs';
 import {
   createTvAccessRequest,
@@ -548,6 +549,8 @@ function publicIndicator(row) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     imageUrl: row.imageUrl,
+    /** True when encrypted Pine exists — never includes source text. */
+    hasPine: Boolean(String(row.pineSource || '').trim()),
     /** Parsed from admin Pine — inputs only. Never includes source. */
     settings: Array.isArray(row.settings) ? row.settings : [],
     settingsDefaults:
@@ -625,6 +628,98 @@ router.get('/indicators', requireUser, async (req, res) => {
     });
   } catch (err) {
     return failed(res, err, 'Could not load indicators');
+  }
+});
+
+/**
+ * POST /api/app-auth/indicators/:id/run
+ * Execute stored Pine on OHLC bars. Returns plot series only — never pineSource.
+ */
+router.post('/indicators/:id/run', requireUser, async (req, res) => {
+  try {
+    const access = accessStateFor(req.appUser);
+    const isAdmin = req.appUser?.role === 'admin';
+    if (!access.unlocked && !isAdmin) {
+      return res.status(403).json({ error: 'Unlock access to run indicators on the chart' });
+    }
+
+    const row = await getIndicatorById(req.params.id, {
+      publishedOnly: !isAdmin,
+    });
+    if (!row) return res.status(404).json({ error: 'Indicator not found' });
+
+    const pine = String(row.pineSource || '').trim();
+    if (!pine) {
+      return res.status(400).json({ error: 'This indicator has no Pine Script to run' });
+    }
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const rawBars = Array.isArray(body.bars) ? body.bars : [];
+    if (!rawBars.length) {
+      return res.status(400).json({ error: 'bars[] required' });
+    }
+    if (rawBars.length > 5000) {
+      return res.status(400).json({ error: 'Too many bars (max 5000)' });
+    }
+
+    const bars = [];
+    for (const b of rawBars) {
+      if (!b || typeof b !== 'object') continue;
+      const time = Number(b.time);
+      const open = Number(b.open);
+      const high = Number(b.high);
+      const low = Number(b.low);
+      const close = Number(b.close);
+      if (![time, open, high, low, close].every(Number.isFinite)) continue;
+      bars.push({
+        time,
+        open,
+        high,
+        low,
+        close,
+        volume: Number(b.volume) || 0,
+      });
+    }
+    if (!bars.length) {
+      return res.status(400).json({ error: 'No valid OHLC bars in request' });
+    }
+
+    const inputs =
+      body.inputs && typeof body.inputs === 'object' && !Array.isArray(body.inputs)
+        ? body.inputs
+        : {};
+
+    const result = runPineScript(pine, bars, inputs);
+    const overlay =
+      typeof body.overlay === 'boolean'
+        ? body.overlay
+        : /overlay\s*=\s*true/i.test(pine) || !/overlay\s*=\s*false/i.test(pine);
+
+    return res.json({
+      ok: true,
+      version: result.version,
+      overlay,
+      plots: (result.plots || []).map((p) => ({
+        title: String(p.title || 'Plot'),
+        color: String(p.color || '#f0b90b'),
+        values: Array.isArray(p.values)
+          ? p.values.map((v) => (Number.isFinite(Number(v)) ? Number(v) : null))
+          : [],
+      })),
+      hlines: (result.hlines || []).map((h) => ({
+        price: Number(h.price),
+        color: String(h.color || '#94a3b8'),
+      })),
+      shapes: (result.shapes || []).slice(0, 8).map((s) => ({
+        title: String(s.title || 'shape'),
+        flags: Array.isArray(s.flags)
+          ? s.flags.map((v) => (v ? 1 : 0))
+          : [],
+      })),
+      warnings: Array.isArray(result.warnings) ? result.warnings.slice(0, 20) : [],
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not run Pine Script');
   }
 });
 

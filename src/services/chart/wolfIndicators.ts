@@ -32,18 +32,39 @@ export function isWolfStudyId(id: string): boolean {
 }
 
 /** Map a CMS / favourites wolf indicator to a native study id. */
-export function wolfStudyIdFor(item: { id: string; title: string }): string {
+export function wolfStudyIdFor(item: {
+  id: string;
+  title: string;
+  hasPine?: boolean;
+  pineSource?: string;
+}): string {
+  const cmsId = String(item.id || '').trim();
+  const hasPine =
+    item.hasPine === true || Boolean(String(item.pineSource || '').trim());
+  // Any CMS row with Pine must run the pasted script (not title-mapped packs).
+  if (cmsId && hasPine) return `wolf_cms_${cmsId}`;
+
   const title = String(item.title || '');
   for (const preset of WOLF_NATIVE_PRESETS) {
     if (preset.match.test(title)) return preset.id;
   }
-  // Stable per CMS row so toggles persist
-  const slug = String(item.id || title)
+  if (cmsId) return `wolf_cms_${cmsId}`;
+  const slug = String(title)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '')
     .slice(0, 40);
   return `wolf_${slug || 'pack'}`;
+}
+
+/** Extract CMS indicator id from a pine-backed study id. */
+export function wolfCmsIdFromStudy(studyId: string): string | null {
+  const m = /^wolf_cms_(.+)$/i.exec(String(studyId || '').trim());
+  return m?.[1] || null;
+}
+
+export function isNativeWolfPresetId(id: string): boolean {
+  return WOLF_NATIVE_PRESETS.some((p) => p.id === id);
 }
 
 export function wolfStudyLabel(id: string): string {
@@ -395,8 +416,10 @@ export function computeWolfClustersVp(
 /** Resolve recipe for any wolf_* id (known presets or default ribbon). */
 export function resolveWolfRecipe(
   id: string,
-): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' {
+): 'cfd' | 'clusters' | 'ribbon' | 'pulse' | 'pressure' | 'levels' | 'pine' {
   const key = id.toLowerCase();
+  // Custom Terminal→Wolf CMS rows run through the Pine engine (exact source, server-side).
+  if (key.startsWith('wolf_cms_') || Boolean(wolfCmsIdFromStudy(id))) return 'pine';
   if (id === 'wolf_cfd' || key.includes('confluence') || key.includes('cfd')) return 'cfd';
   if (
     id === 'wolf_clusters_vp' ||
@@ -413,6 +436,6 @@ export function resolveWolfRecipe(
   }
   if (id === 'wolf_levels' || key.includes('structure') || key.includes('level')) return 'levels';
   if (id === 'wolf_ribbon' || key.includes('ribbon')) return 'ribbon';
-  // Unknown CMS rows still plot a useful ribbon pack
+  // Unknown slug rows still plot a useful ribbon pack
   return 'ribbon';
 }

@@ -62,8 +62,8 @@ export default function TerminalWolfCreatePanel({
       setError('Paste your Pine Script source (TradingView //@version=… ).');
       return;
     }
-    if (!/\/\/\s*@version\s*=\s*[45]/i.test(pine) && !/\bindicator\s*\(/i.test(pine)) {
-      setError('Pine should look like TradingView script ( //@version=5 and indicator(...) ).');
+    if (!/\/\/\s*@version\s*=\s*\d+/i.test(pine) && !/\bindicator\s*\(/i.test(pine)) {
+      setError('Pine should look like TradingView script ( //@version=5 or //@version=6 and indicator(...) ).');
       return;
     }
     setSaving(true);
@@ -173,7 +173,7 @@ export default function TerminalWolfCreatePanel({
           <textarea
             value={pineSource}
             onChange={(e) => setPineSource(e.target.value)}
-            placeholder={`//@version=5\nindicator("My Wolf Indicator", overlay=true)\n\nlen = input.int(14, "Length")\nplot(ta.sma(close, len), "SMA")`}
+            placeholder={`//@version=6\nindicator("My Wolf Indicator", overlay=true)\n\nlen = input.int(14, "Length")\nplot(ta.sma(close, len), "SMA")`}
             spellCheck={false}
             disabled={saving}
             readOnly={false}

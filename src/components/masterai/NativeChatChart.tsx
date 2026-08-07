@@ -52,6 +52,7 @@ import {
   computeWolfRibbon,
   isWolfStudyId,
   resolveWolfRecipe,
+  wolfCmsIdFromStudy,
   wolfStudyBlurb,
   wolfStudyLabel,
 } from '../../services/chart/wolfIndicators';
@@ -61,6 +62,7 @@ import {
   loadIndicatorSettings,
   saveIndicatorSettings,
 } from '../../services/wolfIndicatorSettings';
+import { runPineIndicator, type PineRunPlot } from '../../services/indicatorLibrary';
 import IndicatorSettingsForm from '../indicators/IndicatorSettingsForm';
 import {
   ensurePriceVisible,
@@ -922,6 +924,17 @@ export default function NativeChatChart({
     /** Each study registers a feed so a data refresh updates every series at once. */
     const feeds: ((view: ChartView) => IndicatorLine[])[] = [];
     const priceFormatted: ISeriesApi<SeriesType>[] = [];
+    /** CMS Pine results — source stays server-side; cache avoids re-run every tick. */
+    const pinePlotCache = new Map<
+      string,
+      {
+        tip: string;
+        plots: PineRunPlot[];
+        hlines: Array<{ price: number; color: string }>;
+        version: number;
+      }
+    >();
+    const pinePlotInflight = new Set<string>();
 
     for (const id of plotStudies) {
       if (!OVERLAY_STUDIES.has(id)) continue;
@@ -1302,6 +1315,113 @@ export default function NativeChatChart({
             })),
           );
           return [{ studyId: id, label: title, detail: 'Vol pressure', color: '#f0b90b', values: p.pressure, decimals: 2 }];
+        });
+      } else if (recipe === 'pine') {
+        const cmsId = wolfCmsIdFromStudy(id);
+        if (!cmsId) continue;
+        const pineColors = ['#f0b90b', '#26a69a', '#42a5f5', '#ef5350', '#ab47bc', '#ff9800'];
+        const pineSeries = pineColors.map((color, idx) => {
+          const s = line(color, idx === 0 ? 2 : 1);
+          priceFormatted.push(s);
+          return s;
+        });
+        const pineHlines: IPriceLine[] = [];
+        feeds.push(({ source, decimals }) => {
+          const tipBar = source[source.length - 1];
+          // Tip by bar open time + count only — not live LTP (avoids full Pine re-run every tick).
+          const tipKey = tipBar ? `${source.length}|${barTimeSec(tipBar.time)}` : '0';
+          const settings = loadIndicatorSettings(id);
+          const cacheKey = `${cmsId}|${JSON.stringify(settings)}`;
+          const cached = pinePlotCache.get(cacheKey);
+          if (!cached || cached.tip !== tipKey) {
+            if (!pinePlotInflight.has(`${cacheKey}|${tipKey}`)) {
+              pinePlotInflight.add(`${cacheKey}|${tipKey}`);
+              const barsPayload = source.map((b) => ({
+                time: barTimeSec(b.time),
+                open: b.open,
+                high: b.high,
+                low: b.low,
+                close: b.close,
+                volume: b.volume,
+              }));
+              void runPineIndicator(cmsId, { bars: barsPayload, inputs: settings })
+                .then((result) => {
+                  pinePlotCache.set(cacheKey, {
+                    tip: tipKey,
+                    plots: result.plots,
+                    hlines: result.hlines,
+                    version: result.version,
+                  });
+                  if (viewRef.current && applyRef.current) {
+                    applyRef.current(viewRef.current, false);
+                  }
+                })
+                .catch(() => {
+                  /* keep last good plots */
+                })
+                .finally(() => {
+                  pinePlotInflight.delete(`${cacheKey}|${tipKey}`);
+                });
+            }
+          }
+          const plots = cached?.plots || [];
+          for (let i = 0; i < pineSeries.length; i += 1) {
+            const plot = plots[i];
+            if (!plot) {
+              pineSeries[i].setData([]);
+              continue;
+            }
+            if (plot.color) {
+              try {
+                pineSeries[i].applyOptions({ color: plot.color });
+              } catch {
+                /* ignore */
+              }
+            }
+            pineSeries[i].setData(
+              source
+                .map((bar, j) => {
+                  const v = plot.values[j];
+                  if (v == null || !Number.isFinite(Number(v))) return null;
+                  return { time: ts(bar.time), value: Number(v) };
+                })
+                .filter((pt): pt is { time: UTCTimestamp; value: number } => Boolean(pt)),
+            );
+          }
+          while (pineHlines.length) {
+            try {
+              priceSeries.removePriceLine(pineHlines.pop()!);
+            } catch {
+              /* ignore */
+            }
+          }
+          for (const h of cached?.hlines || []) {
+            if (!Number.isFinite(h.price)) continue;
+            pineHlines.push(
+              priceSeries.createPriceLine({
+                price: h.price,
+                color: h.color || '#94a3b8',
+                lineWidth: 1,
+                lineStyle: LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: '',
+              }),
+            );
+          }
+          const primary = plots[0];
+          const detail = primary
+            ? `Pine v${cached?.version || ''} · ${primary.title}`
+            : 'Running Pine…';
+          return [
+            {
+              studyId: id,
+              label: title,
+              detail: detail.trim(),
+              color: primary?.color || '#f0b90b',
+              values: (primary?.values || []).map((v) => (v == null ? NaN : Number(v))),
+              decimals,
+            },
+          ];
         });
       }
     }

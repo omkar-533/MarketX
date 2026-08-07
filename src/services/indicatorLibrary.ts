@@ -12,6 +12,8 @@ export type IndicatorItem = {
   howToVideoUrl?: string | null;
   /** Admin-only — Pine Script source. Never present on member list responses. */
   pineSource?: string;
+  /** True when server has Pine (members never receive the source text). */
+  hasPine?: boolean;
   /** Parsed input.* settings (safe for members). */
   settings?: PineSettingField[];
   settingsDefaults?: Record<string, string | number | boolean>;
@@ -267,4 +269,57 @@ export async function listTvAccessGrants(): Promise<TvAccessGrant[]> {
   });
   const data = await readJson(res, 'Could not load TradingView grants');
   return (data.grants || []) as TvAccessGrant[];
+}
+
+export type PineRunBar = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+};
+
+export type PineRunPlot = {
+  title: string;
+  color: string;
+  values: Array<number | null>;
+};
+
+export type PineRunResult = {
+  ok: boolean;
+  version: number;
+  overlay: boolean;
+  plots: PineRunPlot[];
+  hlines: Array<{ price: number; color: string }>;
+  shapes: Array<{ title: string; flags: number[] }>;
+  warnings: string[];
+};
+
+/** Run CMS Pine on OHLC bars. Source stays on server — only plot series returned. */
+export async function runPineIndicator(
+  indicatorId: string,
+  payload: {
+    bars: PineRunBar[];
+    inputs?: Record<string, string | number | boolean>;
+  },
+): Promise<PineRunResult> {
+  const res = await apiFetch(`/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/run`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({
+      bars: payload.bars,
+      inputs: payload.inputs || {},
+    }),
+  });
+  const data = await readJson(res, 'Could not run Pine Script');
+  return {
+    ok: Boolean(data.ok),
+    version: Number(data.version) || 0,
+    overlay: data.overlay !== false,
+    plots: Array.isArray(data.plots) ? (data.plots as PineRunPlot[]) : [],
+    hlines: Array.isArray(data.hlines) ? (data.hlines as PineRunResult['hlines']) : [],
+    shapes: Array.isArray(data.shapes) ? (data.shapes as PineRunResult['shapes']) : [],
+    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
+  };
 }
