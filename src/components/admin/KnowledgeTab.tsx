@@ -94,7 +94,7 @@ export default function KnowledgeTab({ adminEmail, adminPassword }: KnowledgeTab
   };
 
   const remove = async (id: string) => {
-    if (!window.confirm('Is teaching ko delete karein?')) return;
+    if (!window.confirm('Delete this teaching?')) return;
     setError('');
     try {
       await adminDeleteKnowledge(id, adminEmail, adminPassword);
@@ -114,8 +114,8 @@ export default function KnowledgeTab({ adminEmail, adminPassword }: KnowledgeTab
             Wolf AI teachings
           </h3>
           <p className="text-[11px] text-slate-500 mt-1">
-            PDF ya notes upload karo — Wolf AI answers isi base pe dega (house method). Text-PDF
-            best hai; scanned image PDF se text nahi nikalta.
+            Upload PDFs or notes — Wolf AI answers from this base (house method). Text-based PDFs
+            work best; scanned image PDFs cannot be parsed for text.
           </p>
         </div>
 
@@ -162,7 +162,7 @@ export default function KnowledgeTab({ adminEmail, adminPassword }: KnowledgeTab
               className={`${FIELD} min-h-[110px] resize-y`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Apne trading rules, setups, risk rules yahan paste karo…"
+              placeholder="Paste your trading rules, setups, risk rules here…"
             />
             <button
               type="submit"
@@ -196,7 +196,7 @@ export default function KnowledgeTab({ adminEmail, adminPassword }: KnowledgeTab
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
           </div>
         ) : rows.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">Abhi koi teaching nahi — pehla PDF/notes upload karo.</p>
+          <p className="p-6 text-sm text-slate-500">No teachings yet — upload your first PDF or notes.</p>
         ) : (
           <ul className="divide-y divide-[#1a1f2e]">
             {rows.map((row) => (

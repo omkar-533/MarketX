@@ -344,7 +344,7 @@ export function detectMasterAiLanguage(text: string): MasterAiLangCode | null {
 export function resolveMasterAiLanguage(
   mode: MasterAiLangMode,
   userText: string,
-  fallback: MasterAiLangCode = 'hi-Latn',
+  fallback: MasterAiLangCode = 'en-US',
   recentUserTexts: string[] = [],
 ): MasterAiLanguage {
   if (mode !== 'auto') return getMasterAiLanguage(mode);
@@ -361,7 +361,7 @@ export function resolveMasterAiLanguage(
   }
 
   // Sticky only when detector still inconclusive
-  return getMasterAiLanguage(detected || fallback || 'hi-Latn');
+  return getMasterAiLanguage(detected || fallback || 'en-US');
 }
 
 function buildLanguageDirective(langCode: string, autoMode = false): string {
@@ -1369,12 +1369,33 @@ const STORAGE_MODEL = 'master_ai_selected_model';
 const STORAGE_AUTO_SPEAK = 'master_ai_auto_speak';
 const STORAGE_LANGUAGE = 'master_ai_language';
 const STORAGE_LANG_MODE = 'master_ai_language_mode';
+/** One-time: old builds defaulted Auto+Hinglish — migrate unset users to English. */
+const STORAGE_LANG_DEFAULT_EN = 'master_ai_lang_default_en_v1';
+
+function migrateLanguageDefaultsToEnglish(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.localStorage.getItem(STORAGE_LANG_DEFAULT_EN) === '1') return;
+    const mode = window.localStorage.getItem(STORAGE_LANG_MODE);
+    const lang = window.localStorage.getItem(STORAGE_LANGUAGE);
+    const wasOldAutoHinglish =
+      (!mode || mode === 'auto') && (!lang || lang === 'hi-Latn');
+    if (wasOldAutoHinglish) {
+      window.localStorage.setItem(STORAGE_LANGUAGE, 'en-US');
+      window.localStorage.setItem(STORAGE_LANG_MODE, 'en-US');
+    }
+    window.localStorage.setItem(STORAGE_LANG_DEFAULT_EN, '1');
+  } catch {
+    /* ignore */
+  }
+}
 
 export function loadSelectedLanguage(): MasterAiLangCode {
-  if (typeof window === 'undefined') return 'hi-Latn';
+  migrateLanguageDefaultsToEnglish();
+  if (typeof window === 'undefined') return 'en-US';
   const saved = window.localStorage.getItem(STORAGE_LANGUAGE) || '';
-  // Default Hinglish for Indian desk — not English
-  return isValidMasterAiLang(saved) ? saved : 'hi-Latn';
+  // Site default is English until the user picks another language.
+  return isValidMasterAiLang(saved) ? saved : 'en-US';
 }
 
 export function saveSelectedLanguage(code: MasterAiLangCode): void {
@@ -1382,11 +1403,14 @@ export function saveSelectedLanguage(code: MasterAiLangCode): void {
 }
 
 export function loadLanguageMode(): MasterAiLangMode {
-  if (typeof window === 'undefined') return 'auto';
+  migrateLanguageDefaultsToEnglish();
+  if (typeof window === 'undefined') return 'en-US';
   const mode = window.localStorage.getItem(STORAGE_LANG_MODE);
-  if (!mode || mode === 'auto') return 'auto';
+  // Empty / legacy missing → English locked (Auto is available if user selects it).
+  if (!mode) return 'en-US';
+  if (mode === 'auto') return 'auto';
   if (isValidMasterAiLang(mode)) return mode;
-  return 'auto';
+  return 'en-US';
 }
 
 export function saveLanguageMode(mode: MasterAiLangMode): void {

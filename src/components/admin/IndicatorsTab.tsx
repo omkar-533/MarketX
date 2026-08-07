@@ -161,12 +161,12 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
         }
         if (!validVideo) {
           throw new Error(
-            'How-to video URL invalid hai. Full link paste karo (https://… YouTube / Vimeo / .mp4).',
+            'How-to video URL is invalid. Paste the full link (https://… YouTube / Vimeo / .mp4).',
           );
         }
       }
       if (!link && !pineSource) {
-        throw new Error('Pine Script code ya TradingView invite link — kam se kam ek zaroori hai.');
+        throw new Error('Pine Script code or a TradingView invite link is required.');
       }
 
       const payload = {
@@ -197,7 +197,7 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
           adminPassword,
         );
         if (!String(saved?.howToVideoUrl || '').trim()) {
-          throw new Error('Video URL save fail hui. Link dubara paste karke Save dabao.');
+          throw new Error('Video URL failed to save. Paste the link again and click Save.');
         }
       }
 
@@ -225,9 +225,9 @@ export default function IndicatorsTab({ adminEmail, adminPassword }: IndicatorsT
       const msg = err instanceof Error ? err.message : 'Save failed';
       setError(
         name === 'AbortError'
-          ? 'Server timeout — Render wake up hone do, 10 sec baad Save dubara dabao.'
+          ? 'Server timeout — wait for Render to wake up, then click Save again in 10 seconds.'
           : /failed to fetch/i.test(msg)
-            ? 'Server reach nahi ho raha (CORS/network). Hard refresh (Ctrl+Shift+R) karke 10 sec baad Save dubara try karo.'
+            ? 'Cannot reach server (CORS/network). Hard refresh (Ctrl+Shift+R), wait 10 seconds, then try Save again.'
             : msg,
       );
     } finally {

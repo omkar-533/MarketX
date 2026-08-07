@@ -154,7 +154,7 @@ export default function TradingMasterPanel({
       };
       persist(mem);
     } catch {
-      setNote('Trading Master unreachable. AI key Profile mein check karo.');
+      setNote('Trading Master unreachable. Check your AI key in Profile.');
     } finally {
       setBusy(false);
     }

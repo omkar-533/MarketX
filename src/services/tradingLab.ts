@@ -370,17 +370,17 @@ export function checkMentorIntervention(args: {
 }): string | null {
   const map: Record<InterventionKind, string> = {
     risk_limit:
-      'Pause. Ye decision aapke daily risk limit se match nahi karta. Pehle risk verify karo, phir execute.',
+      'Pause. This decision does not match your daily risk limit. Verify risk first, then execute.',
     no_sl:
-      'Pause. Trading plan me stop loss defined hona chahiye. Pehle SL set karo — signal nahi, discipline check.',
+      'Pause. Your trading plan needs a defined stop loss. Set SL first — this is a discipline check, not a signal.',
     revenge:
-      'Pause. Loss ke turant baad re-entry revenge pattern jaisa lagta hai. Reason verify karo, phir trade socho.',
+      'Pause. Re-entering right after a loss looks like a revenge pattern. Verify your reason before taking another trade.',
     max_trades:
-      'Pause. Aaj ka max trades limit hit ho chuka hai. Charts review karo — overtrading avoid.',
+      'Pause. Today’s max-trades limit is already hit. Review the charts — avoid overtrading.',
     min_rr:
-      'Pause. Planned RR aapke session rule se kam hai. Setup skip karna bhi valid decision hai.',
+      'Pause. Planned RR is below your session rule. Skipping the setup is also a valid decision.',
     remove_sl:
-      'Pause. Stop loss hataana aapke risk rules todta hai. Pehle reason likho, phir decide karo.',
+      'Pause. Removing the stop loss breaks your risk rules. Write the reason first, then decide.',
   };
   // Professional still gets interventions — that's Mentor Intervention™
   void args.mode;
@@ -392,18 +392,18 @@ export function conceptHint(mode: LabMode, cursor: number, bars: ChartBar[]): st
   if (!meta?.hints || bars.length < 8) return null;
   if (mode === 'intermediate' && cursor % 7 !== 0) return null;
   const slice = bars.slice(Math.max(0, cursor - 8), cursor + 1);
-  if (slice.length < 5) return 'Structure observe karo — higher highs / lower lows.';
+  if (slice.length < 5) return 'Observe structure — higher highs / lower lows.';
   const first = slice[0].close;
   const last = slice[slice.length - 1].close;
   const rangeHigh = Math.max(...slice.map((b) => b.high));
   const rangeLow = Math.min(...slice.map((b) => b.low));
   const nearHigh = last >= rangeHigh - (rangeHigh - rangeLow) * 0.15;
   const nearLow = last <= rangeLow + (rangeHigh - rangeLow) * 0.15;
-  if (nearHigh) return 'Liquidity / range high area pass aa rahi hai — confirmation wait karo.';
-  if (nearLow) return 'Range low / liquidity pocket near — risk calculate kiya?';
-  if (last > first) return 'Short-term lean up — higher timeframe structure check kiya?';
-  if (last < first) return 'Short-term lean soft — impulse vs pullback distinguish karo.';
-  return 'Risk calculate kiya? Position size pehle, entry baad me.';
+  if (nearHigh) return 'Price is near liquidity / range high — wait for confirmation.';
+  if (nearLow) return 'Near range low / liquidity pocket — did you calculate risk?';
+  if (last > first) return 'Short-term lean is up — check higher-timeframe structure.';
+  if (last < first) return 'Short-term lean is soft — distinguish impulse vs pullback.';
+  return 'Did you calculate risk? Position size first, entry second.';
 }
 
 export function evaluateMissions(args: {

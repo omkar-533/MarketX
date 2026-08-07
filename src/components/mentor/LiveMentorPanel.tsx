@@ -107,9 +107,9 @@ export default function LiveMentorPanel({
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [emotion, setEmotion] = useState<LiveEmotion>('Calm');
   const [emotionNote, setEmotionNote] = useState('');
-  const [liveQ, setLiveQ] = useState('Sir ye setup dekh lo — structure aur liquidity pe coaching do.');
+  const [liveQ, setLiveQ] = useState('Review this setup — coach me on structure and liquidity.');
   const [note, setNote] = useState(
-    'Live Mentor silent coach hai: planning, rules, risk, review. Trade execute nahi karega. Kabhi “Abhi Buy/Sell” nahi bolega.',
+    'Live Mentor is a silent coach: planning, rules, risk, review. It will not execute trades or say “Buy/Sell now”.',
   );
 
   const refresh = useCallback(async () => {
@@ -149,7 +149,7 @@ export default function LiveMentorPanel({
 
   const runAi = async (message: string) => {
     setBusy(true);
-    setNote('Live Mentor soch raha hai…');
+    setNote('Live Mentor is thinking…');
     try {
       const result = await askMasterAi(
         {
@@ -167,7 +167,7 @@ export default function LiveMentorPanel({
       );
       setNote(String(result.reply || '').trim() || 'No mentor note — retry.');
     } catch {
-      setNote('Live Mentor unreachable. AI key Profile mein check karo.');
+      setNote('Live Mentor unreachable. Check your AI key in Profile.');
     } finally {
       setBusy(false);
     }
@@ -206,7 +206,7 @@ export default function LiveMentorPanel({
     if (!dna) return;
     void runAi(
       buildLiveGuidancePrompt({
-        question: liveQ.trim() || 'Structure aur scenarios explain karo.',
+        question: liveQ.trim() || 'Explain structure and scenarios.',
         plan,
         dna,
         detective,
@@ -292,8 +292,8 @@ export default function LiveMentorPanel({
           </p>
           <h2 className="wm-learn__title">WOLF AI Live Mentor</h2>
           <p className="wm-learn__lead">
-            Real market me silent mentor — planning, discipline, risk, review. Decision aapka. AI execute
-            nahi karta.
+            Silent mentor in real markets — planning, discipline, risk, review. The decision is yours. AI does not
+            execute trades.
           </p>
         </div>
         <button

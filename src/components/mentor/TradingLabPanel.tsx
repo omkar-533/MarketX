@@ -251,7 +251,7 @@ export default function TradingLabPanel({
   const openTrade = (orderSide: LabSide) => {
     if (!bars.length || sessionEnded) return;
     if (position) {
-      setIntervention('Pehle open position close karo, phir naya trade.');
+      setIntervention('Close the open position first, then open a new trade.');
       return;
     }
     if (closed.length >= rules.maxTrades) {
@@ -312,7 +312,7 @@ export default function TradingLabPanel({
       riskPoints,
     });
     setIntervention(null);
-    setHint(modeMeta.hints ? 'Trade open — process observe karo, signal nahi.' : null);
+    setHint(modeMeta.hints ? 'Trade open — observe process, not signals.' : null);
   };
 
   const closeNow = () => {
@@ -376,7 +376,7 @@ export default function TradingLabPanel({
       );
       setNote(String(result.reply || '').trim() || 'No mentor note — retry.');
     } catch {
-      setNote('Lab mentor unreachable. AI key Profile mein check karo.');
+      setNote('Lab mentor unreachable. Check your AI key in Profile.');
     } finally {
       setBusy(false);
     }

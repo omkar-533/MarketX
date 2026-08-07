@@ -160,7 +160,7 @@ export default function TradeXOptionChain() {
           if (!snap?.rows.length || snap?.source === 'error') {
             setChainError(
               snap?.error ||
-                'Option chain data nahi mila — thodi der baad Refresh try karein.',
+                'Option chain data not found — wait a moment, then try Refresh.',
             );
             setStrikes([]);
             setChainSource('');
@@ -177,11 +177,11 @@ export default function TradeXOptionChain() {
           );
           setStrikes(snap.rows);
           if (!snap.rows.length) {
-            setChainError('Option chain khali — 30s wait karke Refresh dabayein.');
+            setChainError('Option chain is empty — wait 30s, then click Refresh.');
           }
         })
         .catch(() => {
-          setChainError('Load failed — live server slow ho sakta hai, 30s wait karke Refresh dabayein.');
+          setChainError('Load failed — live server may be slow. Wait 30s, then click Refresh.');
           setStrikes([]);
         })
         .finally(() => setChainLoading(false));
@@ -558,7 +558,7 @@ export default function TradeXOptionChain() {
                     <WolfLoader fullscreen={false} label="Loading Option Chain" />
                   ) : chainError || strikes.length === 0 ? (
                     <>
-                      <p className="text-sm text-amber-400 max-w-md">{chainError || 'Data nahi mila.'}</p>
+                      <p className="text-sm text-amber-400 max-w-md">{chainError || 'No data found.'}</p>
                       <button
                         type="button"
                         onClick={() => refresh({ force: true })}

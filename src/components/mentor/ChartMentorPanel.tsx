@@ -70,7 +70,7 @@ export default function ChartMentorPanel({
 }: ChartMentorPanelProps) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(
-    'Open chart pe **Analyze** dabao — structure, liquidity, dual scenarios, aur blackboard marks. Areas of Interest only — no Entry / Stop / Target.',
+    'Open the chart and click **Analyze** — structure, liquidity, dual scenarios, and blackboard marks. Areas of Interest only — no Entry / Stop / Target.',
   );
   const [parsed, setParsed] = useState<ParsedChartMentor | null>(null);
   const [previewName, setPreviewName] = useState('');
@@ -82,7 +82,7 @@ export default function ChartMentorPanel({
 
   const run = async (message: string, withImage: boolean) => {
     setBusy(true);
-    setNote('Chart Mentor tape padh raha hai…');
+    setNote('Chart Mentor is reading the tape…');
     try {
       const chartHint = `[CHART OPEN ON WOLF MENTOR DESK: ${tradingViewSymbolLabel(symbol)} · ${interval}. Module 2 Chart Mentor. Draw AOIs with wolfchart. Never Entry/Stop/Target. Reply in ${lang.replyIn}.]`;
       const result = await askMasterAi(
@@ -108,7 +108,7 @@ export default function ChartMentorPanel({
       setNote(text);
       setParsed(parseChartMentorReply(text));
     } catch {
-      setNote('Chart Mentor engine unreachable. AI key Profile mein check karo, phir retry.');
+      setNote('Chart Mentor engine unreachable. Check your AI key in Profile, then retry.');
     } finally {
       setBusy(false);
     }
@@ -250,7 +250,7 @@ export default function ChartMentorPanel({
               }
               setNote(
                 (prev) =>
-                  `${prev}\n\n---\nModule 1 Level ${related.levelId} (${related.title}) abhi locked hai. Pehle earlier level quizzes pass karo — Curriculum tab se.`,
+                  `${prev}\n\n---\nModule 1 Level ${related.levelId} (${related.title}) is locked. Pass earlier level quizzes first — from the Curriculum tab.`,
               );
             }}
             title={relatedUnlocked ? 'Open curriculum lesson' : 'Level locked — finish earlier quizzes first'}

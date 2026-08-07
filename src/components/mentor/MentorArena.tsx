@@ -147,7 +147,7 @@ export default function MentorArena({
 
   const startSession = useCallback(async () => {
     if (empire.bank < STAKE_OPTIONS[0]) {
-      setBuyMsg('Bank low — chhota stake lo ya shop me kam kharcho.');
+      setBuyMsg('Bank low — use a smaller stake or spend less in the shop.');
       return;
     }
     setLoading(true);
@@ -224,10 +224,10 @@ export default function MentorArena({
             [
               `[DESK EMPIRE] ${scenario.symbol} ${scenario.interval} —`,
               skipped
-                ? 'student ne NO TRADE chuna.'
+                ? 'student chose NO TRADE.'
                 : `${plan?.side.toUpperCase()} plan, RR 1:${plan?.rr}, result ${res.headline}, ${res.rMultiple.toFixed(2)}R.`,
               `Checklist edge ${res.edgePct}% (grade ${res.grade}).`,
-              'Do line me hype + ek process correction do. Koi Entry/SL/Target advice mat do.',
+              'Two lines of hype plus one process correction. Do not give Entry/SL/Target advice.',
             ].join(' '),
           );
         }
@@ -287,7 +287,7 @@ export default function MentorArena({
   const onBuy = (item: ShopItem) => {
     const next = buyShopItem(item.id, ownerKey);
     if (!next) {
-      setBuyMsg(empire.inventory.includes(item.id) ? 'Already owned.' : 'Desk cash kam hai.');
+      setBuyMsg(empire.inventory.includes(item.id) ? 'Already owned.' : 'Not enough desk cash.');
       playArenaSfx('miss');
       return;
     }
@@ -318,7 +318,7 @@ export default function MentorArena({
               {firstName}, <span>run the desk</span>
             </h2>
             <p className="wm-arena__lead">
-              Chart freeze → bias → chart pe Entry / SL / Target drag karo → tape resolve → cash
+              Chart freeze → bias → drag Entry / SL / Target on chart → tape resolves → cash
             </p>
           </div>
           <div className="wm-empire__wallet">
@@ -460,7 +460,7 @@ export default function MentorArena({
             {phase === 'plan' && planStage === 'bias' && biasStep ? (
               <div className="wm-empire__decide wm-empire__decide--compact">
                 <p className="wm-empire__topic">{biasStep.topic}</p>
-                <p className="wm-empire__ask">Chart padho — koi timer nahi. Bias kya hai?</p>
+                <p className="wm-empire__ask">Read the chart — no timer. What is your bias?</p>
                 <div className="wm-empire__hints">
                   {scenario?.hints.slice(0, 4).map((h, i) => (
                     <span key={`${i}-${h}`}>{h}</span>
@@ -540,12 +540,12 @@ export default function MentorArena({
             ) : null}
 
             {phase === 'play' ? (
-              <p className="wm-empire__running">Tape padho — freeze aa raha hai…</p>
+              <p className="wm-empire__running">Reading the tape — freeze incoming…</p>
             ) : null}
 
             {phase === 'resolve' && !livePlan ? (
               <p className="wm-empire__running">
-                NO TRADE — dekhte hain skip sahi tha ya nahi…
+                NO TRADE — checking whether the skip was correct…
               </p>
             ) : null}
 
@@ -589,7 +589,7 @@ export default function MentorArena({
                 <p className="wm-empire__meta">
                   {result.filled
                     ? `${result.rMultiple >= 0 ? '+' : ''}${result.rMultiple.toFixed(2)}R · MFE ${result.mfeR.toFixed(1)}R · MAE ${result.maeR.toFixed(1)}R`
-                    : 'Risk par kuch gaya hi nahi'}
+                    : 'Nothing was put at risk'}
                   {result.processBonus ? ` · process bonus ${formatDeskCash(result.processBonus)}` : ''}
                   {result.streakMult > 1 && result.pnl > 0
                     ? ` · streak ×${result.streakMult.toFixed(2)}`
@@ -717,7 +717,7 @@ export default function MentorArena({
               <b>Garage · net worth {formatDeskCash(netWorth)}</b>
             </div>
             {garage.length === 0 ? (
-              <p className="wm-empire__empty">Abhi khali hai — shop se pehli flex item lo.</p>
+              <p className="wm-empire__empty">Empty for now — buy your first flex item in the shop.</p>
             ) : (
               <div className="wm-empire__grid">
                 {garage.map((item) => {

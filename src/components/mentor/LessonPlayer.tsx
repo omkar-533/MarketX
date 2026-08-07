@@ -52,9 +52,9 @@ type LessonPlayerProps = {
 const ADAPT_CHIPS = [
   { id: 'again', label: 'Dubara samjhao', text: 'Explain again more clearly' },
   { id: 'easy', label: 'Easy language', text: 'Use easier simpler language' },
-  { id: 'hindi', label: 'Hindi me', text: 'Explain in simple Hindi / Hinglish' },
+  { id: 'hindi', label: 'In Hindi', text: 'Explain in simple Hindi / Hinglish' },
   { id: 'chart', label: 'Real chart', text: 'Use the open chart more concretely' },
-  { id: 'example', label: 'Ek aur example', text: 'Give one more everyday + market example' },
+  { id: 'example', label: 'One more example', text: 'Give one more everyday + market example' },
 ] as const;
 
 export default function LessonPlayer({
@@ -169,7 +169,7 @@ export default function LessonPlayer({
   const gradeQuiz = () => {
     if (!level) return;
     if (level.quiz.some((q) => !answers[q.id])) {
-      setNote('Pehle saare 5 answers choose karo.');
+      setNote('Choose all 5 answers first.');
       return;
     }
     const { progress: next, passed } = submitLevelQuiz(progress, levelId, score);
@@ -178,13 +178,13 @@ export default function LessonPlayer({
     if (!passed) {
       rememberWeakArea(level.title, ownerKey);
       setNote(
-        `Score ${score}/5 — pass ke liye ${PASS_SCORE} chahiye. Weak topic yaad rakha: ${level.title}. Dubara padho, phir retry.`,
+        `Score ${score}/5 — you need ${PASS_SCORE} to pass. Weak topic saved: ${level.title}. Review again, then retry.`,
       );
     } else {
       setNote(
         score === 5
-          ? '🔥 PERFECT — Level clear! +40 XP vibe. Next level unlock ho gaya.'
-          : `✅ Pass (${score}/5) — next level unlock. +25 XP vibe. Revision notes padh ke aage badho.`,
+          ? '🔥 PERFECT — Level cleared! +40 XP. Next level unlocked.'
+          : `✅ Pass (${score}/5) — next level unlocked. +25 XP. Review the notes, then continue.`,
       );
     }
   };
@@ -203,7 +203,7 @@ export default function LessonPlayer({
 
   const goNext = () => {
     if (step.id === 'quiz' && !quizResult?.passed && !(lp?.quizPassed)) {
-      setNote('Quiz pass karo (4/5) tabhi aage.');
+      setNote('Pass the quiz (4/5) before continuing.');
       return;
     }
     if (step.id === 'practical') {
@@ -352,7 +352,7 @@ export default function LessonPlayer({
 
       {step.id === 'homework' ? (
         <div className="wm-learn__homework">
-          <p className="wm-learn__lead">Manual checklist (screenshot AI grade Phase 2 mein aayega).</p>
+          <p className="wm-learn__lead">Manual checklist (screenshot AI grading coming in Phase 2).</p>
           <ul>
             {level.homework.map((item, i) => (
               <li key={item}>
@@ -369,7 +369,7 @@ export default function LessonPlayer({
       {step.id === 'practical' ? (
         <div className="wm-learn__practical">
           <p className="wm-learn__lead">
-            Open chart pe process identify karo. Desk drill chalega — Areas of Interest only.
+            Identify process on the open chart. A desk drill will run — Areas of Interest only.
           </p>
           <button
             type="button"

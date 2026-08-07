@@ -161,11 +161,11 @@ export const LIVE_CHALLENGES: LiveChallenge[] = [
 ];
 
 export const LIVE_HOMEWORK = [
-  'Aaj sirf BOS / structure events identify karo — trade optional.',
-  '5 liquidity sweep Areas of Interest mark karo (no orders).',
-  'Ek bhi unnecessary trade mat lo — journal the skips.',
-  'Har potential setup pe pehle fail-exit condition likho.',
-  'Higher timeframe bias likho before any lower-TF action.',
+  'Today identify only BOS / structure events — trading is optional.',
+  'Mark 5 liquidity-sweep Areas of Interest (no orders).',
+  'Take zero unnecessary trades — journal the skips.',
+  'For every potential setup, write the fail-exit condition first.',
+  'Write higher-timeframe bias before any lower-TF action.',
 ];
 
 export const LIVE_EMOTIONS: LiveEmotion[] = [
@@ -376,11 +376,11 @@ export function buildTradingDna(
 
   const focusToday =
     earlyEntries >= 2
-      ? 'Patience — sirf confirmed pullback / confirmation entries. Kal early entries ka pattern dikha.'
+      ? 'Patience — only confirmed pullback / confirmation entries. Yesterday showed an early-entry pattern.'
       : riskDiscipline < 60
-        ? 'Risk discipline — har plan me max risk % aur SL pehle likho.'
+        ? 'Risk discipline — write max risk % and SL in every plan first.'
         : emotionalStability < 55
-          ? 'Emotional stability — trade se pehle emotion check + fail-exit likho.'
+          ? 'Emotional stability — check emotion + fail-exit before the trade.'
           : skill.focusWeek[0] || 'Process over outcome — one clean A+ setup focus.';
 
   const commonMistakes: string[] = [];
@@ -468,7 +468,7 @@ export function checkRulesAndRisk(args: {
       detail: plan.maxRisk || 'Risk not stated',
     });
     if (!ok) {
-      guardianAlerts.push('Planned risk 1% rule se zyada lagta hai — pehle size verify karo.');
+      guardianAlerts.push('Planned risk looks above the 1% rule — verify size first.');
     }
   }
 

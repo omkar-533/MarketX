@@ -908,7 +908,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         : resolveMasterAiLanguage(
             langMode,
             detectFrom,
-            selectedLang.code || 'hi-Latn',
+            selectedLang.code || 'en-US',
             recentUser,
           );
       if (langMode === 'auto' || explicitLang) {

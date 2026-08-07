@@ -82,7 +82,7 @@ export default function PerformanceCoachPanel({
   const [goals, setGoals] = useState<CoachGoals>(() => loadCoachGoals(ownerKey));
   const [habits, setHabits] = useState<CoachHabits>(() => loadCoachHabits(ownerKey));
   const [note, setNote] = useState(
-    'Performance Coach journal se trader ko coach karta hai — habits, discipline, psychology. No new Entry / Stop / Target.',
+    'Performance Coach uses your journal to coach the trader — habits, discipline, psychology. No new Entry / Stop / Target.',
   );
 
   const refresh = useCallback(async () => {
@@ -107,7 +107,7 @@ export default function PerformanceCoachPanel({
 
   const runCoach = async (message: string) => {
     setBusy(true);
-    setNote('Coach tape padh raha hai…');
+    setNote('Coach is reading the tape…');
     try {
       const result = await askMasterAi(
         {
@@ -125,7 +125,7 @@ export default function PerformanceCoachPanel({
       );
       setNote(String(result.reply || '').trim() || 'No coach note — retry.');
     } catch {
-      setNote('Coach engine unreachable. AI key Profile mein check karo, phir retry.');
+      setNote('Coach engine unreachable. Check your AI key in Profile, then retry.');
     } finally {
       setBusy(false);
     }
@@ -181,7 +181,7 @@ export default function PerformanceCoachPanel({
           <p className="wm-learn__eyebrow">Module 3 · Performance Coach</p>
           <h2 className="wm-learn__title">WOLF AI Trading Coach</h2>
           <p className="wm-learn__lead">
-            Market nahi — <strong>trader</strong> analyze hota hai. Journal history se review, mistakes,
+            Not the market — the <strong>trader</strong> is analyzed. Review from journal history: mistakes,
             psychology, plan. Never new trade orders.
           </p>
         </div>
@@ -201,8 +201,8 @@ export default function PerformanceCoachPanel({
           <ClipboardList size={26} />
           <h3>No journal trades yet</h3>
           <p>
-            Trading Journal mein completed trades add karo (entry, exit, SL, target, emotions) — phir
-            dashboard + personalised plan yahan unlock hoga.
+            Add completed trades in Trading Journal (entry, exit, SL, target, emotions) — then the
+            dashboard and personalised plan unlock here.
           </p>
         </div>
       ) : (

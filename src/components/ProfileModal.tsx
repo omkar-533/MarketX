@@ -206,7 +206,7 @@ export default function ProfileModal({
                   <p className="mt-1.5 text-[10px] text-[var(--tf-text-muted)]">{avatarMsg}</p>
                 ) : (
                   <p className="mt-1.5 text-[10px] text-[var(--tf-text-muted)]">
-                    Crop, zoom, aur filters photo choose karne ke baad milenge.
+                    Crop, zoom, and filters appear after you choose a photo.
                   </p>
                 )}
               </div>
@@ -230,13 +230,13 @@ export default function ProfileModal({
                   </div>
                   {hasLocalKey ? (
                     <p className="text-[10px] text-emerald-400 font-mono">
-                      Is browser me saved: {maskOpenRouterApiKey(openRouterSaved)}
+                      Saved in this browser: {maskOpenRouterApiKey(openRouterSaved)}
                     </p>
                   ) : null}
                   {!serverAiReady && !hasLocalKey ? (
                     <p className="text-[10px] text-slate-500">
-                      Server pe key nahi — aistudio.google.com se AI Studio key (AQ.… / AIza…), OpenAI (sk-…), ya OpenRouter
-                      (sk-or-…) paste karo. ChatGPT Plus/Premium website login API key nahi hota.
+                      No server key — paste an AI Studio key from aistudio.google.com (AQ.… / AIza…), OpenAI (sk-…), or OpenRouter
+                      (sk-or-…). ChatGPT Plus/Premium website login is not an API key.
                     </p>
                   ) : null}
                   {showPasteUi ? (
@@ -267,7 +267,7 @@ export default function ProfileModal({
                               clearOpenRouterApiKey();
                               setOpenRouterSaved('');
                               setOpenRouterInput('');
-                              setOpenRouterMsg('Local key removed — server key use hogi.');
+                              setOpenRouterMsg('Local key removed — using server key.');
                               if (serverAiReady) setShowKeyOverride(false);
                             }}
                             className="px-3 py-2 rounded-lg border border-dark-border text-slate-400 text-xs hover:text-slate-200"

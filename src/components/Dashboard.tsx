@@ -53,35 +53,34 @@ interface DashboardProps {
 type MarketScope = 'all' | 'india' | 'forex' | 'crypto';
 
 const SCOPE_TIPS: Record<MarketScope, string> = {
-  all: 'Poora multi-market overview — India, Forex/Metals aur Crypto ek saath.',
-  india: 'Sirf India equities & indices (NSE/BSE) — NIFTY, sectors, movers.',
-  forex: 'Currency pairs aur metals (USDINR, EURUSD, Gold, etc.).',
-  crypto: 'Major cryptocurrencies vs USDT — BTC, ETH aur alts.',
+  all: 'Full multi-market overview — India, Forex/Metals, and Crypto together.',
+  india: 'India equities & indices only (NSE/BSE) — NIFTY, sectors, movers.',
+  forex: 'Currency pairs and metals (USDINR, EURUSD, Gold, etc.).',
+  crypto: 'Major cryptocurrencies vs USDT — BTC, ETH, and alts.',
 };
 
 const BOX_TIPS = {
-  nifty: 'NIFTY 50 — India ke top 50 stocks ka benchmark index. Live LTP aur din ka % badlav.',
-  banknifty: 'BANK NIFTY — banking stocks ka index. F&O traders ke liye key benchmark.',
-  usdinr: 'USD/INR — dollar vs rupee. Import/export aur FII flow ke mood ka signal.',
-  btc: 'Bitcoin vs USDT — global crypto risk appetite ka leading pulse.',
+  nifty: 'NIFTY 50 — benchmark index of India’s top 50 stocks. Live LTP and day % change.',
+  banknifty: 'BANK NIFTY — banking-sector index. Key benchmark for F&O traders.',
+  usdinr: 'USD/INR — dollar vs rupee. Signals mood around imports/exports and FII flows.',
+  btc: 'Bitcoin vs USDT — leading pulse of global crypto risk appetite.',
   sentiment:
-    'India Sentiment score — NIFTY move, PCR aur market breadth se estimated bias (0–100).',
-  pcr: 'Put-Call Ratio (OI) — puts vs calls open interest. >1 aksar bullish hedge / pe buying hint.',
-  eurusd: 'EUR/USD — dollar strength vs euro. Global FX mood ka common pair.',
-  quick:
-    'Seedha tools pe jaao — Option Chain, OI Intelligence, ya Global Markets page.',
-  feed: 'Live WebSocket / reconnect status — ticks aur quotes yahan se refresh hote hain.',
-  breadth: 'Advances vs Declines — kitne stocks up/down. Strong advance = bullish breadth.',
-  bias: 'Live Bias — short India trade signals (BUY/SELL reason ke saath).',
-  sectors: 'Sector Performance — aaj kis industry group mein zyada force hai.',
-  gainers: 'Top Gainers — aaj % ke hisaab se sabse tez upar jaane wale stocks.',
-  losers: 'Top Losers — aaj % ke hisaab se sabse tez neeche jaane wale stocks.',
-  active: 'Most Active — volume / participation ke hisaab se sabse busy stocks.',
-  indiaSec: 'India equities desk — indices, movers, breadth aur sector heatmap.',
-  forexSec: 'Forex & metals tape — major pairs aur XAU (gold) live quotes.',
+    'India Sentiment score — estimated bias (0–100) from NIFTY move, PCR, and market breadth.',
+  pcr: 'Put-Call Ratio (OI) — puts vs calls open interest. >1 often hints at bullish hedging / PE buying.',
+  eurusd: 'EUR/USD — dollar strength vs euro. Common pair for global FX mood.',
+  quick: 'Jump straight to tools — Option Chain, OI Intelligence, or Global Markets.',
+  feed: 'Live WebSocket / reconnect status — ticks and quotes refresh from here.',
+  breadth: 'Advances vs Declines — how many stocks are up/down. Strong advance = bullish breadth.',
+  bias: 'Live Bias — short India trade signals (BUY/SELL with reason).',
+  sectors: 'Sector Performance — which industry groups have the most force today.',
+  gainers: 'Top Gainers — stocks rising fastest by % today.',
+  losers: 'Top Losers — stocks falling fastest by % today.',
+  active: 'Most Active — busiest stocks by volume / participation.',
+  indiaSec: 'India equities desk — indices, movers, breadth, and sector heatmap.',
+  forexSec: 'Forex & metals tape — major pairs and XAU (gold) live quotes.',
   cryptoSec: 'Crypto tape — major coins live vs USDT.',
-  indexCard: 'Index LTP, din ka change, high/low aur volume snapshot.',
-  quoteCard: 'Live price, day change, aur session high/low for this instrument.',
+  indexCard: 'Index LTP, day change, high/low, and volume snapshot.',
+  quoteCard: 'Live price, day change, and session high/low for this instrument.',
 } as const;
 
 const HIDDEN_INDEX_SYMBOLS = new Set(['NIFTYNXT50']);

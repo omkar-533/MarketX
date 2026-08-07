@@ -338,11 +338,7 @@ export default function MentorAI({ onNavigate }: { onNavigate?: (tab: string) =>
       gradingRef.current = true;
       setBusy(true);
       setCoachTitle(opts?.title || 'Mentor briefing');
-      setCoachNote(
-        langMode === 'auto' || isHinglishLang(selectedLang.code)
-          ? 'Desk tape padh raha hoon…'
-          : 'Reading desk tape…',
-      );
+      setCoachNote('Reading desk tape…');
       try {
         const ctx = buildMasterMarketContext();
         const chartHint = `[CHART OPEN ON WOLF MENTOR DESK: ${tradingViewSymbolLabel(symbol)} · ${interval}. Train from LIVE + HISTORICAL MARKET INTEL. Draw lessons with wolfchart. Process only. Reply in ${selectedLang.replyIn}.]`;
@@ -619,7 +615,7 @@ export default function MentorAI({ onNavigate }: { onNavigate?: (tab: string) =>
 
       {student ? (
         <nav className="wm-desk__nav" aria-label="Mentor modules">
-          <p className="wm-desk__nav-label">Modules se seekho · game ke liye Wolf Arena</p>
+          <p className="wm-desk__nav-label">Learn from modules · Wolf Arena for the game</p>
           <div className="wm-desk__nav-row">
             <button
               type="button"
@@ -1004,24 +1000,24 @@ export default function MentorAI({ onNavigate }: { onNavigate?: (tab: string) =>
 
         <aside className="wm-desk__side">
           <div className="wm-desk__card wm-desk__guide">
-            <div className="wm-desk__card-h">Kaise use karein? (simple)</div>
+            <div className="wm-desk__card-h">How to use this desk</div>
             <ol className="wm-desk__guide-list">
               <li>
-                <b>Curriculum</b> — pehle yahan se Level 1 padho + quiz pass karo
+                <b>Curriculum</b> — start with Level 1 here and pass the quiz
               </li>
               <li>
-                <b>Chart Mentor</b> — chart samjho (Buy/Sell nahi, sirf process)
+                <b>Chart Mentor</b> — read the chart (process only — no buy/sell calls)
               </li>
               <li>
-                <b>Lab</b> — bina paise risk ke practice
+                <b>Lab</b> — practice without risking capital
               </li>
               <li>
                 <b>Coach / Live Mentor / Master</b> — habits, rules, DNA
               </li>
             </ol>
             <p className="wm-desk__muted">
-              Aap abhi <b>Live desk</b> pe ho — ye advanced practice hai. Beginner ho to pehle
-              Curriculum kholo.
+              You are on the <b>Live desk</b> — advanced practice. If you are new, open{' '}
+              <b>Curriculum</b> first.
             </p>
             <div className="wm-desk__guide-actions">
               <button
