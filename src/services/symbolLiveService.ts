@@ -292,6 +292,7 @@ function quoteFromTick(q: MarketTickDto): LiveSymbolQuote {
 
 export function applyStreamQuotes(quotes: MarketTickDto[]): void {
   if (!quotes.length) return;
+  lastStreamTickAt = Date.now();
   const map = new Map(liveCache.map((item) => [item.symbol, item]));
   for (const q of quotes) {
     const row = quoteFromTick(q);
@@ -305,7 +306,6 @@ export function applyStreamQuotes(quotes: MarketTickDto[]): void {
 
 async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   const unique = [...new Set(PRIORITY_SYMBOLS)];
-  const conn = getMarketConnectionState();
 
   const hydrateExtras = (quoteMap: Map<string, MarketTickDto>) => {
     const extras: MarketTickDto[] = [];
@@ -315,29 +315,8 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
     if (extras.length) applyStreamQuotes(extras);
   };
 
-  if (conn.streamActive) {
-    const hasLive = liveCache.length > 0 || extraLiveCache.size > 0;
-    if (hasLive) {
-      publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
-      return liveCache;
-    }
-    const ticks = await fetchMarketTicks(unique);
-    const quoteMap = mergeQuoteMap(ticks, undefined);
-    liveCache = buildCacheFromQuoteMap(quoteMap);
-    hydrateExtras(quoteMap);
-    publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
-    return liveCache;
-  }
-
+  // Always merge ticks + REST quotes — never skip because streamActive is sticky.
   const ticks = await fetchMarketTicks(unique);
-  const quoteMap = mergeQuoteMap(ticks, undefined);
-  if (quoteMap.size >= unique.length * 0.5) {
-    liveCache = buildCacheFromQuoteMap(quoteMap);
-    hydrateExtras(quoteMap);
-    publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
-    return liveCache;
-  }
-
   const res = await fetchMarketQuotes(unique);
   const merged = mergeQuoteMap(ticks, res?.quotes);
   liveCache = buildCacheFromQuoteMap(merged);
@@ -349,10 +328,17 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   return liveCache;
 }
 
-export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
-  if (refreshInFlight) return refreshInFlight;
+/** Last Stream/WS tick applied into cache (ms). */
+let lastStreamTickAt = 0;
 
-  refreshInFlight = (async () => {
+export function getLastStreamTickAt(): number {
+  return lastStreamTickAt;
+}
+
+export async function refreshFnoLiveQuotesAsync(force = false): Promise<LiveSymbolQuote[]> {
+  if (refreshInFlight && !force) return refreshInFlight;
+
+  const run = async () => {
     try {
       await refreshMarketConnection();
       const health = await fetchMarketHealth();
@@ -362,7 +348,14 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
       }
       setMarketProvider(health.provider || 'tradingview');
       const hasLive = liveCache.length > 0;
-      if (isLiveFeedActive() && isMarketStreamActive() && hasLive) {
+      const streamFresh =
+        isLiveFeedActive() &&
+        isMarketStreamActive() &&
+        hasLive &&
+        lastStreamTickAt > 0 &&
+        Date.now() - lastStreamTickAt < 8_000;
+      // Only skip REST when ticks are actually arriving — not when stream flag is stale.
+      if (!force && streamFresh) {
         publishLiveSnapshot(liveCache);
         return liveCache;
       }
@@ -373,8 +366,18 @@ export async function refreshFnoLiveQuotesAsync(): Promise<LiveSymbolQuote[]> {
     } finally {
       refreshInFlight = null;
     }
-  })();
+  };
 
+  if (force && refreshInFlight) {
+    // Let the in-flight finish, then force another pass.
+    try {
+      await refreshInFlight;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  refreshInFlight = run();
   return refreshInFlight;
 }
 
@@ -382,9 +385,8 @@ export function refreshFnoLiveQuotes(): LiveSymbolQuote[] {
   void import('./marketTickStream').then((m) => {
     m.subscribeLiveSymbols(PRIORITY_SYMBOLS);
   });
-  if (!isMarketStreamActive() && !liveCache.length) {
-    void refreshFnoLiveQuotesAsync();
-  }
+  // Always schedule a background refresh — hub + 24×7 REST need this path.
+  void refreshFnoLiveQuotesAsync();
   return getFnoLiveQuotes();
 }
 

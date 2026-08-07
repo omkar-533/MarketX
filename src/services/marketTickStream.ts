@@ -2,6 +2,8 @@
  * Live market tick helpers — Socket.IO client talks to TradingView-backed API.
  */
 
+import { isFyersSocketConnected, startFyersSocketClient } from './fyersSocketClient';
+
 export const MARKET_TOKEN_INVALID_EVENT = 'market:feed-invalid';
 /** @deprecated */
 export const FYERS_TOKEN_INVALID_EVENT = MARKET_TOKEN_INVALID_EVENT;
@@ -17,18 +19,16 @@ export function subscribeLiveSymbols(symbols: string[]): void {
 }
 
 export function startMarketTickStream(): () => void {
-  void import('./fyersSocketClient')
-    .then((m) => m.startFyersSocketClient())
-    .catch(() => {});
+  startFyersSocketClient();
   return stopMarketTickStream;
 }
 
+/** Intentional no-op — site-wide singleton stays up until logout / hard reload. */
 export function stopMarketTickStream(): void {}
 
 export function isMarketWebSocketConnected(): boolean {
   try {
-    // sync require via cache if module already loaded
-    return false;
+    return isFyersSocketConnected();
   } catch {
     return false;
   }

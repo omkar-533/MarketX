@@ -675,7 +675,7 @@ export default function NativeChatChart({
   useEffect(() => {
     void load(false);
     const timer = window.setInterval(() => {
-      if (!document.hidden) void load(true);
+      void load(true);
     }, OHLC_RESYNC_MS);
     return () => window.clearInterval(timer);
   }, [load, reloadKey]);
@@ -717,7 +717,6 @@ export default function NativeChatChart({
     });
 
     const poll = window.setInterval(() => {
-      if (document.hidden) return;
       const quietMs = Date.now() - lastLiveAtRef.current;
       const cachedNow = getFyersCachedQuote(apiSymbol);
       // While ticks are fresh, keep painting tip from hottest cache (no REST wait).

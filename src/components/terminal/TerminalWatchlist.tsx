@@ -79,7 +79,6 @@ export default function TerminalWatchlist({
     });
 
     const poll = window.setInterval(() => {
-      if (document.hidden) return;
       void fetchMarketQuotes(apiSymbols).then((res) => {
         if (!res?.quotes?.length) return;
         setQuotes((prev) => {

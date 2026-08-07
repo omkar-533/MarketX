@@ -55,7 +55,6 @@ export default function TerminalTradeStrip({
     });
 
     const poll = window.setInterval(() => {
-      if (document.hidden) return;
       void fetchMarketQuotes([api]).then((res) => {
         const q = res?.quotes?.[0];
         if (q?.price) setPrice(q.price);

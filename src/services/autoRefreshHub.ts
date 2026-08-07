@@ -1,14 +1,15 @@
 /**
- * Lightweight refresh event bus only.
- * Live Fyers ticks / OI / chain polling removed — product does not use live quotes.
+ * App-wide refresh event bus — drives useAutoRefresh consumers 24×7 while logged in.
  */
 
 export const AUTO_REFRESH_EVENT = 'tradeflow:auto-refresh';
-export const DEFAULT_AUTO_REFRESH_MS = 60_000;
+/** Quotes / REST safety net cadence (socket ticks stay independent). */
+export const DEFAULT_AUTO_REFRESH_MS = 15_000;
 
 let tick = 0;
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let started = false;
+let intervalMs = DEFAULT_AUTO_REFRESH_MS;
 
 export type AutoRefreshDetail = {
   tick: number;
@@ -18,7 +19,9 @@ export type AutoRefreshDetail = {
 export function runGlobalRefresh(): AutoRefreshDetail {
   tick += 1;
   const detail: AutoRefreshDetail = { tick, at: Date.now() };
-  window.dispatchEvent(new CustomEvent(AUTO_REFRESH_EVENT, { detail }));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(AUTO_REFRESH_EVENT, { detail }));
+  }
   return detail;
 }
 
@@ -27,10 +30,18 @@ export function getAutoRefreshTick(): number {
 }
 
 export function startAutoRefreshHub(ms = DEFAULT_AUTO_REFRESH_MS): () => void {
-  if (started) return stopAutoRefreshHub;
+  intervalMs = Math.max(5_000, ms);
+  if (started) {
+    // Restart interval if cadence changed while already running
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = setInterval(runGlobalRefresh, intervalMs);
+    }
+    return stopAutoRefreshHub;
+  }
   started = true;
-  // Intentionally no market subscribe / quote refresh.
-  intervalId = setInterval(runGlobalRefresh, ms);
+  runGlobalRefresh();
+  intervalId = setInterval(runGlobalRefresh, intervalMs);
   return stopAutoRefreshHub;
 }
 
@@ -40,6 +51,10 @@ export function stopAutoRefreshHub(): void {
     intervalId = null;
   }
   started = false;
+}
+
+export function isAutoRefreshHubStarted(): boolean {
+  return started;
 }
 
 export function subscribeAutoRefresh(handler: (detail: AutoRefreshDetail) => void): () => void {

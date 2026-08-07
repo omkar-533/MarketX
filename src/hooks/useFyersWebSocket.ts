@@ -52,8 +52,8 @@ export function useFyersWebSocket(options: UseFyersWebSocketOptions = {}): UseFy
 
   useEffect(() => {
     if (!autoConnect) return;
-    const stop = startFyersSocketClient();
-    return stop;
+    // Shared singleton — do NOT disconnect on unmount (Dashboard teardown used to kill site-wide live).
+    startFyersSocketClient();
   }, [autoConnect]);
 
   useEffect(() => {
