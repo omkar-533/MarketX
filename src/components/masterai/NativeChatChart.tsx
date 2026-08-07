@@ -78,6 +78,7 @@ import {
   applyLivePriceToBars,
   barTimeSec,
   mergeLiveTipIntoHistory,
+  normalizeMarketSymbol,
   quoteMatchesSymbol,
 } from '../../services/chart/liveCandleMerge';
 import {
@@ -802,11 +803,11 @@ export default function NativeChatChart({
       const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
       if (!q) return;
 
-      // Prefer forming 1m candle close when server includes it (same-TF feel).
+      // Prefer forming 1m candle for *this* symbol only — never sibling wick.
       const forming =
         payload.candles?.[apiSymbol] ||
-        payload.candles?.[String(q.symbol || '').toUpperCase()] ||
-        q.candle;
+        payload.candles?.[normalizeMarketSymbol(apiSymbol)] ||
+        (quoteMatchesSymbol(String(q.symbol || ''), apiSymbol) ? q.candle : undefined);
 
       let px = Number(q.price) || 0;
       // Bid/ask mid fills gaps between sparse last-print ticks.

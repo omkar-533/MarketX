@@ -56,13 +56,26 @@ function amendTip(
   const next = { ...last };
   const hi = Number(extremes?.high);
   const lo = Number(extremes?.low);
-  next.high = Math.max(next.high, price, Number.isFinite(hi) ? hi : price);
-  next.low = Math.min(next.low, price, Number.isFinite(lo) ? lo : price);
+  // Only apply wick extremes that look like the same instrument (reject BANKNIFTY→NIFTY etc.).
+  const useHi = Number.isFinite(hi) && hi > 0 && isPlausibleLivePrice(last.close || price, hi);
+  const useLo = Number.isFinite(lo) && lo > 0 && isPlausibleLivePrice(last.close || price, lo);
+  next.high = Math.max(next.high, price, useHi ? hi : price);
+  next.low = Math.min(next.low, price, useLo ? lo : price);
   next.close = price;
   if (Number.isFinite(vol) && (vol as number) > 0) {
     next.volume = Math.max(next.volume || 0, vol as number);
   }
   return next;
+}
+
+/**
+ * Reject live prints that are wildly off the last close (wrong-symbol / bad tick).
+ * Indices like NIFTY vs BANKNIFTY (~2x) must not stretch the scale.
+ */
+export function isPlausibleLivePrice(ref: number, price: number, maxMovePct = 0.08): boolean {
+  if (!(price > 0) || !(ref > 0)) return price > 0 && !(ref > 0);
+  const move = Math.abs(price - ref) / ref;
+  return move <= maxMovePct;
 }
 
 /**
@@ -77,6 +90,11 @@ export function applyLivePriceToBars(
   opts?: { nowMs?: number; volume?: number; high?: number; low?: number },
 ): { bars: ChartBar[]; updated: ChartBar; isNewBar: boolean } | null {
   if (!Array.isArray(bars) || !bars.length || !(price > 0)) return null;
+
+  const lastClose = bars[bars.length - 1]?.close;
+  if (Number.isFinite(lastClose) && lastClose > 0 && !isPlausibleLivePrice(lastClose, price)) {
+    return null;
+  }
 
   const nowMs = opts?.nowMs ?? Date.now();
   const vol = Number(opts?.volume);
@@ -112,11 +130,13 @@ export function applyLivePriceToBars(
   const formingTime = last.time + steps * (intervalMs / 1000);
   const hi = Number(opts?.high);
   const lo = Number(opts?.low);
+  const useHi = Number.isFinite(hi) && hi > 0 && isPlausibleLivePrice(price, hi);
+  const useLo = Number.isFinite(lo) && lo > 0 && isPlausibleLivePrice(price, lo);
   const forming: ChartBar = {
     time: formingTime,
     open: price,
-    high: Math.max(price, Number.isFinite(hi) ? hi : price),
-    low: Math.min(price, Number.isFinite(lo) ? lo : price),
+    high: Math.max(price, useHi ? hi : price),
+    low: Math.min(price, useLo ? lo : price),
     close: price,
     volume: Number.isFinite(vol) && vol > 0 ? vol : 0,
   };
@@ -151,12 +171,23 @@ export function mergeLiveTipIntoHistory(history: ChartBar[], liveBars: ChartBar[
   }
 
   if (lTime === hTime) {
+    const ref = histLast.close || liveLast.close;
+    const liveHiOk = isPlausibleLivePrice(ref, liveLast.high);
+    const liveLoOk = isPlausibleLivePrice(ref, liveLast.low);
     const merged: ChartBar = {
       time: hTime,
       open: histLast.open,
-      high: Math.max(histLast.high, liveLast.high, liveLast.close),
-      low: Math.min(histLast.low, liveLast.low, liveLast.close),
-      close: liveLast.close,
+      high: Math.max(
+        histLast.high,
+        liveHiOk ? liveLast.high : histLast.high,
+        isPlausibleLivePrice(ref, liveLast.close) ? liveLast.close : histLast.close,
+      ),
+      low: Math.min(
+        histLast.low,
+        liveLoOk ? liveLast.low : histLast.low,
+        isPlausibleLivePrice(ref, liveLast.close) ? liveLast.close : histLast.close,
+      ),
+      close: isPlausibleLivePrice(ref, liveLast.close) ? liveLast.close : histLast.close,
       volume: Math.max(histLast.volume || 0, liveLast.volume || 0),
     };
     return [...hist.slice(0, -1), merged];
@@ -165,13 +196,20 @@ export function mergeLiveTipIntoHistory(history: ChartBar[], liveBars: ChartBar[
   return hist;
 }
 
-/** Match quote symbol against chart API symbol (NIFTY / NSE:NIFTY / etc.). */
+/** Normalize quote/API symbols for exact compare (strips NSE:/BSE:/MCX:). */
+export function normalizeMarketSymbol(symbol: string): string {
+  return String(symbol || '')
+    .toUpperCase()
+    .trim()
+    .replace(/^NSE:|^BSE:|^MCX:/, '');
+}
+
+/**
+ * Match quote symbol against chart API symbol.
+ * Exact only after exchange prefix strip — never endsWith (BANKNIFTY must not match NIFTY).
+ */
 export function quoteMatchesSymbol(quoteSymbol: string, apiSymbol: string): boolean {
-  const q = String(quoteSymbol || '')
-    .toUpperCase()
-    .replace(/^NSE:|^BSE:|^MCX:/, '');
-  const a = String(apiSymbol || '')
-    .toUpperCase()
-    .replace(/^NSE:|^BSE:|^MCX:/, '');
-  return Boolean(q && a && (q === a || q.endsWith(a) || a.endsWith(q)));
+  const q = normalizeMarketSymbol(quoteSymbol);
+  const a = normalizeMarketSymbol(apiSymbol);
+  return Boolean(q && a && q === a);
 }
