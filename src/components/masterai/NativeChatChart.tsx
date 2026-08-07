@@ -1657,9 +1657,9 @@ export default function NativeChatChart({
       const paneH = chart.panes()[0]?.getHeight() ?? host.clientHeight;
       // LWC last-value chip is ~18px tall; sit flush under it.
       const top = Math.min(paneH - 22, Math.max(2, Number(y) + 12));
-      const prev = bars.length > 1 ? bars[bars.length - 2].close : last.open;
+      // Match forming candle body: green when close ≥ open, else red.
       setAxisCdTop(top);
-      setAxisCdUp(last.close >= prev);
+      setAxisCdUp(Number(last.close) >= Number(last.open));
     };
 
     sync();

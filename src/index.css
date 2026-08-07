@@ -13560,12 +13560,16 @@ html.dark .mai-tv__fs-btn--on,
   color: #fff;
 }
 
+/* Forming-candle colour — bullish body */
 .mai-nc__bar-cd--axis.mai-nc__bar-cd--up {
-  background: #089981;
+  background: #26a69a;
+  color: #fff;
 }
 
+/* Forming-candle colour — bearish body */
 .mai-nc__bar-cd--axis.mai-nc__bar-cd--dn {
-  background: #f23645;
+  background: #ef5350;
+  color: #fff;
 }
 
 .mai-nc__bar-cd--axis .mai-nc__bar-cd-val {

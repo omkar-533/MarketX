@@ -2646,10 +2646,25 @@ html[data-theme="light"] .mai-nc__history-load {
   color: #475569 !important;
 }
 
-html[data-theme="light"] .mai-nc__bar-cd--axis {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: #d5dee9 !important;
-  color: #0f172a !important;
+/* Countdown follows forming candle — never force a neutral light panel */
+html[data-theme="light"] .mai-nc__bar-cd--axis.mai-nc__bar-cd--up {
+  background: #26a69a !important;
+  color: #ffffff !important;
+  border: 0 !important;
+}
+
+html[data-theme="light"] .mai-nc__bar-cd--axis.mai-nc__bar-cd--dn {
+  background: #ef5350 !important;
+  color: #ffffff !important;
+  border: 0 !important;
+}
+
+html[data-theme="light"] .mai-nc__bar-cd--axis .mai-nc__bar-cd-val {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .mai-nc__bar-cd--urgent {
+  outline-color: rgba(15, 23, 42, 0.35) !important;
 }
 
 html[data-theme="light"] .mai-nc__msg {
