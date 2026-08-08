@@ -1626,7 +1626,10 @@ router.get('/access-popup', async (_req, res) => {
 router.get('/plans', async (_req, res) => {
   try {
     const catalog = await getSubscriptionCatalog();
-    return res.json(publicSubscriptionCatalog(catalog));
+    return res.json({
+      ...publicSubscriptionCatalog(catalog),
+      skipOtp: signupSkipOtpEnabled(),
+    });
   } catch (err) {
     return failed(res, err, 'Could not load plans');
   }

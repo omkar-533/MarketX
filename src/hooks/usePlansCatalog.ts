@@ -5,6 +5,7 @@ import { fetchPublicPlans } from '../services/plansCatalog';
 export type PlansCatalogState = {
   plans: Plan[];
   trialDays: number;
+  skipOtp: boolean;
   loading: boolean;
 };
 
@@ -14,6 +15,7 @@ const FALLBACK: PlansCatalogState = {
     features: [...p.features],
   })),
   trialDays: TRIAL_DAYS,
+  skipOtp: true,
   loading: false,
 };
 
@@ -29,6 +31,7 @@ export function usePlansCatalog(): PlansCatalogState {
       setState({
         plans: catalog.plans,
         trialDays: catalog.trialDays,
+        skipOtp: catalog.skipOtp,
         loading: false,
       });
     })();

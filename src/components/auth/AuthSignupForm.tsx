@@ -64,7 +64,7 @@ export default function AuthSignupForm({
   const [cooldown, setCooldown] = useState(0);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  const { plans, trialDays } = usePlansCatalog();
+  const { plans, trialDays, skipOtp } = usePlansCatalog();
   const plan = planById(selectedPlan, plans);
   const isPaidIntent = plan.price > 0;
   const emailValid = isValidEmail(email);
@@ -117,7 +117,13 @@ export default function AuthSignupForm({
       setCooldown(RESEND_SECONDS);
       setStep('otp');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not send the OTP.');
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : skipOtp
+            ? 'Could not create the account.'
+            : 'Could not send the OTP.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -311,7 +317,11 @@ export default function AuthSignupForm({
           maxLength={10}
           valid={mobileValid}
           error={showMobileError ? 'Enter a valid 10-digit mobile number' : undefined}
-          hint="We send a one-time OTP to confirm this number."
+          hint={
+            skipOtp
+              ? 'Used for account recovery and support.'
+              : 'We send a one-time OTP to confirm this number.'
+          }
           prefix={<span className="auth-field-prefix">+91</span>}
           icon={<Phone className="w-4 h-4" />}
         />
@@ -339,6 +349,12 @@ export default function AuthSignupForm({
         <button type="submit" disabled={isLoading} className="auth-submit-btn w-full">
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
+          ) : skipOtp ? (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Start my {trialDays}-day trial
+              <ArrowRight className="w-4 h-4" />
+            </>
           ) : (
             <>
               <ShieldCheck className="w-4 h-4" />

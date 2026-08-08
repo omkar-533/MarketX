@@ -5,6 +5,8 @@ import { loadAppSession } from './appInviteAuth';
 export type SubscriptionCatalog = {
   trialDays: number;
   plans: Plan[];
+  /** When true, signup creates the account without SMS OTP. */
+  skipOtp: boolean;
 };
 
 export type AdminSubscriptionCatalog = SubscriptionCatalog & {
@@ -58,6 +60,7 @@ function normalizeCatalog(data: Partial<SubscriptionCatalog> | null | undefined)
   return {
     trialDays: Number.isFinite(days) && days > 0 ? Math.round(days) : TRIAL_DAYS,
     plans,
+    skipOtp: data?.skipOtp === true,
   };
 }
 
@@ -71,11 +74,14 @@ export async function fetchPublicPlans(): Promise<SubscriptionCatalog> {
     return {
       trialDays: catalog.trialDays,
       plans: catalog.plans.filter((p) => p.enabled !== false),
+      skipOtp: catalog.skipOtp,
     };
   } catch {
     return {
       trialDays: TRIAL_DAYS,
       plans: DEFAULT_PLANS.filter((p) => p.enabled !== false).map((p) => ({ ...p, features: [...p.features] })),
+      // Match current prod until Twilio is fixed — avoid flashing OTP copy on load/error.
+      skipOtp: true,
     };
   }
 }
