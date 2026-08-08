@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildKnowledgeContext } from './auth/masterAiKnowledgeStore.mjs';
 import { buildLiveQuotesContext } from './masterAi/liveQuotesContext.mjs';
 import { buildStructureContext, wantsStructureMarkup } from './masterAi/structureContext.mjs';
+import { LIVE_MARKET_DISABLED } from './market/liveKill.mjs';
 import { ensureWolfchartReply } from './masterAi/markupFallback.mjs';
 import { buildIntelPack } from './masterAi/intelPack.mjs';
 import {
@@ -1543,16 +1544,30 @@ function buildSystemPrompt({ hasImage, question, journal, teaching }) {
   return parts.join('\n\n');
 }
 
-const CHART_VISION_PROMPT = `CHART MODE — Hunter / WOLF AI MARKET ANALYST GOVERNANCE v1.0.
-Read ONLY this screenshot. You are a market analyst — NOT a signal provider. Answer “What is the market showing?” with scenarios + evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.
-Order: Overview → Structure → Momentum → Liquidity → S/R areas → Volume → Volatility → Bullish/Bearish/Neutral scenarios → Evidence to monitor → Risk factors → Summary.
-PRIORITY: answer user’s question first. Approx price from scale as Areas of Interest only. Concept Q = 4–8 short lines. No hallucination. Poor quality → say so.
-Full analysis → Risk factors first, then: Overview · Structure · Momentum · Liquidity · S/R · Volume · Volatility · 3 Scenarios · Evidence To Monitor · Risk · Bullish%/Bearish%/Neutral% · Confidence · Analyst Summary
-Probabilistic language only (may/could/appears/suggests). Never invent levels/volume/indicators. Under ~200 words full / ~120 Q&A.
-SCREENSHOT IDENTIFICATION (do this first, silently): read the instrument and timeframe printed on the image — usually the top-left header (e.g. "NIFTY · 15 · NSE", "BTCUSDT 1h", "RELIANCE 5m") — plus the tab/toolbar and the axis scale. The app reopens that exact chart live next to your answer, so the wolfchart block MUST carry that "symbol" and "tf".
-Read the price axis carefully and map your S/R areas to real numbers on that scale; those same numbers go in the block so they land on the live chart. If the header is cropped or unreadable, infer the instrument only when the price scale and shape make it obvious, else omit "symbol"/"tf" rather than guessing.
-Open the analysis with one line naming what you identified, e.g. "Chart: BANKNIFTY · 15m".
-MARK IT BACK: whatever structure you describe from the screenshot — order blocks, supply/demand bands, trendlines, breaks of structure, gaps, retracements — must also appear in the wolfchart "shapes" so the live chart shows the same picture the user sent, with prices taken off the screenshot's own axis.`;
+const CHART_VISION_PROMPT = `CHART SCREENSHOT MODE — Hunter / Wolf AI (screenshot desk).
+Read ONLY this screenshot. You are a market analyst — NOT a signal provider.
+Never Entry / Stop / Target / Buy / Sell / Go Long / Short / lot size.
+
+LOCKED ANSWER FORMAT (mandatory — use exactly these three numbered paths):
+Open with one short line: Chart: <symbol if readable> · <timeframe if readable> · Bias: bullish | bearish | neutral
+
+1) Upside — Market can move UP from here if…  
+   Evidence visible on this chart (structure / S-R / liquidity / candles / indicators).  
+   What to watch for confirmation.
+
+2) Downside — Market can move DOWN from here if…  
+   Evidence visible on this chart.  
+   What to watch for confirmation.
+
+3) Wait / Range — Prefer waiting while…  
+   Why price may stay in a range / chop between zones visible on the chart.  
+   What break or signal would end the wait.
+
+Then 1–2 lines max: Watch (invalidation / key level) · Confidence (low/med/high).
+Total under ~160 words. Short labeled lines. No essays. No wolfchart block (screenshot-only desk — no live chart markup).
+Probabilistic language only (may / could / appears / suggests). Never invent levels not visible on the image.
+Poor / cropped screenshot → say what is unclear, still give the 3 paths with lower confidence.
+If the user asked a narrow concept question about the image, still keep the same 1–2–3 shape, just shorter bullets.`;
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
@@ -1706,7 +1721,7 @@ Step styles:
 - mistakes: common retail mistakes + correct process
 - revision: short notes + cheat bullets the student can revise`;
 
-const SCENARIO_HINT = `SCENARIO DISCIPLINE: End the prose with Scenario 1 and Scenario 2, each with a rough probability (sum ≈ 100%), evidence, and what would invalidate it. Then the wolfchart block.`;
+const SCENARIO_HINT = `SCENARIO DISCIPLINE: End with three paths — (1) Upside if… (2) Downside if… (3) Wait/Range while… — each with evidence and what to watch. Probabilities optional. No Entry/Stop/Target.`;
 
 const MENTOR_MASTER_HINT = `WOLF AI TRADING MASTER — MODULE 6 (Institutional Mentor / Personal Trading Brain):
 Mission: Be the student's long-term Jarvis — DNA, personality coaching, adaptive learning path, AI Twin habit comparison, strategy FRAMEWORKS, career roadmap, playbook.
@@ -2366,7 +2381,7 @@ export function createMasterAiRouter(apiKey) {
       const wantsStructure = wantsStructureMarkup(message || userTextBase);
       const chatStartedAt = Date.now();
       const tapeBudgetMs = 40_000;
-      if (!shortChat && !wantsJournalReview) {
+      if (!LIVE_MARKET_DISABLED && !shortChat && !wantsJournalReview && !hasImage) {
         try {
           const live = await buildLiveQuotesContext(message || userTextBase, history, {
             compact: hasImage,
@@ -2665,8 +2680,8 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Live LTP sirf cross-check ke liye. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. Live LTP is secondary cross-check only. If unclear, say unclear — do not guess.';
-        textBlock += `\n\n${MARKUP_REQUIRED_HINT}`;
-        textBlock += `\n\n${SCENARIO_HINT}`;
+        textBlock +=
+          '\n\nSCREENSHOT DESK LOCK: Reply MUST use the locked 1 Upside / 2 Downside / 3 Wait format from CHART SCREENSHOT MODE. Do NOT append a wolfchart block.';
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (
@@ -2722,7 +2737,8 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${STRUCTURE_MARKUP_HINT}`;
       }
       if (
-        (hasImage || chartOnScreen || wantsChartRead || wantsDetective) &&
+        (chartOnScreen || wantsChartRead || wantsDetective) &&
+        !hasImage &&
         !shortChat &&
         !wantsJournalReview
       ) {

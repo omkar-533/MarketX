@@ -107,6 +107,7 @@ import {
   MENTOR_CHAT_PROMPTS,
   WOLF_CHAT_PROMPTS,
   WOLF_CHART_PROMPTS,
+  WOLF_SCREENSHOT_DEFAULT_PROMPT,
   deskPromptHint,
   deskPromptLabel,
   deskPromptText,
@@ -171,11 +172,16 @@ const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
   mtf: GitBranch,
   risk: Shield,
   journal: BookOpen,
+  'how-to': HelpCircle,
 };
 
 export type MasterAiDesk = 'hunter' | 'mentor';
 
 const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
+  'scenarios-3': Split,
+  tight: ScanSearch,
+  'levels-focus': Crosshair,
+  'htf-lean': Layers,
   full: ScanSearch,
   aoi: Map,
   liq: Waves,
@@ -209,7 +215,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     isMentor
       ? 'Mentor AI training desk — I quiz you from the live chart and tape. Answer with process only (no chase). Pick a mode and I will punch questions.'
       : initialMode === 'auto'
-        ? 'Auto language on — type in any language and Hunter replies in the same one. Ask about NIFTY/BTC for live tape, or share a chart for structure.'
+        ? 'Auto language on — paste a chart screenshot; Hunter replies Upside / Downside / Wait in your language.'
         : getMasterAiWelcome(initialLang.code);
   const [boot] = useState(() => loadActiveChat(welcomeText, chatScope));
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
@@ -730,12 +736,17 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     const imageName = opts?.imageName ?? selectedImageName;
     const hasImage = Boolean(imageDataUrl);
     const userNote = text.trim();
+    const analysisNote =
+      userNote ||
+      (hasImage && !isMentor
+        ? deskPromptText(WOLF_SCREENSHOT_DEFAULT_PROMPT, useHiPrompts)
+        : '');
     const userText =
       userNote ||
       (hasImage
         ? hindi
-          ? `Chart analysis: ${imageName}`
-          : `Chart analysis: ${imageName}`
+          ? `Chart screenshot — 3-path analysis`
+          : `Chart screenshot — 3-path analysis`
         : '');
 
     if (!userText && !hasImage) return;
@@ -747,7 +758,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     let chartMsg: Message | null = null;
     let chartMessageId: string | null = null;
     let chartTarget: ChatChartAttachment | null = null;
-    if (!hasImage) {
+    // Hunter = screenshot desk only — never auto-open live charts.
+    if (!hasImage && isMentor) {
       const chartReq = detectChartRequest(userText);
       const mentioned = chartReq ? null : detectInstrumentMention(userText);
       const lastChart = [...messages].reverse().find((m) => m.chart);
@@ -918,7 +930,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         }
       }
       const visionMessage = hasImage
-        ? getChartVisionPrompt(activeLang.code, userNote || undefined, langMode === 'auto')
+        ? getChartVisionPrompt(activeLang.code, analysisNote || undefined, langMode === 'auto')
         : userText;
 
       let responseText = '';
@@ -1078,48 +1090,46 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         parsed.text ||
         (marked ? (hindi ? 'Chart par marking kar di hai.' : 'Marked on the chart.') : responseText);
 
-      // Mark asks must show a FRESH chart next to this reply. Updating only the
-      // older chart above leaves the user staring at prose that says "marked"
-      // with no drawings in view ("trendline mark nahi hui").
-      const markAskFreshChart =
-        isChartMarkupRequest(userText) ||
-        /\b(trend\s*lines?|trendlines?|order\s*blocks?|\bob\b|liquidity|support|resistance)\b/i.test(
-          userText,
-        );
-
+      // Hunter = screenshot desk — never open live chart cards under answers.
       let replyChart: Message | null = null;
-      const drawSymbol =
-        parsed.symbol || chartTarget?.symbol || chartSymbol;
-      const drawInterval =
-        parsed.interval || chartTarget?.interval || chartInterval;
-      if (marked && (markAskFreshChart || !chartMessageId)) {
-        replyChart = makeChartMessage({
-          symbol: drawSymbol,
-          interval: drawInterval,
-          study: chartTarget?.study || chartStudy,
-          levels: parsed.levels,
-          shapes: parsed.shapes,
-        });
-        setChartSymbol(drawSymbol);
-        setChartInterval(drawInterval);
-      } else if (!chartMessageId && (parsed.symbol || marked)) {
-        replyChart = makeChartMessage({
-          symbol: drawSymbol,
-          interval: drawInterval,
-          study: chartStudy,
-          levels: parsed.levels,
-          shapes: parsed.shapes,
-        });
-        setChartSymbol(drawSymbol);
-        setChartInterval(drawInterval);
-      } else if (chartMessageId && parsed.interval) {
-        updateChartMessage(chartMessageId, { interval: parsed.interval });
-      }
+      if (isMentor) {
+        const markAskFreshChart =
+          isChartMarkupRequest(userText) ||
+          /\b(trend\s*lines?|trendlines?|order\s*blocks?|\bob\b|liquidity|support|resistance)\b/i.test(
+            userText,
+          );
 
-      if (markAskFreshChart && !marked) {
-        responseText += hindi
-          ? '\n\nChart marking tape se confirm nahi hui — ek baar phir “trend line mark karo” likhiye.'
-          : '\n\nChart markings could not be confirmed from tape — please ask once more to mark the trend line.';
+        const drawSymbol = parsed.symbol || chartTarget?.symbol || chartSymbol;
+        const drawInterval = parsed.interval || chartTarget?.interval || chartInterval;
+        if (marked && (markAskFreshChart || !chartMessageId)) {
+          replyChart = makeChartMessage({
+            symbol: drawSymbol,
+            interval: drawInterval,
+            study: chartTarget?.study || chartStudy,
+            levels: parsed.levels,
+            shapes: parsed.shapes,
+          });
+          setChartSymbol(drawSymbol);
+          setChartInterval(drawInterval);
+        } else if (!chartMessageId && (parsed.symbol || marked)) {
+          replyChart = makeChartMessage({
+            symbol: drawSymbol,
+            interval: drawInterval,
+            study: chartStudy,
+            levels: parsed.levels,
+            shapes: parsed.shapes,
+          });
+          setChartSymbol(drawSymbol);
+          setChartInterval(drawInterval);
+        } else if (chartMessageId && parsed.interval) {
+          updateChartMessage(chartMessageId, { interval: parsed.interval });
+        }
+
+        if (markAskFreshChart && !marked) {
+          responseText += hindi
+            ? '\n\nChart marking tape se confirm nahi hui — ek baar phir “trend line mark karo” likhiye.'
+            : '\n\nChart markings could not be confirmed from tape — please ask once more to mark the trend line.';
+        }
       }
 
       const aiMsg: Message = {
@@ -1131,7 +1141,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       setMessages((prev) => {
         // Keep the older chart in sync too, but the fresh card below is what the user sees.
         const next =
-          marked && chartMessageId
+          isMentor && marked && chartMessageId
             ? prev.map((m) =>
                 m.id === chartMessageId && m.chart
                   ? { ...m, chart: { ...m.chart, levels: parsed.levels, shapes: parsed.shapes } }
@@ -1189,7 +1199,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">{isMentor ? 'Mentor AI' : AI_PRODUCT_NAME}</h1>
-              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Hunter'}</span>
+              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Screenshot desk'}</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
@@ -1210,24 +1220,33 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         </div>
 
         <div className="mai-chat__controls">
-          <button
-            type="button"
-            onClick={addChartCard}
-            className="mai-chat__chip"
-            title={
-              hindi
-                ? 'Chat mein live chart daalo — "NIFTY ka 5 min chart dikha" bhi likh sakte ho'
-                : 'Drop a live chart into the chat — you can also type "show NIFTY 5 min chart"'
-            }
-          >
-            <CandlestickChart className="h-3.5 w-3.5" />
-            <span>Chart</span>
-          </button>
+          {isMentor ? (
+            <button
+              type="button"
+              onClick={addChartCard}
+              className="mai-chat__chip"
+              title="Drop a live chart into the chat"
+            >
+              <CandlestickChart className="h-3.5 w-3.5" />
+              <span>Chart</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="mai-chat__chip mai-chat__chip--accent"
+              title="Upload or paste a chart screenshot"
+              disabled={isThinking || isAnalyzingChart}
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              <span>Screenshot</span>
+            </button>
+          )}
 
           <button
             type="button"
             onClick={handleNewChat}
-            className="mai-chat__chip mai-chat__chip--accent"
+            className="mai-chat__chip"
             title={hindi ? 'Nayi chat — purani se link nahi' : 'New chat — fresh context'}
             disabled={isThinking}
           >
@@ -1633,9 +1652,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               >
                 {isMentor
                   ? 'Ready to train from the live chart?'
-                  : hindi
-                    ? 'Aaj kya analyse karna hai?'
-                    : 'What should we analyse today?'}
+                  : 'Paste your chart screenshot'}
               </motion.h2>
               <motion.p
                 className="mai-chat__empty-sub"
@@ -1645,10 +1662,35 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               >
                 {isMentor
                   ? 'I will punch process quizzes from Market Condition — answer, get graded, level up.'
-                  : hindi
-                    ? 'Quick prompt choose karo, ya chart attach karke desk question select karo'
-                    : 'Pick a quick prompt — or attach a chart and choose a desk question'}
+                  : 'Hunter replies in three crisp paths — Upside, Downside, and Wait. No buy/sell orders.'}
               </motion.p>
+
+              {!isMentor ? (
+                <motion.button
+                  type="button"
+                  className="mai-chat__shot-drop"
+                  disabled={isThinking || isListening || isAnalyzingChart}
+                  onClick={() => fileInputRef.current?.click()}
+                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.18, type: 'spring', stiffness: 380, damping: 26 }}
+                  whileHover={{ y: -2, scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <span className="mai-chat__shot-drop-icon" aria-hidden>
+                    <ImagePlus className="h-6 w-6" />
+                  </span>
+                  <span className="mai-chat__shot-drop-title">Drop, paste, or upload chart</span>
+                  <span className="mai-chat__shot-drop-sub">
+                    PNG · JPG · WEBP — TradingView / broker chart screenshot
+                  </span>
+                  <span className="mai-chat__shot-paths" aria-hidden>
+                    <span>1 Upside</span>
+                    <span>2 Downside</span>
+                    <span>3 Wait</span>
+                  </span>
+                </motion.button>
+              ) : null}
 
               <div className="mai-chat__suggestions" role="list">
                 {deskPrompts.map((p, i) => {
@@ -1664,7 +1706,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                       initial={{ opacity: 0, y: 18, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{
-                        delay: 0.18 + i * 0.055,
+                        delay: 0.22 + i * 0.055,
                         type: 'spring',
                         stiffness: 420,
                         damping: 26,
@@ -1694,6 +1736,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               if (message.id === 'welcome') return null;
 
               if (message.chart) {
+                if (!isMentor) return null;
                 const chart = message.chart;
                 return (
                   <motion.div
@@ -1839,7 +1882,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   <div className="mai-chat__attach-meta">
                     <span className="mai-chat__attach-name">{selectedImageName || 'Chart'}</span>
                     <span className="mai-chat__attach-hint">
-                      {hindi ? 'Prompt select karo ya khud likho' : 'Pick a prompt or write your own'}
+                      Locked reply: Upside · Downside · Wait
                     </span>
                   </div>
                   <button

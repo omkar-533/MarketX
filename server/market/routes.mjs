@@ -7,6 +7,7 @@ import {
   getLiveWsStatus,
   subscribeLiveSymbols,
 } from './liveFeed.mjs';
+import { LIVE_MARKET_DISABLED } from './liveKill.mjs';
 import { fetchOptionChain, isOptionChainAvailable } from './optionChainProvider.mjs';
 import { fetchNseFiiDii } from './nseFiiDii.mjs';
 import { fetchNseFnoHistory } from './nseFnoProvider.mjs';
@@ -127,6 +128,9 @@ router.get('/option-chain', async (req, res) => {
 });
 
 router.get('/fno-oi', async (req, res) => {
+  if (LIVE_MARKET_DISABLED) {
+    return res.json({ snapshots: [], source: 'disabled', fetchedAt: new Date().toISOString() });
+  }
   const raw = String(req.query.symbols || '').trim();
   const symbols = raw
     ? raw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
@@ -144,6 +148,9 @@ router.get('/fno-oi', async (req, res) => {
 });
 
 router.get('/fii-dii', async (req, res) => {
+  if (LIVE_MARKET_DISABLED) {
+    return res.json({ rows: [], source: 'disabled', fetchedAt: new Date().toISOString() });
+  }
   const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
   try {
     const data = await fetchNseFiiDii(days);

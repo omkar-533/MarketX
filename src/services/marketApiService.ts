@@ -1,3 +1,4 @@
+import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { apiFetch } from '../config/api';
 
 export type MarketQuoteDto = {
@@ -29,9 +30,9 @@ export type MarketOhlcResponse = {
   fetchedAt: string;
 };
 
-/** Live quotes/ticks off by default — enable only with VITE_MARKET_LIVE=true */
+/** Live quotes/ticks — hard-off while LIVE_MARKET_DATA is false. */
 export function isMarketLiveEnabled(): boolean {
-  return import.meta.env.VITE_MARKET_LIVE === 'true';
+  return LIVE_MARKET_DATA;
 }
 
 export type MarketTickDto = {
@@ -82,6 +83,7 @@ export async function fetchMarketHealth(): Promise<{
 }
 
 export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDto[] | null> {
+  if (!isMarketLiveEnabled()) return [];
   try {
     const q = symbols?.length ? `?symbols=${encodeURIComponent(symbols.join(','))}` : '';
     const res = await apiFetch(`/api/market/ticks${q}`);
@@ -95,6 +97,14 @@ export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDt
 
 export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotesResponse | null> {
   if (!symbols.length) return null;
+  if (!isMarketLiveEnabled()) {
+    return {
+      quotes: [],
+      errors: symbols.map((symbol) => ({ symbol, error: 'live market disabled' })),
+      source: 'disabled',
+      fetchedAt: new Date().toISOString(),
+    };
+  }
   try {
     // Large batch + cold TV can exceed default 18s; prefer ticks snapshot on server now.
     const res = await apiFetch(
@@ -115,6 +125,15 @@ export async function fetchMarketOhlc(
   range?: string,
   bars?: number,
 ): Promise<MarketOhlcResponse | null> {
+  if (!isMarketLiveEnabled()) {
+    return {
+      symbol,
+      timeframe: interval,
+      bars: [],
+      source: 'disabled',
+      fetchedAt: new Date().toISOString(),
+    };
+  }
   try {
     const q = new URLSearchParams({ symbol, interval });
     if (range) q.set('range', range);
@@ -216,6 +235,7 @@ export type GlobalIndexQuote = {
 };
 
 export async function fetchFiiDii(days = 30): Promise<{ rows: FiiDiiApiRow[]; source: string } | null> {
+  if (!isMarketLiveEnabled()) return { rows: [], source: 'disabled' };
   try {
     const res = await apiFetch(`/api/market/fii-dii?days=${days}`);
     if (!res.ok) return null;
@@ -229,6 +249,7 @@ export async function fetchGlobalQuotes(): Promise<{
   indices: GlobalIndexQuote[];
   source: string;
 } | null> {
+  if (!isMarketLiveEnabled()) return { indices: [], source: 'disabled' };
   try {
     const res = await apiFetch('/api/market/global-quotes');
     if (!res.ok) return null;

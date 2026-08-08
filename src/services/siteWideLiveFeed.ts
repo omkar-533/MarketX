@@ -1,7 +1,8 @@
 /**
  * Boots TradingView forex/crypto (+ India core) live tape for the whole app.
- * Keeps Socket.IO + REST quotes seeded continuously (24×7) while the tab is open.
+ * LIVE_MARKET_DATA=false → hardened no-op (no TV/NSE live sockets).
  */
+import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { ALL_CORE_LIVE_SYMBOLS } from '../data/fnoUniverse';
 import { CORE_GLOBAL_LIVE_SYMBOLS } from '../data/coreGlobalLiveSymbols';
 import { forceFyersReconnect, isFyersSocketConnected, startFyersSocketClient } from './fyersSocketClient';
@@ -22,6 +23,7 @@ let seedInFlight: Promise<void> | null = null;
 let lastSeedAt = 0;
 
 async function seedQuotes(): Promise<void> {
+  if (!LIVE_MARKET_DATA) return;
   if (seedInFlight) return seedInFlight;
   seedInFlight = (async () => {
     try {
@@ -59,6 +61,7 @@ async function seedQuotes(): Promise<void> {
 }
 
 function startTimers() {
+  if (!LIVE_MARKET_DATA) return;
   if (!restTimer) {
     restTimer = setInterval(() => {
       void seedQuotes();
@@ -73,7 +76,6 @@ function startTimers() {
         void seedQuotes();
         return;
       }
-      // Quiet tape (e.g. NSE closed) — still refresh REST; soft-resub on WS
       if (Date.now() - lastSeedAt > SOCKET_QUIET_MS) {
         subscribeLiveSymbols(ALL_CORE_LIVE_SYMBOLS);
         void seedQuotes();
@@ -85,6 +87,7 @@ function startTimers() {
 /** Call once after login / app shell mount. Idempotent. */
 export function ensureSiteWideLiveFeed(): void {
   if (typeof window === 'undefined') return;
+  if (!LIVE_MARKET_DATA) return;
   startFyersSocketClient();
   subscribeLiveSymbols(ALL_CORE_LIVE_SYMBOLS);
   void seedQuotes();
@@ -108,6 +111,7 @@ export function ensureSiteWideLiveFeed(): void {
 /** Immediate re-seed (tab focus / network / API ready). */
 export function nudgeSiteWideLiveFeed(): void {
   if (typeof window === 'undefined') return;
+  if (!LIVE_MARKET_DATA) return;
   ensureSiteWideLiveFeed();
   void seedQuotes();
 }

@@ -69,57 +69,34 @@ export const MENTOR_CHAT_PROMPTS: DeskPrompt[] = [
   },
 ];
 
-/** Wolf AI (Hunter) — market analysis desk starters */
+/**
+ * Default locked analysis when a screenshot is attached (Upside / Downside / Wait).
+ * Used as auto-prompt if the user sends an image with no custom note.
+ */
+export const WOLF_SCREENSHOT_DEFAULT_PROMPT: DeskPrompt = {
+  id: 'scenarios-3',
+  label: '3-path brief',
+  labelHi: '3-path brief',
+  prompt:
+    'Analyse this chart screenshot. Use the locked format only: (1) Upside — where price can move up and why, (2) Downside — where price can move down and why, (3) Wait / Range — why waiting may be better. Short, crisp evidence from what is visible. No buy/sell, entry, stop, or target.',
+  promptHi:
+    'Is chart screenshot ko analyse karo. Sirf locked format: (1) Upside — up kahan/kyun, (2) Downside — down kahan/kyun, (3) Wait / Range — wait kyun better. Short crisp evidence — jo dikhe. Buy/sell, entry, stop, target mat do.',
+  hint: 'Up · Down · Wait',
+  hintHi: 'Up · Down · Wait',
+};
+
+/** Wolf AI (Hunter) — empty-desk starters (screenshot desk) */
 export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
   {
-    id: 'structure',
-    label: 'Market structure',
-    labelHi: 'Market structure',
-    prompt: 'Explain market structure simply — HH/HL, LH/LL, BOS and CHOCH — with how a desk reads bias.',
+    id: 'how-to',
+    label: 'How this desk works',
+    labelHi: 'How this desk works',
+    prompt:
+      'Explain briefly how Wolf AI screenshot analysis works: I paste a chart, you reply with Upside / Downside / Wait paths — no trade orders.',
     promptHi:
-      'Market structure simple samjhao — HH/HL, LH/LL, BOS and CHOCH — desk bias kaise padhta hai.',
-    hint: 'Bias & swings',
-    hintHi: 'Bias & swings',
-  },
-  {
-    id: 'liquidity',
-    label: 'Liquidity & sweeps',
-    labelHi: 'Liquidity & sweeps',
-    prompt: 'Explain liquidity pools, stop hunts and sweeps — how institutions use them without giving trade orders.',
-    promptHi:
-      'Liquidity pools, stop hunts aur sweeps samjhao — institutions kaise use karte hain, bina trade order diye.',
-    hint: 'Pools & traps',
-    hintHi: 'Pools & traps',
-  },
-  {
-    id: 'zones',
-    label: 'Supply & demand',
-    labelHi: 'Supply & demand',
-    prompt: 'How do you map supply and demand zones as Areas of Interest, and what invalidates them?',
-    promptHi:
-      'Supply/demand zones ko Areas of Interest kaise map karte ho, aur kya unhe invalidate karta hai?',
-    hint: 'AOI mapping',
-    hintHi: 'AOI mapping',
-  },
-  {
-    id: 'mtf',
-    label: 'Multi-timeframe',
-    labelHi: 'Multi-timeframe',
-    prompt: 'Walk me through a top-down multi-timeframe confluence check — HTF context to LTF confirmation.',
-    promptHi:
-      'Top-down multi-timeframe confluence check samjhao — HTF context se LTF confirmation tak.',
-    hint: 'HTF → LTF',
-    hintHi: 'HTF → LTF',
-  },
-  {
-    id: 'risk',
-    label: 'Risk & R-multiples',
-    labelHi: 'Risk & R-multiples',
-    prompt: 'Explain position risk, R-multiples and drawdown discipline like a desk risk coach — no entries.',
-    promptHi:
-      'Position risk, R-multiples aur drawdown discipline desk risk coach jaisi samjhao — bina entry ke.',
-    hint: 'Capital care',
-    hintHi: 'Capital care',
+      'Wolf AI screenshot analysis kaise kaam karti hai short me batao: main chart paste karta hoon, tum Upside / Downside / Wait paths dete ho — trade orders nahi.',
+    hint: 'Desk intro',
+    hintHi: 'Desk intro',
   },
   {
     id: 'journal',
@@ -131,108 +108,63 @@ export const WOLF_CHAT_PROMPTS: DeskPrompt[] = [
     hint: 'Habits & edge',
     hintHi: 'Habits & edge',
   },
+  {
+    id: 'risk',
+    label: 'Risk basics',
+    labelHi: 'Risk basics',
+    prompt: 'Explain position risk, R-multiples and drawdown discipline like a desk risk coach — no entries.',
+    promptHi:
+      'Position risk, R-multiples aur drawdown discipline desk risk coach jaisi samjhao — bina entry ke.',
+    hint: 'Capital care',
+    hintHi: 'Capital care',
+  },
+  {
+    id: 'structure',
+    label: 'Structure primer',
+    labelHi: 'Structure primer',
+    prompt: 'Explain market structure simply — HH/HL, LH/LL, BOS and CHOCH — with how a desk reads bias.',
+    promptHi:
+      'Market structure simple samjhao — HH/HL, LH/LL, BOS and CHOCH — desk bias kaise padhta hai.',
+    hint: 'Bias & swings',
+    hintHi: 'Bias & swings',
+  },
 ];
 
-/** Chart-attached prompt picker */
+/** Chart-attached prompt picker — all map to 3-path style */
 export const WOLF_CHART_PROMPTS: DeskPrompt[] = [
+  WOLF_SCREENSHOT_DEFAULT_PROMPT,
   {
-    id: 'full',
-    label: 'Full structure read',
-    labelHi: 'Full structure read',
+    id: 'tight',
+    label: 'Ultra short',
+    labelHi: 'Ultra short',
     prompt:
-      'Analyse this chart as a senior market analyst: structure, trend bias, Areas of Interest, and bullish vs bearish scenarios. No buy/sell or entry/stop/target.',
+      'Same locked Upside / Downside / Wait format, but ultra short — max 8 lines total. Evidence only from the screenshot. No trade orders.',
     promptHi:
-      'Is chart ka senior market analyst style analysis do: structure, trend bias, Areas of Interest, aur bullish vs bearish scenarios. Buy/sell ya entry/stop/target mat do.',
-    hint: 'Complete desk brief',
-    hintHi: 'Complete desk brief',
+      'Wahi Upside / Downside / Wait format, lekin ultra short — max 8 lines. Sirf screenshot evidence. Trade orders nahi.',
+    hint: 'Minimal brief',
+    hintHi: 'Minimal brief',
   },
   {
-    id: 'aoi',
-    label: 'Areas of Interest',
-    labelHi: 'Areas of Interest',
+    id: 'levels-focus',
+    label: 'Levels focus',
+    labelHi: 'Levels focus',
     prompt:
-      'Mark the key Areas of Interest on this chart and explain why each matters — with invalidation context, not trade orders.',
+      '3-path format (Upside / Downside / Wait) with extra attention to clear support, resistance and liquidity from this screenshot. No trade orders.',
     promptHi:
-      'Is chart pe key Areas of Interest mark karo aur batayo har ek kyun matter karta hai — invalidation ke saath, trade orders ke bina.',
-    hint: 'Zones & levels',
-    hintHi: 'Zones & levels',
+      '3-path format (Upside / Downside / Wait) — support, resistance aur liquidity pe focus, jo screenshot me clear ho. Trade orders nahi.',
+    hint: 'S/R & pools',
+    hintHi: 'S/R & pools',
   },
   {
-    id: 'liq',
-    label: 'Liquidity map',
-    labelHi: 'Liquidity map',
+    id: 'htf-lean',
+    label: 'Structure lean',
+    labelHi: 'Structure lean',
     prompt:
-      'Map likely liquidity pools, sweeps and stop clusters on this chart. Keep it probabilistic and educational.',
+      '3-path format focusing on HH/HL vs LH/LL, BOS/CHOCH clues and range vs trend from this screenshot. No trade orders.',
     promptHi:
-      'Is chart pe likely liquidity pools, sweeps aur stop clusters map karo. Probabilistic aur educational rakho.',
-    hint: 'Pools & sweeps',
-    hintHi: 'Pools & sweeps',
-  },
-  {
-    id: 'scenarios',
-    label: 'Two scenarios',
-    labelHi: 'Do scenarios',
-    prompt:
-      'Give two competing scenarios from this chart (continuation vs reversal) with evidence for each. No directional order.',
-    promptHi:
-      'Is chart se do competing scenarios do (continuation vs reversal) — har ek ka evidence. Directional order mat do.',
-    hint: 'Bull vs bear path',
-    hintHi: 'Bull vs bear path',
-  },
-  {
-    id: 'levels',
-    label: 'Important levels',
-    labelHi: 'Important levels',
-    prompt:
-      'Call out the most important price levels on this chart (prior highs/lows, round numbers, session marks) and why each matters as context — no buy/sell or targets.',
-    promptHi:
-      'Is chart pe sabse important price levels batao (prior highs/lows, round numbers, session marks) aur har ek kyun matter karta hai — buy/sell ya targets mat do.',
-    hint: 'Key price marks',
-    hintHi: 'Key price marks',
-  },
-  {
-    id: 'sr',
-    label: 'Support & resistance',
-    labelHi: 'Support & resistance',
-    prompt:
-      'Map the clear support and resistance zones on this chart, how price has reacted there before, and what would weaken each zone — educational only, no trade orders.',
-    promptHi:
-      'Is chart pe clear support aur resistance zones map karo, pehle price ne wahan kaise react kiya, aur kya har zone ko weak karega — sirf educational, trade orders nahi.',
-    hint: 'S&R zones',
-    hintHi: 'S&R zones',
-  },
-  {
-    id: 'bias',
-    label: 'Market bias',
-    labelHi: 'Market bias',
-    prompt:
-      'Read the current market bias from this chart (bullish / bearish / ranging) with structure evidence, and state what would flip the bias. No entry, stop or target.',
-    promptHi:
-      'Is chart se current market bias padho (bullish / bearish / ranging) structure evidence ke saath, aur batao bias kab flip hoga. Entry, stop ya target mat do.',
-    hint: 'Trend context',
-    hintHi: 'Trend context',
-  },
-  {
-    id: 'ob',
-    label: 'Order blocks & FVG',
-    labelHi: 'Order blocks & FVG',
-    prompt:
-      'Identify possible order blocks, breakers and FVGs on this chart and how price may react — Areas of Interest only.',
-    promptHi:
-      'Is chart pe possible order blocks, breakers aur FVGs identify karo aur price reaction kaise ho sakti hai — sirf Areas of Interest.',
-    hint: 'ICT-style map',
-    hintHi: 'ICT-style map',
-  },
-  {
-    id: 'mtf-chart',
-    label: 'What am I missing?',
-    labelHi: 'Kya miss ho raha?',
-    prompt:
-      'Look at this chart and tell me what a desk analyst would double-check before trusting the bias — gaps in context, not a trade call.',
-    promptHi:
-      'Is chart pe dekho aur batao desk analyst bias trust karne se pehle kya double-check karega — context gaps, trade call nahi.',
-    hint: 'Blind spots',
-    hintHi: 'Blind spots',
+      '3-path format — HH/HL vs LH/LL, BOS/CHOCH, range vs trend jo screenshot me dikhe. Trade orders nahi.',
+    hint: 'Structure',
+    hintHi: 'Structure',
   },
 ];
 

@@ -2,6 +2,7 @@
  * Singleton Socket.IO client → Node backend → FYERS WebSocket.
  * Prevents duplicate connections; exponential-friendly reconnect via socket.io-client.
  */
+import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { io, type Socket } from 'socket.io-client';
 import { getWsBaseUrl } from '../config/api';
 import type {
@@ -332,6 +333,10 @@ function connectSocket() {
 }
 
 export function startFyersSocketClient(): () => void {
+  if (!LIVE_MARKET_DATA) {
+    connectionStatus = 'disconnected';
+    return stopFyersSocketClient;
+  }
   if (started) return stopFyersSocketClient;
   started = true;
   connectSocket();

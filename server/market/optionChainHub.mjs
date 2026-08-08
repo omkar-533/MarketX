@@ -1,7 +1,8 @@
 /**
  * Option-chain fan-out: NSE snapshot poll + Socket.IO push.
- * When Kite is live, underlying spot is overlaid from quote ticks.
+ * Hard-killed when LIVE_MARKET_DISABLED.
  */
+import { LIVE_MARKET_DISABLED } from './liveKill.mjs';
 import { fetchNseOptionChain } from './nseOptionChain.mjs';
 import { getQuoteMeta } from './quoteMeta.mjs';
 
@@ -34,6 +35,7 @@ export function subscribeOptionChainBroadcast(fn) {
 }
 
 export function subscribeOptionChain(symbol, expiry) {
+  if (LIVE_MARKET_DISABLED) return;
   const sym = String(symbol || '').trim().toUpperCase();
   if (!sym) return;
   const k = key(sym, expiry);
@@ -57,6 +59,19 @@ export function unsubscribeOptionChain(symbol, expiry) {
 }
 
 async function refreshOne(symbol, expiry) {
+  if (LIVE_MARKET_DISABLED) {
+    const payload = {
+      type: 'optionchain',
+      symbol,
+      expiry: expiry || '',
+      rows: [],
+      source: 'disabled',
+      error: 'live market disabled',
+      fetchedAt: new Date().toISOString(),
+    };
+    emit(payload);
+    return payload;
+  }
   try {
     const data = await fetchNseOptionChain(symbol, expiry);
     const live = getQuoteMeta(symbol);
@@ -81,6 +96,7 @@ async function refreshOne(symbol, expiry) {
 }
 
 async function refreshAll() {
+  if (LIVE_MARKET_DISABLED) return;
   for (const [k, meta] of subscriptions.entries()) {
     const symbol = k.split(':')[0];
     await refreshOne(symbol, meta.expiry);
@@ -88,6 +104,7 @@ async function refreshAll() {
 }
 
 function ensurePoller() {
+  if (LIVE_MARKET_DISABLED) return;
   if (timer) return;
   timer = setInterval(() => {
     void refreshAll();
@@ -95,5 +112,6 @@ function ensurePoller() {
 }
 
 export function getCachedOptionChain(symbol, expiry) {
+  if (LIVE_MARKET_DISABLED) return null;
   return lastSnap.get(key(symbol, expiry)) || lastSnap.get(key(symbol, '')) || null;
 }

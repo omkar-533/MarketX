@@ -1,3 +1,4 @@
+import { LIVE_MARKET_DISABLED } from './liveKill.mjs';
 import { fetchQuotes } from './tradingview/tvProvider.mjs';
 
 /** Indian indices via TradingView */
@@ -22,6 +23,9 @@ function sessionStatus() {
 }
 
 export async function fetchGlobalIndexQuotes() {
+  if (LIVE_MARKET_DISABLED) {
+    return { indices: [], source: 'disabled', fetchedAt: new Date().toISOString() };
+  }
   if (cache.data && Date.now() - cache.at < CACHE_MS) return cache.data;
 
   const ids = Object.keys(INDIA_GLOBAL);

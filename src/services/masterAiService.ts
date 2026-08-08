@@ -404,15 +404,15 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste. Main Hunter — Wolf Trade AI desk. Chart screenshot bhejo ya market structure, levels, risk poochho. Main step-by-step analysis dunga.';
+    return 'Namaste. Main Hunter — Wolf Trade AI. Apna chart screenshot bhejo; main Upside / Downside / Wait — teen clear paths dunga. Buy/sell orders nahi.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते। मैं Hunter हूँ — Wolf Trade AI desk। Chart screenshot भेजें या market structure, levels, risk पूछें। मैं step-by-step analysis दूँगा।';
+    return 'नमस्ते। मैं Hunter हूँ — Wolf Trade AI। अपना chart screenshot भेजें; मैं Upside / Downside / Wait — तीन clear paths दूँगा। Buy/sell orders नहीं।';
   }
   if (langCode === 'en-US') {
-    return "Good day. I'm Hunter on the Wolf Trade AI desk. Share a chart screenshot or ask about structure, levels, and risk — I'll walk through the analysis step by step.";
+    return "I'm Hunter on Wolf Trade AI. Paste your chart screenshot — I'll reply with three crisp paths: Upside, Downside, and Wait. No buy/sell orders.";
   }
-  return `Good day — I'm Hunter (Wolf Trade AI desk). I'll reply in ${lang.name} (${lang.nativeLabel}). Share a chart or ask about structure, levels, and risk.`;
+  return `I'm Hunter (Wolf Trade AI). I'll reply in ${lang.name} (${lang.nativeLabel}). Paste a chart screenshot for Upside / Downside / Wait analysis.`;
 }
 
 export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
@@ -420,10 +420,13 @@ export function getChartVisionPrompt(langCode: string, userNote?: string, autoMo
   const lock = buildLanguageDirective(langCode, autoMode);
   return [
     lock,
-    'WOLF AI MARKET ANALYST GOVERNANCE v1.0. Answer USER question FIRST. You are a market analyst — NOT a signal provider. Explain what the market is showing with multi-scenario evidence. Never Entry/Stop/Target/Buy/Sell/Go Long/Short.',
-    'Levels = Areas of Interest only. Use may/could/appears/suggests. Present bullish + bearish + neutral scenarios. Never invent levels/volume/indicators. Methodology-neutral.',
-    'Concept Q: 4–8 short lines. Full: Overview · Structure · Momentum · Liquidity · S/R · Volume · Volatility · 3 Scenarios · Evidence To Monitor · Risk Factors · Analyst Summary · Probabilities · Confidence.',
-    'Evidence only. Never invent. Never trade instructions. Under ~200 words full / ~120 Q&A.',
+    'WOLF AI SCREENSHOT DESK — locked format. Market analyst only. Never Entry/Stop/Target/Buy/Sell.',
+    'Mandatory shape:',
+    'Chart: <symbol·tf if readable> · Bias: bullish|bearish|neutral',
+    '1) Upside — can move up if… evidence on image… watch…',
+    '2) Downside — can move down if… evidence… watch…',
+    '3) Wait / Range — prefer waiting while… why range… what ends the wait…',
+    'Then: Watch · Confidence. Under ~160 words. Short lines. No wolfchart. No invented levels.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)

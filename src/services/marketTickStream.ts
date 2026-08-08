@@ -1,7 +1,4 @@
-/**
- * Live market tick helpers — Socket.IO client talks to TradingView-backed API.
- */
-
+import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { isFyersSocketConnected, startFyersSocketClient } from './fyersSocketClient';
 
 export const MARKET_TOKEN_INVALID_EVENT = 'market:feed-invalid';
@@ -10,6 +7,7 @@ export const FYERS_TOKEN_INVALID_EVENT = MARKET_TOKEN_INVALID_EVENT;
 
 /** Subscribe symbols on the browser Socket.IO client. */
 export function subscribeLiveSymbols(symbols: string[]): void {
+  if (!LIVE_MARKET_DATA) return;
   void import('./fyersSocketClient')
     .then((m) => {
       m.startFyersSocketClient();
@@ -19,6 +17,7 @@ export function subscribeLiveSymbols(symbols: string[]): void {
 }
 
 export function startMarketTickStream(): () => void {
+  if (!LIVE_MARKET_DATA) return stopMarketTickStream;
   startFyersSocketClient();
   return stopMarketTickStream;
 }
@@ -27,6 +26,7 @@ export function startMarketTickStream(): () => void {
 export function stopMarketTickStream(): void {}
 
 export function isMarketWebSocketConnected(): boolean {
+  if (!LIVE_MARKET_DATA) return false;
   try {
     return isFyersSocketConnected();
   } catch {
