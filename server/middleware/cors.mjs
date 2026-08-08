@@ -35,6 +35,8 @@ export function createCorsMiddleware() {
       'Content-Type',
       'Authorization',
       'X-OpenRouter-Key',
+      'X-Gemini-Key',
+      'X-Master-Ai-Key',
       'X-Admin-Email',
       'X-Admin-Password',
     ],
