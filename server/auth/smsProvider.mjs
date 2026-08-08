@@ -5,30 +5,50 @@
  * Env:
  *   SMS_PROVIDER=twilio|dev
  *   TWILIO_ACCOUNT_SID=
- *   TWILIO_AUTH_TOKEN=
- *   TWILIO_MESSAGING_SERVICE_SID=   (preferred)
+ *   TWILIO_AUTH_TOKEN=                 (Account Auth Token)
  *   — or —
- *   TWILIO_FROM_NUMBER=+1...        (Twilio phone / alphanumeric sender)
+ *   TWILIO_API_KEY_SID=SK...           (preferred if Auth Token fails)
+ *   TWILIO_API_KEY_SECRET=
+ *   TWILIO_MESSAGING_SERVICE_SID=      (preferred)
+ *   — or —
+ *   TWILIO_FROM_NUMBER=+1...           (Twilio phone / alphanumeric sender)
  */
 
 function trim(value) {
   return String(value || '').trim();
 }
 
+function hasTwilioCreds() {
+  const accountSid = trim(process.env.TWILIO_ACCOUNT_SID);
+  if (!accountSid) return false;
+  if (trim(process.env.TWILIO_API_KEY_SID) && trim(process.env.TWILIO_API_KEY_SECRET)) return true;
+  if (trim(process.env.TWILIO_AUTH_TOKEN)) return true;
+  return false;
+}
+
+/** Basic auth user/pass — API Key preferred over Account Auth Token. */
+function twilioBasicAuth() {
+  const apiKeySid = trim(process.env.TWILIO_API_KEY_SID);
+  const apiKeySecret = trim(process.env.TWILIO_API_KEY_SECRET);
+  if (apiKeySid && apiKeySecret) return { user: apiKeySid, pass: apiKeySecret };
+
+  const accountSid = trim(process.env.TWILIO_ACCOUNT_SID);
+  const authToken = trim(process.env.TWILIO_AUTH_TOKEN);
+  if (accountSid && authToken) return { user: accountSid, pass: authToken };
+
+  return null;
+}
+
 export function smsProviderName() {
   const explicit = trim(process.env.SMS_PROVIDER).toLowerCase();
   if (explicit === 'dev') return 'dev';
   if (explicit === 'twilio') return 'twilio';
-  if (trim(process.env.TWILIO_ACCOUNT_SID) && trim(process.env.TWILIO_AUTH_TOKEN)) {
-    return 'twilio';
-  }
+  if (hasTwilioCreds()) return 'twilio';
   return 'dev';
 }
 
 export function isDevSmsMode() {
-  const hasTwilio =
-    Boolean(trim(process.env.TWILIO_ACCOUNT_SID)) && Boolean(trim(process.env.TWILIO_AUTH_TOKEN));
-  if (smsProviderName() === 'twilio' && hasTwilio) return false;
+  if (smsProviderName() === 'twilio' && hasTwilioCreds()) return false;
   return true;
 }
 
@@ -47,14 +67,17 @@ function localNumber(phone) {
 
 async function sendViaTwilio(phone, code) {
   const accountSid = trim(process.env.TWILIO_ACCOUNT_SID);
-  const authToken = trim(process.env.TWILIO_AUTH_TOKEN);
   const messagingServiceSid = trim(process.env.TWILIO_MESSAGING_SERVICE_SID);
   const fromNumber = trim(process.env.TWILIO_FROM_NUMBER);
+  const basic = twilioBasicAuth();
 
-  if (!accountSid || !authToken) {
-    throw Object.assign(new Error('TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN missing'), {
-      status: 500,
-    });
+  if (!accountSid || !basic) {
+    throw Object.assign(
+      new Error(
+        'Set TWILIO_ACCOUNT_SID and either TWILIO_AUTH_TOKEN or TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET',
+      ),
+      { status: 500 },
+    );
   }
   if (!messagingServiceSid && !fromNumber) {
     throw Object.assign(
@@ -79,7 +102,7 @@ async function sendViaTwilio(phone, code) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+      Authorization: `Basic ${Buffer.from(`${basic.user}:${basic.pass}`).toString('base64')}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body,
@@ -97,14 +120,12 @@ async function sendViaTwilio(phone, code) {
  */
 export async function sendOtpSms(phone, code) {
   const provider = smsProviderName();
-  const hasTwilio =
-    Boolean(trim(process.env.TWILIO_ACCOUNT_SID)) && Boolean(trim(process.env.TWILIO_AUTH_TOKEN));
 
-  if (provider === 'twilio' && hasTwilio) return sendViaTwilio(phone, code);
+  if (provider === 'twilio' && hasTwilioCreds()) return sendViaTwilio(phone, code);
 
   console.warn(
     `[OTP] Twilio not configured — code for ${localNumber(phone)} is ${code}. ` +
-      'Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_MESSAGING_SERVICE_SID on Render. ' +
+      'Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN (or API Key SID+Secret) on Render. ' +
       'Same Twilio account can be connected in Supabase → Auth → Phone.',
   );
   return { provider: 'dev', devCode: code };

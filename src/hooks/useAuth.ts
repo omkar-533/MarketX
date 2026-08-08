@@ -17,6 +17,7 @@ import {
   type AccessStatus,
   type OtpChallenge,
   type ResetChallenge,
+  type SignupStartResult,
 } from '../services/appInviteAuth';
 import {
   clearProfileAvatar,
@@ -319,20 +320,28 @@ export function useAuth() {
     [refreshAccess],
   );
 
-  /** Step 1 of the trial sign-up: sends an OTP, creates nothing yet. */
+  /** Step 1 of the trial sign-up: OTP, or immediate account when SIGNUP_SKIP_OTP. */
   const signupStart = useCallback(
     async (input: {
       name: string;
       email: string;
       phone: string;
       password: string;
-    }): Promise<OtpChallenge> =>
-      startSignup({
+    }): Promise<SignupStartResult> => {
+      const result = await startSignup({
         name: input.name.trim(),
         email: input.email.trim().toLowerCase(),
         phone: input.phone,
         password: input.password,
-      }),
+      });
+      if (result.kind === 'done') {
+        setUser(withStoredAvatar(result.session.user));
+        setAccess(result.snapshot);
+        setIsLoggedIn(true);
+        setShowAuth(false);
+      }
+      return result;
+    },
     [],
   );
 

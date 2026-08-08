@@ -273,7 +273,15 @@ router.post('/login', async (req, res) => {
 
 /* ────────────────────────── OTP signup (Twilio SMS) ────────────────────────── */
 
-/** POST /api/app-auth/signup/start — validate, then SMS an OTP. No account yet. */
+function signupSkipOtpEnabled() {
+  const raw = String(process.env.SIGNUP_SKIP_OTP || '')
+    .trim()
+    .toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
+/** POST /api/app-auth/signup/start — validate, then SMS an OTP. No account yet.
+ *  When SIGNUP_SKIP_OTP=true, creates the account immediately (no SMS). */
 router.post('/signup/start', async (req, res) => {
   const { error, value } = validateSignup(req.body || {});
   if (error) return res.status(400).json({ error });
@@ -289,6 +297,31 @@ router.post('/signup/start', async (req, res) => {
       return res
         .status(409)
         .json({ error: 'This mobile number is already registered. Please sign in.' });
+    }
+
+    if (signupSkipOtpEnabled()) {
+      const trialDays = await getConfiguredTrialDays();
+      const created = await createAppUser({
+        email: value.email,
+        passwordHash: hashPassword(value.password),
+        name: value.name,
+        phone: value.phone,
+        phoneVerified: false,
+        plan: 'free',
+        role: 'user',
+        createdBy: 'self-signup',
+        trialDays,
+        planId: 'trial',
+      });
+      const user = (await recordLogin(created.id)) || created;
+      return res.status(201).json({
+        skippedOtp: true,
+        token: signAppToken(user),
+        user,
+        trialDays,
+        source: 'trial',
+        ...(await accessPayloadFor(user)),
+      });
     }
 
     const { code, expiresInSec } = await issueOtp(value.phone, 'signup', {

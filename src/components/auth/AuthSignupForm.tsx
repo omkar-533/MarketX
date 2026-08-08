@@ -18,7 +18,7 @@ import PasswordRevealButton from './PasswordRevealButton';
 import { isValidEmail } from './authUtils';
 import { planById, type PlanId } from '../../constants/plans';
 import { usePlansCatalog } from '../../hooks/usePlansCatalog';
-import type { OtpChallenge } from '../../services/appInviteAuth';
+import type { OtpChallenge, SignupStartResult } from '../../services/appInviteAuth';
 
 export type AuthSignupFormProps = {
   onSignupStart: (input: {
@@ -26,7 +26,7 @@ export type AuthSignupFormProps = {
     email: string;
     phone: string;
     password: string;
-  }) => Promise<OtpChallenge>;
+  }) => Promise<SignupStartResult>;
   onSignupVerify: (email: string, code: string) => Promise<void>;
   onSignupResend: (email: string) => Promise<OtpChallenge>;
   onSwitchToSignIn: () => void;
@@ -111,8 +111,9 @@ export default function AuthSignupForm({
         phone: mobile.replace(/\D/g, ''),
         password,
       });
-      setChallenge(next);
-      setCode(next.devCode ?? '');
+      if (next.kind === 'done') return;
+      setChallenge(next.challenge);
+      setCode(next.challenge.devCode ?? '');
       setCooldown(RESEND_SECONDS);
       setStep('otp');
     } catch (error) {

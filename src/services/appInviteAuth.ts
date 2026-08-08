@@ -139,20 +139,29 @@ export async function loginWithInvite(
   return { ...session, snapshot: snapshotOf(data) };
 }
 
-/** Step 1 of sign-up: nothing is created yet, an OTP goes to the mobile number. */
+export type SignupStartResult =
+  | { kind: 'otp'; challenge: OtpChallenge }
+  | { kind: 'done'; session: AppSession; snapshot: AccessSnapshot | null };
+
+/** Step 1 of sign-up: OTP SMS, or full account when server has SIGNUP_SKIP_OTP. */
 export async function startSignup(input: {
   name: string;
   email: string;
   phone: string;
   password: string;
-}): Promise<OtpChallenge> {
+}): Promise<SignupStartResult> {
   const res = await apiFetch('/api/app-auth/signup/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
   const data = await readJson(res, 'Could not send the OTP');
-  return toOtpChallenge(data);
+  if (data.skippedOtp === true && data.token) {
+    const session = toSession(data);
+    saveAppSession(session);
+    return { kind: 'done', session, snapshot: snapshotOf(data) };
+  }
+  return { kind: 'otp', challenge: toOtpChallenge(data) };
 }
 
 export async function resendSignupOtp(phone: string): Promise<OtpChallenge> {
