@@ -1652,7 +1652,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               >
                 {isMentor
                   ? 'Ready to train from the live chart?'
-                  : 'Paste your chart screenshot'}
+                  : 'Ask Hunter'}
               </motion.h2>
               <motion.p
                 className="mai-chat__empty-sub"
@@ -1662,35 +1662,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               >
                 {isMentor
                   ? 'I will punch process quizzes from Market Condition — answer, get graded, level up.'
-                  : 'Hunter replies in three crisp paths — Upside, Downside, and Wait. No buy/sell orders.'}
+                  : 'Upside, Downside, and Wait — attach a chart anytime from Screenshot or the message bar.'}
               </motion.p>
-
-              {!isMentor ? (
-                <motion.button
-                  type="button"
-                  className="mai-chat__shot-drop"
-                  disabled={isThinking || isListening || isAnalyzingChart}
-                  onClick={() => fileInputRef.current?.click()}
-                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: 0.18, type: 'spring', stiffness: 380, damping: 26 }}
-                  whileHover={{ y: -2, scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <span className="mai-chat__shot-drop-icon" aria-hidden>
-                    <ImagePlus className="h-6 w-6" />
-                  </span>
-                  <span className="mai-chat__shot-drop-title">Drop, paste, or upload chart</span>
-                  <span className="mai-chat__shot-drop-sub">
-                    PNG · JPG · WEBP — TradingView / broker chart screenshot
-                  </span>
-                  <span className="mai-chat__shot-paths" aria-hidden>
-                    <span>1 Upside</span>
-                    <span>2 Downside</span>
-                    <span>3 Wait</span>
-                  </span>
-                </motion.button>
-              ) : null}
 
               <div className="mai-chat__suggestions" role="list">
                 {deskPrompts.map((p, i) => {
@@ -1706,7 +1679,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                       initial={{ opacity: 0, y: 18, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{
-                        delay: 0.22 + i * 0.055,
+                        delay: 0.18 + i * 0.055,
                         type: 'spring',
                         stiffness: 420,
                         damping: 26,
