@@ -109,11 +109,11 @@ import { AI_PRODUCT_NAME } from '../constants/brandLabels';
 import {
   MENTOR_CHAT_PROMPTS,
   WOLF_CHAT_PROMPTS,
-  WOLF_CHART_PROMPTS,
   WOLF_SCREENSHOT_DEFAULT_PROMPT,
   deskPromptHint,
   deskPromptLabel,
   deskPromptText,
+  getWolfChartPrompts,
   type DeskPrompt,
 } from '../constants/wolfAiPrompts';
 import {
@@ -187,19 +187,45 @@ const CHAT_PROMPT_ICONS: Record<string, LucideIcon> = {
 export type MasterAiDesk = 'hunter' | 'mentor';
 
 const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
-  'scenarios-3': Split,
-  tight: ScanSearch,
-  'levels-focus': Crosshair,
-  'htf-lean': Layers,
-  full: ScanSearch,
-  aoi: Map,
-  liq: Waves,
-  scenarios: Split,
-  levels: Crosshair,
-  sr: Layers,
-  bias: GitBranch,
-  ob: Box,
-  'mtf-chart': Eye,
+  'full-setup': ScanSearch,
+  'wait-or-trade': HelpCircle,
+  invalidation: Shield,
+  'entry-condition': Target,
+  'tight-brief': ScanSearch,
+  'key-observation': Eye,
+  'auto-confluence': Split,
+  'auto-best-setup': Sparkles,
+  'auto-conflicts': GitBranch,
+  'sr-zones': Layers,
+  'sr-retest': Crosshair,
+  'sr-strong-weak': Map,
+  'liq-pools': Waves,
+  'liq-sweep': Waves,
+  'liq-next': Target,
+  'str-bias': GitBranch,
+  'str-bos': Split,
+  'str-range': Layers,
+  'bo-valid': Crosshair,
+  'bo-retest': Crosshair,
+  'rev-exhaust': GitBranch,
+  'rev-confirm': HelpCircle,
+  'sd-zones': Box,
+  'sd-reaction': Box,
+  'pa-context': CandlestickChart,
+  'pa-momentum': CandlestickChart,
+  'smc-concepts': Box,
+  'smc-ob': Box,
+  'ict-mss': Layers,
+  'ict-pd': Map,
+  'fib-pullback': Crosshair,
+  'fib-confluence': Crosshair,
+  'mom-expand': ScanSearch,
+  'mom-chop': HelpCircle,
+  'trd-hl': GitBranch,
+  'trd-pullback': GitBranch,
+  'mbp-pillars': Brain,
+  'mbp-pass': Trophy,
+  'custom-follow': Sparkles,
 };
 
 /** Wolf AI (Hunter) analysis chat — training desk lives in MentorAI / Wolf Mentor. */
@@ -224,7 +250,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     isMentor
       ? 'Mentor AI training desk — I quiz you from the live chart and tape. Answer with process only (no chase). Pick a mode and I will punch questions.'
       : initialMode === 'auto'
-        ? 'Auto language on — paste a chart screenshot; Hunter replies Upside / Downside / Wait in your language.'
+        ? 'Auto language on — pick a setup, paste a chart screenshot; Hunter returns Bias · Entry · SL · Target from that image.'
         : getMasterAiWelcome(initialLang.code);
   const [boot] = useState(() => loadActiveChat(welcomeText, chatScope));
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
@@ -238,6 +264,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
   const [analysisMode, setAnalysisMode] = useState<WolfAnalysisMode>(loadWolfAnalysisMode);
+  const chartPrompts = useMemo(() => getWolfChartPrompts(analysisMode), [analysisMode]);
   const [roomMode, setRoomMode] = useState(() => (isMentor ? loadRoomMode() : false));
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
@@ -1993,10 +2020,14 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                         <div className="mai-chat__prompt-menu-glow" aria-hidden />
                         <div className="mai-chat__prompt-menu-head">
                           <Sparkles className="h-3.5 w-3.5" />
-                          <span>{hindi ? 'Chart ke liye sawal choose karo' : 'Choose a chart question'}</span>
+                          <span>
+                            {hindi
+                              ? `Chart sawal (${chartPrompts.length}) — setup: ${analysisMode}`
+                              : `Choose a chart question (${chartPrompts.length}) · ${analysisMode}`}
+                          </span>
                         </div>
                         <div className="mai-chat__prompt-menu-scroll">
-                          {WOLF_CHART_PROMPTS.map((p, i) => {
+                          {chartPrompts.map((p, i) => {
                             const Icon = CHART_PROMPT_ICONS[p.id] ?? Sparkles;
                             const selected = inputText.trim() === deskPromptText(p, useHiPrompts).trim();
                             return (
