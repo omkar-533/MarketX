@@ -7449,6 +7449,75 @@ input[type="number"] { -moz-appearance: textfield; }
   overflow: visible;
 }
 
+.mai-chat__setups {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+  padding: 0.45rem 1rem 0.55rem;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-bg);
+}
+
+.mai-chat__setups-label {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf-text-muted);
+}
+
+.mai-chat__setups-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.mai-chat__setup-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  color: var(--tf-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.mai-chat__setup-chip:hover:not(:disabled) {
+  border-color: rgba(184, 148, 42, 0.55);
+  color: var(--tf-text);
+}
+
+.mai-chat__setup-chip--on {
+  border-color: rgba(184, 148, 42, 0.75);
+  background: rgba(212, 175, 55, 0.16);
+  color: #7a5f12;
+}
+
+.mai-chat__setup-chip--core {
+  font-weight: 750;
+}
+
+.mai-chat__setup-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+html[data-theme='dark'] .mai-chat__setup-chip--on,
+html.dark .mai-chat__setup-chip--on {
+  color: #e8d39a;
+}
+
 .mai-chat__brand {
   display: flex;
   align-items: center;

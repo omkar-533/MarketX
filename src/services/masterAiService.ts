@@ -14,6 +14,7 @@ import {
   getStocks,
 } from '../data/marketData';
 import { openRouterRequestHeaders } from './openRouterKey';
+import type { WolfAnalysisMode } from '../constants/wolfAnalysisModes';
 import {
   isForexMarketOpen,
   isMcxMarketOpen,
@@ -404,29 +405,31 @@ function istSessionNote(): string {
 export function getMasterAiWelcome(langCode: string): string {
   const lang = getMasterAiLanguage(langCode);
   if (isHinglishLang(langCode)) {
-    return 'Namaste. Main Hunter — Wolf Trade AI. Apna chart screenshot bhejo; main Upside / Downside / Wait — teen clear paths dunga. Buy/sell orders nahi.';
+    return 'Namaste. Main Hunter — Wolf Trade AI. Chart screenshot bhejo, setup mode choose karo (S/R, Liquidity, Structure…); Bias · Entry condition · SL · Target · WAIT/NO TRADE dunga.';
   }
   if (langCode === 'hi-IN') {
-    return 'नमस्ते। मैं Hunter हूँ — Wolf Trade AI। अपना chart screenshot भेजें; मैं Upside / Downside / Wait — तीन clear paths दूँगा। Buy/sell orders नहीं।';
+    return 'नमस्ते। मैं Hunter हूँ — Wolf Trade AI। चार्ट screenshot भेजें, setup चुनें; Bias · Entry · SL · Target · WAIT मिलेगा।';
   }
   if (langCode === 'en-US') {
-    return "I'm Hunter on Wolf Trade AI. Paste your chart screenshot — I'll reply with three crisp paths: Upside, Downside, and Wait. No buy/sell orders.";
+    return "I'm Hunter on Wolf Trade AI. Upload a chart, pick a setup (S/R, Liquidity, Structure…), and I'll return Bias, Entry conditions, SL/Target logic, and WAIT / NO TRADE when needed.";
   }
-  return `I'm Hunter (Wolf Trade AI). I'll reply in ${lang.name} (${lang.nativeLabel}). Paste a chart screenshot for Upside / Downside / Wait analysis.`;
+  return `I'm Hunter (Wolf Trade AI). I'll reply in ${lang.name} (${lang.nativeLabel}). Upload a chart + pick a setup for structured analysis.`;
 }
 
-export function getChartVisionPrompt(langCode: string, userNote?: string, autoMode = false): string {
+export function getChartVisionPrompt(
+  langCode: string,
+  userNote?: string,
+  autoMode = false,
+  analysisMode: WolfAnalysisMode = 'auto',
+): string {
   const note = userNote?.trim();
   const lock = buildLanguageDirective(langCode, autoMode);
+  const modeLabel = analysisMode.replace(/_/g, ' ').toUpperCase();
   return [
     lock,
-    'WOLF AI SCREENSHOT DESK — locked format. Market analyst only. Never Entry/Stop/Target/Buy/Sell.',
-    'Mandatory shape:',
-    'Chart: <symbol·tf if readable> · Bias: bullish|bearish|neutral',
-    '1) Upside — can move up if… evidence on image… watch…',
-    '2) Downside — can move down if… evidence… watch…',
-    '3) Wait / Range — prefer waiting while… why range… what ends the wait…',
-    'Then: Watch · Confidence. Under ~160 words. Short lines. No wolfchart. No invented levels.',
+    `WOLF AI SETUP DESK — mode: ${modeLabel}. Visual trading intelligence — not a signal bot.`,
+    'Fill locked template: Market Bias · Setup · Status · Key Observation · Direction · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Assumptions.',
+    'LONG BIAS | SHORT BIAS | WAIT | NO TRADE. Exact prices only if scale readable. Never invent levels. No wolfchart.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)
@@ -1171,6 +1174,8 @@ export interface MasterChatRequest {
   };
   /** Client-resolved draw tool — server must not infer S/R from chart-hint text */
   markTool?: 'trend' | 'sr' | 'ob' | 'liq' | 'auto';
+  /** Visual setup strategy mode for screenshot analysis */
+  analysisMode?: WolfAnalysisMode;
 }
 
 export async function fetchMasterAiStatus(): Promise<{
@@ -1311,6 +1316,7 @@ export async function askMasterAi(req: MasterChatRequest, ctx: MasterMarketConte
     mentorMaster: Boolean(req.mentorMaster),
     mentorLesson: req.mentorLesson || undefined,
     markTool: req.markTool,
+    analysisMode: req.analysisMode || 'auto',
   };
 
   // Chart-open / mark / image paths run live tape + LLM — give them a full window.

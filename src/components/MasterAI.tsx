@@ -122,6 +122,12 @@ import {
   type MentorMode,
 } from '../services/mentorModes';
 import {
+  WOLF_ANALYSIS_MODES,
+  loadWolfAnalysisMode,
+  saveWolfAnalysisMode,
+  type WolfAnalysisMode,
+} from '../constants/wolfAnalysisModes';
+import {
   buildDrillFromDetective,
   isDrillAnswerCorrect,
   saveDrillResult,
@@ -228,6 +234,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const useHiPrompts = hindi || isHinglishLang(selectedLang.code);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
+  const [analysisMode, setAnalysisMode] = useState<WolfAnalysisMode>(loadWolfAnalysisMode);
   const [roomMode, setRoomMode] = useState(() => (isMentor ? loadRoomMode() : false));
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
@@ -930,7 +937,12 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         }
       }
       const visionMessage = hasImage
-        ? getChartVisionPrompt(activeLang.code, analysisNote || undefined, langMode === 'auto')
+        ? getChartVisionPrompt(
+            activeLang.code,
+            analysisNote || undefined,
+            langMode === 'auto',
+            analysisMode,
+          )
         : userText;
 
       let responseText = '';
@@ -1038,6 +1050,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               roomMode: isMentor ? roomMode : false,
               trainingGrade: Boolean(opts?.trainingGrade),
               mentorDesk: isMentor,
+              analysisMode: isMentor ? 'auto' : analysisMode,
               markTool: wantsTrendNow
                 ? 'trend'
                 : wantsObNow
@@ -1052,7 +1065,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             },
             hasImage
               ? {
-                  summary: 'Chart screenshot + server live tape cross-check',
+                  summary: 'Chart screenshot setup analysis',
                   nifty: 'from chart',
                   bankNifty: 'from chart',
                   pcr: 0,
@@ -1066,7 +1079,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   futures: 'n/a',
                   session: 'from chart',
                 }
-              : // Real local snapshot; the server still overlays its own live TradingView tape.
+              : // Local snapshot only — live tape removed site-wide.
                 buildMasterMarketContext(),
           );
           responseText =
@@ -1199,7 +1212,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">{isMentor ? 'Mentor AI' : AI_PRODUCT_NAME}</h1>
-              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Screenshot desk'}</span>
+              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Setup desk'}</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
@@ -1488,6 +1501,31 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         </div>
       </header>
 
+      {!isMentor ? (
+        <div className="mai-chat__setups" role="toolbar" aria-label="Analysis setup">
+          <span className="mai-chat__setups-label">Setup</span>
+          <div className="mai-chat__setups-row">
+            {WOLF_ANALYSIS_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`mai-chat__setup-chip ${analysisMode === m.id ? 'mai-chat__setup-chip--on' : ''} ${
+                  m.tier === 'core' ? 'mai-chat__setup-chip--core' : ''
+                }`}
+                title={m.hint}
+                disabled={isThinking || isAnalyzingChart}
+                onClick={() => {
+                  setAnalysisMode(m.id);
+                  saveWolfAnalysisMode(m.id);
+                }}
+              >
+                {m.short}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div
         ref={chatAreaRef}
         className="mai-chat__scroll"
@@ -1662,7 +1700,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               >
                 {isMentor
                   ? 'I will punch process quizzes from Market Condition — answer, get graded, level up.'
-                  : 'Upside, Downside, and Wait — attach a chart anytime from Screenshot or the message bar.'}
+                  : 'Pick a setup below, attach a chart, get Bias · Entry · SL · Target · WAIT / NO TRADE.'}
               </motion.p>
 
               <div className="mai-chat__suggestions" role="list">

@@ -5,6 +5,11 @@ import { wantsStructureMarkup } from './masterAi/structureContext.mjs';
 import { ensureWolfchartReply } from './masterAi/markupFallback.mjs';
 import { wantsOrderBlockMarkup } from './masterAi/orderBlockEngine.mjs';
 import { wantsLiquidityMarkup } from './masterAi/liquidityEngine.mjs';
+import {
+  getChartSetupVisionPrompt,
+  normalizeAnalysisMode,
+  analysisModeDisplayName,
+} from './masterAi/analysisStrategies.mjs';
 
 export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
@@ -1535,31 +1540,6 @@ function buildSystemPrompt({ hasImage, question, journal, teaching }) {
   return parts.join('\n\n');
 }
 
-const CHART_VISION_PROMPT = `CHART SCREENSHOT MODE — Hunter / Wolf AI (screenshot desk).
-Read ONLY this screenshot. You are a market analyst — NOT a signal provider.
-Never Entry / Stop / Target / Buy / Sell / Go Long / Short / lot size.
-
-LOCKED ANSWER FORMAT (mandatory — use exactly these three numbered paths):
-Open with one short line: Chart: <symbol if readable> · <timeframe if readable> · Bias: bullish | bearish | neutral
-
-1) Upside — Market can move UP from here if…  
-   Evidence visible on this chart (structure / S-R / liquidity / candles / indicators).  
-   What to watch for confirmation.
-
-2) Downside — Market can move DOWN from here if…  
-   Evidence visible on this chart.  
-   What to watch for confirmation.
-
-3) Wait / Range — Prefer waiting while…  
-   Why price may stay in a range / chop between zones visible on the chart.  
-   What break or signal would end the wait.
-
-Then 1–2 lines max: Watch (invalidation / key level) · Confidence (low/med/high).
-Total under ~160 words. Short labeled lines. No essays. No wolfchart block (screenshot-only desk — no live chart markup).
-Probabilistic language only (may / could / appears / suggests). Never invent levels not visible on the image.
-Poor / cropped screenshot → say what is unclear, still give the 3 paths with lower confidence.
-If the user asked a narrow concept question about the image, still keep the same 1–2–3 shape, just shorter bullets.`;
-
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
 const NO_CHART_HINT = `No chart attached and no live market tape (removed). Do not invent levels. Ask for a TradingView/chart screenshot only if the user needs structure/S-R.`;
@@ -1824,12 +1804,21 @@ export function detectAiProvider(apiKey) {
   return null;
 }
 
-function buildMessages({ platformContext, history, userContent, hasImage, question, journal, teaching }) {
+function buildMessages({
+  platformContext,
+  history,
+  userContent,
+  hasImage,
+  question,
+  journal,
+  teaching,
+  analysisMode = 'auto',
+}) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
   const base = buildSystemPrompt({ hasImage, question, journal, teaching });
-  // Chart mode: vision prompt + optional live tape (chart levels still win on conflict).
+  const visionBlock = getChartSetupVisionPrompt(analysisMode);
   const system = hasImage
-    ? `${base}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
+    ? `${base}\n\n${visionBlock}${ctx ? `\n\n${ctx}` : ''}`
     : `${base}\n\n${ctx}`;
   const msgs = [{ role: 'system', content: system }];
   const trimmed = (history ?? []).slice(-HISTORY_TURNS);
@@ -2035,11 +2024,13 @@ async function chatWithGemini(gemini, {
   question = '',
   journal = false,
   teaching = false,
+  analysisMode = 'auto',
 }) {
   const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
   const base = buildSystemPrompt({ hasImage, question, journal, teaching });
+  const visionBlock = getChartSetupVisionPrompt(analysisMode);
   const system = hasImage
-    ? `${base}\n\n${CHART_VISION_PROMPT}${ctx ? `\n\n${ctx}` : ''}`
+    ? `${base}\n\n${visionBlock}${ctx ? `\n\n${ctx}` : ''}`
     : `${base}\n\n${ctx}`;
 
   const geminiHistory = [];
@@ -2316,6 +2307,7 @@ export function createMasterAiRouter(apiKey) {
         body?.mentorMode === 'socratic'
           ? body.mentorMode
           : 'professional';
+      const analysisMode = normalizeAnalysisMode(body?.analysisMode);
       const roomMode = Boolean(body?.roomMode);
       const mentorDesk = Boolean(body?.mentorDesk);
       const mentorChart =
@@ -2412,7 +2404,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? 'Task: WOLF AI MARKET ANALYST GOVERNANCE. Answer USER QUESTION FIRST. Chart is primary for structure; live tape may cross-check LTP. Scenarios + evidence. Areas of Interest only. NEVER Entry/Stop/Target/Buy/Sell. Under ~200 words full / ~120 Q&A.'
+        ? `Task: WOLF AI SETUP ANALYSIS (${analysisModeDisplayName(analysisMode)}). Chart screenshot only. Fill locked template: Bias · Setup · Status · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why. Allow WAIT / NO TRADE. Exact prices only if scale readable. Under ~280 words. No wolfchart.`
         : shortChat
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
@@ -2449,7 +2441,9 @@ export function createMasterAiRouter(apiKey) {
                     ? 'Task: answer using LIVE MARKET DATA when relevant. NEVER ask for a chart for simple price/where questions. 3–6 short lines. No Entry/Stop/Target.'
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
-      let textBlock = `[You are Hunter — senior institutional market analyst / live trading mentor at Wolf Trade AI, not a confused chatbot and not a signal bot. ${langLine} Be decisive with evidence from LIVE MARKET DATA / STRUCTURE / OB / LIQ tape. Answer the exact ask in THIS reply. Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
+      let textBlock = hasImage
+        ? `[You are Hunter — Wolf AI visual setup analyst. ${langLine} Analyze the screenshot with the SELECTED setup framework. Structured Bias/Entry/SL/Target logic + WAIT/NO TRADE. Exact prices only if readable. No wolfchart.]\n[${taskLine}]\n\n${userTextBase}`
+        : `[You are Hunter — senior institutional market analyst / live trading mentor at Wolf Trade AI, not a confused chatbot and not a signal bot. ${langLine} Be decisive with evidence. Answer the exact ask in THIS reply. Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
       if (mentorDesk || mentorChart || mentorCoach || mentorLab || mentorLive || mentorMaster) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
         textBlock += `\n\n${MENTOR_MODE_HINTS[mentorMode] || MENTOR_MODE_HINTS.professional}`;
@@ -2518,10 +2512,9 @@ export function createMasterAiRouter(apiKey) {
       if (hasImage) {
         textBlock +=
           hinglish || hindi
-            ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Live LTP sirf cross-check ke liye. Unclear ho to unclear bolo — guess mat karo.'
-            : '\n\nRead the image carefully. Use only clearly visible levels. Live LTP is secondary cross-check only. If unclear, say unclear — do not guess.';
-        textBlock +=
-          '\n\nSCREENSHOT DESK LOCK: Reply MUST use the locked 1 Upside / 2 Downside / 3 Wait format from CHART SCREENSHOT MODE. Do NOT append a wolfchart block.';
+            ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
+            : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
+        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Follow the system strategy rules + locked RESPONSE TEMPLATE (Bias, Setup, Status, Entry Condition, SL Logic, Target Logic, Invalidation, Evidence Score, Why). Do NOT append a wolfchart block.`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (
@@ -2664,6 +2657,7 @@ export function createMasterAiRouter(apiKey) {
             question: message,
             journal: wantsJournalReview,
             teaching: asksExplanation && !wantsMarkup,
+            analysisMode,
           }),
         );
         if (!String(geminiOut?.reply || '').trim()) {
@@ -2686,6 +2680,7 @@ export function createMasterAiRouter(apiKey) {
         question: message,
         journal: wantsJournalReview,
         teaching: asksExplanation && !wantsMarkup,
+        analysisMode,
       });
 
       const promptChars = messages.reduce(
