@@ -23,7 +23,6 @@ import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
 import { buildDetectiveOnly } from './server/masterAi/intelPack.mjs';
 import { getLiveWsStatus } from './server/market/liveFeed.mjs';
 import { getActiveMarketProvider } from './server/market/provider.mjs';
-import { isKiteConfigured } from './server/market/kite/kiteConfig.mjs';
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)));
 
@@ -57,15 +56,16 @@ app.get('/api/health', (_req, res) => {
     env: config.nodeEnv,
     live: {
       provider: getActiveMarketProvider(),
-      configured: true,
-      kiteConfigured: isKiteConfigured(),
-      optionChain: 'nse',
+      configured: false,
+      kiteConfigured: false,
+      optionChain: 'none',
       wsStatus: ws.status,
-      wsConnected: ws.connected,
-      hasTicks: ws.hasTicks,
-      upstream: ws.upstream,
+      wsConnected: false,
+      hasTicks: false,
+      upstream: 'removed',
       tickPulseMs: TICK_PULSE_MS,
-      tipBuild: 'fast-poke-2s',
+      liveDisabled: true,
+      tipBuild: 'market-data-removed',
     },
   });
 });
@@ -157,7 +157,7 @@ httpServer.listen(config.port, () => {
     .catch((err) => console.warn('[Hunter Teach] seed import failed:', err?.message || err));
   console.log(`Wolf Trade AI API on port ${config.port} (${config.nodeEnv})`);
   console.log(`  Frontend: ${config.frontendUrl}`);
-  console.log(`  Market: TradingView · Socket.IO /socket.io (${marketProvider})`);
+  console.log(`  Market: removed (${marketProvider}) — no TV/NSE/Kite live data`);
 
   if (!isCloudUserStore()) {
     console.log('  Logins: local file store — set SUPABASE_SERVICE_ROLE_KEY to persist in Supabase');

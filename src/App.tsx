@@ -11,8 +11,6 @@ import {
   SHOW_OPTION_CHAIN,
   SHOW_TERMINAL,
 } from './constants/featureFlags';
-import { LIVE_MARKET_DATA } from './constants/liveMarket';
-import { ensureSiteWideLiveFeed } from './services/siteWideLiveFeed';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -217,12 +215,6 @@ function AppWorkspace() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [auth.isLoggedIn, activeTab]);
-
-  useEffect(() => {
-    if (!auth.isLoggedIn) return;
-    if (!LIVE_MARKET_DATA) return;
-    ensureSiteWideLiveFeed();
-  }, [auth.isLoggedIn]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;

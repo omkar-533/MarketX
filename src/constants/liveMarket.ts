@@ -1,5 +1,2 @@
-/**
- * Hard kill for TradingView + NSE live market feeds.
- * When false: no sockets, no quote polling, no option-chain polls, no Wolf live tape.
- */
-export const LIVE_MARKET_DATA = false;
+/** Compile-time lock: live market data stack deleted (TV / NSE / Kite). */
+export const LIVE_MARKET_DATA = false as const;
