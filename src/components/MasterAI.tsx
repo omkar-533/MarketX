@@ -46,6 +46,9 @@ import {
   getMasterAiSorryMessage,
   describeMasterAiFailure,
   getTradingBlockMessage,
+  getChartImageRequiredMessage,
+  needsChartImage,
+  isDayMarketReviewQuestion,
   isHindiLang,
   isHinglishLang,
   isTradingRelated,
@@ -752,8 +755,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       userNote ||
       (hasImage
         ? hindi
-          ? `Chart screenshot — 3-path analysis`
-          : `Chart screenshot — 3-path analysis`
+          ? `Chart screenshot — setup analysis`
+          : `Chart screenshot — setup analysis`
         : '');
 
     if (!userText && !hasImage) return;
@@ -842,8 +845,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       const reply = isCasualGreeting(userText)
         ? getHumanGreetingReply(activeLang.code, userText)
         : isHindiLang(activeLang.code) || isHinglishLang(activeLang.code)
-          ? 'Theek hai. Aage bataiye — chart ya sawal.'
-          : 'Understood. Share the chart or your question whenever you are ready.';
+          ? 'Theek hai. Chart screenshot bhejiye jab ready ho — analysis usi image pe hoga.'
+          : 'Understood. Upload a chart screenshot when ready — analysis runs on that image only.';
       setMessages((prev) => [
         ...prev,
         { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
@@ -854,8 +857,54 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       return;
     }
 
-    // Day / market questions go to the API — server injects live TradingView tape
-    // (do NOT hard-block with "send screenshot" when live data is available).
+    // Hunter: market / setup answers are screenshot-grounded only.
+    // Allow journal + concept-only + follow-ups after a prior chart image in this chat.
+    if (!isMentor && !hasImage) {
+      const priorScreenshot = messages.some((m) => Boolean(m.imageUrl));
+      const journalAsk = isJournalReviewQuestion(userText);
+      const conceptOnly =
+        /\b(kya\s+(hai|hota|hoti)|what\s+is|what\s+are|explain|samjha|samjhao|meaning|definition|difference|kaise\s+kaam)\b/i.test(
+          userText,
+        ) && !isDayMarketReviewQuestion(userText);
+      const needsShot =
+        !journalAsk &&
+        !conceptOnly &&
+        !priorScreenshot &&
+        (needsChartImage(userText) ||
+          isDayMarketReviewQuestion(userText) ||
+          isTradingRelated(userText));
+      if (needsShot) {
+        const recentUser = messages
+          .filter((m) => m.role === 'user')
+          .slice(-4)
+          .map((m) => m.text)
+          .reverse();
+        const shotLang = resolveMasterAiLanguage(
+          langMode,
+          userText,
+          selectedLang.code,
+          recentUser,
+        );
+        if (langMode === 'auto' && shotLang.code !== selectedLang.code) {
+          setSelectedLang(shotLang);
+          saveSelectedLanguage(shotLang.code);
+        }
+        setMessages((prev) => [
+          ...prev,
+          { id: `${Date.now()}-u`, role: 'user', text: userText, timestamp: new Date() },
+          {
+            id: `${Date.now()}-shot`,
+            role: 'trafi',
+            text: getChartImageRequiredMessage(shotLang.code),
+            timestamp: new Date(),
+          },
+        ]);
+        setInputText('');
+        clearSelectedImage();
+        analyzingRef.current = false;
+        return;
+      }
+    }
 
     // If chat already started, always continue — never block mid-conversation
     const continuingThread = hasActiveDeskThread(messages);

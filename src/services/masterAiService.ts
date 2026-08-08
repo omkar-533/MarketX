@@ -588,9 +588,9 @@ export function needsChartImage(input: string): boolean {
 
 export function getChartImageRequiredMessage(langCode: string): string {
   if (isHinglishLang(langCode) || langCode === 'hi-IN') {
-    return 'Analysis ke liye Nifty ka chart screenshot bhejiye. Us image se structure aur levels clear karunga.';
+    return 'Setup analysis sirf chart screenshot se hota hai. Screenshot chip / attach se chart image bhejo, setup mode choose karo — phir Bias · Entry · SL · Target dunga. Bina image ke levels invent nahi karta.';
   }
-  return 'Please share a Nifty chart screenshot. I will read structure and levels from that image.';
+  return 'Setup analysis is screenshot-only. Upload a chart (Screenshot / attach), pick a setup mode, and I will reply with Bias · Entry · SL · Target from that image only — I will not invent levels without a chart.';
 }
 
 /** “Aaj nifty kaisa tha / market kaisa hai” style — needs chart, no invented levels */
@@ -1089,47 +1089,27 @@ export function formatContextBlock(
   compact = false,
   autoMode = false,
 ): string {
-  const niftyRaw = String(ctx.nifty || '');
-  const summaryRaw = String(ctx.summary || '');
-  const hasLiveTape =
-    (/\d/.test(niftyRaw) && !/n\/a|from chart/i.test(niftyRaw)) ||
-    /live|inject/i.test(niftyRaw) ||
-    /live|inject/i.test(summaryRaw);
-  const liveBanner = hasLiveTape
-    ? 'LIVE CONTEXT: server provides LIVE MARKET DATA tape — answer price/where/how questions from that tape. Do NOT ask for a chart screenshot for LTP/change/range. Chart only if user wants structure/levels detail.'
-    : 'NO LIVE TAPE in this client stub — server may still inject LIVE MARKET DATA. If tape is present, answer from it; only ask for a chart when structure/S-R detail is required and tape is missing.';
+  const liveBanner =
+    'SCREENSHOT-ONLY DESK: no live market tape. For setup/bias/entry/SL/target, require a chart image. Never invent prices. Follow-ups may use the last analyzed screenshot context in chat history.';
 
   if (compact) {
     return [
       buildLanguageDirective(langCode, autoMode),
-      'You are Hunter — Wolf Trade AI market analyst. Accuracy first: never invent prices/levels. Scenarios + evidence only (no buy/sell/entry/stop/target).',
+      'You are Hunter — Wolf AI visual setup analyst. Accuracy first: never invent prices/levels.',
       liveBanner,
       `Session: ${ctx.session}`,
-      hasLiveTape
-        ? `NIFTY ${ctx.nifty} · BANKNIFTY ${ctx.bankNifty} · PCR ${ctx.pcr} · max pain ${ctx.maxPain}`
-        : 'NIFTY n/a · BANKNIFTY n/a · PCR n/a · max pain n/a',
-      hasLiveTape && ctx.signals ? `Signals: ${ctx.signals}` : '',
+      'NIFTY n/a · BANKNIFTY n/a · PCR n/a · max pain n/a (use screenshot only)',
     ]
       .filter(Boolean)
       .join('\n');
   }
   return [
     buildLanguageDirective(langCode, autoMode),
-    'QUALITY: Prefer specific levels and risk over generic commentary. Cite snapshot numbers when used.',
+    'You are Hunter — Wolf AI visual setup analyst.',
+    liveBanner,
     PLATFORM_KNOWLEDGE,
     `Session: ${ctx.session}`,
-    `Market snapshot (${ctx.summary}):`,
-    `NIFTY ${ctx.nifty}`,
-    `BANKNIFTY ${ctx.bankNifty}`,
-    `Nifty options: overall PCR ${ctx.pcr}, max pain ${ctx.maxPain}`,
-    `Market breadth: ${ctx.breadth}`,
-    `Futures OI cues: ${ctx.futures}`,
-    `Bias signals: ${ctx.signals}`,
-    `Top gainers: ${ctx.gainers}`,
-    `Top losers: ${ctx.losers}`,
-    `Most active: ${ctx.active}`,
-    `Tape headlines: ${ctx.news}`,
-    `Universe size: ${getStocks().length} tracked names.`,
+    'No live snapshot — only journal context (if any) and chart screenshots in the request.',
   ].join('\n');
 }
 

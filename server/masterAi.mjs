@@ -1542,7 +1542,7 @@ function buildSystemPrompt({ hasImage, question, journal, teaching }) {
 
 const WEB_HINT = `News-style questions: do not invent headlines or numbers. Prefer asking for a chart if a market read is needed.`;
 
-const NO_CHART_HINT = `No chart attached and no live market tape (removed). Do not invent levels. Ask for a TradingView/chart screenshot only if the user needs structure/S-R.`;
+const NO_CHART_HINT = `NO CHART IMAGE ATTACHED. Screenshot-only desk: do NOT invent market levels, bias, entry, SL, or targets. Ask the user to upload a TradingView/broker chart screenshot, then analyze that image with the selected setup mode. Journal/greeting/concept-theory questions may still be answered without inventing prices.`;
 
 
 const JOURNAL_HINT = `JOURNAL MODE v3.0: Platform Trading Journal is the ONLY source of truth. Analyze ONLY PLATFORM TRADING JOURNAL context. Score completeness/quality/compliance when evidence exists. Separate Good Decision from Good Result; Bad Result from Bad Process. Flag outliers/risk drift/integrity issues without modifying records. Never invent trades/stats/emotions/rules. Never ask to rewrite stored trades. Never ask for a chart unless also requested. Empty/missing → Insufficient journal evidence. Compact output: Journal Quality · Trade Quality · Compliance · Behavior · Risk · Execution · Pattern · Similarity · Insight · Focus · Confidence.`;
