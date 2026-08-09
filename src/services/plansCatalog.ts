@@ -6,7 +6,7 @@ export type SubscriptionCatalog = {
   trialDays: number;
   plans: Plan[];
   /** When true, signup creates the account without SMS OTP. */
-  skipOtp: boolean;
+  skipOtp?: boolean;
 };
 
 export type AdminSubscriptionCatalog = SubscriptionCatalog & {

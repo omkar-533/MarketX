@@ -88,6 +88,9 @@ import {
 import ChatMarkdown from './ChatMarkdown';
 import HunterMark from './HunterMark';
 import ChatChartPanel from './masterai/ChatChartPanel';
+import WolfVisionHome from './masterai/WolfVisionHome';
+import WolfVisionScan from './masterai/WolfVisionScan';
+import WolfSetupAnalysisCard from './masterai/WolfSetupAnalysisCard';
 import { parseChartAnnotations } from '../utils/chartAnnotations';
 import {
   detectChartRequest,
@@ -1755,7 +1758,23 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             </div>
           ) : null}
 
-          {messages.length <= 1 && !isThinking ? (
+          {messages.length <= 1 && !isThinking && !isMentor ? (
+            <WolfVisionHome
+              analysisMode={analysisMode}
+              onModeChange={(mode) => {
+                setAnalysisMode(mode);
+                saveWolfAnalysisMode(mode);
+              }}
+              onPickFile={(file) => void processChartFile(file)}
+              onAnalyze={() => void handleSend()}
+              hasImage={Boolean(selectedImage)}
+              previewUrl={selectedImage}
+              disabled={isThinking || isAnalyzingChart || isListening}
+              hindi={useHiPrompts}
+            />
+          ) : null}
+
+          {messages.length <= 1 && !isThinking && isMentor ? (
             <div className="mai-chat__empty">
               <HunterMark />
               <motion.h2
@@ -1764,9 +1783,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, duration: 0.4 }}
               >
-                {isMentor
-                  ? 'Ready to train from the live chart?'
-                  : 'Ask Hunter'}
+                Ready to train from the live chart?
               </motion.h2>
               <motion.p
                 className="mai-chat__empty-sub"
@@ -1774,9 +1791,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.14, duration: 0.4 }}
               >
-                {isMentor
-                  ? 'I will punch process quizzes from Market Condition — answer, get graded, level up.'
-                  : 'Pick a setup below, attach a chart, get Bias · Entry · SL · Target · WAIT / NO TRADE.'}
+                I will punch process quizzes from Market Condition — answer, get graded, level up.
               </motion.p>
 
               <div className="mai-chat__suggestions" role="list">
@@ -1899,6 +1914,12 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                             </div>
                           ))}
                         </div>
+                      ) : !isMentor && message.text ? (
+                        <WolfSetupAnalysisCard
+                          text={message.text}
+                          hindi={useHiPrompts}
+                          onSpeak={speakText}
+                        />
                       ) : (
                         <ChatMarkdown text={message.text} />
                       )}
@@ -1918,6 +1939,9 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           </AnimatePresence>
 
           {isThinking ? (
+            isAnalyzingChart && !isMentor ? (
+              <WolfVisionScan active hindi={useHiPrompts} />
+            ) : (
             <motion.div
               className="mai-chat__row mai-chat__row--ai"
               initial={{ opacity: 0, y: 10 }}
@@ -1941,6 +1965,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                     : 'Preparing the analysis…'}
               </div>
             </motion.div>
+            )
           ) : null}
 
           <div ref={messagesEndRef} />

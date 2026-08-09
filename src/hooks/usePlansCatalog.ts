@@ -5,7 +5,7 @@ import { fetchPublicPlans } from '../services/plansCatalog';
 export type PlansCatalogState = {
   plans: Plan[];
   trialDays: number;
-  skipOtp: boolean;
+  skipOtp?: boolean;
   loading: boolean;
 };
 

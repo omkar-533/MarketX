@@ -59,14 +59,14 @@ Exact Entry / SL / Target prices ONLY when the price scale is clearly readable; 
 If chart quality is poor (cropped, blurry, no candles/scale): say Chart quality insufficient + what to re-upload — do NOT hallucinate a full setup.
 Educational / informational only — not financial advice.`;
 
-export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (use these headings exactly — short bullets):
+export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (use these headings exactly — short bullets, visual-first):
 
 WOLF AI · <MODE NAME> ANALYSIS
 
 Market Bias: LONG BIAS | SHORT BIAS | WAIT | NO TRADE
 Setup: <one-line setup name>
 Setup Status: CONFIRMED | WAITING FOR CONFIRMATION | DEVELOPING | INVALIDATED | NO TRADE
-Key Observation: <1–2 lines from visible chart>
+Key Observation: <1 line from visible chart>
 Potential Direction: LONG | SHORT | NONE
 Entry Condition: <conditional — not "buy now">
 Stop Loss Logic: <logic, exact price only if readable>
@@ -79,7 +79,8 @@ Why:
 3. …
 Assumptions / Unknown: <explicit>
 
-Under ~280 words. No wolfchart block. No emoji spam (optional one status marker max).`;
+Hard rules: under ~180 words. No essays. No wolfchart block. No emoji spam.
+Write so a UI can show Status → Entry/SL/Target/Invalidation → Why steps without long prose.`;
 
 const MODE_PROMPTS = {
   support_resistance: `STRATEGY: SUPPORT / RESISTANCE ONLY.
