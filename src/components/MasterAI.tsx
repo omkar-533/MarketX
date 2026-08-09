@@ -1374,8 +1374,74 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     }
   };
 
+  const hunterReplies = useMemo(
+    () =>
+      messages.filter(
+        (m) => m.role === 'trafi' && m.id !== 'welcome' && Boolean(m.text?.trim()),
+      ),
+    [messages],
+  );
+  const latestHunterReply = hunterReplies[hunterReplies.length - 1] || null;
+  const [viewingAiId, setViewingAiId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (latestHunterReply?.id) setViewingAiId(latestHunterReply.id);
+  }, [latestHunterReply?.id]);
+
+  const viewingHunter =
+    hunterReplies.find((m) => m.id === viewingAiId) || latestHunterReply;
+
+  const analysisTrail = useMemo(
+    () =>
+      hunterReplies.slice(-8).map((m) => {
+        const ko = m.text.match(/Key Observation:\s*(.+)/i)?.[1]?.trim();
+        const bias = m.text.match(/Market Bias:\s*(.+)/i)?.[1]?.trim();
+        const label = (
+          ko ||
+          bias ||
+          m.text.replace(/\s+/g, ' ').trim() ||
+          'ANALYSIS'
+        )
+          .split(/\s+/)
+          .slice(0, 3)
+          .join(' ')
+          .toUpperCase();
+        return { id: m.id, label: label.slice(0, 18) || 'WOLF' };
+      }),
+    [hunterReplies],
+  );
+
+  const sessionImageUrl =
+    viewingHunter?.imageUrl ||
+    chartSessionRef.current?.imageUrl ||
+    selectedImage ||
+    [...messages].reverse().find((m) => m.imageUrl)?.imageUrl ||
+    null;
+
+  const splitActive =
+    !isMentor &&
+    Boolean(sessionImageUrl) &&
+    (Boolean(viewingHunter) || isThinking || isAnalyzingChart);
+
+  const splitScanText = [
+    'WOLF AI · SCANNING',
+    'Market Bias: WAIT',
+    'Setup: Reading chart',
+    'Setup Status: WAITING FOR CONFIRMATION',
+    'Key Observation: Scanning your screenshot.',
+    'Next Action: Hold — analysis arriving.',
+    'Entry Condition: Pending',
+    'Stop Loss Logic: Pending',
+    'Target Logic: Pending',
+    'Invalidation: Pending',
+    'Evidence Score: 0 / 100',
+    'Why:',
+    '1. Chart under review',
+    'Assumptions / Unknown: AI still reading',
+  ].join('\n');
+
   return (
-    <div className="mai-chat">
+    <div className={`mai-chat ${splitActive ? 'mai-chat--split' : ''}`}>
       <header className="mai-chat__topbar">
         <div className="mai-chat__brand">
           <div className="mai-chat__avatar" aria-hidden>
@@ -1700,6 +1766,48 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {splitActive ? (
+        <div className="mai-chat__split-body" aria-label="Wolf split desk">
+          {(isThinking || isAnalyzingChart) && !viewingHunter ? (
+            <div className="wolf-split__analyzing" role="status">
+              Analyzing…
+            </div>
+          ) : isThinking || isAnalyzingChart ? (
+            <div className="wolf-split__analyzing wolf-split__analyzing--soft" role="status">
+              Analyzing…
+            </div>
+          ) : null}
+          <WolfResponseCanvas
+            text={viewingHunter?.text || splitScanText}
+            userAsk={
+              [...messages]
+                .reverse()
+                .find((m) => m.role === 'user')?.text || ''
+            }
+            hindi={useHiPrompts}
+            onSpeak={speakText}
+            imageUrl={sessionImageUrl}
+            levels={
+              viewingHunter?.shotMarks?.levels ||
+              chartSessionRef.current?.shotMarks?.levels
+            }
+            shapes={
+              viewingHunter?.shotMarks?.shapes ||
+              chartSessionRef.current?.shotMarks?.shapes
+            }
+            evidence={viewingHunter?.evidence}
+            sessionEvidence={chartSessionRef.current?.evidence}
+            onWhatIf={(prompt) => void handleSend(prompt)}
+            trail={analysisTrail}
+            activeTrailId={viewingHunter?.id || null}
+            onTrailSelect={(id) => setViewingAiId(id)}
+            hideAskDock
+            symbolLabel={tradingViewSymbolLabel(chartSymbol)}
+            timeframeLabel={String(chartInterval)}
+          />
         </div>
       ) : null}
 
@@ -2278,17 +2386,21 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   ? hindi
                     ? 'सुन रहा हूँ…'
                     : 'Listening…'
-                  : selectedImage
+                  : splitActive
                     ? hindi
-                      ? 'Prompt dropdown se choose karo ya likho…'
-                      : 'Pick from desk prompts or write…'
-                    : hindi
-                      ? isMentor
-                        ? 'Mentor AI se train karo…'
-                        : 'Wolf AI se poochho…'
-                      : isMentor
-                        ? 'Answer Mentor AI…'
-                        : `Message ${AI_PRODUCT_NAME}…`
+                      ? 'Is chart pe Wolf se poochho…'
+                      : 'Ask Wolf about this chart…'
+                    : selectedImage
+                      ? hindi
+                        ? 'Prompt dropdown se choose karo ya likho…'
+                        : 'Pick from desk prompts or write…'
+                      : hindi
+                        ? isMentor
+                          ? 'Mentor AI se train karo…'
+                          : 'Wolf AI se poochho…'
+                        : isMentor
+                          ? 'Answer Mentor AI…'
+                          : `Message ${AI_PRODUCT_NAME}…`
               }
               className="mai-chat__textarea"
             disabled={isListening}

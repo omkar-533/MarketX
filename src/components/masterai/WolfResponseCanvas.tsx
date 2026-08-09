@@ -3,7 +3,7 @@
  * Never renders raw chat bubbles / markdown as the primary answer.
  */
 
-import WolfSetupAnalysisCard from './WolfSetupAnalysisCard';
+import WolfSetupAnalysisCard, { type WolfTrailItem } from './WolfSetupAnalysisCard';
 import { normalizeVisualResponse } from '../../utils/visualResponseNormalizer';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import type { WolfEvidenceItem } from '../../utils/wolfEvidence';
@@ -20,6 +20,12 @@ type Props = {
   evidence?: WolfEvidenceItem[];
   sessionEvidence?: WolfEvidenceItem[];
   onWhatIf?: (prompt: string) => void;
+  trail?: WolfTrailItem[];
+  activeTrailId?: string | null;
+  onTrailSelect?: (id: string) => void;
+  hideAskDock?: boolean;
+  symbolLabel?: string;
+  timeframeLabel?: string;
 };
 
 export default function WolfResponseCanvas({
@@ -33,6 +39,12 @@ export default function WolfResponseCanvas({
   evidence = [],
   sessionEvidence = [],
   onWhatIf,
+  trail,
+  activeTrailId,
+  onTrailSelect,
+  hideAskDock = true,
+  symbolLabel,
+  timeframeLabel,
 }: Props) {
   const visual = normalizeVisualResponse({
     text,
@@ -45,7 +57,6 @@ export default function WolfResponseCanvas({
     sessionEvidence,
   });
 
-  // Same desk component — always fed a parseable template + chart session.
   return (
     <div className="wolf-response-canvas" data-wolf-type={visual.type}>
       {!visual.imageUrl ? (
@@ -62,6 +73,12 @@ export default function WolfResponseCanvas({
         shapes={visual.shapes}
         evidence={visual.evidence.length ? visual.evidence : sessionEvidence}
         onWhatIf={onWhatIf}
+        trail={trail}
+        activeTrailId={activeTrailId}
+        onTrailSelect={onTrailSelect}
+        hideAskDock={hideAskDock}
+        symbolLabel={symbolLabel}
+        timeframeLabel={timeframeLabel}
       />
     </div>
   );
