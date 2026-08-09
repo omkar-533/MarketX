@@ -155,6 +155,10 @@ export default function WolfSetupAnalysisCard({
   const [focusId, setFocusId] = useState<string | null>(null);
   const [focusOnly, setFocusOnly] = useState(false);
   const [followWolf, setFollowWolf] = useState(false);
+  const [followState, setFollowState] = useState<
+    'idle' | 'following' | 'paused' | 'completed' | 'error'
+  >('idle');
+  const [tourStep, setTourStep] = useState(0);
   const [drawMode, setDrawMode] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawTool | null>('line');
   const [drawings, setDrawings] = useState<UserDrawing[]>([]);
@@ -201,6 +205,32 @@ export default function WolfSetupAnalysisCard({
       evidence: undefined as WolfEvidenceItem | undefined,
     }));
   }, [tabs, checklist]);
+
+  const tourSteps = useMemo(() => {
+    const fromLane = evidenceLane
+      .filter((n) => n.evidence?.bbox)
+      .slice(0, 5)
+      .map((n) => ({
+        id: n.id,
+        label: n.label,
+        line: hindi
+          ? `YEH ${n.label.toUpperCase()} — isi pe focus.`
+          : `THIS IS THE ${n.label.toUpperCase()} WOLF IS WATCHING.`,
+        bbox: n.evidence!.bbox,
+        evidence: n.evidence,
+      }));
+    if (fromLane.length >= 1) return fromLane;
+    return (evidence || [])
+      .filter((e) => e.bbox)
+      .slice(0, 5)
+      .map((e) => ({
+        id: e.id,
+        label: e.title,
+        line: hindi ? `YEH ${e.title}` : `THIS IS THE ${e.title.toUpperCase()} WOLF IS WATCHING.`,
+        bbox: e.bbox,
+        evidence: e,
+      }));
+  }, [evidenceLane, evidence, hindi]);
 
   const primaryRisk = useMemo(
     () =>
@@ -356,6 +386,7 @@ export default function WolfSetupAnalysisCard({
         : `THIS is the ${label} I'm watching.`,
     );
     setActionError(null);
+    canvasRef.current?.focusNormalized(match.bbox, true);
   };
 
   const showFullChart = () => {
@@ -416,6 +447,69 @@ export default function WolfSetupAnalysisCard({
     if (!evidenceLane.length) return;
     setPhase('live');
     goWhyStep(0);
+  };
+
+  const applyTourStep = (step: number) => {
+    const s = Math.max(0, Math.min(tourSteps.length - 1, step));
+    setTourStep(s);
+    const item = tourSteps[s];
+    if (!item?.bbox) {
+      setFollowState('error');
+      setActionError(hindi ? 'Wolf us region pin nahi kar paya.' : "Wolf couldn't locate that region.");
+      return;
+    }
+    setFollowWolf(true);
+    setFollowState('following');
+    setPhase('live');
+    setFocusOnly(true);
+    setFocusId(item.evidence?.id || item.id);
+    if (tabs.some((t) => t.id === item.id)) setActiveTab(item.id);
+    setActionHint(item.line);
+    setActionError(null);
+    canvasRef.current?.focusNormalized(item.bbox, true);
+  };
+
+  const startFollowTour = () => {
+    if (!tourSteps.length) {
+      setFollowState('error');
+      setActionError(
+        hindi
+          ? 'Follow Wolf ke liye chart marks chahiye.'
+          : 'Wolf needs chart marks before a guided tour.',
+      );
+      return;
+    }
+    setWhyWalk(false);
+    setSheet(null);
+    applyTourStep(0);
+  };
+
+  const pauseFollowTour = () => {
+    setFollowState('paused');
+    setFollowWolf(false);
+  };
+
+  const resumeFollowTour = () => {
+    applyTourStep(tourStep);
+  };
+
+  const exitFollowTour = () => {
+    setFollowState('idle');
+    setFollowWolf(false);
+    setTourStep(0);
+    setFocusOnly(false);
+    setActionHint(null);
+    canvasRef.current?.reset();
+  };
+
+  const nextFollowTour = () => {
+    if (tourStep >= tourSteps.length - 1) {
+      setFollowState('completed');
+      setFollowWolf(false);
+      setActionHint(hindi ? 'Tour complete.' : 'Wolf tour complete.');
+      return;
+    }
+    applyTourStep(tourStep + 1);
   };
 
   const showRiskOnChart = () => {
@@ -568,8 +662,23 @@ export default function WolfSetupAnalysisCard({
                   imageUrl={imageUrl}
                   levels={levels}
                   shapes={shapes}
+                  marks={evidence}
                   focusBbox={focusItem?.bbox || null}
                   focusLabel={focusItem?.title || null}
+                  dimUnfocused={Boolean(followWolf || focusOnly || whyWalk)}
+                  onMarkClick={(id) => {
+                    const item = evidence.find((e) => e.id === id);
+                    if (!item) return;
+                    setFollowWolf(true);
+                    setFocusId(id);
+                    setFocusOnly(true);
+                    setActionHint(
+                      hindi
+                        ? `YEH ${item.title} — isi pe nazar.`
+                        : `THIS is the ${item.title} I'm watching.`,
+                    );
+                    canvasRef.current?.focusNormalized(item.bbox, true);
+                  }}
                 />
               ) : (
                 <div className="wolf-desk__empty">Upload a chart.</div>
@@ -598,6 +707,9 @@ export default function WolfSetupAnalysisCard({
                   ))}
                   <button type="button" onClick={() => canvasRef.current?.undoDrawing()}>
                     UNDO
+                  </button>
+                  <button type="button" onClick={() => canvasRef.current?.clearDrawings()}>
+                    CLEAR
                   </button>
                   <button
                     type="button"
@@ -678,6 +790,46 @@ export default function WolfSetupAnalysisCard({
             </AnimatePresence>
 
             <AnimatePresence>
+              {(followState === 'following' || followState === 'paused') && tourSteps[tourStep] ? (
+                <motion.div
+                  className="wolf-split__guide"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                >
+                  <div className="wolf-split__guide-k">
+                    FOLLOW WOLF · {tourStep + 1}/{tourSteps.length}
+                    {followState === 'paused' ? ' · PAUSED' : ''}
+                  </div>
+                  <p>{tourSteps[tourStep]?.line}</p>
+                  <div className="wolf-split__guide-nav">
+                    <button
+                      type="button"
+                      disabled={tourStep <= 0}
+                      onClick={() => applyTourStep(tourStep - 1)}
+                    >
+                      ← BACK
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        followState === 'paused' ? resumeFollowTour() : pauseFollowTour()
+                      }
+                    >
+                      {followState === 'paused' ? '▶ RESUME' : '⏸ PAUSE'}
+                    </button>
+                    <button type="button" onClick={nextFollowTour}>
+                      NEXT →
+                    </button>
+                    <button type="button" className="is-ghost" onClick={exitFollowTour}>
+                      EXIT
+                    </button>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <AnimatePresence>
               {sheet === 'radial' && radial ? (
                 <motion.div
                   className="wolf-desk__radial wolf-split__radial"
@@ -719,12 +871,32 @@ export default function WolfSetupAnalysisCard({
           <div className="wolf-split__cam">
             <WolfActButton
               id="FOLLOW_WOLF"
-              state={followWolf ? 'active' : 'default'}
-              className={followWolf ? 'is-on' : ''}
-              onClick={() => setFollowWolf((v) => !v)}
-              title="Let Wolf move the chart camera"
+              state={
+                followState === 'following'
+                  ? 'active'
+                  : followState === 'error'
+                    ? 'error'
+                    : followState === 'completed'
+                      ? 'success'
+                      : 'default'
+              }
+              className={followState === 'following' || followState === 'paused' ? 'is-on' : ''}
+              onClick={() => {
+                if (followState === 'idle' || followState === 'completed' || followState === 'error') {
+                  startFollowTour();
+                  return;
+                }
+                if (followState === 'following') {
+                  pauseFollowTour();
+                  return;
+                }
+                if (followState === 'paused') {
+                  resumeFollowTour();
+                }
+              }}
+              title="Guided analysis tour — Wolf moves the chart"
             >
-              {wolfActionLabel('FOLLOW_WOLF', { following: followWolf })}
+              {wolfActionLabel('FOLLOW_WOLF', { followState, following: followWolf })}
             </WolfActButton>
             <WolfActButton
               id="DRAW"

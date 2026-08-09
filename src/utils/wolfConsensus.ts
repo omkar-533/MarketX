@@ -13,6 +13,8 @@ export type AnalysisLayer = {
   text: string;
   analysis: WolfSetupAnalysis | null;
   evidenceIds: string[];
+  /** Fingerprint of evidence types for lens-difference checks. */
+  evidenceTypes?: string[];
   createdAt: number;
   visible: boolean;
 };

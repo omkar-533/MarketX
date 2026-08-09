@@ -48,7 +48,7 @@ export function validateAnnotations(
   items: WolfEvidenceItem[],
   opts?: { showAll?: boolean; maxVisible?: number; lens?: string },
 ): WolfEvidenceItem[] {
-  const max = opts?.maxVisible ?? 3;
+  const max = opts?.maxVisible ?? 7;
   const cleaned = (items || [])
     .filter((item) => {
       if (!item?.bbox) return false;

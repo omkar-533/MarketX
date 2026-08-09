@@ -127,14 +127,29 @@ export const WOLF_ACTIONS: Record<WolfActionId, WolfActionDef> = {
 
 export function wolfActionLabel(
   id: WolfActionId,
-  opts?: { following?: boolean; drawing?: boolean; fullscreen?: boolean; loading?: boolean },
+  opts?: {
+    following?: boolean;
+    drawing?: boolean;
+    fullscreen?: boolean;
+    loading?: boolean;
+    followState?: 'idle' | 'following' | 'paused' | 'completed' | 'error';
+  },
 ): string {
   const def = WOLF_ACTIONS[id];
   if (id === 'FOLLOW_WOLF') {
-    if (opts?.following) return '⏸ STOP FOLLOWING';
-    return '👁 FOLLOW WOLF';
+    switch (opts?.followState) {
+      case 'following':
+        return '⏸ PAUSE WOLF';
+      case 'paused':
+        return '▶ RESUME WOLF';
+      case 'completed':
+        return '✓ WOLF TOUR COMPLETE';
+      case 'error':
+        return "⚠ COULDN'T FOCUS";
+      default:
+        return opts?.following ? '⏸ PAUSE WOLF' : '👁 FOLLOW WOLF';
+    }
   }
-  // FOLLOWING WOLF is a transient verbal status; button stays STOP FOLLOWING while active.
   if (id === 'DRAW') {
     return opts?.drawing ? '✏ DRAWING…' : def.shortLabel || def.label;
   }

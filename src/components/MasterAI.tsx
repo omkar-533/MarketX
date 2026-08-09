@@ -141,6 +141,7 @@ import {
 } from '../constants/wolfAnalysisModes';
 import { parseChartIdentity, chartIdentityLabel, type ChartIdentity } from '../utils/chartIdentity';
 import { validateAnnotations } from '../utils/annotationValidator';
+import { validateLensDifference } from '../utils/lensSimilarity';
 import {
   buildConsensusReport,
   makeLayerId,
@@ -1306,9 +1307,19 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         }
       }
       evidence = validateAnnotations(evidence, {
-        maxVisible: 3,
+        maxVisible: 7,
         lens: analysisMode,
       });
+
+      const similarity = validateLensDifference({
+        currentMode: analysisMode,
+        currentAnalysis: parseWolfSetupReply(responseText),
+        currentEvidence: evidence,
+        layers: analysisLayers,
+      });
+      if (similarity.warning && similarity.reasons[0]) {
+        responseText = `${responseText}\n\n⚠️ LENS_SIMILARITY_WARNING: ${similarity.reasons[0]}`;
+      }
 
       if (!isMentor) {
         const layer: AnalysisLayer = {
@@ -1318,6 +1329,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           text: responseText,
           analysis: parseWolfSetupReply(responseText),
           evidenceIds: evidence.map((e) => e.id),
+          evidenceTypes: evidence.map((e) => e.type),
           createdAt: Date.now(),
           visible: true,
         };

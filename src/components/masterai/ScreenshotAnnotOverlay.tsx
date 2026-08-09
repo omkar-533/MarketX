@@ -1,15 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
-import type { NormalizedBBox } from '../../utils/wolfEvidence';
+import type { NormalizedBBox, WolfEvidenceItem } from '../../utils/wolfEvidence';
 
 type Props = {
   imageUrl: string;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
+  /** Wolf evidence markings (normalized 0–1). */
+  marks?: WolfEvidenceItem[];
   highlightLabel?: string | null;
-  /** Normalized 0–1 focus region from Wolf Evidence (SHOW ON CHART). */
   focusBbox?: NormalizedBBox | null;
   focusLabel?: string | null;
+  dimUnfocused?: boolean;
+  showAllMarks?: boolean;
+  onMarkClick?: (id: string) => void;
 };
 
 function collectPrices(levels: ChartLevel[], shapes: ChartShape[]): number[] {
@@ -30,17 +34,28 @@ function toneClass(tone?: string): string {
   return 'is-neutral';
 }
 
-/** Maps wolfchart prices onto the screenshot (min–max normalize). */
+function markTone(type: string): string {
+  if (/entry|target|support|bos|liquidity/.test(type)) return 'bull';
+  if (/invalid|resist|sweep|choch/.test(type)) return 'bear';
+  return 'neutral';
+}
+
+/** Maps wolfchart prices + wolfevidence bboxes onto the screenshot. */
 export default function ScreenshotAnnotOverlay({
   imageUrl,
   levels = [],
   shapes = [],
+  marks = [],
   highlightLabel = null,
   focusBbox = null,
   focusLabel = null,
+  dimUnfocused = false,
+  showAllMarks = false,
+  onMarkClick,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const [expanded, setExpanded] = useState(false);
 
   const prices = useMemo(() => collectPrices(levels, shapes), [levels, shapes]);
   const min = prices.length ? Math.min(...prices) : 0;
@@ -50,10 +65,15 @@ export default function ScreenshotAnnotOverlay({
 
   const yOf = (price: number) => {
     if (!canMap) return 50;
-    // pad 8% so edge levels aren't clipped
     const t = (max - price) / span;
     return 8 + t * 84;
   };
+
+  const visibleMarks = useMemo(() => {
+    const list = marks || [];
+    if (showAllMarks || expanded) return list.slice(0, 12);
+    return list.slice(0, 7);
+  }, [marks, showAllMarks, expanded]);
 
   const legend = useMemo(() => {
     const items: { key: string; label: string; tone: string; y?: number }[] = [];
@@ -75,10 +95,17 @@ export default function ScreenshotAnnotOverlay({
         y: mid != null && canMap ? yOf(mid) : undefined,
       });
     });
-    return items.slice(0, 12);
-  }, [levels, shapes, canMap, min, max]);
+    visibleMarks.forEach((m) => {
+      items.push({
+        key: `m-${m.id}`,
+        label: m.title,
+        tone: markTone(m.type),
+      });
+    });
+    return items.slice(0, 14);
+  }, [levels, shapes, canMap, min, max, visibleMarks]);
 
-  const hasMarks = levels.length > 0 || shapes.length > 0;
+  const hasMarks = levels.length > 0 || shapes.length > 0 || marks.length > 0;
   if (!imageUrl) return null;
 
   return (
@@ -93,6 +120,38 @@ export default function ScreenshotAnnotOverlay({
             setNatural({ w: img.naturalWidth, h: img.naturalHeight });
           }}
         />
+
+        <div className="wolf-shot__marks" aria-label="Wolf marks">
+          {visibleMarks.map((m) => {
+            const isFocus =
+              Boolean(
+                focusBbox &&
+                  Math.abs(m.bbox.x - focusBbox.x) < 0.03 &&
+                  Math.abs(m.bbox.y - focusBbox.y) < 0.03,
+              ) || Boolean(focusLabel && focusLabel === m.title);
+            const dim = dimUnfocused && Boolean(focusBbox) && !isFocus;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className={`wolf-shot__mark wolf-shot__mark--${m.type} ${toneClass(markTone(m.type))} ${
+                  isFocus ? 'is-focus' : ''
+                } ${dim ? 'is-dim' : ''}`}
+                style={{
+                  left: `${m.bbox.x * 100}%`,
+                  top: `${m.bbox.y * 100}%`,
+                  width: `${m.bbox.width * 100}%`,
+                  height: `${m.bbox.height * 100}%`,
+                }}
+                title={m.title}
+                onClick={() => onMarkClick?.(m.id)}
+              >
+                <span className="wolf-shot__mark-lab">{m.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {focusBbox ? (
           <div
             className="wolf-shot__focus"
@@ -106,6 +165,7 @@ export default function ScreenshotAnnotOverlay({
             {focusLabel ? <span className="wolf-shot__focus-lab">{focusLabel}</span> : null}
           </div>
         ) : null}
+
         {canMap ? (
           <svg className="wolf-shot__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
             {shapes.map((s, i) => {
@@ -182,7 +242,8 @@ export default function ScreenshotAnnotOverlay({
             ))}
           </svg>
         ) : null}
-        {!canMap && hasMarks ? (
+
+        {!canMap && (levels.length > 0 || shapes.length > 0) && !marks.length ? (
           <div className="wolf-shot__note">
             Marks listed below — exact overlay needs a clearer price scale on the screenshot.
           </div>
@@ -201,6 +262,13 @@ export default function ScreenshotAnnotOverlay({
               {item.label}
             </li>
           ))}
+          {marks.length > 7 && !expanded && !showAllMarks ? (
+            <li>
+              <button type="button" className="wolf-shot__more" onClick={() => setExpanded(true)}>
+                SHOW MORE
+              </button>
+            </li>
+          ) : null}
         </ul>
       ) : null}
       {natural.w > 0 ? <span className="sr-only">{`${natural.w}×${natural.h}`}</span> : null}

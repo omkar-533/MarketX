@@ -22491,6 +22491,72 @@ body:has(.app-main--terminal-immersive) #root {
   text-overflow: ellipsis;
 }
 
+.wolf-shot__marks {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.wolf-shot__mark {
+  position: absolute;
+  pointer-events: auto;
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid rgba(56, 189, 248, 0.85);
+  background: rgba(56, 189, 248, 0.12);
+  border-radius: 3px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.35);
+}
+.wolf-shot__mark.is-bull {
+  border-color: rgba(52, 211, 153, 0.9);
+  background: rgba(52, 211, 153, 0.12);
+}
+.wolf-shot__mark.is-bear {
+  border-color: rgba(248, 113, 113, 0.9);
+  background: rgba(248, 113, 113, 0.12);
+}
+.wolf-shot__mark.is-focus {
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.55), 0 0 18px rgba(56, 189, 248, 0.35);
+  z-index: 4;
+}
+.wolf-shot__mark.is-dim {
+  opacity: 0.22;
+  filter: saturate(0.4);
+}
+.wolf-shot__mark-lab {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  max-width: 96%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #e2e8f0;
+  background: rgba(2, 6, 23, 0.72);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.wolf-shot__more {
+  appearance: none;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.wolf-canvas.is-drawing {
+  touch-action: none;
+}
+
 @keyframes wolf-shot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.72; }

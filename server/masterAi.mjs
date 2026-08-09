@@ -1552,11 +1552,18 @@ function pickKnowledgeModules(question) {
  * Only what this particular question needs. Shipping the whole rulebook every
  * time cost ~50k tokens a call and left no room for the answer.
  */
-function buildSystemPrompt({ hasImage, question, journal, teaching, lean = false }) {
+function buildSystemPrompt({ hasImage, question, journal, teaching, lean = false, analysisMode = 'auto' }) {
   if (lean) {
     const parts = [OPENROUTER_SYSTEM_PROMPT];
     if (journal) parts.push(JOURNAL_ENGINE.slice(0, 1800));
-    if (hasImage) parts.push(getChartSetupVisionPrompt('auto').slice(0, 2200));
+    if (hasImage) {
+      // CRITICAL: must inject the SELECTED lens — never hardcode AUTO.
+      const lensPrompt = getChartSetupVisionPrompt(analysisMode);
+      parts.push(lensPrompt.slice(0, 4200));
+      parts.push(
+        'LENS DIFFERENCE RULE: Evidence types, key observation wording, entry trigger, and invalidation MUST reflect the SELECTED MODE above. Do not recycle a generic auto answer.',
+      );
+    }
     return parts.join('\n\n');
   }
   const parts = [SYSTEM_PROMPT, CORE_RULES, OPERATING_RULES, OUTPUT_RULES];
@@ -1849,8 +1856,14 @@ function buildMessages({
   const histTurns = lean ? OR_HISTORY_TURNS : HISTORY_TURNS;
   const histChars = lean ? OR_HISTORY_MSG_CHARS : HISTORY_MSG_CHARS;
   const ctx = String(platformContext || '').slice(0, ctxCap);
-  const base = buildSystemPrompt({ hasImage, question, journal, teaching, lean });
-  const visionBlock = hasImage && !lean ? getChartSetupVisionPrompt(analysisMode) : '';
+  const base = buildSystemPrompt({ hasImage, question, journal, teaching, lean, analysisMode });
+  // Always attach lens vision block when image present (lean path already embeds a truncated copy —
+  // still append a compact MODE LOCK reminder so the selected lens cannot be ignored).
+  const visionBlock = hasImage
+    ? lean
+      ? `\nSELECTED ANALYSIS LENS: ${analysisModeDisplayName(analysisMode)}.\nApply ONLY this lens's detection rules from system prompt. Differ entry/invalidation/evidence from other lenses.`
+      : getChartSetupVisionPrompt(analysisMode)
+    : '';
   const system = hasImage
     ? `${base}\n\n${visionBlock}${ctx ? `\n\n${ctx}` : ''}`
     : `${base}\n\n${ctx}`;

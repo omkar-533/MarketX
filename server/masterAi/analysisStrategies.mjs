@@ -121,14 +121,38 @@ Types: liquidity|sweep|structure|bos|choch|support|resistance|entry|invalidation
 bbox = the region that answers the claim. Prefer sequential story regions (liquidity → sweep → BOS → retest) over marking the whole chart. Keep marks small and non-overlapping.`;
 
 const MODE_PROMPTS = {
-  support_resistance: `LENS: SUPPORT / RESISTANCE.
-Zones with multiple reactions; classify major/minor, fresh/tested/broken/reclaimed. Prefer confluence over single touches.
-Do NOT force SMC vocabulary. Entry conditional (e.g. break + retest). WAIT without confirmation.`,
+  support_resistance: `LENS: SUPPORT / RESISTANCE (exclusive focus).
+Prioritize ONLY: horizontal levels · repeated reactions · rejection · breakout · retest · role reversal.
+FORBIDDEN labels for this lens: order block, FVG, EQH/EQL as primary, CHoCH (use "broken level / reclaimed level" instead).
+Story must answer: which level? how many touches? break or hold? what confirms?
+wolfevidence types MUST be mostly support|resistance|breakout|confirmation|entry|invalidation|target.`,
 
-  liquidity: `LENS: LIQUIDITY.
-Equal highs/lows, swing pools, resting vs swept vs unswept. Sweep quality: weak/moderate/strong (penetration, rejection, displacement, context).
-Flow: identify → taken? → reclaim/displacement? → structure response? → setup.
-Sweep without confirmation → WAIT. Never auto-trade every wick.`,
+  liquidity: `LENS: LIQUIDITY (exclusive focus).
+Primary questions: WHERE IS LIQUIDITY? WHAT WAS TAKEN? WHAT REMAINS?
+Prioritize: equal highs/lows · previous H/L · clustered stops · obvious swing liquidity · sweep · reclaim · next liquidity objective.
+Do NOT default to generic "bullish trend" language — liquidity map first.
+wolfevidence types MUST be mostly liquidity|sweep|target|structure|invalidation.
+Flow: identify pool → taken? → reclaim/displacement? → next objective.`,
+
+  price_action: `LENS: PRICE ACTION (exclusive — DO NOT inject SMC concepts).
+Prioritize: swing structure · trend · rejection · candle behavior · breakouts · retests · S/R reaction · consolidation · momentum · failed breakouts · continuation/reversal patterns.
+Allowed unique conclusion vs SMC: "Breakout lacks confirmation" even if the same zone could be called a sweep elsewhere.
+FORBIDDEN primary marks: OB, FVG, EQH/EQL, inducement.
+wolfevidence types MUST be mostly structure|breakout|support|resistance|confirmation|entry|invalidation|target.`,
+
+  smc: `LENS: SMC (exclusive vocabulary when visually defensible).
+MUST prioritize chain: external/internal liquidity → equal H/L → liquidity sweep → displacement → BOS / CHoCH-MSS → order blocks → FVG → premium/discount → inducement (only if clear).
+Story shape REQUIRED: Liquidity sweep → displacement → structure shift → retracement → POI → entry condition.
+FORBIDDEN as primary answer: generic "trend is bullish" without the SMC chain.
+Do NOT invent OB/FVG without visible base/gap.
+wolfevidence types MUST be mostly liquidity|sweep|bos|choch|order_block|fvg|entry|invalidation|target.`,
+
+  mbp: `LENS: MBP METHODOLOGY v1 (strict pillars — not generic bias).
+Order: 1 Context → 2 Liquidity → 3 Structure → 4 Price Action → 5 Confirmation → 6 Entry → 7 Invalidation → 8 Target → 9 R:R if readable.
+Each pillar needs DETECTION + CONFIRMATION + INVALIDATION.
+Any critical pillar fail → WAIT / NO TRADE. Never soft-pass incomplete MBP setups.
+Location quality matters: bullish bias with poor location still WAIT.
+Annotation note which pillars are confirmed vs pending.`,
 
   market_structure: `LENS: MARKET STRUCTURE.
 HH/HL/LH/LL, BOS, CHOCH/MSS, range vs expansion. For each BOS claim: level broken? meaningful close? displacement? reclaim? continuation vs reversal?
@@ -146,14 +170,6 @@ Never reverse solely because price touched S/R. Default WAIT without confirmatio
 Impulse–base–departure; freshness (A/B/C); do not label every consolidation as S/D.
 Entry conditional on reaction at a quality zone.`,
 
-  price_action: `LENS: PRICE ACTION (in context).
-Body/wick/close, rejection, engulfing, compression/expansion — always vs nearby structure/levels.
-Never trade a candle pattern in isolation.`,
-
-  smc: `LENS: SMC.
-Structure, liquidity, BOS/CHOCH, FVG, OB, breaker, mitigation — only with short evidence.
-No clear concept → do NOT invent OB/FVG.`,
-
   ict: `LENS: ICT-style.
 MSS/CHOCH, sweeps, displacement, FVG, premium/discount only if range readable. Evidence required.`,
 
@@ -165,10 +181,6 @@ Compression → expansion, displacement quality, continuation vs exhaustion. Avo
 
   trend: `LENS: TREND.
 HH/HL or LH/LL; healthy pullback vs reversal. WAIT in unclear chops. Adapt to regime (trend/range/volatile).`,
-
-  mbp: `LENS: MBP v1.
-Order: Context → Liquidity → Structure → PA → Confirmation → Entry → Invalidation → Target → R:R.
-Any critical pillar fail → WAIT / NO TRADE. No soft-pass on incomplete setups.`,
 
   auto: `LENS: AUTO — FULL ENGINE, SHOW ONLY WHAT MATTERS.
 Internally run context, structure, liquidity, S/R, PA, displacement, confirmation, location, conflicting evidence.
