@@ -429,7 +429,8 @@ export function getChartVisionPrompt(
     lock,
     `WOLF AI SETUP DESK — mode: ${modeLabel}. Visual trading intelligence — not a signal bot.`,
     'Fill locked template: Market Bias · Setup · Status · Key Observation · Direction · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Assumptions.',
-    'LONG BIAS | SHORT BIAS | WAIT | NO TRADE. Exact prices only if scale readable. Never invent levels. No wolfchart.',
+    'LONG BIAS | SHORT BIAS | WAIT | NO TRADE. Exact prices only if scale readable. Never invent levels.',
+    'After the template, append ONE wolfchart block with readable prices (levels/shapes). Skip the fence if the scale is unclear.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)

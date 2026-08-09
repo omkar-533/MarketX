@@ -1,38 +1,55 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, MapPin, ShieldAlert, Target, OctagonX } from 'lucide-react';
+import { Eye, MapPin, ShieldAlert, Target, OctagonX, Sparkles } from 'lucide-react';
 import {
   parseWolfSetupReply,
   wolfBiasLabel,
   wolfStatusTone,
   type WolfSetupAnalysis,
 } from '../../utils/parseWolfSetupReply';
+import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import ChatMarkdown from '../ChatMarkdown';
+import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
+
+export const WOLF_WHAT_IF_SCENARIOS = [
+  { id: 'breaks', label: 'Price breaks level', prompt: 'Price BREAKS the key level on this chart' },
+  { id: 'holds', label: 'Price holds level', prompt: 'Price HOLDS / rejects at the key level' },
+  { id: 'sweep', label: 'Liquidity swept', prompt: 'Liquidity at the marked pool gets SWEPT' },
+  { id: 'fail_bo', label: 'Breakout fails', prompt: 'The breakout FAILS / is a false break' },
+  { id: 'retest_ok', label: 'Retest succeeds', prompt: 'A retest of the broken level SUCCEEDS' },
+  { id: 'retest_fail', label: 'Retest fails', prompt: 'A retest of the level FAILS' },
+] as const;
 
 type Props = {
   text: string;
   hindi?: boolean;
   onSpeak?: (text: string) => void;
+  imageUrl?: string | null;
+  levels?: ChartLevel[];
+  shapes?: ChartShape[];
+  onWhatIf?: (prompt: string) => void;
 };
 
 function PlanCard({
   icon,
   label,
   body,
+  onFocus,
 }: {
   icon: ReactNode;
   label: string;
   body: string;
+  onFocus?: () => void;
 }) {
   if (!body) return null;
   return (
-    <div className="wolf-plan__card">
+    <button type="button" className="wolf-plan__card" onClick={onFocus}>
       <div className="wolf-plan__card-icon" aria-hidden>
         {icon}
       </div>
       <div className="wolf-plan__card-label">{label}</div>
       <div className="wolf-plan__card-body">{body}</div>
-    </div>
+    </button>
   );
 }
 
@@ -53,21 +70,21 @@ function SetupRadar({ score }: { score: number | null }) {
   );
 }
 
-function WhyWalkthrough({ analysis, hindi }: { analysis: WolfSetupAnalysis; hindi?: boolean }) {
+function WhyWalkthrough({ analysis }: { analysis: WolfSetupAnalysis }) {
   const steps = useMemo(() => {
     const out: { title: string; body: string }[] = [];
     if (analysis.keyObservation) {
-      out.push({ title: hindi ? 'KEY OBSERVATION' : 'KEY OBSERVATION', body: analysis.keyObservation });
+      out.push({ title: 'KEY OBSERVATION', body: analysis.keyObservation });
     }
     analysis.why.forEach((w, i) => {
       out.push({ title: `STEP ${i + 1}`, body: w });
     });
-    if (analysis.entry) out.push({ title: hindi ? 'ENTRY LOGIC' : 'ENTRY', body: analysis.entry });
+    if (analysis.entry) out.push({ title: 'ENTRY', body: analysis.entry });
     if (analysis.invalidation) {
-      out.push({ title: hindi ? 'INVALIDATION' : 'INVALIDATION', body: analysis.invalidation });
+      out.push({ title: 'INVALIDATION', body: analysis.invalidation });
     }
     return out.slice(0, 6);
-  }, [analysis, hindi]);
+  }, [analysis]);
 
   const [step, setStep] = useState(0);
   if (steps.length === 0) return null;
@@ -116,14 +133,69 @@ function WhyWalkthrough({ analysis, hindi }: { analysis: WolfSetupAnalysis; hind
   );
 }
 
-/** Visual-first setup reply: status → plan cards → Show Me Why. Falls back to markdown. */
-export default function WolfSetupAnalysisCard({ text, hindi, onSpeak }: Props) {
+function WhatIfPanel({
+  hindi,
+  onWhatIf,
+}: {
+  hindi?: boolean;
+  onWhatIf: (prompt: string) => void;
+}) {
+  return (
+    <div className="wolf-whatif">
+      <div className="wolf-whatif__head">
+        <Sparkles className="h-3.5 w-3.5" />
+        {hindi ? 'WHAT IF?' : 'WHAT IF?'}
+      </div>
+      <p className="wolf-whatif__sub">
+        {hindi
+          ? 'Scenario analysis — prediction nahi.'
+          : 'Scenario analysis — not a prediction.'}
+      </p>
+      <div className="wolf-whatif__grid">
+        {WOLF_WHAT_IF_SCENARIOS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className="wolf-whatif__btn"
+            onClick={() =>
+              onWhatIf(
+                `[WHAT-IF] Scenario: ${s.prompt}. Reply with the SAME locked headings (Market Bias, Setup, Setup Status, Entry Condition, Stop Loss Logic, Target Logic, Invalidation, Evidence Score, Why). Keep under 120 words. End with a short wolfchart if prices are readable. State this is a conditional scenario only.`,
+              )
+            }
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Visual-first setup reply: annotated shot → status → plan → Why → What-If. */
+export default function WolfSetupAnalysisCard({
+  text,
+  hindi,
+  onSpeak,
+  imageUrl,
+  levels = [],
+  shapes = [],
+  onWhatIf,
+}: Props) {
   const analysis = useMemo(() => parseWolfSetupReply(text), [text]);
   const [showWhy, setShowWhy] = useState(false);
+  const [showWhatIf, setShowWhatIf] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [hiLabel, setHiLabel] = useState<string | null>(null);
 
   if (!analysis) {
-    return <ChatMarkdown text={text} />;
+    return (
+      <div className="wolf-setup">
+        {imageUrl ? (
+          <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} />
+        ) : null}
+        <ChatMarkdown text={text} />
+      </div>
+    );
   }
 
   const tone = wolfStatusTone(analysis.status, analysis.bias);
@@ -140,6 +212,15 @@ export default function WolfSetupAnalysisCard({ text, hindi, onSpeak }: Props) {
 
   return (
     <div className={`wolf-setup wolf-setup--${tone}`}>
+      {imageUrl ? (
+        <ScreenshotAnnotOverlay
+          imageUrl={imageUrl}
+          levels={levels}
+          shapes={shapes}
+          highlightLabel={hiLabel}
+        />
+      ) : null}
+
       <div className="wolf-setup__status" role="status">
         <span className="wolf-setup__status-dot" aria-hidden />
         <span>{statusLine}</span>
@@ -157,49 +238,52 @@ export default function WolfSetupAnalysisCard({ text, hindi, onSpeak }: Props) {
           icon={<MapPin className="h-4 w-4" />}
           label="ENTRY"
           body={analysis.entry}
+          onFocus={() => setHiLabel('ENTRY ZONE')}
         />
         <PlanCard
           icon={<ShieldAlert className="h-4 w-4" />}
           label="SL"
           body={analysis.stopLoss}
+          onFocus={() => setHiLabel(analysis.stopLoss.slice(0, 24))}
         />
         <PlanCard
           icon={<Target className="h-4 w-4" />}
           label="TARGET"
           body={analysis.target}
+          onFocus={() => setHiLabel(null)}
         />
         <PlanCard
           icon={<OctagonX className="h-4 w-4" />}
           label="INVALIDATION"
           body={analysis.invalidation}
+          onFocus={() => setHiLabel(null)}
         />
       </div>
 
       <div className="wolf-setup__actions">
         <button type="button" className="wolf-setup__btn" onClick={() => setShowWhy((v) => !v)}>
           <Eye className="h-3.5 w-3.5" />
-          {showWhy ? (hindi ? 'Hide' : 'Hide walkthrough') : hindi ? 'SHOW ME WHY' : 'SHOW ME WHY'}
+          {showWhy ? 'Hide walkthrough' : 'SHOW ME WHY'}
         </button>
+        {onWhatIf ? (
+          <button type="button" className="wolf-setup__btn" onClick={() => setShowWhatIf((v) => !v)}>
+            <Sparkles className="h-3.5 w-3.5" />
+            {showWhatIf ? 'Hide What-If' : 'WHAT IF?'}
+          </button>
+        ) : null}
         {onSpeak ? (
           <button
             type="button"
             className="wolf-setup__btn wolf-setup__btn--ghost"
             onClick={() =>
               onSpeak(
-                [
-                  statusLine,
-                  analysis.setup,
-                  analysis.keyObservation,
-                  analysis.entry && `Entry: ${analysis.entry}`,
-                  analysis.stopLoss && `SL: ${analysis.stopLoss}`,
-                  analysis.target && `Target: ${analysis.target}`,
-                ]
+                [statusLine, analysis.setup, analysis.keyObservation, analysis.entry, analysis.stopLoss, analysis.target]
                   .filter(Boolean)
                   .join('. '),
               )
             }
           >
-            {hindi ? 'EXPLAIN' : 'EXPLAIN'}
+            EXPLAIN
           </button>
         ) : null}
         <button type="button" className="wolf-setup__btn wolf-setup__btn--ghost" onClick={() => setShowRaw((v) => !v)}>
@@ -214,7 +298,19 @@ export default function WolfSetupAnalysisCard({ text, hindi, onSpeak }: Props) {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <WhyWalkthrough analysis={analysis} hindi={hindi} />
+            <WhyWalkthrough analysis={analysis} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showWhatIf && onWhatIf ? (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <WhatIfPanel hindi={hindi} onWhatIf={onWhatIf} />
           </motion.div>
         ) : null}
       </AnimatePresence>

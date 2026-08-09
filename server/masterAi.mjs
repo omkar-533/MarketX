@@ -68,7 +68,8 @@ When a live chart is open or user asks to mark/draw, end with ONE wolfchart JSON
 Tools: trend, ray, hline, hray, vline, zone, fib, label, arrow, callout. Use real prices from context/screenshot only — never copy placeholder numbers.
 
 Journal Mode: analyze only provided journal facts; never invent trades.
-Screenshot analysis: use the locked Bias/Setup/Status/Entry Condition/SL Logic/Target Logic/Invalidation/Evidence/Why template; WAIT/NO TRADE allowed.`;
+Screenshot analysis: use the locked Bias/Setup/Status/Entry Condition/SL Logic/Target Logic/Invalidation/Evidence/Why template; WAIT/NO TRADE allowed.
+After the template on screenshots, append ONE wolfchart fence when prices are readable — never invent.`;
 
 const SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Wolf AI), running WOLF AI — Institutional Trading Analyst System v1.0.
 Spoken name: Hunter. Do not rename yourself. Never call the product Trafi or Analyse AI — the product name is Wolf AI.
@@ -2451,7 +2452,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? `Task: WOLF AI SETUP ANALYSIS (${analysisModeDisplayName(analysisMode)}). Chart screenshot only. Fill locked template: Bias · Setup · Status · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why. Allow WAIT / NO TRADE. Exact prices only if scale readable. Under ~280 words. No wolfchart.`
+        ? `Task: WOLF AI SETUP ANALYSIS (${analysisModeDisplayName(analysisMode)}). Chart screenshot only. Fill locked template: Bias · Setup · Status · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why. Allow WAIT / NO TRADE. Exact prices only if scale readable. Under ~180 words. AFTER the template, append a wolfchart with levels/shapes using only readable prices (zones for entry/SL/invalidation, hray/hline for S/R/liquidity). If prices are unclear — skip inventing numbers, prose only.`
         : shortChat
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
@@ -2489,7 +2490,7 @@ export function createMasterAiRouter(apiKey) {
                     : 'Task: answer in 3–6 short lines as market analyst. Under ~80 words. No Entry/Stop/Target. No essays.';
 
       let textBlock = hasImage
-        ? `[You are Hunter — Wolf AI visual setup analyst. ${langLine} Analyze the screenshot with the SELECTED setup framework. Structured Bias/Entry/SL/Target logic + WAIT/NO TRADE. Exact prices only if readable. No wolfchart.]\n[${taskLine}]\n\n${userTextBase}`
+        ? `[You are Hunter — Wolf AI visual setup analyst. ${langLine} Analyze the screenshot with the SELECTED setup framework. Structured Bias/Entry/SL/Target logic + WAIT/NO TRADE. Exact prices only if readable. After the locked template, append a wolfchart using readable prices only.]\n[${taskLine}]\n\n${userTextBase}`
         : `[You are Hunter — senior institutional market analyst / live trading mentor at Wolf Trade AI, not a confused chatbot and not a signal bot. ${langLine} Be decisive with evidence. Answer the exact ask in THIS reply. Keep replies SHORT and well-spaced. Prefer labeled short lines over essays. Avoid heavy ** markdown walls. Probabilistic language. Never buy/sell/entry/stop/target.]\n[${taskLine}]\n\n${userTextBase}`;
       if (mentorDesk || mentorChart || mentorCoach || mentorLab || mentorLive || mentorMaster) {
         textBlock += `\n\n${MENTOR_DESK_HINT}`;
@@ -2561,7 +2562,7 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
-        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Follow the system strategy rules + locked RESPONSE TEMPLATE (Bias, Setup, Status, Entry Condition, SL Logic, Target Logic, Invalidation, Evidence Score, Why). Do NOT append a wolfchart block.`;
+        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Follow the system strategy rules + locked RESPONSE TEMPLATE (Bias, Setup, Status, Entry Condition, SL Logic, Target Logic, Invalidation, Evidence Score, Why). Then append ONE wolfchart fence with readable prices only (never invent). Labels like SUPPORT / RESISTANCE / ENTRY ZONE / INVALIDATION when visible.`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (

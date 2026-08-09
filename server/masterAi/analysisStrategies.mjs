@@ -79,8 +79,9 @@ Why:
 3. …
 Assumptions / Unknown: <explicit>
 
-Hard rules: under ~180 words. No essays. No wolfchart block. No emoji spam.
-Write so a UI can show Status → Entry/SL/Target/Invalidation → Why steps without long prose.`;
+Hard rules: under ~180 words before the fence. No essays. Optional one status marker max.
+After the template, append ONE \`\`\`wolfchart\`\`\` block when prices are readable — levels/shapes for S/R, liquidity, entry zone, invalidation. Never invent prices. If scale unreadable, omit the fence.
+Write so a UI can show Status → Entry/SL/Target/Invalidation → Why steps → annotated screenshot.`;
 
 const MODE_PROMPTS = {
   support_resistance: `STRATEGY: SUPPORT / RESISTANCE ONLY.

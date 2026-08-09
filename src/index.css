@@ -22340,3 +22340,167 @@ body:has(.app-main--terminal-immersive) #root {
     grid-template-columns: 1fr;
   }
 }
+
+/* Screenshot annotation overlay + What-If */
+.wolf-shot {
+  margin-bottom: 0.75rem;
+}
+
+.wolf-shot__frame {
+  position: relative;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #020617;
+}
+
+.wolf-shot__img {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  background: #020617;
+}
+
+.wolf-shot__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.wolf-shot__zone {
+  fill: rgba(148, 163, 184, 0.18);
+  stroke: rgba(226, 232, 240, 0.45);
+  stroke-width: 0.35;
+}
+
+.wolf-shot__zone.is-bull { fill: rgba(34, 197, 94, 0.18); stroke: rgba(134, 239, 172, 0.7); }
+.wolf-shot__zone.is-bear { fill: rgba(239, 68, 68, 0.18); stroke: rgba(252, 165, 165, 0.7); }
+.wolf-shot__zone.is-hi,
+.wolf-shot__line.is-hi {
+  filter: drop-shadow(0 0 2px rgba(232, 197, 71, 0.9));
+}
+
+.wolf-shot__line {
+  fill: none;
+  stroke: rgba(226, 232, 240, 0.75);
+  stroke-width: 0.45;
+}
+
+.wolf-shot__line.is-bull { stroke: #86efac; }
+.wolf-shot__line.is-bear { stroke: #fca5a5; }
+.wolf-shot__line--diag { stroke-dasharray: 1.5 1.2; }
+
+.wolf-shot__label {
+  font-size: 2.4px;
+  fill: #e2e8f0;
+  font-weight: 700;
+}
+.wolf-shot__label.is-bull { fill: #86efac; }
+.wolf-shot__label.is-bear { fill: #fca5a5; }
+
+.wolf-shot__note {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(2, 6, 23, 0.78);
+  color: #cbd5e1;
+  font-size: 0.68rem;
+}
+
+.wolf-shot__legend {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.wolf-shot__chip {
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: var(--tf-text-muted);
+}
+
+.wolf-shot__chip.is-bull { color: #86efac; border-color: rgba(134, 239, 172, 0.35); }
+.wolf-shot__chip.is-bear { color: #fca5a5; border-color: rgba(252, 165, 165, 0.35); }
+.wolf-shot__chip.is-hi {
+  color: #0f172a;
+  background: #e8c547;
+  border-color: transparent;
+}
+
+.wolf-plan__card {
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.wolf-plan__card:hover {
+  border-color: rgba(232, 197, 71, 0.45);
+}
+
+.wolf-whatif {
+  margin-top: 0.55rem;
+  padding: 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.wolf-whatif__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #e8c547;
+}
+
+.wolf-whatif__sub {
+  margin: 0.35rem 0 0.65rem;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+
+.wolf-whatif__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.wolf-whatif__btn {
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--tf-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wolf-whatif__btn:hover {
+  border-color: rgba(232, 197, 71, 0.5);
+  color: #e8c547;
+}
+
+@media (max-width: 560px) {
+  .wolf-whatif__grid {
+    grid-template-columns: 1fr;
+  }
+}

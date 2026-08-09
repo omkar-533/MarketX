@@ -26,6 +26,11 @@ export interface ChatMessage {
   timestamp: Date;
   imageUrl?: string;
   chart?: ChatChartAttachment;
+  /** Screenshot desk: wolfchart marks drawn over the uploaded chart image. */
+  shotMarks?: {
+    levels: ChartLevel[];
+    shapes: ChartShape[];
+  };
 }
 
 export interface ChatSessionMeta {
@@ -43,7 +48,12 @@ interface StoredMessage {
   role: 'user' | 'trafi';
   text: string;
   timestamp?: string;
+  imageUrl?: string;
   chart?: ChatChartAttachment;
+  shotMarks?: {
+    levels: ChartLevel[];
+    shapes: ChartShape[];
+  };
 }
 
 interface StoredSession {
@@ -107,13 +117,22 @@ function hydrateMessage(m: StoredMessage): ChatMessage | null {
   const text = cleanText(m.text);
   const chart = hydrateChart(m.chart);
   // Chart cards carry no text of their own.
-  if (!text && !chart) return null;
+  if (!text && !chart && !m.imageUrl) return null;
+  const shotMarks =
+    m.shotMarks && (m.shotMarks.levels?.length || m.shotMarks.shapes?.length)
+      ? {
+          levels: sanitizeLevels(m.shotMarks.levels || []),
+          shapes: sanitizeShapes(m.shotMarks.shapes || []),
+        }
+      : undefined;
   return {
     id: m.id || newId('msg'),
     role: m.role,
     text,
     timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+    ...(m.imageUrl ? { imageUrl: String(m.imageUrl) } : {}),
     ...(chart ? { chart } : {}),
+    ...(shotMarks ? { shotMarks } : {}),
   };
 }
 
@@ -126,7 +145,9 @@ function dehydrateMessages(msgs: ChatMessage[]): StoredMessage[] {
       role: m.role,
       text: m.text.slice(0, 4000),
       timestamp: m.timestamp.toISOString(),
+      // Do not persist huge data-URLs (localStorage quota) — live session keeps them in memory.
       ...(m.chart ? { chart: m.chart } : {}),
+      ...(m.shotMarks ? { shotMarks: m.shotMarks } : {}),
     }));
 }
 

@@ -91,6 +91,7 @@ import ChatChartPanel from './masterai/ChatChartPanel';
 import WolfVisionHome from './masterai/WolfVisionHome';
 import WolfVisionScan from './masterai/WolfVisionScan';
 import WolfSetupAnalysisCard from './masterai/WolfSetupAnalysisCard';
+import ScreenshotAnnotOverlay from './masterai/ScreenshotAnnotOverlay';
 import { parseChartAnnotations } from '../utils/chartAnnotations';
 import {
   detectChartRequest,
@@ -1229,6 +1230,14 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         role: 'trafi',
         text: responseText,
         timestamp: new Date(),
+        ...(hasImage && imageDataUrl
+          ? {
+              imageUrl: imageDataUrl,
+              ...(marked
+                ? { shotMarks: { levels: parsed.levels, shapes: parsed.shapes } }
+                : {}),
+            }
+          : {}),
       };
       setMessages((prev) => {
         // Keep the older chart in sync too, but the fresh card below is what the user sees.
@@ -1899,7 +1908,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                     transition={{ delay: 0.04, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {!isUser ? <div className="mai-chat__bubble-glow" aria-hidden /> : null}
-                    {message.imageUrl ? (
+                    {message.imageUrl && isUser ? (
                       <img src={message.imageUrl} alt="" className="mai-chat__img" />
                     ) : null}
                     <div className="mai-chat__text">
@@ -1919,9 +1928,22 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                           text={message.text}
                           hindi={useHiPrompts}
                           onSpeak={speakText}
+                          imageUrl={message.imageUrl}
+                          levels={message.shotMarks?.levels}
+                          shapes={message.shotMarks?.shapes}
+                          onWhatIf={(prompt) => void handleSend(prompt)}
                         />
                       ) : (
-                        <ChatMarkdown text={message.text} />
+                        <>
+                          {message.imageUrl ? (
+                            <ScreenshotAnnotOverlay
+                              imageUrl={message.imageUrl}
+                              levels={message.shotMarks?.levels}
+                              shapes={message.shotMarks?.shapes}
+                            />
+                          ) : null}
+                          <ChatMarkdown text={message.text} />
+                        </>
                       )}
                     </div>
                     {!isUser ? (
