@@ -24,6 +24,8 @@ export type WolfSetupAnalysis = {
   evidenceScore: number | null;
   why: string[];
   assumptions: string;
+  /** Conditional branch if primary thesis fails. */
+  alternative: string;
   raw: string;
 };
 
@@ -59,7 +61,7 @@ function normalizeStatus(raw: string): WolfSetupStatus {
 }
 
 function pickWhy(text: string): string[] {
-  const block = text.match(/(?:^|\n)\s*\*{0,2}Why\*{0,2}\s*[:：]?\s*([\s\S]*?)(?=\n\s*\*{0,2}Assumptions|\n\s*\*{0,2}Unknown|$)/i);
+  const block = text.match(/(?:^|\n)\s*\*{0,2}Why\*{0,2}\s*[:：]?\s*([\s\S]*?)(?=\n\s*\*{0,2}(?:Assumptions|Unknown|Alternative)|$)/i);
   const body = block?.[1] || '';
   const lines = body
     .split('\n')
@@ -91,6 +93,11 @@ export function parseWolfSetupReply(text: string): WolfSetupAnalysis | null {
   const keyObservation = pickField(raw, ['Key Observation', 'Observation']);
   const scoreRaw = pickField(raw, ['Evidence Score', 'Setup Strength', 'Score']);
   const assumptions = pickField(raw, ['Assumptions / Unknown', 'Assumptions', 'Unknown']);
+  const alternative = pickField(raw, [
+    'Alternative Scenario',
+    'Alternative',
+    'What If Primary Fails',
+  ]);
   const nextAction = pickField(raw, [
     'Next Action',
     'Watch This',
@@ -115,7 +122,12 @@ export function parseWolfSetupReply(text: string): WolfSetupAnalysis | null {
     nextAction,
     evidenceScore: pickScore(scoreRaw),
     why,
-    assumptions,
+    assumptions: alternative
+      ? assumptions
+        ? `${assumptions} · Alt: ${alternative}`
+        : `Alt: ${alternative}`
+      : assumptions,
+    alternative,
     raw,
   };
 }

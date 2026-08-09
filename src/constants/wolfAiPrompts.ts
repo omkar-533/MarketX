@@ -78,11 +78,11 @@ export const WOLF_SCREENSHOT_DEFAULT_PROMPT: DeskPrompt = {
   label: 'Full setup card',
   labelHi: 'Full setup card',
   prompt:
-    'Analyse this chart screenshot with the selected setup mode. Fill the locked template: Market Bias, Setup, Status, Key Observation, Entry Condition, Stop Loss Logic, Target Logic, Invalidation, Evidence Score, Why. Allow WAIT / NO TRADE. Exact prices only if the scale is readable. No invented levels.',
+    'Run the full Wolf visual pipeline on this chart. Decide WHAT MATTERS MOST. Fill locked template (Bias, Status, Key Observation, Next Action, Entry Condition, Invalidation, Alternative Scenario, Evidence Score). Prefer WAIT / NO TRADE when confirmation is missing. Exact prices only if the scale is readable. No invented levels. Bias ≠ Entry.',
   promptHi:
-    'Is chart screenshot ko selected setup mode se analyse karo. Locked template bharo: Market Bias, Setup, Status, Key Observation, Entry Condition, SL Logic, Target Logic, Invalidation, Evidence Score, Why. WAIT / NO TRADE allowed. Exact price sirf agar scale clear ho. Invented levels nahi.',
-  hint: 'Bias · Entry · SL',
-  hintHi: 'Bias · Entry · SL',
+    'Is chart pe full Wolf visual pipeline chalao. Sabse zaroori baat decide karo. Locked template bharo (Bias, Status, Key Observation, Next Action, Entry Condition, Invalidation, Alternative Scenario, Evidence Score). Confirmation missing ho to WAIT / NO TRADE. Exact price sirf clear scale par. Invented levels nahi. Bias ≠ Entry.',
+  hint: 'Bias · Watch · Plan',
+  hintHi: 'Bias · Watch · Plan',
 };
 
 /** Wolf AI (Hunter) — empty-desk starters */

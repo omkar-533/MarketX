@@ -585,6 +585,11 @@ export default function WolfSetupAnalysisCard({
                   <>
                     <strong>🔬 GO DEEPER</strong>
                     <p>{(analysis.why || []).slice(0, 2).join(' ') || insight}</p>
+                    {analysis.alternative ? (
+                      <p className="wolf-split__deeper-note">
+                        Alt: {analysis.alternative}
+                      </p>
+                    ) : null}
                     <p className="wolf-split__deeper-note">
                       {analysis.assumptions || analysis.entry || next.ifConfirmed || ''}
                     </p>
