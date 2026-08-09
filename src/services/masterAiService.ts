@@ -432,7 +432,7 @@ export function getChartVisionPrompt(
     'Decide WHAT MATTERS MOST. Bias ≠ Entry. Do not force a trade. WAIT / NO TRADE when evidence is thin.',
     'Fill locked template EVERY reply: Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Alternative Scenario · Assumptions.',
     'Evidence Score = setup quality (NOT win %). Exact prices only if scale readable. Never invent levels.',
-    'After template: (1) Next Action / WATCH THIS (2) wolfchart if prices readable (3) wolfevidence JSON ≤6 items with bbox 0–1 — UI shows top 3.',
+    'After template: (0) wolfidentity JSON if readable (1) Next Action (2) wolfchart if prices readable (3) wolfevidence JSON ≤6 items with bbox 0–1 — UI shows top 3. Never invent identity/prices.',
     'Follow-ups MUST keep the same locked template — never plain text.',
     note ? `User question: ${note}` : '',
   ]

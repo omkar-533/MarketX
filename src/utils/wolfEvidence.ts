@@ -37,6 +37,8 @@ export type WolfEvidenceItem = {
   bbox: NormalizedBBox;
   confidence: WolfEvidenceConfidence;
   importance?: 'high' | 'medium' | 'low';
+  /** Multi-lens: which methodology produced this mark. */
+  sourceLens?: string;
 };
 
 export type WolfEvidencePayload = {

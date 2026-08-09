@@ -136,8 +136,17 @@ import {
 import {
   loadWolfAnalysisMode,
   saveWolfAnalysisMode,
+  wolfAnalysisModeLabel,
   type WolfAnalysisMode,
 } from '../constants/wolfAnalysisModes';
+import { parseChartIdentity, chartIdentityLabel, type ChartIdentity } from '../utils/chartIdentity';
+import { validateAnnotations } from '../utils/annotationValidator';
+import {
+  buildConsensusReport,
+  makeLayerId,
+  type AnalysisLayer,
+} from '../utils/wolfConsensus';
+import WolfAnalysisLab from './masterai/WolfAnalysisLab';
 import {
   buildDrillFromDetective,
   isDrillAnswerCorrect,
@@ -272,7 +281,14 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
   const [analysisMode, setAnalysisMode] = useState<WolfAnalysisMode>(loadWolfAnalysisMode);
+  const [labLenses, setLabLenses] = useState<WolfAnalysisMode[]>(() => [loadWolfAnalysisMode()]);
+  const [analysisLayers, setAnalysisLayers] = useState<AnalysisLayer[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [chartIdentity, setChartIdentity] = useState<ChartIdentity | null>(null);
   const chartPrompts = useMemo(() => getWolfChartPrompts(analysisMode), [analysisMode]);
+  const consensus = useMemo(() => buildConsensusReport(analysisLayers), [analysisLayers]);
+  const multiLensQueueRef = useRef<WolfAnalysisMode[]>([]);
   const [roomMode, setRoomMode] = useState(() => (isMentor ? loadRoomMode() : false));
   const [detective, setDetective] = useState<DetectiveCard | null>(null);
   const [activeDrill, setActiveDrill] = useState<MentorDrill | null>(null);
@@ -708,8 +724,13 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       const { dataUrl, fileName } = await prepareChartImageForAi(file);
       setSelectedImage(dataUrl);
       setSelectedImageName(fileName);
-      // Chart-first: upload auto-starts AUTO analysis — no forced mode picker.
+      // New chart object — reset lens layers (identify once · analyze many).
       if (!isMentor) {
+        setAnalysisLayers([]);
+        setActiveLayerId(null);
+        setCompareOpen(false);
+        setChartIdentity(null);
+        multiLensQueueRef.current = [];
         window.setTimeout(() => {
           void handleSendRef.current(undefined, {
             imageDataUrl: dataUrl,
@@ -1238,6 +1259,28 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
 
       // Wolf AI hides its chart markup at the end of the reply — lift it out
       // before anything reaches the transcript or the speech engine.
+      const identityParsed = parseChartIdentity(responseText);
+      responseText = identityParsed.text || responseText;
+      if (!isMentor && identityParsed.identity) {
+        setChartIdentity(identityParsed.identity);
+        if (
+          identityParsed.identity.confirmed &&
+          identityParsed.identity.symbol &&
+          identityParsed.identity.symbol !== 'UNCONFIRMED'
+        ) {
+          const sym = identityParsed.identity.symbol.includes(':')
+            ? identityParsed.identity.symbol
+            : `NSE:${identityParsed.identity.symbol.replace(/\s+/g, '')}`;
+          setChartSymbol(sym);
+        }
+        if (
+          identityParsed.identity.timeframe &&
+          identityParsed.identity.timeframe !== 'UNCONFIRMED'
+        ) {
+          const tf = identityParsed.identity.timeframe.replace(/[^0-9]/g, '') || chartInterval;
+          if (tf) setChartInterval(tf as TvInterval);
+        }
+      }
       const evidenceParsed = parseWolfEvidence(responseText);
       responseText = evidenceParsed.text || responseText;
       const parsed = parseChartAnnotations(responseText);
@@ -1261,6 +1304,28 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             setup: setup.setup,
           });
         }
+      }
+      evidence = validateAnnotations(evidence, {
+        maxVisible: 3,
+        lens: analysisMode,
+      });
+
+      if (!isMentor) {
+        const layer: AnalysisLayer = {
+          id: makeLayerId(analysisMode),
+          mode: analysisMode,
+          label: wolfAnalysisModeLabel(analysisMode),
+          text: responseText,
+          analysis: parseWolfSetupReply(responseText),
+          evidenceIds: evidence.map((e) => e.id),
+          createdAt: Date.now(),
+          visible: true,
+        };
+        setAnalysisLayers((prev) => {
+          const rest = prev.filter((l) => l.mode !== analysisMode);
+          return [...rest, layer].slice(-8);
+        });
+        setActiveLayerId(layer.id);
       }
 
       // Hunter = screenshot desk — never open live chart cards under answers.
@@ -1361,11 +1426,38 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       setIsThinking(false);
       setIsAnalyzingChart(false);
       clearSelectedImage();
+      if (!isMentor && multiLensQueueRef.current.length > 0) {
+        const nextMode = multiLensQueueRef.current.shift()!;
+        const img = chartSessionRef.current?.imageUrl;
+        window.setTimeout(() => {
+          setAnalysisMode(nextMode);
+          saveWolfAnalysisMode(nextMode);
+          void handleSendRef.current(
+            `[MULTI-LENS · ${nextMode}] Re-analyze the SAME uploaded chart with this lens only. Fill locked template + Alternative Scenario + wolfidentity if known + wolfevidence. Do not ask for a new screenshot.`,
+            img ? { imageDataUrl: img } : undefined,
+          );
+        }, 160);
+      }
     }
   };
 
   handleSendRef.current = (text, sendOpts) => {
     void handleSend(text, sendOpts);
+  };
+
+  const runLabAnalyzeSelected = () => {
+    if (isMentor || analyzingRef.current) return;
+    const modes = (labLenses.length ? labLenses : [analysisMode]).slice(0, 5);
+    const first = modes[0];
+    if (!first) return;
+    multiLensQueueRef.current = modes.slice(1);
+    setAnalysisMode(first);
+    saveWolfAnalysisMode(first);
+    const img = chartSessionRef.current?.imageUrl || selectedImage;
+    void handleSend(
+      `[MULTI-LENS · ${first}] Analyze this chart with the ${first} lens. Identify asset if readable (wolfidentity). Fill locked template + Alternative Scenario + wolfevidence. WHAT MATTERS MOST only.`,
+      img ? { imageDataUrl: img } : undefined,
+    );
   };
 
   useEffect(() => {
@@ -1793,14 +1885,86 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             activeTrailId={viewingHunter?.id || null}
             onTrailSelect={(id) => setViewingAiId(id)}
             hideAskDock
-            symbolLabel={tradingViewSymbolLabel(chartSymbol)}
-            timeframeLabel={String(chartInterval)}
+            symbolLabel={
+              chartIdentity
+                ? chartIdentityLabel(chartIdentity)
+                : tradingViewSymbolLabel(chartSymbol)
+            }
+            timeframeLabel={
+              chartIdentity?.timeframe && chartIdentity.timeframe !== 'UNCONFIRMED'
+                ? chartIdentity.timeframe
+                : String(chartInterval)
+            }
             analysisMode={analysisMode}
             onAnalysisModeChange={(mode) => {
               setAnalysisMode(mode);
               saveWolfAnalysisMode(mode);
+              if (!labLenses.includes(mode)) {
+                setLabLenses((prev) => [...prev, mode].slice(-5));
+              }
             }}
             analysisModeDisabled={isThinking || isAnalyzingChart}
+            analysisLab={
+              <WolfAnalysisLab
+                analysisMode={analysisMode}
+                onModeChange={(mode) => {
+                  setAnalysisMode(mode);
+                  saveWolfAnalysisMode(mode);
+                }}
+                labLenses={labLenses}
+                onLabLensesChange={setLabLenses}
+                onAnalyzeSelected={runLabAnalyzeSelected}
+                onCompare={() => setCompareOpen(true)}
+                layers={analysisLayers}
+                activeLayerId={activeLayerId}
+                onSelectLayer={(id) => {
+                  setActiveLayerId(id);
+                  const layer = analysisLayers.find((l) => l.id === id);
+                  if (layer) {
+                    setAnalysisMode(layer.mode);
+                    setViewingAiId(null);
+                  }
+                }}
+                onToggleLayerVisible={(id) => {
+                  setAnalysisLayers((prev) =>
+                    prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)),
+                  );
+                }}
+                consensus={consensus}
+                compareOpen={compareOpen}
+                onCloseCompare={() => setCompareOpen(false)}
+                disabled={isThinking || isAnalyzingChart}
+                hindi={useHiPrompts}
+                compact
+              />
+            }
+            layerTextOverride={
+              activeLayerId
+                ? analysisLayers.find((l) => l.id === activeLayerId)?.text
+                : undefined
+            }
+            layerEvidenceOverride={
+              activeLayerId
+                ? (() => {
+                    const layer = analysisLayers.find((l) => l.id === activeLayerId);
+                    if (!layer) return undefined;
+                    const fromMsg =
+                      viewingHunter?.evidence?.filter((e) => layer.evidenceIds.includes(e.id)) ||
+                      [];
+                    if (fromMsg.length) return fromMsg;
+                    return chartSessionRef.current?.evidence?.filter((e) =>
+                      layer.evidenceIds.includes(e.id),
+                    );
+                  })()
+                : undefined
+            }
+            chartIdentityBanner={
+              chartIdentity
+                ? chartIdentity.confirmed
+                  ? `Detected: ${chartIdentityLabel(chartIdentity)} · Confidence ${chartIdentity.confidence}`
+                  : `Unconfirmed ID · Confidence ${chartIdentity.confidence} — confirm symbol/TF if wrong`
+                : null
+            }
           />
         </div>
       ) : null}

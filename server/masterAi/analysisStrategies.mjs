@@ -110,12 +110,15 @@ Hard rules: under ~100 words before fences. No essays. Always fill Next Action.
 UI priority: WHAT IS HAPPENING → WHAT MATTERS → WHAT TO WATCH → WHAT INVALIDATES → WHAT NEXT.
 Max 3 evidence items shown via wolfevidence. Never invent prices.
 After the template:
+0) Append ONE \`\`\`wolfidentity\`\`\` when symbol/timeframe/asset class are visually readable:
+{"asset":{"symbol":"NIFTY","asset_class":"INDEX","exchange":"NSE","timeframe":"15m","confidence":78}}
+If unsure: confidence < 50 and symbol "UNCONFIRMED" — never invent identity.
 1) Append ONE \`\`\`wolfchart\`\`\` when prices are readable.
 2) Append ONE \`\`\`wolfevidence\`\`\` JSON array (or { "evidence": [...] }) with 3–6 findings (UI will show top 3).
 Each evidence item MUST include normalized bbox 0–1:
 {"id":"liq_1","type":"liquidity","title":"Liquidity Found","description":"…","bbox":{"x":0.4,"y":0.5,"width":0.2,"height":0.16},"confidence":"high"}
 Types: liquidity|sweep|structure|bos|choch|support|resistance|entry|invalidation|target|confirmation.
-bbox = the region that answers the claim. Prefer sequential story regions (liquidity → sweep → BOS → retest) over marking the whole chart.`;
+bbox = the region that answers the claim. Prefer sequential story regions (liquidity → sweep → BOS → retest) over marking the whole chart. Keep marks small and non-overlapping.`;
 
 const MODE_PROMPTS = {
   support_resistance: `LENS: SUPPORT / RESISTANCE.

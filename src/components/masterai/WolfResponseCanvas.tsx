@@ -3,6 +3,7 @@
  * Never renders raw chat bubbles / markdown as the primary answer.
  */
 
+import type { ReactNode } from 'react';
 import WolfSetupAnalysisCard, { type WolfTrailItem } from './WolfSetupAnalysisCard';
 import { normalizeVisualResponse } from '../../utils/visualResponseNormalizer';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
@@ -30,6 +31,10 @@ type Props = {
   analysisMode?: WolfAnalysisMode;
   onAnalysisModeChange?: (mode: WolfAnalysisMode) => void;
   analysisModeDisabled?: boolean;
+  analysisLab?: ReactNode;
+  layerTextOverride?: string;
+  layerEvidenceOverride?: WolfEvidenceItem[];
+  chartIdentityBanner?: string | null;
 };
 
 export default function WolfResponseCanvas({
@@ -52,20 +57,35 @@ export default function WolfResponseCanvas({
   analysisMode,
   onAnalysisModeChange,
   analysisModeDisabled,
+  analysisLab,
+  layerTextOverride,
+  layerEvidenceOverride,
+  chartIdentityBanner,
 }: Props) {
+  const sourceText = layerTextOverride || text;
+  const sourceEvidence =
+    layerEvidenceOverride && layerEvidenceOverride.length
+      ? layerEvidenceOverride
+      : evidence;
+
   const visual = normalizeVisualResponse({
-    text,
+    text: sourceText,
     userAsk,
     hindi,
     imageUrl,
     levels,
     shapes,
-    evidence,
+    evidence: sourceEvidence,
     sessionEvidence,
   });
 
   return (
     <div className="wolf-response-canvas" data-wolf-type={visual.type}>
+      {chartIdentityBanner ? (
+        <div className="wolf-response-canvas__id" role="status">
+          {chartIdentityBanner}
+        </div>
+      ) : null}
       {!visual.imageUrl ? (
         <div className="wolf-response-canvas__warn" role="status">
           ⚠️ Upload / keep a chart in this chat so Wolf can pinpoint on YOUR screenshot.
@@ -89,6 +109,7 @@ export default function WolfResponseCanvas({
         analysisMode={analysisMode}
         onAnalysisModeChange={onAnalysisModeChange}
         analysisModeDisabled={analysisModeDisabled}
+        analysisLab={analysisLab}
       />
     </div>
   );

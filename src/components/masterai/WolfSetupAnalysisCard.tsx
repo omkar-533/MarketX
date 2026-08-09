@@ -29,8 +29,8 @@ import {
 import ChatMarkdown from '../ChatMarkdown';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import WolfChartCanvas from './WolfChartCanvas';
-import WolfAnalyzeSelect from './WolfAnalyzeSelect';
 import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
+import type { ReactNode } from 'react';
 
 export type WolfTrailItem = {
   id: string;
@@ -59,6 +59,8 @@ type Props = {
   analysisMode?: WolfAnalysisMode;
   onAnalysisModeChange?: (mode: WolfAnalysisMode) => void;
   analysisModeDisabled?: boolean;
+  /** Multi-lens Analysis Lab (replaces single header select when provided). */
+  analysisLab?: ReactNode;
 };
 
 type Sheet = 'why' | 'whatif' | 'entry' | 'invalid' | 'target' | 'miss' | 'radial' | 'deeper' | null;
@@ -83,8 +85,9 @@ export default function WolfSetupAnalysisCard({
   symbolLabel = 'CHART',
   timeframeLabel = '',
   analysisMode,
-  onAnalysisModeChange,
-  analysisModeDisabled,
+  onAnalysisModeChange: _onAnalysisModeChange,
+  analysisModeDisabled: _analysisModeDisabled,
+  analysisLab,
 }: Props) {
   const analysis = useMemo(() => parseWolfSetupReply(text), [text]);
   const [phase, setPhase] = useState<'tease' | 'live'>('tease');
@@ -291,14 +294,8 @@ export default function WolfSetupAnalysisCard({
         <div className="wolf-split__brand">
           <span aria-hidden>🐺</span>
           <strong>WOLF AI</strong>
-          {analysisMode && onAnalysisModeChange ? (
-            <WolfAnalyzeSelect
-              value={analysisMode}
-              onChange={onAnalysisModeChange}
-              disabled={analysisModeDisabled}
-              hindi={hindi}
-              className="wolf-analyze-select--header"
-            />
+          {!analysisLab && analysisMode ? (
+            <span className="wolf-split__mode-pill">{analysisMode.replace(/_/g, ' ').toUpperCase()}</span>
           ) : null}
         </div>
         <div className="wolf-split__meta">
@@ -307,6 +304,8 @@ export default function WolfSetupAnalysisCard({
           <span className="wolf-split__ready">● Analysis active</span>
         </div>
       </header>
+
+      {analysisLab ? <div className="wolf-split__lab">{analysisLab}</div> : null}
 
       <div className="wolf-split__body">
         <section className="wolf-split__market" aria-label="The Market">
