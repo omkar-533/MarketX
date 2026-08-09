@@ -98,8 +98,8 @@ export default function WolfLoader({
               r="5.2"
               fill="url(#wl-eye)"
               filter="url(#wl-eye-blur)"
-              animate={{ opacity: [0.45, 1, 0.45], scale: [0.85, 1.25, 0.85] }}
-              transition={{ duration: 1.35, ease: 'easeInOut', repeat: Infinity }}
+              animate={{ opacity: [0.55, 0.9, 0.55], scale: [0.92, 1.08, 0.92] }}
+              transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
             />
             <motion.circle
               className="wolf-loader__eye-glow"
@@ -108,24 +108,24 @@ export default function WolfLoader({
               r="5.2"
               fill="url(#wl-eye)"
               filter="url(#wl-eye-blur)"
-              animate={{ opacity: [0.45, 1, 0.45], scale: [0.85, 1.25, 0.85] }}
-              transition={{ duration: 1.35, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
+              animate={{ opacity: [0.55, 0.9, 0.55], scale: [0.92, 1.08, 0.92] }}
+              transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
             />
             <motion.circle
               cx="24.5"
               cy="34"
               r="1.55"
               fill="#fff1f2"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 1.35, ease: 'easeInOut', repeat: Infinity }}
+              animate={{ opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
             />
             <motion.circle
               cx="39.5"
               cy="34"
               r="1.55"
               fill="#fff1f2"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 1.35, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
+              animate={{ opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
             />
           </svg>
         </motion.div>

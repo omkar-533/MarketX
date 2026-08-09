@@ -5,7 +5,7 @@
  */
 
 import type { WolfEvidenceItem } from './wolfEvidence';
-import type { WolfSetupAnalysis, WolfSetupBias, WolfSetupStatus } from './parseWolfSetupReply';
+import type { WolfSetupAnalysis, WolfSetupBias } from './parseWolfSetupReply';
 import { buildEvidenceBars } from './wolfVisualStory';
 
 export type WolfTradeState =

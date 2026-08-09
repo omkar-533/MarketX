@@ -139,6 +139,7 @@ function withStoredAvatar(u: User): User {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [ready, setReady] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'otp'>('login');
   const [adminPassword, setAdminPassword] = useState<string | null>(null);
@@ -201,14 +202,28 @@ export function useAuth() {
   }, [refreshAccess, syncSession]);
 
   useEffect(() => {
-    void hydrateSession();
+    let cancelled = false;
+    const bootTimeout = window.setTimeout(() => {
+      if (!cancelled) setReady(true);
+    }, 8_000);
+    void hydrateSession().finally(() => {
+      if (!cancelled) {
+        window.clearTimeout(bootTimeout);
+        setReady(true);
+      }
+    });
 
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) {
+      return () => {
+        cancelled = true;
+        window.clearTimeout(bootTimeout);
+      };
+    }
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       const mappedUser = mapSupabaseUser(session?.user ?? null);
       if (mappedUser) {
         setUser(mappedUser);
@@ -216,25 +231,36 @@ export function useAuth() {
         setShowAuth(false);
         return;
       }
-      const invite = loadAppSession();
-      if (invite?.user) {
-        setUser(withStoredAvatar(invite.user));
-        setIsLoggedIn(true);
-        setShowAuth(false);
-        return;
+
+      // Transient null session during refresh must NOT bounce the UI to the auth splash.
+      if (event !== 'SIGNED_OUT') {
+        const invite = loadAppSession();
+        if (invite?.user) {
+          setUser(withStoredAvatar(invite.user));
+          setIsLoggedIn(true);
+          setShowAuth(false);
+          return;
+        }
+        const fallbackUser = restoreAdminSession();
+        if (fallbackUser) {
+          setUser(withStoredAvatar(fallbackUser));
+          setIsLoggedIn(true);
+          setShowAuth(false);
+          return;
+        }
+        // Keep whatever login state we already have until a real SIGNED_OUT.
+        if (loggedInRef.current) return;
       }
-      const fallbackUser = restoreAdminSession();
-      if (fallbackUser) {
-        setUser(withStoredAvatar(fallbackUser));
-        setIsLoggedIn(true);
-        setShowAuth(false);
-        return;
-      }
+
       setUser(null);
       setIsLoggedIn(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(bootTimeout);
+      subscription.unsubscribe();
+    };
   }, [hydrateSession]);
 
   const setAdminFallbackSession = useCallback((password?: string) => {
@@ -438,6 +464,7 @@ export function useAuth() {
   return {
     user,
     isLoggedIn,
+    ready,
     showAuth,
     authMode,
     setAuthMode,

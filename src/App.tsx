@@ -49,7 +49,7 @@ const LtpCalculator = lazy(() => import('./components/LtpCalculator'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 
 function PageLoader() {
-  return <WolfLoader />;
+  return <WolfLoader fullscreen={false} label="Loading…" className="wolf-loader--page" />;
 }
 
 const HIDDEN_TABS = new Set([
@@ -227,6 +227,10 @@ function AppWorkspace() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [auth.isLoggedIn]);
+
+  if (!auth.ready) {
+    return <WolfLoader label="WOLF LOADING" />;
+  }
 
   const handleTabChange = (tab: string) => {
     const resolved = normalizeTabId(tab);
