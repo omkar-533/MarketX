@@ -482,6 +482,11 @@ export function describeMasterAiFailure(
       ? 'AI ka limit abhi full hai. Ek-do minute baad try kijiye.'
       : 'The AI quota is exhausted right now. Please try again in a minute.';
   }
+  if (status === 402 || /prompt tokens limit|sufficient credits|upgrade to a paid/i.test(msg)) {
+    return hindi
+      ? 'AI credit / free prompt limit khatam hai. OpenRouter pe credits add karo, ya Profile me Google Gemini (AIza…) key daalo.'
+      : 'AI credit or free prompt limit hit. Add OpenRouter credits, or paste a Google Gemini key (AIza…) in Profile.';
+  }
   if (status === 502 || /empty reply|all models failed|models unavailable/i.test(msg)) {
     return hindi
       ? 'AI abhi busy / empty reply aayi. 5–10 second baad ek baar phir try kijiye.'

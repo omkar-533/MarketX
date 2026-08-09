@@ -43,17 +43,29 @@ export function getOpenRouterApiKey() {
   return getMasterAiApiKey();
 }
 
-/** Prefer Gemini, then OpenRouter, then OpenAI. */
+/** Prefer a real Gemini key when present; do not treat sk-or keys stored in GEMINI_* as Gemini. */
 export function getMasterAiApiKey() {
-  return (
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-    process.env.GOOGLE_AI_API_KEY?.trim() ||
-    process.env.OPENROUTER_API_KEY?.trim() ||
-    process.env.VITE_OPENROUTER_API_KEY?.trim() ||
-    process.env.OPENAI_API_KEY?.trim() ||
-    process.env.VITE_OPENAI_API_KEY?.trim() ||
-    process.env.VITE_GEMINI_API_KEY?.trim() ||
-    ''
-  );
+  const candidates = [
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    process.env.GOOGLE_AI_API_KEY,
+    process.env.VITE_GEMINI_API_KEY,
+    process.env.OPENROUTER_API_KEY,
+    process.env.VITE_OPENROUTER_API_KEY,
+    process.env.OPENAI_API_KEY,
+    process.env.VITE_OPENAI_API_KEY,
+  ];
+  const isGeminiKey = (key) => {
+    const k = String(key || '').trim();
+    return k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k);
+  };
+  for (const c of candidates) {
+    const k = String(c || '').trim();
+    if (k && isGeminiKey(k)) return k;
+  }
+  for (const c of candidates) {
+    const k = String(c || '').trim();
+    if (k) return k;
+  }
+  return '';
 }

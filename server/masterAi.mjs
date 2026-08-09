@@ -46,6 +46,29 @@ const GEMINI_VISION_CHAIN = [
 const HISTORY_TURNS = 24;
 const HISTORY_MSG_CHARS = 2500;
 const CONTEXT_CAP_CHARS = 16_000;
+/** OpenRouter free/credit tiers choke on the full desk system (~6.8k+ prompt tokens). */
+const OR_HISTORY_TURNS = 6;
+const OR_HISTORY_MSG_CHARS = 900;
+const OR_CONTEXT_CAP_CHARS = 3_500;
+
+/** Compact Hunter system for OpenRouter — keep under free-tier prompt budgets. */
+const OPENROUTER_SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Wolf AI). Spoken name: Hunter. Product name: Wolf AI.
+
+You are a market analyst, NOT a signal provider or financial advisor.
+Explain what the market appears to be doing, scenarios (bullish/bearish/neutral), and evidence.
+Use conditional language (may/could/appears). Never order the user to buy/sell, never give Entry/SL/Target as instructions.
+Never invent prices or news. If data or chart is missing, say so and ask for a chart screenshot when needed.
+
+LENGTH: greetings 1–2 lines; normal answers under ~80 words; chart concepts under ~120; full reports under ~200.
+
+When a live chart is open or user asks to mark/draw, end with ONE wolfchart JSON fence after prose:
+\`\`\`wolfchart
+{"symbol":"TICKER","tf":"15m","levels":[],"shapes":[...]}
+\`\`\`
+Tools: trend, ray, hline, hray, vline, zone, fib, label, arrow, callout. Use real prices from context/screenshot only — never copy placeholder numbers.
+
+Journal Mode: analyze only provided journal facts; never invent trades.
+Screenshot analysis: use the locked Bias/Setup/Status/Entry Condition/SL Logic/Target Logic/Invalidation/Evidence/Why template; WAIT/NO TRADE allowed.`;
 
 const SYSTEM_PROMPT = `You are Hunter at Wolf Trade AI (Wolf AI), running WOLF AI — Institutional Trading Analyst System v1.0.
 Spoken name: Hunter. Do not rename yourself. Never call the product Trafi or Analyse AI — the product name is Wolf AI.
@@ -1528,7 +1551,13 @@ function pickKnowledgeModules(question) {
  * Only what this particular question needs. Shipping the whole rulebook every
  * time cost ~50k tokens a call and left no room for the answer.
  */
-function buildSystemPrompt({ hasImage, question, journal, teaching }) {
+function buildSystemPrompt({ hasImage, question, journal, teaching, lean = false }) {
+  if (lean) {
+    const parts = [OPENROUTER_SYSTEM_PROMPT];
+    if (journal) parts.push(JOURNAL_ENGINE.slice(0, 1800));
+    if (hasImage) parts.push(getChartSetupVisionPrompt('auto').slice(0, 2200));
+    return parts.join('\n\n');
+  }
   const parts = [SYSTEM_PROMPT, CORE_RULES, OPERATING_RULES, OUTPUT_RULES];
   if (journal) parts.push(JOURNAL_ENGINE);
   // Theory helps someone asking what a thing is; it only distracts a model that
@@ -1813,22 +1842,38 @@ function buildMessages({
   journal,
   teaching,
   analysisMode = 'auto',
+  lean = false,
 }) {
-  const ctx = String(platformContext || '').slice(0, CONTEXT_CAP_CHARS);
-  const base = buildSystemPrompt({ hasImage, question, journal, teaching });
-  const visionBlock = getChartSetupVisionPrompt(analysisMode);
+  const ctxCap = lean ? OR_CONTEXT_CAP_CHARS : CONTEXT_CAP_CHARS;
+  const histTurns = lean ? OR_HISTORY_TURNS : HISTORY_TURNS;
+  const histChars = lean ? OR_HISTORY_MSG_CHARS : HISTORY_MSG_CHARS;
+  const ctx = String(platformContext || '').slice(0, ctxCap);
+  const base = buildSystemPrompt({ hasImage, question, journal, teaching, lean });
+  const visionBlock = hasImage && !lean ? getChartSetupVisionPrompt(analysisMode) : '';
   const system = hasImage
     ? `${base}\n\n${visionBlock}${ctx ? `\n\n${ctx}` : ''}`
     : `${base}\n\n${ctx}`;
   const msgs = [{ role: 'system', content: system }];
-  const trimmed = (history ?? []).slice(-HISTORY_TURNS);
+  const trimmed = (history ?? []).slice(-histTurns);
   for (const h of trimmed) {
     if (h.role === 'user' || h.role === 'assistant') {
-      msgs.push({ role: h.role, content: String(h.content).slice(0, HISTORY_MSG_CHARS) });
+      msgs.push({ role: h.role, content: String(h.content).slice(0, histChars) });
     }
   }
   msgs.push({ role: 'user', content: userContent });
   return msgs;
+}
+
+/** Map OpenAI SDK / OpenRouter failures to a real HTTP status for the client. */
+function aiErrorStatus(err, fallback = 502) {
+  const raw = err?.status ?? err?.statusCode ?? err?.response?.status;
+  if (typeof raw === 'number' && raw >= 400 && raw < 600) return raw;
+  const msg = String(err?.message ?? err ?? '');
+  if (/402|Prompt tokens limit|sufficient credits|max.?prompt|credit/i.test(msg)) return 402;
+  if (/401|Unauthorized|Invalid API key|Authentication/i.test(msg)) return 401;
+  if (/429|rate.?limit|Too Many Requests/i.test(msg)) return 429;
+  if (/503|overloaded|unavailable/i.test(msg)) return 503;
+  return fallback;
 }
 
 function pickTextModels(requested, needsWeb, langCode, provider, wantsMarkup = false) {
@@ -1852,7 +1897,10 @@ function pickTextModels(requested, needsWeb, langCode, provider, wantsMarkup = f
   // Drawing on the chart is an instruction-following job: the cheapest model
   // keeps answering "which zone do you mean?" instead of placing one, so a
   // steadier model leads when markings are expected.
+  // Free-tier keys often hit paid-model walls — try free endpoints first.
   chain.push(
+    'google/gemma-4-31b-it:free',
+    'google/gemini-2.0-flash-lite:free',
     ...(wantsMarkup
       ? ['openai/gpt-4o-mini', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite']
       : ['google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini', 'google/gemini-2.5-flash']),
@@ -1861,7 +1909,6 @@ function pickTextModels(requested, needsWeb, langCode, provider, wantsMarkup = f
   if (hindi) {
     chain.push('qwen/qwen-2.5-72b-instruct');
   }
-  chain.push('google/gemma-4-31b-it:free');
   return [...new Set(chain)];
 }
 
@@ -2576,6 +2623,13 @@ export function createMasterAiRouter(apiKey) {
         textBlock += `\n\n${SCENARIO_HINT}`;
       }
 
+      // OpenRouter free tiers reject oversized prompts (~6.7k tokens). Trim user pack.
+      if (provider === 'openrouter' && textBlock.length > 5_000) {
+        textBlock =
+          `${textBlock.slice(0, 4_200)}\n\n` +
+          '[Context trimmed for model budget. Answer briefly. If marking, append a short wolfchart fence.]';
+      }
+
       const allModels = hasImage
         ? pickVisionModels(model, provider)
         : pickTextModels(model, needsWeb, lang, provider, wantsMarkup);
@@ -2672,6 +2726,7 @@ export function createMasterAiRouter(apiKey) {
       }
 
       const userContent = hasImage ? contentParts : textBlock;
+      const lean = provider === 'openrouter' || provider === 'openai';
       const messages = buildMessages({
         platformContext,
         history,
@@ -2681,6 +2736,7 @@ export function createMasterAiRouter(apiKey) {
         journal: wantsJournalReview,
         teaching: asksExplanation && !wantsMarkup,
         analysisMode,
+        lean,
       });
 
       const promptChars = messages.reduce(
@@ -2763,7 +2819,7 @@ export function createMasterAiRouter(apiKey) {
             lastError?.message ??
             (sawEmpty ? 'Empty reply from AI models' : 'All models failed'),
         ),
-        { status: 502 },
+        { status: aiErrorStatus(bestError || lastError, sawEmpty ? 502 : 502) },
       );
     },
   };
