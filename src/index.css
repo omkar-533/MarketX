@@ -23259,6 +23259,53 @@ body:has(.app-main--terminal-immersive) #root {
   }
 }
 
+.wolf-response-canvas {
+  width: 100%;
+}
+.wolf-response-canvas__warn {
+  margin-bottom: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px dashed rgba(252, 165, 165, 0.4);
+  background: rgba(252, 165, 165, 0.08);
+  color: #fca5a5;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.wolf-visual-timeline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.15rem 0.55rem;
+  margin-bottom: 0.25rem;
+  scrollbar-width: thin;
+}
+.wolf-visual-timeline__chip {
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.55);
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wolf-visual-timeline__chip:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+}
+.wolf-visual-timeline__arrow {
+  flex: 0 0 auto;
+  color: rgba(148, 163, 184, 0.55);
+  font-size: 0.7rem;
+}
+
 /* ——— Wolf Desk — ultra-crisp ONE screen ——— */
 .wolf-desk {
   display: flex;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -41,6 +41,7 @@ import {
   askMasterAi,
   fetchMasterAiStatus,
   getChartVisionPrompt,
+  getWolfFollowUpVisualPrompt,
   getMasterAiLanguage,
   getMasterAiWelcome,
   getMasterAiSorryMessage,
@@ -90,11 +91,13 @@ import HunterMark from './HunterMark';
 import ChatChartPanel from './masterai/ChatChartPanel';
 import WolfVisionHome from './masterai/WolfVisionHome';
 import WolfVisionScan from './masterai/WolfVisionScan';
-import WolfSetupAnalysisCard from './masterai/WolfSetupAnalysisCard';
+import WolfResponseCanvas from './masterai/WolfResponseCanvas';
 import ScreenshotAnnotOverlay from './masterai/ScreenshotAnnotOverlay';
 import { parseChartAnnotations } from '../utils/chartAnnotations';
 import { parseWolfEvidence, synthesizeEvidenceFromSetup } from '../utils/wolfEvidence';
 import { parseWolfSetupReply } from '../utils/parseWolfSetupReply';
+import type { WolfEvidenceItem } from '../utils/wolfEvidence';
+import type { ChartLevel, ChartShape } from '../utils/chartAnnotations';
 import {
   detectChartRequest,
   detectInstrumentMention,
@@ -290,6 +293,34 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const analyzingRef = useRef(false);
+  /** Latest screenshot desk — every follow-up reuses this visual source. */
+  const chartSessionRef = useRef<{
+    imageUrl: string;
+    evidence: WolfEvidenceItem[];
+    shotMarks?: { levels: ChartLevel[]; shapes: ChartShape[] };
+  } | null>(null);
+
+  // Restore screenshot desk when switching chats / reloading history.
+  useEffect(() => {
+    const withImg = [...messages].reverse().find((m) => Boolean(m.imageUrl));
+    if (!withImg?.imageUrl) {
+      chartSessionRef.current = null;
+      return;
+    }
+    const withEv = [...messages]
+      .reverse()
+      .find((m) => Boolean(m.evidence?.length) || Boolean(m.shotMarks));
+    chartSessionRef.current = {
+      imageUrl: withImg.imageUrl,
+      evidence: withEv?.evidence?.length
+        ? withEv.evidence
+        : withImg.evidence?.length
+          ? withImg.evidence
+          : [],
+      shotMarks: withEv?.shotMarks || withImg.shotMarks,
+    };
+  }, [activeChatId, messages]);
+
   const recognitionRef = useRef<{ start: () => void; stop: () => void; lang: string } | null>(null);
   const handleSendRef = useRef<(text?: string, opts?: { trainingGrade?: boolean }) => void>(() => {});
   const ownerKey = user?.id || user?.email || 'guest';
@@ -1102,21 +1133,37 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             ? `\n\n[MARK NOW — FIRST REPLY ONLY: User asked to mark. Draw immediately with wolfchart. Never ask “kaunsa mark?” or wait for a second prompt.]`
             : '';
           const baseMessage = `${userText}${chartHint}${markNowHint}`;
+          const priorShot =
+            Boolean(chartSessionRef.current?.imageUrl) ||
+            messages.some((m) => Boolean(m.imageUrl));
+          const hunterVisualFollowUp =
+            !isMentor && !hasImage && priorShot && !journalContext;
           const textMessage = hasImage
             ? visionMessage
-            : explicitLang && lastAi
-              ? `${userText}${chartHint}${markNowHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias and marked areas. SHORT — under ~100 words. Do NOT ask for a chart.${
-                  chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
-                }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
-              : continuingThread && !journalContext && !wantsMarkNow
-                ? `${baseMessage}\n\n[Continue from previous messages. Do NOT ask for a chart again.${
-                    chartTarget
-                      ? ' Under ~120 words. ALWAYS append a complete wolfchart block and redraw relevant levels on the open chart.'
-                      : ' Under ~80 words.'
-                  }]`
-                : journalContext
-                  ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
-                  : baseMessage;
+            : hunterVisualFollowUp
+              ? `${getWolfFollowUpVisualPrompt(
+                  activeLang.code,
+                  baseMessage,
+                  langMode === 'auto',
+                  analysisMode,
+                )}${
+                  lastAi
+                    ? `\n\nPREVIOUS VISUAL ANALYSIS (context only — still emit full locked template + wolfevidence):\n${lastAi.text.slice(0, 1800)}`
+                    : ''
+                }`
+              : explicitLang && lastAi
+                ? `${userText}${chartHint}${markNowHint}\n\n[CRITICAL: Re-state the PREVIOUS analysis below in ${activeLang.replyIn}. Keep same Bias and marked areas. SHORT — under ~100 words. Do NOT ask for a chart.${
+                    chartTarget ? ' Still append the wolfchart block with those levels drawn.' : ''
+                  }]\n\nPREVIOUS ANALYSIS:\n${lastAi.text.slice(0, 2000)}`
+                : continuingThread && !journalContext && !wantsMarkNow
+                  ? `${baseMessage}\n\n[Continue from previous messages. Do NOT ask for a chart again.${
+                      chartTarget
+                        ? ' Under ~120 words. ALWAYS append a complete wolfchart block and redraw relevant levels on the open chart.'
+                        : ' Under ~80 words.'
+                    }]`
+                  : journalContext
+                    ? `${userText}\n\n[JOURNAL REVIEW v3.0: Use PLATFORM TRADING JOURNAL context only. Score completeness/quality when evidence exists. Under ~200 words.]`
+                    : baseMessage;
           const result = await askMasterAi(
             {
               message: textMessage,
@@ -1188,7 +1235,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         (marked ? (hindi ? 'Chart par marking kar di hai.' : 'Marked on the chart.') : responseText);
 
       let evidence = evidenceParsed.evidence;
-      if (hasImage && evidence.length === 0) {
+      if (evidence.length === 0) {
         const setup = parseWolfSetupReply(responseText);
         if (setup) {
           evidence = synthesizeEvidenceFromSetup({
@@ -1245,20 +1292,41 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         }
       }
 
+      const session = chartSessionRef.current;
+      const nextImageUrl = hasImage && imageDataUrl ? imageDataUrl : session?.imageUrl;
+      const nextEvidence =
+        evidence.length > 0 ? evidence : session?.evidence?.length ? session.evidence : [];
+      const nextMarks = marked
+        ? { levels: parsed.levels, shapes: parsed.shapes }
+        : session?.shotMarks;
+
+      if (!isMentor && nextImageUrl) {
+        chartSessionRef.current = {
+          imageUrl: nextImageUrl,
+          evidence: nextEvidence,
+          shotMarks: nextMarks,
+        };
+      }
+
       const aiMsg: Message = {
         id: `${Date.now()}-a`,
         role: 'trafi',
         text: responseText,
         timestamp: new Date(),
-        ...(hasImage && imageDataUrl
+        // Universal visual path: every Hunter reply carries the chart session.
+        ...(!isMentor && nextImageUrl
           ? {
-              imageUrl: imageDataUrl,
-              ...(marked
-                ? { shotMarks: { levels: parsed.levels, shapes: parsed.shapes } }
-                : {}),
-              ...(evidence.length ? { evidence } : {}),
+              imageUrl: nextImageUrl,
+              ...(nextMarks ? { shotMarks: nextMarks } : {}),
+              ...(nextEvidence.length ? { evidence: nextEvidence } : {}),
             }
-          : {}),
+          : hasImage && imageDataUrl
+            ? {
+                imageUrl: imageDataUrl,
+                ...(marked ? { shotMarks: { levels: parsed.levels, shapes: parsed.shapes } } : {}),
+                ...(evidence.length ? { evidence } : {}),
+              }
+            : {}),
       };
       setMessages((prev) => {
         // Keep the older chart in sync too, but the fresh card below is what the user sees.
@@ -1862,6 +1930,46 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             </div>
           ) : null}
 
+          {!isMentor &&
+          messages.filter((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text?.trim()).length >
+            1 ? (
+            <div className="wolf-visual-timeline" aria-label="Visual response history">
+              {messages
+                .filter((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text?.trim())
+                .slice(-8)
+                .map((m, i, arr) => {
+                  const label = (() => {
+                    const t = m.text;
+                    if (/Next Action|Market Bias|Key Observation/i.test(t)) {
+                      const ko = t.match(/Key Observation:\s*(.+)/i)?.[1]?.trim();
+                      if (ko) return ko.split(/\s+/).slice(0, 3).join(' ').toUpperCase();
+                      const bias = t.match(/Market Bias:\s*(.+)/i)?.[1]?.trim();
+                      if (bias) return bias.split(/\s+/).slice(0, 3).join(' ').toUpperCase();
+                    }
+                    return t.split(/\s+/).slice(0, 3).join(' ').toUpperCase() || 'WOLF';
+                  })();
+                  return (
+                    <Fragment key={m.id}>
+                      {i > 0 ? <span className="wolf-visual-timeline__arrow">→</span> : null}
+                      <button
+                        type="button"
+                        className="wolf-visual-timeline__chip"
+                        title={label}
+                        onClick={() => {
+                          document
+                            .getElementById(`wolf-msg-${m.id}`)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }}
+                      >
+                        {label.slice(0, 18)}
+                      </button>
+                      {i === arr.length - 1 ? null : null}
+                    </Fragment>
+                  );
+                })}
+            </div>
+          ) : null}
+
           <AnimatePresence>
             {messages.map((message) => {
               const isUser = message.role === 'user';
@@ -1904,6 +2012,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
 
               return (
                 <motion.div
+                  id={`wolf-msg-${message.id}`}
                   key={message.id}
                   initial={{ opacity: 0, y: 14, scale: 0.985 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1945,14 +2054,21 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                           ))}
                         </div>
                       ) : !isMentor && message.text ? (
-                        <WolfSetupAnalysisCard
+                        <WolfResponseCanvas
                           text={message.text}
+                          userAsk={
+                            [...messages]
+                              .slice(0, messages.findIndex((m) => m.id === message.id))
+                              .reverse()
+                              .find((m) => m.role === 'user')?.text || ''
+                          }
                           hindi={useHiPrompts}
                           onSpeak={speakText}
-                          imageUrl={message.imageUrl}
-                          levels={message.shotMarks?.levels}
-                          shapes={message.shotMarks?.shapes}
+                          imageUrl={message.imageUrl || chartSessionRef.current?.imageUrl}
+                          levels={message.shotMarks?.levels || chartSessionRef.current?.shotMarks?.levels}
+                          shapes={message.shotMarks?.shapes || chartSessionRef.current?.shotMarks?.shapes}
                           evidence={message.evidence}
+                          sessionEvidence={chartSessionRef.current?.evidence}
                           onWhatIf={(prompt) => void handleSend(prompt)}
                         />
                       ) : (

@@ -428,13 +428,35 @@ export function getChartVisionPrompt(
   return [
     lock,
     `WOLF AI SETUP DESK — mode: ${modeLabel}. Visual trading intelligence — not a signal bot.`,
-    'Fill locked template: Market Bias · Setup · Status · Key Observation · Direction · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Assumptions.',
+    'Fill locked template EVERY reply (first answer AND follow-ups): Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Assumptions.',
     'LONG BIAS | SHORT BIAS | WAIT | NO TRADE. Exact prices only if scale readable. Never invent levels.',
     'After the template: (1) always fill Next Action / WATCH THIS (2) wolfchart if prices readable (3) wolfevidence JSON with 3–6 items, each with bbox {x,y,width,height} normalized 0–1 pointing at the visible chart region.',
+    'Follow-ups (Why / Entry / What-if / Simplify) MUST still use the same locked template — never a plain paragraph-only reply.',
     note ? `User question: ${note}` : '',
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/** Follow-ups after a chart is already in the thread — same visual template, never prose-only. */
+export function getWolfFollowUpVisualPrompt(
+  langCode: string,
+  userNote: string,
+  autoMode = false,
+  analysisMode: WolfAnalysisMode = 'auto',
+): string {
+  const lock = buildLanguageDirective(langCode, autoMode);
+  const modeLabel = analysisMode.replace(/_/g, ' ').toUpperCase();
+  const note = userNote.trim() || 'Continue the chart analysis.';
+  return [
+    lock,
+    `WOLF UNIVERSAL RESPONSE ENGINE — follow-up · mode: ${modeLabel}.`,
+    'A chart screenshot already exists in this thread. Answer with the SAME locked visual template — never a plain chat paragraph or markdown article.',
+    'Fill EVERY field: Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Assumptions.',
+    'Then always emit wolfevidence JSON (3–6 items) with bbox {x,y,width,height} normalized 0–1 focusing the region that answers THIS follow-up.',
+    'Key Observation ≤ 12 words. Next Action ≤ 7 words. Do not invent exact prices if the scale is unread.',
+    `User follow-up: ${note}`,
+  ].join('\n');
 }
 
 export function getTradingBlockMessage(langCode: string): string {
