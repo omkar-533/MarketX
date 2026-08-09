@@ -59,7 +59,7 @@ Exact Entry / SL / Target prices ONLY when the price scale is clearly readable; 
 If chart quality is poor (cropped, blurry, no candles/scale): say Chart quality insufficient + what to re-upload — do NOT hallucinate a full setup.
 Educational / informational only — not financial advice.`;
 
-export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (use these headings exactly — short bullets, visual-first):
+export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (use these headings exactly — short bullets, visual-first COPILOT):
 
 WOLF AI · <MODE NAME> ANALYSIS
 
@@ -68,6 +68,7 @@ Setup: <one-line setup name>
 Setup Status: CONFIRMED | WAITING FOR CONFIRMATION | DEVELOPING | INVALIDATED | NO TRADE
 Key Observation: <1 line from visible chart>
 Potential Direction: LONG | SHORT | NONE
+Next Action: <ONE thing to watch now — e.g. "Bullish BOS above this level" / "Wait for retest" / "No trade">
 Entry Condition: <conditional — not "buy now">
 Stop Loss Logic: <logic, exact price only if readable>
 Target Logic: <T1/T2 only if evidence; else qualitative>
@@ -79,15 +80,15 @@ Why:
 3. …
 Assumptions / Unknown: <explicit>
 
-Hard rules: under ~160 words before fences. No essays.
+Hard rules: under ~140 words before fences. No essays. Always fill Next Action.
+UI order: Status → Chart → Next Action → Entry/SL/Target. Never end without Next Action.
 After the template:
 1) Append ONE \`\`\`wolfchart\`\`\` when prices are readable.
 2) Append ONE \`\`\`wolfevidence\`\`\` JSON array (or { "evidence": [...] }) with 3–6 findings.
 Each evidence item MUST include normalized bbox 0–1:
 {"id":"liq_1","type":"liquidity","title":"Liquidity Found","description":"…","bbox":{"x":0.4,"y":0.5,"width":0.2,"height":0.16},"confidence":"high"}
 Types: liquidity|sweep|structure|bos|choch|support|resistance|entry|invalidation|target|confirmation.
-bbox must cover the visible chart region for that finding (not the full image unless necessary). Never invent prices; if scale unreadable still return visual bboxes for structure/liquidity regions you can see.
-Write for UI: Status → Evidence crops from THIS screenshot → Entry/SL/Target → Why.`;
+bbox must cover the visible chart region for that finding (not the full image unless necessary). Never invent prices; if scale unreadable still return visual bboxes for structure/liquidity regions you can see.`;
 
 const MODE_PROMPTS = {
   support_resistance: `STRATEGY: SUPPORT / RESISTANCE ONLY.

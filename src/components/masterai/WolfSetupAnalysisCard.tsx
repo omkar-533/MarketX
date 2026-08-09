@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, MapPin, ShieldAlert, Target, OctagonX, Sparkles, Mic2 } from 'lucide-react';
+import { Eye, MapPin, ShieldAlert, Target, OctagonX, Sparkles, Mic2, Crosshair } from 'lucide-react';
 import {
   parseWolfSetupReply,
   wolfBiasLabel,
@@ -17,6 +17,19 @@ import {
   saveWolfExperienceMode,
   type WolfExperienceMode,
 } from '../../utils/wolfVisualStory';
+import {
+  buildCopilotChecklist,
+  buildNextAction,
+  buildTradeProgress,
+  journeyDelta,
+  loadJourney,
+  pushJourneySnap,
+  resolveTradeState,
+  resolveUiStatus,
+  speakNextActionScript,
+  type WolfChecklistItem,
+  type WolfNextAction,
+} from '../../utils/wolfCopilot';
 import ChatMarkdown from '../ChatMarkdown';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import VisualStoryEngine from './VisualStoryEngine';
@@ -76,7 +89,7 @@ function ModeSwitch({
 }) {
   return (
     <div className="wolf-mode" role="tablist" aria-label="Experience mode">
-      {(['quick', 'pro', 'teach'] as const).map((m) => (
+      {(['copilot', 'quick', 'pro', 'teach'] as const).map((m) => (
         <button
           key={m}
           type="button"
@@ -85,8 +98,88 @@ function ModeSwitch({
           className={`wolf-mode__btn ${mode === m ? 'is-on' : ''}`}
           onClick={() => onChange(m)}
         >
-          {m.toUpperCase()}
+          {m === 'copilot' ? 'COPILOT' : m.toUpperCase()}
         </button>
+      ))}
+    </div>
+  );
+}
+
+function ChecklistRow({ items }: { items: WolfChecklistItem[] }) {
+  return (
+    <div className="wolf-check" role="list" aria-label="Setup checklist">
+      {items.map((it) => (
+        <div key={it.id} className="wolf-check__item" role="listitem">
+          <span className="wolf-check__ico">{it.icon}</span>
+          <span className="wolf-check__lab">{it.label}</span>
+          <span
+            className={`wolf-check__mark ${
+              it.ok === true ? 'is-yes' : it.ok === false ? 'is-no' : 'is-na'
+            }`}
+          >
+            {it.ok === true ? '✓' : it.ok === false ? '✕' : '—'}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WatchThisCard({
+  next,
+  onPinpoint,
+}: {
+  next: WolfNextAction;
+  onPinpoint?: () => void;
+}) {
+  return (
+    <div className="wolf-watch">
+      <div className="wolf-watch__kicker">👁 {next.title}</div>
+      <p className="wolf-watch__msg">{next.message}</p>
+      {next.ifConfirmed ? <p className="wolf-watch__next">{next.ifConfirmed}</p> : null}
+      {onPinpoint ? (
+        <button type="button" className="wolf-watch__pin" onClick={onPinpoint}>
+          <Crosshair className="h-3.5 w-3.5" />
+          PINPOINT
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function JourneyStrip() {
+  const journey = loadJourney();
+  const delta = journeyDelta(journey);
+  if (!delta?.changed) return null;
+  return (
+    <div className="wolf-journey">
+      <div className="wolf-journey__col">
+        <span>BEFORE</span>
+        <strong>{delta.previous.uiStatus}</strong>
+        <p>{delta.previous.next}</p>
+      </div>
+      <div className="wolf-journey__arrow">↓</div>
+      <div className="wolf-journey__col wolf-journey__col--now">
+        <span>NOW</span>
+        <strong>{delta.current.uiStatus}</strong>
+        <p>{delta.current.next}</p>
+      </div>
+    </div>
+  );
+}
+
+function ProgressRail({ checklist }: { checklist: WolfChecklistItem[] }) {
+  const steps = buildTradeProgress(checklist);
+  if (!steps.length) return null;
+  return (
+    <div className="wolf-prog" aria-label="Trade progress">
+      {steps.map((s) => (
+        <span
+          key={s.label}
+          className={`wolf-prog__step ${s.done ? 'is-done' : ''} ${s.current ? 'is-now' : ''}`}
+        >
+          {s.label}
+        </span>
       ))}
     </div>
   );
@@ -204,7 +297,7 @@ function WhatIfPanel({
             className="wolf-whatif__btn"
             onClick={() =>
               onWhatIf(
-                `[WHAT-IF] Scenario: ${s.prompt}. Reply with the SAME locked headings (Market Bias, Setup, Setup Status, Entry Condition, Stop Loss Logic, Target Logic, Invalidation, Evidence Score, Why). Keep under 120 words. End with a short wolfchart if prices are readable. State this is a conditional scenario only.`,
+                `[WHAT-IF] Scenario: ${s.prompt}. Reply with the SAME locked headings (Market Bias, Setup, Setup Status, Next Action, Entry Condition, Stop Loss Logic, Target Logic, Invalidation, Evidence Score, Why). Keep under 120 words. End with a short wolfchart if prices are readable. State this is a conditional scenario only.`,
               )
             }
           >
@@ -221,6 +314,7 @@ function WhyWalkthrough({ analysis }: { analysis: WolfSetupAnalysis }) {
     const out: { title: string; body: string }[] = [];
     if (analysis.keyObservation) out.push({ title: 'KEY OBSERVATION', body: analysis.keyObservation });
     analysis.why.forEach((w, i) => out.push({ title: `STEP ${i + 1}`, body: w }));
+    if (analysis.nextAction) out.push({ title: 'NEXT ACTION', body: analysis.nextAction });
     if (analysis.entry) out.push({ title: 'ENTRY', body: analysis.entry });
     if (analysis.invalidation) out.push({ title: 'INVALIDATION', body: analysis.invalidation });
     return out.slice(0, 6);
@@ -268,7 +362,7 @@ function WhyWalkthrough({ analysis }: { analysis: WolfSetupAnalysis }) {
   );
 }
 
-/** Immersive V2 setup experience — chart story first, text secondary. */
+/** Wolf AI Trading Copilot — chart-first, next-action driven. */
 export default function WolfSetupAnalysisCard({
   text,
   hindi,
@@ -283,7 +377,9 @@ export default function WolfSetupAnalysisCard({
   const [mode, setMode] = useState<WolfExperienceMode>(() => loadWolfExperienceMode());
   const [showWhy, setShowWhy] = useState(false);
   const [showWhatIf, setShowWhatIf] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [detail, setDetail] = useState<'entry' | 'invalid' | 'target' | null>(null);
   const [hiLabel, setHiLabel] = useState<string | null>(null);
   const [storyIndex, setStoryIndex] = useState(0);
   const [moviePlaying, setMoviePlaying] = useState(false);
@@ -293,7 +389,7 @@ export default function WolfSetupAnalysisCard({
   useEffect(() => {
     saveWolfExperienceMode(mode);
     if (mode === 'teach') setShowWhy(true);
-    if (mode === 'quick') {
+    if (mode === 'quick' || mode === 'copilot') {
       setShowWhy(false);
       setShowWhatIf(false);
       setShowRaw(false);
@@ -305,10 +401,34 @@ export default function WolfSetupAnalysisCard({
     [analysis, levels, shapes],
   );
   const bars = useMemo(() => (analysis ? buildEvidenceBars(analysis) : null), [analysis]);
+  const checklist = useMemo(
+    () => (analysis ? buildCopilotChecklist(analysis, evidence) : []),
+    [analysis, evidence],
+  );
+  const next = useMemo(
+    () =>
+      analysis
+        ? buildNextAction(analysis, { nextActionField: analysis.nextAction })
+        : null,
+    [analysis],
+  );
+  const ui = useMemo(() => (analysis ? resolveUiStatus(analysis) : null), [analysis]);
   const activeEvidence = useMemo(
     () => evidence.find((e) => e.id === activeEvidenceId) || null,
     [evidence, activeEvidenceId],
   );
+
+  useEffect(() => {
+    if (!analysis || !next || !ui) return;
+    pushJourneySnap({
+      state: resolveTradeState(analysis),
+      uiStatus: ui.status,
+      bias: analysis.bias,
+      setup: analysis.setup,
+      next: next.message,
+      headline: ui.headline,
+    });
+  }, [analysis, next, ui]);
 
   useEffect(() => {
     const step = story[storyIndex];
@@ -319,6 +439,23 @@ export default function WolfSetupAnalysisCard({
     setActiveEvidenceId(item.id);
     setHiLabel(item.title);
     evidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const pinpointNext = () => {
+    if (!next?.evidenceHint || !evidence.length) {
+      setHiLabel(next?.message?.slice(0, 28) || 'WATCH');
+      evidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const hint = next.evidenceHint;
+    const match =
+      evidence.find((e) => e.type === hint) ||
+      evidence.find((e) => new RegExp(hint, 'i').test(`${e.type} ${e.title}`));
+    if (match) handleShowOnChart(match);
+    else {
+      setHiLabel(next.message.slice(0, 28));
+      evidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   if (!analysis) {
@@ -362,6 +499,10 @@ export default function WolfSetupAnalysisCard({
             : wolfBiasLabel(analysis.bias);
 
   const speakBrief = () => {
+    if (next) {
+      onSpeak?.(speakNextActionScript(analysis, next, hindi));
+      return;
+    }
     onSpeak?.(
       [statusLine, analysis.setup, analysis.keyObservation, analysis.entry, analysis.stopLoss, analysis.target]
         .filter(Boolean)
@@ -374,24 +515,184 @@ export default function WolfSetupAnalysisCard({
     if (id === 'whatif') setShowWhatIf(true);
     if (id === 'explain') speakBrief();
     if (id === 'entry') {
+      setDetail('entry');
       setHiLabel('ENTRY ZONE');
       const i = story.findIndex((s) => s.type === 'entry');
       if (i >= 0) setStoryIndex(i);
+      const ev = evidence.find((e) => e.type === 'entry');
+      if (ev) handleShowOnChart(ev);
     }
     if (id === 'liquidity') {
       const i = story.findIndex((s) => s.type === 'liquidity' || s.type === 'sweep');
       if (i >= 0) setStoryIndex(i);
+      const ev = evidence.find((e) => e.type === 'liquidity' || e.type === 'sweep');
+      if (ev) handleShowOnChart(ev);
     }
     if (id === 'invalidation') {
+      setDetail('invalid');
       setHiLabel(null);
       const i = story.findIndex((s) => s.type === 'invalidation');
       if (i >= 0) setStoryIndex(i);
+      const ev = evidence.find((e) => e.type === 'invalidation');
+      if (ev) handleShowOnChart(ev);
     }
     if (id === 'target') {
+      setDetail('target');
       const i = story.findIndex((s) => s.type === 'target');
       if (i >= 0) setStoryIndex(i);
+      const ev = evidence.find((e) => e.type === 'target');
+      if (ev) handleShowOnChart(ev);
     }
   };
+
+  /** COPILOT — one-screen default */
+  if (mode === 'copilot' && ui && next) {
+    return (
+      <div className={`wolf-setup wolf-setup--copilot wolf-setup--${tone}`}>
+        <div className="wolf-copilot__brand">
+          <span>🐺 WOLF AI</span>
+          <span className="wolf-copilot__tag">SEE · KNOW THE NEXT MOVE</span>
+        </div>
+        <ModeSwitch mode={mode} onChange={setMode} />
+
+        <div className="wolf-copilot__status" role="status">
+          <span className="wolf-copilot__emoji">{ui.emoji}</span>
+          <div>
+            <div className="wolf-copilot__badge">{ui.label}</div>
+            <div className="wolf-copilot__headline">{ui.headline}</div>
+          </div>
+        </div>
+
+        {analysis.setup ? <div className="wolf-setup__name">{analysis.setup}</div> : null}
+
+        <div ref={evidenceRef} className="wolf-copilot__chart">
+          {imageUrl ? (
+            <ScreenshotAnnotOverlay
+              imageUrl={imageUrl}
+              levels={levels}
+              shapes={shapes}
+              highlightLabel={hiLabel}
+              focusBbox={activeEvidence?.bbox}
+              focusLabel={activeEvidence ? activeEvidence.title : null}
+            />
+          ) : null}
+        </div>
+
+        <ChecklistRow items={checklist} />
+        <ProgressRail checklist={checklist} />
+
+        <WatchThisCard next={next} onPinpoint={imageUrl ? pinpointNext : undefined} />
+
+        <JourneyStrip />
+
+        <div className="wolf-copilot__plan">
+          <button type="button" className={`wolf-copilot__chip ${detail === 'entry' ? 'is-on' : ''}`} onClick={() => onSee('entry')}>
+            📍 ENTRY
+          </button>
+          <button
+            type="button"
+            className={`wolf-copilot__chip ${detail === 'invalid' ? 'is-on' : ''}`}
+            onClick={() => onSee('invalidation')}
+          >
+            🛑 INVALID
+          </button>
+          <button
+            type="button"
+            className={`wolf-copilot__chip ${detail === 'target' ? 'is-on' : ''}`}
+            onClick={() => onSee('target')}
+          >
+            🎯 TARGET
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {detail ? (
+            <motion.div
+              className="wolf-copilot__sheet"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              {detail === 'entry' ? (
+                <>
+                  <strong>📍 ENTRY CONDITION</strong>
+                  <p>{analysis.entry || 'Conditional — wait for confirmation.'}</p>
+                </>
+              ) : null}
+              {detail === 'invalid' ? (
+                <>
+                  <strong>🛑 INVALIDATION</strong>
+                  <p>{analysis.invalidation || analysis.stopLoss || 'Level not specified.'}</p>
+                </>
+              ) : null}
+              {detail === 'target' ? (
+                <>
+                  <strong>🎯 TARGET</strong>
+                  <p>{analysis.target || 'Next liquidity / structure.'}</p>
+                </>
+              ) : null}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="wolf-setup__actions wolf-setup__actions--compact">
+          <button type="button" className="wolf-setup__btn" onClick={() => setShowWhy((v) => !v)}>
+            <Eye className="h-3.5 w-3.5" />
+            WHY?
+          </button>
+          {onWhatIf ? (
+            <button type="button" className="wolf-setup__btn" onClick={() => setShowWhatIf((v) => !v)}>
+              <Sparkles className="h-3.5 w-3.5" />
+              WHAT IF?
+            </button>
+          ) : null}
+          {onSpeak ? (
+            <button type="button" className="wolf-setup__btn wolf-setup__btn--ghost" onClick={speakBrief}>
+              <Mic2 className="h-3.5 w-3.5" />
+              EXPLAIN
+            </button>
+          ) : null}
+          {imageUrl && evidence.length ? (
+            <button
+              type="button"
+              className="wolf-setup__btn wolf-setup__btn--ghost"
+              onClick={() => setShowEvidence((v) => !v)}
+            >
+              EVIDENCE
+            </button>
+          ) : null}
+        </div>
+
+        <AnimatePresence>
+          {showWhy ? (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+              <WhyWalkthrough analysis={analysis} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showWhatIf && onWhatIf ? (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+              <WhatIfPanel hindi={hindi} onWhatIf={onWhatIf} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showEvidence && imageUrl && evidence.length ? (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+              <WolfEvidenceGallery
+                originalUrl={imageUrl}
+                evidence={evidence}
+                activeId={activeEvidenceId}
+                onShowOnChart={handleShowOnChart}
+                hindi={hindi}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   /** QUICK — Wolf Call only */
   if (mode === 'quick') {
@@ -399,7 +700,14 @@ export default function WolfSetupAnalysisCard({
       <div className={`wolf-setup wolf-setup--${tone}`}>
         <ModeSwitch mode={mode} onChange={setMode} />
         {imageUrl ? (
-          <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} highlightLabel={hiLabel} />
+          <ScreenshotAnnotOverlay
+            imageUrl={imageUrl}
+            levels={levels}
+            shapes={shapes}
+            highlightLabel={hiLabel}
+            focusBbox={activeEvidence?.bbox}
+            focusLabel={activeEvidence ? activeEvidence.title : null}
+          />
         ) : null}
         <div className="wolf-call">
           <div className="wolf-call__mark">🐺 WOLF CALL</div>
@@ -408,6 +716,7 @@ export default function WolfSetupAnalysisCard({
             <span>{statusLine}</span>
           </div>
           {analysis.setup ? <div className="wolf-setup__name">{analysis.setup}</div> : null}
+          {next ? <p className="wolf-call__watch">👁 {next.message}</p> : null}
           <div className="wolf-call__lines">
             {analysis.entry ? <p>Entry → {analysis.entry}</p> : null}
             {analysis.stopLoss ? <p>SL → {analysis.stopLoss}</p> : null}
@@ -456,6 +765,7 @@ export default function WolfSetupAnalysisCard({
       </div>
 
       {analysis.setup ? <div className="wolf-setup__name">{analysis.setup}</div> : null}
+      {next ? <WatchThisCard next={next} onPinpoint={imageUrl ? pinpointNext : undefined} /> : null}
       {analysis.keyObservation ? <p className="wolf-setup__obs">{analysis.keyObservation}</p> : null}
 
       {imageUrl && evidence.length ? (
@@ -503,7 +813,8 @@ export default function WolfSetupAnalysisCard({
         </div>
       ) : null}
 
-      {(mode === 'pro' || mode === 'teach') && (analysis.bias === 'LONG' || analysis.bias === 'SHORT' || analysis.bias === 'WAIT') ? (
+      {(mode === 'pro' || mode === 'teach') &&
+      (analysis.bias === 'LONG' || analysis.bias === 'SHORT' || analysis.bias === 'WAIT') ? (
         <BullBearDuel analysis={analysis} />
       ) : null}
 

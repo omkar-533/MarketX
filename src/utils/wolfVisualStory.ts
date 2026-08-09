@@ -1,7 +1,7 @@
 import type { ChartLevel, ChartShape } from './chartAnnotations';
 import type { WolfSetupAnalysis, WolfSetupBias, WolfSetupStatus } from './parseWolfSetupReply';
 
-export type WolfExperienceMode = 'quick' | 'pro' | 'teach';
+export type WolfExperienceMode = 'copilot' | 'quick' | 'pro' | 'teach';
 
 export type VisualStoryStepType =
   | 'overview'
@@ -250,9 +250,10 @@ export function buildBullBearCases(analysis: WolfSetupAnalysis): {
 const MODE_KEY = 'wolf_ai_experience_mode';
 
 export function loadWolfExperienceMode(): WolfExperienceMode {
-  if (typeof window === 'undefined') return 'pro';
+  if (typeof window === 'undefined') return 'copilot';
   const v = window.localStorage.getItem(MODE_KEY);
-  return v === 'quick' || v === 'teach' || v === 'pro' ? v : 'pro';
+  if (v === 'quick' || v === 'teach' || v === 'pro' || v === 'copilot') return v;
+  return 'copilot';
 }
 
 export function saveWolfExperienceMode(mode: WolfExperienceMode): void {

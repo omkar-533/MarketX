@@ -19,6 +19,8 @@ export type WolfSetupAnalysis = {
   stopLoss: string;
   target: string;
   invalidation: string;
+  /** Explicit “Next Action / Watch This” from the model when present. */
+  nextAction: string;
   evidenceScore: number | null;
   why: string[];
   assumptions: string;
@@ -89,6 +91,13 @@ export function parseWolfSetupReply(text: string): WolfSetupAnalysis | null {
   const keyObservation = pickField(raw, ['Key Observation', 'Observation']);
   const scoreRaw = pickField(raw, ['Evidence Score', 'Setup Strength', 'Score']);
   const assumptions = pickField(raw, ['Assumptions / Unknown', 'Assumptions', 'Unknown']);
+  const nextAction = pickField(raw, [
+    'Next Action',
+    'Watch This',
+    'WATCH THIS',
+    'One Thing',
+    'What To Watch',
+  ]);
   const why = pickWhy(raw);
 
   const hits = [biasRaw, statusRaw, entry, stopLoss, target, invalidation, setup].filter(Boolean).length;
@@ -103,6 +112,7 @@ export function parseWolfSetupReply(text: string): WolfSetupAnalysis | null {
     stopLoss,
     target,
     invalidation,
+    nextAction,
     evidenceScore: pickScore(scoreRaw),
     why,
     assumptions,
