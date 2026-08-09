@@ -80,8 +80,8 @@ Why:
 3. …
 Assumptions / Unknown: <explicit>
 
-Hard rules: under ~140 words before fences. No essays. Always fill Next Action.
-UI order: Status → Chart → Next Action → Entry/SL/Target. Never end without Next Action.
+Hard rules: under ~100 words before fences. No essays. Always fill Next Action with ONE short watch item (≤7 words).
+UI order: Status → Chart → Next Action. Max 3 evidence items in wolfevidence. Never end without Next Action.
 After the template:
 1) Append ONE \`\`\`wolfchart\`\`\` when prices are readable.
 2) Append ONE \`\`\`wolfevidence\`\`\` JSON array (or { "evidence": [...] }) with 3–6 findings.

@@ -359,28 +359,93 @@ export function journeyDelta(journey: WolfJourneySnap[]): {
   };
 }
 
+/** Pick at most 3 primary evidence tabs for the one-screen switcher. */
+export function pickPrimaryEvidenceTabs(
+  analysis: WolfSetupAnalysis,
+  evidence: WolfEvidenceItem[],
+  checklist: WolfChecklistItem[],
+): {
+  id: string;
+  icon: string;
+  label: string;
+  ok: boolean | null;
+  evidence?: WolfEvidenceItem;
+}[] {
+  const byType = (t: string) =>
+    evidence.find((e) => e.type === t || new RegExp(t, 'i').test(`${e.type} ${e.title}`));
+
+  const ordered: { id: string; icon: string; label: string; typeHint: string }[] = [];
+  const text = blob(analysis);
+
+  if (/liquid|sweep|bsl|ssl/i.test(text) || byType('liquidity') || byType('sweep')) {
+    if (byType('sweep') || /sweep/i.test(text)) {
+      ordered.push({ id: 'sweep', icon: '⚡', label: 'Sweep', typeHint: 'sweep' });
+    }
+    ordered.push({ id: 'liquidity', icon: '💧', label: 'Liquidity', typeHint: 'liquidity' });
+  }
+  if (/bos|structure|choch/i.test(text) || byType('bos') || byType('structure')) {
+    ordered.push({ id: 'bos', icon: '🧠', label: 'BOS', typeHint: 'bos' });
+  }
+  if (/retest|entry/i.test(text) || byType('entry') || byType('confirmation')) {
+    ordered.push({ id: 'retest', icon: '📍', label: 'Retest', typeHint: 'entry' });
+  }
+  if (!ordered.length) {
+    for (const c of checklist.slice(0, 3)) {
+      ordered.push({ id: c.id, icon: c.icon, label: c.label, typeHint: c.id });
+    }
+  }
+
+  const uniq: typeof ordered = [];
+  for (const o of ordered) {
+    if (!uniq.some((u) => u.id === o.id)) uniq.push(o);
+  }
+
+  return uniq.slice(0, 3).map((o) => {
+    const ev = byType(o.typeHint) || evidence.find((e) => e.id === o.id);
+    const check = checklist.find((c) => c.id === o.id || c.label.toLowerCase() === o.label.toLowerCase());
+    return {
+      id: o.id,
+      icon: o.icon,
+      label: o.label,
+      ok: check?.ok ?? (ev ? true : null),
+      evidence: ev,
+    };
+  });
+}
+
+/** Ultra-short status title: "LONG — WAIT" */
+export function crispStatusTitle(analysis: WolfSetupAnalysis): { title: string; subtitle: string } {
+  const ui = resolveUiStatus(analysis);
+  const bias =
+    analysis.bias === 'LONG' ? 'LONG' : analysis.bias === 'SHORT' ? 'SHORT' : '';
+  let title = ui.label;
+  if (bias && (ui.status === 'WAIT' || ui.status === 'WATCH')) title = `${bias} — ${ui.label}`;
+  else if (bias && ui.status === 'CONFIRMED') title = `${bias} — CONFIRMED`;
+  else if (bias && ui.status === 'ENTRY') title = `${bias} — ENTRY`;
+  else if (ui.status === 'NO_TRADE') title = 'NO SETUP';
+  else if (ui.status === 'INVALIDATED') title = 'INVALIDATED';
+
+  const next = buildNextAction(analysis, { nextActionField: analysis.nextAction });
+  const subtitle =
+    analysis.keyObservation?.slice(0, 48) ||
+    next.message.slice(0, 48) ||
+    analysis.setup.slice(0, 48) ||
+    '';
+  return { title, subtitle };
+}
+
 export function speakNextActionScript(
   analysis: WolfSetupAnalysis,
   next: WolfNextAction,
   hindi?: boolean,
 ): string {
-  const ui = resolveUiStatus(analysis);
+  const crisp = crispStatusTitle(analysis);
   if (hindi) {
-    return [
-      `${ui.label}. ${ui.headline}.`,
-      next.message,
-      next.ifConfirmed || '',
-      analysis.invalidation ? `Invalidation: ${analysis.invalidation}.` : '',
-    ]
+    return [crisp.title, crisp.subtitle, next.message, next.ifConfirmed || '']
       .filter(Boolean)
-      .join(' ');
+      .join('. ');
   }
-  return [
-    `${ui.label}. ${ui.headline}.`,
-    next.message,
-    next.ifConfirmed || '',
-    analysis.invalidation ? `Invalid if ${analysis.invalidation}.` : '',
-  ]
+  return [crisp.title, crisp.subtitle, next.message, next.ifConfirmed || '']
     .filter(Boolean)
-    .join(' ');
+    .join('. ');
 }
