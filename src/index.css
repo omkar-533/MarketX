@@ -23388,6 +23388,28 @@ body:has(.app-main--terminal-immersive) #root {
   background: #0f172a;
   color: #e2e8f0;
 }
+.wolf-analyze-select--header {
+  border-color: rgba(212, 175, 55, 0.28);
+  background: rgba(212, 175, 55, 0.08);
+  padding: 0.12rem 0.35rem;
+  margin-left: 0.35rem;
+}
+.wolf-analyze-select--header select {
+  max-width: 7.5rem;
+  font-size: 0.65rem;
+  padding-right: 1rem;
+}
+.wolf-split__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Bottom Ask bar: conversation only — never AnalysisSelector */
+.mai-chat__ask-tools {
+  display: none !important;
+}
 .mai-chat--split .mai-chat__scroll {
   display: none;
 }

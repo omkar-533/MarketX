@@ -7,6 +7,7 @@ import WolfSetupAnalysisCard, { type WolfTrailItem } from './WolfSetupAnalysisCa
 import { normalizeVisualResponse } from '../../utils/visualResponseNormalizer';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import type { WolfEvidenceItem } from '../../utils/wolfEvidence';
+import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
 
 type Props = {
   text: string;
@@ -26,6 +27,9 @@ type Props = {
   hideAskDock?: boolean;
   symbolLabel?: string;
   timeframeLabel?: string;
+  analysisMode?: WolfAnalysisMode;
+  onAnalysisModeChange?: (mode: WolfAnalysisMode) => void;
+  analysisModeDisabled?: boolean;
 };
 
 export default function WolfResponseCanvas({
@@ -45,6 +49,9 @@ export default function WolfResponseCanvas({
   hideAskDock = true,
   symbolLabel,
   timeframeLabel,
+  analysisMode,
+  onAnalysisModeChange,
+  analysisModeDisabled,
 }: Props) {
   const visual = normalizeVisualResponse({
     text,
@@ -79,6 +86,9 @@ export default function WolfResponseCanvas({
         hideAskDock={hideAskDock}
         symbolLabel={symbolLabel}
         timeframeLabel={timeframeLabel}
+        analysisMode={analysisMode}
+        onAnalysisModeChange={onAnalysisModeChange}
+        analysisModeDisabled={analysisModeDisabled}
       />
     </div>
   );

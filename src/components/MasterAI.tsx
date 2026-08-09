@@ -138,7 +138,6 @@ import {
   saveWolfAnalysisMode,
   type WolfAnalysisMode,
 } from '../constants/wolfAnalysisModes';
-import WolfAnalyzeSelect from './masterai/WolfAnalyzeSelect';
 import {
   buildDrillFromDetective,
   isDrillAnswerCorrect,
@@ -1796,6 +1795,12 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             hideAskDock
             symbolLabel={tradingViewSymbolLabel(chartSymbol)}
             timeframeLabel={String(chartInterval)}
+            analysisMode={analysisMode}
+            onAnalysisModeChange={(mode) => {
+              setAnalysisMode(mode);
+              saveWolfAnalysisMode(mode);
+            }}
+            analysisModeDisabled={isThinking || isAnalyzingChart}
           />
         </div>
       ) : null}
@@ -2230,44 +2235,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       </div>
 
       <div className="mai-chat__composer-wrap">
-        {!isMentor ? (
-          <div className="mai-chat__ask-tools">
-            <WolfAnalyzeSelect
-              value={analysisMode}
-              onChange={(mode) => {
-                setAnalysisMode(mode);
-                saveWolfAnalysisMode(mode);
-              }}
-              disabled={isThinking || isAnalyzingChart}
-              hindi={useHiPrompts}
-            />
-            {splitActive ? (
-              <div className="mai-chat__suggest-row" role="group" aria-label="Ask suggestions">
-                {(useHiPrompts
-                  ? [
-                      { label: '📍 Entry?', prompt: 'Entry kaha hai? Locked visual template.' },
-                      { label: '💧 Liquidity', prompt: 'Liquidity dikhao. Locked visual template.' },
-                      { label: '⚔️ Challenge', prompt: 'Challenge my setup. Locked visual template.' },
-                    ]
-                  : [
-                      { label: '📍 Where’s entry?', prompt: 'Where is the entry? Locked visual template.' },
-                      { label: '💧 Show liquidity', prompt: 'Show liquidity. Locked visual template.' },
-                      { label: '⚔️ Challenge setup', prompt: 'Challenge my setup. Locked visual template.' },
-                    ]
-                ).map((s) => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    disabled={isThinking || isAnalyzingChart}
-                    onClick={() => void handleSend(s.prompt)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
         <div className="mai-chat__composer">
           <AnimatePresence>
             {selectedImage && !splitActive ? (

@@ -8,7 +8,7 @@ type Props = {
   className?: string;
 };
 
-/** Single source of truth for analysis mode — compact dropdown, never a chip wall. */
+/** Single analysis-mode control — render once per app state (empty OR wolf header). */
 export default function WolfAnalyzeSelect({
   value,
   onChange,
@@ -16,9 +16,12 @@ export default function WolfAnalyzeSelect({
   hindi,
   className = '',
 }: Props) {
+  const compact = className.includes('wolf-analyze-select--header');
   return (
     <label className={`wolf-analyze-select ${className}`.trim()}>
-      <span className="wolf-analyze-select__k">{hindi ? 'ANALYZE' : 'ANALYZE'}</span>
+      {compact ? null : (
+        <span className="wolf-analyze-select__k">{hindi ? 'ANALYZE' : 'ANALYZE'}</span>
+      )}
       <select
         value={value}
         disabled={disabled}
@@ -47,3 +50,6 @@ export default function WolfAnalyzeSelect({
     </label>
   );
 }
+
+/** Alias — one logical AnalysisSelector, placement decided by parent state. */
+export { WolfAnalyzeSelect as AnalysisSelector };

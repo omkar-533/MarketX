@@ -29,6 +29,8 @@ import {
 import ChatMarkdown from '../ChatMarkdown';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import WolfChartCanvas from './WolfChartCanvas';
+import WolfAnalyzeSelect from './WolfAnalyzeSelect';
+import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
 
 export type WolfTrailItem = {
   id: string;
@@ -53,6 +55,10 @@ type Props = {
   hideAskDock?: boolean;
   symbolLabel?: string;
   timeframeLabel?: string;
+  /** Sole post-upload AnalysisSelector placement — Wolf header only. */
+  analysisMode?: WolfAnalysisMode;
+  onAnalysisModeChange?: (mode: WolfAnalysisMode) => void;
+  analysisModeDisabled?: boolean;
 };
 
 type Sheet = 'why' | 'whatif' | 'entry' | 'invalid' | 'target' | 'miss' | 'radial' | 'deeper' | null;
@@ -76,6 +82,9 @@ export default function WolfSetupAnalysisCard({
   hideAskDock = true,
   symbolLabel = 'CHART',
   timeframeLabel = '',
+  analysisMode,
+  onAnalysisModeChange,
+  analysisModeDisabled,
 }: Props) {
   const analysis = useMemo(() => parseWolfSetupReply(text), [text]);
   const [phase, setPhase] = useState<'tease' | 'live'>('tease');
@@ -282,11 +291,20 @@ export default function WolfSetupAnalysisCard({
         <div className="wolf-split__brand">
           <span aria-hidden>🐺</span>
           <strong>WOLF AI</strong>
+          {analysisMode && onAnalysisModeChange ? (
+            <WolfAnalyzeSelect
+              value={analysisMode}
+              onChange={onAnalysisModeChange}
+              disabled={analysisModeDisabled}
+              hindi={hindi}
+              className="wolf-analyze-select--header"
+            />
+          ) : null}
         </div>
         <div className="wolf-split__meta">
           <span>{symbolLabel}</span>
           {timeframeLabel ? <span>· {timeframeLabel}</span> : null}
-          <span className="wolf-split__ready">● READY</span>
+          <span className="wolf-split__ready">● Analysis active</span>
         </div>
       </header>
 
