@@ -28,7 +28,7 @@ interface SidebarProps {
   onProfile: () => void;
 }
 
-const navItems = [
+const productNavItems = [
   ...(SHOW_DASHBOARD
     ? [{ id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard }]
     : []),
@@ -53,6 +53,73 @@ const navIdle =
   'text-[var(--tf-text)] hover:text-[var(--tf-text)] hover:bg-[var(--tf-elevated)]';
 const navActive = 'bg-gold/10 text-gold';
 
+function NavLink({
+  item,
+  activeTab,
+  collapsed,
+  hovered,
+  setHovered,
+  onTabChange,
+  onMobileClose,
+}: {
+  item: (typeof productNavItems)[number];
+  activeTab: string;
+  collapsed: boolean;
+  hovered: string;
+  setHovered: (id: string) => void;
+  onTabChange: (tab: string) => void;
+  onMobileClose?: () => void;
+}) {
+  const Icon = item.icon;
+  const isActive = activeTab === item.id;
+  return (
+    <button
+      key={item.id}
+      type="button"
+      onClick={() => {
+        onTabChange(item.id);
+        onMobileClose?.();
+      }}
+      onMouseEnter={() => setHovered(item.id)}
+      onMouseLeave={() => setHovered('')}
+      className={`app-sidebar__link relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${
+        isActive ? navActive : navIdle
+      }`}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="sidebar-active"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gold rounded-r-full"
+          transition={{ duration: 0.2 }}
+        />
+      )}
+      <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-gold' : ''}`} />
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: 'auto' }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.15 }}
+            className="whitespace-nowrap overflow-hidden"
+          >
+            {item.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+      {collapsed && hovered === item.id && (
+        <motion.div
+          initial={{ opacity: 0, x: -5 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="app-sidebar__tip absolute left-full ml-2 px-2.5 py-1.5 bg-[var(--tf-elevated)] border border-[var(--tf-border)] rounded-lg text-xs text-[var(--tf-text)] whitespace-nowrap z-50 shadow-xl"
+        >
+          {item.label}
+        </motion.div>
+      )}
+    </button>
+  );
+}
+
 export default function Sidebar({
   activeTab,
   onTabChange,
@@ -69,7 +136,7 @@ export default function Sidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 64 : 240 }}
+      animate={{ width: collapsed ? 64 : 232 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
       className={`app-sidebar fixed left-0 top-0 h-screen glass border-r border-[var(--tf-border)] z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -85,6 +152,7 @@ export default function Sidebar({
           {collapsed ? <span className="sr-only">{BRAND}</span> : null}
         </div>
         <button
+          type="button"
           onClick={onToggle}
           className="ml-auto p-1.5 text-[var(--tf-text-secondary)] hover:text-gold transition-colors rounded-lg hover:bg-[var(--tf-elevated)] hidden lg:block"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -95,62 +163,29 @@ export default function Sidebar({
 
       <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
         <div className="app-sidebar__section px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.35em]">
-          Menu
+          {collapsed ? '·' : 'Product'}
         </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                onTabChange(item.id);
-                onMobileClose?.();
-              }}
-              onMouseEnter={() => setHovered(item.id)}
-              onMouseLeave={() => setHovered('')}
-              className={`app-sidebar__link relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${
-                isActive ? navActive : navIdle
-              }`}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gold rounded-r-full"
-                  transition={{ duration: 0.2 }}
-                />
-              )}
-              <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-gold' : ''}`} />
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="whitespace-nowrap overflow-hidden"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-              {collapsed && hovered === item.id && (
-                <motion.div
-                  initial={{ opacity: 0, x: -5 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="app-sidebar__tip absolute left-full ml-2 px-2.5 py-1.5 bg-[var(--tf-elevated)] border border-[var(--tf-border)] rounded-lg text-xs text-[var(--tf-text)] whitespace-nowrap z-50 shadow-xl"
-                >
-                  {item.label}
-                </motion.div>
-              )}
-            </button>
-          );
-        })}
+        {productNavItems.map((item) => (
+          <NavLink
+            key={item.id}
+            item={item}
+            activeTab={activeTab}
+            collapsed={collapsed}
+            hovered={hovered}
+            setHovered={setHovered}
+            onTabChange={onTabChange}
+            onMobileClose={onMobileClose}
+          />
+        ))}
       </nav>
 
       <div className="p-2 border-t border-[var(--tf-border)] shrink-0 space-y-1">
+        <div className="app-sidebar__section px-3 pb-1.5 pt-0.5 text-[10px] font-bold uppercase tracking-[0.35em]">
+          {collapsed ? '·' : 'Account'}
+        </div>
         {user?.role === 'admin' && (
           <button
+            type="button"
             onClick={() => {
               onTabChange('admin');
               onMobileClose?.();
@@ -170,6 +205,7 @@ export default function Sidebar({
           </button>
         )}
         <button
+          type="button"
           onClick={() => {
             onTabChange('subscription');
             onMobileClose?.();
@@ -189,6 +225,7 @@ export default function Sidebar({
         </button>
         {user && (
           <button
+            type="button"
             onClick={onProfile}
             className={`app-sidebar__link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${navIdle} hover:text-gold`}
           >
@@ -209,6 +246,7 @@ export default function Sidebar({
           </button>
         )}
         <button
+          type="button"
           onClick={onLogout}
           className={`app-sidebar__link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${navIdle} hover:text-red-400 hover:bg-red-500/5`}
         >

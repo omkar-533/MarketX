@@ -134,11 +134,11 @@ import {
   type MentorMode,
 } from '../services/mentorModes';
 import {
-  WOLF_ANALYSIS_MODES,
   loadWolfAnalysisMode,
   saveWolfAnalysisMode,
   type WolfAnalysisMode,
 } from '../constants/wolfAnalysisModes';
+import WolfAnalyzeSelect from './masterai/WolfAnalyzeSelect';
 import {
   buildDrillFromDetective,
   isDrillAnswerCorrect,
@@ -322,7 +322,12 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   }, [activeChatId, messages]);
 
   const recognitionRef = useRef<{ start: () => void; stop: () => void; lang: string } | null>(null);
-  const handleSendRef = useRef<(text?: string, opts?: { trainingGrade?: boolean }) => void>(() => {});
+  const handleSendRef = useRef<
+    (
+      text?: string,
+      opts?: { trainingGrade?: boolean; imageDataUrl?: string | null; imageName?: string },
+    ) => void
+  >(() => {});
   const ownerKey = user?.id || user?.email || 'guest';
   const skillProfile = useMemo(
     () => buildTraderSkillProfile(ownerKey, user),
@@ -704,6 +709,15 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       const { dataUrl, fileName } = await prepareChartImageForAi(file);
       setSelectedImage(dataUrl);
       setSelectedImageName(fileName);
+      // Chart-first: upload auto-starts AUTO analysis — no forced mode picker.
+      if (!isMentor) {
+        window.setTimeout(() => {
+          void handleSendRef.current(undefined, {
+            imageDataUrl: dataUrl,
+            imageName: fileName,
+          });
+        }, 40);
+      }
     } catch (err) {
       // "Unsupported format" / "max 14 MB" tell the user what to change; the
       // generic line only tells them something broke.
@@ -1455,7 +1469,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           <div className="min-w-0">
             <div className="mai-chat__title-row">
               <h1 className="mai-chat__title">{isMentor ? 'Mentor AI' : AI_PRODUCT_NAME}</h1>
-              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Setup desk'}</span>
+              <span className="mai-chat__badge">{isMentor ? 'Mentor' : 'Wolf AI'}</span>
             </div>
             <p className="mai-chat__status" title={aiStatus.message}>
               {aiStatus.configured
@@ -1743,31 +1757,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           </div>
         </div>
       </header>
-
-      {!isMentor ? (
-        <div className="mai-chat__setups" role="toolbar" aria-label="Analysis setup">
-          <span className="mai-chat__setups-label">Setup</span>
-          <div className="mai-chat__setups-row">
-            {WOLF_ANALYSIS_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`mai-chat__setup-chip ${analysisMode === m.id ? 'mai-chat__setup-chip--on' : ''} ${
-                  m.tier === 'core' ? 'mai-chat__setup-chip--core' : ''
-                }`}
-                title={m.hint}
-                disabled={isThinking || isAnalyzingChart}
-                onClick={() => {
-                  setAnalysisMode(m.id);
-                  saveWolfAnalysisMode(m.id);
-                }}
-              >
-                {m.short}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       {splitActive ? (
         <div className="mai-chat__split-body" aria-label="Wolf split desk">
@@ -2241,9 +2230,47 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       </div>
 
       <div className="mai-chat__composer-wrap">
+        {!isMentor ? (
+          <div className="mai-chat__ask-tools">
+            <WolfAnalyzeSelect
+              value={analysisMode}
+              onChange={(mode) => {
+                setAnalysisMode(mode);
+                saveWolfAnalysisMode(mode);
+              }}
+              disabled={isThinking || isAnalyzingChart}
+              hindi={useHiPrompts}
+            />
+            {splitActive ? (
+              <div className="mai-chat__suggest-row" role="group" aria-label="Ask suggestions">
+                {(useHiPrompts
+                  ? [
+                      { label: '📍 Entry?', prompt: 'Entry kaha hai? Locked visual template.' },
+                      { label: '💧 Liquidity', prompt: 'Liquidity dikhao. Locked visual template.' },
+                      { label: '⚔️ Challenge', prompt: 'Challenge my setup. Locked visual template.' },
+                    ]
+                  : [
+                      { label: '📍 Where’s entry?', prompt: 'Where is the entry? Locked visual template.' },
+                      { label: '💧 Show liquidity', prompt: 'Show liquidity. Locked visual template.' },
+                      { label: '⚔️ Challenge setup', prompt: 'Challenge my setup. Locked visual template.' },
+                    ]
+                ).map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    disabled={isThinking || isAnalyzingChart}
+                    onClick={() => void handleSend(s.prompt)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="mai-chat__composer">
           <AnimatePresence>
-            {selectedImage ? (
+            {selectedImage && !splitActive ? (
               <motion.div
                 className="mai-chat__attach-panel"
                 initial={{ opacity: 0, height: 0, y: 8 }}
