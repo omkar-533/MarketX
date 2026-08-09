@@ -23349,10 +23349,55 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-lab__chip.is-active {
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #e0f2fe;
+  background: rgba(14, 165, 233, 0.12);
+}
+.wolf-lab__chip.is-done {
+  border-color: rgba(52, 211, 153, 0.35);
 }
 .wolf-lab__chip:disabled {
   opacity: 0.45;
   cursor: default;
+}
+.wolf-lab--lens .wolf-lab__hint {
+  display: none;
+}
+.wolf-lab__compare-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #fbbf24;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  padding: 0;
+}
+.wolf-lab__compare-link:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.wolf-lab__saved {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.wolf-lab__saved-chip {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.4);
+  color: #94a3b8;
+  border-radius: 0.4rem;
+  padding: 0.18rem 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wolf-lab__saved-chip.is-on {
+  color: #e2e8f0;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(14, 165, 233, 0.1);
 }
 .wolf-lab__acts {
   display: flex;
@@ -24005,6 +24050,108 @@ body:has(.app-main--terminal-immersive) #root {
   margin: 0.35rem 0 0;
   font-size: 0.75rem;
   color: #94a3b8;
+}
+.wolf-split__eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+.wolf-split__story blockquote {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  border: 0;
+  quotes: none;
+}
+.wolf-split__plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.55rem;
+  margin: 0.3rem 0 0;
+}
+.wolf-split__plan-grid dt {
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.wolf-split__plan-grid dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.25;
+}
+.wolf-split__clear-focus,
+.wolf-split__acts-explain {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 100%;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.wolf-split__guide {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 6;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  background: rgba(8, 12, 22, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.wolf-split__guide-k {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+  margin-bottom: 0.3rem;
+}
+.wolf-split__guide p {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.35;
+}
+.wolf-split__guide-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wolf-split__guide-nav button {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.wolf-split__guide-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.wolf-split__guide-nav .is-ghost {
+  opacity: 0.75;
 }
 .wolf-split__warn {
   font-size: 0.75rem;

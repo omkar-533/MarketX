@@ -7,100 +7,103 @@ import {
 import type { AnalysisLayer, ConsensusReport } from '../../utils/wolfConsensus';
 
 type Props = {
-  /** Primary single mode (kept for uploads / active lens). */
   analysisMode: WolfAnalysisMode;
   onModeChange: (mode: WolfAnalysisMode) => void;
-  /** Selected lenses for batch analyze (max 5). */
-  labLenses: WolfAnalysisMode[];
-  onLabLensesChange: (modes: WolfAnalysisMode[]) => void;
-  onAnalyzeSelected: () => void;
-  onCompare: () => void;
+  /** Request re-analysis of same chart with this lens (no re-upload). */
+  onReanalyzeLens: (mode: WolfAnalysisMode) => void;
   layers: AnalysisLayer[];
   activeLayerId: string | null;
   onSelectLayer: (id: string) => void;
-  onToggleLayerVisible: (id: string) => void;
+  onCompare: () => void;
   consensus: ConsensusReport | null;
   compareOpen: boolean;
   onCloseCompare: () => void;
   disabled?: boolean;
   hindi?: boolean;
-  compact?: boolean;
 };
 
-const MAX_LENSES = 5;
-
 /**
- * Analysis Lab — multi-lens select · re-analyze · compare · consensus.
- * One chart · many lenses · shared visual understanding.
+ * Lens selector — one active lens, not a WAIT-row dashboard.
+ * Saved analyses appear as subtle ✓ chips; compare is a temporary overlay.
  */
 export default function WolfAnalysisLab({
   analysisMode,
   onModeChange,
-  labLenses,
-  onLabLensesChange,
-  onAnalyzeSelected,
-  onCompare,
+  onReanalyzeLens,
   layers,
   activeLayerId,
   onSelectLayer,
-  onToggleLayerVisible,
+  onCompare,
   consensus,
   compareOpen,
   onCloseCompare,
   disabled,
   hindi,
-  compact,
 }: Props) {
   const [openMore, setOpenMore] = useState(false);
 
-  const core = useMemo(() => WOLF_ANALYSIS_MODES.filter((m) => m.tier === 'core' || m.id === 'smc' || m.id === 'price_action'), []);
+  const primary = useMemo(
+    () =>
+      WOLF_ANALYSIS_MODES.filter((m) =>
+        ['auto', 'smc', 'price_action', 'liquidity', 'support_resistance', 'mbp'].includes(m.id),
+      ),
+    [],
+  );
   const more = useMemo(
-    () => WOLF_ANALYSIS_MODES.filter((m) => !core.some((c) => c.id === m.id)),
-    [core],
+    () => WOLF_ANALYSIS_MODES.filter((m) => !primary.some((p) => p.id === m.id)),
+    [primary],
   );
 
-  const toggle = (id: WolfAnalysisMode) => {
+  const doneModes = useMemo(() => new Set(layers.map((l) => l.mode)), [layers]);
+
+  const pick = (mode: WolfAnalysisMode) => {
     if (disabled) return;
-    if (labLenses.includes(id)) {
-      onLabLensesChange(labLenses.filter((m) => m !== id));
+    const existing = layers.find((l) => l.mode === mode);
+    if (existing) {
+      onModeChange(mode);
+      onSelectLayer(existing.id);
       return;
     }
-    if (labLenses.length >= MAX_LENSES) return;
-    onLabLensesChange([...labLenses, id]);
-    onModeChange(id);
+    // Same lens already active with no saved layer — don't re-fire.
+    if (mode === analysisMode) return;
+    onModeChange(mode);
+    onReanalyzeLens(mode);
   };
 
   return (
-    <div className={`wolf-lab ${compact ? 'wolf-lab--compact' : ''}`}>
+    <div className="wolf-lab wolf-lab--lens">
       <div className="wolf-lab__head">
-        <span className="wolf-lab__title">{hindi ? 'ANALYSIS LAB' : 'ANALYSIS LAB'}</span>
-        <span className="wolf-lab__hint">
-          {hindi ? `Same chart · ≤${MAX_LENSES} lenses` : `Same chart · up to ${MAX_LENSES} lenses`}
-        </span>
+        <span className="wolf-lab__title">{hindi ? 'LENS' : 'READ AS'}</span>
+        {layers.length >= 2 ? (
+          <button type="button" className="wolf-lab__compare-link" disabled={disabled} onClick={onCompare}>
+            {hindi ? 'COMPARE' : 'COMPARE'}
+          </button>
+        ) : null}
       </div>
 
-      <div className="wolf-lab__chips" role="group" aria-label="Analysis lenses">
-        {core.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`wolf-lab__chip ${labLenses.includes(m.id) ? 'is-picked' : ''} ${
-                analysisMode === m.id ? 'is-active' : ''
-              }`}
-              title={m.hint}
-              disabled={disabled}
-              onClick={() => toggle(m.id)}
-            >
-              {m.short}
-            </button>
-          ))}
+      <div className="wolf-lab__chips" role="group" aria-label="Analysis lens">
+        {primary.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={`wolf-lab__chip ${analysisMode === m.id ? 'is-active' : ''} ${
+              doneModes.has(m.id) ? 'is-done' : ''
+            }`}
+            title={m.hint}
+            disabled={disabled}
+            onClick={() => pick(m.id)}
+          >
+            {doneModes.has(m.id) ? '✓ ' : ''}
+            {m.short}
+          </button>
+        ))}
         <button
           type="button"
-          className={`wolf-lab__chip wolf-lab__more ${openMore ? 'is-picked' : ''}`}
+          className={`wolf-lab__chip wolf-lab__more ${openMore ? 'is-active' : ''}`}
           disabled={disabled}
           onClick={() => setOpenMore((v) => !v)}
         >
-          {hindi ? 'More ▾' : 'More ▾'}
+          +
         </button>
       </div>
 
@@ -110,69 +113,40 @@ export default function WolfAnalysisLab({
             <button
               key={m.id}
               type="button"
-              className={`wolf-lab__chip ${labLenses.includes(m.id) ? 'is-picked' : ''}`}
+              className={`wolf-lab__chip ${analysisMode === m.id ? 'is-active' : ''} ${
+                doneModes.has(m.id) ? 'is-done' : ''
+              }`}
               title={m.hint}
               disabled={disabled}
-              onClick={() => toggle(m.id)}
+              onClick={() => pick(m.id)}
             >
+              {doneModes.has(m.id) ? '✓ ' : ''}
               {m.short}
             </button>
           ))}
         </div>
       ) : null}
 
-      <div className="wolf-lab__acts">
-        <button
-          type="button"
-          className="wolf-lab__run"
-          disabled={disabled || labLenses.length === 0}
-          onClick={onAnalyzeSelected}
-        >
-          {hindi
-            ? `ANALYZE ${labLenses.length || 1}`
-            : `ANALYZE SELECTED (${labLenses.length || 0})`}
-        </button>
-        <button
-          type="button"
-          className="wolf-lab__compare"
-          disabled={disabled || layers.length < 2}
-          onClick={onCompare}
-        >
-          {hindi ? 'COMPARE' : 'COMPARE'}
-        </button>
-      </div>
-
-      {layers.length ? (
-        <div className="wolf-lab__layers" aria-label="Analysis layers">
+      {layers.length > 1 ? (
+        <div className="wolf-lab__saved" aria-label="Saved analyses">
           {layers.map((layer) => (
-            <div
+            <button
               key={layer.id}
-              className={`wolf-lab__layer ${activeLayerId === layer.id ? 'is-on' : ''} ${
-                layer.visible ? '' : 'is-dim'
-              }`}
+              type="button"
+              className={`wolf-lab__saved-chip ${activeLayerId === layer.id ? 'is-on' : ''}`}
+              onClick={() => onSelectLayer(layer.id)}
             >
-              <button type="button" className="wolf-lab__layer-main" onClick={() => onSelectLayer(layer.id)}>
-                <span>{wolfAnalysisModeLabel(layer.mode)}</span>
-                <em>{layer.analysis?.bias || '…'}</em>
-              </button>
-              <button
-                type="button"
-                className="wolf-lab__eye"
-                title={layer.visible ? 'Hide layer' : 'Show layer'}
-                onClick={() => onToggleLayerVisible(layer.id)}
-              >
-                {layer.visible ? '◉' : '○'}
-              </button>
-            </div>
+              {wolfAnalysisModeLabel(layer.mode)}
+            </button>
           ))}
         </div>
       ) : null}
 
       {compareOpen && consensus ? (
-        <div className="wolf-lab__compare-panel" role="region" aria-label="Analysis comparison">
+        <div className="wolf-lab__compare-panel" role="dialog" aria-label="Wolf comparison">
           <div className="wolf-lab__compare-top">
-            <strong>{hindi ? 'COMPARISON' : 'ANALYSIS COMPARISON'}</strong>
-            <button type="button" onClick={onCloseCompare} aria-label="Close compare">
+            <strong>{hindi ? 'WOLF COMPARISON' : 'WOLF COMPARISON'}</strong>
+            <button type="button" onClick={onCloseCompare} aria-label="Close">
               ✕
             </button>
           </div>

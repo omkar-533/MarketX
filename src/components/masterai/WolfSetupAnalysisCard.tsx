@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Crosshair,
-  Eye,
   HelpCircle,
   Mic2,
   PenLine,
   Play,
-  Sparkles,
   Swords,
 } from 'lucide-react';
 import { parseWolfSetupReply } from '../../utils/parseWolfSetupReply';
@@ -16,7 +14,6 @@ import type { NormalizedBBox, WolfEvidenceItem } from '../../utils/wolfEvidence'
 import {
   buildCopilotChecklist,
   buildNextAction,
-  buildTradeProgress,
   crispStatusTitle,
   journeyDelta,
   loadJourney,
@@ -30,7 +27,6 @@ import ChatMarkdown from '../ChatMarkdown';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import WolfChartCanvas from './WolfChartCanvas';
 import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
-import type { ReactNode } from 'react';
 
 export type WolfTrailItem = {
   id: string;
@@ -63,10 +59,10 @@ type Props = {
   analysisLab?: ReactNode;
 };
 
-type Sheet = 'why' | 'whatif' | 'entry' | 'invalid' | 'target' | 'miss' | 'radial' | 'deeper' | null;
+type Sheet = 'why' | 'whatif' | 'entry' | 'invalid' | 'deeper' | 'miss' | 'radial' | null;
 
 /**
- * Split-brain Wolf desk — LEFT Market · RIGHT Analyst · optional dock.
+ * Split-brain Wolf desk — LEFT Market · RIGHT Wolf's Read.
  * Same panel structure for every response; only content + chart focus change.
  */
 export default function WolfSetupAnalysisCard({
@@ -95,11 +91,13 @@ export default function WolfSetupAnalysisCard({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [replayOn, setReplayOn] = useState(false);
-  const [buildStep, setBuildStep] = useState(0);
+  const [guideOn, setGuideOn] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
+  const [focusOnly, setFocusOnly] = useState(false);
   const [explainLevel, setExplainLevel] = useState(1);
   const [ask, setAsk] = useState('');
   const [drawMode, setDrawMode] = useState(false);
-  const [followWolf, setFollowWolf] = useState(true);
+  const [followCamera, setFollowCamera] = useState(true);
   const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
 
   const checklist = useMemo(
@@ -116,7 +114,6 @@ export default function WolfSetupAnalysisCard({
   );
   const ui = useMemo(() => (analysis ? resolveUiStatus(analysis) : null), [analysis]);
   const crisp = useMemo(() => (analysis ? crispStatusTitle(analysis) : null), [analysis]);
-  const progress = useMemo(() => buildTradeProgress(checklist), [checklist]);
   const delta = useMemo(() => journeyDelta(loadJourney()), [analysis?.raw]);
 
   const evidenceLane = useMemo(() => {
@@ -137,9 +134,103 @@ export default function WolfSetupAnalysisCard({
     }));
   }, [tabs, checklist]);
 
-  const askWolf = (prompt: string) => {
-    onWhatIf?.(prompt);
-  };
+  const explainLines = useMemo(() => {
+    if (!next) return [] as string[];
+    if (explainLevel === 1) {
+      return [next.message, hindi ? 'Confirmation pending.' : 'Confirmation still pending.'];
+    }
+    if (explainLevel === 2) {
+      return [
+        hindi ? 'Price ko ye level todna / hold karna hai.' : 'Price must break or hold this level.',
+        next.ifConfirmed || '',
+      ];
+    }
+    if (explainLevel === 3) {
+      return [
+        hindi ? 'Dekho — camera move. Yahi zone.' : 'Watch — camera moves to this zone.',
+        next.message,
+      ];
+    }
+    return [
+      hindi
+        ? 'Door ke jaisa: pehle sweep, phir break, phir entry.'
+        : 'Like a door: sweep first, then break, then entry.',
+    ];
+  }, [explainLevel, hindi, next]);
+
+  const insight = useMemo(() => {
+    if (!analysis || !next) return '';
+    return (
+      (analysis.keyObservation || '').split(/\s+/).slice(0, 14).join(' ') ||
+      explainLines.filter(Boolean)[0] ||
+      next.message
+    );
+  }, [analysis, explainLines, next]);
+
+  const guideSteps = useMemo(() => {
+    if (!analysis || !next) return [];
+    const fromEvidence = evidenceLane.slice(0, 4).map((n) => ({
+      id: n.id,
+      label: n.label,
+      line: hindi
+        ? `YEH ${n.label.toUpperCase()} — isi pe focus.`
+        : `THIS IS THE ${n.label.toUpperCase()} WOLF IS WATCHING.`,
+      evidence: n.evidence,
+    }));
+    if (fromEvidence.length >= 2) {
+      return [
+        ...fromEvidence,
+        {
+          id: 'entry',
+          label: 'Entry',
+          line: hindi
+            ? `ENTRY: ${analysis.entry || 'Confirmation ke baad.'}`
+            : `ENTRY AREA: ${analysis.entry || 'Wait for confirmation.'}`,
+          evidence: tabs.find((t) => /entry/i.test(t.id))?.evidence,
+        },
+        {
+          id: 'inv',
+          label: 'Invalid',
+          line: hindi
+            ? `INVALID: ${analysis.invalidation || analysis.stopLoss || 'Yeh tootey to thesis fail.'}`
+            : `IF THIS FAILS, THESIS IS INVALID: ${analysis.invalidation || analysis.stopLoss || 'Watch this level.'}`,
+          evidence: tabs.find((t) => /invalid|stop/i.test(t.id))?.evidence,
+        },
+      ].slice(0, 5);
+    }
+    return [
+      {
+        id: 'story',
+        label: 'Story',
+        line: insight,
+        evidence: tabs[0]?.evidence,
+      },
+      {
+        id: 'watch',
+        label: 'Watch',
+        line: next.message,
+        evidence: tabs.find((t) => t.ok === false)?.evidence || tabs[0]?.evidence,
+      },
+      {
+        id: 'entry',
+        label: 'Entry',
+        line: analysis.entry || 'Confirmation first.',
+        evidence: undefined as WolfEvidenceItem | undefined,
+      },
+      {
+        id: 'inv',
+        label: 'Invalid',
+        line: analysis.invalidation || analysis.stopLoss || 'Thesis breaks here.',
+        evidence: undefined as WolfEvidenceItem | undefined,
+      },
+      {
+        id: 'tgt',
+        label: 'Target',
+        line: analysis.target || 'Next liquidity.',
+        evidence: undefined as WolfEvidenceItem | undefined,
+      },
+    ];
+  }, [analysis, evidenceLane, hindi, insight, next, tabs]);
 
   const focusItem = useMemo(() => {
     if (focusId) {
@@ -165,7 +256,9 @@ export default function WolfSetupAnalysisCard({
 
   useEffect(() => {
     setPhase('tease');
-    setBuildStep(0);
+    setGuideStep(0);
+    setGuideOn(false);
+    setFocusOnly(false);
     setExplainLevel(1);
     setSheet(null);
     const t = window.setTimeout(() => setPhase('live'), 700);
@@ -176,7 +269,7 @@ export default function WolfSetupAnalysisCard({
     if (!replayOn || !tabs.length) return;
     setActiveTab(tabs[0].id);
     setFocusId(tabs[0].evidence?.id || null);
-    setFollowWolf(true);
+    setFollowCamera(true);
     let i = 0;
     const id = window.setInterval(() => {
       i += 1;
@@ -223,9 +316,22 @@ export default function WolfSetupAnalysisCard({
 
   const speak = () => onSpeak?.(speakNextActionScript(analysis, next, hindi));
 
+  const askWolf = (prompt: string) => {
+    onWhatIf?.(prompt);
+  };
+
+  const focusEvidence = (id: string, ev?: WolfEvidenceItem) => {
+    setFollowCamera(true);
+    setPhase('live');
+    setFocusOnly(true);
+    if (tabs.some((t) => t.id === id)) setActiveTab(id);
+    setFocusId(ev?.id || id);
+    setSheet(null);
+  };
+
   const showMe = () => {
     setPhase('live');
-    setFollowWolf(true);
+    setFollowCamera(true);
     const hint = next.evidenceHint;
     const match =
       (hint && tabs.find((t) => t.id === hint || t.label.toLowerCase().includes(String(hint))))
@@ -236,45 +342,48 @@ export default function WolfSetupAnalysisCard({
       const tab = tabs.find((t) => t.evidence?.id === match.id);
       if (tab) setActiveTab(tab.id);
       setFocusId(match.id);
+      setFocusOnly(true);
     } else {
       setActiveTab('full');
       setFocusId(null);
+      setFocusOnly(false);
     }
     setSheet(null);
   };
 
-  const focusEvidence = (id: string, ev?: WolfEvidenceItem) => {
-    setFollowWolf(true);
-    setPhase('live');
-    if (tabs.some((t) => t.id === id)) setActiveTab(id);
-    setFocusId(ev?.id || id);
-    setSheet(null);
+  const goGuideStep = (step: number) => {
+    const s = Math.max(0, Math.min(guideSteps.length - 1, step));
+    setGuideStep(s);
+    setGuideOn(true);
+    setFollowCamera(true);
+    setFocusOnly(true);
+    const item = guideSteps[s];
+    if (item?.evidence) {
+      focusEvidence(item.id, item.evidence);
+    } else if (item) {
+      setFocusId(null);
+      setActiveTab('full');
+    }
   };
 
-  const buildSteps = [
-    { id: 'ctx', label: 'Context', line: crisp.subtitle || analysis.setup || 'Chart context' },
-    { id: 'liq', label: 'Liquidity', line: hindi ? 'Yahan liquidity.' : 'Liquidity here.' },
-    { id: 'trig', label: 'Trigger', line: next.message },
-    { id: 'entry', label: 'Entry', line: analysis.entry || 'Conditional entry' },
-    { id: 'inv', label: 'Invalid', line: analysis.invalidation || analysis.stopLoss || 'Break kills thesis' },
-    { id: 'tgt', label: 'Target', line: analysis.target || 'Next liquidity' },
-  ];
+  const startGuide = () => {
+    setPhase('live');
+    goGuideStep(0);
+  };
 
-  const explainLines =
-    explainLevel === 1
-      ? [next.message, hindi ? 'Confirmation pending.' : 'Confirmation still pending.']
-      : explainLevel === 2
-        ? [
-            hindi ? 'Price ko ye level todna / hold karna hai.' : 'Price must break or hold this level.',
-            next.ifConfirmed || '',
-          ]
-        : explainLevel === 3
-          ? [hindi ? 'Dekho — camera move. Yahi zone.' : 'Watch — camera moves to this zone.', next.message]
-          : [
-              hindi
-                ? 'Door ke jaisa: pehle sweep, phir break, phir entry.'
-                : 'Like a door: sweep first, then break, then entry.',
-            ];
+  const isWait =
+    analysis.bias === 'WAIT' ||
+    analysis.bias === 'NO_TRADE' ||
+    ui.status === 'WAIT' ||
+    ui.status === 'WATCH' ||
+    ui.status === 'NO_TRADE';
+  const isLong = analysis.bias === 'LONG' && !isWait;
+  const isShort = analysis.bias === 'SHORT' && !isWait;
+
+  const displayEvidence =
+    focusOnly && focusItem
+      ? evidenceLane.filter((n) => n.evidence?.id === focusItem.id || n.id === focusId).slice(0, 1)
+      : evidenceLane;
 
   const onSelectRegion = (bbox: NormalizedBBox) => {
     setDrawMode(false);
@@ -283,10 +392,16 @@ export default function WolfSetupAnalysisCard({
     );
   };
 
-  const insight =
-    (analysis.keyObservation || '').split(/\s+/).slice(0, 14).join(' ') ||
-    explainLines.filter(Boolean)[0] ||
-    next.message;
+  const directionLabel =
+    analysis.bias === 'LONG'
+      ? 'LONG'
+      : analysis.bias === 'SHORT'
+        ? 'SHORT'
+        : analysis.bias === 'NO_TRADE'
+          ? 'NO TRADE'
+          : 'WAIT';
+
+  const currentGuide = guideSteps[guideStep];
 
   return (
     <div className={`wolf-split wolf-split--${tone} ${phase === 'tease' ? 'is-tease' : ''}`}>
@@ -311,7 +426,7 @@ export default function WolfSetupAnalysisCard({
         <section className="wolf-split__market" aria-label="The Market">
           <div className={`wolf-split__stage ${phase === 'tease' ? 'is-dim' : ''}`}>
             <WolfChartCanvas
-              focusBbox={followWolf ? focusItem?.bbox || null : null}
+              focusBbox={followCamera ? focusItem?.bbox || null : null}
               drawMode={drawMode}
               onSelectRegion={onSelectRegion}
               onPoint={(x, y) => {
@@ -349,6 +464,54 @@ export default function WolfSetupAnalysisCard({
             </AnimatePresence>
 
             <AnimatePresence>
+              {guideOn && currentGuide && phase === 'live' ? (
+                <motion.div
+                  className="wolf-split__guide"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                >
+                  <div className="wolf-split__guide-k">
+                    FOLLOW WOLF · {guideStep + 1}/{guideSteps.length}
+                  </div>
+                  <p>{currentGuide.line}</p>
+                  <div className="wolf-split__guide-nav">
+                    <button
+                      type="button"
+                      disabled={guideStep <= 0}
+                      onClick={() => goGuideStep(guideStep - 1)}
+                    >
+                      BACK
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (guideStep >= guideSteps.length - 1) {
+                          setGuideOn(false);
+                          setFocusOnly(false);
+                          return;
+                        }
+                        goGuideStep(guideStep + 1);
+                      }}
+                    >
+                      {guideStep >= guideSteps.length - 1 ? 'DONE' : 'NEXT'}
+                    </button>
+                    <button
+                      type="button"
+                      className="is-ghost"
+                      onClick={() => {
+                        setGuideOn(false);
+                        setFocusOnly(false);
+                      }}
+                    >
+                      CLOSE
+                    </button>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <AnimatePresence>
               {sheet === 'radial' && radial ? (
                 <motion.div
                   className="wolf-desk__radial wolf-split__radial"
@@ -366,7 +529,7 @@ export default function WolfSetupAnalysisCard({
                       );
                     }}
                   >
-                    🧠 Ask Wolf
+                    Ask Wolf
                   </button>
                   <button
                     type="button"
@@ -377,7 +540,7 @@ export default function WolfSetupAnalysisCard({
                       );
                     }}
                   >
-                    💧 Liquidity
+                    Liquidity
                   </button>
                   <button
                     type="button"
@@ -385,10 +548,10 @@ export default function WolfSetupAnalysisCard({
                       setSheet('entry');
                     }}
                   >
-                    📍 Entry
+                    Entry
                   </button>
                   <button type="button" onClick={() => setSheet('whatif')}>
-                    🔮 What if?
+                    What if?
                   </button>
                   <button type="button" className="is-ghost" onClick={() => setSheet(null)}>
                     Close
@@ -401,11 +564,19 @@ export default function WolfSetupAnalysisCard({
           <div className="wolf-split__cam">
             <button
               type="button"
-              className={followWolf ? 'is-on' : ''}
-              onClick={() => setFollowWolf((v) => !v)}
+              className={guideOn ? 'is-on' : ''}
+              onClick={() => (guideOn ? setGuideOn(false) : startGuide())}
+              title="Walk the evidence story with Wolf"
+            >
+              {guideOn ? '◉ FOLLOW WOLF' : '○ FOLLOW WOLF'}
+            </button>
+            <button
+              type="button"
+              className={followCamera ? 'is-on' : ''}
+              onClick={() => setFollowCamera((v) => !v)}
               title="When on, Wolf can move the camera"
             >
-              {followWolf ? '◉ FOLLOW WOLF' : '○ FOLLOW WOLF'}
+              {followCamera ? '◉ FOLLOW CAMERA' : '○ FOLLOW CAMERA'}
             </button>
             <button
               type="button"
@@ -418,7 +589,7 @@ export default function WolfSetupAnalysisCard({
           </div>
         </section>
 
-        <aside className="wolf-split__wolf" aria-label="Wolf analysis">
+        <aside className="wolf-split__wolf" aria-label="Wolf's read">
           {trail.length > 1 ? (
             <nav className="wolf-split__trail" aria-label="Analysis trail">
               {trail.map((t, i) => (
@@ -435,6 +606,8 @@ export default function WolfSetupAnalysisCard({
               ))}
             </nav>
           ) : null}
+
+          <div className="wolf-split__eyebrow">WOLF&apos;S READ</div>
 
           <div className="wolf-desk__status wolf-split__status" role="status">
             <span className="wolf-desk__emoji">{ui.emoji}</span>
@@ -454,30 +627,84 @@ export default function WolfSetupAnalysisCard({
             </div>
           ) : null}
 
-          <p className="wolf-split__insight">{insight}</p>
+          <section className="wolf-split__story" aria-label="Market story">
+            <div className="wolf-desk__watch-k">MARKET STORY</div>
+            <blockquote className="wolf-split__insight">&ldquo;{insight}&rdquo;</blockquote>
+          </section>
 
-          <ul className="wolf-split__evidence">
-            {evidenceLane.map((node) => (
-              <li key={node.id}>
-                <button type="button" onClick={() => focusEvidence(node.id, node.evidence)}>
-                  <span>
-                    {node.icon} {node.label}
-                  </span>
-                  <span
-                    className={`wolf-switch__mark ${
-                      node.ok === true ? 'is-yes' : node.ok === false ? 'is-no' : 'is-na'
-                    }`}
-                  >
-                    {node.ok === true ? '✓' : node.ok === false ? '✕' : '—'}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <section className="wolf-split__evidence-block" aria-label="Key evidence">
+            <div className="wolf-desk__watch-k">KEY EVIDENCE</div>
+            <ul className="wolf-split__evidence">
+              {displayEvidence.map((node) => {
+                const dimmed =
+                  focusOnly &&
+                  focusItem &&
+                  node.evidence?.id !== focusItem.id &&
+                  node.id !== focusId;
+                return (
+                  <li key={node.id} className={dimmed ? 'is-dim' : ''}>
+                    <button
+                      type="button"
+                      onClick={() => focusEvidence(node.id, node.evidence)}
+                      style={dimmed ? { opacity: 0.35 } : undefined}
+                    >
+                      <span>
+                        {node.icon} {node.label}
+                      </span>
+                      <span
+                        className={`wolf-switch__mark ${
+                          node.ok === true ? 'is-yes' : node.ok === false ? 'is-no' : 'is-na'
+                        }`}
+                      >
+                        {node.ok === true ? '✓' : node.ok === false ? '✕' : '—'}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {focusOnly ? (
+              <button
+                type="button"
+                className="wolf-split__clear-focus"
+                onClick={() => {
+                  setFocusOnly(false);
+                  setFocusId(null);
+                  setActiveTab('full');
+                }}
+              >
+                SHOW ALL
+              </button>
+            ) : null}
+          </section>
 
-          <div className="wolf-desk__watch wolf-split__watch">
-            <div className="wolf-desk__watch-k">👁 WATCH</div>
-            <p className="wolf-desk__watch-m">{explainLines.filter(Boolean)[0] || next.message}</p>
+          <section className="wolf-split__plan" aria-label="Trade plan">
+            <div className="wolf-desk__watch-k">TRADE PLAN</div>
+            <dl className="wolf-split__plan-grid">
+              <div>
+                <dt>Direction</dt>
+                <dd>{directionLabel}</dd>
+              </div>
+              <div>
+                <dt>Trigger</dt>
+                <dd>{analysis.entry || next.message || '—'}</dd>
+              </div>
+              <div>
+                <dt>Invalidation</dt>
+                <dd>{analysis.invalidation || analysis.stopLoss || '—'}</dd>
+              </div>
+              <div>
+                <dt>Target</dt>
+                <dd>{analysis.target || '—'}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className="wolf-desk__watch wolf-split__watch" aria-label="Next action">
+            <div className="wolf-desk__watch-k">NEXT ACTION</div>
+            <p className="wolf-desk__watch-m">
+              {explainLines.filter(Boolean)[0] || next.message}
+            </p>
             {explainLevel > 1 || next.ifConfirmed ? (
               <p className="wolf-desk__watch-n">
                 {explainLevel > 1
@@ -485,68 +712,64 @@ export default function WolfSetupAnalysisCard({
                   : next.ifConfirmed}
               </p>
             ) : null}
+          </section>
+
+          <div className="wolf-split__acts">
+            {isWait ? (
+              <>
+                <button type="button" onClick={() => setSheet((s) => (s === 'why' ? null : 'why'))}>
+                  WHY WAIT?
+                </button>
+                <button type="button" onClick={() => setSheet((s) => (s === 'entry' ? null : 'entry'))}>
+                  SHOW ENTRY
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    askWolf(
+                      '[WHAT CONFIRMS?] What exactly confirms this setup on THIS chart? One clear trigger + Next Action. Under 80 words.',
+                    )
+                  }
+                >
+                  WHAT CONFIRMS?
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => setSheet((s) => (s === 'why' ? null : 'why'))}>
+                  {isLong ? 'WHY LONG?' : isShort ? 'WHY SHORT?' : 'WHY?'}
+                </button>
+                <button type="button" onClick={() => setSheet((s) => (s === 'entry' ? null : 'entry'))}>
+                  SHOW ENTRY
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSheet((s) => (s === 'invalid' ? null : 'invalid'))}
+                >
+                  WHAT INVALIDATES?
+                </button>
+              </>
+            )}
           </div>
+
+          <button
+            type="button"
+            className="wolf-split__acts-explain"
+            onClick={() => setExplainLevel((n) => Math.min(4, n + 1))}
+          >
+            <HelpCircle className="h-3 w-3" />
+            {hindi ? 'SAMJHA NAHI' : "I DON'T GET IT"}
+          </button>
 
           <div className="wolf-split__primary">
             <button type="button" className="wolf-split__show" onClick={showMe}>
               <Crosshair className="h-3.5 w-3.5" />
               SHOW ME
             </button>
-            <div className="wolf-split__acts">
-              <button type="button" onClick={() => setSheet((s) => (s === 'why' ? null : 'why'))}>
-                WHY?
-              </button>
-              {onWhatIf ? (
-                <button
-                  type="button"
-                  onClick={() => setSheet((s) => (s === 'whatif' ? null : 'whatif'))}
-                >
-                  WHAT IF?
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setExplainLevel((n) => Math.min(4, n + 1))}
-              >
-                <HelpCircle className="h-3 w-3" />
-                {hindi ? 'SAMJHA NAHI' : "I DON'T GET IT"}
-              </button>
-            </div>
-          </div>
-
-          <div className="wolf-desk__map wolf-split__map">
-            <button
-              type="button"
-              className={sheet === 'entry' ? 'is-on' : ''}
-              onClick={() => setSheet((s) => (s === 'entry' ? null : 'entry'))}
-            >
-              📍 ENTRY
-            </button>
-            <button
-              type="button"
-              className={sheet === 'invalid' ? 'is-on' : ''}
-              onClick={() => setSheet((s) => (s === 'invalid' ? null : 'invalid'))}
-            >
-              🛑 INVALID
-            </button>
-            <button
-              type="button"
-              className={sheet === 'target' ? 'is-on' : ''}
-              onClick={() => setSheet((s) => (s === 'target' ? null : 'target'))}
-            >
-              🎯 TARGET
-            </button>
-            <button
-              type="button"
-              className={sheet === 'deeper' ? 'is-on' : ''}
-              onClick={() => setSheet((s) => (s === 'deeper' ? null : 'deeper'))}
-            >
-              🔬 DEEPER
-            </button>
           </div>
 
           <AnimatePresence>
-            {sheet === 'entry' || sheet === 'invalid' || sheet === 'target' || sheet === 'deeper' ? (
+            {sheet === 'entry' || sheet === 'invalid' || sheet === 'deeper' ? (
               <motion.div
                 className="wolf-desk__sheet"
                 initial={{ opacity: 0, height: 0 }}
@@ -555,7 +778,7 @@ export default function WolfSetupAnalysisCard({
               >
                 {sheet === 'entry' ? (
                   <>
-                    <strong>📍 ENTRY</strong>
+                    <strong>ENTRY</strong>
                     <p>{analysis.entry || (hindi ? 'Pehle confirmation.' : 'Confirmation first.')}</p>
                     <button type="button" onClick={showMe}>
                       SHOW
@@ -564,30 +787,19 @@ export default function WolfSetupAnalysisCard({
                 ) : null}
                 {sheet === 'invalid' ? (
                   <>
-                    <strong>🛑 INVALID</strong>
+                    <strong>INVALIDATION</strong>
                     <p>{analysis.invalidation || analysis.stopLoss || 'Level unclear.'}</p>
                     <button type="button" onClick={showMe}>
                       PINPOINT
                     </button>
                   </>
                 ) : null}
-                {sheet === 'target' ? (
-                  <>
-                    <strong>🎯 TARGET</strong>
-                    <p>{analysis.target || 'Next liquidity.'}</p>
-                    <button type="button" onClick={showMe}>
-                      SHOW
-                    </button>
-                  </>
-                ) : null}
                 {sheet === 'deeper' ? (
                   <>
-                    <strong>🔬 GO DEEPER</strong>
+                    <strong>GO DEEPER</strong>
                     <p>{(analysis.why || []).slice(0, 2).join(' ') || insight}</p>
                     {analysis.alternative ? (
-                      <p className="wolf-split__deeper-note">
-                        Alt: {analysis.alternative}
-                      </p>
+                      <p className="wolf-split__deeper-note">Alt: {analysis.alternative}</p>
                     ) : null}
                     <p className="wolf-split__deeper-note">
                       {analysis.assumptions || analysis.entry || next.ifConfirmed || ''}
@@ -647,7 +859,7 @@ export default function WolfSetupAnalysisCard({
                     setSheet(null);
                   }}
                 >
-                  🟢 LEVEL HOLDS
+                  LEVEL HOLDS
                 </button>
                 <button
                   type="button"
@@ -659,7 +871,7 @@ export default function WolfSetupAnalysisCard({
                     setSheet(null);
                   }}
                 >
-                  🔴 LEVEL BREAKS
+                  LEVEL BREAKS
                 </button>
               </motion.div>
             ) : null}
@@ -673,7 +885,7 @@ export default function WolfSetupAnalysisCard({
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
               >
-                <strong>⚠️ ONE PROBLEM</strong>
+                <strong>ONE PROBLEM</strong>
                 <p>
                   {analysis.invalidation ||
                     (hindi
@@ -696,59 +908,27 @@ export default function WolfSetupAnalysisCard({
             ) : null}
           </AnimatePresence>
 
-          <div className="wolf-desk__prog wolf-split__prog" aria-hidden>
-            {progress.map((s) => (
-              <span
-                key={s.label}
-                className={`${s.done ? 'is-done' : ''} ${s.current ? 'is-now' : ''}`}
-              >
-                {s.label}
-              </span>
-            ))}
-          </div>
-
-          <div className="wolf-desk__build wolf-split__build">
-            <button
-              type="button"
-              onClick={() => {
-                const nextStep = Math.min(buildSteps.length - 1, buildStep + 1);
-                setBuildStep(nextStep);
-                setFollowWolf(true);
-                if (nextStep === 1 && tabs[0]) {
-                  setActiveTab(tabs[0].id);
-                  setFocusId(tabs[0].evidence?.id || null);
-                } else if (nextStep >= 2) showMe();
-              }}
-            >
-              🐺 BUILD {buildStep + 1}/{buildSteps.length}: {buildSteps[buildStep].label}
-            </button>
-            <p>{buildSteps[buildStep].line}</p>
-          </div>
-
           <div className="wolf-split__more">
-            <button type="button" onClick={() => setReplayOn(true)} disabled={replayOn || tabs.length === 0}>
-              <Play className="h-3.5 w-3.5" />
-              REPLAY
+            <button type="button" onClick={() => setSheet((s) => (s === 'deeper' ? null : 'deeper'))}>
+              DEEPER
             </button>
             <button type="button" onClick={() => setSheet((s) => (s === 'miss' ? null : 'miss'))}>
               <Swords className="h-3.5 w-3.5" />
               CHALLENGE
             </button>
-            <button
-              type="button"
-              onClick={() =>
-                askWolf(
-                  '[WHAT DID I MISS?] Find ONE important chart element I may be overlooking vs my current thesis. Locked template + Next Action. Under 90 words.',
-                )
-              }
-            >
-              <Eye className="h-3.5 w-3.5" />
-              MISS?
+            <button type="button" onClick={() => setReplayOn(true)} disabled={replayOn || tabs.length === 0}>
+              <Play className="h-3.5 w-3.5" />
+              REPLAY
             </button>
             {onSpeak ? (
               <button type="button" onClick={speak}>
                 <Mic2 className="h-3.5 w-3.5" />
                 TALK
+              </button>
+            ) : null}
+            {onWhatIf ? (
+              <button type="button" onClick={() => setSheet((s) => (s === 'whatif' ? null : 'whatif'))}>
+                WHAT IF?
               </button>
             ) : null}
           </div>
@@ -773,12 +953,6 @@ export default function WolfSetupAnalysisCard({
                 />
                 <button type="submit">→</button>
               </form>
-              <div className="wolf-dock__acts">
-                <button type="button" onClick={showMe}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  SHOW
-                </button>
-              </div>
             </div>
           ) : null}
         </aside>

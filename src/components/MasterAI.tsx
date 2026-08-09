@@ -281,7 +281,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
   const [mentorMode, setMentorMode] = useState<MentorMode>(loadMentorMode);
   const [analysisMode, setAnalysisMode] = useState<WolfAnalysisMode>(loadWolfAnalysisMode);
-  const [labLenses, setLabLenses] = useState<WolfAnalysisMode[]>(() => [loadWolfAnalysisMode()]);
   const [analysisLayers, setAnalysisLayers] = useState<AnalysisLayer[]>([]);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -1445,17 +1444,14 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     void handleSend(text, sendOpts);
   };
 
-  const runLabAnalyzeSelected = () => {
+  const runReanalyzeLens = (mode: WolfAnalysisMode) => {
     if (isMentor || analyzingRef.current) return;
-    const modes = (labLenses.length ? labLenses : [analysisMode]).slice(0, 5);
-    const first = modes[0];
-    if (!first) return;
-    multiLensQueueRef.current = modes.slice(1);
-    setAnalysisMode(first);
-    saveWolfAnalysisMode(first);
+    multiLensQueueRef.current = [];
+    setAnalysisMode(mode);
+    saveWolfAnalysisMode(mode);
     const img = chartSessionRef.current?.imageUrl || selectedImage;
     void handleSend(
-      `[MULTI-LENS · ${first}] Analyze this chart with the ${first} lens. Identify asset if readable (wolfidentity). Fill locked template + Alternative Scenario + wolfevidence. WHAT MATTERS MOST only.`,
+      `[LENS · ${mode}] Re-analyze the SAME chart with this lens only. No new upload. Fill locked template + Alternative Scenario + wolfidentity if known + wolfevidence. WHAT MATTERS MOST only.`,
       img ? { imageDataUrl: img } : undefined,
     );
   };
@@ -1899,9 +1895,6 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             onAnalysisModeChange={(mode) => {
               setAnalysisMode(mode);
               saveWolfAnalysisMode(mode);
-              if (!labLenses.includes(mode)) {
-                setLabLenses((prev) => [...prev, mode].slice(-5));
-              }
             }}
             analysisModeDisabled={isThinking || isAnalyzingChart}
             analysisLab={
@@ -1911,31 +1904,20 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   setAnalysisMode(mode);
                   saveWolfAnalysisMode(mode);
                 }}
-                labLenses={labLenses}
-                onLabLensesChange={setLabLenses}
-                onAnalyzeSelected={runLabAnalyzeSelected}
+                onReanalyzeLens={runReanalyzeLens}
                 onCompare={() => setCompareOpen(true)}
                 layers={analysisLayers}
                 activeLayerId={activeLayerId}
                 onSelectLayer={(id) => {
                   setActiveLayerId(id);
                   const layer = analysisLayers.find((l) => l.id === id);
-                  if (layer) {
-                    setAnalysisMode(layer.mode);
-                    setViewingAiId(null);
-                  }
-                }}
-                onToggleLayerVisible={(id) => {
-                  setAnalysisLayers((prev) =>
-                    prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)),
-                  );
+                  if (layer) setAnalysisMode(layer.mode);
                 }}
                 consensus={consensus}
                 compareOpen={compareOpen}
                 onCloseCompare={() => setCompareOpen(false)}
                 disabled={isThinking || isAnalyzingChart}
                 hindi={useHiPrompts}
-                compact
               />
             }
             layerTextOverride={
@@ -2124,15 +2106,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
 
           {messages.length <= 1 && !isThinking && !isMentor ? (
             <WolfVisionHome
-              analysisMode={analysisMode}
-              onModeChange={(mode) => {
-                setAnalysisMode(mode);
-                saveWolfAnalysisMode(mode);
-              }}
               onPickFile={(file) => void processChartFile(file)}
-              onAnalyze={() => void handleSend()}
-              hasImage={Boolean(selectedImage)}
-              previewUrl={selectedImage}
               disabled={isThinking || isAnalyzingChart || isListening}
               hindi={useHiPrompts}
             />

@@ -2562,7 +2562,7 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
-        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Locked RESPONSE TEMPLATE first (must include Next Action / WATCH THIS). Then wolfchart (readable prices only). Then \`\`\`wolfevidence\`\`\` JSON with bbox x,y,width,height in 0–1 for each visual finding (liquidity/sweep/structure/entry/invalidation/target). Bboxes must match regions on THIS screenshot.`;
+        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Visual analyst — not a signal bot. Locked RESPONSE TEMPLATE first (must include Next Action / WATCH THIS + Alternative Scenario). Bias ≠ Entry. Then wolfchart (readable prices only). Then \`\`\`wolfevidence\`\`\` with bbox 0–1 for visible findings. Never invent prices.`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (

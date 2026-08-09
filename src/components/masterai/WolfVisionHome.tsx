@@ -2,31 +2,15 @@ import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ImagePlus } from 'lucide-react';
 import HunterMark from '../HunterMark';
-import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
-import WolfAnalyzeSelect from './WolfAnalyzeSelect';
 
 type Props = {
-  analysisMode: WolfAnalysisMode;
-  onModeChange: (mode: WolfAnalysisMode) => void;
   onPickFile: (file: File) => void;
-  onAnalyze: () => void;
-  hasImage: boolean;
-  previewUrl?: string | null;
   disabled?: boolean;
   hindi?: boolean;
 };
 
-/** Compact empty workspace — upload first; analysis mode is secondary (AUTO default). */
-export default function WolfVisionHome({
-  analysisMode,
-  onModeChange,
-  onPickFile,
-  onAnalyze,
-  hasImage,
-  previewUrl,
-  disabled,
-  hindi,
-}: Props) {
+/** Empty state — upload only. No analysis controls before a chart exists. */
+export default function WolfVisionHome({ onPickFile, disabled, hindi }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -50,12 +34,14 @@ export default function WolfVisionHome({
         WOLF AI
       </motion.h2>
       <p className="wolf-vision-home__tag">
-        {hindi ? 'Chart drop karo — Wolf dekhega.' : 'Drop your chart — Wolf sees it with you.'}
+        {hindi
+          ? 'Chart upload karo. Main dikhaunga kya matter karta hai.'
+          : "Upload a chart. I'll show you what matters."}
       </p>
 
       <motion.button
         type="button"
-        className={`wolf-vision-home__drop ${dragOver ? 'is-over' : ''} ${hasImage ? 'has-image' : ''}`}
+        className={`wolf-vision-home__drop ${dragOver ? 'is-over' : ''}`}
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
@@ -72,24 +58,15 @@ export default function WolfVisionHome({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.06 }}
       >
-        {previewUrl ? (
-          <img src={previewUrl} alt="" className="wolf-vision-home__preview" />
-        ) : (
-          <>
-            <span className="wolf-vision-home__drop-icon" aria-hidden>
-              <ImagePlus className="h-6 w-6" />
-            </span>
-            <span className="wolf-vision-home__drop-label">
-              {hindi ? 'CHART YAHAN DROP KARO' : 'DROP YOUR CHART HERE'}
-            </span>
-            <span className="wolf-vision-home__drop-hint">
-              {hindi ? 'Drag · click · paste' : 'Drag · click · paste screenshot'}
-            </span>
-            <span className="wolf-vision-home__upload-pill">
-              {hindi ? '+ UPLOAD CHART' : '+ UPLOAD CHART'}
-            </span>
-          </>
-        )}
+        <span className="wolf-vision-home__drop-icon" aria-hidden>
+          <ImagePlus className="h-6 w-6" />
+        </span>
+        <span className="wolf-vision-home__drop-label">
+          {hindi ? 'UPLOAD CHART' : 'UPLOAD CHART'}
+        </span>
+        <span className="wolf-vision-home__drop-hint">
+          {hindi ? 'Drag · click · paste' : 'Drag · click · paste screenshot'}
+        </span>
       </motion.button>
 
       <input
@@ -102,29 +79,6 @@ export default function WolfVisionHome({
           e.target.value = '';
         }}
       />
-
-      <div className="wolf-vision-home__tools">
-        <WolfAnalyzeSelect
-          value={analysisMode}
-          onChange={onModeChange}
-          disabled={disabled}
-          hindi={hindi}
-        />
-        <p className="wolf-vision-home__auto-note">
-          {hindi ? 'Default: Auto analysis' : 'Auto analysis by default'}
-        </p>
-      </div>
-
-      {hasImage ? (
-        <button
-          type="button"
-          className="wolf-vision-home__cta"
-          disabled={disabled}
-          onClick={onAnalyze}
-        >
-          {hindi ? 'ANALYZE CHART' : 'ANALYZE CHART'}
-        </button>
-      ) : null}
     </div>
   );
 }
