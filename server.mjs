@@ -5,7 +5,11 @@ import http from 'http';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { getMasterAiApiKey, getOpenRouterApiKey, loadServerEnv } from './server/loadEnv.mjs';
-import { resolveOpenRouterKey } from './server/utils/openRouterKey.mjs';
+import {
+  isAiCreditError,
+  resolveAiKeyChain,
+  resolveOpenRouterKey,
+} from './server/utils/openRouterKey.mjs';
 import { getServerConfig } from './server/config/env.mjs';
 import { createCorsMiddleware } from './server/middleware/cors.mjs';
 import marketRoutes from './server/market/routes.mjs';
@@ -109,17 +113,49 @@ app.get('/api/chat/models', (_req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-  const key = resolveOpenRouterKey(req);
-  const masterAi = createMasterAiRouter(key);
-  try {
-    const result = await masterAi.chat(req.body);
-    return res.json(result);
-  } catch (error) {
-    const status = error?.status ?? 500;
-    const message = error instanceof Error ? error.message : 'AI service error';
-    if (status >= 500) console.error('[Analyse AI]', message);
-    return res.status(status).json({ error: message });
+  const keyChain = resolveAiKeyChain(req);
+  if (!keyChain.length) {
+    return res.status(503).json({
+      error:
+        'Add an AI API key (aistudio.google.com AIza…), OpenAI, or OpenRouter key in Profile / server env.',
+    });
   }
+
+  let lastError = null;
+  for (let i = 0; i < keyChain.length; i += 1) {
+    const key = keyChain[i];
+    const masterAi = createMasterAiRouter(key);
+    try {
+      const result = await masterAi.chat(req.body);
+      if (i > 0) {
+        console.info(`[Wolf AI] fallback key #${i + 1} (${masterAi.provider}) succeeded`);
+      }
+      return res.json(result);
+    } catch (error) {
+      lastError = error;
+      const status = error?.status ?? 500;
+      const message = error instanceof Error ? error.message : 'AI service error';
+      const moreKeys = i < keyChain.length - 1;
+      // Profile often keeps an exhausted free OpenRouter key while Gemini sits in env —
+      // or Gemini fails auth while another key works. Retry next key on credit/auth/rate limits.
+      if (
+        moreKeys &&
+        (isAiCreditError(error) || status === 401 || status === 429)
+      ) {
+        console.warn(
+          `[Wolf AI] key #${i + 1} (${masterAi.provider || '?'}) failed (${status}) — trying next key`,
+        );
+        continue;
+      }
+      if (status >= 500) console.error('[Analyse AI]', message);
+      return res.status(status).json({ error: message });
+    }
+  }
+
+  const status = lastError?.status ?? 500;
+  const message = lastError instanceof Error ? lastError.message : 'AI service error';
+  if (status >= 500) console.error('[Analyse AI]', message);
+  return res.status(status).json({ error: message });
 });
 
 /** Market Detective card — OHLC intel without burning an LLM call. */

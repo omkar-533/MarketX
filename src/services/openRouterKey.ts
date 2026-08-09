@@ -47,8 +47,9 @@ export function openRouterRequestHeaders(): Record<string, string> {
   const key = loadOpenRouterApiKey();
   if (!key) return {};
   const provider = detectMasterAiKeyProvider(key);
-  if (provider === 'gemini') {
-    return { 'X-Gemini-Key': key, 'X-OpenRouter-Key': key };
-  }
+  // Send only the matching header — never stamp a Gemini key as X-OpenRouter-Key
+  // (server used to prefer that header and skip a real Gemini env key).
+  if (provider === 'gemini') return { 'X-Gemini-Key': key };
+  if (provider === 'openai') return { 'X-OpenRouter-Key': key, 'X-Master-Ai-Key': key };
   return { 'X-OpenRouter-Key': key };
 }

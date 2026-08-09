@@ -231,6 +231,11 @@ export default function ProfileModal({
                   {hasLocalKey ? (
                     <p className="text-[10px] text-emerald-400 font-mono">
                       Saved in this browser: {maskOpenRouterApiKey(openRouterSaved)}
+                      {detectMasterAiKeyProvider(openRouterSaved) === 'openrouter'
+                        ? ' · OpenRouter (sk-or). For Google balance use AIza…/AQ.… or Clear this key.'
+                        : detectMasterAiKeyProvider(openRouterSaved) === 'gemini'
+                          ? ' · Google Gemini'
+                          : ''}
                     </p>
                   ) : null}
                   {!serverAiReady && !hasLocalKey ? (

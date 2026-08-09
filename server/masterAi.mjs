@@ -2147,7 +2147,7 @@ async function chatWithGemini(gemini, {
       lastError?.message ??
         (sawEmpty ? 'Empty reply from AI models' : 'AI models unavailable'),
     ),
-    { status: 502 },
+    { status: aiErrorStatus(lastError, sawEmpty ? 502 : 502) },
   );
 }
 

@@ -485,8 +485,8 @@ export function describeMasterAiFailure(
   }
   if (status === 402 || /prompt tokens limit|sufficient credits|upgrade to a paid/i.test(msg)) {
     return hindi
-      ? 'AI credit / free prompt limit khatam hai. OpenRouter pe credits add karo, ya Profile me Google Gemini (AIza…) key daalo.'
-      : 'AI credit or free prompt limit hit. Add OpenRouter credits, or paste a Google Gemini key (AIza…) in Profile.';
+      ? 'OpenRouter free/credit limit hit ho gaya (yeh Google Gemini balance nahi hai). Profile me purani sk-or key hatao aur Google Gemini (AIza… / AQ.…) key paste karo — ya OpenRouter pe credits add karo.'
+      : 'OpenRouter free/credit limit hit (this is not your Google Gemini balance). Remove any old sk-or… key in Profile and paste a Google Gemini key (AIza… / AQ.…), or add OpenRouter credits.';
   }
   if (status === 502 || /empty reply|all models failed|models unavailable/i.test(msg)) {
     return hindi
@@ -1418,7 +1418,11 @@ export function saveLanguageMode(mode: MasterAiLangMode): void {
 
 export function loadSelectedModel(): string {
   if (typeof window === 'undefined') return MASTER_AI_MODELS[0].id;
-  return window.localStorage.getItem(STORAGE_MODEL) ?? 'openrouter/auto';
+  const saved = window.localStorage.getItem(STORAGE_MODEL);
+  // Old builds defaulted to OpenRouter free — migrate unset / openrouter/auto to Gemini Auto
+  // when the user has not explicitly picked another model in this session’s storage.
+  if (!saved || saved === 'openrouter/auto') return 'gemini/auto';
+  return saved;
 }
 
 export function saveSelectedModel(id: string): void {

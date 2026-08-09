@@ -43,9 +43,14 @@ export function getOpenRouterApiKey() {
   return getMasterAiApiKey();
 }
 
-/** Prefer a real Gemini key when present; do not treat sk-or keys stored in GEMINI_* as Gemini. */
-export function getMasterAiApiKey() {
-  const candidates = [
+function isGeminiKey(key) {
+  const k = String(key || '').trim();
+  return k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k);
+}
+
+/** All non-empty AI key env candidates (may include mislabeled sk-or in GEMINI_*). */
+export function listMasterAiKeyCandidates() {
+  return [
     process.env.GEMINI_API_KEY,
     process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     process.env.GOOGLE_AI_API_KEY,
@@ -54,17 +59,23 @@ export function getMasterAiApiKey() {
     process.env.VITE_OPENROUTER_API_KEY,
     process.env.OPENAI_API_KEY,
     process.env.VITE_OPENAI_API_KEY,
-  ];
-  const isGeminiKey = (key) => {
-    const k = String(key || '').trim();
-    return k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k);
-  };
-  for (const c of candidates) {
-    const k = String(c || '').trim();
-    if (k && isGeminiKey(k)) return k;
+  ]
+    .map((c) => String(c || '').trim())
+    .filter(Boolean);
+}
+
+/**
+ * Prefer a real Gemini key when present.
+ * Do not treat sk-or keys stored in GEMINI_* as Gemini — those are OpenRouter.
+ */
+export function getMasterAiApiKey() {
+  const candidates = listMasterAiKeyCandidates();
+  for (const k of candidates) {
+    if (isGeminiKey(k)) return k;
   }
-  for (const c of candidates) {
-    const k = String(c || '').trim();
+  // Skip OpenRouter keys parked in GEMINI_* when a dedicated OPENROUTER_* exists later —
+  // still return first usable key so the server stays configured.
+  for (const k of candidates) {
     if (k) return k;
   }
   return '';
