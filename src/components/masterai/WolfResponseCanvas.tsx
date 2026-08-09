@@ -22,6 +22,7 @@ type Props = {
   evidence?: WolfEvidenceItem[];
   sessionEvidence?: WolfEvidenceItem[];
   onWhatIf?: (prompt: string) => void;
+  onAskWolf?: () => void;
   trail?: WolfTrailItem[];
   activeTrailId?: string | null;
   onTrailSelect?: (id: string) => void;
@@ -48,6 +49,7 @@ export default function WolfResponseCanvas({
   evidence = [],
   sessionEvidence = [],
   onWhatIf,
+  onAskWolf,
   trail,
   activeTrailId,
   onTrailSelect,
@@ -100,6 +102,7 @@ export default function WolfResponseCanvas({
         shapes={visual.shapes}
         evidence={visual.evidence.length ? visual.evidence : sessionEvidence}
         onWhatIf={onWhatIf}
+        onAskWolf={onAskWolf}
         trail={trail}
         activeTrailId={activeTrailId}
         onTrailSelect={onTrailSelect}

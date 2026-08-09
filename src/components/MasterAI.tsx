@@ -381,6 +381,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   }, [isMentor, detective, isThinking]);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const activeChatIdRef = useRef(activeChatId);
   activeChatIdRef.current = activeChatId;
 
@@ -840,7 +841,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     if (analyzingRef.current) return;
     const text = textOverride ?? inputText;
     const imageDataUrl = opts?.imageDataUrl ?? selectedImage;
-    const imageName = opts?.imageName ?? selectedImageName;
+    void opts?.imageName;
     const hasImage = Boolean(imageDataUrl);
     const userNote = text.trim();
     const analysisNote =
@@ -1475,6 +1476,24 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     }
   };
 
+  const focusAskWolf = () => {
+    const el = composerInputRef.current;
+    if (el) {
+      el.focus();
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    const rec = recognitionRef.current;
+    if (rec && !isListening) {
+      try {
+        rec.lang = useHiPrompts || hindi ? 'hi-IN' : 'en-IN';
+        rec.start();
+        setIsListening(true);
+      } catch {
+        /* mic busy / unsupported */
+      }
+    }
+  };
+
   const hunterReplies = useMemo(
     () =>
       messages.filter(
@@ -1877,6 +1896,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             evidence={viewingHunter?.evidence}
             sessionEvidence={chartSessionRef.current?.evidence}
             onWhatIf={(prompt) => void handleSend(prompt)}
+            onAskWolf={focusAskWolf}
             trail={analysisTrail}
             activeTrailId={viewingHunter?.id || null}
             onTrailSelect={(id) => setViewingAiId(id)}
@@ -2310,6 +2330,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                           evidence={message.evidence}
                           sessionEvidence={chartSessionRef.current?.evidence}
                           onWhatIf={(prompt) => void handleSend(prompt)}
+                          onAskWolf={focusAskWolf}
                         />
                       ) : (
                         <>
@@ -2499,6 +2520,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           </button>
 
             <textarea
+            ref={composerInputRef}
             value={inputText}
               onChange={(e) => {
                 setInputText(e.target.value);

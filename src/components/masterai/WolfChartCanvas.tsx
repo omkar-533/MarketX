@@ -1,35 +1,90 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+  useRef,
+  useState,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { NormalizedBBox } from '../../utils/wolfEvidence';
+import type { DrawTool } from '../../utils/wolfActionRegistry';
+import { wolfActionLabel } from '../../utils/wolfActionRegistry';
+
+export type UserDrawing = {
+  id: string;
+  tool: Exclude<DrawTool, 'eraser'>;
+  a: { x: number; y: number };
+  b: { x: number; y: number };
+};
+
+export type WolfChartCanvasHandle = {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+  toggleFullscreen: () => void;
+  undoDrawing: () => void;
+  clearDraft: () => void;
+};
 
 type Props = {
   children: ReactNode;
-  /** When set, smoothly zoom/pan so this bbox is centered & prominent. */
+  /** When set AND followWolf is true, smoothly zoom/pan to this bbox. */
   focusBbox?: NormalizedBBox | null;
+  /** Wolf may move the camera only while following. */
+  followWolf?: boolean;
   className?: string;
   onPoint?: (nx: number, ny: number) => void;
-  /** Normalized selection rectangle (user draw). */
+  /** Normalized selection rectangle (legacy region ask). */
   onSelectRegion?: (bbox: NormalizedBBox) => void;
+  /** Drawing toolbar active. */
   drawMode?: boolean;
+  drawTool?: DrawTool | null;
+  drawings?: UserDrawing[];
+  onDrawingsChange?: (next: UserDrawing[]) => void;
+  onFullscreenChange?: (on: boolean) => void;
+  /** Hide built-in chart tools (parent renders them). */
+  hideChartTools?: boolean;
 };
 
 /**
- * Interactive screenshot stage — pan / pinch-wheel zoom / double-click reset / optional draw.
- * Wolf focusBbox drives cinematic camera moves without freezing user control forever.
+ * Interactive screenshot stage — pan / wheel zoom / draw tools / fullscreen.
+ * Focus camera moves only when followWolf is on.
  */
-export default function WolfChartCanvas({
-  children,
-  focusBbox = null,
-  className = '',
-  onPoint,
-  onSelectRegion,
-  drawMode = false,
-}: Props) {
+const WolfChartCanvas = forwardRef<WolfChartCanvasHandle, Props>(function WolfChartCanvas(
+  {
+    children,
+    focusBbox = null,
+    followWolf = false,
+    className = '',
+    onPoint,
+    onSelectRegion,
+    drawMode = false,
+    drawTool = null,
+    drawings = [],
+    onDrawingsChange,
+    onFullscreenChange,
+    hideChartTools = false,
+  },
+  ref,
+) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
-  const drag = useRef<{ x: number; y: number; tx: number; ty: number; drawing?: boolean } | null>(null);
-  const [draft, setDraft] = useState<NormalizedBBox | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+    drawing?: boolean;
+    start?: { x: number; y: number };
+  } | null>(null);
+  const [draft, setDraft] = useState<{ a: { x: number; y: number }; b: { x: number; y: number } } | null>(
+    null,
+  );
 
   const reset = useCallback(() => {
     setScale(1);
@@ -38,8 +93,37 @@ export default function WolfChartCanvas({
     setDraft(null);
   }, []);
 
+  const zoomIn = useCallback(() => setScale((s) => Math.min(3.5, s * 1.15)), []);
+  const zoomOut = useCallback(() => setScale((s) => Math.max(1, s / 1.15)), []);
+
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((v) => {
+      const next = !v;
+      onFullscreenChange?.(next);
+      return next;
+    });
+  }, [onFullscreenChange]);
+
+  const undoDrawing = useCallback(() => {
+    if (!drawings.length) return;
+    onDrawingsChange?.(drawings.slice(0, -1));
+  }, [drawings, onDrawingsChange]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      zoomIn,
+      zoomOut,
+      reset,
+      toggleFullscreen,
+      undoDrawing,
+      clearDraft: () => setDraft(null),
+    }),
+    [zoomIn, zoomOut, reset, toggleFullscreen, undoDrawing],
+  );
+
   useEffect(() => {
-    if (!focusBbox) return;
+    if (!followWolf || !focusBbox) return;
     const el = shellRef.current;
     if (!el) return;
     const w = el.clientWidth || 1;
@@ -50,7 +134,19 @@ export default function WolfChartCanvas({
     setScale(nextScale);
     setTx(w / 2 - cx * nextScale);
     setTy(h / 2 - cy * nextScale);
-  }, [focusBbox]);
+  }, [focusBbox, followWolf]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFullscreen(false);
+        onFullscreenChange?.(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen, onFullscreenChange]);
 
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -81,12 +177,28 @@ export default function WolfChartCanvas({
     };
   };
 
+  const eraseNear = (p: { x: number; y: number }) => {
+    const hit = [...drawings]
+      .reverse()
+      .find((d) => {
+        const midX = (d.a.x + d.b.x) / 2;
+        const midY = (d.a.y + d.b.y) / 2;
+        return Math.hypot(p.x - midX, p.y - midY) < 0.06;
+      });
+    if (hit) onDrawingsChange?.(drawings.filter((d) => d.id !== hit.id));
+  };
+
   const onPointerDown = (e: ReactPointerEvent) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    if (drawMode) {
+    if (drawMode && drawTool) {
       const n = toNorm(e.clientX, e.clientY);
-      drag.current = { x: e.clientX, y: e.clientY, tx, ty, drawing: true };
-      setDraft({ x: n.x, y: n.y, width: 0.01, height: 0.01 });
+      if (drawTool === 'eraser') {
+        eraseNear(n);
+        drag.current = null;
+        return;
+      }
+      drag.current = { x: e.clientX, y: e.clientY, tx, ty, drawing: true, start: n };
+      setDraft({ a: n, b: n });
       return;
     }
     drag.current = { x: e.clientX, y: e.clientY, tx, ty };
@@ -94,17 +206,9 @@ export default function WolfChartCanvas({
 
   const onPointerMove = (e: ReactPointerEvent) => {
     if (!drag.current) return;
-    if (drag.current.drawing && draft) {
-      const a = toNorm(drag.current.x, drag.current.y);
+    if (drag.current.drawing && drag.current.start) {
       const b = toNorm(e.clientX, e.clientY);
-      const x = Math.min(a.x, b.x);
-      const y = Math.min(a.y, b.y);
-      setDraft({
-        x,
-        y,
-        width: Math.max(0.02, Math.abs(b.x - a.x)),
-        height: Math.max(0.02, Math.abs(b.y - a.y)),
-      });
+      setDraft({ a: drag.current.start, b });
       return;
     }
     setTx(drag.current.tx + (e.clientX - drag.current.x));
@@ -112,8 +216,31 @@ export default function WolfChartCanvas({
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
-    if (drag.current?.drawing && draft) {
-      onSelectRegion?.(draft);
+    if (drag.current?.drawing && draft && drawTool && drawTool !== 'eraser') {
+      const tool = drawTool;
+      const next: UserDrawing = {
+        id: `d-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        tool,
+        a: draft.a,
+        b:
+          tool === 'horizontal'
+            ? { x: Math.min(0.98, Math.max(0.02, draft.b.x)), y: draft.a.y }
+            : draft.b,
+      };
+      const w = Math.abs(next.b.x - next.a.x);
+      const h = Math.abs(next.b.y - next.a.y);
+      if (tool === 'zone' ? w > 0.015 && h > 0.015 : w + h > 0.01) {
+        onDrawingsChange?.([...drawings, next]);
+        if (tool === 'zone') {
+          onSelectRegion?.({
+            x: Math.min(next.a.x, next.b.x),
+            y: Math.min(next.a.y, next.b.y),
+            width: Math.max(0.02, Math.abs(next.b.x - next.a.x)),
+            height: Math.max(0.02, Math.abs(next.b.y - next.a.y)),
+          });
+        }
+      }
+      setDraft(null);
     } else if (drag.current && Math.hypot(e.clientX - drag.current.x, e.clientY - drag.current.y) < 6) {
       const n = toNorm(e.clientX, e.clientY);
       onPoint?.(n.x, n.y);
@@ -121,8 +248,57 @@ export default function WolfChartCanvas({
     drag.current = null;
   };
 
+  const renderStroke = (d: UserDrawing | { tool: DrawTool; a: { x: number; y: number }; b: { x: number; y: number } }, key: string, ghost?: boolean) => {
+    const x1 = d.a.x * 100;
+    const y1 = d.a.y * 100;
+    const x2 = d.b.x * 100;
+    const y2 = d.b.y * 100;
+    const cls = `wolf-canvas__stroke wolf-canvas__stroke--${d.tool}${ghost ? ' is-ghost' : ''}`;
+    if (d.tool === 'zone') {
+      return (
+        <div
+          key={key}
+          className={cls}
+          style={{
+            left: `${Math.min(x1, x2)}%`,
+            top: `${Math.min(y1, y2)}%`,
+            width: `${Math.abs(x2 - x1)}%`,
+            height: `${Math.abs(y2 - y1)}%`,
+          }}
+        />
+      );
+    }
+    if (d.tool === 'horizontal') {
+      return (
+        <div
+          key={key}
+          className={cls}
+          style={{ left: '2%', right: '2%', top: `${y1}%` }}
+        />
+      );
+    }
+    const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    return (
+      <div
+        key={key}
+        className={cls}
+        style={{
+          left: `${x1}%`,
+          top: `${y1}%`,
+          width: `${len}%`,
+          transform: `rotate(${angle}deg)`,
+        }}
+        data-arrow={d.tool === 'arrow' ? '1' : undefined}
+      />
+    );
+  };
+
   return (
-    <div className={`wolf-canvas ${className}`} ref={shellRef}>
+    <div
+      className={`wolf-canvas ${fullscreen ? 'is-fullscreen' : ''} ${className}`}
+      ref={shellRef}
+    >
       <div
         className={`wolf-canvas__plane ${drawMode ? 'is-draw' : ''}`}
         style={{ transform: `translate(${tx}px, ${ty}px) scale(${scale})` }}
@@ -136,29 +312,35 @@ export default function WolfChartCanvas({
         onDoubleClick={reset}
       >
         {children}
-        {draft ? (
-          <div
-            className="wolf-canvas__draft"
-            style={{
-              left: `${draft.x * 100}%`,
-              top: `${draft.y * 100}%`,
-              width: `${draft.width * 100}%`,
-              height: `${draft.height * 100}%`,
-            }}
-          />
-        ) : null}
+        <div className="wolf-canvas__drawings" aria-hidden>
+          {drawings.map((d) => renderStroke(d, d.id))}
+          {draft && drawTool && drawTool !== 'eraser'
+            ? renderStroke({ tool: drawTool, a: draft.a, b: draft.b }, 'draft', true)
+            : null}
+        </div>
       </div>
-      <div className="wolf-canvas__tools">
-        <button type="button" onClick={() => setScale((s) => Math.min(3.5, s * 1.15))} aria-label="Zoom in">
-          +
-        </button>
-        <button type="button" onClick={() => setScale((s) => Math.max(1, s / 1.15))} aria-label="Zoom out">
-          −
-        </button>
-        <button type="button" onClick={reset} aria-label="Reset view">
-          ⟲
-        </button>
-      </div>
+      {!hideChartTools ? (
+        <div className="wolf-canvas__tools" role="toolbar" aria-label="Chart controls">
+          <button type="button" title={wolfActionLabel('CHART_ZOOM_IN')} onClick={zoomIn}>
+            +
+          </button>
+          <button type="button" title={wolfActionLabel('CHART_ZOOM_OUT')} onClick={zoomOut}>
+            −
+          </button>
+          <button type="button" title={wolfActionLabel('CHART_RESET')} onClick={reset}>
+            RESET
+          </button>
+          <button
+            type="button"
+            title={wolfActionLabel('CHART_FULLSCREEN', { fullscreen })}
+            onClick={toggleFullscreen}
+          >
+            {fullscreen ? 'EXIT' : 'FULL'}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
-}
+});
+
+export default WolfChartCanvas;
