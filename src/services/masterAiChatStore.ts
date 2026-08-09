@@ -6,6 +6,7 @@ import {
   type ChartLevel,
   type ChartShape,
 } from '../utils/chartAnnotations';
+import type { WolfEvidenceItem } from '../utils/wolfEvidence';
 import { TV_STUDY_PRESETS, TV_TIMEFRAMES, type TvInterval } from '../utils/tradingViewSymbols';
 
 /** A live chart pinned into the conversation. */
@@ -31,6 +32,8 @@ export interface ChatMessage {
     levels: ChartLevel[];
     shapes: ChartShape[];
   };
+  /** Normalized bbox evidence for crop/zoom cards (not persisted as images). */
+  evidence?: WolfEvidenceItem[];
 }
 
 export interface ChatSessionMeta {

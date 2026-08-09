@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, MapPin, ShieldAlert, Target, OctagonX, Sparkles, Mic2 } from 'lucide-react';
 import {
@@ -8,6 +8,7 @@ import {
   type WolfSetupAnalysis,
 } from '../../utils/parseWolfSetupReply';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
+import type { WolfEvidenceItem } from '../../utils/wolfEvidence';
 import {
   buildBullBearCases,
   buildEvidenceBars,
@@ -21,6 +22,7 @@ import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import VisualStoryEngine from './VisualStoryEngine';
 import WolfRadarPanel from './WolfRadarPanel';
 import WolfTradeMap from './WolfTradeMap';
+import WolfEvidenceGallery from './WolfEvidenceGallery';
 
 export const WOLF_WHAT_IF_SCENARIOS = [
   { id: 'holds', label: '🟢 Price holds', prompt: 'Price HOLDS / rejects at the key level' },
@@ -38,6 +40,7 @@ type Props = {
   imageUrl?: string | null;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
+  evidence?: WolfEvidenceItem[];
   onWhatIf?: (prompt: string) => void;
 };
 
@@ -273,6 +276,7 @@ export default function WolfSetupAnalysisCard({
   imageUrl,
   levels = [],
   shapes = [],
+  evidence = [],
   onWhatIf,
 }: Props) {
   const analysis = useMemo(() => parseWolfSetupReply(text), [text]);
@@ -283,6 +287,8 @@ export default function WolfSetupAnalysisCard({
   const [hiLabel, setHiLabel] = useState<string | null>(null);
   const [storyIndex, setStoryIndex] = useState(0);
   const [moviePlaying, setMoviePlaying] = useState(false);
+  const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
+  const evidenceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     saveWolfExperienceMode(mode);
@@ -299,16 +305,45 @@ export default function WolfSetupAnalysisCard({
     [analysis, levels, shapes],
   );
   const bars = useMemo(() => (analysis ? buildEvidenceBars(analysis) : null), [analysis]);
+  const activeEvidence = useMemo(
+    () => evidence.find((e) => e.id === activeEvidenceId) || null,
+    [evidence, activeEvidenceId],
+  );
 
   useEffect(() => {
     const step = story[storyIndex];
     if (step?.highlight) setHiLabel(step.highlight);
   }, [story, storyIndex]);
 
+  const handleShowOnChart = (item: WolfEvidenceItem) => {
+    setActiveEvidenceId(item.id);
+    setHiLabel(item.title);
+    evidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   if (!analysis) {
     return (
       <div className="wolf-setup">
-        {imageUrl ? <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} /> : null}
+        {imageUrl ? (
+          <ScreenshotAnnotOverlay
+            imageUrl={imageUrl}
+            levels={levels}
+            shapes={shapes}
+            focusBbox={activeEvidence?.bbox}
+            focusLabel={activeEvidence ? `${activeEvidence.title}` : null}
+          />
+        ) : null}
+        {imageUrl && evidence.length ? (
+          <div ref={evidenceRef}>
+            <WolfEvidenceGallery
+              originalUrl={imageUrl}
+              evidence={evidence}
+              activeId={activeEvidenceId}
+              onShowOnChart={handleShowOnChart}
+              hindi={hindi}
+            />
+          </div>
+        ) : null}
         <ChatMarkdown text={text} />
       </div>
     );
@@ -388,21 +423,32 @@ export default function WolfSetupAnalysisCard({
     <div className={`wolf-setup wolf-setup--${tone}`}>
       <ModeSwitch mode={mode} onChange={setMode} />
 
-      {mode === 'teach' || mode === 'pro' ? (
-        <VisualStoryEngine
-          steps={story}
-          imageUrl={imageUrl}
-          levels={levels}
-          shapes={shapes}
-          index={storyIndex}
-          onIndexChange={setStoryIndex}
-          playing={moviePlaying}
-          onPlayingChange={setMoviePlaying}
-          hindi={hindi}
-        />
-      ) : imageUrl ? (
-        <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} highlightLabel={hiLabel} />
-      ) : null}
+      <div ref={evidenceRef}>
+        {mode === 'teach' || mode === 'pro' ? (
+          <VisualStoryEngine
+            steps={story}
+            imageUrl={imageUrl}
+            levels={levels}
+            shapes={shapes}
+            index={storyIndex}
+            onIndexChange={setStoryIndex}
+            playing={moviePlaying}
+            onPlayingChange={setMoviePlaying}
+            hindi={hindi}
+            focusBbox={activeEvidence?.bbox}
+            focusLabel={activeEvidence ? `${activeEvidence.title}` : null}
+          />
+        ) : imageUrl ? (
+          <ScreenshotAnnotOverlay
+            imageUrl={imageUrl}
+            levels={levels}
+            shapes={shapes}
+            highlightLabel={hiLabel}
+            focusBbox={activeEvidence?.bbox}
+            focusLabel={activeEvidence ? `${activeEvidence.title}` : null}
+          />
+        ) : null}
+      </div>
 
       <div className="wolf-setup__status" role="status">
         <span className="wolf-setup__status-dot" aria-hidden />
@@ -410,13 +456,21 @@ export default function WolfSetupAnalysisCard({
       </div>
 
       {analysis.setup ? <div className="wolf-setup__name">{analysis.setup}</div> : null}
-      {analysis.keyObservation && mode !== 'quick' ? (
-        <p className="wolf-setup__obs">{analysis.keyObservation}</p>
+      {analysis.keyObservation ? <p className="wolf-setup__obs">{analysis.keyObservation}</p> : null}
+
+      {imageUrl && evidence.length ? (
+        <WolfEvidenceGallery
+          originalUrl={imageUrl}
+          evidence={evidence}
+          activeId={activeEvidenceId}
+          onShowOnChart={handleShowOnChart}
+          hindi={hindi}
+        />
       ) : null}
 
-      {bars && mode !== 'quick' ? <WolfRadarPanel bars={bars} /> : null}
+      {bars ? <WolfRadarPanel bars={bars} /> : null}
 
-      {mode === 'pro' || mode === 'teach' ? <EvidenceCarousel analysis={analysis} /> : null}
+      <EvidenceCarousel analysis={analysis} />
 
       <WolfTradeMap
         entry={analysis.entry}

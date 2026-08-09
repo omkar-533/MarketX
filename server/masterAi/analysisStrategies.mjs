@@ -79,9 +79,15 @@ Why:
 3. …
 Assumptions / Unknown: <explicit>
 
-Hard rules: under ~180 words before the fence. No essays. Optional one status marker max.
-After the template, append ONE \`\`\`wolfchart\`\`\` block when prices are readable — levels/shapes for S/R, liquidity, entry zone, invalidation. Never invent prices. If scale unreadable, omit the fence.
-Write so a UI can show Status → Entry/SL/Target/Invalidation → Why steps → annotated screenshot.`;
+Hard rules: under ~160 words before fences. No essays.
+After the template:
+1) Append ONE \`\`\`wolfchart\`\`\` when prices are readable.
+2) Append ONE \`\`\`wolfevidence\`\`\` JSON array (or { "evidence": [...] }) with 3–6 findings.
+Each evidence item MUST include normalized bbox 0–1:
+{"id":"liq_1","type":"liquidity","title":"Liquidity Found","description":"…","bbox":{"x":0.4,"y":0.5,"width":0.2,"height":0.16},"confidence":"high"}
+Types: liquidity|sweep|structure|bos|choch|support|resistance|entry|invalidation|target|confirmation.
+bbox must cover the visible chart region for that finding (not the full image unless necessary). Never invent prices; if scale unreadable still return visual bboxes for structure/liquidity regions you can see.
+Write for UI: Status → Evidence crops from THIS screenshot → Entry/SL/Target → Why.`;
 
 const MODE_PROMPTS = {
   support_resistance: `STRATEGY: SUPPORT / RESISTANCE ONLY.

@@ -1,11 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
+import type { NormalizedBBox } from '../../utils/wolfEvidence';
 
 type Props = {
   imageUrl: string;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
   highlightLabel?: string | null;
+  /** Normalized 0–1 focus region from Wolf Evidence (SHOW ON CHART). */
+  focusBbox?: NormalizedBBox | null;
+  focusLabel?: string | null;
 };
 
 function collectPrices(levels: ChartLevel[], shapes: ChartShape[]): number[] {
@@ -32,6 +36,8 @@ export default function ScreenshotAnnotOverlay({
   levels = [],
   shapes = [],
   highlightLabel = null,
+  focusBbox = null,
+  focusLabel = null,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
@@ -87,6 +93,19 @@ export default function ScreenshotAnnotOverlay({
             setNatural({ w: img.naturalWidth, h: img.naturalHeight });
           }}
         />
+        {focusBbox ? (
+          <div
+            className="wolf-shot__focus"
+            style={{
+              left: `${focusBbox.x * 100}%`,
+              top: `${focusBbox.y * 100}%`,
+              width: `${focusBbox.width * 100}%`,
+              height: `${focusBbox.height * 100}%`,
+            }}
+          >
+            {focusLabel ? <span className="wolf-shot__focus-lab">{focusLabel}</span> : null}
+          </div>
+        ) : null}
         {canMap ? (
           <svg className="wolf-shot__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
             {shapes.map((s, i) => {

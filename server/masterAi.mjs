@@ -2452,7 +2452,7 @@ export function createMasterAiRouter(apiKey) {
               : `Reply in ${langName || lang}.`;
 
       const taskLine = hasImage
-        ? `Task: WOLF AI SETUP ANALYSIS (${analysisModeDisplayName(analysisMode)}). Chart screenshot only. Fill locked template: Bias · Setup · Status · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why. Allow WAIT / NO TRADE. Exact prices only if scale readable. Under ~180 words. AFTER the template, append a wolfchart with levels/shapes using only readable prices (zones for entry/SL/invalidation, hray/hline for S/R/liquidity). If prices are unclear — skip inventing numbers, prose only.`
+        ? `Task: WOLF AI SETUP ANALYSIS (${analysisModeDisplayName(analysisMode)}). Chart screenshot only. Fill locked template. Under ~160 words. Then append wolfchart (readable prices only) AND wolfevidence JSON with 3–6 normalized bbox findings (0–1) for liquidity/sweep/structure/entry/invalidation/target regions visible on THIS image. Never invent prices; bboxes must point at visible areas.`
         : shortChat
           ? 'Task: brief respectful greeting as Hunter — 1–2 lines.'
           : wantsJournalReview
@@ -2562,7 +2562,7 @@ export function createMasterAiRouter(apiKey) {
           hinglish || hindi
             ? '\n\nImage carefully padho. Sirf jo clearly dikhe wahi levels. Unclear ho to unclear bolo — guess mat karo.'
             : '\n\nRead the image carefully. Use only clearly visible levels. If unclear, say unclear — do not guess.';
-        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Follow the system strategy rules + locked RESPONSE TEMPLATE (Bias, Setup, Status, Entry Condition, SL Logic, Target Logic, Invalidation, Evidence Score, Why). Then append ONE wolfchart fence with readable prices only (never invent). Labels like SUPPORT / RESISTANCE / ENTRY ZONE / INVALIDATION when visible.`;
+        textBlock += `\n\nSETUP MODE LOCK: ${analysisModeDisplayName(analysisMode)}. Locked RESPONSE TEMPLATE first. Then wolfchart (readable prices only). Then \`\`\`wolfevidence\`\`\` JSON with bbox x,y,width,height in 0–1 for each visual finding (liquidity/sweep/structure/entry/invalidation/target). Bboxes must match regions on THIS screenshot.`;
       } else if (wantsJournalReview) {
         textBlock += `\n\n${JOURNAL_HINT}`;
       } else if (

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react'
 import type { VisualStoryStep } from '../../utils/wolfVisualStory';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
+import type { NormalizedBBox } from '../../utils/wolfEvidence';
 
 type Props = {
   steps: VisualStoryStep[];
@@ -17,6 +18,8 @@ type Props = {
   playing?: boolean;
   onPlayingChange?: (playing: boolean) => void;
   hindi?: boolean;
+  focusBbox?: NormalizedBBox | null;
+  focusLabel?: string | null;
 };
 
 export default function VisualStoryEngine({
@@ -29,6 +32,8 @@ export default function VisualStoryEngine({
   playing: playingCtrl,
   onPlayingChange,
   hindi,
+  focusBbox = null,
+  focusLabel = null,
 }: Props) {
   const [localIndex, setLocalIndex] = useState(0);
   const [localPlaying, setLocalPlaying] = useState(false);
@@ -74,6 +79,8 @@ export default function VisualStoryEngine({
             levels={levels}
             shapes={shapes}
             highlightLabel={step.highlight}
+            focusBbox={focusBbox}
+            focusLabel={focusLabel}
           />
         ) : (
           <div className="wolf-story__placeholder">{step.caption}</div>

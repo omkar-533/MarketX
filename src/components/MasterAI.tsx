@@ -93,6 +93,8 @@ import WolfVisionScan from './masterai/WolfVisionScan';
 import WolfSetupAnalysisCard from './masterai/WolfSetupAnalysisCard';
 import ScreenshotAnnotOverlay from './masterai/ScreenshotAnnotOverlay';
 import { parseChartAnnotations } from '../utils/chartAnnotations';
+import { parseWolfEvidence, synthesizeEvidenceFromSetup } from '../utils/wolfEvidence';
+import { parseWolfSetupReply } from '../utils/parseWolfSetupReply';
 import {
   detectChartRequest,
   detectInstrumentMention,
@@ -1176,12 +1178,30 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
 
       // Wolf AI hides its chart markup at the end of the reply — lift it out
       // before anything reaches the transcript or the speech engine.
+      const evidenceParsed = parseWolfEvidence(responseText);
+      responseText = evidenceParsed.text || responseText;
       const parsed = parseChartAnnotations(responseText);
       const marked = parsed.levels.length > 0 || parsed.shapes.length > 0;
       // A reply that was nothing but markup still needs a line to sit under.
       responseText =
         parsed.text ||
         (marked ? (hindi ? 'Chart par marking kar di hai.' : 'Marked on the chart.') : responseText);
+
+      let evidence = evidenceParsed.evidence;
+      if (hasImage && evidence.length === 0) {
+        const setup = parseWolfSetupReply(responseText);
+        if (setup) {
+          evidence = synthesizeEvidenceFromSetup({
+            keyObservation: setup.keyObservation,
+            entry: setup.entry,
+            stopLoss: setup.stopLoss,
+            target: setup.target,
+            invalidation: setup.invalidation,
+            why: setup.why,
+            setup: setup.setup,
+          });
+        }
+      }
 
       // Hunter = screenshot desk — never open live chart cards under answers.
       let replyChart: Message | null = null;
@@ -1236,6 +1256,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
               ...(marked
                 ? { shotMarks: { levels: parsed.levels, shapes: parsed.shapes } }
                 : {}),
+              ...(evidence.length ? { evidence } : {}),
             }
           : {}),
       };
@@ -1931,6 +1952,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                           imageUrl={message.imageUrl}
                           levels={message.shotMarks?.levels}
                           shapes={message.shotMarks?.shapes}
+                          evidence={message.evidence}
                           onWhatIf={(prompt) => void handleSend(prompt)}
                         />
                       ) : (
