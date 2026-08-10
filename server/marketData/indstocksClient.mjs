@@ -335,6 +335,26 @@ export function resolveScripCode(symbol, exchange = 'NSE') {
   return null;
 }
 
+/**
+ * Prefer NIDX/BIDX for indices, but also try NSE_/BSE_ — some historical
+ * endpoints accept either depending on account / instrument master revision.
+ */
+export function resolveScripCodeCandidates(symbol) {
+  const primary = resolveScripCode(symbol);
+  if (!primary) return [];
+  const out = [primary];
+  const m = String(primary).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);
+  if (m) {
+    const seg = m[1].toUpperCase();
+    const id = m[2];
+    if (seg === 'NIDX') out.push(`NSE_${id}`);
+    if (seg === 'NSE') out.push(`NIDX_${id}`);
+    if (seg === 'BIDX') out.push(`BSE_${id}`);
+    if (seg === 'BSE') out.push(`BIDX_${id}`);
+  }
+  return [...new Set(out)];
+}
+
 export function listUniverseSymbols(universe) {
   const wanted = resolveServerUniverse(universe);
   // Prefer full catalog size for honesty. LIVE candle fetch resolves scrips via

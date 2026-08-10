@@ -58,9 +58,16 @@ if (!envOpenRouterKey) {
 
 app.get('/api/health', (_req, res) => {
   const ws = getLiveWsStatus();
+  const gitSha =
+    process.env.RENDER_GIT_COMMIT ||
+    process.env.GIT_COMMIT ||
+    process.env.COMMIT_REF ||
+    null;
   res.json({
     status: 'ok',
     env: config.nodeEnv,
+    gitSha: gitSha ? String(gitSha).slice(0, 12) : null,
+    tipBuild: 'market-data-indstocks',
     live: {
       provider: getActiveMarketProvider(),
       configured: false,

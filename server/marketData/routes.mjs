@@ -22,6 +22,7 @@ import {
   validateIndstocksToken,
   refreshIndstocksInstrumentMap,
   resolveScripCode,
+  resolveScripCodeCandidates,
   listUniverseSymbols,
   listScannableUniverseSymbols,
   fetchIndstocksQuote,
@@ -214,12 +215,20 @@ router.get('/quote', async (req, res) => {
   if (!live) return;
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const scrip = resolveScripCode(symbol);
-  if (!scrip) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
+  const candidates = resolveScripCodeCandidates(symbol);
+  if (!candidates.length) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
   try {
-    const quote = await fetchIndstocksQuote(live.accessToken, scrip);
-    quote.symbol = symbol;
-    res.json({ quote, mode: 'LIVE', source: 'indstocks' });
+    let lastErr = null;
+    for (const scrip of candidates) {
+      try {
+        const quote = await fetchIndstocksQuote(live.accessToken, scrip);
+        quote.symbol = symbol;
+        return res.json({ quote, mode: 'LIVE', source: 'indstocks', scrip });
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('Quote unavailable');
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
     if (status === 401) {
@@ -242,17 +251,32 @@ router.get('/candles', async (req, res) => {
   const beforeRaw = Number(req.query.before);
   const beforeMs = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : undefined;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const scrip = resolveScripCode(symbol);
-  if (!scrip) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
-  try {
-    const candles = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars, {
-      beforeMs,
+  const candidates = resolveScripCodeCandidates(symbol);
+  if (!candidates.length) {
+    return res.status(404).json({
+      error: `Unknown symbol: ${symbol}`,
+      hint: 'Index symbols need NIDX scrips. Reconnect market data after API redeploy.',
     });
+  }
+  try {
+    let candles = [];
+    let used = candidates[0];
+    for (const scrip of candidates) {
+      const chunk = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars, {
+        beforeMs,
+      });
+      if (chunk?.length) {
+        candles = chunk;
+        used = scrip;
+        break;
+      }
+    }
     for (const c of candles) c.symbol = symbol;
     res.json({
       symbol,
       timeframe,
       candles,
+      scrip: used,
       mode: 'LIVE',
       source: 'indstocks',
       orderExecution: false,
