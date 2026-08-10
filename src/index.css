@@ -22998,6 +22998,274 @@ body:has(.app-main--terminal-immersive) #root {
 
 .wolf-map__line--danger { background: rgba(252, 165, 165, 0.55); }
 
+.wolf-map--v6 {
+  padding: 0.65rem 0.7rem;
+  margin: 0.35rem 0;
+}
+
+.wolf-map__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.wolf-map__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  text-align: left;
+  border: 0;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.wolf-map__row:hover {
+  background: rgba(232, 197, 71, 0.08);
+}
+
+.wolf-map__row .wolf-map__lab {
+  margin: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+
+.wolf-map__row .wolf-map__txt {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-text);
+}
+
+.wolf-map__row--invalid .wolf-map__txt { color: #fca5a5; }
+.wolf-map__row--tp1 .wolf-map__txt,
+.wolf-map__row--tp2 .wolf-map__txt { color: #86efac; }
+.wolf-map__row--decision .wolf-map__txt { color: #e8c547; }
+
+.wolf-cockpit {
+  gap: 0.4rem !important;
+}
+
+.wolf-cockpit__verdict {
+  border: 1px solid rgba(232, 197, 71, 0.22);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  background: linear-gradient(160deg, rgba(232, 197, 71, 0.08), rgba(10, 14, 24, 0.4));
+}
+
+.wolf-cockpit__verdict-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.wolf-cockpit__eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #e8c547;
+}
+
+.wolf-cockpit__tf {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--tf-text-muted);
+}
+
+.wolf-cockpit__verdict-main {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.wolf-cockpit__dot {
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.wolf-cockpit__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.wolf-cockpit__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--tf-text-muted);
+}
+
+.wolf-cockpit__story {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--tf-text);
+  font-style: italic;
+}
+
+.wolf-cockpit__snap {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.6rem;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.wolf-cockpit__snap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.75rem;
+}
+
+.wolf-cockpit__snap-grid span {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+
+.wolf-cockpit__snap-grid strong {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.wolf-cockpit__sec-k {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--tf-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.wolf-cockpit__plan,
+.wolf-cockpit__why,
+.wolf-cockpit__risk {
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  padding-top: 0.45rem;
+}
+
+.wolf-cockpit__seq {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.wolf-cockpit__seq button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--tf-text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 0.2rem 0;
+  cursor: pointer;
+}
+
+.wolf-cockpit__seq button:hover {
+  color: #e8c547;
+}
+
+.wolf-cockpit__seq-arrow {
+  display: block;
+  color: #64748b;
+  font-size: 0.7rem;
+  padding-left: 0.15rem;
+}
+
+.wolf-cockpit__why-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wolf-cockpit__why-list button {
+  width: 100%;
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--tf-text);
+  font: inherit;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-align: left;
+  padding: 0.15rem 0;
+  cursor: pointer;
+}
+
+.wolf-cockpit__why-list button:hover {
+  color: #e8c547;
+}
+
+.wolf-cockpit__risk-btn {
+  width: 100%;
+  appearance: none;
+  border: 1px solid rgba(252, 165, 165, 0.28);
+  border-radius: 0.55rem;
+  background: rgba(127, 29, 29, 0.18);
+  color: #fecaca;
+  font: inherit;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+}
+
+.wolf-cockpit__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  position: sticky;
+  bottom: 0;
+  padding-top: 0.35rem;
+  background: linear-gradient(180deg, transparent, rgba(7, 10, 18, 0.96) 28%);
+}
+
+.wolf-cockpit__acts {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.wolf-cockpit__whatif {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.wolf-cockpit__whatif .wolf-cockpit__sec-k {
+  grid-column: 1 / -1;
+}
+
 .wolf-evidence {
   margin: 0.5rem 0 0.75rem;
 }

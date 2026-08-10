@@ -2133,18 +2133,27 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                   <strong>WOLF AI</strong>
                 </div>
                 <div className="wolf-split__meta">
-                  <span className="wolf-split__ready">● Reading chart</span>
+                  <span className="wolf-split__ready">● READING</span>
                 </div>
               </header>
               <div className="wolf-split__body">
                 <div className="wolf-split__chart">
                   <img src={sessionImageUrl} alt="Chart under review" />
                 </div>
-                <aside className="wolf-split__side wolf-split__side--empty">
-                  <p className="wolf-vision-home__tag">Wolf is reading your chart…</p>
-                  <p className="opacity-70" style={{ fontSize: '0.85rem' }}>
-                    Detecting asset · Building structure · Mapping levels
-                  </p>
+                <aside className="wolf-split__wolf wolf-cockpit wolf-cockpit--reading">
+                  <header className="wolf-cockpit__verdict">
+                    <div className="wolf-cockpit__verdict-top">
+                      <span className="wolf-cockpit__eyebrow">🐺 READING YOUR CHART</span>
+                    </div>
+                    <p className="wolf-cockpit__sub">Detecting structure and key levels…</p>
+                    <ul className="wolf-cockpit__why-list" aria-label="Reading progress">
+                      <li><span>✓ Asset</span></li>
+                      <li><span>✓ Timeframe</span></li>
+                      <li><span>✓ Structure</span></li>
+                      <li><span>✓ Key levels</span></li>
+                    </ul>
+                    <p className="wolf-cockpit__story">Mapping the trade…</p>
+                  </header>
                 </aside>
               </div>
             </div>

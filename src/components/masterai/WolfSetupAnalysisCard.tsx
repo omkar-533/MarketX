@@ -14,6 +14,7 @@ import type { NormalizedBBox, WolfEvidenceItem } from '../../utils/wolfEvidence'
 import {
   buildCopilotChecklist,
   buildNextAction,
+  buildTradeProgress,
   crispStatusTitle,
   journeyDelta,
   loadJourney,
@@ -32,8 +33,8 @@ import {
 import {
   buildTradingThesis,
   buildGuidedTradeSteps,
-  levelPanelLine,
   explainableEvidenceLabel,
+  levelPanelLine,
   type ThesisKeyLevel,
 } from '../../utils/tradingThesis';
 import ChatMarkdown from '../ChatMarkdown';
@@ -41,6 +42,7 @@ import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import WolfChartCanvas from './WolfChartCanvas';
 import type { UserDrawing, WolfChartCanvasHandle } from './WolfChartCanvas';
 import type { WolfAnalysisMode } from '../../constants/wolfAnalysisModes';
+import WolfTradeMap, { type TradeMapRow } from './WolfTradeMap';
 
 export type WolfTrailItem = {
   id: string;
@@ -245,6 +247,123 @@ export default function WolfSetupAnalysisCard({
     () => (analysis ? buildGuidedTradeSteps(thesis, hindi) : []),
     [analysis, thesis, hindi],
   );
+
+  const tradeProgress = useMemo(() => buildTradeProgress(checklist).slice(0, 4), [checklist]);
+
+  const setupQuality = useMemo(() => {
+    if (thesis.status === 'NO_TRADE' || thesis.noCleanSetup) return 'NO TRADE';
+    if (thesis.status === 'WAIT') return 'B · DEVELOPING';
+    if (thesis.status === 'LONG' || thesis.status === 'SHORT') return 'A · CLEAN';
+    return 'C · WEAK';
+  }, [thesis.status, thesis.noCleanSetup]);
+
+  const waitSequence = useMemo(() => {
+    const raw = String(thesis.waitFor || '')
+      .split(/\s*(?:→|->|\+|then|,)\s*/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 1 && !/^not enough/i.test(s));
+    if (raw.length >= 2) return raw.slice(0, 4);
+    if (tradeProgress.length) {
+      return tradeProgress.map((p) => p.label.replace(/^[^\s]+\s/, '').toUpperCase());
+    }
+    return thesis.waitFor && !/^not enough/i.test(thesis.waitFor)
+      ? [thesis.waitFor]
+      : [];
+  }, [thesis.waitFor, tradeProgress]);
+
+  const whyRows = useMemo(() => {
+    const fromAnalysis = (analysis?.why || [])
+      .map((w) => w.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    if (fromAnalysis.length) return fromAnalysis;
+    return evidenceLane.slice(0, 3).map((n) => n.label);
+  }, [analysis?.why, evidenceLane]);
+
+  const tradeMapRows = useMemo((): TradeMapRow[] => {
+    const decision =
+      thesis.keyLevels.find((l) => l.type === 'DECISION' || l.type === 'RESISTANCE') ||
+      thesis.keyLevels.find((l) => l.type === 'SUPPORT');
+    const entryLevel = thesis.keyLevels.find((l) => l.type === 'ENTRY');
+    const invLevel = thesis.keyLevels.find((l) => l.type === 'INVALIDATION');
+    const targets = thesis.keyLevels.filter((l) => l.type === 'TARGET');
+    const tp1 = targets[0] || thesis.targets[0];
+    const tp2 = targets[1] || thesis.targets[1];
+
+    const entryValue = thesis.noCleanSetup
+      ? 'WAIT'
+      : entryLevel?.price ||
+        (thesis.entryPlan.zone !== 'Not enough evidence.'
+          ? thesis.entryPlan.zone
+          : thesis.waitFor !== 'Not enough evidence.'
+            ? 'WAIT FOR RETEST'
+            : '—');
+
+    return [
+      {
+        id: 'decision',
+        label: 'DECISION',
+        value: decision?.price || '—',
+        level: decision || null,
+      },
+      {
+        id: 'entry',
+        label: 'ENTRY',
+        value: entryValue,
+        level: entryLevel || null,
+      },
+      {
+        id: 'invalid',
+        label: 'INVALID',
+        value:
+          invLevel?.price ||
+          (thesis.invalidation.logic !== 'Not enough evidence.'
+            ? thesis.invalidation.logic.slice(0, 48)
+            : '—'),
+        level: invLevel || null,
+      },
+      {
+        id: 'tp1',
+        label: 'TP1',
+        value:
+          (tp1 && 'price' in tp1 ? String(tp1.price) : '') ||
+          thesis.targets[0]?.price ||
+          '—',
+        level: (tp1 && 'type' in (tp1 as object) ? (tp1 as ThesisKeyLevel) : null),
+      },
+      {
+        id: 'tp2',
+        label: 'TP2',
+        value:
+          (tp2 && 'price' in tp2 ? String(tp2.price) : '') ||
+          thesis.targets[1]?.price ||
+          '—',
+        level: (tp2 && 'type' in (tp2 as object) ? (tp2 as ThesisKeyLevel) : null),
+      },
+    ];
+  }, [thesis]);
+
+  const focusTradeMapRow = (row: TradeMapRow) => {
+    if (row.level) {
+      focusThesisLevel(row.level);
+      return;
+    }
+    if (row.id === 'entry') {
+      const ev = evidence.find((e) => /entry/i.test(e.type) || /entry/i.test(e.title));
+      if (ev) {
+        applyEvidenceFocus(ev, 'entry');
+        return;
+      }
+    }
+    if (row.id === 'invalid') {
+      const ev = evidence.find((e) => /inv|stop/i.test(e.type) || /invalid/i.test(e.title));
+      if (ev) {
+        applyEvidenceFocus(ev, 'invalidation');
+        return;
+      }
+    }
+    setActionHint(`${row.label}: ${row.value}`);
+  };
 
   const insight = useMemo(() => {
     if (!analysis || !next) return '';
@@ -1004,7 +1123,7 @@ export default function WolfSetupAnalysisCard({
           </div>
         </section>
 
-        <aside className="wolf-split__wolf" aria-label="Wolf's read">
+        <aside className="wolf-split__wolf wolf-cockpit" aria-label="Wolf Trade Card">
           {trail.length > 1 ? (
             <nav className="wolf-split__trail" aria-label="Analysis trail">
               {trail.map((t, i) => (
@@ -1022,23 +1141,46 @@ export default function WolfSetupAnalysisCard({
             </nav>
           ) : null}
 
-          <div className="wolf-split__eyebrow">WOLF&apos;S READ</div>
-
-          <div className="wolf-desk__status wolf-split__status" role="status">
-            <span className="wolf-desk__emoji">
-              {thesis.status === 'LONG'
-                ? '🟢'
-                : thesis.status === 'SHORT'
-                  ? '🔴'
-                  : thesis.status === 'NO_TRADE'
-                    ? '🟡'
-                    : '🟡'}
-            </span>
-            <div>
-              <div className="wolf-desk__title">{thesis.status}</div>
-              <div className="wolf-desk__sub">{crisp.subtitle || crisp.title}</div>
+          <header className="wolf-cockpit__verdict" role="status">
+            <div className="wolf-cockpit__verdict-top">
+              <span className="wolf-cockpit__eyebrow">🐺 WOLF&apos;S READ</span>
+              {timeframeLabel ? (
+                <span className="wolf-cockpit__tf">{timeframeLabel}</span>
+              ) : null}
             </div>
-          </div>
+            <div className="wolf-cockpit__verdict-main">
+              <span className="wolf-cockpit__dot" aria-hidden>
+                {thesis.status === 'LONG'
+                  ? '🟢'
+                  : thesis.status === 'SHORT'
+                    ? '🔴'
+                    : thesis.status === 'NO_TRADE'
+                      ? '⚪'
+                      : '🟡'}
+              </span>
+              <div>
+                <div className="wolf-cockpit__title">
+                  {crisp?.title ||
+                    (thesis.status === 'NO_TRADE'
+                      ? 'NO CLEAN SETUP'
+                      : thesis.status === 'WAIT'
+                        ? 'WAIT'
+                        : `${thesis.status} SETUP`)}
+                </div>
+                <p className="wolf-cockpit__sub">
+                  {crisp?.subtitle ||
+                    insight ||
+                    thesis.marketStory ||
+                    (thesis.noCleanSetup
+                      ? 'No clean entry yet.'
+                      : thesis.nextAction)}
+                </p>
+              </div>
+            </div>
+            {thesis.marketStory && thesis.marketStory !== 'Not enough evidence.' ? (
+              <p className="wolf-cockpit__story">&ldquo;{thesis.marketStory}&rdquo;</p>
+            ) : null}
+          </header>
 
           {actionHint ? (
             <p className="wolf-split__action-hint" role="status">
@@ -1070,105 +1212,111 @@ export default function WolfSetupAnalysisCard({
             </div>
           ) : null}
 
-          <section className="wolf-split__bias" aria-label="Bias">
-            <div className="wolf-desk__watch-k">BIAS</div>
-            <p className="wolf-desk__watch-m">{thesis.bias}</p>
-          </section>
-
-          <section className="wolf-split__story" aria-label="Market story">
-            <div className="wolf-desk__watch-k">MARKET STORY</div>
-            <blockquote className="wolf-split__insight">&ldquo;{thesis.marketStory}&rdquo;</blockquote>
-          </section>
-
-          <section className="wolf-split__levels" aria-label="Key levels">
-            <div className="wolf-desk__watch-k">KEY LEVELS</div>
-            {thesis.keyLevels.length ? (
-              <div className="wolf-split__levels-list">
-                {thesis.keyLevels.map((level) => (
-                  <button
-                    key={level.id}
-                    type="button"
-                    className="wolf-split__level-btn"
-                    onClick={() => focusThesisLevel(level)}
-                  >
-                    {levelPanelLine(level)}
-                  </button>
-                ))}
+          <section className="wolf-cockpit__snap" aria-label="Market snapshot">
+            <div className="wolf-cockpit__snap-grid">
+              <div>
+                <span>BIAS</span>
+                <strong>{thesis.bias.split(/[.—]/)[0]?.trim() || thesis.bias}</strong>
               </div>
-            ) : (
-              <p className="wolf-desk__watch-m">Not enough evidence.</p>
-            )}
+              <div>
+                <span>SETUP</span>
+                <strong>
+                  {thesis.setup.name !== 'Not enough evidence.'
+                    ? thesis.setup.name
+                    : '—'}
+                </strong>
+              </div>
+              <div>
+                <span>QUALITY</span>
+                <strong>{setupQuality}</strong>
+              </div>
+              <div>
+                <span>ENTRY</span>
+                <strong>
+                  {thesis.noCleanSetup || thesis.status === 'WAIT'
+                    ? 'UNCONFIRMED'
+                    : 'ACTIVE'}
+                </strong>
+              </div>
+            </div>
           </section>
 
-          <section className="wolf-split__setup" aria-label="Setup">
-            <div className="wolf-desk__watch-k">SETUP</div>
-            <p className="wolf-desk__watch-m">
-              {thesis.setup.name}
-              {thesis.noCleanSetup ? (
-                <span className="wolf-split__no-setup"> — NO CLEAN SETUP YET</span>
-              ) : null}
-            </p>
-          </section>
+          <WolfTradeMap rows={tradeMapRows} onFocus={focusTradeMapRow} />
 
-          <section className="wolf-split__wait" aria-label="Wait for">
-            <div className="wolf-desk__watch-k">WAIT FOR</div>
-            <p className="wolf-desk__watch-m">{thesis.waitFor}</p>
-          </section>
-
-          <section className="wolf-split__invalid" aria-label="Invalidation">
-            <div className="wolf-desk__watch-k">INVALIDATION</div>
-            {(() => {
-              const invLevel = thesis.keyLevels.find((l) => l.type === 'INVALIDATION');
-              if (invLevel) {
-                return (
-                  <button
-                    type="button"
-                    className="wolf-split__level-btn"
-                    onClick={() => focusThesisLevel(invLevel)}
-                  >
-                    {thesis.invalidation.logic}
-                  </button>
-                );
-              }
-              return <p className="wolf-desk__watch-m">{thesis.invalidation.logic}</p>;
-            })()}
-          </section>
-
-          <section className="wolf-split__targets" aria-label="Targets">
-            <div className="wolf-desk__watch-k">TARGETS</div>
-            {thesis.targets.length ? (
-              <div className="wolf-split__levels-list">
-                {thesis.targets.map((t) => {
-                  const level = thesis.keyLevels.find((l) => l.annotationId === t.annotationId);
-                  return (
+          {waitSequence.length ? (
+            <section className="wolf-cockpit__plan" aria-label="What I'm waiting for">
+              <div className="wolf-cockpit__sec-k">🐺 WHAT I&apos;M WAITING FOR</div>
+              <ol className="wolf-cockpit__seq">
+                {waitSequence.map((step, i) => (
+                  <li key={`${step}-${i}`}>
                     <button
-                      key={t.label}
                       type="button"
-                      className="wolf-split__level-btn"
                       onClick={() => {
-                        if (level) {
-                          focusThesisLevel(level);
-                        } else {
-                          setActionHint(`${t.label}: ${t.price}`);
-                        }
+                        const level =
+                          thesis.keyLevels.find((l) =>
+                            step.toLowerCase().includes(l.price.toLowerCase()),
+                          ) ||
+                          thesis.keyLevels[Math.min(i, thesis.keyLevels.length - 1)];
+                        if (level) focusThesisLevel(level);
+                        else setActionHint(step);
                       }}
                     >
-                      {t.label} · {t.price}
+                      {step}
                     </button>
+                    {i < waitSequence.length - 1 ? (
+                      <span className="wolf-cockpit__seq-arrow" aria-hidden>
+                        ↓
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
+          {whyRows.length ? (
+            <section className="wolf-cockpit__why" aria-label="Why">
+              <div className="wolf-cockpit__sec-k">WHY</div>
+              <ul className="wolf-cockpit__why-list">
+                {whyRows.map((row, i) => {
+                  const node = evidenceLane[i];
+                  return (
+                    <li key={`${row}-${i}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (node) goWhyStep(i);
+                          else setActionHint(row);
+                        }}
+                      >
+                        <span aria-hidden>✓</span>
+                        <span>{row}</span>
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
-            ) : (
-              <p className="wolf-desk__watch-m">Not enough evidence.</p>
-            )}
-          </section>
+              </ul>
+            </section>
+          ) : null}
 
-          <section className="wolf-desk__watch wolf-split__watch" aria-label="Next action">
-            <div className="wolf-desk__watch-k">NEXT ACTION</div>
-            <p className="wolf-desk__watch-m">{thesis.nextAction}</p>
-          </section>
+          {primaryRisk ? (
+            <section className="wolf-cockpit__risk" aria-label="What can prove Wolf wrong">
+              <div className="wolf-cockpit__sec-k">⚠ WHAT CAN PROVE WOLF WRONG?</div>
+              <button
+                type="button"
+                className="wolf-cockpit__risk-btn"
+                onClick={() => {
+                  const inv = thesis.keyLevels.find((l) => l.type === 'INVALIDATION');
+                  if (inv) focusThesisLevel(inv);
+                  else setActionHint(primaryRisk);
+                }}
+              >
+                {primaryRisk}
+              </button>
+            </section>
+          ) : null}
 
-          <div className="wolf-split__primary">
+          <div className="wolf-cockpit__actions">
             <WolfActButton
               id="SHOW_ON_CHART"
               state={showChartState}
@@ -1179,64 +1327,86 @@ export default function WolfSetupAnalysisCard({
               <Crosshair className="h-3.5 w-3.5" aria-hidden />
               {showChartLabel}
             </WolfActButton>
-          </div>
 
-          <div className="wolf-split__acts">
-            <WolfActButton
-              id="WHY"
-              state={whyWalk ? 'active' : 'default'}
-              onClick={startWhyWalk}
-              disabled={!evidenceLane.length}
-            >
-              {wolfActionLabel('WHY')}
-            </WolfActButton>
-            <WolfActButton
-              id="WHAT_IF"
-              state={sheet === 'whatif' ? 'active' : 'default'}
-              onClick={() => setSheet((s) => (s === 'whatif' ? null : 'whatif'))}
-              disabled={!onWhatIf}
-            >
-              {wolfActionLabel('WHAT_IF')}
-            </WolfActButton>
-            <WolfActButton
-              id="FOLLOW_WOLF"
-              state={
-                followState === 'following' || followState === 'paused'
-                  ? 'active'
-                  : followState === 'error'
-                    ? 'error'
-                    : followState === 'completed'
-                      ? 'success'
-                      : 'default'
-              }
-              onClick={startFollowTour}
-              disabled={!tourSteps.length}
-            >
-              {wolfActionLabel('FOLLOW_WOLF')}
-            </WolfActButton>
+            <div className="wolf-split__acts wolf-cockpit__acts">
+              <WolfActButton
+                id="WHY"
+                state={whyWalk ? 'active' : 'default'}
+                onClick={() => {
+                  if (evidenceLane.length) startWhyWalk();
+                  else if (whyRows[0]) setActionHint(whyRows[0]);
+                }}
+                disabled={!evidenceLane.length && !whyRows.length}
+              >
+                {wolfActionLabel('WHY')}
+              </WolfActButton>
+              <WolfActButton
+                id="FOLLOW_WOLF"
+                state={
+                  followState === 'following' || followState === 'paused'
+                    ? 'active'
+                    : followState === 'error'
+                      ? 'error'
+                      : followState === 'completed'
+                        ? 'success'
+                        : 'default'
+                }
+                onClick={startFollowTour}
+                disabled={!tourSteps.length}
+              >
+                {wolfActionLabel('FOLLOW_WOLF')}
+              </WolfActButton>
+            </div>
           </div>
 
           <AnimatePresence>
             {sheet === 'whatif' && onWhatIf ? (
               <motion.div
-                className="wolf-desk__whatif"
+                className="wolf-desk__whatif wolf-cockpit__whatif"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
               >
+                <div className="wolf-cockpit__sec-k">WHAT IF…</div>
                 <button
                   type="button"
                   className="wolf-desk__whatif-big is-hold"
-                  onClick={() => handleWhatIfChoice(true)}
+                  onClick={() => {
+                    const decision = tradeMapRows.find((r) => r.id === 'decision')?.value;
+                    askWolf(
+                      `[WHAT IF] Breakout above ${decision || 'decision level'}. Update scenario: entry, invalidation, targets. Keep locked template.`,
+                    );
+                    setSheet(null);
+                  }}
                 >
-                  PRIMARY HOLDS
+                  BREAKOUT
+                </button>
+                <button
+                  type="button"
+                  className="wolf-desk__whatif-big is-break"
+                  onClick={() => {
+                    const decision = tradeMapRows.find((r) => r.id === 'decision')?.value;
+                    askWolf(
+                      `[WHAT IF] Rejection at ${decision || 'decision level'}. Update alternative scenario. Keep locked template.`,
+                    );
+                    setSheet(null);
+                  }}
+                >
+                  REJECTION
                 </button>
                 <button
                   type="button"
                   className="wolf-desk__whatif-big is-break"
                   onClick={() => handleWhatIfChoice(false)}
                 >
-                  PRIMARY FAILS
+                  SUPPORT BREAK
+                </button>
+                <button
+                  type="button"
+                  className="wolf-desk__whatif-big is-hold"
+                  onClick={() => handleWhatIfChoice(true)}
+                >
+                  PRIMARY HOLDS
                 </button>
               </motion.div>
             ) : null}
@@ -1260,6 +1430,17 @@ export default function WolfSetupAnalysisCard({
                   exit={{ opacity: 0, y: -4 }}
                 >
                   <WolfActButton
+                    id="WHAT_IF"
+                    state={sheet === 'whatif' ? 'active' : 'default'}
+                    onClick={() => {
+                      setSheet((s) => (s === 'whatif' ? null : 'whatif'));
+                      setMoreOpen(false);
+                    }}
+                    disabled={!onWhatIf}
+                  >
+                    {wolfActionLabel('WHAT_IF')}
+                  </WolfActButton>
+                  <WolfActButton
                     id="EXPLAIN_MORE"
                     onClick={() => {
                       setSheet('explain');
@@ -1268,11 +1449,33 @@ export default function WolfSetupAnalysisCard({
                   >
                     {wolfActionLabel('EXPLAIN_MORE')}
                   </WolfActButton>
+                  <WolfActButton
+                    id="REPLAY"
+                    onClick={() => {
+                      setSheet('replay');
+                      setReplayPlaying(true);
+                      setReplayIndex(0);
+                      setMoreOpen(false);
+                    }}
+                    disabled={!tabs.length}
+                  >
+                    {wolfActionLabel('REPLAY')}
+                  </WolfActButton>
                   <WolfActButton id="CHALLENGE" onClick={handleChallenge}>
                     {wolfActionLabel('CHALLENGE')}
                   </WolfActButton>
                   <WolfActButton id="ASK_WOLF" onClick={handleAskWolfAction}>
                     {wolfActionLabel('ASK_WOLF')}
+                  </WolfActButton>
+                  <WolfActButton
+                    id="DRAW"
+                    onClick={() => {
+                      setDrawMode(true);
+                      if (!drawTool) setDrawTool('line');
+                      setMoreOpen(false);
+                    }}
+                  >
+                    {wolfActionLabel('DRAW')}
                   </WolfActButton>
                 </motion.div>
               ) : null}
@@ -1302,6 +1505,7 @@ export default function WolfSetupAnalysisCard({
               </form>
             </div>
           ) : null}
+        </aside>
         </aside>
       </div>
 
