@@ -5353,7 +5353,7 @@ input[type="number"] { -moz-appearance: textfield; }
   flex-shrink: 0;
 }
 
-/* ─── access gate (TradeFinder-style neon lock modal) + trial nudge ─── */
+/* ??? access gate (TradeFinder-style neon lock modal) + trial nudge ??? */
 
 .access-gate {
   --ag-neon: #39ff6a;
@@ -5586,7 +5586,7 @@ input[type="number"] { -moz-appearance: textfield; }
   background: linear-gradient(180deg, #7dff9a 0%, #2fe85a 100%);
 }
 
-/* Shared unlock panel — neon theme inside AccessGate modal */
+/* Shared unlock panel ? neon theme inside AccessGate modal */
 .access-gate__card .access-unlock__title {
   margin: 0;
   font-size: 1.85rem;
@@ -5676,7 +5676,7 @@ input[type="number"] { -moz-appearance: textfield; }
   border: none;
 }
 
-/* Inline unlock panel — landing + Subscription (desk gold) */
+/* Inline unlock panel ? landing + Subscription (desk gold) */
 .access-unlock--inline {
   width: 100%;
   padding: 1.35rem 1.4rem 1.25rem;
@@ -6037,7 +6037,7 @@ input[type="number"] { -moz-appearance: textfield; }
   filter: brightness(1.08);
 }
 
-/* trial nudge — compact centered card (not full-screen on mobile) */
+/* trial nudge ? compact centered card (not full-screen on mobile) */
 
 .trial-nudge-overlay {
   position: fixed;
@@ -7666,7 +7666,7 @@ html.dark .mai-chat__setup-chip--on {
   align-items: center;
 }
 
-/* —— Wolf Mentor professional training desk —— */
+/* ?? Wolf Mentor professional training desk ?? */
 .wm-desk {
   display: flex;
   flex-direction: column;
@@ -7688,7 +7688,7 @@ html.dark .mai-chat__setup-chip--on {
     var(--tf-elevated);
 }
 
-/* Full-width module nav — Curriculum cannot hide behind Beginner/Pro chips */
+/* Full-width module nav ? Curriculum cannot hide behind Beginner/Pro chips */
 .wm-desk__nav {
   display: grid;
   gap: 0.45rem;
@@ -8311,7 +8311,7 @@ html.dark .mai-chat__setup-chip--on {
   }
 }
 
-/* —— Mentor Arena (game rounds) —— */
+/* ?? Mentor Arena (game rounds) ?? */
 .wm-desk__body--arena {
   display: grid;
   gap: 0.85rem;
@@ -8347,7 +8347,7 @@ html.dark .mai-chat__setup-chip--on {
   min-height: min(68vh, 640px);
 }
 
-/* —— Desk Empire virtual trading —— */
+/* ?? Desk Empire virtual trading ?? */
 .wm-empire--play {
   padding: 0.4rem;
   border-color: rgba(212, 175, 55, 0.4);
@@ -9711,7 +9711,7 @@ html.dark .wm-arena__opt,
   margin-top: 0.9rem;
 }
 
-/* —— Wolf Trade Quest campaign —— */
+/* ?? Wolf Trade Quest campaign ?? */
 .wm-quest__top {
   margin-bottom: 0.75rem;
 }
@@ -10130,7 +10130,7 @@ html.dark .wm-arena__opt,
   }
 }
 
-/* —— Module 1 AI Teacher (curriculum) —— */
+/* ?? Module 1 AI Teacher (curriculum) ?? */
 .wm-desk__body--learn {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -10640,7 +10640,7 @@ html.dark .wm-arena__opt,
   background: rgba(212, 175, 55, 0.2);
 }
 
-/* —— Module 2 Chart Mentor —— */
+/* ?? Module 2 Chart Mentor ?? */
 .wm-chart {
   display: flex;
   flex-direction: column;
@@ -10741,7 +10741,7 @@ html.dark .wm-arena__opt,
   margin: 0.15rem 0 0;
 }
 
-/* —— Module 3 Performance Coach —— */
+/* ?? Module 3 Performance Coach ?? */
 .wm-desk__body--coach {
   grid-template-columns: 1fr;
 }
@@ -10992,7 +10992,7 @@ html.dark .wm-arena__opt,
   overflow: auto;
 }
 
-/* —— Module 4 Trading Lab —— */
+/* ?? Module 4 Trading Lab ?? */
 .wm-desk__body--lab {
   grid-template-columns: 1fr;
 }
@@ -11306,7 +11306,7 @@ html.dark .wm-arena__opt,
   line-height: 1.4;
 }
 
-/* —— Module 5 Live Mentor —— */
+/* ?? Module 5 Live Mentor ?? */
 .wm-desk__body--live {
   grid-template-columns: 1fr;
 }
@@ -11622,7 +11622,7 @@ html.dark .wm-arena__opt,
   overflow: auto;
 }
 
-/* —— Mentor OS ecosystem bar + path rail —— */
+/* ?? Mentor OS ecosystem bar + path rail ?? */
 .wm-eco {
   margin: 0 0.85rem 0.65rem;
   padding: 0.65rem 0.75rem;
@@ -11809,7 +11809,7 @@ html.dark .wm-arena__opt,
   gap: 0.4rem;
 }
 
-/* —— Module 6 Trading Master —— */
+/* ?? Module 6 Trading Master ?? */
 .wm-desk__body--master {
   grid-template-columns: 1fr;
 }
@@ -12850,7 +12850,7 @@ html.dark .wm-arena__opt,
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── Wolf AI: live chart card inside the chat thread ───────────────── */
+/* ?? Wolf AI: live chart card inside the chat thread ????????????????? */
 
 .mai-chat__chart-card {
   flex: 1;
@@ -12875,7 +12875,7 @@ html.dark .wm-arena__opt,
   height: min(42rem, 74vh);
 }
 
-/* In-app full screen — same page, edge-to-edge trading desk (never leaves the site) */
+/* In-app full screen ? same page, edge-to-edge trading desk (never leaves the site) */
 .mai-tv__fs-layer {
   position: fixed;
   inset: 0;
@@ -13236,7 +13236,7 @@ html.dark .wm-arena__opt,
   background: var(--tf-bg);
 }
 
-/* Clear labeled control — cannot scroll away with MTF buttons */
+/* Clear labeled control ? cannot scroll away with MTF buttons */
 .mai-tv__fs-btn {
   display: inline-flex;
   align-items: center;
@@ -13276,7 +13276,7 @@ html.dark .mai-tv__fs-btn--on,
 
 @media (max-width: 640px) {
   .mai-tv__fs-btn span {
-    /* Keep the word visible — this was the missing control */
+    /* Keep the word visible ? this was the missing control */
     display: inline;
   }
 }
@@ -13513,7 +13513,7 @@ html.dark .mai-tv__fs-btn--on,
   font-weight: 600;
 }
 
-/* Native chart (own market feed) — legend, timestamp and retry states */
+/* Native chart (own market feed) ? legend, timestamp and retry states */
 
 /* TradingView-style floating legend over the top-left of the plot */
 .mai-nc__legend {
@@ -13606,7 +13606,7 @@ html.dark .mai-tv__fs-btn--on,
   opacity: 0.85;
 }
 
-/* Forming-candle close timer — under live LTP on the right price axis. */
+/* Forming-candle close timer ? under live LTP on the right price axis. */
 .mai-nc__bar-cd {
   pointer-events: none;
   display: inline-flex;
@@ -13630,13 +13630,13 @@ html.dark .mai-tv__fs-btn--on,
   color: #fff;
 }
 
-/* Forming-candle colour — bullish body */
+/* Forming-candle colour ? bullish body */
 .mai-nc__bar-cd--axis.mai-nc__bar-cd--up {
   background: #26a69a;
   color: #fff;
 }
 
-/* Forming-candle colour — bearish body */
+/* Forming-candle colour ? bearish body */
 .mai-nc__bar-cd--axis.mai-nc__bar-cd--dn {
   background: #ef5350;
   color: #fff;
@@ -13676,7 +13676,7 @@ html.dark .mai-tv__fs-btn--on,
   }
 }
 
-/* TradingView control_bar — floating overlay (portaled, position:fixed). */
+/* TradingView control_bar ? floating overlay (portaled, position:fixed). */
 .mai-nc__navfab {
   position: fixed;
   z-index: 90;
@@ -17730,7 +17730,7 @@ html.dark .mai-chat__shot-paths span {
   .wolf-loader__bar > span { animation: none !important; }
 }
 
-/* Calendar luxury wash — dark theme only */
+/* Calendar luxury wash ? dark theme only */
 html:not([data-theme="light"]) .tj-cal__hero {
   background:
     linear-gradient(145deg, rgba(36, 30, 16, 0.42), rgba(12, 14, 22, 0.96) 45%, rgba(8, 10, 16, 0.98));
@@ -17752,7 +17752,7 @@ html:not([data-theme="light"]) .tj-cal__cell--future {
   background: rgba(11, 14, 23, 0.55);
 }
 
-/* ═══ FINAL: Journal light surfaces — last in cascade, always wins ═══ */
+/* ??? FINAL: Journal light surfaces ? last in cascade, always wins ??? */
 html[data-theme="light"] .tj-analytics__hero,
 html[data-theme="light"] .tj-cal__hero,
 html[data-theme="light"] .tj-cal__board,
@@ -17896,7 +17896,7 @@ html:not([data-theme="light"]) .mai-chat__badge {
   color: #f0d78c !important;
 }
 
-/* FINAL: landing auth modal (sign in / signup / forgot) — theme tokens must win */
+/* FINAL: landing auth modal (sign in / signup / forgot) ? theme tokens must win */
 html[data-theme="light"] .auth-lux-modal__panel {
   background: #ffffff !important;
   background-color: #ffffff !important;
@@ -17963,8 +17963,8 @@ html[data-theme="light"] .auth-lux-modal__backdrop {
 }
 
 
-/* ─── Wolf Terminal desk (pro charting chrome) ─────────────────────── */
-/* Fixed fullscreen — percentage height chains break under app-shell/min-height. */
+/* ??? Wolf Terminal desk (pro charting chrome) ??????????????????????? */
+/* Fixed fullscreen ? percentage height chains break under app-shell/min-height. */
 html:has(.app-main--terminal-immersive),
 body:has(.app-main--terminal-immersive),
 body:has(.app-main--terminal-immersive) #root {
@@ -18908,7 +18908,7 @@ body:has(.app-main--terminal-immersive) #root {
   align-items: flex-start;
   gap: 0.22rem;
   max-width: min(420px, 72vw);
-  /* Legend itself is pointer-events:none so crosshair works — re-enable chips. */
+  /* Legend itself is pointer-events:none so crosshair works ? re-enable chips. */
   pointer-events: auto;
   position: relative;
   z-index: 3;
@@ -19378,7 +19378,7 @@ body:has(.app-main--terminal-immersive) #root {
   color: #0b0e17;
 }
 
-/* —— Full Pine IDE (near-fullscreen) —— */
+/* ?? Full Pine IDE (near-fullscreen) ?? */
 .wolf-term__pine-ide-backdrop {
   position: fixed;
   inset: 0;
@@ -19908,7 +19908,7 @@ body:has(.app-main--terminal-immersive) #root {
   color: #c5c8d0;
 }
 
-/* legacy triangle — keep inert if any leftover --fly classes */
+/* legacy triangle ? keep inert if any leftover --fly classes */
 .mai-nc__rail-btn--fly::after {
   display: none;
 }
@@ -20138,7 +20138,7 @@ body:has(.app-main--terminal-immersive) #root {
   pointer-events: auto;
 }
 
-/* Under chart symbol (XAUUSD) — compact TV legend trade chip */
+/* Under chart symbol (XAUUSD) ? compact TV legend trade chip */
 .wolf-term__trade--legend {
   margin-top: 0.05rem;
   max-width: min(220px, 100%);
@@ -21059,7 +21059,7 @@ body:has(.app-main--terminal-immersive) #root {
   }
 }
 
-/* ─── Wolf Terminal TV / native modifiers (top · chart · bottom) ───────── */
+/* ??? Wolf Terminal TV / native modifiers (top � chart � bottom) ????????? */
 .wolf-term--tv,
 .wolf-term--native {
   grid-template-rows: 38px minmax(0, 1fr) 26px !important;
@@ -21178,7 +21178,7 @@ body:has(.app-main--terminal-immersive) #root {
   }
 }
 
-/* ─── Terminal + native chart: mobile / touch ───────────────────────── */
+/* ??? Terminal + native chart: mobile / touch ????????????????????????? */
 @media (max-width: 720px) {
   .wolf-term,
   .wolf-term--pro,
@@ -21336,7 +21336,7 @@ body:has(.app-main--terminal-immersive) #root {
     touch-action: none;
   }
 
-  /* Drawing rail — larger tap targets, still slim */
+  /* Drawing rail ? larger tap targets, still slim */
   .wolf-term__chart .mai-nc__rail,
   .wolf-term__chart .mai-nc__rail--desk {
     width: 48px;
@@ -21404,7 +21404,7 @@ body:has(.app-main--terminal-immersive) #root {
     display: none !important;
   }
 
-  /* Floating drawing object toolbar — scrollable, larger taps */
+  /* Floating drawing object toolbar ? scrollable, larger taps */
   .mai-nc__objbar {
     top: max(6px, env(safe-area-inset-top, 0px)) !important;
     left: 50% !important;
@@ -21444,7 +21444,7 @@ body:has(.app-main--terminal-immersive) #root {
     z-index: 130;
   }
 
-  /* Settings / object sheets → bottom sheet on phones */
+  /* Settings / object sheets ? bottom sheet on phones */
   .mai-nc__sheet,
   .mai-nc__sheet--draw,
   .mai-nc__sheet--table {
@@ -21488,7 +21488,7 @@ body:has(.app-main--terminal-immersive) #root {
     padding: 0.5rem 0.7rem;
   }
 
-  /* Chart nav fab — above trade strip, always visible on touch */
+  /* Chart nav fab ? above trade strip, always visible on touch */
   .mai-nc__navfab {
     opacity: 0.95 !important;
     transform: translate(-50%, -100%) scale(0.88);
@@ -21505,7 +21505,7 @@ body:has(.app-main--terminal-immersive) #root {
     height: 30px;
   }
 
-  /* Tool flyouts — wider readable panel */
+  /* Tool flyouts ? wider readable panel */
   .mai-nc__flyout,
   .mai-nc__flyout--tv {
     max-width: min(78vw, 260px);
@@ -22021,7 +22021,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 
 .wolf-vision-home__bullets li::before {
-  content: '· ';
+  content: '� ';
   opacity: 0.6;
 }
 
@@ -23406,7 +23406,7 @@ body:has(.app-main--terminal-immersive) #root {
 
 .wolf-call__lines p { margin: 0.15rem 0; }
 
-/* ——— Wolf Evidence Visual Engine ——— */
+/* ??? Wolf Evidence Visual Engine ??? */
 .wolf-ev {
   margin: 0.75rem 0 1rem;
   padding: 0.85rem;
@@ -24025,7 +24025,7 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.7rem;
 }
 
-/* ——— Split-brain: LEFT Market · RIGHT Wolf ——— */
+/* ??? Split-brain: LEFT Market � RIGHT Wolf ??? */
 .mai-chat--split .mai-chat__topbar {
   padding: 0.4rem 0.85rem;
 }
@@ -24125,7 +24125,7 @@ body:has(.app-main--terminal-immersive) #root {
   flex-wrap: wrap;
 }
 
-/* Bottom Ask bar: conversation only — never AnalysisSelector */
+/* Bottom Ask bar: conversation only ? never AnalysisSelector */
 .mai-chat__ask-tools {
   display: none !important;
 }
@@ -24680,7 +24680,7 @@ body:has(.app-main--terminal-immersive) #root {
   }
 }
 
-/* ——— Wolf Desk — ultra-crisp ONE screen ——— */
+/* ??? Wolf Desk ? ultra-crisp ONE screen ??? */
 .wolf-desk {
   display: flex;
   flex-direction: column;
@@ -26414,6 +26414,348 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.75rem;
 }
 
+/* ?? Strategy Lab ?? */
+.wolf-lab__badge {
+  margin-left: 0.45rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: var(--tj-gold);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+}
+.wolf-lab__note {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(212, 175, 55, 0.06);
+  color: var(--tf-text-secondary);
+  font-size: 0.8rem;
+}
+.wolf-lab__create,
+.wolf-lab__templates,
+.wolf-lab__teach,
+.wolf-lab__manual {
+  display: grid;
+  gap: 0.85rem;
+}
+.wolf-lab__create h2,
+.wolf-lab__templates h2,
+.wolf-lab__teach h2,
+.wolf-lab__manual h2 {
+  margin: 0;
+  letter-spacing: 0.08em;
+  font-size: 0.95rem;
+  color: var(--tj-gold);
+}
+.wolf-lab__method-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+.wolf-lab__method-grid button {
+  text-align: left;
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  color: var(--tf-text);
+}
+.wolf-lab__method-grid button:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+}
+.wolf-lab__method-grid strong {
+  letter-spacing: 0.06em;
+  color: var(--tj-gold);
+}
+.wolf-lab__method-grid span {
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+.wolf-lab__tpl {
+  border: 1px solid var(--tf-border);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  background: var(--tf-surface);
+  display: grid;
+  gap: 0.35rem;
+}
+.wolf-lab__tpl em {
+  font-style: normal;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: var(--tj-gold);
+}
+.wolf-lab__tpl p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__tpl small {
+  color: var(--tf-text-secondary);
+  font-size: 0.68rem;
+}
+.wolf-lab__tpl button.primary {
+  margin-top: 0.35rem;
+  justify-self: start;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--tj-gold);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.wolf-lab__teach textarea {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 0.75rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  padding: 0.75rem;
+  resize: vertical;
+}
+.wolf-lab__hint {
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+  margin: 0;
+}
+.wolf-lab__loading {
+  padding: 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(212, 175, 55, 0.05);
+}
+.wolf-lab__loading p {
+  margin: 0;
+  color: var(--tj-gold);
+  font-weight: 700;
+}
+.wolf-lab__loading small {
+  color: var(--tf-text-muted);
+}
+.wolf-lab__clarify-q {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+.wolf-lab__clarify-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wolf-lab__clarify-opts button {
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  background: transparent;
+  color: var(--tf-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.wolf-lab__clarify-opts button.is-on {
+  border-color: rgba(212, 175, 55, 0.5);
+  color: var(--tj-gold);
+}
+.wolf-lab__clarity {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: var(--tj-gold);
+}
+.wolf-lab__fail .wolf-radar-desk__card-actions {
+  border-top: none;
+  padding-left: 0;
+}
+.wolf-lab__tf-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--tf-text-secondary);
+}
+.wolf-lab__tf-mode label {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.wolf-lab__mtf-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+.wolf-lab__mtf-flow label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__mtf-viz {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--tj-gold);
+  font-weight: 700;
+}
+.wolf-lab__cond-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+.wolf-lab__cond-head > span {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--tf-text-secondary);
+}
+.wolf-lab__cond-list {
+  display: grid;
+  gap: 0.45rem;
+}
+.wolf-lab__cond-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto auto auto auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+.wolf-lab__cond-row select,
+.wolf-lab__cond-row input {
+  min-width: 0;
+}
+.wolf-lab__preview {
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  background: rgba(212, 175, 55, 0.04);
+}
+.wolf-lab__preview h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--tj-gold);
+}
+.wolf-lab__preview strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  letter-spacing: 0.04em;
+}
+.wolf-lab__preview ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--tf-text-secondary);
+  font-size: 0.78rem;
+}
+.wolf-lab__err {
+  color: #fda4af;
+  font-size: 0.75rem;
+}
+.wolf-lab__warn {
+  color: #fcd34d;
+  font-size: 0.75rem;
+}
+.wolf-lab__filters {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.wolf-lab__filters button {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  background: transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.wolf-lab__filters button.is-on {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--tj-gold);
+}
+.wolf-lab__status {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__status.is-on {
+  color: var(--tj-up);
+}
+.wolf-lab__desc {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__strategy-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  margin: 0.35rem 0 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(212, 175, 55, 0.06);
+}
+.wolf-radar-desk__strategy-banner span {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__strategy-banner strong {
+  display: block;
+  color: var(--tj-gold);
+  letter-spacing: 0.04em;
+}
+.wolf-radar-desk__strategy-banner small {
+  color: var(--tf-text-secondary);
+  font-size: 0.7rem;
+}
+.wolf-radar-desk__strategy-banner .ghost {
+  border: 1px solid var(--tf-border);
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.wolf-radar-desk__strategy-tag {
+  color: var(--tj-gold) !important;
+  font-size: 0.72rem !important;
+}
+.wolf-radar-desk__matched {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--tj-up);
+  font-size: 0.78rem;
+}
+@media (max-width: 720px) {
+  .wolf-lab__cond-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .wolf-vision-home__radar-cta {
   margin-top: 1.15rem;
   display: grid;
@@ -26454,7 +26796,7 @@ body:has(.app-main--terminal-immersive) #root {
   min-height: 0;
 }
 
-/* ��� LIVE WOLF ��� */
+/* ??? LIVE WOLF ??? */
 .live-wolf-desk {
   display: flex;
   flex-direction: column;

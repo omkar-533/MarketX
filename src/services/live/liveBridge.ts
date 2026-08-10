@@ -10,6 +10,10 @@ export type LiveWolfOpenPayload = {
   exchange: string;
   timeframe: RadarTimeframe;
   seedResult?: RadarResult | null;
+  /** Strategy Lab context for continuous evaluation (optional) */
+  strategyId?: string;
+  strategyName?: string;
+  matchedConditions?: string[];
 };
 
 const PENDING_KEY = 'wolf_live_pending_v1';
@@ -37,5 +41,8 @@ export function openLiveWolfFromRadarResult(result: RadarResult) {
     exchange: result.exchange,
     timeframe: result.timeframe,
     seedResult: result,
+    strategyId: result.strategyId,
+    strategyName: result.strategyName,
+    matchedConditions: result.matchedConditions,
   });
 }

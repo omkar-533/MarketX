@@ -1,180 +1,745 @@
+/**
+ * MY SETUPS / STRATEGY LAB — teach WOLF what to hunt.
+ * Manual builder + templates + Teach WOLF (controlled NL → structured conditions).
+ * Strategies are private (localStorage). Scanner uses structured conditions only.
+ */
 import { useMemo, useState } from 'react';
-import { BookMarked, Plus, ScanSearch, Trash2, Wand2 } from 'lucide-react';
 import {
-  CONDITION_LABELS,
-  createUserSetup,
-  deleteUserSetup,
-  loadUserSetups,
-} from '../../../services/radar/radarStore';
-import type { RadarTimeframe, UserSetup, UserSetupCondition } from '../../../services/radar/radarTypes';
+  BookMarked,
+  Copy,
+  Pause,
+  Play,
+  Plus,
+  ScanSearch,
+  Trash2,
+  Wand2,
+} from 'lucide-react';
+import {
+  CONDITION_CATEGORIES,
+  CONDITION_REGISTRY,
+  getConditionDef,
+  type ConditionCategory,
+  type ConditionDirection,
+} from '../../../services/strategy/conditionRegistry';
+import { STRATEGY_TEMPLATES } from '../../../services/strategy/strategyTemplates';
+import {
+  createStrategyFromParts,
+  deleteStrategy,
+  duplicateStrategy,
+  loadStrategies,
+  newConditionId,
+  setStrategyStatus,
+  strategyFromTemplate,
+  upsertStrategy,
+} from '../../../services/strategy/strategyStore';
+import { formatCondition, formatStrategyPreview, formatTimeframeStack } from '../../../services/strategy/strategyDisplay';
+import { validateStrategyDraft } from '../../../services/strategy/strategyValidate';
+import { requestStrategyScan } from '../../../services/strategy/strategyBridge';
+import {
+  parseStrategyFromText,
+  type ClarificationQuestion,
+  type ParsedStrategyDraft,
+} from '../../../services/strategy/strategyParseApi';
+import type { StrategyCondition, StrategyDefinition, TimeframeMode } from '../../../services/strategy/strategyTypes';
+import type { RadarTimeframe } from '../../../services/radar/radarTypes';
 
 type Props = {
   onScanSetup: () => void;
 };
 
-const ALL_CONDITIONS = Object.keys(CONDITION_LABELS) as UserSetupCondition[];
+type LabTab = 'list' | 'create' | 'manual' | 'teach' | 'templates';
+
+const ALL_TFS: RadarTimeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
+
+function emptyCondition(tf: RadarTimeframe): StrategyCondition {
+  return {
+    id: newConditionId(),
+    type: 'LIQUIDITY_SWEEP',
+    timeframe: tf,
+    direction: 'BULLISH',
+  };
+}
 
 export default function MySetupsPanel({ onScanSetup }: Props) {
-  const [setups, setSetups] = useState<UserSetup[]>(() => loadUserSetups());
-  const [name, setName] = useState('My Liquidity Setup');
+  const [tab, setTab] = useState<LabTab>('list');
+  const [strategies, setStrategies] = useState(() => loadStrategies());
+  const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED'>('ALL');
+  const [note, setNote] = useState<string | null>(null);
+
+  // Manual draft
+  const [name, setName] = useState('Liquidity Reversal');
+  const [description, setDescription] = useState('');
+  const [tfMode, setTfMode] = useState<TimeframeMode>('SINGLE');
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
-  const [selected, setSelected] = useState<UserSetupCondition[]>([
-    'liquidity_sweep',
-    'structure_shift',
-    'volume_expansion',
-    'htf_bullish',
+  const [mtf, setMtf] = useState({
+    context: '1h' as RadarTimeframe | '',
+    structure: '15m' as RadarTimeframe | '',
+    setup: '5m' as RadarTimeframe | '',
+    confirmation: '' as RadarTimeframe | '',
+  });
+  const [conditions, setConditions] = useState<StrategyCondition[]>([
+    emptyCondition('15m'),
+    { id: newConditionId(), type: 'STRUCTURE_SHIFT', timeframe: '5m', direction: 'BULLISH' },
   ]);
-  const [teachOpen, setTeachOpen] = useState(false);
+  const [addCategory, setAddCategory] = useState<ConditionCategory>('LIQUIDITY');
+
+  // Teach WOLF
   const [teachText, setTeachText] = useState('');
-  const [teachNote, setTeachNote] = useState('');
+  const [teachPhase, setTeachPhase] = useState<
+    'idle' | 'understanding' | 'clarify' | 'preview' | 'fail'
+  >('idle');
+  const [teachMsg, setTeachMsg] = useState<string | null>(null);
+  const [clarifications, setClarifications] = useState<ClarificationQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [aiDraft, setAiDraft] = useState<ParsedStrategyDraft | null>(null);
+  const [teachClarity, setTeachClarity] = useState<string | null>(null);
 
-  const canSave = name.trim().length > 0 && selected.length > 0;
+  const visible = useMemo(() => {
+    return strategies.filter((s) => {
+      if (filter === 'ACTIVE') return s.status === 'ACTIVE';
+      if (filter === 'PAUSED') return s.status === 'PAUSED';
+      return true;
+    });
+  }, [strategies, filter]);
 
-  const toggle = (c: UserSetupCondition) => {
-    setSelected((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
-  };
+  const validation = validateStrategyDraft({ name, conditions, timeframe, timeframeMode: tfMode });
+  const preview = formatStrategyPreview({
+    id: 'draft',
+    name,
+    description,
+    creationMethod: 'MANUAL',
+    status: 'ACTIVE',
+    timeframeMode: tfMode,
+    timeframe,
+    timeframes: {
+      context: mtf.context || null,
+      structure: mtf.structure || null,
+      setup: mtf.setup || null,
+      confirmation: mtf.confirmation || null,
+    },
+    conditions,
+    logic: { id: 'x', operator: 'AND', conditions },
+    version: 1,
+    createdAt: 0,
+    updatedAt: 0,
+  });
 
-  const save = () => {
-    if (!canSave) return;
-    setSetups(createUserSetup({ name, conditions: selected, timeframe }));
-  };
+  const refresh = (list: StrategyDefinition[]) => setStrategies(list);
 
-  const parseTeach = () => {
-    // Phase 2: deterministic keyword parser only — no arbitrary LLM execution
-    const t = teachText.toLowerCase();
-    const found: UserSetupCondition[] = [];
-    if (/liquidity|sweep/.test(t)) found.push('liquidity_sweep');
-    if (/structure|shift|mss|bos/.test(t)) found.push('structure_shift');
-    if (/volume/.test(t)) found.push('volume_expansion');
-    if (/htf.*bull|higher timeframe.*bull|bullish/.test(t)) found.push('htf_bullish');
-    if (/htf.*bear|bearish/.test(t)) found.push('htf_bearish');
-    if (/breakout/.test(t)) found.push('breakout');
-    if (/breakdown/.test(t)) found.push('breakdown');
-    if (/reversal/.test(t)) found.push('reversal');
-    const unique = [...new Set(found)];
-    if (!unique.length) {
-      setTeachNote('No supported conditions matched. Use allowed phrases like liquidity sweep, structure shift, volume.');
+  const saveManual = () => {
+    const v = validateStrategyDraft({ name, conditions, timeframe, timeframeMode: tfMode });
+    if (!v.ok) {
+      setNote(v.errors.join(' '));
       return;
     }
-    setSelected(unique);
-    setTeachNote(`Mapped to ${unique.length} allowed condition(s). Review and save.`);
-    setTeachOpen(false);
+    const strat = createStrategyFromParts({
+      name,
+      description,
+      creationMethod: 'MANUAL',
+      timeframeMode: tfMode,
+      timeframe: tfMode === 'MULTI' ? (mtf.setup as RadarTimeframe) || timeframe : timeframe,
+      timeframes:
+        tfMode === 'MULTI'
+          ? {
+              context: mtf.context || null,
+              structure: mtf.structure || null,
+              setup: mtf.setup || timeframe,
+              confirmation: mtf.confirmation || null,
+            }
+          : {},
+      conditions,
+    });
+    refresh(upsertStrategy(strat));
+    setNote(`✓ SETUP SAVED — “${strat.name}” is available for WOLF Radar.`);
+    setTab('list');
   };
 
-  const empty = useMemo(() => setups.length === 0, [setups.length]);
+  const useTemplate = (id: string) => {
+    const tpl = STRATEGY_TEMPLATES.find((t) => t.id === id);
+    if (!tpl) return;
+    const strat = strategyFromTemplate(tpl);
+    refresh(upsertStrategy(strat));
+    setNote(`✓ Template saved — “${strat.name}”.`);
+    setTab('list');
+  };
+
+  const applyAiDraftToManual = (draft: ParsedStrategyDraft) => {
+    setName(draft.name);
+    setDescription(draft.description || teachText.slice(0, 160));
+    setTfMode(draft.timeframeMode);
+    setTimeframe(draft.timeframe);
+    setMtf({
+      context: (draft.timeframes.context as RadarTimeframe) || '',
+      structure: (draft.timeframes.structure as RadarTimeframe) || '',
+      setup: (draft.timeframes.setup as RadarTimeframe) || draft.timeframe,
+      confirmation: (draft.timeframes.confirmation as RadarTimeframe) || '',
+    });
+    setConditions(
+      draft.conditions.map((c) => ({
+        ...c,
+        id: newConditionId(),
+        timeframe: c.timeframe,
+      })),
+    );
+  };
+
+  const runTeachParse = async (nextAnswers: Record<string, string> = answers) => {
+    setTeachPhase('understanding');
+    setTeachMsg('🐺 WOLF IS UNDERSTANDING…');
+    setAiDraft(null);
+    try {
+      setTeachMsg('Parsing your strategy… Identifying timeframes, conditions, and logic.');
+      const result = await parseStrategyFromText(teachText, nextAnswers);
+      if (result.clarity === 'UNSUPPORTED') {
+        setTeachPhase('fail');
+        setTeachMsg(result.message);
+        return;
+      }
+      if (result.clarifications?.length) {
+        setClarifications(result.clarifications);
+        setTeachPhase('clarify');
+        setTeachMsg(result.message || 'I need a bit more detail.');
+        return;
+      }
+      if (!result.ok || !result.strategy?.conditions?.length) {
+        setTeachPhase('fail');
+        setTeachMsg(
+          result.message ||
+            "I couldn't confidently translate that strategy into WOLF-supported conditions.",
+        );
+        return;
+      }
+      setAiDraft(result.strategy);
+      setTeachClarity(result.clarity || 'CLEAR');
+      setTeachPhase('preview');
+      setTeachMsg('Strategy built.');
+    } catch (e) {
+      setTeachPhase('fail');
+      setTeachMsg(e instanceof Error ? e.message : 'Parse failed.');
+    }
+  };
+
+  const saveAiDraft = () => {
+    if (!aiDraft) return;
+    const mapped = aiDraft.conditions.map((c) => ({
+      ...c,
+      id: newConditionId(),
+      timeframe: c.timeframe as RadarTimeframe,
+    }));
+    const v = validateStrategyDraft({
+      name: aiDraft.name,
+      conditions: mapped,
+      timeframe: aiDraft.timeframe,
+      timeframeMode: aiDraft.timeframeMode,
+    });
+    if (!v.ok) {
+      setTeachMsg(v.errors.join(' '));
+      return;
+    }
+    const strat = createStrategyFromParts({
+      name: aiDraft.name,
+      description: aiDraft.description || teachText.slice(0, 160),
+      creationMethod: 'AI_ASSISTED',
+      timeframeMode: aiDraft.timeframeMode,
+      timeframe: aiDraft.timeframe,
+      timeframes: aiDraft.timeframes || {},
+      conditions: mapped,
+    });
+    refresh(upsertStrategy(strat));
+    setNote(`✓ SETUP SAVED — “${strat.name}” is available for WOLF Radar.`);
+    setTab('list');
+    setTeachPhase('idle');
+    setAiDraft(null);
+  };
+
+  const onScan = (s: StrategyDefinition) => {
+    if (s.status !== 'ACTIVE') {
+      setNote('Activate the setup before scanning.');
+      return;
+    }
+    requestStrategyScan(s);
+    onScanSetup();
+  };
+
+  const addCondition = () => {
+    const defs = CONDITION_REGISTRY.filter((c) => c.category === addCategory);
+    const def = defs[0] || CONDITION_REGISTRY[0];
+    setConditions((prev) => [
+      ...prev,
+      {
+        id: newConditionId(),
+        type: def.id,
+        timeframe: timeframe,
+        direction: def.needsDirection ? 'BULLISH' : undefined,
+        operator: def.needsValue ? '>=' : undefined,
+        value: def.defaultValue,
+      },
+    ]);
+  };
 
   return (
-    <div className="wolf-radar-desk wolf-radar-desk--panel">
+    <div className="wolf-radar-desk wolf-radar-desk--panel wolf-lab">
       <header className="wolf-radar-desk__header">
         <div className="wolf-radar-desk__brand">
           <div className="wolf-radar-desk__title-row">
             <BookMarked size={18} className="text-gold" />
             <h1>MY SETUPS</h1>
+            <span className="wolf-lab__badge">STRATEGY LAB</span>
           </div>
-          <p className="wolf-radar-desk__subtitle">
-            Teach WOLF what to hunt — only predefined conditions are executable.
-          </p>
+          <p className="wolf-radar-desk__subtitle">Teach WOLF what to hunt.</p>
         </div>
+        {tab === 'list' && (
+          <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('create')}>
+            <Plus size={16} /> CREATE NEW SETUP
+          </button>
+        )}
+        {tab !== 'list' && (
+          <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('list')}>
+            Back to list
+          </button>
+        )}
       </header>
 
-      <section className="wolf-setups__builder">
-        <label className="wolf-setups__field">
-          <span>SETUP NAME</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={64} />
-        </label>
-        <label className="wolf-setups__field">
-          <span>TIMEFRAME</span>
-          <select value={timeframe} onChange={(e) => setTimeframe(e.target.value as RadarTimeframe)}>
-            {(['5m', '15m', '1h', '1D'] as RadarTimeframe[]).map((tf) => (
-              <option key={tf} value={tf}>
-                {tf.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </label>
+      {note && <p className="wolf-lab__note">{note}</p>}
 
-        <div className="wolf-setups__conditions">
-          <span>CONDITIONS</span>
-          <div className="wolf-setups__chips">
-            {ALL_CONDITIONS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={selected.includes(c) ? 'on' : ''}
-                onClick={() => toggle(c)}
-              >
-                {CONDITION_LABELS[c]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="wolf-radar-desk__card-actions">
-          <button type="button" className="primary" disabled={!canSave} onClick={save}>
-            <Plus size={14} /> SAVE SETUP
-          </button>
-          <button type="button" className="ghost" onClick={() => setTeachOpen((v) => !v)}>
-            <Wand2 size={14} /> TEACH WOLF
-          </button>
-        </div>
-
-        {teachOpen && (
-          <div className="wolf-setups__teach">
-            <textarea
-              value={teachText}
-              onChange={(e) => setTeachText(e.target.value)}
-              placeholder='e.g. "15 minute low swept, 5 minute structure shifts bullish with volume confirmation"'
-              rows={3}
-            />
-            <button type="button" className="primary" onClick={parseTeach}>
-              Convert to conditions
+      {tab === 'create' && (
+        <section className="wolf-lab__create">
+          <h2>CREATE YOUR SETUP</h2>
+          <p>How would you like to create it?</p>
+          <div className="wolf-lab__method-grid">
+            <button type="button" onClick={() => setTab('manual')}>
+              <strong>BUILD MANUALLY</strong>
+              <span>Build using predefined WOLF conditions.</span>
             </button>
-            <small>Natural language → validated condition JSON only. No arbitrary code execution.</small>
+            <button type="button" onClick={() => setTab('teach')}>
+              <strong>TEACH WOLF</strong>
+              <span>Describe your setup in your own words.</span>
+            </button>
+            <button type="button" onClick={() => setTab('templates')}>
+              <strong>USE WOLF TEMPLATE</strong>
+              <span>Start from a predefined WOLF strategy.</span>
+            </button>
           </div>
-        )}
-        {teachNote && <p className="wolf-setups__note">{teachNote}</p>}
-      </section>
+        </section>
+      )}
 
-      <section className="wolf-setups__list">
-        {empty ? (
-          <div className="wolf-radar-desk__empty">
-            <p>No saved setups yet</p>
-            <span>Define conditions above — WOLF will only hunt what you allow.</span>
+      {tab === 'templates' && (
+        <section className="wolf-lab__templates">
+          <h2>WOLF TEMPLATES</h2>
+          <div className="wolf-lab__tpl-grid">
+            {STRATEGY_TEMPLATES.map((t) => (
+              <article key={t.id} className="wolf-lab__tpl">
+                <strong>{t.name}</strong>
+                <em>{t.category}</em>
+                <p>{t.description}</p>
+                <small>{t.conditions.length} conditions · {t.timeframeMode}</small>
+                <button type="button" className="primary" onClick={() => useTemplate(t.id)}>
+                  Use template
+                </button>
+              </article>
+            ))}
           </div>
-        ) : (
-          setups.map((s) => (
-            <article key={s.id} className="wolf-radar-desk__card">
-              <div className="wolf-radar-desk__card-main" style={{ cursor: 'default' }}>
-                <div className="wolf-radar-desk__card-top">
-                  <div>
-                    <h3>{s.name}</h3>
-                    <span className="price">
-                      {s.conditions.length} conditions · {s.timeframe.toUpperCase()}
-                    </span>
+        </section>
+      )}
+
+      {tab === 'teach' && (
+        <section className="wolf-lab__teach">
+          <h2>TEACH WOLF</h2>
+          <p className="wolf-radar-desk__subtitle">Explain your setup in your own words.</p>
+          <textarea
+            rows={6}
+            value={teachText}
+            onChange={(e) => {
+              setTeachText(e.target.value);
+              if (teachPhase !== 'idle' && teachPhase !== 'understanding') {
+                setTeachPhase('idle');
+                setAiDraft(null);
+                setClarifications([]);
+              }
+            }}
+            placeholder='I want WOLF to hunt for… e.g. "I want stocks where the 15 minute previous low is swept, then the 5 minute structure turns bullish and volume expands. The 1 hour trend should also be bullish."'
+            disabled={teachPhase === 'understanding'}
+          />
+          <button
+            type="button"
+            className="wolf-radar-desk__scan-btn"
+            onClick={() => void runTeachParse({})}
+            disabled={!teachText.trim() || teachPhase === 'understanding'}
+          >
+            <Wand2 size={16} /> BUILD MY SETUP
+          </button>
+
+          {teachPhase === 'understanding' && (
+            <div className="wolf-lab__loading" aria-live="polite">
+              <p>{teachMsg}</p>
+              <small>Identifying: Timeframes · Conditions · Logic</small>
+            </div>
+          )}
+
+          {teachPhase === 'clarify' && (
+            <div className="wolf-lab__clarify">
+              <p className="wolf-lab__note">{teachMsg}</p>
+              {clarifications.map((q) => (
+                <div key={q.id} className="wolf-lab__clarify-q">
+                  <strong>{q.prompt}</strong>
+                  <div className="wolf-lab__clarify-opts">
+                    {q.options.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        className={answers[q.id] === o.id ? 'is-on' : ''}
+                        onClick={() => setAnswers((a) => ({ ...a, [q.id]: o.id }))}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <ul className="tags">
-                  {s.conditions.map((c) => (
-                    <li key={c}>{CONDITION_LABELS[c]}</li>
-                  ))}
-                </ul>
-              </div>
+              ))}
+              <button
+                type="button"
+                className="wolf-radar-desk__scan-btn"
+                disabled={clarifications.some((q) => !answers[q.id])}
+                onClick={() => void runTeachParse(answers)}
+              >
+                CONTINUE
+              </button>
+            </div>
+          )}
+
+          {teachPhase === 'preview' && aiDraft && (
+            <div className="wolf-lab__preview">
+              <h3>I UNDERSTOOD YOUR SETUP AS</h3>
+              {teachClarity && (
+                <span className="wolf-lab__clarity">{teachClarity.replace(/_/g, ' ')}</span>
+              )}
+              <strong>{aiDraft.name}</strong>
+              <ul>
+                {aiDraft.conditions.map((c, i) => (
+                  <li key={`${c.type}-${i}`}>
+                    {formatCondition({ ...c, id: `p-${i}` })}
+                  </li>
+                ))}
+              </ul>
               <div className="wolf-radar-desk__card-actions">
-                <button type="button" className="primary" onClick={onScanSetup}>
-                  <ScanSearch size={14} /> SCAN THIS SETUP
-                </button>
                 <button
                   type="button"
                   className="ghost"
-                  onClick={() => setSetups(deleteUserSetup(s.id))}
+                  onClick={() => {
+                    applyAiDraftToManual(aiDraft);
+                    setTab('manual');
+                  }}
                 >
-                  <Trash2 size={14} />
+                  EDIT CONDITIONS
+                </button>
+                <button type="button" className="primary" onClick={saveAiDraft}>
+                  SAVE SETUP
                 </button>
               </div>
-            </article>
-          ))
-        )}
-      </section>
+            </div>
+          )}
+
+          {teachPhase === 'fail' && (
+            <div className="wolf-lab__fail">
+              <p className="wolf-lab__note">{teachMsg}</p>
+              <div className="wolf-radar-desk__card-actions">
+                <button type="button" className="ghost" onClick={() => setTeachPhase('idle')}>
+                  EDIT DESCRIPTION
+                </button>
+                <button type="button" className="primary" onClick={() => setTab('manual')}>
+                  BUILD MANUALLY
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'manual' && (
+        <section className="wolf-lab__manual">
+          <h2>BUILD MANUALLY</h2>
+          <div className="wolf-setups__builder">
+            <label className="wolf-setups__field">
+              <span>SETUP NAME</span>
+              <input value={name} maxLength={64} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label className="wolf-setups__field">
+              <span>DESCRIPTION</span>
+              <input value={description} maxLength={160} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+            </label>
+
+            <div className="wolf-lab__tf-mode">
+              <span>TIMEFRAME MODE</span>
+              <label>
+                <input
+                  type="radio"
+                  checked={tfMode === 'SINGLE'}
+                  onChange={() => setTfMode('SINGLE')}
+                />
+                Single
+              </label>
+              <label>
+                <input type="radio" checked={tfMode === 'MULTI'} onChange={() => setTfMode('MULTI')} />
+                Multi-timeframe
+              </label>
+            </div>
+
+            {tfMode === 'SINGLE' ? (
+              <label className="wolf-setups__field">
+                <span>TIMEFRAME</span>
+                <select value={timeframe} onChange={(e) => setTimeframe(e.target.value as RadarTimeframe)}>
+                  {ALL_TFS.map((tf) => (
+                    <option key={tf} value={tf}>
+                      {tf.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div className="wolf-lab__mtf">
+                <div className="wolf-lab__mtf-flow">
+                  {[
+                    ['context', 'CONTEXT'],
+                    ['structure', 'STRUCTURE'],
+                    ['setup', 'SETUP'],
+                    ['confirmation', 'CONFIRM'],
+                  ].map(([key, label]) => (
+                    <label key={key}>
+                      <span>{label}</span>
+                      <select
+                        value={(mtf as Record<string, string>)[key]}
+                        onChange={(e) => setMtf((m) => ({ ...m, [key]: e.target.value }))}
+                      >
+                        <option value="">—</option>
+                        {ALL_TFS.map((tf) => (
+                          <option key={tf} value={tf}>
+                            {tf.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                <p className="wolf-lab__mtf-viz">
+                  {[mtf.context, mtf.structure, mtf.setup || timeframe, mtf.confirmation]
+                    .filter(Boolean)
+                    .map((x) => String(x).toUpperCase())
+                    .join(' → ') || '—'}
+                </p>
+              </div>
+            )}
+
+            <div className="wolf-setups__conditions">
+              <div className="wolf-lab__cond-head">
+                <span>CONDITIONS (AND)</span>
+                <select
+                  value={addCategory}
+                  onChange={(e) => setAddCategory(e.target.value as ConditionCategory)}
+                >
+                  {CONDITION_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="ghost" onClick={addCondition}>
+                  + ADD CONDITION
+                </button>
+              </div>
+
+              <div className="wolf-lab__cond-list">
+                {conditions.map((c, idx) => {
+                  const def = getConditionDef(c.type);
+                  const catDefs = CONDITION_REGISTRY.filter((d) => d.category === (def?.category || 'LIQUIDITY'));
+                  return (
+                    <div key={c.id} className="wolf-lab__cond-row">
+                      <select
+                        value={c.type}
+                        onChange={(e) => {
+                          const nextType = e.target.value;
+                          const d = getConditionDef(nextType);
+                          setConditions((prev) =>
+                            prev.map((x, i) =>
+                              i === idx
+                                ? {
+                                    ...x,
+                                    type: nextType,
+                                    direction: d?.needsDirection ? x.direction || 'BULLISH' : undefined,
+                                    operator: d?.needsValue ? x.operator || '>=' : undefined,
+                                    value: d?.needsValue ? x.value ?? d.defaultValue : undefined,
+                                  }
+                                : x,
+                            ),
+                          );
+                        }}
+                      >
+                        {(catDefs.length ? catDefs : CONDITION_REGISTRY).map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                        {!catDefs.find((d) => d.id === c.type) && (
+                          <option value={c.type}>{def?.name || c.type}</option>
+                        )}
+                      </select>
+                      <select
+                        value={c.timeframe}
+                        onChange={(e) =>
+                          setConditions((prev) =>
+                            prev.map((x, i) =>
+                              i === idx ? { ...x, timeframe: e.target.value as RadarTimeframe } : x,
+                            ),
+                          )
+                        }
+                      >
+                        {ALL_TFS.map((tf) => (
+                          <option key={tf} value={tf}>
+                            {tf.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                      {def?.needsDirection && (
+                        <select
+                          value={c.direction || 'ANY'}
+                          onChange={(e) =>
+                            setConditions((prev) =>
+                              prev.map((x, i) =>
+                                i === idx
+                                  ? { ...x, direction: e.target.value as ConditionDirection }
+                                  : x,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="ANY">Any</option>
+                          <option value="BULLISH">Bullish</option>
+                          <option value="BEARISH">Bearish</option>
+                        </select>
+                      )}
+                      {def?.needsValue && (
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={c.value ?? ''}
+                          onChange={(e) =>
+                            setConditions((prev) =>
+                              prev.map((x, i) =>
+                                i === idx ? { ...x, value: Number(e.target.value), operator: '>=' } : x,
+                              ),
+                            )
+                          }
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="ghost"
+                        aria-label="Remove"
+                        onClick={() => setConditions((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="wolf-lab__preview">
+              <h3>I UNDERSTOOD YOUR SETUP AS</h3>
+              <strong>{name || 'Untitled'}</strong>
+              <ul>
+                {preview.map((line, i) => (
+                  <li key={`${line}-${i}`}>{line}</li>
+                ))}
+              </ul>
+              {!validation.ok && (
+                <p className="wolf-lab__err">{validation.errors.join(' ')}</p>
+              )}
+              {validation.warnings.map((w) => (
+                <p key={w} className="wolf-lab__warn">
+                  {w}
+                </p>
+              ))}
+            </div>
+
+            <div className="wolf-radar-desk__card-actions">
+              <button type="button" className="primary" onClick={saveManual} disabled={!validation.ok}>
+                SAVE SETUP
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'list' && (
+        <>
+          <div className="wolf-lab__filters">
+            {(['ALL', 'ACTIVE', 'PAUSED'] as const).map((f) => (
+              <button key={f} type="button" className={filter === f ? 'is-on' : ''} onClick={() => setFilter(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <section className="wolf-setups__list" aria-label="Saved setups">
+            {!visible.length && (
+              <div className="wolf-radar-desk__empty">
+                <p>No saved setups yet</p>
+                <span>Create one manually, teach WOLF, or start from a template.</span>
+                <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('create')}>
+                  + CREATE NEW SETUP
+                </button>
+              </div>
+            )}
+
+            {visible.map((s) => (
+              <article key={s.id} className="wolf-radar-desk__card wolf-lab__card">
+                <div className="wolf-radar-desk__card-main">
+                  <div className="wolf-radar-desk__card-top">
+                    <div>
+                      <h3>{s.name}</h3>
+                      <span className="price">
+                        {formatTimeframeStack(s)} · {s.conditions.length} conditions ·{' '}
+                        {s.creationMethod.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <span className={`wolf-lab__status ${s.status === 'ACTIVE' ? 'is-on' : ''}`}>
+                      {s.status === 'ACTIVE' ? '● ACTIVE' : '○ PAUSED'}
+                    </span>
+                  </div>
+                  <ul className="tags">
+                    {s.conditions.slice(0, 6).map((c) => (
+                      <li key={c.id}>{formatCondition(c)}</li>
+                    ))}
+                  </ul>
+                  {s.description && <p className="wolf-lab__desc">{s.description}</p>}
+                </div>
+                <div className="wolf-radar-desk__card-actions">
+                  <button type="button" className="primary" onClick={() => onScan(s)}>
+                    <ScanSearch size={14} /> SCAN
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() =>
+                      refresh(setStrategyStatus(s.id, s.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'))
+                    }
+                  >
+                    {s.status === 'ACTIVE' ? <Pause size={14} /> : <Play size={14} />}
+                    {s.status === 'ACTIVE' ? 'PAUSE' : 'ACTIVATE'}
+                  </button>
+                  <button type="button" className="ghost" onClick={() => refresh(duplicateStrategy(s.id))}>
+                    <Copy size={14} />
+                  </button>
+                  <button type="button" className="ghost" onClick={() => refresh(deleteStrategy(s.id))}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
+        </>
+      )}
     </div>
   );
 }

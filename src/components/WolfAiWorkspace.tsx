@@ -23,7 +23,7 @@ const TABS: { id: WolfAiDeskTab; label: string; icon: typeof Bot }[] = [
   { id: 'analyst', label: 'AI ANALYST', icon: Bot },
   { id: 'radar', label: 'WOLF RADAR', icon: Radar },
   { id: 'live', label: 'LIVE WOLF', icon: Activity },
-  { id: 'setups', label: 'MY SETUPS', icon: BookMarked },
+  { id: 'setups', label: 'STRATEGY LAB', icon: BookMarked },
   { id: 'watchlist', label: 'WATCHLIST', icon: Bookmark },
 ];
 

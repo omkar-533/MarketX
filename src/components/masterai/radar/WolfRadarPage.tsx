@@ -35,6 +35,15 @@ import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataPr
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
+import {
+  STRATEGY_SCAN_EVENT,
+  consumePendingStrategyScan,
+  peekPendingStrategyScan,
+  type PendingStrategyScan,
+} from '../../../services/strategy/strategyBridge';
+import { filterResultsByStrategy } from '../../../services/strategy/conditionEvaluator';
+import type { StrategyDefinition } from '../../../services/strategy/strategyTypes';
+import { formatTimeframeStack } from '../../../services/strategy/strategyDisplay';
 
 type Props = {
   onAnalyze: () => void;
@@ -86,6 +95,28 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   );
   const [connectOpen, setConnectOpen] = useState(false);
   const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
+  const [activeStrategy, setActiveStrategy] = useState<StrategyDefinition | null>(
+    () => peekPendingStrategyScan()?.strategy ?? null,
+  );
+
+  useEffect(() => {
+    const pending = consumePendingStrategyScan();
+    if (pending) {
+      sessionStorage.removeItem('wolf_strategy_auto_scan_id');
+      setActiveStrategy(pending.strategy);
+      setTimeframe(pending.strategy.timeframe);
+    }
+    const onStrategyScan = (ev: Event) => {
+      const detail = (ev as CustomEvent<PendingStrategyScan>).detail;
+      if (detail?.strategy) {
+        sessionStorage.removeItem('wolf_strategy_auto_scan_id');
+        setActiveStrategy(detail.strategy);
+        setTimeframe(detail.strategy.timeframe);
+      }
+    };
+    window.addEventListener(STRATEGY_SCAN_EVENT, onStrategyScan);
+    return () => window.removeEventListener(STRATEGY_SCAN_EVENT, onStrategyScan);
+  }, []);
 
   useEffect(() => {
     initMarketDataService(mockMarketDataProvider);
@@ -150,7 +181,7 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       status: 'scanning',
       symbolsChecked: 0,
       symbolsTotal: 0,
-      phase: 'STARTING',
+      phase: activeStrategy ? `STRATEGY: ${activeStrategy.name}` : 'STARTING',
       lastScanAt: progress.lastScanAt,
     });
     try {
@@ -161,12 +192,21 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         },
         resolveScanProvider(mdStatus),
       );
-      setResults(rows);
+      const filtered = activeStrategy
+        ? filterResultsByStrategy(activeStrategy, rows).map((r) => ({
+            ...r,
+            strategyId: activeStrategy.id,
+            strategyName: activeStrategy.name,
+          }))
+        : rows;
+      setResults(filtered);
       setProgress((p) => ({
         ...p,
         status: 'complete',
         lastScanAt: Date.now(),
-        phase: 'COMPLETE',
+        phase: activeStrategy
+          ? `COMPLETE · ${activeStrategy.name} · ${filtered.length} matches`
+          : 'COMPLETE',
       }));
     } catch {
       setProgress((p) => ({
@@ -176,7 +216,26 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         phase: 'ERROR',
       }));
     }
-  }, [market, universe, timeframe, progress.status, progress.lastScanAt, dataConnected, mdStatus]);
+  }, [
+    market,
+    universe,
+    timeframe,
+    progress.status,
+    progress.lastScanAt,
+    dataConnected,
+    mdStatus,
+    activeStrategy,
+  ]);
+
+  // Auto-run once when Strategy Lab hands off a setup and data is already connected
+  useEffect(() => {
+    if (!activeStrategy || !dataConnected || progress.status === 'scanning') return;
+    const raw = sessionStorage.getItem('wolf_strategy_auto_scan_id');
+    if (raw === activeStrategy.id) return;
+    sessionStorage.setItem('wolf_strategy_auto_scan_id', activeStrategy.id);
+    void scan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot on strategy handoff
+  }, [activeStrategy?.id, dataConnected]);
 
   const onAddWatch = (r: RadarResult) => {
     const list = addToWatchlist(r);
@@ -203,6 +262,28 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           </div>
           <p className="wolf-radar-desk__subtitle">Let WOLF find the setups worth watching.</p>
         </div>
+
+        {activeStrategy && (
+          <div className="wolf-radar-desk__strategy-banner">
+            <div>
+              <span>Selected Setup</span>
+              <strong>{activeStrategy.name}</strong>
+              <small>
+                {formatTimeframeStack(activeStrategy)} · {activeStrategy.conditions.length} conditions
+              </small>
+            </div>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setActiveStrategy(null);
+                sessionStorage.removeItem('wolf_strategy_auto_scan_id');
+              }}
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
 
         <div className="wolf-radar-desk__controls">
           <label className="wolf-radar-desk__datasource">
@@ -386,10 +467,13 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
                   {r.setupType} · <span className={biasClass(r.direction)}>{r.direction}</span>
                 </p>
                 <ul className="tags">
-                  {r.confirmations.map((c) => (
-                    <li key={c}>{c}</li>
+                  {(r.matchedConditions?.length ? r.matchedConditions : r.confirmations).map((c) => (
+                    <li key={c}>{r.matchedConditions?.length ? `✓ ${c}` : c}</li>
                   ))}
                 </ul>
+                {r.strategyName && (
+                  <p className="setup wolf-radar-desk__strategy-tag">SETUP: {r.strategyName}</p>
+                )}
                 <div className={`state ${statusClass(r.status)}`}>{r.status}</div>
                 <time>Detected {formatTime(r.detectedAt)}</time>
               </button>
@@ -466,6 +550,17 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
                 <b>{selected.status}</b>
               </div>
             </div>
+
+            {selected.matchedConditions?.length ? (
+              <div className="wolf-radar-desk__why">
+                <h4>MATCHED CONDITIONS</h4>
+                <ul className="wolf-radar-desk__matched">
+                  {selected.matchedConditions.map((c) => (
+                    <li key={c}>✓ {c}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <div className="wolf-radar-desk__why">
               <h4>WHY WOLF IS WATCHING</h4>

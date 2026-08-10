@@ -26,6 +26,7 @@ import {
 import { createMasterAiRouter, MASTER_AI_MODELS, GEMINI_COST_MODE } from './server/masterAi.mjs';
 import { ensureSeedTeachings } from './server/auth/masterAiKnowledgeStore.mjs';
 import { buildDetectiveOnly } from './server/masterAi/intelPack.mjs';
+import { parseStrategyDescription } from './server/strategy/strategyParse.mjs';
 import { getLiveWsStatus } from './server/market/liveFeed.mjs';
 import { getActiveMarketProvider } from './server/market/provider.mjs';
 
@@ -158,6 +159,60 @@ app.post('/api/chat', async (req, res) => {
   const message = lastError instanceof Error ? lastError.message : 'AI service error';
   if (status >= 500) console.error('[Analyse AI]', message);
   return res.status(status).json({ error: message });
+});
+
+/**
+ * Strategy Lab — NL → structured strategy JSON (whitelist only; no code exec).
+ * Always returns JSON. Clarifications / unsupported are 200 with ok:false.
+ */
+app.post('/api/strategies/parse', async (req, res) => {
+  try {
+    const description = typeof req.body?.description === 'string' ? req.body.description : '';
+    const answers =
+      req.body?.answers && typeof req.body.answers === 'object' ? req.body.answers : {};
+    const preferLocal = Boolean(req.body?.preferLocal);
+    const keyChain = resolveAiKeyChain(req);
+    const apiKey = keyChain[0] || null;
+
+    let lastError = null;
+    const keys = apiKey && !preferLocal ? keyChain : [null];
+    for (let i = 0; i < keys.length; i += 1) {
+      try {
+        const out = await parseStrategyDescription({
+          apiKey: keys[i],
+          description,
+          answers,
+          preferLocal: preferLocal || !keys[i],
+        });
+        if (out.error) return res.status(out.status || 400).json({ error: out.error });
+        return res.status(out.status || 200).json(out.result);
+      } catch (error) {
+        lastError = error;
+        const status = error?.status ?? 500;
+        if (i < keys.length - 1 && (isAiCreditError(error) || status === 401 || status === 429)) {
+          continue;
+        }
+        // Fall through to local-only
+        const localOut = await parseStrategyDescription({
+          apiKey: null,
+          description,
+          answers,
+          preferLocal: true,
+        });
+        if (localOut.error) return res.status(localOut.status || 400).json({ error: localOut.error });
+        return res.status(200).json({
+          ...localOut.result,
+          warning: error instanceof Error ? error.message : 'AI unavailable',
+        });
+      }
+    }
+    const message = lastError instanceof Error ? lastError.message : 'Parse failed';
+    return res.status(500).json({ error: message });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Parse failed';
+    console.warn('[Strategy Parse]', message);
+    return res.status(500).json({ error: message });
+  }
 });
 
 /** Market Detective card — OHLC intel without burning an LLM call. */

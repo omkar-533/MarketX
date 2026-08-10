@@ -85,6 +85,10 @@ export type RadarResult = {
   detectedAt: number;
   /** DEMO until a real authorized provider is active */
   dataMode: 'DEMO' | 'LIVE';
+  /** When filtered by Strategy Lab scan — human-readable matched labels */
+  matchedConditions?: string[];
+  strategyName?: string;
+  strategyId?: string;
 };
 
 export type RadarScanRequest = {
