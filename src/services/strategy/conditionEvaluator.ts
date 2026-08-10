@@ -64,6 +64,12 @@ export function evaluateCondition(c: StrategyCondition, r: RadarResult): boolean
       return /reversal|sweep|structure shift/.test(hay);
     case 'EMA_ALIGNMENT':
       return r.htfAlignment || /ema|trend/.test(hay);
+    case 'EMA_CROSS': {
+      // Soft until engine exposes EMA50/200 on RadarResult — align with trend bias
+      if (c.operator === '<' || dir === 'BEARISH') return r.direction === 'bearish' || /ema|trend|death/.test(hay);
+      if (c.operator === '>' || dir === 'BULLISH') return r.direction === 'bullish' || /ema|trend|golden/.test(hay);
+      return /ema|trend/.test(hay);
+    }
     case 'PRICE_ABOVE_EMA':
       return r.direction === 'bullish' || bullOk;
     case 'PRICE_BELOW_EMA':

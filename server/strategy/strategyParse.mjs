@@ -24,6 +24,7 @@ export const ALLOWED_CONDITION_TYPES = [
   'TREND_CONTINUATION',
   'REVERSAL',
   'EMA_ALIGNMENT',
+  'EMA_CROSS',
   'PRICE_ABOVE_EMA',
   'PRICE_BELOW_EMA',
   'RSI_ABOVE',
@@ -236,6 +237,61 @@ export function localParseStrategy(description, answers = {}) {
     });
   }
 
+  // "50 ema < 200 ema", "ema50 below ema200", "death cross", "golden cross"
+  const emaCmp =
+    /(\d+)\s*ema\s*(<|>|<=|>=|below|above|under|over)\s*(\d+)\s*ema/i.exec(t) ||
+    /ema\s*(\d+)\s*(<|>|<=|>=|below|above|under|over)\s*ema\s*(\d+)/i.exec(t) ||
+    /(\d+)\s*\/\s*(\d+)\s*ema/.exec(t);
+  if (emaCmp || /death\s*cross|golden\s*cross|ema\s*cross/.test(t)) {
+    let fast = 50;
+    let slow = 200;
+    let op = '<';
+    if (emaCmp) {
+      if (emaCmp[3] && /\d/.test(emaCmp[1]) && /<|>|below|above/.test(String(emaCmp[2] || ''))) {
+        fast = Number(emaCmp[1]);
+        slow = Number(emaCmp[3]);
+        const rel = String(emaCmp[2]).toLowerCase();
+        op = rel === '>' || rel === '>=' || rel === 'above' || rel === 'over' ? '>' : '<';
+      } else if (emaCmp[1] && emaCmp[2] && !emaCmp[3]) {
+        // 50/200 ema form from third regex — groups are fast/slow only
+        fast = Number(emaCmp[1]);
+        slow = Number(emaCmp[2]);
+        op = /bull|golden|>/.test(t) ? '>' : '<';
+      }
+    }
+    if (/golden\s*cross/.test(t)) {
+      op = '>';
+      fast = 50;
+      slow = 200;
+    }
+    if (/death\s*cross/.test(t)) {
+      op = '<';
+      fast = 50;
+      slow = 200;
+    }
+    if (fast > slow) {
+      const tmp = fast;
+      fast = slow;
+      slow = tmp;
+      op = op === '>' ? '<' : '>';
+    }
+    push({
+      type: 'EMA_CROSS',
+      timeframe: tfFromContext('1D'),
+      direction: op === '>' ? 'BULLISH' : 'BEARISH',
+      operator: op === '>' ? '>' : '<',
+      value: fast,
+      target: String(slow),
+    });
+  }
+
+  if (/price\s*(above|over)\s*(the\s*)?ema|\babove\s*ema\b/.test(t) && !emaCmp) {
+    push({ type: 'PRICE_ABOVE_EMA', timeframe: tfFromContext('15m'), value: 21 });
+  }
+  if (/price\s*(below|under)\s*(the\s*)?ema|\bbelow\s*ema\b/.test(t) && !emaCmp) {
+    push({ type: 'PRICE_BELOW_EMA', timeframe: tfFromContext('15m'), value: 21 });
+  }
+
   const logicOp = /\bor\b/.test(t) && !/\band\b/.test(t) ? 'OR' : 'AND';
 
   const tfsUsed = [...new Set(conditions.map((c) => c.timeframe))];
@@ -268,6 +324,10 @@ function suggestName(conditions, description) {
   }
   if (conditions.some((c) => c.type === 'BREAKOUT')) return 'Breakout';
   if (conditions.some((c) => c.type === 'BREAKDOWN')) return 'Breakdown';
+  if (conditions.some((c) => c.type === 'EMA_CROSS')) {
+    const c = conditions.find((x) => x.type === 'EMA_CROSS');
+    return c?.operator === '>' ? 'EMA Golden Stack' : 'EMA Death Stack';
+  }
   if (conditions.some((c) => c.type === 'HTF_TREND')) return 'Multi-Timeframe Trend';
   return 'Taught Setup';
 }

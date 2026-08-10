@@ -11,7 +11,14 @@ export function formatCondition(c: StrategyCondition): string {
   const dir =
     c.direction && c.direction !== 'ANY' ? ` ${c.direction.charAt(0)}${c.direction.slice(1).toLowerCase()}` : '';
   if (c.value != null && c.operator) {
+    if (c.type === 'EMA_CROSS') {
+      const slow = c.target || '200';
+      return `${tf} EMA ${c.value} ${c.operator} EMA ${slow}${dir}`;
+    }
     return `${tf} ${name}${dir} ${c.operator} ${c.value}${c.type === 'RELATIVE_VOLUME' ? 'x' : ''}`;
+  }
+  if (c.type === 'EMA_CROSS' && c.value != null) {
+    return `${tf} EMA ${c.value} vs EMA ${c.target || 200}${dir}`;
   }
   return `${tf} ${name}${dir}`;
 }

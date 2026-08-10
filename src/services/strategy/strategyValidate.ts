@@ -19,10 +19,13 @@ export function validateConditions(conditions: StrategyCondition[]): ValidationR
     if (!isKnownConditionId(c.type)) {
       errors.push(`Unsupported condition: ${c.type}`);
     }
-    if (c.type === 'RELATIVE_VOLUME' || c.type === 'RSI_ABOVE' || c.type === 'RSI_BELOW') {
+    if (c.type === 'RELATIVE_VOLUME' || c.type === 'RSI_ABOVE' || c.type === 'RSI_BELOW' || c.type === 'EMA_CROSS') {
       if (c.value == null || !Number.isFinite(c.value)) {
         errors.push(`${c.type} needs a numeric value.`);
       }
+    }
+    if (c.type === 'EMA_CROSS' && !c.operator) {
+      errors.push('EMA_CROSS needs an operator (< or >).');
     }
   }
 

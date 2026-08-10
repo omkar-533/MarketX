@@ -39,6 +39,20 @@ describe('clarifications', () => {
     assert.ok(types.includes('RELATIVE_VOLUME'));
     assert.ok(types.includes('HTF_TREND'));
   });
+
+  it('maps 50 ema < 200 ema', async () => {
+    const out = await parseStrategyDescription({
+      apiKey: null,
+      description: '50 ema < 200 ema',
+      preferLocal: true,
+    });
+    assert.equal(out.result.ok, true);
+    const c = out.result.strategy.conditions.find((x) => x.type === 'EMA_CROSS');
+    assert.ok(c);
+    assert.equal(c.value, 50);
+    assert.equal(c.target, '200');
+    assert.equal(c.operator, '<');
+  });
 });
 
 describe('local parse OR', () => {
