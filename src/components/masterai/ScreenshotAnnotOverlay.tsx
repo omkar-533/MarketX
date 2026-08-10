@@ -1,18 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
 import type { ChartLevel, ChartShape } from '../../utils/chartAnnotations';
 import type { NormalizedBBox, WolfEvidenceItem } from '../../utils/wolfEvidence';
+import {
+  primaryAnnotations,
+  toProfessionalAnnotations,
+  type ProfessionalAnnotation,
+} from '../../utils/annotationEngine';
 
 type Props = {
   imageUrl: string;
   levels?: ChartLevel[];
   shapes?: ChartShape[];
-  /** Wolf evidence markings (normalized 0–1). */
   marks?: WolfEvidenceItem[];
   highlightLabel?: string | null;
   focusBbox?: NormalizedBBox | null;
   focusLabel?: string | null;
   dimUnfocused?: boolean;
   showAllMarks?: boolean;
+  /** Hide entry zones when no clean setup */
+  allowEntry?: boolean;
   onMarkClick?: (id: string) => void;
 };
 
@@ -34,13 +40,36 @@ function toneClass(tone?: string): string {
   return 'is-neutral';
 }
 
-function markTone(type: string): string {
-  if (/entry|target|support|bos|liquidity/.test(type)) return 'bull';
-  if (/invalid|resist|sweep|choch/.test(type)) return 'bear';
-  return 'neutral';
+function shrinkWolfchartZone(
+  y1: number,
+  y2: number,
+): { y: number; h: number } {
+  const top = Math.min(y1, y2);
+  const bot = Math.max(y1, y2);
+  let h = bot - top;
+  // Cap giant zones — keep near candle scale
+  if (h > 8) {
+    const mid = (top + bot) / 2;
+    h = 4.5;
+    return { y: mid - h / 2, h };
+  }
+  return { y: top, h: Math.max(1.2, h) };
 }
 
-/** Maps wolfchart prices + wolfevidence bboxes onto the screenshot. */
+function isFocusAnn(
+  a: ProfessionalAnnotation,
+  focusBbox: NormalizedBBox | null,
+  focusLabel: string | null,
+): boolean {
+  if (focusLabel && (focusLabel === a.label || focusLabel === a.raw.title)) return true;
+  if (!focusBbox) return false;
+  return (
+    Math.abs(a.geometry.y - focusBbox.y) < 0.05 ||
+    Math.abs(a.y - (focusBbox.y + focusBbox.height / 2)) < 0.04
+  );
+}
+
+/** Professional V3 overlay — thin levels / dashed targets / narrow entry zones. */
 export default function ScreenshotAnnotOverlay({
   imageUrl,
   levels = [],
@@ -51,6 +80,7 @@ export default function ScreenshotAnnotOverlay({
   focusLabel = null,
   dimUnfocused = false,
   showAllMarks = false,
+  allowEntry = true,
   onMarkClick,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -69,44 +99,123 @@ export default function ScreenshotAnnotOverlay({
     return 8 + t * 84;
   };
 
-  const visibleMarks = useMemo(() => {
-    const list = marks || [];
-    if (showAllMarks || expanded) return list.slice(0, 12);
-    return list.slice(0, 7);
-  }, [marks, showAllMarks, expanded]);
+  const professional = useMemo(
+    () =>
+      toProfessionalAnnotations(marks, {
+        allowEntry,
+        maxPrimary: showAllMarks || expanded ? 12 : 7,
+      }),
+    [marks, allowEntry, showAllMarks, expanded],
+  );
+
+  const visibleAnnots = useMemo(() => {
+    const list = showAllMarks || expanded ? professional : primaryAnnotations(professional);
+    return list.slice(0, showAllMarks || expanded ? 12 : 7);
+  }, [professional, showAllMarks, expanded]);
 
   const legend = useMemo(() => {
-    const items: { key: string; label: string; tone: string; y?: number }[] = [];
+    const items: { key: string; label: string; tone: string }[] = [];
     levels.forEach((l, i) => {
       items.push({
         key: `l-${i}`,
-        label: l.label || l.kind,
+        label: l.label || (l.kind === 'support' ? 'S' : 'R'),
         tone: l.kind === 'support' ? 'bull' : l.kind === 'resistance' ? 'bear' : 'neutral',
-        y: canMap ? yOf(l.price) : undefined,
       });
     });
-    shapes.forEach((s, i) => {
-      const mid =
-        s.p1 != null && s.p2 != null ? (s.p1 + s.p2) / 2 : s.p1 != null ? s.p1 : s.p2;
-      items.push({
-        key: `s-${i}`,
-        label: s.label || s.type,
-        tone: s.tone || 'neutral',
-        y: mid != null && canMap ? yOf(mid) : undefined,
-      });
+    visibleAnnots.forEach((a) => {
+      items.push({ key: `m-${a.id}`, label: a.label, tone: a.tone });
     });
-    visibleMarks.forEach((m) => {
-      items.push({
-        key: `m-${m.id}`,
-        label: m.title,
-        tone: markTone(m.type),
-      });
-    });
-    return items.slice(0, 14);
-  }, [levels, shapes, canMap, min, max, visibleMarks]);
+    return items.slice(0, 10);
+  }, [levels, visibleAnnots]);
 
   const hasMarks = levels.length > 0 || shapes.length > 0 || marks.length > 0;
   if (!imageUrl) return null;
+
+  const renderAnnot = (a: ProfessionalAnnotation) => {
+    const focused = isFocusAnn(a, focusBbox, focusLabel);
+    const dim = dimUnfocused && Boolean(focusBbox) && !focused;
+    const g = a.geometry;
+    const common = {
+      key: a.id,
+      type: 'button' as const,
+      title: `${a.label}${a.reason ? ` — ${a.reason}` : ''}`,
+      onClick: () => onMarkClick?.(a.id),
+      className: `wolf-ann wolf-ann--${a.style} wolf-ann--${a.tone} ${focused ? 'is-focus' : ''} ${
+        dim ? 'is-dim' : ''
+      }`,
+    };
+
+    if (a.style === 'zone_narrow') {
+      return (
+        <button
+          {...common}
+          style={{
+            left: `${g.x * 100}%`,
+            top: `${g.y * 100}%`,
+            width: `${g.width * 100}%`,
+            height: `${Math.max(g.height * 100, 2.2)}%`,
+          }}
+        >
+          <span className="wolf-ann__lab">{a.label}</span>
+        </button>
+      );
+    }
+
+    if (a.style === 'bos_arrow') {
+      return (
+        <button
+          {...common}
+          style={{
+            left: `${g.x * 100}%`,
+            top: `${g.y * 100}%`,
+          }}
+        >
+          <span className="wolf-ann__bos" aria-hidden>
+            ↑
+          </span>
+          <span className="wolf-ann__lab">{a.label}</span>
+        </button>
+      );
+    }
+
+    if (a.style === 'liquidity_dots') {
+      return (
+        <button
+          {...common}
+          style={{
+            left: `${g.x * 100}%`,
+            top: `${a.y * 100}%`,
+            width: `${g.width * 100}%`,
+          }}
+        >
+          <span className="wolf-ann__liq-line" aria-hidden />
+          <span className="wolf-ann__dot" aria-hidden />
+          <span className="wolf-ann__lab">{a.label}</span>
+        </button>
+      );
+    }
+
+    // Horizontal levels (solid / dashed / invalid)
+    return (
+      <button
+        {...common}
+        style={{
+          left: '3%',
+          right: '3%',
+          top: `${a.y * 100}%`,
+          width: 'auto',
+        }}
+      >
+        <span className="wolf-ann__line" aria-hidden />
+        <span className="wolf-ann__lab">{a.label}</span>
+        {a.style === 'hline_invalid' ? (
+          <span className="wolf-ann__x" aria-hidden>
+            ✕
+          </span>
+        ) : null}
+      </button>
+    );
+  };
 
   return (
     <div className="wolf-shot" ref={wrapRef}>
@@ -121,45 +230,19 @@ export default function ScreenshotAnnotOverlay({
           }}
         />
 
-        <div className="wolf-shot__marks" aria-label="Wolf marks">
-          {visibleMarks.map((m) => {
-            const isFocus =
-              Boolean(
-                focusBbox &&
-                  Math.abs(m.bbox.x - focusBbox.x) < 0.03 &&
-                  Math.abs(m.bbox.y - focusBbox.y) < 0.03,
-              ) || Boolean(focusLabel && focusLabel === m.title);
-            const dim = dimUnfocused && Boolean(focusBbox) && !isFocus;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                className={`wolf-shot__mark wolf-shot__mark--${m.type} ${toneClass(markTone(m.type))} ${
-                  isFocus ? 'is-focus' : ''
-                } ${dim ? 'is-dim' : ''}`}
-                style={{
-                  left: `${m.bbox.x * 100}%`,
-                  top: `${m.bbox.y * 100}%`,
-                  width: `${m.bbox.width * 100}%`,
-                  height: `${m.bbox.height * 100}%`,
-                }}
-                title={m.title}
-                onClick={() => onMarkClick?.(m.id)}
-              >
-                <span className="wolf-shot__mark-lab">{m.title}</span>
-              </button>
-            );
-          })}
+        {/* WOLF primary layer — professional marks */}
+        <div className="wolf-shot__annots" aria-label="Wolf annotations">
+          {visibleAnnots.map(renderAnnot)}
         </div>
 
         {focusBbox ? (
           <div
-            className="wolf-shot__focus"
+            className="wolf-shot__focus wolf-shot__focus--slim"
             style={{
-              left: `${focusBbox.x * 100}%`,
-              top: `${focusBbox.y * 100}%`,
-              width: `${focusBbox.width * 100}%`,
-              height: `${focusBbox.height * 100}%`,
+              left: `${Math.max(2, focusBbox.x * 100)}%`,
+              top: `${(focusBbox.y + focusBbox.height / 2) * 100}%`,
+              width: `${Math.min(96, Math.max(focusBbox.width * 100, 40))}%`,
+              height: '0',
             }}
           >
             {focusLabel ? <span className="wolf-shot__focus-lab">{focusLabel}</span> : null}
@@ -170,23 +253,54 @@ export default function ScreenshotAnnotOverlay({
           <svg className="wolf-shot__svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
             {shapes.map((s, i) => {
               if (s.type === 'zone' && s.p1 != null && s.p2 != null) {
-                const y1 = yOf(Math.max(s.p1, s.p2));
-                const y2 = yOf(Math.min(s.p1, s.p2));
+                const rawY1 = yOf(Math.max(s.p1, s.p2));
+                const rawY2 = yOf(Math.min(s.p1, s.p2));
+                const { y, h } = shrinkWolfchartZone(rawY1, rawY2);
                 const hi = highlightLabel && s.label && highlightLabel === s.label;
+                // Prefer thin band for non-entry labels
+                const isEntryLike = /entry|ob|fvg|demand|supply/i.test(s.label || '');
+                if (!isEntryLike && h > 3.5) {
+                  const mid = y + h / 2;
+                  return (
+                    <g key={`z-${i}`}>
+                      <line
+                        x1={8}
+                        y1={mid}
+                        x2={94}
+                        y2={mid}
+                        className={`wolf-shot__line ${toneClass(s.tone)} ${hi ? 'is-hi' : ''}`}
+                      />
+                      {s.label ? (
+                        <text x={9} y={mid - 1.1} className={`wolf-shot__label ${toneClass(s.tone)}`}>
+                          {s.label}
+                        </text>
+                      ) : null}
+                    </g>
+                  );
+                }
                 return (
-                  <rect
-                    key={`z-${i}`}
-                    x={4}
-                    y={y1}
-                    width={92}
-                    height={Math.max(1.2, y2 - y1)}
-                    className={`wolf-shot__zone ${toneClass(s.tone)} ${hi ? 'is-hi' : ''}`}
-                  />
+                  <g key={`z-${i}`}>
+                    <rect
+                      x={18}
+                      y={y}
+                      width={48}
+                      height={Math.max(1.4, Math.min(h, 5.5))}
+                      className={`wolf-shot__zone wolf-shot__zone--narrow ${toneClass(s.tone)} ${
+                        hi ? 'is-hi' : ''
+                      }`}
+                    />
+                    {s.label ? (
+                      <text x={19} y={y - 0.8} className={`wolf-shot__label ${toneClass(s.tone)}`}>
+                        {s.label}
+                      </text>
+                    ) : null}
+                  </g>
                 );
               }
               if ((s.type === 'hline' || s.type === 'hray' || s.type === 'label') && s.p1 != null) {
                 const y = yOf(s.p1);
                 const hi = highlightLabel && s.label && highlightLabel === s.label;
+                const dashed = /target|tp|t1|t2/i.test(s.label || '');
                 return (
                   <g key={`h-${i}`} className={hi ? 'is-hi' : undefined}>
                     <line
@@ -194,7 +308,7 @@ export default function ScreenshotAnnotOverlay({
                       y1={y}
                       x2={96}
                       y2={y}
-                      className={`wolf-shot__line ${toneClass(s.tone)}`}
+                      className={`wolf-shot__line ${toneClass(s.tone)} ${dashed ? 'is-dashed' : ''}`}
                     />
                     {s.label ? (
                       <text x={6} y={y - 1.2} className={`wolf-shot__label ${toneClass(s.tone)}`}>
@@ -236,7 +350,7 @@ export default function ScreenshotAnnotOverlay({
                     l.kind === 'support' ? 'is-bull' : l.kind === 'resistance' ? 'is-bear' : 'is-neutral'
                   }`}
                 >
-                  {l.label || l.kind}
+                  {l.label || (l.kind === 'support' ? 'S' : 'R')}
                 </text>
               </g>
             ))}
@@ -262,7 +376,7 @@ export default function ScreenshotAnnotOverlay({
               {item.label}
             </li>
           ))}
-          {marks.length > 7 && !expanded && !showAllMarks ? (
+          {professional.length > 7 && !expanded && !showAllMarks ? (
             <li>
               <button type="button" className="wolf-shot__more" onClick={() => setExpanded(true)}>
                 SHOW MORE

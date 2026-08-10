@@ -116,10 +116,15 @@ Hard rules: answer WHAT / BIAS / LEVELS / SETUP / TRIGGER / INVALIDATION / TARGE
 UI priority: levels + conditional plan over essays. Prefer WAIT / NO TRADE when thin.
 After the template:
 0) \`\`\`wolfidentity\`\`\` when readable.
-1) \`\`\`wolfchart\`\`\` when prices readable — label levels with SAME ids (R1/S1/INV/T1).
-2) \`\`\`wolfevidence\`\`\` 3–6 items with bbox 0–1. Titles MUST be explainable:
-"R1 · 66000 — Key resistance" NOT bare "Target" / "Support".
-Include annotation-ready ids matching Key Levels when possible.`;
+1) \`\`\`wolfchart\`\`\` when prices readable — prefer hline/hray for S/R/INV/TP; use zone ONLY for true ENTRY/FVG/OB (narrow). Labels: R1/S1/INV/T1 matching Key Levels. Never invent prices.
+2) \`\`\`wolfevidence\`\`\` 3–6 items. PROFESSIONAL ANNOTATION ENGINE V3 (mandatory):
+- NO giant rectangles for support/resistance/target/invalidation/liquidity/structure.
+- Default: thin horizontal level (bbox height ≤ 0.04, width can span). ENTRY/FVG/OB only as narrow zones (height ≤ 0.08).
+- Titles compact: "R1 · 24610" | "S1 · 24570" | "ENTRY · 24585–24595" | "TP1 · 24620" | "INVALID · 24570" | "BOS · 24600" — NEVER bare "RESISTANCE"/"TARGET"/"ENTRY ZONE".
+- Only emit type=entry if a real entry condition exists; else omit entry and say NO CLEAN SETUP YET / WAIT FOR.
+- Max 5–7 primary marks. Every mark MUST have trading purpose (WHAT/WHERE/WHY). No decorative boxes.
+Types: support|resistance|entry|invalidation|target|liquidity|sweep|bos|choch|fvg|order_block|structure|confirmation.
+bbox = precise anchor on the candle/level — not a full-chart shade.`;
 
 const MODE_PROMPTS = {
   support_resistance: `LENS: SUPPORT / RESISTANCE (exclusive focus).

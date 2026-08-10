@@ -682,6 +682,7 @@ export default function WolfSetupAnalysisCard({
                   focusBbox={focusItem?.bbox || null}
                   focusLabel={focusItem?.title || null}
                   dimUnfocused={Boolean(followWolf || focusOnly || whyWalk)}
+                  allowEntry={!thesis.noCleanSetup}
                   onMarkClick={(id) => {
                     const item = evidence.find((e) => e.id === id);
                     if (!item) return;

@@ -1310,6 +1310,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       evidence = validateAnnotations(evidence, {
         maxVisible: 7,
         lens: analysisMode,
+        allowEntry: !/NO CLEAN SETUP|NO TRADE|WAIT FOR CONFIRMATION/i.test(responseText),
       }).map((e) => ({
         ...e,
         title: explainableEvidenceLabel(e),

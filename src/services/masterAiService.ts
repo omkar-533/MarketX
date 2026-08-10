@@ -434,7 +434,7 @@ export function getChartVisionPrompt(
     'Decide WHAT MATTERS MOST. Bias ≠ Entry. Do not force a trade. WAIT / NO TRADE when evidence is thin.',
     'Fill locked template EVERY reply: Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Key Levels (R1/S1/INV/T1 with reasons) · Evidence Score · Why · Alternative Scenario · Assumptions.',
     'Evidence Score = setup quality (NOT win %). Exact prices only if scale readable — else approximate range + say so. Never invent levels. Missing → "Not enough evidence."',
-    'After template: (0) wolfidentity (1) Next Action (2) wolfchart with matching level ids (3) wolfevidence ≤6 — titles like "R1 · 66000 — Key resistance" (not bare Target/Support). UI shows top 5–7.',
+    'After template: (0) wolfidentity (1) Next Action (2) wolfchart — prefer thin hlines for S/R/INV/TP; narrow zones ONLY for ENTRY/FVG/OB (3) wolfevidence ≤6 — compact titles "R1 · 24610" not bare RESISTANCE; NO giant boxes. Omit entry type if no clean setup.',
     'Follow-ups MUST keep the same locked template — never plain text.',
     note ? `User question: ${note}` : '',
   ]

@@ -46,27 +46,54 @@ function overlaps(a: WolfEvidenceItem, b: WolfEvidenceItem): boolean {
 /** Filter + order evidence for clean rendering (CRITICAL + IMPORTANT by default). */
 export function validateAnnotations(
   items: WolfEvidenceItem[],
-  opts?: { showAll?: boolean; maxVisible?: number; lens?: string },
+  opts?: { showAll?: boolean; maxVisible?: number; lens?: string; allowEntry?: boolean },
 ): WolfEvidenceItem[] {
   const max = opts?.maxVisible ?? 7;
   const cleaned = (items || [])
     .filter((item) => {
       if (!item?.bbox) return false;
-      const { x, y, width, height } = item.bbox;
+      if (opts?.allowEntry === false && item.type === 'entry') return false;
+      let { x, y, width, height } = item.bbox;
       if (![x, y, width, height].every((n) => Number.isFinite(n))) return false;
       if (x < 0 || y < 0 || x + width > 1.02 || y + height > 1.02) return false;
-      if (width > 0.85 && height > 0.85) return false; // no full-image boxes
-      if (width < 0.02 || height < 0.02) return false;
+      // Reject full-panel and decorative giant boxes
+      if (width > 0.85 && height > 0.55) return false;
+      if (width * height > 0.42) return false;
+      // Allow thin horizontal levels (V3)
+      if (width < 0.015 || height < 0.006) return false;
       if (item.confidence === 'low' && !opts?.showAll) return false;
       return true;
     })
-    .map((item) => ({
-      ...item,
-      importance:
-        item.importance ||
-        (severity(item) === 'CRITICAL' ? 'high' : severity(item) === 'IMPORTANT' ? 'medium' : 'low'),
-      sourceLens: opts?.lens || item.sourceLens,
-    }))
+    .map((item) => {
+      // Collapse over-tall non-zone boxes into thin levels
+      let bbox = item.bbox;
+      const isZone = item.type === 'entry' || item.type === 'fvg' || item.type === 'order_block';
+      if (!isZone && bbox.height > 0.12) {
+        const cy = bbox.y + bbox.height / 2;
+        bbox = {
+          x: 0.04,
+          y: Math.max(0.02, cy - 0.008),
+          width: 0.92,
+          height: 0.016,
+        };
+      } else if (isZone && bbox.height > 0.12) {
+        const cy = bbox.y + bbox.height / 2;
+        bbox = {
+          x: Math.min(0.7, Math.max(0.05, bbox.x)),
+          y: Math.max(0.02, cy - 0.035),
+          width: Math.min(0.4, Math.max(0.14, bbox.width)),
+          height: 0.07,
+        };
+      }
+      return {
+        ...item,
+        bbox,
+        importance:
+          item.importance ||
+          (severity(item) === 'CRITICAL' ? 'high' : severity(item) === 'IMPORTANT' ? 'medium' : 'low'),
+        sourceLens: opts?.lens || item.sourceLens,
+      };
+    })
     .sort((a, b) => (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0));
 
   const picked: WolfEvidenceItem[] = [];
