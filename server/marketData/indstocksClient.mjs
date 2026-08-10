@@ -5,6 +5,8 @@
  * NEVER call /order, /order/modify, /order/cancel, or smart-order endpoints.
  * Tokens must never be logged or returned to clients.
  */
+import { resolveServerUniverse } from './universeLists.mjs';
+
 const BASE = 'https://api.indstocks.com';
 
 const TF_MAP = {
@@ -252,13 +254,22 @@ export function resolveScripCode(symbol, exchange = 'NSE') {
   return null;
 }
 
-import { resolveServerUniverse } from './universeLists.mjs';
-
 export function listUniverseSymbols(universe) {
   const wanted = resolveServerUniverse(universe);
   // Prefer full catalog size for honesty. LIVE candle fetch resolves scrips via
   // instrument map + FALLBACK; unresolved symbols are marked unavailable in scanner.
   return wanted;
+}
+
+/** Symbols we can actually resolve to a scrip right now (after instrument map refresh). */
+export function listScannableUniverseSymbols(universe) {
+  const wanted = listUniverseSymbols(universe);
+  const ok = wanted.filter((s) => Boolean(resolveScripCode(s)));
+  // If instrument map empty / refresh failed, fall back to FALLBACK keys ∩ universe
+  if (!ok.length) {
+    return wanted.filter((s) => Boolean(FALLBACK_SCRIP_BY_SYMBOL[s]));
+  }
+  return ok;
 }
 
 export const INDSTOCKS_CAPABILITIES = {

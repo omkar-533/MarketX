@@ -229,11 +229,12 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         unavailableSoFar: outcome.summary.unavailable,
         errorsSoFar: outcome.summary.errors,
       }));
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'SCAN FAILED — try again';
       setProgress((p) => ({
         ...p,
         status: 'failed',
-        error: 'SCAN FAILED — try again',
+        error: message,
         phase: 'ERROR',
       }));
     }

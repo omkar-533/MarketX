@@ -109,8 +109,15 @@ export async function fetchLiveCandles(symbol: string, timeframe: string, bars =
   );
 }
 
-export async function fetchLiveSymbols(universe: string) {
-  return json<{ symbols: string[] }>(
-    `/api/market-data/symbols?universe=${encodeURIComponent(universe)}`,
+export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scannable' = 'scannable') {
+  return json<{
+    symbols: string[];
+    catalog?: string[];
+    scannable?: string[];
+    universeLoaded?: number;
+    dataAvailable?: number;
+    dataUnavailable?: number;
+  }>(
+    `/api/market-data/symbols?universe=${encodeURIComponent(universe)}&mode=${mode === 'scannable' ? 'scannable' : 'catalog'}`,
   );
 }

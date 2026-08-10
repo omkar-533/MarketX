@@ -135,14 +135,47 @@ export async function runRadarScanFull(
     opts.displayLimit ?? req.displayLimit ?? DEFAULT_DISPLAY_LIMIT,
   );
 
+  // Process entire universe — batched concurrency for data fetch only
+  const CONCURRENCY = provider.isDemo ? 8 : 1;
   const started = Date.now();
-  const symbols = await provider.getSymbols(req.universe, req.market);
-  const total = symbols.length;
 
+  let symbols: string[] = [];
+  try {
+    symbols = await provider.getSymbols(req.universe, req.market);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to load universe symbols';
+    opts.onProgress?.({
+      status: 'failed',
+      symbolsChecked: 0,
+      symbolsTotal: 0,
+      phase: 'ERROR',
+      lastScanAt: null,
+      error: message,
+    });
+    throw new Error(message);
+  }
+  const total = symbols.length;
   let matchedSoFar = 0;
   let noMatchSoFar = 0;
   let unavailableSoFar = 0;
   let errorsSoFar = 0;
+  const matches: RadarResult[] = [];
+  const issues: RadarScanIssue[] = [];
+
+  const liveMeta =
+    !provider.isDemo && 'lastUniverseMeta' in provider
+      ? (provider as { lastUniverseMeta?: { universeLoaded: number; dataAvailable: number } | null })
+          .lastUniverseMeta
+      : null;
+  const catalogSize = liveMeta?.universeLoaded ?? total;
+  const preUnavailable = Math.max(0, catalogSize - total);
+  if (preUnavailable > 0) {
+    unavailableSoFar = preUnavailable;
+    issues.push({
+      symbol: '—',
+      reason: `${preUnavailable} symbols in catalog lack a resolvable scrip (reconnect INDstocks to refresh instrument master)`,
+    });
+  }
 
   const report = (i: number, phase: string, currentSymbol?: string | null) => {
     opts.onProgress?.({
@@ -162,12 +195,7 @@ export async function runRadarScanFull(
   report(0, 'UNIVERSE');
   await new Promise((r) => setTimeout(r, 40));
 
-  const matches: RadarResult[] = [];
-  const issues: RadarScanIssue[] = [];
   const htfTf = req.timeframe === '1D' || req.timeframe === '4h' ? '1D' : '1h';
-
-  // Process entire universe — batched concurrency for data fetch only
-  const CONCURRENCY = provider.isDemo ? 8 : 3;
 
   for (let start = 0; start < symbols.length; start += CONCURRENCY) {
     const batch = symbols.slice(start, start + CONCURRENCY);
@@ -266,8 +294,8 @@ export async function runRadarScanFull(
       }),
     );
     report(Math.min(total, start + batch.length), 'BATCH', batch[batch.length - 1]);
-    // Yield between batches so UI can paint
-    await new Promise((r) => setTimeout(r, provider.isDemo ? 8 : 40));
+    // Yield between batches so UI can paint + respect LIVE rate limits
+    await new Promise((r) => setTimeout(r, provider.isDemo ? 8 : 120));
   }
 
   const ranked = matches.sort((a, b) => b.score - a.score);
@@ -277,7 +305,7 @@ export async function runRadarScanFull(
   const statusCounts = countStatuses(ranked);
   const summary: RadarScanSummary = {
     universe: req.universe,
-    universeLoaded: total,
+    universeLoaded: catalogSize,
     scanned: total,
     matched: ranked.length,
     unavailable: unavailableSoFar,

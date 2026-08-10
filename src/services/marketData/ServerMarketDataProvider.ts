@@ -23,6 +23,8 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   private connected = false;
   private subSeq = 0;
   private readonly polls = new Map<string, ReturnType<typeof setInterval>>();
+  /** Last symbols() meta — catalog vs actually resolvable */
+  lastUniverseMeta: { universeLoaded: number; dataAvailable: number } | null = null;
 
   async connect(): Promise<void> {
     this.connected = true;
@@ -66,8 +68,23 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   }
 
   async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
-    const { symbols } = await fetchLiveSymbols(universe);
-    return symbols;
+    try {
+      const data = await fetchLiveSymbols(universe, 'scannable');
+      const loaded = data.universeLoaded ?? data.catalog?.length ?? data.symbols?.length ?? 0;
+      const available = data.dataAvailable ?? data.scannable?.length ?? data.symbols?.length ?? 0;
+      this.lastUniverseMeta = { universeLoaded: loaded, dataAvailable: available };
+      if (data.symbols?.length) return data.symbols;
+      const catalog = await fetchLiveSymbols(universe, 'catalog');
+      this.lastUniverseMeta = {
+        universeLoaded: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
+        dataAvailable: 0,
+      };
+      return catalog.symbols || [];
+    } catch (err) {
+      console.warn('[ServerMarketDataProvider] getSymbols failed', err);
+      this.lastUniverseMeta = null;
+      throw err;
+    }
   }
 
   async getInstrumentList(): Promise<NormalizedInstrument[]> {
@@ -90,21 +107,38 @@ export class ServerMarketDataProvider implements MarketDataProvider {
 
   async getQuote(symbol: string): Promise<NormalizedQuote> {
     void this.connected;
-    const { quote } = await fetchLiveQuote(symbol);
-    const lastPrice = quote.lastPrice || quote.price;
-    return {
-      symbol: quote.symbol || symbol,
-      exchange: quote.exchange || 'NSE',
-      timestamp: quote.timestamp || Date.now(),
-      lastPrice,
-      price: lastPrice,
-      changePercent: quote.changePercent ?? 0,
-    };
+    try {
+      const { quote } = await fetchLiveQuote(symbol);
+      const lastPrice = quote.lastPrice || quote.price;
+      return {
+        symbol: quote.symbol || symbol,
+        exchange: quote.exchange || 'NSE',
+        timestamp: quote.timestamp || Date.now(),
+        lastPrice,
+        price: lastPrice,
+        changePercent: quote.changePercent ?? 0,
+      };
+    } catch {
+      return {
+        symbol,
+        exchange: 'NSE',
+        timestamp: Date.now(),
+        lastPrice: 0,
+        price: 0,
+        changePercent: 0,
+      };
+    }
   }
 
   async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
-    const { candles } = await fetchLiveCandles(symbol, timeframe, bars);
-    return candles;
+    try {
+      const { candles } = await fetchLiveCandles(symbol, timeframe, bars);
+      return Array.isArray(candles) ? candles : [];
+    } catch (err) {
+      // Soft-fail — scanner marks unavailable / errors; never abort the whole universe scan
+      console.warn('[ServerMarketDataProvider] candles', symbol, err instanceof Error ? err.message : err);
+      return [];
+    }
   }
 
   async getHistoricalCandles(

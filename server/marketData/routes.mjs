@@ -23,6 +23,7 @@ import {
   refreshIndstocksInstrumentMap,
   resolveScripCode,
   listUniverseSymbols,
+  listScannableUniverseSymbols,
   fetchIndstocksQuote,
   fetchIndstocksCandles,
   INDSTOCKS_CAPABILITIES,
@@ -192,10 +193,19 @@ router.post('/disconnect', (req, res) => {
 
 router.get('/symbols', (req, res) => {
   const universe = String(req.query.universe || 'F&O');
+  const catalog = listUniverseSymbols(universe);
+  const scannable = listScannableUniverseSymbols(universe);
+  const preferScannable = String(req.query.mode || '') === 'scannable';
   res.json({
-    symbols: listUniverseSymbols(universe),
+    symbols: preferScannable ? scannable : catalog,
+    catalog,
+    scannable,
     universe,
-    note: 'Equity underliers for radar screening. Option-chain contracts come later.',
+    universeLoaded: catalog.length,
+    dataAvailable: scannable.length,
+    dataUnavailable: Math.max(0, catalog.length - scannable.length),
+    note:
+      'Equity underliers for radar screening. Scannable = scrip resolved via instrument master / fallback map.',
   });
 });
 
