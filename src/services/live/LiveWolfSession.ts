@@ -1,14 +1,10 @@
 /**
- * LiveWolfSession — one selected symbol: history → poll quotes → candle builder → analysis.
- * Frontend never talks to broker APIs directly (provider only).
+ * LiveWolfSession — history → poll → candle builder → analysis + reconnect.
  */
 import type { MarketDataProvider } from '../marketData/MarketDataProvider';
 import type { Candle, RadarTimeframe } from '../radar/radarTypes';
 import { LiveCandleBuilder } from './LiveCandleBuilder';
-import {
-  analyzeMultiTimeframe,
-  pickHtf,
-} from './MultiTimeframeAnalysisService';
+import { analyzeMultiTimeframe, pickHtf } from './MultiTimeframeAnalysisService';
 import { liveAnalysisBus, liveFeedStatusBus, liveMarketEventBus } from './MarketEventBus';
 import type {
   LiveAnalysisSnapshot,
@@ -17,8 +13,9 @@ import type {
   MarketEvent,
 } from './liveTypes';
 
-const STALE_MS = 15_000;
+const STALE_MS = 12_000;
 const ANALYSIS_THROTTLE_MS = 4_000;
+const UI_BARS_THROTTLE_MS = 250;
 
 export type LiveWolfSessionOpts = {
   symbol: string;
@@ -38,70 +35,107 @@ export class LiveWolfSession {
   private snapshot: LiveAnalysisSnapshot | null = null;
   private lastTickAt: number | null = null;
   private lastAnalysisAt: number | null = null;
+  private lastBarsUiAt = 0;
   private feedStatus: LiveFeedStatus = 'DISCONNECTED';
   private changePercent = 0;
   private stopped = false;
   private staleTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnecting = false;
 
   constructor(private opts: LiveWolfSessionOpts) {}
 
   async start() {
     this.stopped = false;
-    this.setStatus('CONNECTING');
+    this.reconnectAttempt = 0;
+    this.reconnecting = false;
+    await this.bootFeed();
+  }
+
+  private async bootFeed() {
+    if (this.stopped) return;
+    this.setStatus(this.reconnectAttempt > 0 ? 'RECONNECTING' : 'CONNECTING');
     const { symbol, timeframe, provider } = this.opts;
     const exchange = this.opts.exchange || 'NSE';
 
-    await provider.authenticate().catch(() => provider.connect());
+    try {
+      await provider.authenticate().catch(() => provider.connect());
+      const [ltf, htf] = await Promise.all([
+        provider.getCandles(symbol, timeframe, 120),
+        provider.getCandles(symbol, pickHtf(timeframe), 120),
+      ]);
+      if (this.stopped) return;
 
-    const [ltf, htf] = await Promise.all([
-      provider.getCandles(symbol, timeframe, 120),
-      provider.getCandles(symbol, pickHtf(timeframe), 120),
-    ]);
-    if (this.stopped) return;
+      this.htfCandles = htf;
+      this.builder = new LiveCandleBuilder(symbol, timeframe, ltf, exchange);
+      this.emitBars(true);
+      this.runAnalysis(true);
 
-    this.htfCandles = htf;
-    this.builder = new LiveCandleBuilder(symbol, timeframe, ltf, exchange);
-    this.opts.onBars?.(this.builder.getCandles());
-    this.runAnalysis(true);
-
-    this.subId = await provider.subscribeQuotes([symbol], (q) => {
-      if (this.stopped || !this.builder) return;
-      this.lastTickAt = Date.now();
-      this.changePercent = q.changePercent ?? this.changePercent;
-      if (this.feedStatus !== 'CONNECTED') this.setStatus('CONNECTED');
-
-      const applied = this.builder.applyQuote(q.lastPrice || q.price, {
-        volume: q.volume,
-        high: q.dayHigh,
-        low: q.dayLow,
-        nowMs: q.timestamp || Date.now(),
-      });
-      if (!applied) return;
-
-      this.opts.onBars?.(applied.candles);
-      liveMarketEventBus.publish({
-        id: `tick-${symbol}-${Date.now()}`,
-        symbol,
-        exchange,
-        timeframe,
-        type: applied.isNewBar ? 'CANDLE_CLOSE' : 'PRICE_UPDATE',
-        timestamp: Date.now(),
-        price: applied.updated.close,
-        significance: applied.isNewBar ? 'MEDIUM' : 'LOW',
-        message: applied.isNewBar ? 'Candle closed' : 'Price update',
-      });
-
-      if (applied.isNewBar || this.shouldAnalyze()) {
-        this.runAnalysis(applied.isNewBar);
+      if (this.subId) {
+        await provider.unsubscribeQuotes(this.subId).catch(() => undefined);
+        this.subId = null;
       }
-    });
 
-    this.staleTimer = setInterval(() => this.checkStale(), 2_000);
-    this.setStatus(provider.isDemo ? 'CONNECTED' : 'CONNECTED');
+      this.subId = await provider.subscribeQuotes([symbol], (q) => {
+        if (this.stopped || !this.builder) return;
+        this.lastTickAt = Date.now();
+        this.changePercent = q.changePercent ?? this.changePercent;
+        this.reconnectAttempt = 0;
+        if (this.feedStatus !== 'CONNECTED') this.setStatus('CONNECTED');
+
+        const applied = this.builder.applyQuote(q.lastPrice || q.price, {
+          volume: q.volume,
+          high: q.dayHigh,
+          low: q.dayLow,
+          nowMs: q.timestamp || Date.now(),
+        });
+        if (!applied) return;
+
+        this.emitBars(applied.isNewBar);
+        if (applied.isNewBar) {
+          liveMarketEventBus.publish({
+            id: `tick-${symbol}-${Date.now()}`,
+            symbol,
+            exchange,
+            timeframe: this.opts.timeframe,
+            type: 'CANDLE_CLOSE',
+            timestamp: Date.now(),
+            price: applied.updated.close,
+            significance: 'MEDIUM',
+            message: 'Candle closed',
+          });
+        }
+
+        if (applied.isNewBar || this.shouldAnalyze()) {
+          this.runAnalysis(applied.isNewBar);
+        }
+      });
+
+      if (this.staleTimer) clearInterval(this.staleTimer);
+      this.staleTimer = setInterval(() => this.checkStale(), 2_000);
+      this.reconnecting = false;
+      this.setStatus('CONNECTED');
+    } catch {
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect() {
+    if (this.stopped || this.reconnecting) return;
+    this.reconnecting = true;
+    this.setStatus('RECONNECTING');
+    const delay = Math.min(30_000, 1_000 * 2 ** Math.min(this.reconnectAttempt, 4));
+    this.reconnectAttempt += 1;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnecting = false;
+      void this.bootFeed();
+    }, delay);
   }
 
   async setTimeframe(timeframe: RadarTimeframe) {
-    if (!this.builder) return;
+    if (this.stopped) return;
     this.opts.timeframe = timeframe;
     const { symbol, provider } = this.opts;
     const [ltf, htf] = await Promise.all([
@@ -109,13 +143,8 @@ export class LiveWolfSession {
       provider.getCandles(symbol, pickHtf(timeframe), 120),
     ]);
     this.htfCandles = htf;
-    this.builder = new LiveCandleBuilder(
-      symbol,
-      timeframe,
-      ltf,
-      this.opts.exchange || 'NSE',
-    );
-    this.opts.onBars?.(this.builder.getCandles());
+    this.builder = new LiveCandleBuilder(symbol, timeframe, ltf, this.opts.exchange || 'NSE');
+    this.emitBars(true);
     this.runAnalysis(true);
   }
 
@@ -123,6 +152,8 @@ export class LiveWolfSession {
     this.stopped = true;
     if (this.staleTimer) clearInterval(this.staleTimer);
     this.staleTimer = null;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
     if (this.subId) {
       await this.opts.provider.unsubscribeQuotes(this.subId).catch(() => undefined);
       this.subId = null;
@@ -132,6 +163,14 @@ export class LiveWolfSession {
 
   getSnapshot() {
     return this.snapshot;
+  }
+
+  private emitBars(force: boolean) {
+    if (!this.builder) return;
+    const now = Date.now();
+    if (!force && now - this.lastBarsUiAt < UI_BARS_THROTTLE_MS) return;
+    this.lastBarsUiAt = now;
+    this.opts.onBars?.(this.builder.getCandles());
   }
 
   private shouldAnalyze() {
@@ -169,9 +208,12 @@ export class LiveWolfSession {
   }
 
   private checkStale() {
-    if (!this.lastTickAt) return;
+    if (!this.lastTickAt || this.reconnecting) return;
     if (Date.now() - this.lastTickAt > STALE_MS) {
       if (this.feedStatus !== 'STALE_DATA') this.setStatus('STALE_DATA');
+      if (Date.now() - this.lastTickAt > STALE_MS * 2.5) {
+        this.scheduleReconnect();
+      }
     }
   }
 

@@ -81,3 +81,68 @@ describe('MultiTimeframeAnalysisService', () => {
     assert.ok(snapshot.structure);
   });
 });
+
+describe('EventNarrationService', async () => {
+  const { narrateEvent, narrateSnapshot, resetNarrationCooldown } = await import('./EventNarrationService');
+
+  it('skips low-significance ticks', () => {
+    resetNarrationCooldown();
+    const line = narrateEvent({
+      id: '1',
+      symbol: 'X',
+      exchange: 'NSE',
+      timeframe: '5m',
+      type: 'PRICE_UPDATE',
+      timestamp: Date.now(),
+      price: 10,
+      significance: 'LOW',
+      message: 'tick',
+    });
+    assert.equal(line, null);
+  });
+
+  it('narrates high events from structured fields only', () => {
+    resetNarrationCooldown();
+    const line = narrateEvent({
+      id: '2',
+      symbol: 'RELIANCE',
+      exchange: 'NSE',
+      timeframe: '5m',
+      type: 'LIQUIDITY_SWEEP',
+      timestamp: Date.now(),
+      price: 100,
+      significance: 'HIGH',
+      message: 'Previous low swept',
+    });
+    assert.ok(line);
+    assert.match(line!.text, /RELIANCE/);
+    assert.match(line!.text, /liquidity/i);
+  });
+
+  it('snapshot wait text does not invent setups', () => {
+    const line = narrateSnapshot({
+      symbol: 'SBIN',
+      exchange: 'NSE',
+      timeframe: '5m',
+      price: 800,
+      changePercent: 0,
+      structure: 'RANGE',
+      liquidity: 'NONE',
+      volume: 'NORMAL',
+      momentum: '—',
+      htfAlignment: false,
+      htfTrend: 'RANGE',
+      setupType: null,
+      status: 'WAIT',
+      score: null,
+      scoreBreakdown: null,
+      keyLevels: [],
+      invalidation: 'n/a',
+      explanation: 'watching',
+      dataMode: 'DEMO',
+      analyzedAt: Date.now(),
+      waiting: true,
+    });
+    assert.match(line.text, /watching/i);
+  });
+});

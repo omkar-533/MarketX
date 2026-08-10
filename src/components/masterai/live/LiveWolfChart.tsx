@@ -1,5 +1,5 @@
 /**
- * LIVE WOLF candlestick chart — Lightweight Charts + MarketData candles only.
+ * LIVE WOLF chart — LWC with incremental tip updates + event markers.
  */
 import { useEffect, useRef } from 'react';
 import {
@@ -7,24 +7,78 @@ import {
   ColorType,
   CrosshairMode,
   HistogramSeries,
+  LineSeries,
   createChart,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import type { Candle } from '../../services/radar/radarTypes';
+import type { Candle } from '../../../services/radar/radarTypes';
+import type { MarketEvent } from '../../../services/live/liveTypes';
+import { ema, closes as candleCloses } from '../../../services/radar/TechnicalEngine';
+
+export type LiveChartToggles = {
+  levels: boolean;
+  markers: boolean;
+  ema: boolean;
+};
 
 type Props = {
   candles: Candle[];
   levels?: { label: string; price: number }[];
+  events?: MarketEvent[];
+  focusTime?: number | null;
+  toggles?: LiveChartToggles;
 };
 
-export default function LiveWolfChart({ candles, levels = [] }: Props) {
+const DEFAULT_TOGGLES: LiveChartToggles = { levels: true, markers: true, ema: true };
+
+function toUtc(ts: number): UTCTimestamp {
+  return (ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts)) as UTCTimestamp;
+}
+
+function markerFor(evt: MarketEvent): {
+  time: UTCTimestamp;
+  position: 'aboveBar' | 'belowBar';
+  color: string;
+  shape: 'circle' | 'arrowUp' | 'arrowDown';
+  text: string;
+} | null {
+  if (evt.significance === 'LOW') return null;
+  if (evt.type === 'PRICE_UPDATE' || evt.type === 'ANALYSIS_UPDATE') return null;
+  const bull =
+    evt.type === 'LIQUIDITY_SWEEP' ||
+    evt.type === 'STRUCTURE_SHIFT' ||
+    evt.type === 'BREAKOUT' ||
+    evt.type === 'SETUP_CONFIRMED' ||
+    evt.type === 'SETUP_DETECTED';
+  const bear = evt.type === 'BREAKDOWN' || evt.type === 'SETUP_INVALIDATED';
+  return {
+    time: toUtc(evt.timestamp),
+    position: bear ? 'aboveBar' : 'belowBar',
+    color: bear ? '#fb7185' : evt.type === 'VOLUME_EXPANSION' ? '#fbbf24' : '#d4af37',
+    shape: bear ? 'arrowDown' : bull ? 'arrowUp' : 'circle',
+    text: evt.type.replace(/_/g, ' ').slice(0, 18),
+  };
+}
+
+export default function LiveWolfChart({
+  candles,
+  levels = [],
+  events = [],
+  focusTime = null,
+  toggles = DEFAULT_TOGGLES,
+}: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
-  const priceLinesRef = useRef<ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>[]>([]);
+  const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
+  const seededRef = useRef(false);
+  const lastLenRef = useRef(0);
+  const lastCloseRef = useRef(0);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -55,12 +109,19 @@ export default function LiveWolfChart({ candles, levels = [] }: Props) {
       priceFormat: { type: 'volume' },
       priceScaleId: 'vol',
     });
-    chart.priceScale('vol').applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    const emaLine = chart.addSeries(LineSeries, {
+      color: 'rgba(212,175,55,0.85)',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
+
     chartRef.current = chart;
     candleSeriesRef.current = candlesSeries;
     volSeriesRef.current = vol;
+    emaSeriesRef.current = emaLine;
+    seededRef.current = false;
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
@@ -77,32 +138,94 @@ export default function LiveWolfChart({ candles, levels = [] }: Props) {
       chartRef.current = null;
       candleSeriesRef.current = null;
       volSeriesRef.current = null;
+      emaSeriesRef.current = null;
+      priceLinesRef.current = [];
+      seededRef.current = false;
     };
   }, []);
 
   useEffect(() => {
     const series = candleSeriesRef.current;
     const vol = volSeriesRef.current;
+    const emaSeries = emaSeriesRef.current;
     if (!series || !vol || !candles.length) return;
 
-    const data = candles.map((c) => ({
-      time: (c.timestamp > 1e12 ? Math.floor(c.timestamp / 1000) : Math.floor(c.timestamp)) as UTCTimestamp,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
-    const vols = candles.map((c) => ({
-      time: (c.timestamp > 1e12 ? Math.floor(c.timestamp / 1000) : Math.floor(c.timestamp)) as UTCTimestamp,
-      value: c.volume,
-      color: c.close >= c.open ? 'rgba(52,211,153,0.35)' : 'rgba(251,113,133,0.35)',
-    }));
-    series.setData(data);
-    vol.setData(vols);
+    const tip = candles[candles.length - 1];
+    const tipTime = toUtc(tip.timestamp);
+    const tipCandle = {
+      time: tipTime,
+      open: tip.open,
+      high: tip.high,
+      low: tip.low,
+      close: tip.close,
+    };
+    const tipVol = {
+      time: tipTime,
+      value: tip.volume,
+      color: tip.close >= tip.open ? 'rgba(52,211,153,0.35)' : 'rgba(251,113,133,0.35)',
+    };
 
-    // Incremental tip update path: setData is OK for phase 2–6; later optimize to series.update
-    chartRef.current?.timeScale().scrollToRealTime();
-  }, [candles]);
+    const sameLen = seededRef.current && candles.length === lastLenRef.current;
+    const onlyTipMoved = sameLen && tip.close !== lastCloseRef.current;
+
+    if (!seededRef.current || candles.length < lastLenRef.current || candles.length - lastLenRef.current > 1) {
+      const data = candles.map((c) => ({
+        time: toUtc(c.timestamp),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+      const vols = candles.map((c) => ({
+        time: toUtc(c.timestamp),
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(52,211,153,0.35)' : 'rgba(251,113,133,0.35)',
+      }));
+      series.setData(data);
+      vol.setData(vols);
+      seededRef.current = true;
+      chartRef.current?.timeScale().scrollToRealTime();
+    } else if (candles.length > lastLenRef.current) {
+      series.update(tipCandle);
+      vol.update(tipVol);
+      chartRef.current?.timeScale().scrollToRealTime();
+    } else if (onlyTipMoved || sameLen) {
+      series.update(tipCandle);
+      vol.update(tipVol);
+    }
+
+    if (emaSeries) {
+      if (toggles.ema && candles.length >= 21) {
+        const cs = candleCloses(candles);
+        const points: { time: UTCTimestamp; value: number }[] = [];
+        for (let i = 20; i < candles.length; i++) {
+          const v = ema(cs.slice(0, i + 1), 21);
+          if (v != null) points.push({ time: toUtc(candles[i].timestamp), value: v });
+        }
+        emaSeries.setData(points);
+        emaSeries.applyOptions({ visible: true });
+      } else {
+        emaSeries.setData([]);
+        emaSeries.applyOptions({ visible: false });
+      }
+    }
+
+    lastLenRef.current = candles.length;
+    lastCloseRef.current = tip.close;
+
+    // Markers (best-effort for LWC 5)
+    if (toggles.markers) {
+      const markers = events
+        .map(markerFor)
+        .filter(Boolean)
+        .slice(0, 24) as NonNullable<ReturnType<typeof markerFor>>[];
+      const api = series as unknown as { setMarkers?: (m: typeof markers) => void };
+      api.setMarkers?.(markers);
+    } else {
+      const api = series as unknown as { setMarkers?: (m: unknown[]) => void };
+      api.setMarkers?.([]);
+    }
+  }, [candles, events, toggles.markers, toggles.ema]);
 
   useEffect(() => {
     const series = candleSeriesRef.current;
@@ -114,6 +237,8 @@ export default function LiveWolfChart({ candles, levels = [] }: Props) {
         /* ignore */
       }
     }
+    priceLinesRef.current = [];
+    if (!toggles.levels) return;
     priceLinesRef.current = levels.slice(0, 6).map((lv) =>
       series.createPriceLine({
         price: lv.price,
@@ -124,7 +249,17 @@ export default function LiveWolfChart({ candles, levels = [] }: Props) {
         title: lv.label,
       }),
     );
-  }, [levels, candles.length]);
+  }, [levels, toggles.levels, candles.length]);
+
+  useEffect(() => {
+    if (!focusTime || !chartRef.current) return;
+    const t = toUtc(focusTime);
+    chartRef.current.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, candles.length - 40),
+      to: candles.length + 2,
+    });
+    void t;
+  }, [focusTime, candles.length]);
 
   return <div className="live-wolf-chart" ref={hostRef} />;
 }
