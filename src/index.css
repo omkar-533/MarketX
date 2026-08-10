@@ -27035,11 +27035,15 @@ body:has(.app-main--terminal-immersive) #root {
 .live-wolf-chart-shell.mai-tv__frame--fill .mai-nc__area,
 .live-wolf-chart__area {
   min-height: 420px;
+  position: relative;
 }
-.live-wolf-chart {
-  width: 100%;
-  height: 100%;
-  min-height: 420px;
+/* Match Terminal: host fills plot area under absolute canvas */
+.live-wolf-desk__chart-wrap .mai-tv__host.live-wolf-chart {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  min-height: 0;
 }
 .live-wolf-desk__panel {
   display: flex;

@@ -296,7 +296,7 @@ export default function LiveWolfChart({
     }
 
     if (emaSeries) {
-      if (toggles.ema && candles.length >= 21) {
+      if (toggles.ema && !hideIndicators && candles.length >= 21) {
         const cs = candleCloses(candles);
         const points: { time: UTCTimestamp; value: number }[] = [];
         for (let i = 20; i < candles.length; i++) {
@@ -325,7 +325,7 @@ export default function LiveWolfChart({
       const api = series as unknown as { setMarkers?: (m: unknown[]) => void };
       api.setMarkers?.([]);
     }
-  }, [candles, events, toggles.markers, toggles.ema]);
+  }, [candles, events, toggles.markers, toggles.ema, hideIndicators]);
 
   useEffect(() => {
     const series = candleSeriesRef.current;
@@ -400,7 +400,7 @@ export default function LiveWolfChart({
         data-cursor={tool === 'dot' ? 'dot' : tool === 'arrowCursor' ? 'arrow' : undefined}
         data-tooltip={valuesTooltip ? 'on' : undefined}
       >
-        <div className="live-wolf-chart" ref={hostRef} />
+        <div className="mai-tv__host live-wolf-chart" ref={hostRef} />
         <canvas ref={canvasRef} className="mai-nc__draw" />
 
         {chartEpoch > 0 ? (
