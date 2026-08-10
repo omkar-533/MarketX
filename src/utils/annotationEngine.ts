@@ -31,19 +31,6 @@ export type ProfessionalAnnotation = {
   raw: WolfEvidenceItem;
 };
 
-const ZONE_TYPES = new Set(['entry', 'fvg', 'order_block']);
-const LEVEL_TYPES = new Set([
-  'support',
-  'resistance',
-  'target',
-  'invalidation',
-  'liquidity',
-  'structure',
-  'confirmation',
-  'breakout',
-  'other',
-]);
-
 export function compactAnnotLabel(item: WolfEvidenceItem): string {
   const title = String(item.title || '').trim();
   if (/·|—|–/.test(title) && title.length <= 42) return title;
