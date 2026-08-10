@@ -22007,6 +22007,38 @@ body:has(.app-main--terminal-immersive) #root {
   color: var(--tf-text-muted);
 }
 
+.wolf-vision-home__bullets {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  max-width: 22rem;
+  width: 100%;
+  font-size: 0.78rem;
+  color: var(--tf-text-muted);
+}
+
+.wolf-vision-home__bullets li::before {
+  content: '· ';
+  opacity: 0.6;
+}
+
+.wolf-split--reading .wolf-split__chart img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.wolf-split--empty {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
 .wolf-vision-home__upload-pill {
   margin-top: 0.45rem;
   padding: 0.35rem 0.75rem;

@@ -35,8 +35,8 @@ export default function WolfVisionHome({ onPickFile, disabled, hindi }: Props) {
       </motion.h2>
       <p className="wolf-vision-home__tag">
         {hindi
-          ? 'Chart upload karo. Main dikhaunga kya matter karta hai.'
-          : "Upload a chart. I'll show you what matters."}
+          ? 'Chart upload karo. Main saath padhunga.'
+          : "Upload a chart. I'll read it with you."}
       </p>
 
       <motion.button
@@ -65,9 +65,18 @@ export default function WolfVisionHome({ onPickFile, disabled, hindi }: Props) {
           {hindi ? 'UPLOAD CHART' : 'UPLOAD CHART'}
         </span>
         <span className="wolf-vision-home__drop-hint">
-          {hindi ? 'Drag · click · paste' : 'Drag · click · paste screenshot'}
+          {hindi ? 'Drag & drop · Paste · Ctrl+V' : 'Drag & drop · Paste screenshot · Ctrl+V'}
         </span>
       </motion.button>
+
+      <ul className="wolf-vision-home__bullets" aria-label="What Wolf analyzes">
+        {(hindi
+          ? ['Market structure', 'Key levels', 'Liquidity', 'Entry opportunities', 'Invalidation', 'Targets']
+          : ['Market structure', 'Key levels', 'Liquidity', 'Entry opportunities', 'Invalidation', 'Targets']
+        ).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
 
       <input
         ref={inputRef}

@@ -81,16 +81,26 @@ export default function WolfResponseCanvas({
     sessionEvidence,
   });
 
+  // Hard rule: never render analysis UI without an active chart image.
+  if (!visual.imageUrl) {
+    return (
+      <div className="wolf-response-canvas wolf-response-canvas--empty" data-wolf-type="empty">
+        <div className="wolf-vision-home wolf-vision-home--compact">
+          <p className="wolf-vision-home__tag">
+            {hindi
+              ? 'Chart upload karo — tab analysis dikhega.'
+              : 'Upload a chart — analysis appears after Wolf reads it.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="wolf-response-canvas" data-wolf-type={visual.type}>
       {chartIdentityBanner ? (
         <div className="wolf-response-canvas__id" role="status">
           {chartIdentityBanner}
-        </div>
-      ) : null}
-      {!visual.imageUrl ? (
-        <div className="wolf-response-canvas__warn" role="status">
-          ⚠️ Upload / keep a chart in this chat so Wolf can pinpoint on YOUR screenshot.
         </div>
       ) : null}
       <WolfSetupAnalysisCard

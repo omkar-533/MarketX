@@ -321,17 +321,28 @@ export default function WolfSetupAnalysisCard({
     );
   }, [sheet, replayIndex, tabs, hindi]);
 
+  // Absolute rule — before any WAIT / thesis / fallback UI.
+  if (!imageUrl) {
+    return (
+      <div className="wolf-split wolf-split--empty" data-wolf-empty="1">
+        <div className="wolf-split__side wolf-split__side--empty">
+          <p className="wolf-vision-home__tag">
+            {hindi
+              ? 'Chart upload karo — phir Wolf analysis dega.'
+              : 'Upload a chart and Wolf will analyze it here.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!analysis || !ui || !next || !crisp) {
     return (
       <div className="wolf-split wolf-split--fallback">
         <section className="wolf-split__market">
-          {imageUrl ? (
-            <WolfChartCanvas>
-              <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} />
-            </WolfChartCanvas>
-          ) : (
-            <div className="wolf-desk__empty">Upload a chart.</div>
-          )}
+          <WolfChartCanvas>
+            <ScreenshotAnnotOverlay imageUrl={imageUrl} levels={levels} shapes={shapes} />
+          </WolfChartCanvas>
         </section>
         <aside className="wolf-split__wolf">
           <div className="wolf-split__warn">⚠️ Pinning evidence…</div>

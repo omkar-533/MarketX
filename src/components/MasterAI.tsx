@@ -144,6 +144,14 @@ import { validateAnnotations } from '../utils/annotationValidator';
 import { validateLensDifference } from '../utils/lensSimilarity';
 import { explainableEvidenceLabel } from '../utils/tradingThesis';
 import {
+  chatHasChartImage,
+  clearWolfSessionChart,
+  emptyWolfMessages,
+  hydrateMessagesWithSessionChart,
+  looksLikeWolfAnalysisText,
+  saveWolfSessionChart,
+} from '../utils/wolfSessionGuard';
+import {
   buildConsensusReport,
   makeLayerId,
   type AnalysisLayer,
@@ -271,7 +279,22 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       : initialMode === 'auto'
         ? 'Auto language on — pick a setup, paste a chart screenshot; Hunter returns Bias · Entry · SL · Target from that image.'
         : getMasterAiWelcome(initialLang.code);
-  const [boot] = useState(() => loadActiveChat(welcomeText, chatScope));
+  const [boot] = useState(() => {
+    const loaded = loadActiveChat(welcomeText, chatScope);
+    const hydrated = hydrateMessagesWithSessionChart(loaded.activeId, loaded.messages);
+    if (!hydrated.valid) {
+      // Orphan analysis without chart → clean workspace (history titles remain in list).
+      clearWolfSessionChart(loaded.activeId);
+      return {
+        ...loaded,
+        messages: emptyWolfMessages(welcomeText),
+      };
+    }
+    return {
+      ...loaded,
+      messages: hydrated.messages,
+    };
+  });
   const [activeChatId, setActiveChatId] = useState(boot.activeId);
   const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>(boot.sessions);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -302,6 +325,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const [selectedImageName, setSelectedImageName] = useState('');
   const [imageError, setImageError] = useState<string | null>(null);
   const [isAnalyzingChart, setIsAnalyzingChart] = useState(false);
+  const [viewingAiId, setViewingAiId] = useState<string | null>(null);
   // Last chart settings the user landed on — seeds the next chart card.
   const [chartSymbol, setChartSymbol] = useState('NSE:NIFTY');
   const [chartInterval, setChartInterval] = useState<TvInterval>('15');
@@ -317,25 +341,70 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   } | null>(null);
 
   // Restore screenshot desk when switching chats / reloading history.
+  // Atomic rule: no chart image → clear session chart + analysis layers + orphan text.
+  useEffect(() => {
+    const hydrated = hydrateMessagesWithSessionChart(activeChatId, messages);
+    if (!hydrated.valid || !hydrated.blob?.imageUrl) {
+      chartSessionRef.current = null;
+      setAnalysisLayers([]);
+      setActiveLayerId(null);
+      setCompareOpen(false);
+      setChartIdentity(null);
+      setViewingAiId(null);
+      if (!hydrated.valid) {
+        const clean = emptyWolfMessages(currentWelcomeText()) as Message[];
+        if (messages.length !== clean.length || messages.some((m) => m.id !== 'welcome')) {
+          setMessages(clean);
+        }
+      }
+      return;
+    }
+    if (hydrated.messages !== messages && chatHasChartImage(hydrated.messages)) {
+      // One-shot stamp of blob image onto messages after refresh
+      setMessages(hydrated.messages as Message[]);
+    }
+    chartSessionRef.current = {
+      imageUrl: hydrated.blob.imageUrl,
+      evidence: hydrated.blob.evidence || [],
+      shotMarks: hydrated.blob.shotMarks,
+    };
+    saveWolfSessionChart({
+      sessionId: activeChatId,
+      imageUrl: hydrated.blob.imageUrl,
+      evidence: hydrated.blob.evidence || [],
+      shotMarks: hydrated.blob.shotMarks,
+      updatedAt: Date.now(),
+    });
+  }, [activeChatId]); // eslint-disable-line react-hooks/exhaustive-deps -- boundary is session id
+
+  // Keep chart blob in sync whenever analysis session updates.
   useEffect(() => {
     const withImg = [...messages].reverse().find((m) => Boolean(m.imageUrl));
     if (!withImg?.imageUrl) {
-      chartSessionRef.current = null;
+      if (!selectedImage) chartSessionRef.current = null;
       return;
     }
     const withEv = [...messages]
       .reverse()
       .find((m) => Boolean(m.evidence?.length) || Boolean(m.shotMarks));
-    chartSessionRef.current = {
+    const blob = {
+      sessionId: activeChatId,
       imageUrl: withImg.imageUrl,
       evidence: withEv?.evidence?.length
         ? withEv.evidence
         : withImg.evidence?.length
           ? withImg.evidence
-          : [],
-      shotMarks: withEv?.shotMarks || withImg.shotMarks,
+          : chartSessionRef.current?.evidence || [],
+      shotMarks: withEv?.shotMarks || withImg.shotMarks || chartSessionRef.current?.shotMarks,
+      updatedAt: Date.now(),
     };
-  }, [activeChatId, messages]);
+    chartSessionRef.current = {
+      imageUrl: blob.imageUrl,
+      evidence: blob.evidence,
+      shotMarks: blob.shotMarks,
+    };
+    saveWolfSessionChart(blob);
+  }, [activeChatId, messages, selectedImage]);
 
   const recognitionRef = useRef<{ start: () => void; stop: () => void; lang: string } | null>(null);
   const handleSendRef = useRef<
@@ -447,7 +516,8 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     const pane = chatAreaRef.current;
     if (!pane) return;
     // Empty / New Chat desk: keep Hunter logo at top (scrollIntoView was yanking mobile)
-    const emptyDesk = messages.length <= 1 && !isThinking;
+    const emptyDesk =
+      (!chatHasChartImage(messages) && !selectedImage && messages.length <= 1) && !isThinking;
     if (emptyDesk) {
       pane.scrollTop = 0;
       return;
@@ -678,6 +748,16 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     clearSelectedImage();
     setInputText('');
     setHistoryOpen(false);
+    clearWolfSessionChart(activeChatId);
+    chartSessionRef.current = null;
+    setAnalysisLayers([]);
+    setActiveLayerId(null);
+    setCompareOpen(false);
+    setChartIdentity(null);
+    setViewingAiId(null);
+    setAnalysisMode('auto');
+    saveWolfAnalysisMode('auto');
+    multiLensQueueRef.current = [];
     const next = startNewChat(activeChatId, messages, currentWelcomeText(), chatScope);
     setActiveChatId(next.activeId);
     setMessages(next.messages);
@@ -700,8 +780,29 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
     setInputText('');
     const next = switchChat(activeChatId, messages, id, currentWelcomeText(), chatScope);
     if (!next) return;
+    const hydrated = hydrateMessagesWithSessionChart(next.activeId, next.messages);
     setActiveChatId(next.activeId);
-    setMessages(next.messages);
+    setAnalysisLayers([]);
+    setActiveLayerId(null);
+    setCompareOpen(false);
+    setChartIdentity(null);
+    setViewingAiId(null);
+    multiLensQueueRef.current = [];
+    if (!hydrated.valid) {
+      chartSessionRef.current = null;
+      setMessages(emptyWolfMessages(currentWelcomeText()) as Message[]);
+    } else {
+      setMessages(hydrated.messages as Message[]);
+      if (hydrated.blob?.imageUrl) {
+        chartSessionRef.current = {
+          imageUrl: hydrated.blob.imageUrl,
+          evidence: hydrated.blob.evidence || [],
+          shotMarks: hydrated.blob.shotMarks,
+        };
+      } else {
+        chartSessionRef.current = null;
+      }
+    }
     setChatSessions(next.sessions);
     setHistoryOpen(false);
   };
@@ -709,13 +810,35 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const handleDeleteChat = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (isThinking) return;
+    clearWolfSessionChart(id);
     const next = deleteChat(activeChatId, id, currentWelcomeText(), chatScope);
     setActiveChatId(next.activeId);
-    setMessages(next.messages);
+    const hydrated = hydrateMessagesWithSessionChart(next.activeId, next.messages);
+    if (!hydrated.valid) {
+      chartSessionRef.current = null;
+      setMessages(emptyWolfMessages(currentWelcomeText()) as Message[]);
+    } else {
+      setMessages(hydrated.messages as Message[]);
+      if (hydrated.blob?.imageUrl) {
+        chartSessionRef.current = {
+          imageUrl: hydrated.blob.imageUrl,
+          evidence: hydrated.blob.evidence || [],
+          shotMarks: hydrated.blob.shotMarks,
+        };
+      } else {
+        chartSessionRef.current = null;
+      }
+    }
     setChatSessions(next.sessions);
     if (id === activeChatId) {
       clearSelectedImage();
       setInputText('');
+      setAnalysisLayers([]);
+      setActiveLayerId(null);
+      setCompareOpen(false);
+      setChartIdentity(null);
+      setViewingAiId(null);
+      multiLensQueueRef.current = [];
     }
   };
 
@@ -732,7 +855,30 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         setActiveLayerId(null);
         setCompareOpen(false);
         setChartIdentity(null);
+        setViewingAiId(null);
         multiLensQueueRef.current = [];
+        // Drop prior analysis text so Chart A never paints onto Chart B mid-session.
+        setMessages((prev) =>
+          prev.filter(
+            (m) =>
+              !(
+                m.role === 'trafi' &&
+                m.id !== 'welcome' &&
+                looksLikeWolfAnalysisText(m.text)
+              ),
+          ),
+        );
+        chartSessionRef.current = {
+          imageUrl: dataUrl,
+          evidence: [],
+          shotMarks: undefined,
+        };
+        saveWolfSessionChart({
+          sessionId: activeChatId,
+          imageUrl: dataUrl,
+          evidence: [],
+          updatedAt: Date.now(),
+        });
         window.setTimeout(() => {
           void handleSendRef.current(undefined, {
             imageDataUrl: dataUrl,
@@ -1514,12 +1660,15 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const hunterReplies = useMemo(
     () =>
       messages.filter(
-        (m) => m.role === 'trafi' && m.id !== 'welcome' && Boolean(m.text?.trim()),
+        (m) =>
+          m.role === 'trafi' &&
+          m.id !== 'welcome' &&
+          Boolean(m.text?.trim()) &&
+          looksLikeWolfAnalysisText(m.text),
       ),
     [messages],
   );
   const latestHunterReply = hunterReplies[hunterReplies.length - 1] || null;
-  const [viewingAiId, setViewingAiId] = useState<string | null>(null);
 
   useEffect(() => {
     if (latestHunterReply?.id) setViewingAiId(latestHunterReply.id);
@@ -1549,33 +1698,22 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   );
 
   const sessionImageUrl =
+    selectedImage ||
     viewingHunter?.imageUrl ||
     chartSessionRef.current?.imageUrl ||
-    selectedImage ||
     [...messages].reverse().find((m) => m.imageUrl)?.imageUrl ||
     null;
 
+  /** Absolute rule: NO CHART = NO ANALYSIS UI. */
+  const hasActiveChart = Boolean(sessionImageUrl);
+
   const splitActive =
     !isMentor &&
-    Boolean(sessionImageUrl) &&
+    hasActiveChart &&
     (Boolean(viewingHunter) || isThinking || isAnalyzingChart);
 
-  const splitScanText = [
-    'WOLF AI · SCANNING',
-    'Market Bias: WAIT',
-    'Setup: Reading chart',
-    'Setup Status: WAITING FOR CONFIRMATION',
-    'Key Observation: Scanning your screenshot.',
-    'Next Action: Hold — analysis arriving.',
-    'Entry Condition: Pending',
-    'Stop Loss Logic: Pending',
-    'Target Logic: Pending',
-    'Invalidation: Pending',
-    'Evidence Score: 0 / 100',
-    'Why:',
-    '1. Chart under review',
-    'Assumptions / Unknown: AI still reading',
-  ].join('\n');
+  const showEmptyVisionHome =
+    !isMentor && !hasActiveChart && !isThinking && !isAnalyzingChart;
 
   return (
     <div className={`mai-chat ${splitActive ? 'mai-chat--split' : ''}`}>
@@ -1885,106 +2023,132 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
         <div className="mai-chat__split-body" aria-label="Wolf split desk">
           {(isThinking || isAnalyzingChart) && !viewingHunter ? (
             <div className="wolf-split__analyzing" role="status">
-              Analyzing…
+              Wolf is reading your chart…
             </div>
           ) : isThinking || isAnalyzingChart ? (
             <div className="wolf-split__analyzing wolf-split__analyzing--soft" role="status">
               Analyzing…
             </div>
           ) : null}
-          <WolfResponseCanvas
-            text={viewingHunter?.text || splitScanText}
-            userAsk={
-              [...messages]
-                .reverse()
-                .find((m) => m.role === 'user')?.text || ''
-            }
-            hindi={useHiPrompts}
-            onSpeak={speakText}
-            imageUrl={sessionImageUrl}
-            levels={
-              viewingHunter?.shotMarks?.levels ||
-              chartSessionRef.current?.shotMarks?.levels
-            }
-            shapes={
-              viewingHunter?.shotMarks?.shapes ||
-              chartSessionRef.current?.shotMarks?.shapes
-            }
-            evidence={viewingHunter?.evidence}
-            sessionEvidence={chartSessionRef.current?.evidence}
-            onWhatIf={(prompt) => void handleSend(prompt)}
-            onAskWolf={focusAskWolf}
-            trail={analysisTrail}
-            activeTrailId={viewingHunter?.id || null}
-            onTrailSelect={(id) => setViewingAiId(id)}
-            hideAskDock
-            symbolLabel={
-              chartIdentity
-                ? chartIdentityLabel(chartIdentity)
-                : tradingViewSymbolLabel(chartSymbol)
-            }
-            timeframeLabel={
-              chartIdentity?.timeframe && chartIdentity.timeframe !== 'UNCONFIRMED'
-                ? chartIdentity.timeframe
-                : String(chartInterval)
-            }
-            analysisMode={analysisMode}
-            onAnalysisModeChange={(mode) => {
-              setAnalysisMode(mode);
-              saveWolfAnalysisMode(mode);
-            }}
-            analysisModeDisabled={isThinking || isAnalyzingChart}
-            analysisLab={
-              <WolfAnalysisLab
-                analysisMode={analysisMode}
-                onModeChange={(mode) => {
-                  setAnalysisMode(mode);
-                  saveWolfAnalysisMode(mode);
-                }}
-                onReanalyzeLens={runReanalyzeLens}
-                onCompare={() => setCompareOpen(true)}
-                layers={analysisLayers}
-                activeLayerId={activeLayerId}
-                onSelectLayer={(id) => {
-                  setActiveLayerId(id);
-                  const layer = analysisLayers.find((l) => l.id === id);
-                  if (layer) setAnalysisMode(layer.mode);
-                }}
-                consensus={consensus}
-                compareOpen={compareOpen}
-                onCloseCompare={() => setCompareOpen(false)}
-                disabled={isThinking || isAnalyzingChart}
-                hindi={useHiPrompts}
-              />
-            }
-            layerTextOverride={
-              activeLayerId
-                ? analysisLayers.find((l) => l.id === activeLayerId)?.text
-                : undefined
-            }
-            layerEvidenceOverride={
-              activeLayerId
-                ? (() => {
-                    const layer = analysisLayers.find((l) => l.id === activeLayerId);
-                    if (!layer) return undefined;
-                    const fromMsg =
-                      viewingHunter?.evidence?.filter((e) => layer.evidenceIds.includes(e.id)) ||
-                      [];
-                    if (fromMsg.length) return fromMsg;
-                    return chartSessionRef.current?.evidence?.filter((e) =>
-                      layer.evidenceIds.includes(e.id),
-                    );
-                  })()
-                : undefined
-            }
-            chartIdentityBanner={
-              chartIdentity
-                ? chartIdentity.confirmed
-                  ? `Detected: ${chartIdentityLabel(chartIdentity)} · Confidence ${chartIdentity.confidence}`
-                  : `Unconfirmed ID · Confidence ${chartIdentity.confidence} — confirm symbol/TF if wrong`
-                : null
-            }
-          />
+          {viewingHunter ? (
+            <WolfResponseCanvas
+              key={`${activeChatId}:${viewingHunter.id}`}
+              text={viewingHunter.text}
+              userAsk={
+                [...messages]
+                  .reverse()
+                  .find((m) => m.role === 'user')?.text || ''
+              }
+              hindi={useHiPrompts}
+              onSpeak={speakText}
+              imageUrl={sessionImageUrl}
+              levels={
+                viewingHunter.shotMarks?.levels ||
+                chartSessionRef.current?.shotMarks?.levels
+              }
+              shapes={
+                viewingHunter.shotMarks?.shapes ||
+                chartSessionRef.current?.shotMarks?.shapes
+              }
+              evidence={viewingHunter.evidence}
+              sessionEvidence={chartSessionRef.current?.evidence}
+              onWhatIf={(prompt) => void handleSend(prompt)}
+              onAskWolf={focusAskWolf}
+              trail={analysisTrail}
+              activeTrailId={viewingHunter.id || null}
+              onTrailSelect={(id) => setViewingAiId(id)}
+              hideAskDock
+              symbolLabel={
+                chartIdentity
+                  ? chartIdentityLabel(chartIdentity)
+                  : tradingViewSymbolLabel(chartSymbol)
+              }
+              timeframeLabel={
+                chartIdentity?.timeframe && chartIdentity.timeframe !== 'UNCONFIRMED'
+                  ? chartIdentity.timeframe
+                  : String(chartInterval)
+              }
+              analysisMode={analysisMode}
+              onAnalysisModeChange={(mode) => {
+                setAnalysisMode(mode);
+                saveWolfAnalysisMode(mode);
+              }}
+              analysisModeDisabled={isThinking || isAnalyzingChart}
+              analysisLab={
+                <WolfAnalysisLab
+                  analysisMode={analysisMode}
+                  onModeChange={(mode) => {
+                    setAnalysisMode(mode);
+                    saveWolfAnalysisMode(mode);
+                  }}
+                  onReanalyzeLens={runReanalyzeLens}
+                  onCompare={() => setCompareOpen(true)}
+                  layers={analysisLayers}
+                  activeLayerId={activeLayerId}
+                  onSelectLayer={(id) => {
+                    setActiveLayerId(id);
+                    const layer = analysisLayers.find((l) => l.id === id);
+                    if (layer) setAnalysisMode(layer.mode);
+                  }}
+                  consensus={consensus}
+                  compareOpen={compareOpen}
+                  onCloseCompare={() => setCompareOpen(false)}
+                  disabled={isThinking || isAnalyzingChart}
+                  hindi={useHiPrompts}
+                />
+              }
+              layerTextOverride={
+                activeLayerId
+                  ? analysisLayers.find((l) => l.id === activeLayerId)?.text
+                  : undefined
+              }
+              layerEvidenceOverride={
+                activeLayerId
+                  ? (() => {
+                      const layer = analysisLayers.find((l) => l.id === activeLayerId);
+                      if (!layer) return undefined;
+                      const fromMsg =
+                        viewingHunter.evidence?.filter((e) => layer.evidenceIds.includes(e.id)) ||
+                        [];
+                      if (fromMsg.length) return fromMsg;
+                      return chartSessionRef.current?.evidence?.filter((e) =>
+                        layer.evidenceIds.includes(e.id),
+                      );
+                    })()
+                  : undefined
+              }
+              chartIdentityBanner={
+                chartIdentity
+                  ? chartIdentity.confirmed
+                    ? `Detected: ${chartIdentityLabel(chartIdentity)} · Confidence ${chartIdentity.confidence}`
+                    : `Unconfirmed ID · Confidence ${chartIdentity.confidence} — confirm symbol/TF if wrong`
+                  : null
+              }
+            />
+          ) : sessionImageUrl ? (
+            <div className="wolf-split wolf-split--reading" aria-busy="true">
+              <header className="wolf-split__bar">
+                <div className="wolf-split__brand">
+                  <span aria-hidden>🐺</span>
+                  <strong>WOLF AI</strong>
+                </div>
+                <div className="wolf-split__meta">
+                  <span className="wolf-split__ready">● Reading chart</span>
+                </div>
+              </header>
+              <div className="wolf-split__body">
+                <div className="wolf-split__chart">
+                  <img src={sessionImageUrl} alt="Chart under review" />
+                </div>
+                <aside className="wolf-split__side wolf-split__side--empty">
+                  <p className="wolf-vision-home__tag">Wolf is reading your chart…</p>
+                  <p className="opacity-70" style={{ fontSize: '0.85rem' }}>
+                    Detecting asset · Building structure · Mapping levels
+                  </p>
+                </aside>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -2141,7 +2305,7 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
             </div>
           ) : null}
 
-          {messages.length <= 1 && !isThinking && !isMentor ? (
+          {showEmptyVisionHome ? (
             <WolfVisionHome
               onPickFile={(file) => void processChartFile(file)}
               disabled={isThinking || isAnalyzingChart || isListening}
@@ -2208,13 +2372,10 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           ) : null}
 
           {!isMentor &&
-          messages.filter((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text?.trim()).length >
-            1 ? (
+          hasActiveChart &&
+          hunterReplies.length > 1 ? (
             <div className="wolf-visual-timeline" aria-label="Visual response history">
-              {messages
-                .filter((m) => m.role === 'trafi' && m.id !== 'welcome' && m.text?.trim())
-                .slice(-8)
-                .map((m, i, arr) => {
+              {hunterReplies.slice(-8).map((m, i, arr) => {
                   const label = (() => {
                     const t = m.text;
                     if (/Next Action|Market Bias|Key Observation/i.test(t)) {
@@ -2248,9 +2409,29 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
           ) : null}
 
           <AnimatePresence>
-            {messages.map((message) => {
+            {(showEmptyVisionHome
+              ? []
+              : hasActiveChart
+                ? messages
+                : messages.filter(
+                    (m) =>
+                      m.id === 'welcome' ||
+                      m.role === 'user' ||
+                      (!looksLikeWolfAnalysisText(m.text) && !m.imageUrl),
+                  )
+            ).map((message) => {
               const isUser = message.role === 'user';
               if (message.id === 'welcome') return null;
+
+              // Never paint analysis text without an active chart in this session.
+              if (
+                !isMentor &&
+                !hasActiveChart &&
+                !isUser &&
+                looksLikeWolfAnalysisText(message.text)
+              ) {
+                return null;
+              }
 
               if (message.chart) {
                 if (!isMentor) return null;
@@ -2331,24 +2512,39 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
                           ))}
                         </div>
                       ) : !isMentor && message.text ? (
-                        <WolfResponseCanvas
-                          text={message.text}
-                          userAsk={
-                            [...messages]
-                              .slice(0, messages.findIndex((m) => m.id === message.id))
-                              .reverse()
-                              .find((m) => m.role === 'user')?.text || ''
-                          }
-                          hindi={useHiPrompts}
-                          onSpeak={speakText}
-                          imageUrl={message.imageUrl || chartSessionRef.current?.imageUrl}
-                          levels={message.shotMarks?.levels || chartSessionRef.current?.shotMarks?.levels}
-                          shapes={message.shotMarks?.shapes || chartSessionRef.current?.shotMarks?.shapes}
-                          evidence={message.evidence}
-                          sessionEvidence={chartSessionRef.current?.evidence}
-                          onWhatIf={(prompt) => void handleSend(prompt)}
-                          onAskWolf={focusAskWolf}
-                        />
+                        hasActiveChart &&
+                        (message.imageUrl ||
+                          chartSessionRef.current?.imageUrl ||
+                          sessionImageUrl) ? (
+                          <WolfResponseCanvas
+                            text={message.text}
+                            userAsk={
+                              [...messages]
+                                .slice(0, messages.findIndex((m) => m.id === message.id))
+                                .reverse()
+                                .find((m) => m.role === 'user')?.text || ''
+                            }
+                            hindi={useHiPrompts}
+                            onSpeak={speakText}
+                            imageUrl={
+                              message.imageUrl ||
+                              chartSessionRef.current?.imageUrl ||
+                              sessionImageUrl
+                            }
+                            levels={
+                              message.shotMarks?.levels ||
+                              chartSessionRef.current?.shotMarks?.levels
+                            }
+                            shapes={
+                              message.shotMarks?.shapes ||
+                              chartSessionRef.current?.shotMarks?.shapes
+                            }
+                            evidence={message.evidence}
+                            sessionEvidence={chartSessionRef.current?.evidence}
+                            onWhatIf={(prompt) => void handleSend(prompt)}
+                            onAskWolf={focusAskWolf}
+                          />
+                        ) : null
                       ) : (
                         <>
                           {message.imageUrl ? (
