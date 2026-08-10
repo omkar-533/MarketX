@@ -98,6 +98,7 @@ import {
   parseStudies,
   technicalStudyLabel,
   tradingViewSymbolLabel,
+  usesNativeChart,
   type TvChartStyle,
   type TvInterval,
 } from '../../utils/tradingViewSymbols';
@@ -547,7 +548,10 @@ export default function NativeChatChart({
           if (!barsRef.current.length) {
             setBars([]);
             setStatus(res ? 'empty' : 'error');
-            onUnavailableRef.current?.();
+            // Free TradingView embed cannot load NSE/BSE — never abandon native for those.
+            if (!usesNativeChart(symbol)) {
+              onUnavailableRef.current?.();
+            }
           }
         }
         return;
@@ -566,7 +570,7 @@ export default function NativeChatChart({
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
     },
-    [apiSymbol, apiInterval],
+    [apiSymbol, apiInterval, symbol],
   );
 
   // Symbol / interval / manual reload — NOT `load` identity (parent click handlers used to recreate it).

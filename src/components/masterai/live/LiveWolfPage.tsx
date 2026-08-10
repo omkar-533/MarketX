@@ -118,7 +118,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
   );
   const [study, setStudy] = useState(() => defaultTerminalState().study);
   const [reloadKey, setReloadKey] = useState(0);
-  const [nativeFailed, setNativeFailed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [analysis, setAnalysis] = useState<LiveAnalysisSnapshot | null>(null);
   const [events, setEvents] = useState<MarketEvent[]>([]);
@@ -150,7 +149,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
       setInterval(RADAR_TO_TV[tf] || '5');
       setEvents([]);
       setNarration([]);
-      setNativeFailed(false);
       resetNarrationCooldown();
     };
     window.addEventListener(LIVE_WOLF_OPEN_EVENT, onOpen);
@@ -264,7 +262,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
   const onPickSymbol = (next: string) => {
     const tv = parseTradingViewInput(next);
     setTvSymbol(tv);
-    setNativeFailed(false);
     setEvents([]);
     setNarration([]);
     setAnalysis(null);
@@ -344,7 +341,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
             className="live-wolf-desk__icon-btn"
             title="Reload chart"
             onClick={() => {
-              setNativeFailed(false);
               setReloadKey((k) => k + 1);
             }}
           >
@@ -424,10 +420,10 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
             study={study}
             chartStyle="1"
             reloadKey={reloadKey}
-            nativeFailed={nativeFailed}
+            nativeFailed={false}
             showRail
             levels={chartLevels}
-            onNativeUnavailable={() => setNativeFailed(true)}
+            onNativeUnavailable={() => undefined}
             onClearIndicators={() => setStudy('none')}
             onApplyStudy={setStudy}
             onStudyChange={setStudy}

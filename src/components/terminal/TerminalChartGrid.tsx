@@ -54,8 +54,12 @@ function PaneChart({
   onNavigate?: (tab: string) => void;
 }) {
   const [nativeFailed, setNativeFailed] = useState(false);
-  const onNativeUnavailable = useCallback(() => setNativeFailed(true), []);
   const preferNative = usesNativeChart(symbol);
+  const onNativeUnavailable = useCallback(() => {
+    // NSE/BSE (and other native exchanges) have no free TV fallback — keep native host.
+    if (preferNative) return;
+    setNativeFailed(true);
+  }, [preferNative]);
   const native = preferNative && !nativeFailed;
 
   if (native) {
