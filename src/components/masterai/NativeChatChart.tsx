@@ -533,11 +533,12 @@ export default function NativeChatChart({
         }
       }
       // Longer history so Wolf Mentor / pan-left still shows candles (not empty void).
+      // Daily uses chunked multi-year INDstocks history (≤1y per API call).
       const range =
         apiInterval === '1d' || apiInterval === '1w'
-          ? '1y'
+          ? 'max'
           : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
-            ? '6mo'
+            ? '1y'
             : '3mo';
       const res = await fetchMarketOhlc(apiSymbol, apiInterval, range);
       if (token !== requestRef.current) return;
@@ -741,21 +742,23 @@ export default function NativeChatChart({
     historyBusyRef.current = true;
     setLoadingOlder(true);
     try {
-      const nextCount = Math.min(8000, current.length + 1200);
+      const firstTime = current[0]?.time ?? 0;
+      const beforeMs = firstTime > 1e12 ? firstTime : firstTime * 1000;
+      const batch =
+        apiInterval === '1d' || apiInterval === '1w' || apiInterval === '1M' ? 800 : 600;
       const range =
         apiInterval === '1d' || apiInterval === '1w' || apiInterval === '1M'
-          ? '1y'
+          ? 'max'
           : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
             ? '1y'
             : '6mo';
-      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, nextCount);
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, batch, beforeMs);
       const fetched = res?.bars ?? [];
       if (!fetched.length) {
         historyExhaustedRef.current = true;
         setHistoryExhausted(true);
         return;
       }
-      const firstTime = current[0]?.time ?? 0;
       const older = fetched.filter((b) => b.time < firstTime);
       if (!older.length) {
         historyExhaustedRef.current = true;

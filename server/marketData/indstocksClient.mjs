@@ -31,6 +31,19 @@ const MAX_SPAN_MS = {
   '1day': 365 * 86_400_000,
 };
 
+/** Max windowed requests when stitching history (INDstocks caps range per call). */
+const MAX_HISTORY_CHUNKS = {
+  '1minute': 14,
+  '3minute': 14,
+  '5minute': 14,
+  '15minute': 14,
+  '30minute': 14,
+  '60minute': 16,
+  '240minute': 16,
+  // FAQ: 10+ years available; each 1day call ≤ 1 year.
+  '1day': 12,
+};
+
 /** Fallback scrip codes from official examples / common equity underliers. */
 export const FALLBACK_SCRIP_BY_SYMBOL = {
   RELIANCE: 'NSE_2885',
@@ -139,56 +152,77 @@ export async function fetchIndstocksQuote(accessToken, scripCode) {
   };
 }
 
-export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars = 80) {
+export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars = 80, opts = {}) {
   const interval = wolfTfToIndInterval(wolfTf);
   if (!interval) throw new Error(`Unsupported timeframe: ${wolfTf}`);
   const maxSpan = MAX_SPAN_MS[interval] || 7 * 86_400_000;
-  const end = Date.now();
-  // Request the max allowed window for the interval, then keep the last `wantBars`.
-  // Short windows often return <20 candles after market hours / thin sessions.
-  const wantBars = Math.max(80, Math.min(500, Number(bars) || 120));
-  const useStart = end - maxSpan + 60_000;
+  const maxChunks = MAX_HISTORY_CHUNKS[interval] || 4;
+  // Daily: aim for multi-year; intraday: fill requested depth within chunk budget.
+  const hardCap = interval === '1day' ? 3200 : 2500;
+  const wantBars = Math.max(80, Math.min(hardCap, Number(bars) || 120));
+  const beforeMs = Number(opts.beforeMs);
+  let end = Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now();
 
-  const { json } = await indFetch(`/market/historical/${interval}`, accessToken, {
-    searchParams: {
-      'scrip-codes': scripCode,
-      start_time: String(Math.floor(useStart)),
-      end_time: String(Math.floor(end)),
-    },
-  });
-  const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
-  const raw = Array.isArray(block?.candles) ? block.candles : [];
-  const mapped = raw
-    .map((c) => {
+  /** @type {Array<Record<string, unknown>>} */
+  const byTs = new Map();
+
+  for (let chunk = 0; chunk < maxChunks && byTs.size < wantBars; chunk++) {
+    const useStart = end - maxSpan + 60_000;
+    if (useStart >= end) break;
+
+    const { json } = await indFetch(`/market/historical/${interval}`, accessToken, {
+      searchParams: {
+        'scrip-codes': scripCode,
+        start_time: String(Math.floor(useStart)),
+        // Docs: end_time is exclusive.
+        end_time: String(Math.floor(end)),
+      },
+    });
+    const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
+    const raw = Array.isArray(block?.candles) ? block.candles : [];
+    if (!raw.length) break;
+
+    let oldestMs = end;
+    let added = 0;
+    for (const c of raw) {
       const tsSec = Number(c.ts);
-      return {
+      const timestamp = tsSec > 1e12 ? tsSec : tsSec * 1000;
+      if (!Number.isFinite(timestamp)) continue;
+      const open = Number(c.o);
+      const high = Number(c.h);
+      const low = Number(c.l);
+      const close = Number(c.c);
+      if (!(open > 0 && high > 0 && close > 0)) continue;
+      const row = {
         symbol: scripCode,
         exchange: String(scripCode).split('_')[0] || 'NSE',
         instrumentToken: scripCode,
         timeframe: wolfTf,
-        // Docs: candle `ts` is Unix epoch seconds (IST market clock / epoch seconds)
-        timestamp: tsSec > 1e12 ? tsSec : tsSec * 1000,
-        open: Number(c.o),
-        high: Number(c.h),
-        low: Number(c.l),
-        close: Number(c.c),
+        timestamp,
+        open,
+        high,
+        low,
+        close,
         volume: Number(c.v || 0),
       };
-    })
-    .filter((c) => c.open > 0 && c.high > 0 && c.close > 0 && Number.isFinite(c.timestamp))
-    .sort((a, b) => a.timestamp - b.timestamp);
+      if (!byTs.has(timestamp)) {
+        byTs.set(timestamp, row);
+        added += 1;
+      } else {
+        byTs.set(timestamp, row);
+      }
+      if (timestamp < oldestMs) oldestMs = timestamp;
+    }
 
-  // Dedupe by timestamp (some feeds repeat the forming bar)
-  const deduped = [];
-  let lastTs = -1;
-  for (const c of mapped) {
-    if (c.timestamp === lastTs) {
-      deduped[deduped.length - 1] = c;
-    } else {
-      deduped.push(c);
-      lastTs = c.timestamp;
+    if (!added) break;
+    // Step further back; keep a 1-bar overlap so edges don't leave gaps.
+    end = Math.max(0, oldestMs - 1000);
+    if (oldestMs <= useStart + 60_000) {
+      // Provider returned the earliest it has for this window — continue to next year/span.
     }
   }
+
+  const deduped = [...byTs.values()].sort((a, b) => a.timestamp - b.timestamp);
   if (deduped.length <= wantBars) return deduped;
   return deduped.slice(-wantBars);
 }

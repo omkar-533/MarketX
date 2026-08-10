@@ -238,12 +238,16 @@ router.get('/candles', async (req, res) => {
   if (!live) return;
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   const timeframe = String(req.query.timeframe || '5m').trim();
-  const bars = Math.min(500, Math.max(10, Number(req.query.bars) || 80));
+  const bars = Math.min(3200, Math.max(10, Number(req.query.bars) || 80));
+  const beforeRaw = Number(req.query.before);
+  const beforeMs = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : undefined;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
   const scrip = resolveScripCode(symbol);
   if (!scrip) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
   try {
-    const candles = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars);
+    const candles = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars, {
+      beforeMs,
+    });
     for (const c of candles) c.symbol = symbol;
     res.json({
       symbol,

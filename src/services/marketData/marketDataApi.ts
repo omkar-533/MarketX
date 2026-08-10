@@ -103,9 +103,20 @@ export async function fetchLiveQuote(symbol: string) {
   );
 }
 
-export async function fetchLiveCandles(symbol: string, timeframe: string, bars = 80) {
+export async function fetchLiveCandles(
+  symbol: string,
+  timeframe: string,
+  bars = 80,
+  beforeMs?: number,
+) {
+  const q = new URLSearchParams({
+    symbol,
+    timeframe,
+    bars: String(Math.min(3200, Math.max(10, Math.floor(bars) || 80))),
+  });
+  if (beforeMs && beforeMs > 0) q.set('before', String(Math.floor(beforeMs)));
   return json<{ candles: import('../radar/radarTypes').Candle[]; mode: string }>(
-    `/api/market-data/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&bars=${bars}`,
+    `/api/market-data/candles?${q}`,
   );
 }
 

@@ -124,11 +124,12 @@ export async function fetchMarketOhlc(
   interval: string,
   range?: string,
   bars?: number,
+  beforeMs?: number,
 ): Promise<MarketOhlcResponse | null> {
-  const wantBars = barsForOhlcRange(range, bars);
+  const wantBars = barsForOhlcRange(range, bars, interval);
 
   // Legacy /api/market/* stack is gone — prefer connected market-data (INDstocks / demo).
-  const fromLive = await fetchOhlcFromMarketData(symbol, interval, wantBars);
+  const fromLive = await fetchOhlcFromMarketData(symbol, interval, wantBars, beforeMs);
   if (fromLive?.bars?.length) return fromLive;
 
   if (!isMarketLiveEnabled()) {
@@ -156,13 +157,20 @@ export async function fetchMarketOhlc(
   }
 }
 
-function barsForOhlcRange(range?: string, bars?: number): number {
-  if (bars && bars > 0) return Math.min(500, Math.floor(bars));
+function barsForOhlcRange(range?: string, bars?: number, interval?: string): number {
+  if (bars && bars > 0) return Math.min(3200, Math.floor(bars));
+  const tf = String(interval || '').toLowerCase();
   const r = String(range || '').toLowerCase();
-  if (r === '1y' || r === '6mo' || r === '3mo') return 500;
-  if (r === '1mo') return 400;
-  if (r === '5d' || r === '1d') return 200;
-  return 300;
+  // Daily: stitch multi-year via server chunks (INDstocks ≤1y per call).
+  if (tf === '1d' || tf === '1w' || interval === '1M') {
+    if (r === 'max' || r === '10y' || r === '5y') return 2800;
+    if (r === '3y') return 900;
+    return 2500;
+  }
+  if (r === '1y' || r === '6mo' || r === '3mo') return 2000;
+  if (r === '1mo') return 800;
+  if (r === '5d' || r === '1d') return 400;
+  return 800;
 }
 
 /** Map NativeChatChart intervals → /api/market-data/candles timeframes. */
@@ -180,11 +188,12 @@ async function fetchOhlcFromMarketData(
   symbol: string,
   interval: string,
   bars: number,
+  beforeMs?: number,
 ): Promise<MarketOhlcResponse | null> {
   try {
     const { fetchLiveCandles } = await import('./marketData/marketDataApi');
     const tf = toMarketDataTimeframe(interval);
-    const data = await fetchLiveCandles(symbol, tf, bars);
+    const data = await fetchLiveCandles(symbol, tf, bars, beforeMs);
     const next = (data?.candles || [])
       .map((c) => {
         const ts = Number(c.timestamp);
