@@ -44,7 +44,7 @@ const MAX_HISTORY_CHUNKS = {
   '1day': 12,
 };
 
-/** Fallback scrip codes from official examples / common equity underliers. */
+/** Fallback scrip codes from official examples / common underliers + NSE index tokens. */
 export const FALLBACK_SCRIP_BY_SYMBOL = {
   RELIANCE: 'NSE_2885',
   TCS: 'NSE_11536',
@@ -66,6 +66,14 @@ export const FALLBACK_SCRIP_BY_SYMBOL = {
   JSWSTEEL: 'NSE_11723',
   ITC: 'NSE_1660',
   TATAMOTORS: 'NSE_3456',
+  // Indices — REST uses NIDX_/BIDX_ (equity CSV alone never includes these)
+  NIFTY: 'NIDX_26000',
+  NIFTY50: 'NIDX_26000',
+  BANKNIFTY: 'NIDX_26009',
+  FINNIFTY: 'NIDX_26037',
+  MIDCPNIFTY: 'NIDX_26074',
+  INDIAVIX: 'NIDX_26017',
+  SENSEX: 'BIDX_1',
 };
 
 const instrumentCache = {
@@ -246,45 +254,84 @@ function parseCsv(text) {
   });
 }
 
-/** Refresh equity instrument map (TRADING_SYMBOL / SYMBOL_NAME → EXCH_SECURITY_ID). */
+/** Refresh equity + index instrument map (SYMBOL → SEGMENT_SECURITY_ID). */
 export async function refreshIndstocksInstrumentMap(accessToken) {
-  const { text } = await indFetch('/market/instruments', accessToken, {
-    searchParams: { source: 'equity' },
-    accept: 'text/csv,*/*',
-  });
-  const rows = parseCsv(text);
   const map = new Map();
-  for (const row of rows) {
-    const exch = (row.EXCH || 'NSE').toUpperCase();
-    const sid = row.SECURITY_ID;
-    if (!sid) continue;
-    const scrip = `${exch}_${sid}`;
-    const names = [row.SYMBOL_NAME, row.TRADING_SYMBOL, row.CUSTOM_SYMBOL]
-      .map((s) => String(s || '').toUpperCase().replace(/-EQ$/, '').trim())
-      .filter(Boolean);
-    for (const n of names) {
-      if (!map.has(n)) map.set(n, scrip);
+
+  const ingest = (rows, source) => {
+    for (const row of rows) {
+      const sid = row.SECURITY_ID;
+      if (!sid) continue;
+      const exch = (row.EXCH || 'NSE').toUpperCase();
+      let scrip;
+      if (source === 'index') {
+        // Glossary: REST index scrips use NIDX_/BIDX_, not NSE_/BSE_.
+        if (exch === 'BSE' || exch === 'BIDX') scrip = `BIDX_${sid}`;
+        else scrip = `NIDX_${sid}`;
+      } else {
+        scrip = `${exch}_${sid}`;
+      }
+      const names = [row.SYMBOL_NAME, row.TRADING_SYMBOL, row.CUSTOM_SYMBOL]
+        .map((s) =>
+          String(s || '')
+            .toUpperCase()
+            .replace(/-EQ$/, '')
+            .replace(/\s+/g, '')
+            .trim(),
+        )
+        .filter(Boolean);
+      for (const n of names) {
+        if (!map.has(n)) map.set(n, scrip);
+      }
+    }
+  };
+
+  for (const source of ['equity', 'index']) {
+    try {
+      const { text } = await indFetch('/market/instruments', accessToken, {
+        searchParams: { source },
+        accept: 'text/csv,*/*',
+      });
+      ingest(parseCsv(text), source);
+    } catch (e) {
+      console.warn(`[indstocks] instruments source=${source} failed`, e?.message || e);
     }
   }
-  // seed fallbacks
+
+  // seed fallbacks (indices included)
   for (const [sym, scrip] of Object.entries(FALLBACK_SCRIP_BY_SYMBOL)) {
     if (!map.has(sym)) map.set(sym, scrip);
   }
+  // Friendly aliases
+  if (map.has('NIFTY') && !map.has('NIFTY50')) {
+    map.set('NIFTY50', map.get('NIFTY'));
+  }
+
   instrumentCache.at = Date.now();
   instrumentCache.bySymbol = map;
   return map.size;
 }
 
-export function resolveScripCode(symbol, exchange = 'NSE') {
-  const key = String(symbol || '')
+export function normalizeIndSymbolKey(symbol) {
+  return String(symbol || '')
     .toUpperCase()
     .replace(/^NSE:/, '')
+    .replace(/^BSE:/, '')
+    .replace(/^NIDX:/, '')
+    .replace(/^BIDX:/, '')
     .replace(/-EQ$/, '')
+    .replace(/\s+/g, '')
     .trim();
+}
+
+export function resolveScripCode(symbol, exchange = 'NSE') {
+  const key = normalizeIndSymbolKey(symbol);
+  if (!key) return null;
   if (instrumentCache.bySymbol.has(key)) return instrumentCache.bySymbol.get(key);
   if (FALLBACK_SCRIP_BY_SYMBOL[key]) return FALLBACK_SCRIP_BY_SYMBOL[key];
+  // Alias: "NIFTY 50" already stripped spaces → NIFTY50
+  if (key === 'NIFTY50' && FALLBACK_SCRIP_BY_SYMBOL.NIFTY) return FALLBACK_SCRIP_BY_SYMBOL.NIFTY;
   if (/^[A-Z]+_\d+$/.test(key)) return key;
-  // last resort: not found
   return null;
 }
 
