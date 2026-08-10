@@ -19,6 +19,7 @@ import StrategyPayoffTable from './strategy/StrategyPayoffTable';
 import StrikePricePicker from './strategy/StrikePricePicker';
 import SymbolMarketPicker from './strategy/SymbolMarketPicker';
 import { queueStrategyForPaperTrading } from '../services/paperTradingBridge';
+import { SHOW_PAPER_TRADING } from '../constants/featureFlags';
 
 interface Leg {
   id: number;
@@ -318,15 +319,17 @@ export default function StrategyBuilder({ onNavigate }: StrategyBuilderProps) {
             <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-[#d4af37]">Strategy Legs</h3>
               <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={sendToPaperTrading}
-                  disabled={legs.length < 1}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 text-xs rounded-lg border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors font-bold disabled:opacity-40"
-                  title="Execute this strategy in Paper Trading"
-                >
-                  <Wallet className="w-3.5 h-3.5" /> Paper Trade
-                </button>
+                {SHOW_PAPER_TRADING ? (
+                  <button
+                    type="button"
+                    onClick={sendToPaperTrading}
+                    disabled={legs.length < 1}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 text-xs rounded-lg border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors font-bold disabled:opacity-40"
+                    title="Execute this strategy in Paper Trading"
+                  >
+                    <Wallet className="w-3.5 h-3.5" /> Paper Trade
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={addLeg}

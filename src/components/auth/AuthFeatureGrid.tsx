@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { PAGE_NAMES } from '../../constants/brandLabels';
-import { SHOW_INDICATORS } from '../../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../../constants/featureFlags';
 
 type VizKind = 'bars' | 'line' | 'ladder' | 'tiles' | 'scan' | 'chat';
 
@@ -53,14 +53,19 @@ const LOGIN_FEATURES: Feature[] = [
         },
       ]
     : []),
-  {
-    id: 'papertrading',
-    title: PAGE_NAMES.papertrading,
-    detail: 'Practice desk',
-    description: 'Simulate trades with live market context — build process before risking capital.',
-    icon: Wallet,
-    viz: 'bars',
-  },
+  ...(SHOW_PAPER_TRADING
+    ? [
+        {
+          id: 'papertrading',
+          title: PAGE_NAMES.papertrading,
+          detail: 'Practice desk',
+          description:
+            'Simulate trades with live market context — build process before risking capital.',
+          icon: Wallet,
+          viz: 'bars' as const,
+        },
+      ]
+    : []),
   {
     id: 'tradingjournal',
     title: PAGE_NAMES.tradingjournal,

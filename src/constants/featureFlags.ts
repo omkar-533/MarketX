@@ -13,5 +13,8 @@ export const SHOW_OPTION_CHAIN = false;
 /** OI Intelligence — fully hidden with Option Chain for now. */
 export const SHOW_OI_INTELLIGENCE = false;
 
+/** Paper Trading — fully hidden from the product for now. */
+export const SHOW_PAPER_TRADING = false;
+
 /** @deprecated import from liveMarket.ts */
 export { LIVE_MARKET_DATA } from './liveMarket';

@@ -12,6 +12,7 @@ import type { User } from '../hooks/useAuth';
 import { usePlansCatalog } from '../hooks/usePlansCatalog';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
 import AccessUnlockPanel from './access/AccessUnlockPanel';
+import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../constants/featureFlags';
 
 interface SubscriptionProps {
   user: User | null;
@@ -67,8 +68,10 @@ export default function Subscription({
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan covers Wolf AI, Wolf Mentor, Indicators, Paper Trading, and Trading Journal —
-          or unlock free with desk verification.
+          Every plan covers Wolf AI, Wolf Mentor
+          {SHOW_INDICATORS ? ', Indicators' : ''}
+          {SHOW_PAPER_TRADING ? ', Paper Trading' : ''}
+          , and Trading Journal — or unlock free with desk verification.
         </p>
       </div>
 

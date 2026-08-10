@@ -6,6 +6,7 @@ import {
   SHOW_INDICATORS,
   SHOW_OI_INTELLIGENCE,
   SHOW_OPTION_CHAIN,
+  SHOW_PAPER_TRADING,
   SHOW_TERMINAL,
 } from '../constants/featureFlags';
 
@@ -23,7 +24,9 @@ const commands = [
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: 'Open Terminal', shortcut: 'C' }] : []),
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },
-  { id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' },
+  ...(SHOW_PAPER_TRADING
+    ? [{ id: 'papertrading', label: 'Open Paper Trading', shortcut: 'P' }]
+    : []),
   ...(SHOW_OPTION_CHAIN ? [{ id: 'optionchain', label: 'Open Option Chain', shortcut: 'O' }] : []),
   ...(SHOW_OI_INTELLIGENCE
     ? [{ id: 'oiintelligence', label: 'Open AI Intelligence', shortcut: 'Q' }]

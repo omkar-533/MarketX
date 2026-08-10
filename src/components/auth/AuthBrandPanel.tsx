@@ -10,13 +10,13 @@ import {
   BRAND_TAGLINE_FULL,
   PAGE_NAMES,
 } from '../../constants/brandLabels';
-import { SHOW_INDICATORS } from '../../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../../constants/featureFlags';
 
 const capabilities = [
   { icon: Sparkles, text: PAGE_NAMES['wolf-ai'] },
   { icon: GraduationCap, text: PAGE_NAMES['mentor-ai'] },
   ...(SHOW_INDICATORS ? [{ icon: Code2, text: PAGE_NAMES.indicators }] : []),
-  { icon: Wallet, text: PAGE_NAMES.papertrading },
+  ...(SHOW_PAPER_TRADING ? [{ icon: Wallet, text: PAGE_NAMES.papertrading }] : []),
   { icon: NotebookPen, text: PAGE_NAMES.tradingjournal },
 ];
 
@@ -79,8 +79,9 @@ export default function AuthBrandPanel({ variant = 'modal' }: AuthBrandPanelProp
           </h2>
           <p className="auth-ai-tagline">{BRAND_TAGLINE_FULL}</p>
           <p className="auth-ai-lead">
-            AI-powered market intelligence with Wolf AI, Mentor, paper trading, and journaling —
-            before you even sign in.
+            {SHOW_PAPER_TRADING
+              ? 'AI-powered market intelligence with Wolf AI, Mentor, paper trading, and journaling — before you even sign in.'
+              : 'AI-powered market intelligence with Wolf AI, Mentor, and journaling — before you even sign in.'}
           </p>
         </motion.div>
 

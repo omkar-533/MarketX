@@ -15,7 +15,7 @@ import AuthForgotForm, { type AuthForgotFormProps as ForgotFormProps } from './A
 import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './AuthSignupForm';
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
-import { SHOW_INDICATORS } from '../../constants/featureFlags';
+import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../../constants/featureFlags';
 import { TRIAL_DAYS, type PlanId } from '../../constants/plans';
 import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
@@ -72,7 +72,11 @@ const STORY_BANDS_ALL = [
   },
 ] as const;
 
-const STORY_BANDS = STORY_BANDS_ALL.filter((b) => SHOW_INDICATORS || b.id !== 'indicators');
+const STORY_BANDS = STORY_BANDS_ALL.filter(
+  (b) =>
+    (SHOW_INDICATORS || b.id !== 'indicators') &&
+    (SHOW_PAPER_TRADING || b.id !== 'papertrading'),
+);
 
 const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader-${n}.jpg?v=3`;
 
@@ -494,9 +498,13 @@ export default function AuthPage(props: AuthPageProps) {
               </h2>
               <Reveal delay={0.26} y={22}>
                 <p className="auth-lux__section-sub">
-                  {SHOW_INDICATORS
+                  {SHOW_INDICATORS && SHOW_PAPER_TRADING
                     ? 'Five core modules — Wolf AI, Wolf Mentor, Indicators, Paper Trading, and Trading Journal in one luxury workspace.'
-                    : 'Core modules — Wolf AI, Wolf Mentor, Paper Trading, and Trading Journal in one luxury workspace.'}
+                    : SHOW_INDICATORS
+                      ? 'Core modules — Wolf AI, Wolf Mentor, Indicators, and Trading Journal in one luxury workspace.'
+                      : SHOW_PAPER_TRADING
+                        ? 'Core modules — Wolf AI, Wolf Mentor, Paper Trading, and Trading Journal in one luxury workspace.'
+                        : 'Core modules — Wolf AI, Wolf Mentor, and Trading Journal in one luxury workspace.'}
                 </p>
               </Reveal>
             </div>

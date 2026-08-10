@@ -12,6 +12,7 @@ import {
   SHOW_INDICATORS,
   SHOW_OI_INTELLIGENCE,
   SHOW_OPTION_CHAIN,
+  SHOW_PAPER_TRADING,
   SHOW_TERMINAL,
 } from '../constants/featureFlags';
 import BrandMark from './BrandMark';
@@ -45,7 +46,9 @@ const productNavItems = [
   ...(SHOW_INDICATORS
     ? [{ id: 'indicators', label: PAGE_NAMES.indicators, icon: Code2 }]
     : []),
-  { id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet },
+  ...(SHOW_PAPER_TRADING
+    ? [{ id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet }]
+    : []),
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
 ];
 

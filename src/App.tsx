@@ -9,6 +9,7 @@ import {
   SHOW_INDICATORS,
   SHOW_OI_INTELLIGENCE,
   SHOW_OPTION_CHAIN,
+  SHOW_PAPER_TRADING,
   SHOW_TERMINAL,
 } from './constants/featureFlags';
 
@@ -60,6 +61,7 @@ const HIDDEN_TABS = new Set([
   ...(SHOW_OPTION_CHAIN ? [] : (['optionchain'] as const)),
   ...(SHOW_INDICATORS ? [] : (['indicators'] as const)),
   ...(SHOW_TERMINAL ? [] : (['terminal'] as const)),
+  ...(SHOW_PAPER_TRADING ? [] : (['papertrading'] as const)),
 ]);
 const DEFAULT_TAB = 'wolf-ai';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
@@ -81,7 +83,7 @@ const VALID_TABS = new Set([
   ...(SHOW_TERMINAL ? (['terminal'] as const) : []),
   'trafi', // legacy alias → normalized to wolf-ai
   ...(SHOW_INDICATORS ? (['indicators'] as const) : []),
-  'papertrading',
+  ...(SHOW_PAPER_TRADING ? (['papertrading'] as const) : []),
   'backtesting',
   'heatmap',
   'signals',
@@ -321,7 +323,11 @@ function AppWorkspace() {
           />
         );
       case 'papertrading':
-        return <PaperTrading user={auth.user} onNavigate={handleTabChange} />;
+        return SHOW_PAPER_TRADING ? (
+          <PaperTrading user={auth.user} onNavigate={handleTabChange} />
+        ) : (
+          <MasterAI />
+        );
       case 'backtesting':
         return <Backtesting />;
       case 'heatmap':
