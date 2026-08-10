@@ -136,7 +136,7 @@ async function testRateLimit() {
 
 async function testServices() {
   const svc = initMarketDataService(mockMarketDataProvider);
-  const view = await svc.connect();
+  const view = await svc.authenticate();
   assert(view.orderAccess === 'NOT ENABLED', 'no orders');
   assert(view.mode === 'DEMO', 'demo mode');
   assert(view.message.includes('DEMO'), 'demo label');
@@ -150,8 +150,23 @@ async function testServices() {
   const fno = await uni.getFNOUniverse();
   assert(fno.includes('RELIANCE'), 'universe');
 
+  await mockMarketDataProvider.authenticate();
   await svc.disconnect();
   console.log('✓ market data services');
+}
+
+async function testBrokerDetection() {
+  const { detectSupportedBrokers } = await import('./BrokerDetection');
+  const { planAuthorization } = await import('./BrokerAuthorization');
+  const d = await detectSupportedBrokers();
+  assert(d.detectedLiveBrokerLogin === false, 'never claim live login');
+  assert(d.connectable.length >= 1, 'has connectable');
+  const sahi = d.brokers.find((b) => b.id === 'sahi');
+  if (sahi) {
+    const plan = planAuthorization(sahi);
+    assert(plan.canAuthorize === false, 'sahi unsupported');
+  }
+  console.log('✓ broker detection');
 }
 
 async function main() {
@@ -161,6 +176,7 @@ async function main() {
   testCache();
   await testRateLimit();
   await testServices();
+  await testBrokerDetection();
   console.log('All marketData tests passed');
 }
 

@@ -25868,6 +25868,42 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-md-card.is-demo {
   border-color: rgba(212, 175, 55, 0.35);
 }
+.wolf-md-card.is-selected {
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.55);
+}
+.wolf-md-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin: 0 0 1rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf-text-muted);
+}
+.wolf-md-steps .is-on {
+  color: var(--tj-gold);
+}
+.wolf-md-detect__banner {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+  color: var(--tf-text-secondary);
+}
+.wolf-md-detect__banner p {
+  margin: 0;
+}
+.wolf-md-detect__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
 .wolf-md-card.is-locked {
   opacity: 0.72;
 }

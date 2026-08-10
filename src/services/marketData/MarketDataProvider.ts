@@ -21,6 +21,9 @@ export interface MarketDataProvider {
   /** True when this provider serves DEMO / simulated data only */
   readonly isDemo: boolean;
 
+  /** Official session ready on this client provider (after BrokerAuthorization). */
+  authenticate(): Promise<void>;
+  /** Alias used by older call sites */
   connect(): Promise<void>;
   disconnect(): Promise<void>;
 

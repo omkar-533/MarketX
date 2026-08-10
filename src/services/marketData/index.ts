@@ -28,4 +28,15 @@ export {
   connectIndstocksMarketData,
   disconnectMarketData,
 } from './marketDataApi';
-export { ServerMarketDataProvider, serverMarketDataProvider } from './ServerMarketDataProvider';
+export {
+  detectSupportedBrokers,
+  rememberPreferredBroker,
+  loadPreferredBrokerId,
+} from './BrokerDetection';
+export type { DetectionResult } from './BrokerDetection';
+export {
+  planAuthorization,
+  authorizeMarketData,
+  revokeMarketDataAuthorization,
+} from './BrokerAuthorization';
+export type { AuthorizationPlan, AuthMechanism, AuthorizeResult } from './BrokerAuthorization';

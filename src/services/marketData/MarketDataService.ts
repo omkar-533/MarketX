@@ -77,10 +77,18 @@ export class MarketDataService {
     };
   }
 
+  async authenticate(): Promise<MarketDataConnectionView> {
+    return this.connect();
+  }
+
   async connect(): Promise<MarketDataConnectionView> {
     this.status = 'CONNECTING';
     try {
-      await this.provider.connect();
+      if (typeof this.provider.authenticate === 'function') {
+        await this.provider.authenticate();
+      } else {
+        await this.provider.connect();
+      }
       setActiveMarketDataProvider(this.provider);
       this.historical.setProvider(this.provider);
       this.live.setProvider(this.provider);

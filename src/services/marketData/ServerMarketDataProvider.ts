@@ -29,6 +29,10 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     this.connected = true;
   }
 
+  async authenticate(): Promise<void> {
+    return this.connect();
+  }
+
   async disconnect(): Promise<void> {
     this.connected = false;
   }
