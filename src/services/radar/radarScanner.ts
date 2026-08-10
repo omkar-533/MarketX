@@ -39,7 +39,7 @@ export async function fetchMarketPulse(
   provider: MarketDataProvider = mockMarketDataProvider,
 ): Promise<{
   items: MarketPulseItem[];
-  dataMode: 'DEMO';
+  dataMode: 'DEMO' | 'LIVE';
   providerLabel: string;
 }> {
   const symbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
@@ -75,7 +75,7 @@ export async function fetchMarketPulse(
   }
   return {
     items,
-    dataMode: 'DEMO',
+    dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
     providerLabel: provider.label,
   };
 }
@@ -165,7 +165,7 @@ export async function runRadarScan(
       invalidation: setup.invalidation,
       explanation: setup.explanation,
       detectedAt: Date.now() - (symbols.length - i) * 12_000,
-      dataMode: 'DEMO',
+      dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
     });
 
     // Yield so UI stays responsive

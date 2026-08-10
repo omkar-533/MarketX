@@ -23,7 +23,7 @@ export function resultToAnalyzeContext(result: RadarResult): RadarAnalyzeContext
     status: result.status,
     scanTimestamp: result.detectedAt,
     source: 'WOLF_RADAR',
-    dataMode: 'DEMO',
+    dataMode: result.dataMode,
   };
 }
 
@@ -55,7 +55,7 @@ export function formatRadarContextMessage(ctx: RadarAnalyzeContext): string {
     `Why Wolf is watching: ${ctx.explanation}`,
     levels ? `Key levels: ${levels}.` : '',
     `Invalidation: ${ctx.invalidation}`,
-    `Data mode: ${ctx.dataMode} (simulated scan — not live licensed feed).`,
+    `Data mode: ${ctx.dataMode}${ctx.dataMode === 'DEMO' ? ' (simulated — not a live licensed feed)' : ' (authorized market-data source)'}.`,
     'Ask me what is missing, what invalidates this, or how to manage risk.',
   ]
     .filter(Boolean)

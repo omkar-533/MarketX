@@ -26,6 +26,12 @@ import type {
 } from '../../../services/radar/radarTypes';
 import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
 import { WOLF_SCORE_WEIGHTS } from '../../../services/radar/WolfScoringEngine';
+import {
+  fetchMarketDataStatus,
+  type ServerConnectionStatus,
+} from '../../../services/marketData/marketDataApi';
+import { initMarketDataService } from '../../../services/marketData/MarketDataService';
+import ConnectMarketDataModal from './ConnectMarketDataModal';
 
 type Props = {
   onAnalyze: () => void;
@@ -74,10 +80,34 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
   const [watchSymbols, setWatchSymbols] = useState(() =>
     new Set(loadWatchlist().map((w) => w.symbol)),
   );
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
 
   useEffect(() => {
+    initMarketDataService(mockMarketDataProvider);
     void fetchMarketPulse().then((p) => setPulse(p.items));
+    void fetchMarketDataStatus()
+      .then((s) => setMdStatus(s))
+      .catch(() =>
+        setMdStatus({
+          status: 'DISCONNECTED',
+          providerId: null,
+          providerName: null,
+          mode: null,
+          historical: false,
+          liveQuotes: false,
+          orderAccess: 'NOT ENABLED',
+          message: 'MARKET DATA DISCONNECTED',
+        }),
+      );
   }, []);
+
+  const dataConnected = mdStatus?.status === 'CONNECTED';
+  const dataLabel = dataConnected
+    ? mdStatus?.mode === 'DEMO'
+      ? '● DEMO MARKET DATA'
+      : '● MARKET DATA CONNECTED'
+    : '○ MARKET DATA DISCONNECTED';
 
   const statusLabel = useMemo(() => {
     if (progress.status === 'scanning') return 'SCANNING…';
@@ -88,6 +118,10 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
 
   const scan = useCallback(async () => {
     if (progress.status === 'scanning') return;
+    if (!dataConnected) {
+      setConnectOpen(true);
+      return;
+    }
     setSelected(null);
     setProgress({
       status: 'scanning',
@@ -118,7 +152,7 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         phase: 'ERROR',
       }));
     }
-  }, [market, universe, timeframe, progress.status, progress.lastScanAt]);
+  }, [market, universe, timeframe, progress.status, progress.lastScanAt, dataConnected]);
 
   const onAddWatch = (r: RadarResult) => {
     const list = addToWatchlist(r);
@@ -142,6 +176,16 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         </div>
 
         <div className="wolf-radar-desk__controls">
+          <label className="wolf-radar-desk__datasource">
+            <span>DATA SOURCE</span>
+            <button
+              type="button"
+              className={`wolf-radar-desk__source-btn ${dataConnected ? 'is-on' : ''}`}
+              onClick={() => setConnectOpen(true)}
+            >
+              {dataLabel}
+            </button>
+          </label>
           <label>
             <span>MARKET</span>
             <select value={market} onChange={(e) => setMarket(e.target.value as RadarMarket)}>
@@ -191,17 +235,36 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
           <span className={`wolf-radar-desk__status is-${progress.status}`}>
             <i /> {statusLabel}
           </span>
-          <span className="wolf-radar-desk__demo" title="Provider is demo-only">
-            {mockMarketDataProvider.label}
+          <span className="wolf-radar-desk__demo" title="Data mode">
+            {dataConnected
+              ? mdStatus?.mode === 'DEMO'
+                ? mockMarketDataProvider.label
+                : mdStatus?.providerName || 'MARKET DATA'
+              : 'Connect market data to scan'}
           </span>
         </div>
       </header>
+
+      {!dataConnected && (
+        <section className="wolf-radar-desk__connect-banner">
+          <p>Connect market data to scan markets. Demo data is clearly marked — not live.</p>
+          <button type="button" onClick={() => setConnectOpen(true)}>
+            CONNECT MARKET DATA
+          </button>
+        </section>
+      )}
 
       <section className="wolf-radar-desk__pulse" aria-label="Market pulse">
         <div className="wolf-radar-desk__section-head">
           <Activity size={14} />
           <h2>MARKET PULSE</h2>
-          <small>DEMO snapshot — not a live feed claim</small>
+          <small>
+            {dataConnected && mdStatus?.mode === 'DEMO'
+              ? 'DEMO snapshot — not a live feed claim'
+              : dataConnected
+                ? 'Authorized market-data source'
+                : 'Connect a data source to refresh pulse'}
+          </small>
         </div>
         <div className="wolf-radar-desk__pulse-grid">
           {pulse.map((p) => (
@@ -253,9 +316,13 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         {progress.status !== 'scanning' && results.length === 0 && (
           <div className="wolf-radar-desk__empty">
             <p>No setups detected</p>
-            <span>Markets are quiet right now. WOLF isn&apos;t forcing a trade.</span>
+            <span>
+              {dataConnected
+                ? "Markets are quiet right now. WOLF isn't forcing a trade."
+                : 'Connect market data, then scan.'}
+            </span>
             <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => void scan()}>
-              SCAN MARKET
+              {dataConnected ? 'SCAN MARKET' : 'CONNECT MARKET DATA'}
             </button>
           </div>
         )}
@@ -405,6 +472,13 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
           </motion.aside>
         )}
       </AnimatePresence>
+
+      <ConnectMarketDataModal
+        open={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        status={mdStatus}
+        onStatusChange={setMdStatus}
+      />
     </div>
   );
 }

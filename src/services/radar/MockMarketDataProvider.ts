@@ -1,8 +1,19 @@
 /**
- * DEMO DATA ONLY — simulated candles for WOLF RADAR development.
+ * DEMO DATA ONLY — simulated candles for WOLF RADAR / Market Data Engine.
  * Do NOT present this as live / licensed market data.
  */
-import type { MarketDataProvider } from './MarketDataProvider';
+import type { MarketDataProvider, QuoteSubscriptionCallback } from '../marketData/MarketDataProvider';
+import type {
+  MarketStatusInfo,
+  NormalizedInstrument,
+  NormalizedQuote,
+  ProviderCapabilities,
+  WolfTimeframe,
+} from '../marketData/types';
+import {
+  ALL_WOLF_TIMEFRAMES,
+  DEFAULT_DEMO_CAPABILITIES,
+} from '../marketData/types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from './radarTypes';
 
 const DEMO_UNIVERSE: Record<RadarUniverse, string[]> = {
@@ -72,50 +83,115 @@ function mulberry32(a: number) {
   };
 }
 
+function stepMsFor(timeframe: RadarTimeframe): number {
+  if (timeframe === '1D') return 86_400_000;
+  if (timeframe === '4h') return 14_400_000;
+  if (timeframe === '1h') return 3_600_000;
+  if (timeframe === '30m') return 1_800_000;
+  if (timeframe === '15m') return 900_000;
+  if (timeframe === '5m') return 300_000;
+  if (timeframe === '3m') return 180_000;
+  return 60_000;
+}
+
 export class MockMarketDataProvider implements MarketDataProvider {
   readonly id = 'mock-demo';
-  readonly label = 'SIMULATED MARKET DATA';
+  readonly label = 'DEMO MARKET DATA';
   readonly isDemo = true;
+
+  private connected = false;
+  private subSeq = 0;
+
+  async connect(): Promise<void> {
+    this.connected = true;
+  }
+
+  async disconnect(): Promise<void> {
+    this.connected = false;
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return { ...DEFAULT_DEMO_CAPABILITIES };
+  }
+
+  getSupportedTimeframes(): WolfTimeframe[] {
+    return [...ALL_WOLF_TIMEFRAMES];
+  }
+
+  async getMarketStatus(exchange = 'NSE'): Promise<MarketStatusInfo> {
+    const hour = new Date().getHours();
+    const isOpen = hour >= 9 && hour < 16;
+    return {
+      exchange,
+      isOpen,
+      session: isOpen ? 'OPEN' : 'CLOSED',
+      serverTime: Date.now(),
+      raw: 'simulated',
+    };
+  }
 
   async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
     return [...new Set(DEMO_UNIVERSE[universe] ?? DEMO_UNIVERSE['F&O'])];
   }
 
-  async getQuote(symbol: string) {
+  async getInstrumentList(): Promise<NormalizedInstrument[]> {
+    const symbols = await this.getSymbols('F&O', 'NSE');
+    return symbols.map((symbol) => ({
+      wolfInstrumentId: `NSE:EQ:${symbol}`,
+      symbol,
+      exchange: 'NSE',
+      instrumentToken: `demo-${symbol}`,
+      tradingSymbol: symbol,
+      instrumentType: 'EQUITY',
+      expiry: null,
+      strike: null,
+      optionType: null,
+      lotSize: 1,
+      tickSize: 0.05,
+      currency: 'INR',
+    }));
+  }
+
+  async getQuote(symbol: string): Promise<NormalizedQuote> {
     const base = BASE_PRICES[symbol] ?? 1000;
     const rnd = mulberry32(hashSeed(symbol + ':q'));
     const changePercent = (rnd() - 0.48) * 2.4;
+    const lastPrice = Number((base * (1 + changePercent / 100)).toFixed(2));
     return {
       symbol,
-      price: Number((base * (1 + changePercent / 100)).toFixed(2)),
+      exchange: 'NSE',
+      instrumentToken: `demo-${symbol}`,
+      timestamp: Date.now(),
+      lastPrice,
+      price: lastPrice,
       changePercent: Number(changePercent.toFixed(2)),
+      volume: Math.floor(500_000 + rnd() * 2_000_000),
+      dayOpen: Number((base * 0.995).toFixed(2)),
+      dayHigh: Number((base * 1.012).toFixed(2)),
+      dayLow: Number((base * 0.988).toFixed(2)),
+      previousClose: base,
     };
   }
 
   async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
+    const to = Date.now();
+    const from = to - bars * stepMsFor(timeframe);
+    return this.getHistoricalCandles(symbol, timeframe, from, to);
+  }
+
+  async getHistoricalCandles(
+    symbol: string,
+    timeframe: RadarTimeframe | WolfTimeframe,
+    from: number,
+    to: number,
+  ): Promise<Candle[]> {
+    const tf = timeframe as RadarTimeframe;
+    const step = stepMsFor(tf);
+    const bars = Math.max(2, Math.min(500, Math.floor((to - from) / step) + 1));
     const base = BASE_PRICES[symbol] ?? 1000;
-    const rnd = mulberry32(hashSeed(`${symbol}:${timeframe}`));
+    const rnd = mulberry32(hashSeed(`${symbol}:${tf}`));
     const out: Candle[] = [];
     let price = base * (0.97 + rnd() * 0.04);
-    const now = Date.now();
-    const stepMs =
-      timeframe === '1D'
-        ? 86_400_000
-        : timeframe === '4h'
-          ? 14_400_000
-          : timeframe === '1h'
-            ? 3_600_000
-            : timeframe === '30m'
-              ? 1_800_000
-              : timeframe === '15m'
-                ? 900_000
-                : timeframe === '5m'
-                  ? 300_000
-                  : timeframe === '3m'
-                    ? 180_000
-                    : 60_000;
-
-    // Pattern recipes so engines can detect something meaningful in DEMO mode.
     const recipe =
       symbol === 'RELIANCE' || symbol === 'TATAMOTORS'
         ? 'sweep_reclaim'
@@ -126,12 +202,12 @@ export class MockMarketDataProvider implements MarketDataProvider {
             : 'random';
 
     for (let i = bars; i >= 0; i--) {
-      const t = bars - i; // 0 → bars
+      const t = bars - i;
       let drift = (rnd() - 0.48) * (base * 0.0035);
       if (recipe === 'sweep_reclaim') {
         if (t < bars * 0.55) drift = (rnd() - 0.55) * (base * 0.002);
-        else if (t < bars * 0.72) drift = -(base * 0.0045); // selloff into lows
-        else drift = base * 0.0055; // reclaim
+        else if (t < bars * 0.72) drift = -(base * 0.0045);
+        else drift = base * 0.0055;
       } else if (recipe === 'breakout') {
         if (t < bars * 0.65) drift = (rnd() - 0.5) * (base * 0.0015);
         else drift = base * 0.006;
@@ -143,7 +219,12 @@ export class MockMarketDataProvider implements MarketDataProvider {
       const close = Math.max(1, open + drift);
       const wick = recipe === 'sweep_reclaim' && t > bars * 0.65 && t < bars * 0.78 ? 0.004 : 0.002;
       const high = Math.max(open, close) * (1 + rnd() * wick);
-      const low = Math.min(open, close) * (1 - rnd() * (wick + (recipe === 'sweep_reclaim' && t > bars * 0.68 && t < bars * 0.75 ? 0.004 : 0)));
+      const low =
+        Math.min(open, close) *
+        (1 -
+          rnd() *
+            (wick +
+              (recipe === 'sweep_reclaim' && t > bars * 0.68 && t < bars * 0.75 ? 0.004 : 0)));
       const volBoost =
         recipe === 'sweep_reclaim' && t > bars * 0.7
           ? 2.4
@@ -151,11 +232,14 @@ export class MockMarketDataProvider implements MarketDataProvider {
             ? 2.1
             : 1;
       const volume = Math.floor((200_000 + rnd() * 1_200_000) * volBoost);
+      const timestamp = to - i * step;
+      if (timestamp < from - step) continue;
       out.push({
         symbol,
         exchange: 'NSE',
-        timeframe,
-        timestamp: now - i * stepMs,
+        instrumentToken: `demo-${symbol}`,
+        timeframe: tf,
+        timestamp,
         open: Number(open.toFixed(2)),
         high: Number(high.toFixed(2)),
         low: Number(low.toFixed(2)),
@@ -165,6 +249,16 @@ export class MockMarketDataProvider implements MarketDataProvider {
       price = close;
     }
     return out;
+  }
+
+  async subscribeQuotes(_symbols: string[], _callback: QuoteSubscriptionCallback): Promise<string> {
+    // DEMO has liveQuotes:false — callers should not reach here.
+    void this.connected;
+    throw new Error('Demo provider does not support live quote subscriptions');
+  }
+
+  async unsubscribeQuotes(_subscriptionId: string): Promise<void> {
+    this.subSeq += 0;
   }
 }
 

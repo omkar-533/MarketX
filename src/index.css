@@ -25731,6 +25731,190 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.65rem;
   letter-spacing: 0.04em;
 }
+.wolf-radar-desk__datasource {
+  min-width: 11rem;
+}
+.wolf-radar-desk__source-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--tf-text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.wolf-radar-desk__source-btn.is-on {
+  color: var(--tj-gold);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.wolf-radar-desk__connect-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.85rem 0 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(0, 0, 0, 0.25));
+}
+.wolf-radar-desk__connect-banner p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--tf-text-secondary);
+  max-width: 36rem;
+}
+.wolf-radar-desk__connect-banner button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--tj-gold);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wolf-md-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.wolf-md-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+}
+.wolf-md-modal__panel {
+  position: relative;
+  width: min(920px, 100%);
+  max-height: min(86vh, 840px);
+  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: #0b0b0c;
+  padding: 1.1rem 1.15rem 1.25rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+.wolf-md-modal__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.wolf-md-modal__head h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: var(--tj-gold);
+}
+.wolf-md-modal__head p {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tf-text-muted);
+}
+.wolf-md-modal__x {
+  border: 0;
+  background: transparent;
+  color: var(--tf-text-muted);
+  cursor: pointer;
+}
+.wolf-md-modal__status {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.06);
+  font-size: 0.75rem;
+  color: var(--tf-text-secondary);
+}
+.wolf-md-modal__status button {
+  justify-self: start;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--tf-text-muted);
+  cursor: pointer;
+}
+.wolf-md-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.wolf-md-card {
+  text-align: left;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  cursor: pointer;
+}
+.wolf-md-card.is-demo {
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.wolf-md-card.is-locked {
+  opacity: 0.72;
+}
+.wolf-md-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.wolf-md-card__top strong {
+  font-size: 0.85rem;
+}
+.wolf-md-card__top em {
+  font-style: normal;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: var(--tj-gold);
+}
+.wolf-md-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.7rem;
+  color: var(--tf-text-muted);
+  display: grid;
+  gap: 0.2rem;
+}
+.wolf-md-card small {
+  display: block;
+  margin-top: 0.55rem;
+  font-size: 0.68rem;
+  color: var(--tf-text-muted);
+}
+.wolf-md-card__lock,
+.wolf-md-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.55rem;
+  font-size: 0.68rem;
+  color: var(--tj-gold);
+}
+.wolf-md-modal__error {
+  margin: 0.85rem 0 0;
+  color: #fb7185;
+  font-size: 0.75rem;
+}
 @keyframes wolf-radar-pulse {
   0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); }
   70% { box-shadow: 0 0 0 8px transparent; }

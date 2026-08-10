@@ -28,6 +28,7 @@ export type RadarSetupType =
 export type Candle = {
   symbol: string;
   exchange: string;
+  instrumentToken?: string;
   timeframe: RadarTimeframe;
   timestamp: number;
   open: number;
@@ -35,6 +36,8 @@ export type Candle = {
   low: number;
   close: number;
   volume: number;
+  /** Aggregated from a smaller timeframe when provider lacks native TF */
+  derived?: boolean;
 };
 
 export type ScoreBreakdown = {
@@ -80,8 +83,8 @@ export type RadarResult = {
   invalidation: string;
   explanation: string;
   detectedAt: number;
-  /** DEMO / SIMULATED — never claim live unless provider is real */
-  dataMode: 'DEMO';
+  /** DEMO until a real authorized provider is active */
+  dataMode: 'DEMO' | 'LIVE';
 };
 
 export type RadarScanRequest = {
@@ -143,5 +146,5 @@ export type RadarAnalyzeContext = {
   status: RadarSetupStatus;
   scanTimestamp: number;
   source: 'WOLF_RADAR';
-  dataMode: 'DEMO';
+  dataMode: 'DEMO' | 'LIVE';
 };
