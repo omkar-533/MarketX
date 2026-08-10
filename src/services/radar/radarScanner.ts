@@ -1,7 +1,6 @@
 /**
- * Radar scanner orchestration.
- * MarketDataProvider → Technical → Structure → Liquidity → Volume → Setup → Score.
- * Default provider is DEMO / SIMULATED — do not claim live.
+ * Radar scanner — FULL selected universe is evaluated.
+ * TOP_N / displayLimit only slices RESULTS after ranking — never the scan set.
  */
 import type { MarketDataProvider } from './MarketDataProvider';
 import { mockMarketDataProvider } from './MockMarketDataProvider';
@@ -12,22 +11,42 @@ import { detectVolume } from './VolumeEngine';
 import { classifySetup } from './SetupEngine';
 import { computeWolfScore } from './WolfScoringEngine';
 import { cacheLastResults } from './radarStore';
+import { evaluateStrategy } from '../strategy/conditionEvaluator';
+import type { StrategyDefinition } from '../strategy/strategyTypes';
 import type {
   MarketPulseItem,
+  RadarBias,
   RadarResult,
+  RadarScanIssue,
+  RadarScanOutcome,
   RadarScanProgress,
   RadarScanRequest,
-  RadarBias,
+  RadarScanSummary,
+  ScoreBreakdown,
 } from './radarTypes';
 
 export type ScanCallbacks = {
   onProgress?: (p: RadarScanProgress) => void;
 };
 
-const PHASES = ['UNIVERSE', 'LIQUIDITY', 'STRUCTURE', 'VOLUME', 'MOMENTUM', 'SCORING'] as const;
+export type RunRadarScanOptions = ScanCallbacks & {
+  strategy?: StrategyDefinition | null;
+  displayLimit?: number;
+};
 
 const MIN_SCORE = 62;
-const TOP_N = 5;
+/** Display only — full universe still scanned */
+export const DEFAULT_DISPLAY_LIMIT = 20;
+
+const EMPTY_BREAKDOWN: ScoreBreakdown = {
+  structure: 0,
+  liquidity: 0,
+  volume: 0,
+  momentum: 0,
+  htfAlignment: 0,
+  volatility: 0,
+  setupQuality: 0,
+};
 
 function htfFromTrend(t: 'up' | 'down' | 'range'): RadarBias {
   if (t === 'up') return 'bullish';
@@ -45,13 +64,8 @@ export async function fetchMarketPulse(
   const symbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
   const items: MarketPulseItem[] = [];
   for (const symbol of symbols) {
-    // Demo pulse: synthetic index-like series from F&O proxies when not in BASE map
     const proxy =
-      symbol === 'NIFTY'
-        ? 'RELIANCE'
-        : symbol === 'BANKNIFTY'
-          ? 'HDFCBANK'
-          : 'SBIN';
+      symbol === 'NIFTY' ? 'RELIANCE' : symbol === 'BANKNIFTY' ? 'HDFCBANK' : 'SBIN';
     const candles = await provider.getCandles(proxy, '15m', 60);
     const trend = trendDirection(candles);
     const tech = analyzeTechnical(candles);
@@ -80,108 +94,218 @@ export async function fetchMarketPulse(
   };
 }
 
+function countStatuses(rows: RadarResult[]) {
+  let developing = 0;
+  let watch = 0;
+  let confirmed = 0;
+  for (const r of rows) {
+    if (r.status === 'SETUP DEVELOPING') developing += 1;
+    else if (r.status === 'SETUP CONFIRMED' || r.status === 'CONFIRMATION PENDING') confirmed += 1;
+    else watch += 1;
+  }
+  return { developing, watch, confirmed };
+}
+
+/**
+ * Full-universe scan. Returns ALL matches + display slice + summary.
+ * Never truncates the symbol list before evaluation.
+ */
 export async function runRadarScan(
   req: RadarScanRequest,
-  callbacks?: ScanCallbacks,
+  callbacksOrOpts?: ScanCallbacks | RunRadarScanOptions,
   provider: MarketDataProvider = mockMarketDataProvider,
 ): Promise<RadarResult[]> {
+  const outcome = await runRadarScanFull(req, callbacksOrOpts, provider);
+  return outcome.results;
+}
+
+export async function runRadarScanFull(
+  req: RadarScanRequest,
+  callbacksOrOpts?: ScanCallbacks | RunRadarScanOptions,
+  provider: MarketDataProvider = mockMarketDataProvider,
+): Promise<RadarScanOutcome> {
+  const opts: RunRadarScanOptions =
+    callbacksOrOpts && 'onProgress' in (callbacksOrOpts as object) && !('strategy' in (callbacksOrOpts as object))
+      ? { onProgress: (callbacksOrOpts as ScanCallbacks).onProgress }
+      : ((callbacksOrOpts as RunRadarScanOptions) || {});
+
+  const strategy = opts.strategy ?? null;
+  const displayLimit = Math.max(
+    1,
+    opts.displayLimit ?? req.displayLimit ?? DEFAULT_DISPLAY_LIMIT,
+  );
+
+  const started = Date.now();
   const symbols = await provider.getSymbols(req.universe, req.market);
   const total = symbols.length;
 
-  const report = (i: number, phase: string) => {
-    callbacks?.onProgress?.({
+  let matchedSoFar = 0;
+  let noMatchSoFar = 0;
+  let unavailableSoFar = 0;
+  let errorsSoFar = 0;
+
+  const report = (i: number, phase: string, currentSymbol?: string | null) => {
+    opts.onProgress?.({
       status: 'scanning',
       symbolsChecked: Math.min(total, i),
       symbolsTotal: total,
       phase,
       lastScanAt: null,
+      currentSymbol: currentSymbol ?? null,
+      matchedSoFar,
+      noMatchSoFar,
+      unavailableSoFar,
+      errorsSoFar,
     });
   };
 
-  report(0, PHASES[0]);
-  await new Promise((r) => setTimeout(r, 120));
+  report(0, 'UNIVERSE');
+  await new Promise((r) => setTimeout(r, 40));
 
-  const results: RadarResult[] = [];
+  const matches: RadarResult[] = [];
+  const issues: RadarScanIssue[] = [];
   const htfTf = req.timeframe === '1D' || req.timeframe === '4h' ? '1D' : '1h';
 
-  for (let i = 0; i < symbols.length; i++) {
-    const symbol = symbols[i];
-    const phase =
-      i < total * 0.2
-        ? 'LIQUIDITY'
-        : i < total * 0.45
-          ? 'STRUCTURE'
-          : i < total * 0.7
-            ? 'VOLUME'
-            : i < total * 0.9
-              ? 'MOMENTUM'
-              : 'SCORING';
-    report(i + 1, phase);
+  // Process entire universe — batched concurrency for data fetch only
+  const CONCURRENCY = provider.isDemo ? 8 : 3;
 
-    const [ltf, htf] = await Promise.all([
-      provider.getCandles(symbol, req.timeframe, 80),
-      provider.getCandles(symbol, htfTf, 80),
-    ]);
-    if (ltf.length < 25) continue;
+  for (let start = 0; start < symbols.length; start += CONCURRENCY) {
+    const batch = symbols.slice(start, start + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (symbol, bi) => {
+        const i = start + bi;
+        report(i, 'EVALUATING', symbol);
+        try {
+          const [ltf, htf] = await Promise.all([
+            provider.getCandles(symbol, req.timeframe, 80),
+            provider.getCandles(symbol, htfTf, 80),
+          ]);
+          if (ltf.length < 25) {
+            unavailableSoFar += 1;
+            issues.push({ symbol, reason: 'Insufficient historical candles' });
+            return;
+          }
 
-    const tech = analyzeTechnical(ltf);
-    const structure = detectStructure(ltf, req.timeframe);
-    const liquidity = detectLiquidity(ltf, req.timeframe);
-    const volume = detectVolume(ltf);
-    const htfTrend = trendDirection(htf);
+          const tech = analyzeTechnical(ltf);
+          const structure = detectStructure(ltf, req.timeframe);
+          const liquidity = detectLiquidity(ltf, req.timeframe);
+          const volume = detectVolume(ltf);
+          const htfTrend = trendDirection(htf);
+          const setup = classifySetup({
+            timeframe: req.timeframe,
+            tech,
+            structure,
+            liquidity,
+            volume,
+            htfTrend,
+          });
 
-    const setup = classifySetup({
-      timeframe: req.timeframe,
-      tech,
-      structure,
-      liquidity,
-      volume,
-      htfTrend,
-    });
-    if (!setup) continue;
+          const scored = setup
+            ? computeWolfScore({ structure, liquidity, volume, tech, setup })
+            : { score: 0, breakdown: EMPTY_BREAKDOWN };
 
-    const scored = computeWolfScore({ structure, liquidity, volume, tech, setup });
-    if (scored.score < MIN_SCORE) continue;
+          let quotePrice = tech.last;
+          try {
+            const quote = await provider.getQuote(symbol);
+            quotePrice = quote.price || tech.last;
+          } catch {
+            /* quote optional */
+          }
 
-    const quote = await provider.getQuote(symbol);
-    results.push({
-      id: `radar-${symbol}-${req.timeframe}-${Date.now()}-${i}`,
-      symbol,
-      exchange: req.market,
-      price: quote.price || tech.last,
-      timeframe: req.timeframe,
-      setupType: setup.setupType,
-      direction: setup.direction,
-      score: scored.score,
-      scoreBreakdown: scored.breakdown,
-      status: setup.status,
-      confirmations: setup.confirmations,
-      structure: setup.structureLabel,
-      liquidity: setup.liquidityLabel,
-      volume: setup.volumeLabel,
-      momentum: setup.momentumLabel,
-      htfAlignment: setup.htfAlignment,
-      keyLevels: setup.keyLevels,
-      invalidation: setup.invalidation,
-      explanation: setup.explanation,
-      detectedAt: Date.now() - (symbols.length - i) * 12_000,
-      dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
-    });
+          const row: RadarResult = {
+            id: `radar-${symbol}-${req.timeframe}-${Date.now()}-${i}`,
+            symbol,
+            exchange: req.market,
+            price: quotePrice,
+            timeframe: req.timeframe,
+            setupType: setup?.setupType || 'Trend Continuation',
+            direction: setup?.direction || htfFromTrend(htfTrend),
+            score: scored.score,
+            scoreBreakdown: scored.breakdown,
+            status: setup?.status || 'WATCH',
+            confirmations: setup?.confirmations || [],
+            structure: setup?.structureLabel || structure.note || '—',
+            liquidity: setup?.liquidityLabel || liquidity.note || '—',
+            volume: setup?.volumeLabel || volume.note || '—',
+            momentum: setup?.momentumLabel || '—',
+            htfAlignment: setup?.htfAlignment ?? htfTrend !== 'range',
+            keyLevels: setup?.keyLevels || [],
+            invalidation: setup?.invalidation || '—',
+            explanation: setup?.explanation || 'Evaluated against scan engines / strategy.',
+            detectedAt: Date.now(),
+            dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
+          };
 
-    // Yield so UI stays responsive
-    if (i % 3 === 0) await new Promise((r) => setTimeout(r, 40));
+          if (strategy) {
+            const reportMatch = evaluateStrategy(strategy, row);
+            if (!reportMatch.ok) {
+              noMatchSoFar += 1;
+              return;
+            }
+            row.matchedConditions = reportMatch.matched;
+            row.strategyId = strategy.id;
+            row.strategyName = strategy.name;
+            matches.push(row);
+            matchedSoFar += 1;
+            return;
+          }
+
+          if (!setup || scored.score < MIN_SCORE) {
+            noMatchSoFar += 1;
+            return;
+          }
+          matches.push(row);
+          matchedSoFar += 1;
+        } catch (err) {
+          errorsSoFar += 1;
+          issues.push({
+            symbol,
+            reason: err instanceof Error ? err.message : 'Evaluation error',
+          });
+        }
+      }),
+    );
+    report(Math.min(total, start + batch.length), 'BATCH', batch[batch.length - 1]);
+    // Yield between batches so UI can paint
+    await new Promise((r) => setTimeout(r, provider.isDemo ? 8 : 40));
   }
 
-  const ranked = results.sort((a, b) => b.score - a.score).slice(0, TOP_N);
-  cacheLastResults(ranked);
+  const ranked = matches.sort((a, b) => b.score - a.score);
+  const displayed = ranked.slice(0, displayLimit);
+  cacheLastResults(displayed);
 
-  callbacks?.onProgress?.({
+  const statusCounts = countStatuses(ranked);
+  const summary: RadarScanSummary = {
+    universe: req.universe,
+    universeLoaded: total,
+    scanned: total,
+    matched: ranked.length,
+    unavailable: unavailableSoFar,
+    errors: errorsSoFar,
+    developing: statusCounts.developing,
+    watch: statusCounts.watch,
+    confirmed: statusCounts.confirmed,
+    durationMs: Date.now() - started,
+    displayLimit,
+    displayed: displayed.length,
+  };
+
+  opts.onProgress?.({
     status: 'complete',
     symbolsChecked: total,
     symbolsTotal: total,
     phase: 'COMPLETE',
     lastScanAt: Date.now(),
+    currentSymbol: null,
+    matchedSoFar: ranked.length,
+    noMatchSoFar,
+    unavailableSoFar,
+    errorsSoFar,
   });
 
-  return ranked;
+  console.info(
+    `[WOLF Radar] SCAN COMPLETE universe=${req.universe} loaded=${total} scanned=${total} matched=${ranked.length} displayed=${displayed.length} unavailable=${unavailableSoFar} errors=${errorsSoFar} ms=${summary.durationMs}`,
+  );
+
+  return { results: displayed, allMatches: ranked, summary, issues };
 }

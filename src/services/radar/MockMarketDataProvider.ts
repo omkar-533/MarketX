@@ -15,32 +15,9 @@ import {
   DEFAULT_DEMO_CAPABILITIES,
 } from '../marketData/types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from './radarTypes';
+import { resolveCatalogUniverse } from './universeCatalog';
 
-const DEMO_UNIVERSE: Record<RadarUniverse, string[]> = {
-  'F&O': [
-    'RELIANCE',
-    'SBIN',
-    'TATAMOTORS',
-    'HDFCBANK',
-    'INFY',
-    'ICICIBANK',
-    'AXISBANK',
-    'BAJFINANCE',
-    'TCS',
-    'KOTAKBANK',
-    'LT',
-    'MARUTI',
-    'WIPRO',
-    'ONGC',
-    'NTPC',
-    'POWERGRID',
-    'ADANIENT',
-    'HINDALCO',
-    'JSWSTEEL',
-  ],
-  NIFTY50: ['RELIANCE', 'HDFCBANK', 'INFY', 'TCS', 'ICICIBANK', 'SBIN', 'LT', 'ITC'],
-  CASH: ['RELIANCE', 'SBIN', 'TATAMOTORS', 'INFY', 'WIPRO'],
-};
+const DEMO_UNIVERSE = (universe: RadarUniverse) => resolveCatalogUniverse(universe);
 
 const BASE_PRICES: Record<string, number> = {
   RELIANCE: 2894.5,
@@ -142,7 +119,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
   }
 
   async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
-    return [...new Set(DEMO_UNIVERSE[universe] ?? DEMO_UNIVERSE['F&O'])];
+    return [...new Set(DEMO_UNIVERSE(universe))];
   }
 
   async getInstrumentList(): Promise<NormalizedInstrument[]> {

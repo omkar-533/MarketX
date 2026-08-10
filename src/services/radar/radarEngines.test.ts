@@ -122,10 +122,13 @@ describe('WolfScoringEngine', () => {
 
 describe('runRadarScan (demo provider)', () => {
   it('returns ranked DEMO results without throwing', async () => {
-    const rows = await runRadarScan({ market: 'NSE', universe: 'NIFTY50', timeframe: '5m' });
-    assert.ok(Array.isArray(rows));
-    assert.ok(rows.length <= 5);
-    for (const r of rows) {
+    const { runRadarScanFull, DEFAULT_DISPLAY_LIMIT } = await import('./radarScanner');
+    const out = await runRadarScanFull({ market: 'NSE', universe: 'NIFTY50', timeframe: '5m' });
+    assert.equal(out.summary.universeLoaded, 50);
+    assert.equal(out.summary.scanned, 50);
+    assert.ok(out.results.length <= DEFAULT_DISPLAY_LIMIT);
+    assert.ok(out.allMatches.length >= out.results.length);
+    for (const r of out.results) {
       assert.equal(r.dataMode, 'DEMO');
       assert.ok(r.score >= 0 && r.score <= 100);
     }

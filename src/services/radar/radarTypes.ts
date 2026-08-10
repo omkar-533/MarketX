@@ -4,7 +4,7 @@ export type RadarTimeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | 
 
 export type RadarMarket = 'NSE' | 'BSE';
 
-export type RadarUniverse = 'F&O' | 'NIFTY50' | 'CASH';
+export type RadarUniverse = 'F&O' | 'NIFTY50' | 'CASH' | 'BANKNIFTY';
 
 export type RadarBias = 'bullish' | 'bearish' | 'neutral';
 
@@ -95,6 +95,8 @@ export type RadarScanRequest = {
   market: RadarMarket;
   universe: RadarUniverse;
   timeframe: RadarTimeframe;
+  /** Max cards shown — FULL universe is still scanned */
+  displayLimit?: number;
 };
 
 export type RadarScanProgress = {
@@ -104,6 +106,38 @@ export type RadarScanProgress = {
   phase: string;
   lastScanAt: number | null;
   error?: string;
+  currentSymbol?: string | null;
+  matchedSoFar?: number;
+  noMatchSoFar?: number;
+  unavailableSoFar?: number;
+  errorsSoFar?: number;
+};
+
+export type RadarScanIssue = {
+  symbol: string;
+  reason: string;
+};
+
+export type RadarScanSummary = {
+  universe: RadarUniverse;
+  universeLoaded: number;
+  scanned: number;
+  matched: number;
+  unavailable: number;
+  errors: number;
+  developing: number;
+  watch: number;
+  confirmed: number;
+  durationMs: number;
+  displayLimit: number;
+  displayed: number;
+};
+
+export type RadarScanOutcome = {
+  results: RadarResult[];
+  allMatches: RadarResult[];
+  summary: RadarScanSummary;
+  issues: RadarScanIssue[];
 };
 
 export type UserSetupCondition =

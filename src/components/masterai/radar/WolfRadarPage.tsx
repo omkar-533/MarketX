@@ -9,7 +9,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { fetchMarketPulse, runRadarScan } from '../../../services/radar/radarScanner';
+import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
 import {
   addToWatchlist,
   loadLastResults,
@@ -21,7 +21,9 @@ import type {
   MarketPulseItem,
   RadarMarket,
   RadarResult,
+  RadarScanIssue,
   RadarScanProgress,
+  RadarScanSummary,
   RadarTimeframe,
   RadarUniverse,
 } from '../../../services/radar/radarTypes';
@@ -41,9 +43,12 @@ import {
   peekPendingStrategyScan,
   type PendingStrategyScan,
 } from '../../../services/strategy/strategyBridge';
-import { filterResultsByStrategy } from '../../../services/strategy/conditionEvaluator';
 import type { StrategyDefinition } from '../../../services/strategy/strategyTypes';
-import { formatTimeframeStack } from '../../../services/strategy/strategyDisplay';
+import {
+  formatCondition,
+  formatTimeframeStack,
+} from '../../../services/strategy/strategyDisplay';
+import { catalogUniverseMeta } from '../../../services/radar/universeCatalog';
 
 type Props = {
   onAnalyze: () => void;
@@ -82,6 +87,13 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
   const [pulse, setPulse] = useState<MarketPulseItem[]>([]);
   const [results, setResults] = useState<RadarResult[]>(() => loadLastResults());
+  const [allMatches, setAllMatches] = useState<RadarResult[]>([]);
+  const [scanSummary, setScanSummary] = useState<RadarScanSummary | null>(null);
+  const [scanIssues, setScanIssues] = useState<RadarScanIssue[]>([]);
+  const [showAllMatches, setShowAllMatches] = useState(false);
+  const [showIssues, setShowIssues] = useState(false);
+  const [logicOpen, setLogicOpen] = useState(true);
+  const [universeLoaded, setUniverseLoaded] = useState(() => catalogUniverseMeta('F&O').count);
   const [selected, setSelected] = useState<RadarResult | null>(null);
   const [progress, setProgress] = useState<RadarScanProgress>({
     status: 'idle',
@@ -177,36 +189,45 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       return;
     }
     setSelected(null);
+    setShowAllMatches(false);
+    setShowIssues(false);
+    setScanSummary(null);
+    setScanIssues([]);
     setProgress({
       status: 'scanning',
       symbolsChecked: 0,
-      symbolsTotal: 0,
+      symbolsTotal: universeLoaded,
       phase: activeStrategy ? `STRATEGY: ${activeStrategy.name}` : 'STARTING',
       lastScanAt: progress.lastScanAt,
+      matchedSoFar: 0,
+      noMatchSoFar: 0,
+      unavailableSoFar: 0,
+      errorsSoFar: 0,
+      currentSymbol: null,
     });
     try {
-      const rows = await runRadarScan(
-        { market, universe, timeframe },
+      const outcome = await runRadarScanFull(
+        { market, universe, timeframe, displayLimit: DEFAULT_DISPLAY_LIMIT },
         {
           onProgress: (p) => setProgress((prev) => ({ ...prev, ...p })),
+          strategy: activeStrategy,
+          displayLimit: DEFAULT_DISPLAY_LIMIT,
         },
         resolveScanProvider(mdStatus),
       );
-      const filtered = activeStrategy
-        ? filterResultsByStrategy(activeStrategy, rows).map((r) => ({
-            ...r,
-            strategyId: activeStrategy.id,
-            strategyName: activeStrategy.name,
-          }))
-        : rows;
-      setResults(filtered);
+      setAllMatches(outcome.allMatches);
+      setResults(outcome.results);
+      setScanSummary(outcome.summary);
+      setScanIssues(outcome.issues);
+      setUniverseLoaded(outcome.summary.universeLoaded);
       setProgress((p) => ({
         ...p,
         status: 'complete',
         lastScanAt: Date.now(),
-        phase: activeStrategy
-          ? `COMPLETE · ${activeStrategy.name} · ${filtered.length} matches`
-          : 'COMPLETE',
+        phase: `COMPLETE · ${outcome.summary.scanned}/${outcome.summary.universeLoaded} scanned · ${outcome.summary.matched} matches`,
+        matchedSoFar: outcome.summary.matched,
+        unavailableSoFar: outcome.summary.unavailable,
+        errorsSoFar: outcome.summary.errors,
       }));
     } catch {
       setProgress((p) => ({
@@ -225,6 +246,7 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     dataConnected,
     mdStatus,
     activeStrategy,
+    universeLoaded,
   ]);
 
   // Auto-run once when Strategy Lab hands off a setup and data is already connected
@@ -252,6 +274,28 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     onOpenLive?.();
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    void resolveScanProvider(mdStatus)
+      .getSymbols(universe, market)
+      .then((syms) => {
+        if (!cancelled) setUniverseLoaded(syms.length);
+      })
+      .catch(() => {
+        if (!cancelled) setUniverseLoaded(catalogUniverseMeta(universe).count);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [universe, market, mdStatus]);
+
+  const visibleResults = showAllMatches && allMatches.length ? allMatches : results;
+  const universeMeta = catalogUniverseMeta(universe);
+  const scanPct =
+    progress.symbolsTotal > 0
+      ? Math.round((progress.symbolsChecked / progress.symbolsTotal) * 1000) / 10
+      : 0;
+
   return (
     <div className="wolf-radar-desk">
       <header className="wolf-radar-desk__header">
@@ -260,7 +304,9 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
             <Radar size={18} className="text-gold" />
             <h1>WOLF RADAR</h1>
           </div>
-          <p className="wolf-radar-desk__subtitle">Let WOLF find the setups worth watching.</p>
+          <p className="wolf-radar-desk__subtitle">
+            Find the setups WOLF has been taught to hunt.
+          </p>
         </div>
 
         {activeStrategy && (
@@ -309,9 +355,10 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               value={universe}
               onChange={(e) => setUniverse(e.target.value as RadarUniverse)}
             >
-              <option value="F&O">F&O</option>
-              <option value="NIFTY50">NIFTY50</option>
-              <option value="CASH">CASH</option>
+              <option value="F&O">F&O ({catalogUniverseMeta('F&O').count})</option>
+              <option value="NIFTY50">NIFTY 50 (50)</option>
+              <option value="BANKNIFTY">BANKNIFTY basket</option>
+              <option value="CASH">CASH / Nifty snapshot</option>
             </select>
           </label>
           <label>
@@ -340,6 +387,9 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
 
         <div className="wolf-radar-desk__meta">
           <span>
+            Universe loaded: <b>{universeLoaded}</b> · {universeMeta.note}
+          </span>
+          <span>
             Last scan: <b>{formatTime(progress.lastScanAt)}</b>
           </span>
           <span className={`wolf-radar-desk__status is-${progress.status}`}>
@@ -354,6 +404,57 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           </span>
         </div>
       </header>
+
+      <section className="wolf-radar-desk__logic">
+        <button
+          type="button"
+          className="wolf-radar-desk__logic-toggle"
+          onClick={() => setLogicOpen((o) => !o)}
+        >
+          WHAT IS WOLF SCANNING? {logicOpen ? '▾' : '▸'}
+        </button>
+        {logicOpen && (
+          <div className="wolf-radar-desk__logic-body">
+            {activeStrategy ? (
+              <>
+                <p>
+                  <span>Strategy</span>
+                  <strong>{activeStrategy.name}</strong>
+                </p>
+                <p>
+                  <span>Timeframes</span>
+                  <strong>{formatTimeframeStack(activeStrategy)}</strong>
+                </p>
+                <p>
+                  <span>Logic</span>
+                  <strong>ALL conditions required (AND)</strong>
+                </p>
+                <ul>
+                  {activeStrategy.conditions.map((c) => (
+                    <li key={c.id}>✓ {formatCondition(c)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <p>
+                  <span>Mode</span>
+                  <strong>Default Radar engines</strong>
+                </p>
+                <p>
+                  <span>Timeframe</span>
+                  <strong>{timeframe.toUpperCase()} (+ HTF context)</strong>
+                </p>
+                <ul>
+                  <li>✓ Structure / Liquidity / Volume engines</li>
+                  <li>✓ Setup classifier + WOLF Score ≥ 62</li>
+                  <li>Tip: open Strategy Lab and SCAN a saved setup for exact conditions</li>
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
       {!dataConnected && (
         <section className="wolf-radar-desk__connect-banner">
@@ -392,20 +493,96 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         <section className="wolf-radar-desk__loading" aria-live="polite">
           <Sparkles size={16} className="text-gold" />
           <div>
-            <h3>Scanning market…</h3>
+            <h3>WOLF IS SCANNING</h3>
             <p>
-              Universe: {universe} · Symbols checked: {progress.symbolsChecked} /{' '}
-              {progress.symbolsTotal || '—'}
+              Universe: {universe} · {progress.symbolsChecked} / {progress.symbolsTotal || '—'} (
+              {scanPct}%)
             </p>
-            <p className="phase">Analyzing: {progress.phase}</p>
+            <p className="phase">
+              Current: {progress.currentSymbol || '—'} · Matched: {progress.matchedSoFar ?? 0} · No
+              match: {progress.noMatchSoFar ?? 0} · Unavailable: {progress.unavailableSoFar ?? 0} ·
+              Errors: {progress.errorsSoFar ?? 0}
+            </p>
           </div>
           <div className="wolf-radar-desk__bar">
-            <i
-              style={{
-                width: `${progress.symbolsTotal ? (progress.symbolsChecked / progress.symbolsTotal) * 100 : 12}%`,
-              }}
-            />
+            <i style={{ width: `${Math.min(100, scanPct || 4)}%` }} />
           </div>
+        </section>
+      )}
+
+      {scanSummary && progress.status === 'complete' && (
+        <section className="wolf-radar-desk__summary">
+          <h3>SCAN COMPLETE</h3>
+          <div className="wolf-radar-desk__summary-grid">
+            <div>
+              <span>Universe</span>
+              <b>{scanSummary.universe}</b>
+            </div>
+            <div>
+              <span>Scanned</span>
+              <b>
+                {scanSummary.scanned} / {scanSummary.universeLoaded}
+              </b>
+            </div>
+            <div>
+              <span>Matched</span>
+              <b>{scanSummary.matched}</b>
+            </div>
+            <div>
+              <span>Displayed</span>
+              <b>
+                {showAllMatches ? scanSummary.matched : scanSummary.displayed} (cap{' '}
+                {scanSummary.displayLimit})
+              </b>
+            </div>
+            <div>
+              <span>Developing</span>
+              <b>{scanSummary.developing}</b>
+            </div>
+            <div>
+              <span>Watch / Confirmed</span>
+              <b>
+                {scanSummary.watch} / {scanSummary.confirmed}
+              </b>
+            </div>
+            <div>
+              <span>Unavailable</span>
+              <b>{scanSummary.unavailable}</b>
+            </div>
+            <div>
+              <span>Duration</span>
+              <b>{(scanSummary.durationMs / 1000).toFixed(1)}s</b>
+            </div>
+          </div>
+          {scanSummary.matched === 0 && (
+            <p className="wolf-radar-desk__summary-empty">
+              Full scan finished — no symbols matched this strategy. Try relaxing a condition (Strategy
+              Lab). Scanner did not fail.
+            </p>
+          )}
+          <div className="wolf-radar-desk__summary-actions">
+            {scanSummary.matched > scanSummary.displayed && (
+              <button type="button" className="ghost" onClick={() => setShowAllMatches((v) => !v)}>
+                {showAllMatches
+                  ? `SHOW TOP ${scanSummary.displayLimit}`
+                  : `SHOW ALL ${scanSummary.matched}`}
+              </button>
+            )}
+            {scanIssues.length > 0 && (
+              <button type="button" className="ghost" onClick={() => setShowIssues((v) => !v)}>
+                {showIssues ? 'HIDE DATA ISSUES' : `VIEW DATA ISSUES (${scanIssues.length})`}
+              </button>
+            )}
+          </div>
+          {showIssues && (
+            <ul className="wolf-radar-desk__issues">
+              {scanIssues.slice(0, 40).map((iss) => (
+                <li key={`${iss.symbol}-${iss.reason}`}>
+                  <b>{iss.symbol}</b> — {iss.reason}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
@@ -413,7 +590,9 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         <div className="wolf-radar-desk__section-head">
           <Eye size={14} />
           <h2>WOLF DETECTED</h2>
-          <small>Top quality setups only · WOLF SCORE = setup quality, not profit odds</small>
+          <small>
+            Display after full-universe scan · WOLF SCORE = setup quality, not profit probability
+          </small>
         </div>
 
         {progress.status === 'failed' && (
@@ -423,12 +602,14 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           </div>
         )}
 
-        {progress.status !== 'scanning' && results.length === 0 && (
+        {progress.status !== 'scanning' && visibleResults.length === 0 && (
           <div className="wolf-radar-desk__empty">
-            <p>No setups detected</p>
+            <p>{scanSummary ? 'No matches after full scan' : 'No setups detected yet'}</p>
             <span>
               {dataConnected
-                ? "Markets are quiet right now. WOLF isn't forcing a trade."
+                ? scanSummary
+                  ? `${scanSummary.scanned}/${scanSummary.universeLoaded} scanned. Try another setup or timeframe.`
+                  : 'Run SCAN MARKET to evaluate the full selected universe.'
                 : 'Connect market data, then scan.'}
             </span>
             <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => void scan()}>
@@ -438,13 +619,13 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         )}
 
         <div className="wolf-radar-desk__cards">
-          {results.map((r, idx) => (
+          {visibleResults.map((r, idx) => (
             <motion.article
               key={r.id}
               className="wolf-radar-desk__card"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04 }}
+              transition={{ delay: Math.min(idx, 12) * 0.03 }}
             >
               <button
                 type="button"

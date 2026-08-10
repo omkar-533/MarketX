@@ -252,18 +252,13 @@ export function resolveScripCode(symbol, exchange = 'NSE') {
   return null;
 }
 
+import { resolveServerUniverse } from './universeLists.mjs';
+
 export function listUniverseSymbols(universe) {
-  const all = Object.keys(FALLBACK_SCRIP_BY_SYMBOL);
-  if (universe === 'NIFTY50') {
-    return ['RELIANCE', 'HDFCBANK', 'INFY', 'TCS', 'ICICIBANK', 'SBIN', 'LT', 'ITC'].filter((s) =>
-      all.includes(s),
-    );
-  }
-  if (universe === 'CASH') {
-    return ['RELIANCE', 'SBIN', 'TATAMOTORS', 'INFY', 'WIPRO'].filter((s) => all.includes(s));
-  }
-  // F&O underliers (equity charts for analysis — not option contracts yet)
-  return all;
+  const wanted = resolveServerUniverse(universe);
+  // Prefer full catalog size for honesty. LIVE candle fetch resolves scrips via
+  // instrument map + FALLBACK; unresolved symbols are marked unavailable in scanner.
+  return wanted;
 }
 
 export const INDSTOCKS_CAPABILITIES = {
