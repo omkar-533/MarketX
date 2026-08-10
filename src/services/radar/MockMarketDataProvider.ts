@@ -101,6 +101,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
 
   private connected = false;
   private subSeq = 0;
+  private readonly polls = new Map<string, ReturnType<typeof setInterval>>();
 
   async connect(): Promise<void> {
     this.connected = true;
@@ -111,11 +112,17 @@ export class MockMarketDataProvider implements MarketDataProvider {
   }
 
   async disconnect(): Promise<void> {
+    for (const id of [...this.polls.keys()]) {
+      await this.unsubscribeQuotes(id);
+    }
     this.connected = false;
   }
 
   getCapabilities(): ProviderCapabilities {
-    return { ...DEFAULT_DEMO_CAPABILITIES };
+    return {
+      ...DEFAULT_DEMO_CAPABILITIES,
+      liveQuotes: true, // demo poll updates — UI still labels DEMO, never LIVE licensed
+    };
   }
 
   getSupportedTimeframes(): WolfTimeframe[] {
@@ -159,7 +166,9 @@ export class MockMarketDataProvider implements MarketDataProvider {
   async getQuote(symbol: string): Promise<NormalizedQuote> {
     const base = BASE_PRICES[symbol] ?? 1000;
     const rnd = mulberry32(hashSeed(symbol + ':q'));
-    const changePercent = (rnd() - 0.48) * 2.4;
+    // Time wobble so DEMO LIVE chart visibly updates without claiming licensed live feed
+    const wobble = Math.sin(Date.now() / 4000 + hashSeed(symbol) / 1e9) * 0.0012;
+    const changePercent = (rnd() - 0.48) * 2.4 + wobble * 100;
     const lastPrice = Number((base * (1 + changePercent / 100)).toFixed(2));
     return {
       symbol,
@@ -255,14 +264,30 @@ export class MockMarketDataProvider implements MarketDataProvider {
     return out;
   }
 
-  async subscribeQuotes(_symbols: string[], _callback: QuoteSubscriptionCallback): Promise<string> {
-    // DEMO has liveQuotes:false — callers should not reach here.
+  async subscribeQuotes(symbols: string[], callback: QuoteSubscriptionCallback): Promise<string> {
     void this.connected;
-    throw new Error('Demo provider does not support live quote subscriptions');
+    const id = `demo-poll-${++this.subSeq}`;
+    const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
+    const tick = async () => {
+      for (const symbol of list) {
+        try {
+          callback(await this.getQuote(symbol));
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    void tick();
+    this.polls.set(id, setInterval(() => void tick(), 1_500));
+    return id;
   }
 
-  async unsubscribeQuotes(_subscriptionId: string): Promise<void> {
-    this.subSeq += 0;
+  async unsubscribeQuotes(subscriptionId: string): Promise<void> {
+    const handle = this.polls.get(subscriptionId);
+    if (handle) {
+      clearInterval(handle);
+      this.polls.delete(subscriptionId);
+    }
   }
 }
 

@@ -1,28 +1,57 @@
 import { useEffect, useState } from 'react';
-import { Bot, Bookmark, BookMarked, Radar } from 'lucide-react';
+import { Activity, Bot, Bookmark, BookMarked, Radar } from 'lucide-react';
 import MasterAI from './MasterAI';
 import WolfRadarPage from './masterai/radar/WolfRadarPage';
 import MySetupsPanel from './masterai/radar/MySetupsPanel';
 import WatchlistPanel from './masterai/radar/WatchlistPanel';
+import LiveWolfPage from './masterai/live/LiveWolfPage';
+import ConnectMarketDataModal from './masterai/radar/ConnectMarketDataModal';
 import {
   RADAR_OPEN_EVENT,
   type WolfAiDeskTab,
 } from '../services/radar/radarBridge';
+import { LIVE_WOLF_OPEN_EVENT } from '../services/live/liveBridge';
+import {
+  fetchMarketDataStatus,
+  type ServerConnectionStatus,
+} from '../services/marketData/marketDataApi';
+import { initMarketDataService } from '../services/marketData/MarketDataService';
+import { mockMarketDataProvider } from '../services/radar/MockMarketDataProvider';
+import { serverMarketDataProvider } from '../services/marketData/ServerMarketDataProvider';
 
 const TABS: { id: WolfAiDeskTab; label: string; icon: typeof Bot }[] = [
   { id: 'analyst', label: 'AI ANALYST', icon: Bot },
   { id: 'radar', label: 'WOLF RADAR', icon: Radar },
+  { id: 'live', label: 'LIVE WOLF', icon: Activity },
   { id: 'setups', label: 'MY SETUPS', icon: BookMarked },
   { id: 'watchlist', label: 'WATCHLIST', icon: Bookmark },
 ];
 
 export default function WolfAiWorkspace() {
   const [desk, setDesk] = useState<WolfAiDeskTab>('analyst');
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
 
   useEffect(() => {
+    initMarketDataService(mockMarketDataProvider);
     const openRadar = () => setDesk('radar');
+    const openLive = () => setDesk('live');
     window.addEventListener(RADAR_OPEN_EVENT, openRadar);
-    return () => window.removeEventListener(RADAR_OPEN_EVENT, openRadar);
+    window.addEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
+    void fetchMarketDataStatus()
+      .then(async (s) => {
+        setMdStatus(s);
+        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+          await initMarketDataService(serverMarketDataProvider).connect();
+        } else if (s.status === 'CONNECTED') {
+          await initMarketDataService(mockMarketDataProvider).connect();
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      window.removeEventListener(RADAR_OPEN_EVENT, openRadar);
+      window.removeEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
+    };
   }, []);
 
   return (
@@ -50,12 +79,37 @@ export default function WolfAiWorkspace() {
         <div className={desk === 'analyst' ? 'wolf-ai-workspace__pane is-show' : 'wolf-ai-workspace__pane'}>
           <MasterAI />
         </div>
-        {desk === 'radar' && <WolfRadarPage onAnalyze={() => setDesk('analyst')} />}
+        {desk === 'radar' && (
+          <WolfRadarPage
+            onAnalyze={() => setDesk('analyst')}
+            onOpenLive={() => setDesk('live')}
+          />
+        )}
+        {desk === 'live' && (
+          <LiveWolfPage
+            onAskWolf={() => setDesk('analyst')}
+            onConnectData={() => setConnectOpen(true)}
+          />
+        )}
         {desk === 'setups' && <MySetupsPanel onScanSetup={() => setDesk('radar')} />}
         {desk === 'watchlist' && (
           <WatchlistPanel onAnalyze={() => setDesk('analyst')} onOpenRadar={() => setDesk('radar')} />
         )}
       </div>
+
+      <ConnectMarketDataModal
+        open={connectOpen}
+        onClose={() => setConnectOpen(false)}
+        status={mdStatus}
+        onStatusChange={(s) => {
+          setMdStatus(s);
+          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+            void initMarketDataService(serverMarketDataProvider).connect();
+          } else if (s.status === 'CONNECTED') {
+            void initMarketDataService(mockMarketDataProvider).connect();
+          }
+        }}
+      />
     </div>
   );
 }

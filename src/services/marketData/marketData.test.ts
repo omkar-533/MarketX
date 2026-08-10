@@ -19,7 +19,7 @@ async function testMockProviderContract() {
   const caps = mockMarketDataProvider.getCapabilities();
   assert(caps.orderExecution === false, 'orderExecution must be false');
   assert(caps.historicalCandles === true, 'demo historical');
-  assert(caps.liveQuotes === false, 'demo is not live quotes');
+  assert(caps.liveQuotes === true, 'demo poll quotes enabled (still labeled DEMO in UI)');
   assert(mockMarketDataProvider.isDemo === true, 'isDemo');
 
   const quote = await mockMarketDataProvider.getQuote('RELIANCE');

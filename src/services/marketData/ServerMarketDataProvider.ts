@@ -1,6 +1,7 @@
 /**
  * Server-backed LIVE MarketDataProvider.
  * Calls WOLF /api/market-data/* — broker tokens never touch this class.
+ * Live updates: official REST polling (not undocumented WS scrape).
  */
 import type { MarketDataProvider, QuoteSubscriptionCallback } from './MarketDataProvider';
 import type {
@@ -12,11 +13,7 @@ import type {
 } from './types';
 import { ALL_WOLF_TIMEFRAMES } from './types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from '../radar/radarTypes';
-import {
-  fetchLiveCandles,
-  fetchLiveQuote,
-  fetchLiveSymbols,
-} from './marketDataApi';
+import { fetchLiveCandles, fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
 
 export class ServerMarketDataProvider implements MarketDataProvider {
   readonly id = 'indstocks-live';
@@ -24,6 +21,8 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   readonly isDemo = false;
 
   private connected = false;
+  private subSeq = 0;
+  private readonly polls = new Map<string, ReturnType<typeof setInterval>>();
 
   async connect(): Promise<void> {
     this.connected = true;
@@ -34,6 +33,9 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   }
 
   async disconnect(): Promise<void> {
+    for (const id of [...this.polls.keys()]) {
+      await this.unsubscribeQuotes(id);
+    }
     this.connected = false;
   }
 
@@ -87,6 +89,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   }
 
   async getQuote(symbol: string): Promise<NormalizedQuote> {
+    void this.connected;
     const { quote } = await fetchLiveQuote(symbol);
     const lastPrice = quote.lastPrice || quote.price;
     return {
@@ -113,12 +116,30 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     return this.getCandles(symbol, timeframe as RadarTimeframe, 80);
   }
 
-  async subscribeQuotes(_symbols: string[], _callback: QuoteSubscriptionCallback): Promise<string> {
-    void this.connected;
-    throw new Error('Live websocket subscribe not wired yet — use polling quotes');
+  async subscribeQuotes(symbols: string[], callback: QuoteSubscriptionCallback): Promise<string> {
+    const id = `poll-${++this.subSeq}`;
+    const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
+    const tick = async () => {
+      for (const symbol of list) {
+        try {
+          callback(await this.getQuote(symbol));
+        } catch {
+          /* keep polling */
+        }
+      }
+    };
+    void tick();
+    this.polls.set(id, setInterval(() => void tick(), 2_500));
+    return id;
   }
 
-  async unsubscribeQuotes(_subscriptionId: string): Promise<void> {}
+  async unsubscribeQuotes(subscriptionId: string): Promise<void> {
+    const handle = this.polls.get(subscriptionId);
+    if (handle) {
+      clearInterval(handle);
+      this.polls.delete(subscriptionId);
+    }
+  }
 }
 
 export const serverMarketDataProvider = new ServerMarketDataProvider();

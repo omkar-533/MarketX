@@ -16,6 +16,7 @@ import {
   loadWatchlist,
 } from '../../../services/radar/radarStore';
 import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
+import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type {
   MarketPulseItem,
   RadarMarket,
@@ -37,6 +38,7 @@ import type { MarketDataProvider } from '../../../services/radar/MarketDataProvi
 
 type Props = {
   onAnalyze: () => void;
+  onOpenLive?: () => void;
 };
 
 const TIMEFRAMES: RadarTimeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
@@ -65,7 +67,7 @@ function formatTime(ts: number | null) {
   });
 }
 
-export default function WolfRadarPage({ onAnalyze }: Props) {
+export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   const [market, setMarket] = useState<RadarMarket>('NSE');
   const [universe, setUniverse] = useState<RadarUniverse>('F&O');
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
@@ -184,6 +186,11 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
   const onAnalyzeClick = (r: RadarResult) => {
     setPendingRadarAnalyze(r);
     onAnalyze();
+  };
+
+  const onOpenLiveClick = (r: RadarResult) => {
+    openLiveWolfFromRadarResult(r);
+    onOpenLive?.();
   };
 
   return (
@@ -361,7 +368,7 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
               <button
                 type="button"
                 className="wolf-radar-desk__card-main"
-                onClick={() => setSelected(r)}
+                onClick={() => onOpenLiveClick(r)}
               >
                 <div className="wolf-radar-desk__card-top">
                   <div>
@@ -387,7 +394,13 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
                 <time>Detected {formatTime(r.detectedAt)}</time>
               </button>
               <div className="wolf-radar-desk__card-actions">
-                <button type="button" className="primary" onClick={() => onAnalyzeClick(r)}>
+                <button type="button" className="primary" onClick={() => onOpenLiveClick(r)}>
+                  LIVE WOLF
+                </button>
+                <button type="button" className="ghost" onClick={() => setSelected(r)}>
+                  DETAILS
+                </button>
+                <button type="button" className="ghost" onClick={() => onAnalyzeClick(r)}>
                   ANALYZE
                 </button>
                 <button
@@ -397,7 +410,7 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
                   disabled={watchSymbols.has(r.symbol)}
                 >
                   <Plus size={14} />
-                  {watchSymbols.has(r.symbol) ? 'WATCHING' : 'ADD TO WATCHLIST'}
+                  {watchSymbols.has(r.symbol) ? 'WATCHING' : 'WATCHLIST'}
                 </button>
               </div>
             </motion.article>

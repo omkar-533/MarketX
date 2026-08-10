@@ -4,7 +4,7 @@ const PENDING_KEY = 'wolf_radar_pending_analyze_v1';
 export const RADAR_ANALYZE_EVENT = 'wolf-radar-analyze';
 export const RADAR_OPEN_EVENT = 'wolf-radar-open';
 
-export type WolfAiDeskTab = 'analyst' | 'radar' | 'setups' | 'watchlist';
+export type WolfAiDeskTab = 'analyst' | 'radar' | 'setups' | 'watchlist' | 'live';
 
 export function resultToAnalyzeContext(result: RadarResult): RadarAnalyzeContext {
   return {
