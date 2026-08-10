@@ -1,7 +1,8 @@
 /**
- * LIVE WOLF chart — LWC with incremental tip updates + event markers.
+ * LIVE WOLF chart — LWC live tip updates + Terminal drawing tool rail.
+ * Reuses ChartToolRail / useChartDrawings (same stack as NativeChatChart / Terminal).
  */
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CandlestickSeries,
   ColorType,
@@ -12,11 +13,19 @@ import {
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
+  type SeriesType,
   type UTCTimestamp,
 } from 'lightweight-charts';
 import type { Candle } from '../../../services/radar/radarTypes';
 import type { MarketEvent } from '../../../services/live/liveTypes';
 import { ema, closes as candleCloses } from '../../../services/radar/TechnicalEngine';
+import type { ChartBar } from '../../../types/chart';
+import type { DrawingKind, DrawingTool, MagnetMode } from '../../../services/chart/chartDrawings';
+import ChartToolRail from '../ChartToolRail';
+import DrawingObjectToolbar from '../DrawingObjectToolbar';
+import DrawingSettingsSheet from '../DrawingSettingsSheet';
+import ChartNavControls from '../ChartNavControls';
+import { useChartDrawings } from '../useChartDrawings';
 
 export type LiveChartToggles = {
   levels: boolean;
@@ -26,6 +35,7 @@ export type LiveChartToggles = {
 
 type Props = {
   candles: Candle[];
+  symbol?: string;
   levels?: { label: string; price: number }[];
   events?: MarketEvent[];
   focusTime?: number | null;
@@ -36,6 +46,17 @@ const DEFAULT_TOGGLES: LiveChartToggles = { levels: true, markers: true, ema: tr
 
 function toUtc(ts: number): UTCTimestamp {
   return (ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts)) as UTCTimestamp;
+}
+
+function candlesToBars(candles: Candle[]): ChartBar[] {
+  return candles.map((c) => ({
+    time: c.timestamp > 1e12 ? Math.floor(c.timestamp / 1000) : Math.floor(c.timestamp),
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+    volume: c.volume,
+  }));
 }
 
 function markerFor(evt: MarketEvent): {
@@ -65,20 +86,93 @@ function markerFor(evt: MarketEvent): {
 
 export default function LiveWolfChart({
   candles,
+  symbol = 'LIVE',
   levels = [],
   events = [],
   focusTime = null,
   toggles = DEFAULT_TOGGLES,
 }: Props) {
+  const areaRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const seriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const volSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const seededRef = useRef(false);
   const lastLenRef = useRef(0);
   const lastCloseRef = useRef(0);
+
+  const [chartEpoch, setChartEpoch] = useState(0);
+  const [tool, setTool] = useState<DrawingTool>('cursor');
+  const [magnetMode, setMagnetMode] = useState<MagnetMode>('off');
+  const [snapIndicators, setSnapIndicators] = useState(true);
+  const [stayDrawing, setStayDrawing] = useState(false);
+  const [lockDrawings, setLockDrawings] = useState(false);
+  const [hideDrawings, setHideDrawings] = useState(false);
+  const [hideIndicators, setHideIndicators] = useState(false);
+  const [hidePositions, setHidePositions] = useState(false);
+  const [removeLocked, setRemoveLocked] = useState(false);
+  const [valuesTooltip, setValuesTooltip] = useState(true);
+  const [drawSettingsId, setDrawSettingsId] = useState<string | null>(null);
+
+  const bars = useMemo(() => candlesToBars(candles), [candles]);
+  const stayRef = useRef(stayDrawing);
+  stayRef.current = stayDrawing;
+
+  const drawings = useChartDrawings({
+    areaRef,
+    hostRef,
+    canvasRef,
+    chartRef,
+    seriesRef,
+    epoch: chartEpoch,
+    bars,
+    symbol: `live:${symbol}`,
+    aiShapes: [],
+    tool,
+    onShapeDone: useCallback((info?: { kind: DrawingKind }) => {
+      if (!info?.kind || !stayRef.current) setTool('cursor');
+    }, []),
+    onOpenDrawingSettings: useCallback((id: string) => {
+      setDrawSettingsId(id);
+    }, []),
+    magnetMode,
+    lockDrawings,
+    hideDrawings,
+    hideIndicators,
+    removeLocked,
+    isDark: true,
+  });
+
+  const selectedDrawing =
+    drawings.selectedId != null
+      ? drawings.drawings.find((d) => d.id === drawings.selectedId) ?? null
+      : null;
+  const settingsDrawing =
+    drawSettingsId != null
+      ? drawings.drawings.find((d) => d.id === drawSettingsId) ?? selectedDrawing
+      : null;
+
+  const onHideMode = useCallback((mode: 'drawings' | 'indicators' | 'positions' | 'all' | 'none') => {
+    if (mode === 'none') {
+      setHideDrawings(false);
+      setHideIndicators(false);
+      setHidePositions(false);
+      return;
+    }
+    if (mode === 'all') {
+      setHideDrawings(true);
+      setHideIndicators(true);
+      setHidePositions(true);
+      return;
+    }
+    if (mode === 'drawings') setHideDrawings((v) => !v);
+    if (mode === 'indicators') setHideIndicators((v) => !v);
+    if (mode === 'positions') setHidePositions((v) => !v);
+  }, []);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -119,9 +213,11 @@ export default function LiveWolfChart({
 
     chartRef.current = chart;
     candleSeriesRef.current = candlesSeries;
+    seriesRef.current = candlesSeries as unknown as ISeriesApi<SeriesType>;
     volSeriesRef.current = vol;
     emaSeriesRef.current = emaLine;
     seededRef.current = false;
+    setChartEpoch((e) => e + 1);
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
@@ -137,6 +233,7 @@ export default function LiveWolfChart({
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
+      seriesRef.current = null;
       volSeriesRef.current = null;
       emaSeriesRef.current = null;
       priceLinesRef.current = [];
@@ -168,7 +265,11 @@ export default function LiveWolfChart({
     const sameLen = seededRef.current && candles.length === lastLenRef.current;
     const onlyTipMoved = sameLen && tip.close !== lastCloseRef.current;
 
-    if (!seededRef.current || candles.length < lastLenRef.current || candles.length - lastLenRef.current > 1) {
+    if (
+      !seededRef.current ||
+      candles.length < lastLenRef.current ||
+      candles.length - lastLenRef.current > 1
+    ) {
       const data = candles.map((c) => ({
         time: toUtc(c.timestamp),
         open: c.open,
@@ -213,7 +314,6 @@ export default function LiveWolfChart({
     lastLenRef.current = candles.length;
     lastCloseRef.current = tip.close;
 
-    // Markers (best-effort for LWC 5)
     if (toggles.markers) {
       const markers = events
         .map(markerFor)
@@ -253,13 +353,96 @@ export default function LiveWolfChart({
 
   useEffect(() => {
     if (!focusTime || !chartRef.current) return;
-    const t = toUtc(focusTime);
     chartRef.current.timeScale().setVisibleLogicalRange({
       from: Math.max(0, candles.length - 40),
       to: candles.length + 2,
     });
-    void t;
   }, [focusTime, candles.length]);
 
-  return <div className="live-wolf-chart" ref={hostRef} />;
+  const drawingArmed =
+    tool !== 'cursor' && tool !== 'crosshair' && tool !== 'dot' && tool !== 'arrowCursor';
+
+  return (
+    <div className="live-wolf-chart-shell mai-tv__frame mai-tv__frame--tools mai-tv__frame--fill">
+      <ChartToolRail
+        tool={tool}
+        onToolChange={setTool}
+        magnetMode={magnetMode}
+        onMagnetMode={setMagnetMode}
+        snapIndicators={snapIndicators}
+        onSnapIndicators={setSnapIndicators}
+        stayDrawing={stayDrawing}
+        onStayDrawing={setStayDrawing}
+        lockDrawings={lockDrawings}
+        onLockDrawings={setLockDrawings}
+        hideDrawings={hideDrawings}
+        hideIndicators={hideIndicators}
+        hidePositions={hidePositions}
+        onHideMode={onHideMode}
+        drawingCount={drawings.drawings.length}
+        indicatorCount={0}
+        onUndo={drawings.undo}
+        onClearDrawings={drawings.clear}
+        onClearIndicators={() => undefined}
+        onClearAll={() => drawings.clear()}
+        removeLocked={removeLocked}
+        onRemoveLocked={setRemoveLocked}
+        valuesTooltip={valuesTooltip}
+        onValuesTooltip={setValuesTooltip}
+        variant="desk"
+      />
+
+      <div
+        ref={areaRef}
+        className="mai-nc__area live-wolf-chart__area"
+        data-drawing={drawingArmed ? 'on' : undefined}
+        data-tool={tool}
+        data-cursor={tool === 'dot' ? 'dot' : tool === 'arrowCursor' ? 'arrow' : undefined}
+        data-tooltip={valuesTooltip ? 'on' : undefined}
+      >
+        <div className="live-wolf-chart" ref={hostRef} />
+        <canvas ref={canvasRef} className="mai-nc__draw" />
+
+        {chartEpoch > 0 ? (
+          <ChartNavControls
+            chart={chartRef.current}
+            anchorRef={areaRef}
+            onReset={() => chartRef.current?.timeScale().scrollToRealTime()}
+            onInteract={() => undefined}
+          />
+        ) : null}
+
+        {selectedDrawing ? (
+          <DrawingObjectToolbar
+            drawing={selectedDrawing}
+            anchorRef={areaRef}
+            onPatch={(patch) => {
+              if (selectedDrawing) drawings.updateDrawing(selectedDrawing.id, patch);
+            }}
+            onOpenSettings={() => setDrawSettingsId(selectedDrawing.id)}
+            onClone={() => drawings.cloneSelected()}
+            onRemove={() => drawings.removeSelected()}
+            onReorder={(dir) => drawings.reorderSelected(dir)}
+          />
+        ) : null}
+
+        {settingsDrawing ? (
+          <DrawingSettingsSheet
+            drawing={settingsDrawing}
+            onPatch={(patch) => drawings.updateDrawing(settingsDrawing.id, patch)}
+            onClose={() => setDrawSettingsId(null)}
+            onClone={() => {
+              drawings.selectDrawing(settingsDrawing.id);
+              drawings.cloneSelected();
+            }}
+            onRemove={() => {
+              drawings.selectDrawing(settingsDrawing.id);
+              drawings.removeSelected();
+              setDrawSettingsId(null);
+            }}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
 }

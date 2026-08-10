@@ -350,6 +350,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
         <section className="live-wolf-desk__chart-wrap">
           <LiveWolfChart
             candles={candles}
+            symbol={payload?.symbol || 'LIVE'}
             levels={analysis?.keyLevels || []}
             events={events}
             focusTime={focusTime}
