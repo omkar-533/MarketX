@@ -1,11 +1,12 @@
 /**
- * CONNECT MARKET DATA — select DEMO or (future) official broker OAuth.
- * No broker password / PIN / OTP forms.
+ * CONNECT MARKET DATA — DEMO or INDstocks token paste (server-side only).
+ * No broker password / PIN / OTP / TOTP forms.
  */
 import { useEffect, useState } from 'react';
 import { Link2, ShieldOff, X } from 'lucide-react';
 import {
   connectDemoMarketData,
+  connectIndstocksMarketData,
   disconnectMarketData,
   fetchMarketDataProviders,
   type CatalogProvider,
@@ -13,6 +14,7 @@ import {
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
+import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 
 type Props = {
   open: boolean;
@@ -30,10 +32,14 @@ export default function ConnectMarketDataModal({
   const [providers, setProviders] = useState<CatalogProvider[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenStep, setTokenStep] = useState(false);
+  const [tokenDraft, setTokenDraft] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setTokenStep(false);
+    setTokenDraft('');
     void fetchMarketDataProviders()
       .then(setProviders)
       .catch(() =>
@@ -57,6 +63,44 @@ export default function ConnectMarketDataModal({
             enabled: true,
             notes: 'Local fallback catalog (API unreachable).',
           },
+          {
+            id: 'indstocks',
+            name: 'INDstocks (INDMoney)',
+            authenticationType: 'api_key_session',
+            supportedExchanges: ['NSE', 'BSE', 'NFO'],
+            supportedTimeframes: ['1m', '5m', '15m', '1h', '1D'],
+            capabilities: {
+              historicalCandles: true,
+              liveQuotes: true,
+              bidAsk: true,
+              marketDepth: false,
+              instrumentList: true,
+              marketStatus: false,
+              orderExecution: false,
+            },
+            isDemo: false,
+            enabled: true,
+            notes: 'Requires API server. Paste dashboard access token only.',
+          },
+          {
+            id: 'sahi',
+            name: 'Sahi',
+            authenticationType: 'unavailable',
+            supportedExchanges: [],
+            supportedTimeframes: [],
+            capabilities: {
+              historicalCandles: false,
+              liveQuotes: false,
+              bidAsk: false,
+              marketDepth: false,
+              instrumentList: false,
+              marketStatus: false,
+              orderExecution: false,
+            },
+            isDemo: false,
+            enabled: false,
+            notes: 'No public developer API.',
+          },
         ]),
       );
   }, [open]);
@@ -73,7 +117,6 @@ export default function ConnectMarketDataModal({
       onStatusChange(view);
       onClose();
     } catch (e) {
-      // Offline / API down — still allow local DEMO scan
       const svc = initMarketDataService(mockMarketDataProvider);
       await svc.connect();
       onStatusChange({
@@ -93,16 +136,43 @@ export default function ConnectMarketDataModal({
     }
   };
 
+  const activateIndstocks = async () => {
+    const token = tokenDraft.trim();
+    if (token.length < 12) {
+      setError('Paste a valid INDstocks access token first.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const view = await connectIndstocksMarketData(token);
+      setTokenDraft('');
+      const svc = initMarketDataService(serverMarketDataProvider);
+      await svc.connect();
+      onStatusChange(view);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'INDstocks connect failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onSelect = async (p: CatalogProvider) => {
     if (busy) return;
     if (p.isDemo && p.enabled) {
       await activateDemo();
       return;
     }
+    if (p.id === 'indstocks' && p.enabled) {
+      setTokenStep(true);
+      setError(null);
+      return;
+    }
     setError(
       p.enabled
-        ? 'Official broker authorization is not configured yet.'
-        : `${p.name} is not enabled. WOLF will not fake a connection.`,
+        ? 'This provider is not configured yet.'
+        : `${p.name} is not available. ${p.notes || 'No official public API.'}`,
     );
   };
 
@@ -117,6 +187,8 @@ export default function ConnectMarketDataModal({
         /* ignore */
       }
       onStatusChange(view);
+      setTokenStep(false);
+      setTokenDraft('');
     } catch {
       onStatusChange({
         status: 'DISCONNECTED',
@@ -154,45 +226,94 @@ export default function ConnectMarketDataModal({
             <span>Historical: {status.historical ? 'Available' : '—'}</span>
             <span>Live Quotes: {status.liveQuotes ? 'Available' : 'Not available'}</span>
             <span>Order Access: NOT ENABLED</span>
+            {status.permissionNote && <span className="wolf-md-modal__note">{status.permissionNote}</span>}
             <button type="button" onClick={() => void onDisconnect()} disabled={busy}>
               Disconnect
             </button>
           </div>
         )}
 
-        <div className="wolf-md-modal__grid">
-          {providers.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked'} ${p.isDemo ? 'is-demo' : ''}`}
-              onClick={() => void onSelect(p)}
-              disabled={busy}
-            >
-              <div className="wolf-md-card__top">
-                <strong>{p.name}</strong>
-                {p.isDemo ? <em>DEMO</em> : p.enabled ? <em>READY</em> : <em>SOON</em>}
-              </div>
-              <ul>
-                <li>Historical: {p.capabilities.historicalCandles ? 'Yes' : 'No'}</li>
-                <li>Live quotes: {p.capabilities.liveQuotes ? 'Yes' : 'No'}</li>
-                <li>Exchanges: {p.supportedExchanges.join(', ') || '—'}</li>
-                <li>Order access: NOT ENABLED</li>
-              </ul>
-              <small>{p.notes || (p.enabled ? 'Select to connect' : 'Official API not wired yet')}</small>
-              {!p.enabled && !p.isDemo && (
-                <span className="wolf-md-card__lock">
-                  <ShieldOff size={12} /> No fake connect
-                </span>
-              )}
-              {p.isDemo && (
-                <span className="wolf-md-card__cta">
-                  <Link2 size={12} /> Use demo data
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {tokenStep ? (
+          <div className="wolf-md-token">
+            <h3>INDstocks access token</h3>
+            <ol>
+              <li>
+                Open{' '}
+                <a
+                  href="https://indstocks.com/app/api-trading/access-tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  indstocks.com → Access Tokens
+                </a>
+              </li>
+              <li>Generate a token on their site (not inside WOLF)</li>
+              <li>Paste it below — WOLF stores it encrypted on the server only</li>
+            </ol>
+            <p className="wolf-md-token__warn">
+              Never enter MPIN, OTP, or TOTP here. Order Access stays NOT ENABLED — WOLF only
+              requests market data.
+            </p>
+            <label>
+              <span>Access token</span>
+              <input
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={tokenDraft}
+                onChange={(e) => setTokenDraft(e.target.value)}
+                placeholder="Paste token — not password"
+              />
+            </label>
+            <div className="wolf-md-token__actions">
+              <button type="button" className="ghost" onClick={() => setTokenStep(false)} disabled={busy}>
+                Back
+              </button>
+              <button type="button" className="primary" onClick={() => void activateIndstocks()} disabled={busy}>
+                {busy ? 'Connecting…' : 'Connect market data'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="wolf-md-modal__grid">
+            {providers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked'} ${p.isDemo ? 'is-demo' : ''}`}
+                onClick={() => void onSelect(p)}
+                disabled={busy}
+              >
+                <div className="wolf-md-card__top">
+                  <strong>{p.name}</strong>
+                  {p.isDemo ? <em>DEMO</em> : p.enabled ? <em>READY</em> : <em>SOON</em>}
+                </div>
+                <ul>
+                  <li>Historical: {p.capabilities.historicalCandles ? 'Yes' : 'No'}</li>
+                  <li>Live quotes: {p.capabilities.liveQuotes ? 'Yes' : 'No'}</li>
+                  <li>Exchanges: {p.supportedExchanges.join(', ') || '—'}</li>
+                  <li>Order access: NOT ENABLED</li>
+                </ul>
+                <small>{p.notes || (p.enabled ? 'Select to connect' : 'Official API not available')}</small>
+                {!p.enabled && (
+                  <span className="wolf-md-card__lock">
+                    <ShieldOff size={12} /> No fake connect
+                  </span>
+                )}
+                {p.isDemo && (
+                  <span className="wolf-md-card__cta">
+                    <Link2 size={12} /> Use demo data
+                  </span>
+                )}
+                {p.id === 'indstocks' && p.enabled && (
+                  <span className="wolf-md-card__cta">
+                    <Link2 size={12} /> Connect with token
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && <p className="wolf-md-modal__error">{error}</p>}
       </div>

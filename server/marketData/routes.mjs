@@ -1,23 +1,41 @@
 /**
- * /api/market-data — connection catalog + status.
+ * /api/market-data — connection + read-only candles/quotes.
  * Tokens never leave the server. Order execution never exposed.
  */
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
-import { listProviders, getProvider, DEMO_PROVIDER } from './providersCatalog.mjs';
+import {
+  listProviders,
+  getProvider,
+  DEMO_PROVIDER,
+  INDSTOCKS_PROVIDER,
+} from './providersCatalog.mjs';
 import {
   storeCredential,
   deleteCredential,
   getCredential,
   publicView,
+  readDecryptedCredential,
 } from './credentialStore.mjs';
+import { attachOptionalAppUser } from './optionalAuth.mjs';
+import {
+  validateIndstocksToken,
+  refreshIndstocksInstrumentMap,
+  resolveScripCode,
+  listUniverseSymbols,
+  fetchIndstocksQuote,
+  fetchIndstocksCandles,
+  INDSTOCKS_CAPABILITIES,
+  INDSTOCKS_PERMISSION_NOTE,
+} from './indstocksClient.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
 
+router.use(attachOptionalAppUser);
+
 function userKeyFrom(req, res) {
-  // Prefer authenticated user id when present; else opaque session cookie.
-  const authUser = req.user?.id || req.appUser?.id;
+  const authUser = req.appUser?.id;
   if (authUser) return `user:${authUser}`;
 
   let sid = req.cookies?.[SESSION_COOKIE];
@@ -33,6 +51,26 @@ function userKeyFrom(req, res) {
     });
   }
   return `session:${sid}`;
+}
+
+function requireLiveToken(req, res) {
+  const key = userKeyFrom(req, res);
+  const record = getCredential(key);
+  if (!record || record.status !== 'CONNECTED') {
+    res.status(401).json({ error: 'Market data not connected' });
+    return null;
+  }
+  if (record.mode === 'DEMO' || record.provider === 'mock-demo') {
+    res.status(400).json({ error: 'Demo connection has no live broker feed' });
+    return null;
+  }
+  const cred = readDecryptedCredential(key);
+  const accessToken = cred?.accessToken;
+  if (!accessToken) {
+    res.status(401).json({ error: 'Market data credential missing. Reconnect.' });
+    return null;
+  }
+  return { key, record, accessToken };
 }
 
 router.get('/providers', (_req, res) => {
@@ -64,7 +102,7 @@ router.get('/status', (req, res) => {
   res.json(publicView(record));
 });
 
-router.post('/connect', (req, res) => {
+router.post('/connect', async (req, res) => {
   const key = userKeyFrom(req, res);
   const providerId = String(req.body?.providerId || '').trim();
   const provider = getProvider(providerId);
@@ -73,37 +111,75 @@ router.post('/connect', (req, res) => {
   }
   if (!provider.enabled) {
     return res.status(400).json({
-      error: `${provider.name} is not enabled yet. Official authorization will be required — no fake connect.`,
+      error: `${provider.name} is not enabled. WOLF will not fake a connection.`,
       providerId: provider.id,
       enabled: false,
     });
   }
-  if (!provider.isDemo) {
-    // Phase 12: start OAuth redirect here. Do not accept passwords.
-    return res.status(501).json({
-      error: 'Official broker authorization is not configured yet.',
-      providerId: provider.id,
+
+  if (provider.isDemo) {
+    const view = storeCredential({
+      userKey: key,
+      provider: DEMO_PROVIDER.id,
+      credentialPayload: { kind: 'demo', v: 1 },
+      expiresAt: null,
+      capabilities: DEMO_PROVIDER.capabilities,
+      mode: 'DEMO',
+      status: 'CONNECTED',
+      permissionNote: null,
     });
+    console.log('[market-data] demo connected', { keyType: key.split(':')[0] });
+    return res.json(view);
   }
 
-  const view = storeCredential({
-    userKey: key,
-    provider: DEMO_PROVIDER.id,
-    credentialPayload: { kind: 'demo', v: 1 },
-    expiresAt: null,
-    capabilities: DEMO_PROVIDER.capabilities,
-    mode: 'DEMO',
-    status: 'CONNECTED',
-  });
+  if (provider.id === 'indstocks') {
+    const accessToken = String(req.body?.accessToken || '').trim();
+    // Clear from req body echo risk — never return token
+    req.body.accessToken = undefined;
+    if (!accessToken || accessToken.length < 12) {
+      return res.status(400).json({
+        error:
+          'Paste your INDstocks access token from indstocks.com/app/api-trading/access-tokens. WOLF does not accept MPIN, OTP, or TOTP.',
+      });
+    }
+    try {
+      await validateIndstocksToken(accessToken);
+    } catch (e) {
+      const status = e?.status === 401 || e?.status === 403 ? 401 : 400;
+      return res.status(status).json({
+        error: 'INDstocks token invalid or expired. Generate a new token on indstocks.com and try again.',
+      });
+    }
+    try {
+      await refreshIndstocksInstrumentMap(accessToken);
+    } catch {
+      // non-fatal — fallback scrip map still works
+      console.log('[market-data] instrument refresh skipped');
+    }
 
-  console.log('[market-data] demo connected', { provider: DEMO_PROVIDER.id, keyType: key.split(':')[0] });
-  res.json(view);
+    const view = storeCredential({
+      userKey: key,
+      provider: INDSTOCKS_PROVIDER.id,
+      credentialPayload: { kind: 'indstocks', accessToken, v: 1 },
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      capabilities: INDSTOCKS_CAPABILITIES,
+      mode: 'LIVE',
+      status: 'CONNECTED',
+      permissionNote: INDSTOCKS_PERMISSION_NOTE,
+    });
+    console.log('[market-data] indstocks connected', { keyType: key.split(':')[0] });
+    return res.json(view);
+  }
+
+  return res.status(501).json({
+    error: 'This provider is not configured yet.',
+    providerId: provider.id,
+  });
 });
 
 router.post('/callback', (_req, res) => {
-  // OAuth callbacks land here once a real broker is enabled.
   res.status(501).json({
-    error: 'Broker OAuth callback is not configured. No credentials accepted.',
+    error: 'OAuth callback not used for INDstocks token connect.',
   });
 });
 
@@ -114,10 +190,73 @@ router.post('/disconnect', (req, res) => {
   res.json(publicView(null));
 });
 
-/** Stub scan job — real server scan moves engines server-side in a later phase. */
+router.get('/symbols', (req, res) => {
+  const universe = String(req.query.universe || 'F&O');
+  res.json({
+    symbols: listUniverseSymbols(universe),
+    universe,
+    note: 'Equity underliers for radar screening. Option-chain contracts come later.',
+  });
+});
+
+router.get('/quote', async (req, res) => {
+  const live = requireLiveToken(req, res);
+  if (!live) return;
+  const symbol = String(req.query.symbol || '').trim().toUpperCase();
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  const scrip = resolveScripCode(symbol);
+  if (!scrip) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
+  try {
+    const quote = await fetchIndstocksQuote(live.accessToken, scrip);
+    quote.symbol = symbol;
+    res.json({ quote, mode: 'LIVE', source: 'indstocks' });
+  } catch (e) {
+    const status = e?.status === 401 ? 401 : 502;
+    if (status === 401) {
+      live.record.status = 'EXPIRED';
+    }
+    res.status(status).json({
+      error: status === 401
+        ? 'Market data connection expired. Reconnect your broker.'
+        : 'Failed to fetch quote',
+    });
+  }
+});
+
+router.get('/candles', async (req, res) => {
+  const live = requireLiveToken(req, res);
+  if (!live) return;
+  const symbol = String(req.query.symbol || '').trim().toUpperCase();
+  const timeframe = String(req.query.timeframe || '5m').trim();
+  const bars = Math.min(500, Math.max(10, Number(req.query.bars) || 80));
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  const scrip = resolveScripCode(symbol);
+  if (!scrip) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
+  try {
+    const candles = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars);
+    for (const c of candles) c.symbol = symbol;
+    res.json({
+      symbol,
+      timeframe,
+      candles,
+      mode: 'LIVE',
+      source: 'indstocks',
+      orderExecution: false,
+    });
+  } catch (e) {
+    const status = e?.status === 401 ? 401 : 502;
+    res.status(status).json({
+      error: status === 401
+        ? 'Market data connection expired. Reconnect your broker.'
+        : 'Failed to fetch candles',
+    });
+  }
+});
+
+/** Stub — client scanner still runs; live provider feeds candles via /candles. */
 router.post('/radar/scan', (_req, res) => {
   res.status(501).json({
-    error: 'Server-side radar scan not enabled yet. Client DEMO scanner is active.',
+    error: 'Server-side radar job coming later. Use client scanner with connected LIVE provider.',
     orderExecution: false,
   });
 });

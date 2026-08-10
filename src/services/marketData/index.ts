@@ -25,5 +25,7 @@ export {
   fetchMarketDataProviders,
   fetchMarketDataStatus,
   connectDemoMarketData,
+  connectIndstocksMarketData,
   disconnectMarketData,
 } from './marketDataApi';
+export { ServerMarketDataProvider, serverMarketDataProvider } from './ServerMarketDataProvider';

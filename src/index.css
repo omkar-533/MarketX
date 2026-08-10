@@ -25915,6 +25915,74 @@ body:has(.app-main--terminal-immersive) #root {
   color: #fb7185;
   font-size: 0.75rem;
 }
+.wolf-md-modal__note {
+  opacity: 0.85;
+  line-height: 1.35;
+}
+.wolf-md-token {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.35rem 0 0.5rem;
+}
+.wolf-md-token h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--tj-gold);
+  letter-spacing: 0.04em;
+}
+.wolf-md-token ol {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.78rem;
+  color: var(--tf-text-secondary);
+  line-height: 1.45;
+}
+.wolf-md-token a {
+  color: var(--tj-gold);
+}
+.wolf-md-token__warn {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+.wolf-md-token label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+.wolf-md-token input {
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--tf-text);
+  font-size: 0.85rem;
+}
+.wolf-md-token__actions {
+  display: flex;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+.wolf-md-token__actions .ghost,
+.wolf-md-token__actions .primary {
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.wolf-md-token__actions .ghost {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--tf-text-muted);
+}
+.wolf-md-token__actions .primary {
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--tj-gold);
+  font-weight: 600;
+}
 @keyframes wolf-radar-pulse {
   0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); }
   70% { box-shadow: 0 0 0 8px transparent; }

@@ -24,14 +24,16 @@ import type {
   RadarTimeframe,
   RadarUniverse,
 } from '../../../services/radar/radarTypes';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
 import { WOLF_SCORE_WEIGHTS } from '../../../services/radar/WolfScoringEngine';
 import {
   fetchMarketDataStatus,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
-import { initMarketDataService } from '../../../services/marketData/MarketDataService';
+import { initMarketDataService, getMarketDataService } from '../../../services/marketData/MarketDataService';
+import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
+import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
+import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
 
 type Props = {
   onAnalyze: () => void;
@@ -85,10 +87,20 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
 
   useEffect(() => {
     initMarketDataService(mockMarketDataProvider);
-    void fetchMarketPulse().then((p) => setPulse(p.items));
     void fetchMarketDataStatus()
-      .then((s) => setMdStatus(s))
-      .catch(() =>
+      .then(async (s) => {
+        setMdStatus(s);
+        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+          const svc = initMarketDataService(serverMarketDataProvider);
+          await svc.connect();
+        } else if (s.status === 'CONNECTED' && s.mode === 'DEMO') {
+          const svc = initMarketDataService(mockMarketDataProvider);
+          await svc.connect();
+        }
+        const provider = resolveScanProvider(s);
+        void fetchMarketPulse(provider).then((p) => setPulse(p.items));
+      })
+      .catch(() => {
         setMdStatus({
           status: 'DISCONNECTED',
           providerId: null,
@@ -98,10 +110,19 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
           liveQuotes: false,
           orderAccess: 'NOT ENABLED',
           message: 'MARKET DATA DISCONNECTED',
-        }),
-      );
+        });
+        void fetchMarketPulse(mockMarketDataProvider).then((p) => setPulse(p.items));
+      });
   }, []);
 
+  function resolveScanProvider(s: ServerConnectionStatus | null): MarketDataProvider {
+    if (s?.status === 'CONNECTED' && s.mode === 'LIVE') return serverMarketDataProvider;
+    try {
+      return getMarketDataService().getProvider();
+    } catch {
+      return mockMarketDataProvider;
+    }
+  }
   const dataConnected = mdStatus?.status === 'CONNECTED';
   const dataLabel = dataConnected
     ? mdStatus?.mode === 'DEMO'
@@ -136,6 +157,7 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         {
           onProgress: (p) => setProgress((prev) => ({ ...prev, ...p })),
         },
+        resolveScanProvider(mdStatus),
       );
       setResults(rows);
       setProgress((p) => ({
@@ -152,7 +174,7 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         phase: 'ERROR',
       }));
     }
-  }, [market, universe, timeframe, progress.status, progress.lastScanAt, dataConnected]);
+  }, [market, universe, timeframe, progress.status, progress.lastScanAt, dataConnected, mdStatus]);
 
   const onAddWatch = (r: RadarResult) => {
     const list = addToWatchlist(r);
@@ -477,7 +499,16 @@ export default function WolfRadarPage({ onAnalyze }: Props) {
         open={connectOpen}
         onClose={() => setConnectOpen(false)}
         status={mdStatus}
-        onStatusChange={setMdStatus}
+        onStatusChange={(s) => {
+          setMdStatus(s);
+          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+            void initMarketDataService(serverMarketDataProvider).connect();
+            void fetchMarketPulse(serverMarketDataProvider).then((p) => setPulse(p.items));
+          } else if (s.status === 'CONNECTED') {
+            void initMarketDataService(mockMarketDataProvider).connect();
+            void fetchMarketPulse(mockMarketDataProvider).then((p) => setPulse(p.items));
+          }
+        }}
       />
     </div>
   );

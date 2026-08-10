@@ -1,0 +1,120 @@
+/**
+ * Server-backed LIVE MarketDataProvider.
+ * Calls WOLF /api/market-data/* — broker tokens never touch this class.
+ */
+import type { MarketDataProvider, QuoteSubscriptionCallback } from './MarketDataProvider';
+import type {
+  MarketStatusInfo,
+  NormalizedInstrument,
+  NormalizedQuote,
+  ProviderCapabilities,
+  WolfTimeframe,
+} from './types';
+import { ALL_WOLF_TIMEFRAMES } from './types';
+import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from '../radar/radarTypes';
+import {
+  fetchLiveCandles,
+  fetchLiveQuote,
+  fetchLiveSymbols,
+} from './marketDataApi';
+
+export class ServerMarketDataProvider implements MarketDataProvider {
+  readonly id = 'indstocks-live';
+  readonly label = 'INDstocks MARKET DATA';
+  readonly isDemo = false;
+
+  private connected = false;
+
+  async connect(): Promise<void> {
+    this.connected = true;
+  }
+
+  async disconnect(): Promise<void> {
+    this.connected = false;
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      historicalCandles: true,
+      liveQuotes: true,
+      bidAsk: true,
+      marketDepth: false,
+      instrumentList: true,
+      marketStatus: false,
+      orderExecution: false,
+    };
+  }
+
+  getSupportedTimeframes(): WolfTimeframe[] {
+    return [...ALL_WOLF_TIMEFRAMES];
+  }
+
+  async getMarketStatus(exchange = 'NSE'): Promise<MarketStatusInfo> {
+    return {
+      exchange,
+      isOpen: true,
+      session: 'UNKNOWN',
+      serverTime: Date.now(),
+      raw: 'provider-status-unknown',
+    };
+  }
+
+  async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
+    const { symbols } = await fetchLiveSymbols(universe);
+    return symbols;
+  }
+
+  async getInstrumentList(): Promise<NormalizedInstrument[]> {
+    const symbols = await this.getSymbols('F&O');
+    return symbols.map((symbol) => ({
+      wolfInstrumentId: `NSE:EQ:${symbol}`,
+      symbol,
+      exchange: 'NSE',
+      instrumentToken: symbol,
+      tradingSymbol: symbol,
+      instrumentType: 'EQUITY',
+      expiry: null,
+      strike: null,
+      optionType: null,
+      lotSize: 1,
+      tickSize: 0.05,
+      currency: 'INR',
+    }));
+  }
+
+  async getQuote(symbol: string): Promise<NormalizedQuote> {
+    const { quote } = await fetchLiveQuote(symbol);
+    const lastPrice = quote.lastPrice || quote.price;
+    return {
+      symbol: quote.symbol || symbol,
+      exchange: quote.exchange || 'NSE',
+      timestamp: quote.timestamp || Date.now(),
+      lastPrice,
+      price: lastPrice,
+      changePercent: quote.changePercent ?? 0,
+    };
+  }
+
+  async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
+    const { candles } = await fetchLiveCandles(symbol, timeframe, bars);
+    return candles;
+  }
+
+  async getHistoricalCandles(
+    symbol: string,
+    timeframe: RadarTimeframe | WolfTimeframe,
+    _from: number,
+    _to: number,
+  ): Promise<Candle[]> {
+    return this.getCandles(symbol, timeframe as RadarTimeframe, 80);
+  }
+
+  async subscribeQuotes(_symbols: string[], _callback: QuoteSubscriptionCallback): Promise<string> {
+    void this.connected;
+    throw new Error('Live websocket subscribe not wired yet — use polling quotes');
+  }
+
+  async unsubscribeQuotes(_subscriptionId: string): Promise<void> {}
+}
+
+export const serverMarketDataProvider = new ServerMarketDataProvider();

@@ -34,8 +34,9 @@ export function storeCredential({
   capabilities = {},
   mode = 'DEMO',
   status = 'CONNECTED',
+  permissionNote = null,
 }) {
-  // Credential payload is opaque JSON — typically { kind:'demo' } or encrypted access refs.
+  // Credential payload is opaque JSON — typically { kind:'demo' } or { kind:'indstocks', accessToken }.
   // Never log credentialPayload.
   const encryptedCredential = encryptPineSource(
     typeof credentialPayload === 'string'
@@ -55,6 +56,7 @@ export function storeCredential({
       orderExecution: false,
     },
     mode,
+    permissionNote,
     createdAt: existing?.createdAt || now(),
     updatedAt: now(),
   };
@@ -126,11 +128,17 @@ export function publicView(record) {
   return {
     status: record.status,
     providerId: record.provider,
-    providerName: record.provider === 'mock-demo' ? 'Demo Market Data' : record.provider,
+    providerName:
+      record.provider === 'mock-demo'
+        ? 'Demo Market Data'
+        : record.provider === 'indstocks'
+          ? 'INDstocks (INDMoney)'
+          : record.provider,
     mode: record.mode,
     historical,
     liveQuotes,
     orderAccess: 'NOT ENABLED',
+    permissionNote: record.permissionNote || null,
     message: connected
       ? record.mode === 'DEMO'
         ? 'DEMO MARKET DATA'
