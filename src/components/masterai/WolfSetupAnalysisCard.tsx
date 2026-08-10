@@ -1506,7 +1506,6 @@ export default function WolfSetupAnalysisCard({
             </div>
           ) : null}
         </aside>
-        </aside>
       </div>
 
       <AnimatePresence>
