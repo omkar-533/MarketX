@@ -2,6 +2,7 @@ import NativeChatChart from '../masterai/NativeChatChart';
 import TradingViewChatChart from '../masterai/TradingViewChatChart';
 import type { TerminalPaperHandoff } from '../../services/paperTradingBridge';
 import { usesNativeChart, type TvChartStyle, type TvInterval } from '../../utils/tradingViewSymbols';
+import type { ChartLevel } from '../../utils/chartAnnotations';
 
 export type TerminalChartHostProps = {
   symbol: string;
@@ -14,6 +15,8 @@ export type TerminalChartHostProps = {
   rangePreset?: string;
   /** Drawing rail — hide on inactive multi-chart panes. */
   showRail?: boolean;
+  /** Optional WOLF key levels on native chart. */
+  levels?: ChartLevel[];
   onNativeUnavailable: () => void;
   onClearIndicators?: () => void;
   onApplyStudy?: (study: string) => void;
@@ -36,6 +39,7 @@ export default function TerminalChartHost({
   logScale = false,
   rangePreset,
   showRail = true,
+  levels,
   onNativeUnavailable,
   onClearIndicators,
   onApplyStudy,
@@ -65,6 +69,7 @@ export default function TerminalChartHost({
         enableHistoryScroll
         logScale={logScale}
         rangePreset={rangePreset}
+        levels={levels}
         onUnavailable={onNativeUnavailable}
         onClearIndicators={onClearIndicators}
         onApplyStudy={onApplyStudy}

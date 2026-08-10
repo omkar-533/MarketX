@@ -1,11 +1,12 @@
 /**
- * LIVE WOLF — live chart + continuous analysis for one Radar-selected symbol.
- * Read-only market data via MarketDataProvider. No order execution.
- * Narration is deterministic (no LLM spam). ASK WOLF hands off to Analyst.
+ * LIVE WOLF — Terminal chart (NativeChatChart + drawing tools) + continuous analysis.
+ * Always shows a chart (default NSE:NIFTY). Radar handoff optional.
+ * Read-only market data. No order execution.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Link2, MessageSquare, Radar, Volume2 } from 'lucide-react';
-import LiveWolfChart, { type LiveChartToggles } from './LiveWolfChart';
+import { Activity, Link2, MessageSquare, RefreshCw, Search, Volume2 } from 'lucide-react';
+import TerminalChartHost from '../../terminal/TerminalChartHost';
+import TerminalSymbolSearch from '../../terminal/TerminalSymbolSearch';
 import { LiveWolfSession } from '../../../services/live/LiveWolfSession';
 import {
   consumePendingLiveWolf,
@@ -17,7 +18,7 @@ import type {
   LiveSessionState,
   MarketEvent,
 } from '../../../services/live/liveTypes';
-import type { Candle, RadarResult, RadarTimeframe } from '../../../services/radar/radarTypes';
+import type { RadarResult, RadarTimeframe } from '../../../services/radar/radarTypes';
 import { getMarketDataService, initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
@@ -31,6 +32,14 @@ import {
   type NarrationLine,
   resetNarrationCooldown,
 } from '../../../services/live/EventNarrationService';
+import type { ChartLevel } from '../../../utils/chartAnnotations';
+import {
+  apiSymbolFromTv,
+  parseTradingViewInput,
+  tradingViewSymbolLabel,
+  type TvInterval,
+} from '../../../utils/tradingViewSymbols';
+import { defaultTerminalState } from '../../../services/terminalState';
 
 type Props = {
   onAskWolf: () => void;
@@ -38,6 +47,17 @@ type Props = {
 };
 
 const TFS: RadarTimeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
+
+const RADAR_TO_TV: Record<RadarTimeframe, TvInterval> = {
+  '1m': '1',
+  '3m': '3',
+  '5m': '5',
+  '15m': '15',
+  '30m': '30',
+  '1h': '60',
+  '4h': '240',
+  '1D': 'D',
+};
 
 function formatClock(ts: number | null) {
   if (!ts) return '—';
@@ -58,26 +78,62 @@ function resolveProvider(mode: 'DEMO' | 'LIVE' | null): MarketDataProvider {
   }
 }
 
+function tvFromPayload(p: LiveWolfOpenPayload): string {
+  const ex = String(p.exchange || 'NSE').toUpperCase();
+  const sym = String(p.symbol || '').toUpperCase();
+  if (!sym) return defaultTerminalState().symbol;
+  if (sym.includes(':')) return parseTradingViewInput(sym);
+  return parseTradingViewInput(`${ex}:${sym}`);
+}
+
+function exchangeFromTv(tv: string): string {
+  const raw = parseTradingViewInput(tv);
+  return raw.includes(':') ? raw.split(':')[0] : 'NSE';
+}
+
+function levelsFromAnalysis(
+  levels: { label: string; price: number }[] | undefined,
+  enabled: boolean,
+): ChartLevel[] | undefined {
+  if (!enabled || !levels?.length) return undefined;
+  return levels.slice(0, 8).map((lv) => {
+    const lower = lv.label.toLowerCase();
+    const kind: ChartLevel['kind'] = lower.includes('res') || lower.includes('high')
+      ? 'resistance'
+      : lower.includes('sup') || lower.includes('low')
+        ? 'support'
+        : 'pivot';
+    return { price: lv.price, label: lv.label, kind };
+  });
+}
+
 export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
-  const [payload, setPayload] = useState<LiveWolfOpenPayload | null>(() => consumePendingLiveWolf());
-  const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
-  const [candles, setCandles] = useState<Candle[]>([]);
+  const [boot] = useState(() => consumePendingLiveWolf());
+  const [tvSymbol, setTvSymbol] = useState(() =>
+    boot ? tvFromPayload(boot) : defaultTerminalState().symbol,
+  );
+  const [timeframe, setTimeframe] = useState<RadarTimeframe>(() => boot?.timeframe || '5m');
+  const [interval, setInterval] = useState<TvInterval>(() =>
+    RADAR_TO_TV[boot?.timeframe || '5m'] || '5',
+  );
+  const [study, setStudy] = useState(() => defaultTerminalState().study);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [nativeFailed, setNativeFailed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [analysis, setAnalysis] = useState<LiveAnalysisSnapshot | null>(null);
   const [events, setEvents] = useState<MarketEvent[]>([]);
   const [narration, setNarration] = useState<NarrationLine[]>([]);
   const [status, setStatus] = useState<LiveSessionState | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [focusTime, setFocusTime] = useState<number | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const [toggles, setToggles] = useState<LiveChartToggles>({
-    levels: true,
-    markers: true,
-    ema: true,
-  });
+  const [showLevels, setShowLevels] = useState(true);
   const sessionRef = useRef<LiveWolfSession | null>(null);
   const analysisRef = useRef<LiveAnalysisSnapshot | null>(null);
-  const symbolKey = payload?.symbol || '';
+
+  const symbolKey = `${exchangeFromTv(tvSymbol)}:${apiSymbolFromTv(tvSymbol)}`;
+  const bareSymbol = apiSymbolFromTv(tvSymbol);
+  const exchange = exchangeFromTv(tvSymbol);
 
   useEffect(() => {
     analysisRef.current = analysis;
@@ -87,21 +143,17 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<LiveWolfOpenPayload>).detail;
       const pending = detail || consumePendingLiveWolf();
-      if (pending) {
-        setPayload(pending);
-        setTimeframe(pending.timeframe || '5m');
-        setEvents([]);
-        setNarration([]);
-        setFocusTime(null);
-        resetNarrationCooldown();
-      }
+      if (!pending) return;
+      setTvSymbol(tvFromPayload(pending));
+      const tf = pending.timeframe || '5m';
+      setTimeframe(tf);
+      setInterval(RADAR_TO_TV[tf] || '5');
+      setEvents([]);
+      setNarration([]);
+      setNativeFailed(false);
+      resetNarrationCooldown();
     };
     window.addEventListener(LIVE_WOLF_OPEN_EVENT, onOpen);
-    const boot = consumePendingLiveWolf();
-    if (boot) {
-      setPayload(boot);
-      setTimeframe(boot.timeframe || '5m');
-    }
     return () => window.removeEventListener(LIVE_WOLF_OPEN_EVENT, onOpen);
   }, []);
 
@@ -124,7 +176,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
   );
 
   const startSession = useCallback(async () => {
-    if (!payload?.symbol) return;
+    if (!bareSymbol) return;
     setError(null);
     await sessionRef.current?.stop();
     sessionRef.current = null;
@@ -134,7 +186,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
       const s = await fetchMarketDataStatus();
       setConnected(s.status === 'CONNECTED');
       if (s.status !== 'CONNECTED') {
-        setError('Connect market data to activate LIVE WOLF.');
+        setError('Connect market data to activate LIVE WOLF analysis.');
         return;
       }
       mode = s.mode;
@@ -144,7 +196,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
         mode = p.isDemo ? 'DEMO' : 'LIVE';
         setConnected(true);
       } catch {
-        setError('Connect market data to activate LIVE WOLF.');
+        setError('Connect market data to activate LIVE WOLF analysis.');
         setConnected(false);
         return;
       }
@@ -152,11 +204,11 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
 
     const provider = resolveProvider(mode);
     const session = new LiveWolfSession({
-      symbol: payload.symbol,
-      exchange: payload.exchange || 'NSE',
+      symbol: bareSymbol,
+      exchange,
       timeframe,
       provider,
-      onBars: setCandles,
+      onBars: () => undefined,
       onAnalysis: (snap) => {
         setAnalysis(snap);
         if (snap.waiting === false && snap.setupType) {
@@ -176,9 +228,8 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start LIVE WOLF');
     }
-  }, [payload?.symbol, payload?.exchange, timeframe, pushEvent]);
+  }, [bareSymbol, exchange, timeframe, pushEvent]);
 
-  // Full restart only when symbol changes
   useEffect(() => {
     void startSession();
     return () => {
@@ -188,7 +239,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: symbol-keyed boot
   }, [symbolKey]);
 
-  // Timeframe switch without tearing whole desk
   useEffect(() => {
     const s = sessionRef.current;
     if (!s || !symbolKey) return;
@@ -205,6 +255,26 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
     }
     return '○ DATA DISCONNECTED';
   }, [connected, status]);
+
+  const chartLevels = useMemo(
+    () => levelsFromAnalysis(analysis?.keyLevels, showLevels),
+    [analysis?.keyLevels, showLevels],
+  );
+
+  const onPickSymbol = (next: string) => {
+    const tv = parseTradingViewInput(next);
+    setTvSymbol(tv);
+    setNativeFailed(false);
+    setEvents([]);
+    setNarration([]);
+    setAnalysis(null);
+    resetNarrationCooldown();
+  };
+
+  const onTfClick = (tf: RadarTimeframe) => {
+    setTimeframe(tf);
+    setInterval(RADAR_TO_TV[tf] || '5');
+  };
 
   const onAsk = () => {
     if (!analysis) return;
@@ -252,26 +322,34 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
     if (line) speakNarration(line.text);
   };
 
-  if (!payload?.symbol) {
-    return (
-      <div className="live-wolf-desk live-wolf-desk--empty">
-        <Radar size={18} className="text-gold" />
-        <h2>LIVE WOLF</h2>
-        <p>Select a symbol from WOLF RADAR to watch the market live.</p>
-        <p className="sub">Live market intelligence. Explained as it happens.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="live-wolf-desk">
+    <div className="live-wolf-desk live-wolf-desk--terminal">
       <header className="live-wolf-desk__top">
         <div className="live-wolf-desk__id">
-          <h1>{payload.symbol}</h1>
-          <span>{payload.exchange || 'NSE'}</span>
+          <button
+            type="button"
+            className="live-wolf-desk__symbol-btn"
+            onClick={() => setSearchOpen(true)}
+            title="Search symbol"
+          >
+            <Search size={14} />
+            <h1>{tradingViewSymbolLabel(tvSymbol)}</h1>
+          </button>
+          <span>{exchange}</span>
           <span className={`live-wolf-desk__feed ${status?.stale ? 'is-stale' : ''}`}>
             {feedLabel}
           </span>
+          <button
+            type="button"
+            className="live-wolf-desk__icon-btn"
+            title="Reload chart"
+            onClick={() => {
+              setNativeFailed(false);
+              setReloadKey((k) => k + 1);
+            }}
+          >
+            <RefreshCw size={14} />
+          </button>
         </div>
         <div className="live-wolf-desk__metrics">
           <div>
@@ -294,7 +372,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
           </div>
           <div>
             <small>Source</small>
-            <b>{status?.providerLabel || '—'}</b>
+            <b>{status?.providerLabel || '—'} </b>
           </div>
         </div>
         <div className="live-wolf-desk__tfs">
@@ -303,29 +381,21 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
               key={tf}
               type="button"
               className={timeframe === tf ? 'is-on' : ''}
-              onClick={() => setTimeframe(tf)}
+              onClick={() => onTfClick(tf)}
             >
               {tf.toUpperCase()}
             </button>
           ))}
         </div>
         <div className="live-wolf-desk__toggles" aria-label="Chart layers">
-          {(
-            [
-              ['levels', 'Levels'],
-              ['markers', 'Events'],
-              ['ema', 'EMA21'],
-            ] as const
-          ).map(([key, label]) => (
-            <label key={key}>
-              <input
-                type="checkbox"
-                checked={toggles[key]}
-                onChange={(e) => setToggles((t) => ({ ...t, [key]: e.target.checked }))}
-              />
-              {label}
-            </label>
-          ))}
+          <label>
+            <input
+              type="checkbox"
+              checked={showLevels}
+              onChange={(e) => setShowLevels(e.target.checked)}
+            />
+            Levels
+          </label>
           <label>
             <input
               type="checkbox"
@@ -347,14 +417,20 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
       )}
 
       <div className="live-wolf-desk__main">
-        <section className="live-wolf-desk__chart-wrap">
-          <LiveWolfChart
-            candles={candles}
-            symbol={payload?.symbol || 'LIVE'}
-            levels={analysis?.keyLevels || []}
-            events={events}
-            focusTime={focusTime}
-            toggles={toggles}
+        <section className="live-wolf-desk__chart-wrap live-wolf-desk__chart-wrap--term">
+          <TerminalChartHost
+            symbol={tvSymbol}
+            interval={interval}
+            study={study}
+            chartStyle="1"
+            reloadKey={reloadKey}
+            nativeFailed={nativeFailed}
+            showRail
+            levels={chartLevels}
+            onNativeUnavailable={() => setNativeFailed(true)}
+            onClearIndicators={() => setStudy('none')}
+            onApplyStudy={setStudy}
+            onStudyChange={setStudy}
           />
         </section>
 
@@ -422,7 +498,9 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
 
           <div className="live-wolf-desk__narration">
             <h3>WOLF NOTES</h3>
-            {!narration.length && <p className="empty">Meaningful changes appear here (not every tick).</p>}
+            {!narration.length && (
+              <p className="empty">Meaningful changes appear here (not every tick).</p>
+            )}
             <ul>
               {narration.slice(0, 6).map((n) => (
                 <li key={n.id}>
@@ -437,7 +515,12 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
             <button type="button" className="live-wolf-desk__ask" onClick={onAsk} disabled={!analysis}>
               <MessageSquare size={14} /> ASK WOLF
             </button>
-            <button type="button" className="live-wolf-desk__speak" onClick={onSpeakLatest} disabled={!analysis && !narration.length}>
+            <button
+              type="button"
+              className="live-wolf-desk__speak"
+              onClick={onSpeakLatest}
+              disabled={!analysis && !narration.length}
+            >
               <Volume2 size={14} /> SPEAK
             </button>
           </div>
@@ -454,7 +537,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
                 type="button"
                 className="live-wolf-desk__tl-btn"
                 onClick={() => {
-                  setFocusTime(e.timestamp);
                   const line = narrateEvent(e, analysis);
                   if (line) setNarration((prev) => [line, ...prev].slice(0, 30));
                 }}
@@ -467,6 +549,13 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
           ))}
         </ul>
       </section>
+
+      <TerminalSymbolSearch
+        open={searchOpen}
+        activeSymbol={tvSymbol}
+        onClose={() => setSearchOpen(false)}
+        onPick={onPickSymbol}
+      />
     </div>
   );
 }
