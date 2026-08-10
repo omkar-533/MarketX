@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Radar } from 'lucide-react';
 import HunterMark from '../HunterMark';
+import { requestOpenRadar } from '../../services/radar/radarBridge';
 
 type Props = {
   onPickFile: (file: File) => void;
@@ -77,6 +78,23 @@ export default function WolfVisionHome({ onPickFile, disabled, hindi }: Props) {
           <li key={item}>{item}</li>
         ))}
       </ul>
+
+      <div className="wolf-vision-home__radar-cta">
+        <p className="wolf-vision-home__radar-copy">
+          {hindi
+            ? 'Kya dekhna hai clear nahi? WOLF dhoondh ke lata hai.'
+            : "Don't know what to look for? Let WOLF find it."}
+        </p>
+        <button
+          type="button"
+          className="wolf-vision-home__radar-btn"
+          disabled={disabled}
+          onClick={() => requestOpenRadar()}
+        >
+          <Radar className="h-4 w-4" />
+          SCAN THE MARKET
+        </button>
+      </div>
 
       <input
         ref={inputRef}

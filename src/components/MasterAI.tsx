@@ -113,6 +113,11 @@ import { API_SERVER_READY_EVENT } from '../services/apiAutoConnect';
 import { OPENROUTER_KEY_UPDATED_EVENT } from '../services/openRouterKey';
 import { loadLocalTrades } from '../services/journalSyncService';
 import { consumeHunterPendingPrompt } from '../services/journalAiAssist';
+import {
+  consumePendingRadarAnalyze,
+  formatRadarContextMessage,
+  RADAR_ANALYZE_EVENT,
+} from '../services/radar/radarBridge';
 import { useAuth } from '../hooks/useAuth';
 import { AI_PRODUCT_NAME } from '../constants/brandLabels';
 import {
@@ -1627,6 +1632,30 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       void handleSendRef.current(pending);
     }, 450);
     return () => window.clearTimeout(t);
+  }, []);
+
+  // WOLF RADAR → AI Analyst handoff (structured context, DEMO-labeled)
+  useEffect(() => {
+    const ingest = () => {
+      const ctx = consumePendingRadarAnalyze();
+      if (!ctx) return;
+      const text = formatRadarContextMessage(ctx);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `radar-${Date.now()}`,
+          role: 'trafi',
+          text,
+          timestamp: new Date(),
+        },
+      ]);
+      setInputText(
+        `Why are you watching ${ctx.symbol}? What is missing for confirmation?`,
+      );
+    };
+    ingest();
+    window.addEventListener(RADAR_ANALYZE_EVENT, ingest);
+    return () => window.removeEventListener(RADAR_ANALYZE_EVENT, ingest);
   }, []);
 
   const onAutoSpeakToggle = () => {

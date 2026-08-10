@@ -42,6 +42,7 @@ const FuturesAnalytics = lazy(() => import('./components/FuturesAnalytics'));
 const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
+const WolfAiWorkspace = lazy(() => import('./components/WolfAiWorkspace'));
 const MentorAI = lazy(() => import('./components/MentorAI'));
 const WolfArenaPage = lazy(() => import('./components/WolfArenaPage'));
 const TerminalPage = lazy(() => import('./components/terminal/TerminalPage'));
@@ -308,7 +309,7 @@ function AppWorkspace() {
       case 'footprint':
         return <FootprintChart />;
       case 'wolf-ai':
-        return <MasterAI />;
+        return <WolfAiWorkspace />;
       case 'mentor-ai':
         return <MentorAI onNavigate={handleTabChange} />;
       case 'arena':

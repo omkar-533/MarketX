@@ -25553,3 +25553,615 @@ body:has(.app-main--terminal-immersive) #root {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ===== WOLF AI WORKSPACE + WOLF RADAR (Phase 2) ===== */
+.wolf-ai-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--tf-bg);
+}
+.wolf-ai-workspace__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  flex-shrink: 0;
+  z-index: 5;
+}
+.wolf-ai-workspace__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--tf-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.wolf-ai-workspace__tab:hover {
+  color: var(--tf-text);
+  background: var(--tf-elevated);
+}
+.wolf-ai-workspace__tab.is-on {
+  color: var(--tj-gold-strong);
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.wolf-ai-workspace__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.wolf-ai-workspace.is-analyst .wolf-ai-workspace__body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wolf-ai-workspace.is-analyst .wolf-ai-workspace__body > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.wolf-radar-desk {
+  padding: 1rem 1.1rem 2rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  color: var(--tf-text);
+}
+.wolf-radar-desk--panel {
+  max-width: 880px;
+}
+.wolf-radar-desk__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+}
+.wolf-radar-desk__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wolf-radar-desk__title-row h1,
+.wolf-radar-desk__brand h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+.wolf-radar-desk__subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--tf-text-muted);
+  font-size: 0.84rem;
+}
+.wolf-radar-desk__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: flex-end;
+}
+.wolf-radar-desk__controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__controls select,
+.wolf-setups__field select,
+.wolf-setups__field input,
+.wolf-setups__teach textarea {
+  min-width: 7rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
+}
+.wolf-radar-desk__scan-btn,
+.wolf-radar-desk__card-actions .primary,
+.wolf-vision-home__radar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.08));
+  color: var(--tj-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.wolf-radar-desk__scan-btn:disabled,
+.wolf-radar-desk__card-actions .primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wolf-radar-desk__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__meta b {
+  color: var(--tf-text-secondary);
+  font-weight: 600;
+}
+.wolf-radar-desk__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.wolf-radar-desk__status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+}
+.wolf-radar-desk__status.is-scanning i {
+  background: var(--tj-gold-strong);
+  animation: wolf-radar-pulse 1.2s ease-out infinite;
+}
+.wolf-radar-desk__status.is-complete i {
+  background: #34d399;
+}
+.wolf-radar-desk__status.is-failed i {
+  background: #fb7185;
+}
+.wolf-radar-desk__demo {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: var(--tj-gold);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+}
+@keyframes wolf-radar-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.wolf-radar-desk__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  margin: 1.15rem 0 0.65rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__section-head h2 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: var(--tf-text-secondary);
+}
+.wolf-radar-desk__section-head small {
+  font-size: 0.68rem;
+  opacity: 0.85;
+}
+.wolf-radar-desk__pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.wolf-radar-desk__pulse-card {
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.15rem;
+}
+.wolf-radar-desk__pulse-card strong {
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+}
+.wolf-radar-desk__pulse-card .dir {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.wolf-radar-desk__pulse-card.up .dir { color: var(--tj-up); }
+.wolf-radar-desk__pulse-card.down .dir { color: var(--tj-down); }
+.wolf-radar-desk__pulse-card.flat .dir { color: var(--tf-text-muted); }
+.wolf-radar-desk__pulse-card em {
+  font-style: normal;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--tj-gold);
+}
+.wolf-radar-desk__pulse-card small {
+  color: var(--tf-text-muted);
+  font-size: 0.7rem;
+}
+
+.wolf-radar-desk__loading {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+.wolf-radar-desk__loading h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.wolf-radar-desk__loading p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__loading .phase {
+  color: var(--tj-gold);
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.wolf-radar-desk__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.wolf-radar-desk__bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.3), var(--tj-gold-strong));
+  transition: width 0.25s ease;
+}
+
+.wolf-radar-desk__empty {
+  border: 1px dashed var(--tf-border);
+  border-radius: 0.95rem;
+  padding: 1.4rem 1rem;
+  text-align: center;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__empty p {
+  margin: 0;
+  color: var(--tf-text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.wolf-radar-desk__empty.is-error {
+  border-color: rgba(251, 113, 133, 0.4);
+  color: #fda4af;
+}
+
+.wolf-radar-desk__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+.wolf-radar-desk__card {
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  border-radius: 0.95rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.wolf-radar-desk__card-main {
+  text-align: left;
+  padding: 0.85rem 0.9rem 0.65rem;
+  color: inherit;
+  width: 100%;
+}
+.wolf-radar-desk__card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.wolf-radar-desk__card-top h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.wolf-radar-desk__card-top .price {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__card-top .score {
+  text-align: right;
+  color: var(--tj-gold);
+  line-height: 1;
+}
+.wolf-radar-desk__card-top .score b {
+  font-size: 1.35rem;
+}
+.wolf-radar-desk__card-top .score small {
+  font-size: 0.7rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__card .setup {
+  margin: 0.55rem 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--tf-text-secondary);
+}
+.wolf-radar-desk__card .setup .up { color: var(--tj-up); }
+.wolf-radar-desk__card .setup .down { color: var(--tj-down); }
+.wolf-radar-desk__card .tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.wolf-radar-desk__card .tags li {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  padding: 0.18rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__card .state {
+  margin-top: 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.wolf-radar-desk__card .state.is-pending { color: var(--tj-gold); }
+.wolf-radar-desk__card .state.is-watch { color: var(--tf-text-secondary); }
+.wolf-radar-desk__card .state.is-developing { color: #93c5fd; }
+.wolf-radar-desk__card .state.is-confirmed { color: var(--tj-up); }
+.wolf-radar-desk__card .state.is-invalid { color: var(--tj-down); }
+.wolf-radar-desk__card time {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__card-actions {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem 0.75rem;
+  border-top: 1px solid var(--tf-border);
+}
+.wolf-radar-desk__card-actions .ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: transparent;
+}
+.wolf-radar-desk__card-actions .ghost:disabled {
+  opacity: 0.55;
+}
+
+.wolf-radar-desk__drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(420px, 100vw);
+  height: 100vh;
+  z-index: 60;
+  background: var(--tf-surface);
+  border-left: 1px solid var(--tf-border);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  padding: 1rem;
+  overflow: auto;
+}
+.wolf-radar-desk__drawer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.wolf-radar-desk__drawer-head h3 {
+  margin: 0;
+  letter-spacing: 0.06em;
+}
+.wolf-radar-desk__drawer-head span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__drawer-head button {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  color: var(--tf-text-muted);
+  display: grid;
+  place-items: center;
+}
+.wolf-radar-desk__metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+.wolf-radar-desk__metrics div {
+  border: 1px solid var(--tf-border);
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--tf-elevated);
+}
+.wolf-radar-desk__metrics span {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__metrics b {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+}
+.wolf-radar-desk__why,
+.wolf-radar-desk__breakdown {
+  margin-top: 0.9rem;
+}
+.wolf-radar-desk__why h4,
+.wolf-radar-desk__breakdown h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__score-note {
+  margin: 0 0 0.55rem;
+  font-size: 0.68rem;
+  color: var(--tf-text-muted);
+  line-height: 1.35;
+}
+.wolf-radar-desk__why p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--tf-text-secondary);
+}
+.wolf-radar-desk__why .inv {
+  margin-top: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--tf-text-muted);
+}
+.wolf-radar-desk__breakdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.wolf-radar-desk__breakdown li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--tf-text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0.25rem 0;
+}
+.wolf-radar-desk__breakdown b {
+  color: var(--tj-gold);
+}
+
+.wolf-setups__builder {
+  border: 1px solid var(--tf-border);
+  background: var(--tf-surface);
+  border-radius: 0.95rem;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+.wolf-setups__field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+.wolf-setups__conditions > span {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: var(--tf-text-muted);
+}
+.wolf-setups__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wolf-setups__chips button {
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  color: var(--tf-text-muted);
+  background: transparent;
+}
+.wolf-setups__chips button.on {
+  color: var(--tj-gold);
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.1);
+}
+.wolf-setups__teach {
+  display: grid;
+  gap: 0.45rem;
+}
+.wolf-setups__teach textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+}
+.wolf-setups__teach small,
+.wolf-setups__note {
+  font-size: 0.72rem;
+  color: var(--tf-text-muted);
+}
+.wolf-setups__list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.wolf-vision-home__radar-cta {
+  margin-top: 1.15rem;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  width: min(24rem, 100%);
+}
+.wolf-vision-home__radar-copy {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--tf-text-muted);
+}
+.wolf-vision-home__radar-btn {
+  width: 100%;
+}
+
+@media (max-width: 800px) {
+  .wolf-radar-desk__pulse-grid {
+    grid-template-columns: 1fr;
+  }
+  .wolf-ai-workspace__tab span {
+    letter-spacing: 0.04em;
+  }
+}
+.wolf-ai-workspace__pane {
+  display: none;
+  height: 100%;
+  min-height: 0;
+}
+.wolf-ai-workspace__pane.is-show {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.wolf-ai-workspace__pane.is-show > * {
+  flex: 1;
+  min-height: 0;
+}
