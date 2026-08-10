@@ -142,6 +142,7 @@ import {
 import { parseChartIdentity, chartIdentityLabel, type ChartIdentity } from '../utils/chartIdentity';
 import { validateAnnotations } from '../utils/annotationValidator';
 import { validateLensDifference } from '../utils/lensSimilarity';
+import { explainableEvidenceLabel } from '../utils/tradingThesis';
 import {
   buildConsensusReport,
   makeLayerId,
@@ -1309,7 +1310,10 @@ export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
       evidence = validateAnnotations(evidence, {
         maxVisible: 7,
         lens: analysisMode,
-      });
+      }).map((e) => ({
+        ...e,
+        title: explainableEvidenceLabel(e),
+      }));
 
       const similarity = validateLensDifference({
         currentMode: analysisMode,

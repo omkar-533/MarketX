@@ -84,41 +84,42 @@ If evidence thin / conflicting / chart poor → WAIT or NO TRADE and say what is
 
 EDUCATIONAL / informational only — not financial advice.`;
 
-export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (headings exactly — short, visual-first, one-screen):
+export const RESPONSE_TEMPLATE = `LOCKED RESPONSE TEMPLATE (headings exactly — short, visual-first, one-screen · ~80–120 words):
 
 WOLF AI · <MODE NAME> ANALYSIS
 
 Market Bias: LONG BIAS | SHORT BIAS | WAIT | NO TRADE
-Setup: <one-line setup name — story of the chart>
+Setup: <one-line setup name>
 Setup Status: CONFIRMED | WAITING FOR CONFIRMATION | DEVELOPING | INVALIDATED | NO TRADE
-Key Observation: <1 line market story from visible chart · ≤12 words>
+Key Observation: <market story · ≤14 words · WHAT is the market doing>
 Potential Direction: LONG | SHORT | NONE
 Next Action: <ONE watch item · ≤7 words>
-Entry Condition: <conditional model — not "buy now">
-Stop Loss Logic: <logic; exact price ONLY if scale readable>
-Target Logic: <structural target / next liquidity; else qualitative>
+Entry Condition: <conditional trigger — or "NO CLEAN SETUP YET">
+Stop Loss Logic: <logic; price ONLY if scale readable — else say approximate / Not enough evidence>
+Target Logic: <T1 / T2 structural or liquidity — else Not enough evidence>
 Invalidation: <what kills the thesis>
+Key Levels:
+R1 · <price or range> — <why this matters>
+S1 · <price or range> — <why>
+INV · <price or range> — Invalidation
+T1 · <price or range> — Next liquidity / target
+(Use approx ranges when exact ticks unreadable. Never invent prices. Max 5–7 levels.)
 Evidence Score: <0–100> / 100 (Setup Quality — NOT win probability)
 Why:
 1. …
 2. …
 3. …
 Alternative Scenario: <if primary fails — 1 short line>
-Assumptions / Unknown: <explicit · HTF/volume unread if so>
+Assumptions / Unknown: <explicit>
 
-Hard rules: under ~100 words before fences. No essays. Always fill Next Action.
-UI priority: WHAT IS HAPPENING → WHAT MATTERS → WHAT TO WATCH → WHAT INVALIDATES → WHAT NEXT.
-Max 3 evidence items shown via wolfevidence. Never invent prices.
+Hard rules: answer WHAT / BIAS / LEVELS / SETUP / TRIGGER / INVALIDATION / TARGETS. Missing → "Not enough evidence."
+UI priority: levels + conditional plan over essays. Prefer WAIT / NO TRADE when thin.
 After the template:
-0) Append ONE \`\`\`wolfidentity\`\`\` when symbol/timeframe/asset class are visually readable:
-{"asset":{"symbol":"NIFTY","asset_class":"INDEX","exchange":"NSE","timeframe":"15m","confidence":78}}
-If unsure: confidence < 50 and symbol "UNCONFIRMED" — never invent identity.
-1) Append ONE \`\`\`wolfchart\`\`\` when prices are readable.
-2) Append ONE \`\`\`wolfevidence\`\`\` JSON array (or { "evidence": [...] }) with 3–6 findings (UI will show top 3).
-Each evidence item MUST include normalized bbox 0–1:
-{"id":"liq_1","type":"liquidity","title":"Liquidity Found","description":"…","bbox":{"x":0.4,"y":0.5,"width":0.2,"height":0.16},"confidence":"high"}
-Types: liquidity|sweep|structure|bos|choch|support|resistance|entry|invalidation|target|confirmation.
-bbox = the region that answers the claim. Prefer sequential story regions (liquidity → sweep → BOS → retest) over marking the whole chart. Keep marks small and non-overlapping.`;
+0) \`\`\`wolfidentity\`\`\` when readable.
+1) \`\`\`wolfchart\`\`\` when prices readable — label levels with SAME ids (R1/S1/INV/T1).
+2) \`\`\`wolfevidence\`\`\` 3–6 items with bbox 0–1. Titles MUST be explainable:
+"R1 · 66000 — Key resistance" NOT bare "Target" / "Support".
+Include annotation-ready ids matching Key Levels when possible.`;
 
 const MODE_PROMPTS = {
   support_resistance: `LENS: SUPPORT / RESISTANCE (exclusive focus).

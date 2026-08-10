@@ -29,6 +29,13 @@ import {
   type WolfActionId,
   type WolfActionUiState,
 } from '../../utils/wolfActionRegistry';
+import {
+  buildTradingThesis,
+  buildGuidedTradeSteps,
+  levelPanelLine,
+  explainableEvidenceLabel,
+  type ThesisKeyLevel,
+} from '../../utils/tradingThesis';
 import ChatMarkdown from '../ChatMarkdown';
 import ScreenshotAnnotOverlay from './ScreenshotAnnotOverlay';
 import WolfChartCanvas from './WolfChartCanvas';
@@ -171,6 +178,9 @@ export default function WolfSetupAnalysisCard({
   const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
+  const [explainLevel, setExplainLevel] = useState<ThesisKeyLevel | null>(null);
+  const [drawAskOpen, setDrawAskOpen] = useState(false);
+  const [lastUserZone, setLastUserZone] = useState<NormalizedBBox | null>(null);
 
   const checklist = useMemo(
     () => (analysis ? buildCopilotChecklist(analysis, evidence) : []),
@@ -206,32 +216,6 @@ export default function WolfSetupAnalysisCard({
     }));
   }, [tabs, checklist]);
 
-  const tourSteps = useMemo(() => {
-    const fromLane = evidenceLane
-      .filter((n) => n.evidence?.bbox)
-      .slice(0, 5)
-      .map((n) => ({
-        id: n.id,
-        label: n.label,
-        line: hindi
-          ? `YEH ${n.label.toUpperCase()} — isi pe focus.`
-          : `THIS IS THE ${n.label.toUpperCase()} WOLF IS WATCHING.`,
-        bbox: n.evidence!.bbox,
-        evidence: n.evidence,
-      }));
-    if (fromLane.length >= 1) return fromLane;
-    return (evidence || [])
-      .filter((e) => e.bbox)
-      .slice(0, 5)
-      .map((e) => ({
-        id: e.id,
-        label: e.title,
-        line: hindi ? `YEH ${e.title}` : `THIS IS THE ${e.title.toUpperCase()} WOLF IS WATCHING.`,
-        bbox: e.bbox,
-        evidence: e,
-      }));
-  }, [evidenceLane, evidence, hindi]);
-
   const primaryRisk = useMemo(
     () =>
       analysis
@@ -243,6 +227,23 @@ export default function WolfSetupAnalysisCard({
           )
         : '',
     [analysis, hindi],
+  );
+
+  const thesis = useMemo(
+    () =>
+      buildTradingThesis({
+        text,
+        evidence,
+        levels,
+        shapes,
+        analysis: analysis ?? null,
+      }),
+    [text, evidence, levels, shapes, analysis],
+  );
+
+  const tourSteps = useMemo(
+    () => (analysis ? buildGuidedTradeSteps(thesis, hindi) : []),
+    [analysis, thesis, hindi],
   );
 
   const insight = useMemo(() => {
@@ -453,20 +454,20 @@ export default function WolfSetupAnalysisCard({
     const s = Math.max(0, Math.min(tourSteps.length - 1, step));
     setTourStep(s);
     const item = tourSteps[s];
-    if (!item?.bbox) {
-      setFollowState('error');
-      setActionError(hindi ? 'Wolf us region pin nahi kar paya.' : "Wolf couldn't locate that region.");
-      return;
-    }
+    if (!item) return;
     setFollowWolf(true);
     setFollowState('following');
     setPhase('live');
     setFocusOnly(true);
-    setFocusId(item.evidence?.id || item.id);
-    if (tabs.some((t) => t.id === item.id)) setActiveTab(item.id);
-    setActionHint(item.line);
+    setFocusId(item.annotationId || item.id);
+    setActionHint(`${item.title}: ${item.line}`);
     setActionError(null);
-    canvasRef.current?.focusNormalized(item.bbox, true);
+    if (item.bbox) {
+      canvasRef.current?.focusNormalized(item.bbox, true);
+    } else if (item.annotationId) {
+      const ev = evidence.find((e) => e.id === item.annotationId);
+      if (ev?.bbox) canvasRef.current?.focusNormalized(ev.bbox, true);
+    }
   };
 
   const startFollowTour = () => {
@@ -533,16 +534,6 @@ export default function WolfSetupAnalysisCard({
     );
   };
 
-  const startReplay = () => {
-    if (!tabs.length) return;
-    setSheet('replay');
-    setMoreOpen(false);
-    setReplayIndex(0);
-    setReplayPlaying(true);
-    setPhase('live');
-    setFollowWolf(true);
-  };
-
   const resetReplay = () => {
     setReplayPlaying(false);
     setReplayIndex(0);
@@ -584,19 +575,49 @@ export default function WolfSetupAnalysisCard({
     setActionHint(
       holds
         ? hindi
-          ? 'Scenario: primary level hold karta hai.'
-          : 'Scenario: primary level holds.'
+          ? 'Scenario: CURRENT → BREAKOUT → RETEST → TARGET'
+          : 'CURRENT → BREAKOUT → RETEST → TARGET'
         : hindi
-          ? 'Scenario: primary thesis fail hoti hai.'
-          : 'Scenario: primary thesis fails.',
+          ? 'Scenario: CURRENT → REJECTION → SUPPORT → NEXT TARGET'
+          : 'CURRENT → REJECTION → SUPPORT → NEXT TARGET',
     );
   };
 
-  const onSelectRegion = (bbox: NormalizedBBox) => {
+  const focusThesisLevel = (level: ThesisKeyLevel) => {
+    setExplainLevel(level);
+    setFollowWolf(true);
+    setFocusOnly(true);
+    setFocusId(level.annotationId || level.id);
+    setActionHint(level.reason);
+    setSheet(null);
+    if (level.bbox) {
+      canvasRef.current?.focusNormalized(level.bbox, true);
+    } else {
+      const ev = evidence.find((e) => e.id === level.annotationId);
+      if (ev?.bbox) canvasRef.current?.focusNormalized(ev.bbox, true);
+    }
+  };
+
+  const askAboutZone = (intent: 'why' | 'sr' | 'liq' | 'smc' | 'entry' | 'plan') => {
+    if (!lastUserZone) return;
+    const bbox = lastUserZone;
+    const bboxStr = `${bbox.x.toFixed(2)},${bbox.y.toFixed(2)} ${bbox.width.toFixed(2)}x${bbox.height.toFixed(2)}`;
+    const prompts: Record<typeof intent, string> = {
+      why: `[CHART REGION] Why does this area matter? (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+      sr: `[CHART REGION] Check support/resistance in this area (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+      liq: `[CHART REGION] Check liquidity in this area (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+      smc: `[CHART REGION] Check SMC structure in this area (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+      entry: `[CHART REGION] Find entry trigger in this area (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+      plan: `[CHART REGION] Build trade plan for this area (normalized bbox ${bboxStr}). Short locked template + Next Action. Under 90 words.`,
+    };
+    askWolf(prompts[intent]);
+    setDrawAskOpen(false);
     setDrawMode(false);
-    askWolf(
-      `[CHART REGION] Analyze this user-marked area only (normalized bbox ${bbox.x.toFixed(2)},${bbox.y.toFixed(2)} ${bbox.width.toFixed(2)}x${bbox.height.toFixed(2)}). Short locked template + Next Action. Under 90 words.`,
-    );
+  };
+
+  const onSelectRegion = (bbox: NormalizedBBox) => {
+    setLastUserZone(bbox);
+    setDrawAskOpen(true);
   };
 
   const directionLabel =
@@ -607,11 +628,6 @@ export default function WolfSetupAnalysisCard({
         : analysis.bias === 'NO_TRADE'
           ? 'NO TRADE'
           : 'WAIT';
-
-  const displayEvidence =
-    focusOnly && focusItem
-      ? evidenceLane.filter((n) => n.evidence?.id === focusItem.id || n.id === focusId).slice(0, 1)
-      : evidenceLane;
 
   const currentWhy = evidenceLane[whyStep];
   const showChartLabel =
@@ -662,13 +678,18 @@ export default function WolfSetupAnalysisCard({
                   imageUrl={imageUrl}
                   levels={levels}
                   shapes={shapes}
-                  marks={evidence}
+                  marks={evidence.map((e) => ({ ...e, title: explainableEvidenceLabel(e) }))}
                   focusBbox={focusItem?.bbox || null}
                   focusLabel={focusItem?.title || null}
                   dimUnfocused={Boolean(followWolf || focusOnly || whyWalk)}
                   onMarkClick={(id) => {
                     const item = evidence.find((e) => e.id === id);
                     if (!item) return;
+                    const levelMatch = thesis.keyLevels.find((l) => l.annotationId === id);
+                    if (levelMatch) {
+                      focusThesisLevel(levelMatch);
+                      return;
+                    }
                     setFollowWolf(true);
                     setFocusId(id);
                     setFocusOnly(true);
@@ -717,6 +738,18 @@ export default function WolfSetupAnalysisCard({
                     onClick={() => {
                       setDrawMode(false);
                       canvasRef.current?.clearDraft();
+                      if (lastUserZone) {
+                        setDrawAskOpen(true);
+                      } else if (drawings.length) {
+                        const last = drawings[drawings.length - 1];
+                        setLastUserZone({
+                          x: Math.min(last.a.x, last.b.x),
+                          y: Math.min(last.a.y, last.b.y),
+                          width: Math.max(0.02, Math.abs(last.b.x - last.a.x)),
+                          height: Math.max(0.02, Math.abs(last.b.y - last.a.y)),
+                        });
+                        setDrawAskOpen(true);
+                      }
                     }}
                   >
                     DONE
@@ -798,10 +831,10 @@ export default function WolfSetupAnalysisCard({
                   exit={{ opacity: 0, y: 8 }}
                 >
                   <div className="wolf-split__guide-k">
-                    FOLLOW WOLF · {tourStep + 1}/{tourSteps.length}
+                    GUIDED TRADE · {tourStep + 1}/{tourSteps.length}
                     {followState === 'paused' ? ' · PAUSED' : ''}
                   </div>
-                  <p>{tourSteps[tourStep]?.line}</p>
+                  <p>{actionHint || tourSteps[tourStep]?.line}</p>
                   <div className="wolf-split__guide-nav">
                     <button
                       type="button"
@@ -825,6 +858,49 @@ export default function WolfSetupAnalysisCard({
                       EXIT
                     </button>
                   </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {drawAskOpen && lastUserZone ? (
+                <motion.div
+                  className="wolf-split__guide wolf-split__draw-ask"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                >
+                  <div className="wolf-split__guide-k">WHAT DO YOU WANT WOLF TO CHECK?</div>
+                  <div className="wolf-split__draw-ask-btns">
+                    <button type="button" onClick={() => askAboutZone('why')}>
+                      WHY THIS AREA?
+                    </button>
+                    <button type="button" onClick={() => askAboutZone('sr')}>
+                      CHECK S/R
+                    </button>
+                    <button type="button" onClick={() => askAboutZone('liq')}>
+                      CHECK LIQUIDITY
+                    </button>
+                    <button type="button" onClick={() => askAboutZone('smc')}>
+                      CHECK SMC
+                    </button>
+                    <button type="button" onClick={() => askAboutZone('entry')}>
+                      FIND ENTRY
+                    </button>
+                    <button type="button" onClick={() => askAboutZone('plan')}>
+                      BUILD TRADE PLAN
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="is-ghost"
+                    onClick={() => {
+                      setDrawAskOpen(false);
+                      setDrawMode(false);
+                    }}
+                  >
+                    CLOSE
+                  </button>
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -894,7 +970,7 @@ export default function WolfSetupAnalysisCard({
                   resumeFollowTour();
                 }
               }}
-              title="Guided analysis tour — Wolf moves the chart"
+              title="Guided trade walkthrough"
             >
               {wolfActionLabel('FOLLOW_WOLF', { followState, following: followWolf })}
             </WolfActButton>
@@ -934,13 +1010,21 @@ export default function WolfSetupAnalysisCard({
             </nav>
           ) : null}
 
-          <div className="wolf-split__eyebrow">WOLF&apos;S VIEW</div>
+          <div className="wolf-split__eyebrow">WOLF&apos;S READ</div>
 
           <div className="wolf-desk__status wolf-split__status" role="status">
-            <span className="wolf-desk__emoji">{ui.emoji}</span>
+            <span className="wolf-desk__emoji">
+              {thesis.status === 'LONG'
+                ? '🟢'
+                : thesis.status === 'SHORT'
+                  ? '🔴'
+                  : thesis.status === 'NO_TRADE'
+                    ? '🟡'
+                    : '🟡'}
+            </span>
             <div>
-              <div className="wolf-desk__title">{crisp.title}</div>
-              {crisp.subtitle ? <div className="wolf-desk__sub">{crisp.subtitle}</div> : null}
+              <div className="wolf-desk__title">{thesis.status}</div>
+              <div className="wolf-desk__sub">{crisp.subtitle || crisp.title}</div>
             </div>
           </div>
 
@@ -974,53 +1058,102 @@ export default function WolfSetupAnalysisCard({
             </div>
           ) : null}
 
-          <section className="wolf-split__story" aria-label="Market story">
-            <div className="wolf-desk__watch-k">MARKET STORY</div>
-            <blockquote className="wolf-split__insight">&ldquo;{insight}&rdquo;</blockquote>
+          <section className="wolf-split__bias" aria-label="Bias">
+            <div className="wolf-desk__watch-k">BIAS</div>
+            <p className="wolf-desk__watch-m">{thesis.bias}</p>
           </section>
 
-          <section className="wolf-split__evidence-block" aria-label="Key evidence">
-            <div className="wolf-desk__watch-k">KEY EVIDENCE</div>
-            <ul className="wolf-split__evidence">
-              {displayEvidence.map((node) => {
-                const dimmed =
-                  focusOnly &&
-                  focusItem &&
-                  node.evidence?.id !== focusItem.id &&
-                  node.id !== focusId;
+          <section className="wolf-split__story" aria-label="Market story">
+            <div className="wolf-desk__watch-k">MARKET STORY</div>
+            <blockquote className="wolf-split__insight">&ldquo;{thesis.marketStory}&rdquo;</blockquote>
+          </section>
+
+          <section className="wolf-split__levels" aria-label="Key levels">
+            <div className="wolf-desk__watch-k">KEY LEVELS</div>
+            {thesis.keyLevels.length ? (
+              <div className="wolf-split__levels-list">
+                {thesis.keyLevels.map((level) => (
+                  <button
+                    key={level.id}
+                    type="button"
+                    className="wolf-split__level-btn"
+                    onClick={() => focusThesisLevel(level)}
+                  >
+                    {levelPanelLine(level)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="wolf-desk__watch-m">Not enough evidence.</p>
+            )}
+          </section>
+
+          <section className="wolf-split__setup" aria-label="Setup">
+            <div className="wolf-desk__watch-k">SETUP</div>
+            <p className="wolf-desk__watch-m">
+              {thesis.setup.name}
+              {thesis.noCleanSetup ? (
+                <span className="wolf-split__no-setup"> — NO CLEAN SETUP YET</span>
+              ) : null}
+            </p>
+          </section>
+
+          <section className="wolf-split__wait" aria-label="Wait for">
+            <div className="wolf-desk__watch-k">WAIT FOR</div>
+            <p className="wolf-desk__watch-m">{thesis.waitFor}</p>
+          </section>
+
+          <section className="wolf-split__invalid" aria-label="Invalidation">
+            <div className="wolf-desk__watch-k">INVALIDATION</div>
+            {(() => {
+              const invLevel = thesis.keyLevels.find((l) => l.type === 'INVALIDATION');
+              if (invLevel) {
                 return (
-                  <li key={node.id} className={dimmed ? 'is-dim' : ''}>
-                    <button
-                      type="button"
-                      onClick={() => focusEvidence(node.id, node.evidence)}
-                      style={dimmed ? { opacity: 0.35 } : undefined}
-                    >
-                      <span>
-                        {node.icon} {node.label}
-                      </span>
-                      <span
-                        className={`wolf-switch__mark ${
-                          node.ok === true ? 'is-yes' : node.ok === false ? 'is-no' : 'is-na'
-                        }`}
-                      >
-                        {node.ok === true ? '✓' : node.ok === false ? '✕' : '—'}
-                      </span>
-                    </button>
-                  </li>
+                  <button
+                    type="button"
+                    className="wolf-split__level-btn"
+                    onClick={() => focusThesisLevel(invLevel)}
+                  >
+                    {thesis.invalidation.logic}
+                  </button>
                 );
-              })}
-            </ul>
-            {focusOnly ? (
-              <button type="button" className="wolf-split__clear-focus" onClick={showFullChart}>
-                SHOW ALL
-              </button>
-            ) : null}
+              }
+              return <p className="wolf-desk__watch-m">{thesis.invalidation.logic}</p>;
+            })()}
+          </section>
+
+          <section className="wolf-split__targets" aria-label="Targets">
+            <div className="wolf-desk__watch-k">TARGETS</div>
+            {thesis.targets.length ? (
+              <div className="wolf-split__levels-list">
+                {thesis.targets.map((t) => {
+                  const level = thesis.keyLevels.find((l) => l.annotationId === t.annotationId);
+                  return (
+                    <button
+                      key={t.label}
+                      type="button"
+                      className="wolf-split__level-btn"
+                      onClick={() => {
+                        if (level) {
+                          focusThesisLevel(level);
+                        } else {
+                          setActionHint(`${t.label}: ${t.price}`);
+                        }
+                      }}
+                    >
+                      {t.label} · {t.price}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="wolf-desk__watch-m">Not enough evidence.</p>
+            )}
           </section>
 
           <section className="wolf-desk__watch wolf-split__watch" aria-label="Next action">
             <div className="wolf-desk__watch-k">NEXT ACTION</div>
-            <p className="wolf-desk__watch-m">{next.message}</p>
-            {next.ifConfirmed ? <p className="wolf-desk__watch-n">{next.ifConfirmed}</p> : null}
+            <p className="wolf-desk__watch-m">{thesis.nextAction}</p>
           </section>
 
           <div className="wolf-split__primary">
@@ -1052,6 +1185,22 @@ export default function WolfSetupAnalysisCard({
               disabled={!onWhatIf}
             >
               {wolfActionLabel('WHAT_IF')}
+            </WolfActButton>
+            <WolfActButton
+              id="FOLLOW_WOLF"
+              state={
+                followState === 'following' || followState === 'paused'
+                  ? 'active'
+                  : followState === 'error'
+                    ? 'error'
+                    : followState === 'completed'
+                      ? 'success'
+                      : 'default'
+              }
+              onClick={startFollowTour}
+              disabled={!tourSteps.length}
+            >
+              {wolfActionLabel('FOLLOW_WOLF')}
             </WolfActButton>
           </div>
 
@@ -1110,14 +1259,6 @@ export default function WolfSetupAnalysisCard({
                   <WolfActButton id="CHALLENGE" onClick={handleChallenge}>
                     {wolfActionLabel('CHALLENGE')}
                   </WolfActButton>
-                  <WolfActButton
-                    id="REPLAY"
-                    state={sheet === 'replay' ? 'active' : 'default'}
-                    onClick={startReplay}
-                    disabled={!tabs.length}
-                  >
-                    {wolfActionLabel('REPLAY')}
-                  </WolfActButton>
                   <WolfActButton id="ASK_WOLF" onClick={handleAskWolfAction}>
                     {wolfActionLabel('ASK_WOLF')}
                   </WolfActButton>
@@ -1151,6 +1292,57 @@ export default function WolfSetupAnalysisCard({
           ) : null}
         </aside>
       </div>
+
+      <AnimatePresence>
+        {explainLevel ? (
+          <motion.div
+            className="wolf-split__overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+            aria-label="Level explanation"
+          >
+            <div className="wolf-split__overlay-panel">
+              <header className="wolf-split__overlay-head">
+                <strong>{levelPanelLine(explainLevel)}</strong>
+                <button type="button" className="is-ghost" onClick={() => setExplainLevel(null)}>
+                  Close
+                </button>
+              </header>
+              <div className="wolf-split__overlay-body">
+                <div className="wolf-desk__sheet">
+                  <strong>WHAT</strong>
+                  <p>{explainLevel.label}</p>
+                  <strong>WHY</strong>
+                  <p>{explainLevel.reason}</p>
+                  {explainLevel.watch ? (
+                    <>
+                      <strong>WATCH</strong>
+                      <p>{explainLevel.watch}</p>
+                    </>
+                  ) : null}
+                  {explainLevel.ifFails ? (
+                    <>
+                      <strong>IF IT FAILS</strong>
+                      <p>{explainLevel.ifFails}</p>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      focusThesisLevel(explainLevel);
+                      setExplainLevel(null);
+                    }}
+                  >
+                    SHOW ON CHART
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {sheet === 'explain' ? (

@@ -432,9 +432,9 @@ export function getChartVisionPrompt(
     lensRulesFor(analysisMode),
     'Not a chatbot / signal bot. Pipeline: validate → reconstruct → context → structure → liquidity → PA → levels → setup → confirmation → entry model → invalidation → targets → alternative → decision → visual explain.',
     'Decide WHAT MATTERS MOST. Bias ≠ Entry. Do not force a trade. WAIT / NO TRADE when evidence is thin.',
-    'Fill locked template EVERY reply: Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Evidence Score · Why · Alternative Scenario · Assumptions.',
-    'Evidence Score = setup quality (NOT win %). Exact prices only if scale readable. Never invent levels.',
-    'After template: (0) wolfidentity JSON if readable (1) Next Action (2) wolfchart if prices readable (3) wolfevidence JSON ≤6 items with bbox 0–1 — UI shows top 5–7. Never invent identity/prices.',
+    'Fill locked template EVERY reply: Market Bias · Setup · Status · Key Observation · Next Action · Entry Condition · SL Logic · Target Logic · Invalidation · Key Levels (R1/S1/INV/T1 with reasons) · Evidence Score · Why · Alternative Scenario · Assumptions.',
+    'Evidence Score = setup quality (NOT win %). Exact prices only if scale readable — else approximate range + say so. Never invent levels. Missing → "Not enough evidence."',
+    'After template: (0) wolfidentity (1) Next Action (2) wolfchart with matching level ids (3) wolfevidence ≤6 — titles like "R1 · 66000 — Key resistance" (not bare Target/Support). UI shows top 5–7.',
     'Follow-ups MUST keep the same locked template — never plain text.',
     note ? `User question: ${note}` : '',
   ]

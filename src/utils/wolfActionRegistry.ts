@@ -52,10 +52,10 @@ export const WOLF_ACTIONS: Record<WolfActionId, WolfActionDef> = {
   },
   WHAT_IF: {
     id: 'WHAT_IF',
-    label: '🔮 What if this fails?',
-    shortLabel: '🔮 WHAT IF THIS FAILS?',
+    label: '🔮 What if?',
+    shortLabel: '🔮 WHAT IF?',
     category: 'ai',
-    purpose: 'Compare primary-holds vs primary-fails scenarios on the chart',
+    purpose: 'Scenario simulation — primary holds vs fails on the chart',
   },
   EXPLAIN_MORE: {
     id: 'EXPLAIN_MORE',
@@ -67,7 +67,7 @@ export const WOLF_ACTIONS: Record<WolfActionId, WolfActionDef> = {
   CHALLENGE: {
     id: 'CHALLENGE',
     label: '⚔️ Challenge this setup',
-    shortLabel: '⚔️ CHALLENGE THIS SETUP',
+    shortLabel: '⚔ CHALLENGE',
     category: 'more',
     purpose: 'Surface the strongest evidence against the current thesis',
   },
@@ -76,7 +76,7 @@ export const WOLF_ACTIONS: Record<WolfActionId, WolfActionDef> = {
     label: '▶ Replay the move',
     shortLabel: '▶ REPLAY THE MOVE',
     category: 'more',
-    purpose: 'Highlight the liquidity → sweep → reclaim → BOS sequence',
+    purpose: 'Highlight sequential evidence on chart',
   },
   ASK_WOLF: {
     id: 'ASK_WOLF',
@@ -87,17 +87,17 @@ export const WOLF_ACTIONS: Record<WolfActionId, WolfActionDef> = {
   },
   FOLLOW_WOLF: {
     id: 'FOLLOW_WOLF',
-    label: '👁 Follow Wolf',
-    shortLabel: '👁 FOLLOW WOLF',
+    label: '🧭 Guided Trade',
+    shortLabel: '🧭 GUIDED TRADE',
     category: 'wolf',
-    purpose: 'Let Wolf drive chart pan/zoom while explaining',
+    purpose: 'Walk Context → Level → Structure → Entry → Invalidation → Target',
   },
   DRAW: {
     id: 'DRAW',
-    label: '✏ Draw',
-    shortLabel: '✏ DRAW',
+    label: '✏ Draw / Ask Wolf',
+    shortLabel: '✏ DRAW / ASK WOLF',
     category: 'wolf',
-    purpose: 'Open drawing tools over the chart',
+    purpose: 'Mark a zone then ask Wolf to analyze that exact area',
   },
   CHART_ZOOM_IN: {
     id: 'CHART_ZOOM_IN',
@@ -139,19 +139,19 @@ export function wolfActionLabel(
   if (id === 'FOLLOW_WOLF') {
     switch (opts?.followState) {
       case 'following':
-        return '⏸ PAUSE WOLF';
+        return '⏸ PAUSE';
       case 'paused':
-        return '▶ RESUME WOLF';
+        return '▶ RESUME';
       case 'completed':
-        return '✓ WOLF TOUR COMPLETE';
+        return '✓ GUIDED TRADE DONE';
       case 'error':
         return "⚠ COULDN'T FOCUS";
       default:
-        return opts?.following ? '⏸ PAUSE WOLF' : '👁 FOLLOW WOLF';
+        return opts?.following ? '⏸ PAUSE' : '🧭 GUIDED TRADE';
     }
   }
   if (id === 'DRAW') {
-    return opts?.drawing ? '✏ DRAWING…' : def.shortLabel || def.label;
+    return opts?.drawing ? '✏ DRAWING…' : '✏ DRAW / ASK WOLF';
   }
   if (id === 'CHART_FULLSCREEN') {
     return opts?.fullscreen ? 'EXIT FULL' : 'FULLSCREEN';
