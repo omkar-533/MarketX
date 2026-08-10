@@ -366,7 +366,9 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
 
           {analysis?.waiting && (
             <p className="live-wolf-desk__wait">
-              WOLF is watching. No high-quality setup detected yet — WAIT is valid.
+              {analysis.structure === 'INSUFFICIENT DATA'
+                ? analysis.explanation
+                : 'WOLF is watching. No high-quality setup detected yet — WAIT is valid.'}
             </p>
           )}
 

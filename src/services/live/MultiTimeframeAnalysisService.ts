@@ -11,6 +11,9 @@ import { computeWolfScore } from '../radar/WolfScoringEngine';
 import type { Candle, RadarTimeframe } from '../radar/radarTypes';
 import type { LiveAnalysisSnapshot, MarketEvent } from './liveTypes';
 
+/** Minimum LTF bars before structure/liquidity engines are trustworthy. */
+export const MIN_ANALYSIS_BARS = 20;
+
 function htfLabel(t: 'up' | 'down' | 'range'): string {
   if (t === 'up') return 'BULLISH';
   if (t === 'down') return 'BEARISH';
@@ -42,7 +45,7 @@ export function analyzeMultiTimeframe(input: AnalyzePairInput): {
   const events: MarketEvent[] = [];
   const now = Date.now();
 
-  if (ltf.length < 25) {
+  if (ltf.length < MIN_ANALYSIS_BARS) {
     const snapshot: LiveAnalysisSnapshot = {
       symbol,
       exchange,
@@ -60,8 +63,8 @@ export function analyzeMultiTimeframe(input: AnalyzePairInput): {
       score: null,
       scoreBreakdown: null,
       keyLevels: [],
-      invalidation: 'Need more candles for reliable analysis.',
-      explanation: 'WOLF is watching. Insufficient history for a high-quality setup.',
+      invalidation: `Need ~${MIN_ANALYSIS_BARS}+ candles for reliable analysis (have ${ltf.length}).`,
+      explanation: `WOLF is watching. Loading history… ${ltf.length}/${MIN_ANALYSIS_BARS} candles so far.`,
       dataMode,
       analyzedAt: now,
       waiting: true,

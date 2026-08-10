@@ -132,10 +132,10 @@ export class ServerMarketDataProvider implements MarketDataProvider {
 
   async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
     try {
-      const { candles } = await fetchLiveCandles(symbol, timeframe, bars);
+      const { candles } = await fetchLiveCandles(symbol, timeframe, Math.max(bars, 120));
       return Array.isArray(candles) ? candles : [];
     } catch (err) {
-      // Soft-fail — scanner marks unavailable / errors; never abort the whole universe scan
+      // Soft-fail — scanner marks unavailable; LIVE session retries / seeds from quote
       console.warn('[ServerMarketDataProvider] candles', symbol, err instanceof Error ? err.message : err);
       return [];
     }

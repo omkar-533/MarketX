@@ -142,45 +142,31 @@ export async function fetchIndstocksQuote(accessToken, scripCode) {
 export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars = 80) {
   const interval = wolfTfToIndInterval(wolfTf);
   if (!interval) throw new Error(`Unsupported timeframe: ${wolfTf}`);
-  const stepMs =
-    wolfTf === '1D'
-      ? 86_400_000
-      : wolfTf === '4h'
-        ? 14_400_000
-        : wolfTf === '1h'
-          ? 3_600_000
-          : wolfTf === '30m'
-            ? 1_800_000
-            : wolfTf === '15m'
-              ? 900_000
-              : wolfTf === '5m'
-                ? 300_000
-                : wolfTf === '3m'
-                  ? 180_000
-                  : 60_000;
   const maxSpan = MAX_SPAN_MS[interval] || 7 * 86_400_000;
   const end = Date.now();
-  const idealStart = end - bars * stepMs;
-  const start = Math.max(end - maxSpan + 60_000, idealStart);
+  // Request the max allowed window for the interval, then keep the last `wantBars`.
+  // Short windows often return <20 candles after market hours / thin sessions.
+  const wantBars = Math.max(80, Math.min(500, Number(bars) || 120));
+  const useStart = end - maxSpan + 60_000;
 
   const { json } = await indFetch(`/market/historical/${interval}`, accessToken, {
     searchParams: {
       'scrip-codes': scripCode,
-      start_time: start,
-      end_time: end,
+      start_time: String(Math.floor(useStart)),
+      end_time: String(Math.floor(end)),
     },
   });
   const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
   const raw = Array.isArray(block?.candles) ? block.candles : [];
-  const symbol = scripCode.includes('_') ? scripCode : scripCode;
-  return raw
+  const mapped = raw
     .map((c) => {
       const tsSec = Number(c.ts);
       return {
-        symbol,
+        symbol: scripCode,
         exchange: String(scripCode).split('_')[0] || 'NSE',
         instrumentToken: scripCode,
         timeframe: wolfTf,
+        // Docs: candle `ts` is Unix epoch seconds (IST market clock / epoch seconds)
         timestamp: tsSec > 1e12 ? tsSec : tsSec * 1000,
         open: Number(c.o),
         high: Number(c.h),
@@ -189,8 +175,22 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
         volume: Number(c.v || 0),
       };
     })
-    .filter((c) => c.open > 0 && c.high > 0 && c.close > 0)
+    .filter((c) => c.open > 0 && c.high > 0 && c.close > 0 && Number.isFinite(c.timestamp))
     .sort((a, b) => a.timestamp - b.timestamp);
+
+  // Dedupe by timestamp (some feeds repeat the forming bar)
+  const deduped = [];
+  let lastTs = -1;
+  for (const c of mapped) {
+    if (c.timestamp === lastTs) {
+      deduped[deduped.length - 1] = c;
+    } else {
+      deduped.push(c);
+      lastTs = c.timestamp;
+    }
+  }
+  if (deduped.length <= wantBars) return deduped;
+  return deduped.slice(-wantBars);
 }
 
 function parseCsv(text) {

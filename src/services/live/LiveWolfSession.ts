@@ -4,7 +4,7 @@
 import type { MarketDataProvider } from '../marketData/MarketDataProvider';
 import type { Candle, RadarTimeframe } from '../radar/radarTypes';
 import { LiveCandleBuilder } from './LiveCandleBuilder';
-import { analyzeMultiTimeframe, pickHtf } from './MultiTimeframeAnalysisService';
+import { analyzeMultiTimeframe, pickHtf, MIN_ANALYSIS_BARS } from './MultiTimeframeAnalysisService';
 import { liveAnalysisBus, liveFeedStatusBus, liveMarketEventBus } from './MarketEventBus';
 import type {
   LiveAnalysisSnapshot,
@@ -16,6 +16,29 @@ import type {
 const STALE_MS = 12_000;
 const ANALYSIS_THROTTLE_MS = 4_000;
 const UI_BARS_THROTTLE_MS = 250;
+/** Engines need ~20–25 bars; pull more history for LIVE so we don't open short. */
+const LIVE_HISTORY_BARS = 200;
+
+function seedCandleFromQuote(
+  symbol: string,
+  exchange: string,
+  timeframe: RadarTimeframe,
+  price: number,
+  volume = 0,
+): Candle {
+  const now = Date.now();
+  return {
+    symbol,
+    exchange,
+    timeframe,
+    timestamp: now,
+    open: price,
+    high: price,
+    low: price,
+    close: price,
+    volume,
+  };
+}
 
 export type LiveWolfSessionOpts = {
   symbol: string;
@@ -61,14 +84,41 @@ export class LiveWolfSession {
 
     try {
       await provider.authenticate().catch(() => provider.connect());
-      const [ltf, htf] = await Promise.all([
-        provider.getCandles(symbol, timeframe, 120),
-        provider.getCandles(symbol, pickHtf(timeframe), 120),
+      let [ltf, htf] = await Promise.all([
+        provider.getCandles(symbol, timeframe, LIVE_HISTORY_BARS),
+        provider.getCandles(symbol, pickHtf(timeframe), LIVE_HISTORY_BARS),
       ]);
+
+      // LIVE soft-empty / short history: one retry, then seed from quote so ticks can attach
+      if ((!ltf || ltf.length < MIN_ANALYSIS_BARS) && !provider.isDemo) {
+        await new Promise((r) => setTimeout(r, 400));
+        const retry = await Promise.all([
+          provider.getCandles(symbol, timeframe, LIVE_HISTORY_BARS),
+          provider.getCandles(symbol, pickHtf(timeframe), LIVE_HISTORY_BARS),
+        ]);
+        if (retry[0].length > (ltf?.length || 0)) ltf = retry[0];
+        if (retry[1].length > (htf?.length || 0)) htf = retry[1];
+      }
+
+      if ((!ltf || ltf.length === 0) && !provider.isDemo) {
+        try {
+          const q = await provider.getQuote(symbol);
+          const px = q.lastPrice || q.price;
+          if (px > 0) {
+            ltf = [
+              seedCandleFromQuote(symbol, exchange, timeframe, px, q.volume || 0),
+            ];
+            this.changePercent = q.changePercent ?? 0;
+          }
+        } catch {
+          /* analysis stays WAIT until history arrives */
+        }
+      }
+
       if (this.stopped) return;
 
-      this.htfCandles = htf;
-      this.builder = new LiveCandleBuilder(symbol, timeframe, ltf, exchange);
+      this.htfCandles = htf || [];
+      this.builder = new LiveCandleBuilder(symbol, timeframe, ltf || [], exchange);
       this.emitBars(true);
       this.runAnalysis(true);
 
@@ -139,8 +189,8 @@ export class LiveWolfSession {
     this.opts.timeframe = timeframe;
     const { symbol, provider } = this.opts;
     const [ltf, htf] = await Promise.all([
-      provider.getCandles(symbol, timeframe, 120),
-      provider.getCandles(symbol, pickHtf(timeframe), 120),
+      provider.getCandles(symbol, timeframe, LIVE_HISTORY_BARS),
+      provider.getCandles(symbol, pickHtf(timeframe), LIVE_HISTORY_BARS),
     ]);
     this.htfCandles = htf;
     this.builder = new LiveCandleBuilder(symbol, timeframe, ltf, this.opts.exchange || 'NSE');
