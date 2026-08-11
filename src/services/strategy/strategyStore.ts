@@ -1,9 +1,9 @@
 /**
  * Private strategy store — localStorage first (no DB migration).
- * Migrates legacy UserSetup records from wolf_radar_setups_v1.
+ * Migrates legacy UserSetup records from wolf_radar_setups_v1 once.
  */
 import type { RadarTimeframe, UserSetup, UserSetupCondition } from '../radar/radarTypes';
-import { loadUserSetups } from '../radar/radarStore';
+import { deleteUserSetup, loadUserSetups } from '../radar/radarStore';
 import type {
   CreationMethod,
   StrategyCondition,
@@ -13,6 +13,8 @@ import type {
 } from './strategyTypes';
 
 const KEY = 'wolf_strategy_lab_v1';
+/** Prevents empty lab list from re-importing deleted legacy setups on refresh. */
+const MIGRATED_KEY = 'wolf_strategy_lab_migrated_v1';
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -35,6 +37,32 @@ function writeAll(list: StrategyDefinition[]) {
   } catch {
     /* quota */
   }
+}
+
+function markMigrated() {
+  try {
+    localStorage.setItem(MIGRATED_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+}
+
+function hasMigrated(): boolean {
+  try {
+    return localStorage.getItem(MIGRATED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Reverse map strat-* id → legacy setup-* ids that may exist. */
+function legacyIdsForStrategy(id: string): string[] {
+  const out = [id];
+  if (id.startsWith('strat-')) {
+    const rest = id.slice('strat-'.length);
+    out.push(`setup-${rest}`, rest);
+  }
+  return out;
 }
 
 /** Map legacy chip conditions → registry conditions */
