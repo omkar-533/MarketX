@@ -2,15 +2,13 @@
  * WOLF OPPORTUNITY — premium one-screen market intelligence desk.
  * Logic unchanged; UI simplified for clarity + luxury motion.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Crosshair,
   RefreshCw,
   X,
-  Sparkles,
   Link2,
-  ChevronRight,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -299,11 +297,6 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
     onOpenLive?.();
   };
 
-  const primeHits = useMemo(() => {
-    const all = cards.flatMap((c) => c.hits);
-    return [...all].sort((a, b) => b.score - a.score).slice(0, 3);
-  }, [cards]);
-
   const liveOk = feedStatus === 'LIVE';
   const hitCount = cards.reduce((n, c) => n + c.hits.length, 0);
 
@@ -434,49 +427,6 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
             ? 'Demo feed — connect live data for real quotes.'
             : 'Live data offline — showing historical / demo results.'}
         </p>
-      ) : null}
-
-      {/* Featured prime picks — 3D tilt cards */}
-      {primeHits.length > 0 ? (
-        <section className="wolf-opp__prime" aria-label="Top setups">
-          <div className="wolf-opp__prime-head">
-            <Sparkles size={14} />
-            <h2>Top setups</h2>
-          </div>
-          <div className="wolf-opp__prime-grid">
-            {primeHits.map((hit, i) => {
-              const bias = biasOf(hit);
-              return (
-                <motion.button
-                  key={hit.id}
-                  type="button"
-                  className={`wolf-opp__prime-card is-${bias}`}
-                  style={{ ['--i' as string]: i }}
-                  initial={{ opacity: 0, rotateX: 18, y: 28 }}
-                  animate={{ opacity: 1, rotateX: 0, y: 0 }}
-                  transition={{ delay: 0.08 * i, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ y: -8, rotateY: i === 1 ? 0 : i === 0 ? 6 : -6, scale: 1.02 }}
-                  onClick={() => setSelected(hit)}
-                >
-                  <div className="wolf-opp__prime-glow" />
-                  <div className="wolf-opp__prime-top">
-                    <BiasBadge dir={bias} />
-                    <span className="wolf-opp__prime-score">{hit.score}</span>
-                  </div>
-                  <strong>{hit.symbol}</strong>
-                  <span className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                    {hit.changePercent >= 0 ? '+' : ''}
-                    {hit.changePercent.toFixed(2)}%
-                  </span>
-                  <em>{prettyTitle(hit.scannerId)}</em>
-                  <span className="wolf-opp__prime-go">
-                    Open <ChevronRight size={14} />
-                  </span>
-                </motion.button>
-              );
-            })}
-          </div>
-        </section>
       ) : null}
 
       <section className="wolf-opp__desk" aria-label="Scanners">
