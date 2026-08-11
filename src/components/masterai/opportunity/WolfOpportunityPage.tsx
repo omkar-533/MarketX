@@ -34,9 +34,32 @@ import type {
   OpportunityHit,
   ScannerCardState,
 } from '../../../services/opportunity/opportunityTypes';
-import { OPPORTUNITY_SCANNERS } from '../../../services/opportunity/opportunityTypes';
+import {
+  OPPORTUNITY_CARD_POOL,
+  OPPORTUNITY_SCANNERS,
+} from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import { opportunityToRadarResult } from '../../../services/opportunity/opportunityBridge';
+
+function mergeHitIntoCards(
+  prev: ScannerCardState[],
+  hit: OpportunityHit,
+  topN = OPPORTUNITY_CARD_POOL,
+): ScannerCardState[] {
+  return prev.map((card) => {
+    if (card.scannerId !== hit.scannerId) return card;
+    if (card.status === 'unavailable') return card;
+    const without = card.hits.filter((h) => h.symbol !== hit.symbol);
+    const nextHits = [...without, hit].sort((a, b) => b.score - a.score).slice(0, topN);
+    return {
+      ...card,
+      status: 'ready',
+      hits: nextHits,
+      updatedAt: Date.now(),
+      unavailableReason: undefined,
+    };
+  });
+}
 
 type Props = {
   onOpenWolfAi: () => void;
@@ -93,6 +116,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   const [dataMode, setDataMode] = useState<'LIVE' | 'DEMO'>('DEMO');
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState('');
+  const [bgBusy, setBgBusy] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [indices, setIndices] = useState<IndexPulse[]>([
     { symbol: 'NIFTY', price: null, changePercent: null, available: false },
@@ -106,6 +130,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const scanningRef = useRef(false);
   const marketOpen = getMarketSession('NSE:NIFTY').open;
 
   const patchFilters = useCallback((patch: Partial<OpportunityFilters>) => {
@@ -136,12 +161,32 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
     setIndices(next);
   }, []);
 
-  const runScan = useCallback(async () => {
-    abortRef.current?.abort();
+  const runScan = useCallback(async (opts?: { quiet?: boolean; reset?: boolean }) => {
+    const quiet = Boolean(opts?.quiet);
+    // Background pass never interrupts an in-flight F&O scan.
+    if (quiet && scanningRef.current) return;
+
+    if (!quiet) {
+      abortRef.current?.abort();
+    } else if (scanningRef.current) {
+      return;
+    }
+
     const ac = new AbortController();
     abortRef.current = ac;
-    setScanning(true);
-    setProgress('Connecting…');
+    scanningRef.current = true;
+    if (quiet) setBgBusy(true);
+    else {
+      setScanning(true);
+      setProgress('Connecting…');
+      if (opts?.reset) {
+        setCards((prev) =>
+          prev.map((c) =>
+            c.status === 'unavailable' ? c : { ...c, hits: [], status: 'scanning' as const },
+          ),
+        );
+      }
+    }
 
     let mode: 'DEMO' | 'LIVE' | null = null;
     try {
@@ -172,44 +217,59 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
     void refreshIndices(provider);
 
     try {
-      const out = await runOpportunityScan(filters, {
-        signal: ac.signal,
-        onProgress: (p) => {
-          setProgress(
-            p.status === 'scanning'
-              ? `${p.phase} ${p.symbolsChecked}/${p.symbolsTotal}${p.currentSymbol ? ` · ${p.currentSymbol}` : ''}`
-              : p.phase,
-          );
+      const out = await runOpportunityScan(
+        filters,
+        {
+          signal: ac.signal,
+          topN: OPPORTUNITY_CARD_POOL,
+          onProgress: (p) => {
+            if (quiet) return;
+            setProgress(
+              p.status === 'scanning'
+                ? `F&O scan ${p.symbolsChecked}/${p.symbolsTotal}`
+                : p.phase,
+            );
+          },
+          onHit: (hit) => {
+            setCards((prev) => mergeHitIntoCards(prev, hit, OPPORTUNITY_CARD_POOL));
+          },
+          onCard: (card) => {
+            // Only apply unavailable markers here; ranked cards stream via onHit.
+            if (card.status !== 'unavailable') return;
+            setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
+          },
         },
-        onCard: (card) => {
-          setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
-        },
-      }, provider);
+        provider,
+      );
       if (!ac.signal.aborted) {
         setCards(out.cards);
         setDataMode(out.dataMode);
         setLastUpdated(Date.now());
-        setProgress('Ready');
+        if (!quiet) setProgress(`Ready · ${out.hits.length} opportunities · ${filters.universe}`);
       }
     } catch (e) {
       if (!ac.signal.aborted) {
-        setProgress(e instanceof Error ? e.message : 'Scan failed');
+        if (!quiet) setProgress(e instanceof Error ? e.message : 'Scan failed');
         setFeedStatus((f) => (f === 'LIVE' ? 'DELAYED' : f));
       }
     } finally {
-      if (!ac.signal.aborted) setScanning(false);
+      scanningRef.current = false;
+      if (!ac.signal.aborted) {
+        setScanning(false);
+        setBgBusy(false);
+      }
     }
   }, [filters, refreshIndices, feedStatus]);
 
   useEffect(() => {
-    void runScan();
+    void runScan({ reset: true });
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial boot
   }, []);
 
   useEffect(() => {
     if (!filters.autoRefresh) return;
-    const id = window.setInterval(() => void runScan(), filters.refreshSec * 1000);
+    const id = window.setInterval(() => void runScan({ quiet: true }), filters.refreshSec * 1000);
     return () => window.clearInterval(id);
   }, [filters.autoRefresh, filters.refreshSec, runScan]);
 
@@ -268,8 +328,13 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           <span className="wolf-opp-desk__feed">{headerFeed}</span>
           <span>{dataMode === 'LIVE' ? 'Mode LIVE' : 'Mode DEMO'}</span>
           <span>Updated {clock}</span>
-          <span>Auto {filters.autoRefresh ? 'ON' : 'OFF'}</span>
-          <button type="button" className="wolf-opp__btn" onClick={() => void runScan()} disabled={scanning}>
+          <span>Auto {filters.autoRefresh ? 'ON' : 'OFF'}{bgBusy ? ' · syncing' : ''}</span>
+          <button
+            type="button"
+            className="wolf-opp__btn"
+            onClick={() => void runScan({ reset: false })}
+            disabled={scanning}
+          >
             <RefreshCw size={13} className={scanning ? 'is-spin' : ''} /> Refresh
           </button>
           <button type="button" className="wolf-opp__btn" onClick={() => setSettingsOpen((v) => !v)}>
@@ -298,7 +363,11 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
             <Chip
               key={u}
               on={filters.universe === u}
-              onClick={() => patchFilters({ universe: u === 'CUSTOM' ? 'NIFTY50' : u })}
+              onClick={() => {
+                const next = u === 'CUSTOM' ? 'NIFTY50' : u;
+                patchFilters({ universe: next });
+                window.setTimeout(() => void runScan({ reset: true }), 0);
+              }}
             >
               {u}
             </Chip>
@@ -377,10 +446,10 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               <p className="wolf-opp-card__empty">{card.unavailableReason}</p>
             ) : !card.hits.length ? (
               <p className="wolf-opp-card__empty">
-                {scanning ? 'Scanning…' : 'No opportunities above filter threshold.'}
+                {scanning || bgBusy ? 'Hunting F&O universe…' : 'No opportunities above filter threshold.'}
               </p>
             ) : (
-              <ul>
+              <ul className="wolf-opp-card__list">
                 {card.hits.map((hit) => (
                   <li key={hit.id}>
                     <button type="button" className="wolf-opp-card__row" onClick={() => setSelected(hit)}>

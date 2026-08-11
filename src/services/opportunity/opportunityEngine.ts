@@ -30,12 +30,14 @@ import type {
   OpportunityTimeframe,
   ScannerCardState,
 } from './opportunityTypes';
-import { OPPORTUNITY_SCANNERS } from './opportunityTypes';
+import { OPPORTUNITY_CARD_POOL, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
 export type RunOpportunityOptions = {
   signal?: AbortSignal;
   onProgress?: (p: OpportunityScanProgress) => void;
   onCard?: (card: ScannerCardState) => void;
+  /** Fired as each opportunity is discovered so UI can append live. */
+  onHit?: (hit: OpportunityHit) => void;
   topN?: number;
 };
 
@@ -88,11 +90,25 @@ export async function runOpportunityScan(
   opts: RunOpportunityOptions = {},
   provider: MarketDataProvider = mockMarketDataProvider,
 ): Promise<{ cards: ScannerCardState[]; hits: OpportunityHit[]; dataMode: 'LIVE' | 'DEMO' }> {
-  const topN = opts.topN ?? 5;
+  const topN = opts.topN ?? OPPORTUNITY_CARD_POOL;
   const dataMode: 'LIVE' | 'DEMO' = provider.isDemo ? 'DEMO' : 'LIVE';
   const tf = filters.timeframe as OpportunityTimeframe;
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
   for (const s of OPPORTUNITY_SCANNERS) buckets.set(s.id, []);
+
+  const emitHit = (hit: OpportunityHit | null) => {
+    if (!hit) return;
+    if (hit.score < filters.minScore) return;
+    if (
+      filters.direction !== 'all' &&
+      hit.direction !== filters.direction &&
+      hit.direction !== 'neutral'
+    ) {
+      return;
+    }
+    pushHit(buckets, hit);
+    opts.onHit?.(hit);
+  };
 
   // Honest unavailable cards for feeds we do not have yet
   const markUnavailable = (id: OpportunityScannerId, reason: string) => {
@@ -133,9 +149,10 @@ export async function runOpportunityScan(
     };
   }
 
-  const CONCURRENCY = provider.isDemo ? 8 : 2;
+  const CONCURRENCY = provider.isDemo ? 8 : 3;
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
+  let checked = 0;
 
   opts.onProgress?.({
     status: 'scanning',
@@ -148,16 +165,8 @@ export async function runOpportunityScan(
     if (opts.signal?.aborted) break;
     const batch = symbols.slice(start, start + CONCURRENCY);
     await Promise.all(
-      batch.map(async (symbol, bi) => {
+      batch.map(async (symbol) => {
         if (opts.signal?.aborted) return;
-        const i = start + bi;
-        opts.onProgress?.({
-          status: 'scanning',
-          symbolsChecked: i,
-          symbolsTotal: total,
-          phase: 'EVALUATING',
-          currentSymbol: symbol,
-        });
         try {
           const candles = await provider.getCandles(symbol, tf, 80);
           const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
@@ -184,21 +193,19 @@ export async function runOpportunityScan(
             ['trend_rider', () => scanTrendRider(ctx)],
           ];
 
-          for (const [id, fn] of runners) {
+          for (const [, fn] of runners) {
             const hit = fn();
             if (hit) {
-              sibling[id] = hit.score;
-              pushHit(buckets, hit);
+              sibling[hit.scannerId] = hit.score;
+              emitHit(hit);
             }
           }
 
-          // Touch unavailable scanners (keep null)
           void scanFlowShift(ctx);
           void scanDeliveryFlow(ctx);
           void scanOptionsFlow(ctx);
 
-          const prime = scanWolfPrime(ctx, sibling);
-          if (prime) pushHit(buckets, prime);
+          emitHit(scanWolfPrime(ctx, sibling));
 
           const sec = sectorOf(symbol);
           const bag = sectorBag.get(sec) || [];
@@ -206,6 +213,15 @@ export async function runOpportunityScan(
           sectorBag.set(sec, bag);
         } catch {
           /* skip symbol */
+        } finally {
+          checked += 1;
+          opts.onProgress?.({
+            status: 'scanning',
+            symbolsChecked: checked,
+            symbolsTotal: total,
+            phase: 'EVALUATING',
+            currentSymbol: symbol,
+          });
         }
       }),
     );
@@ -224,7 +240,7 @@ export async function runOpportunityScan(
       peers.map((p) => ({ symbol: p.symbol, changePercent: p.changePercent })),
       avg,
     );
-    pushHit(buckets, hit);
+    emitHit(hit);
   }
 
   const ranked = rankTrim(buckets, filters.minScore, filters.direction, topN);

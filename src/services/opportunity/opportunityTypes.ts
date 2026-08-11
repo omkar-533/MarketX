@@ -124,9 +124,13 @@ export const OPPORTUNITY_SCANNERS: {
   { id: 'wolf_prime', title: 'WOLF PRIME', tagline: 'Composite high-conviction', requires: 'ohlc' },
 ];
 
+/** Visible rows per card before inner scrollbar. Ranked pool can be larger. */
+export const OPPORTUNITY_CARD_VISIBLE = 6;
+export const OPPORTUNITY_CARD_POOL = 12;
+
 export const DEFAULT_OPPORTUNITY_FILTERS: OpportunityFilters = {
   market: 'NSE',
-  universe: 'NIFTY50',
+  universe: 'F&O',
   timeframe: '15m',
   direction: 'all',
   minScore: 60,

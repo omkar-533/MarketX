@@ -1,7 +1,7 @@
 import type { OpportunityFilters, OpportunityHit } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS } from './opportunityTypes';
 
-const FILTERS_KEY = 'wolf_opportunity_filters_v1';
+const FILTERS_KEY = 'wolf_opportunity_filters_v2';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
 

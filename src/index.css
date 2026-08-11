@@ -27735,18 +27735,28 @@ body:has(.app-main--terminal-immersive) #root {
   padding: 0.4rem 0.45rem 0.35rem;
   overflow: hidden;
 }
+.wolf-opp-card header {
+  flex-shrink: 0;
+  padding: 0.2rem 0.3rem 0.28rem;
+  margin: -0.1rem -0.1rem 0.15rem;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));
+  border: 1px solid rgba(212,175,55,0.28);
+}
 .wolf-opp-card header h2 {
   margin: 0;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  color: #f0d78c;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  color: #ffe7a0;
   font-weight: 800;
+  text-shadow: 0 0 12px rgba(212,175,55,0.25);
 }
 .wolf-opp-card header small {
   display: block;
   font-size: 0.55rem;
-  color: var(--opp-muted);
-  margin-top: 0.05rem;
+  color: #c4b27a;
+  margin-top: 0.08rem;
+  letter-spacing: 0.02em;
 }
 .wolf-opp-card__empty {
   margin: 0.45rem 0 0;
@@ -27754,15 +27764,31 @@ body:has(.app-main--terminal-immersive) #root {
   color: var(--opp-muted);
   line-height: 1.35;
 }
-.wolf-opp-card ul {
+.wolf-opp-card ul,
+.wolf-opp-card__list {
   list-style: none;
-  margin: 0.3rem 0 0;
+  margin: 0.2rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
-  overflow: auto;
+  gap: 0.22rem;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  /* ~6 company rows visible; extra hits scroll */
+  max-height: 14.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,0.45) rgba(255,255,255,0.04);
+}
+.wolf-opp-card__list::-webkit-scrollbar {
+  width: 5px;
+}
+.wolf-opp-card__list::-webkit-scrollbar-thumb {
+  background: rgba(212,175,55,0.4);
+  border-radius: 999px;
+}
+.wolf-opp-card__list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
 }
 .wolf-opp-card__row {
   width: 100%;
