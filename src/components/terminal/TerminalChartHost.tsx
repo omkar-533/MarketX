@@ -23,6 +23,8 @@ export type TerminalChartHostProps = {
   onStudyChange?: (study: string) => void;
   onPaperTrade?: (handoff: TerminalPaperHandoff) => void;
   onNavigate?: (tab: string) => void;
+  needsLiveDataConnect?: boolean;
+  onConnectLiveData?: () => void;
 };
 
 /**
@@ -46,6 +48,8 @@ export default function TerminalChartHost({
   onStudyChange,
   onPaperTrade,
   onNavigate,
+  needsLiveDataConnect,
+  onConnectLiveData,
 }: TerminalChartHostProps) {
   const preferNative = usesNativeChart(symbol);
 
@@ -76,6 +80,8 @@ export default function TerminalChartHost({
         onStudyChange={onStudyChange}
         onPaperTrade={onPaperTrade}
         onNavigate={onNavigate}
+        needsLiveDataConnect={needsLiveDataConnect}
+        onConnectLiveData={onConnectLiveData}
       />
     );
   }

@@ -35,7 +35,11 @@ export default function LiveWolfRoute({ onAskWolf }: Props) {
 
   return (
     <>
-      <LiveWolfPage onAskWolf={onAskWolf} onConnectData={() => setConnectOpen(true)} />
+      <LiveWolfPage
+        onAskWolf={onAskWolf}
+        onConnectData={() => setConnectOpen(true)}
+        dataConnected={mdStatus ? mdStatus.status === 'CONNECTED' : undefined}
+      />
       <ConnectMarketDataModal
         open={connectOpen}
         onClose={() => setConnectOpen(false)}

@@ -294,6 +294,13 @@ export type NativeChatChartProps = {
   onPaperTrade?: (handoff: TerminalPaperHandoff) => void;
   /** Navigate to another app tab (alerts / paper). */
   onNavigate?: (tab: string) => void;
+  /**
+   * LIVE WOLF / desks that need market-data auth.
+   * When true, empty/error overlays ask to connect instead of “no candles”.
+   */
+  needsLiveDataConnect?: boolean;
+  /** Opens the CONNECT MARKET DATA flow. */
+  onConnectLiveData?: () => void;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -376,6 +383,8 @@ export default function NativeChatChart({
   onApplyStudy,
   onPaperTrade,
   onNavigate,
+  needsLiveDataConnect = false,
+  onConnectLiveData,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const areaRef = useRef<HTMLDivElement>(null);
@@ -2728,7 +2737,14 @@ export default function NativeChatChart({
 
         {status !== 'ready' ? (
           <div className="mai-tv__overlay">
-            {status === 'loading' ? (
+            {needsLiveDataConnect && onConnectLiveData ? (
+              <div className="mai-nc__msg">
+                <p>Connect live data</p>
+                <button type="button" className="mai-nc__retry" onClick={onConnectLiveData}>
+                  Connect live data
+                </button>
+              </div>
+            ) : status === 'loading' ? (
               `Loading ${label}…`
             ) : (
               <div className="mai-nc__msg">

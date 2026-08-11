@@ -44,6 +44,8 @@ import { defaultTerminalState } from '../../../services/terminalState';
 type Props = {
   onAskWolf: () => void;
   onConnectData: () => void;
+  /** From ConnectMarketDataModal — keeps chart CTA in sync after connect. */
+  dataConnected?: boolean;
 };
 
 const TFS: RadarTimeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
@@ -107,7 +109,7 @@ function levelsFromAnalysis(
   });
 }
 
-export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
+export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }: Props) {
   const [boot] = useState(() => consumePendingLiveWolf());
   const [tvSymbol, setTvSymbol] = useState(() =>
     boot ? tvFromPayload(boot) : defaultTerminalState().symbol,
@@ -227,6 +229,16 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
       setError(e instanceof Error ? e.message : 'Failed to start LIVE WOLF');
     }
   }, [bareSymbol, exchange, timeframe, pushEvent]);
+
+  useEffect(() => {
+    if (typeof dataConnected !== 'boolean') return;
+    setConnected(dataConnected);
+    if (dataConnected) {
+      setError(null);
+      setReloadKey((k) => k + 1);
+      void startSession();
+    }
+  }, [dataConnected, startSession]);
 
   useEffect(() => {
     void startSession();
@@ -427,6 +439,8 @@ export default function LiveWolfPage({ onAskWolf, onConnectData }: Props) {
             onClearIndicators={() => setStudy('none')}
             onApplyStudy={setStudy}
             onStudyChange={setStudy}
+            needsLiveDataConnect={!connected}
+            onConnectLiveData={onConnectData}
           />
         </section>
 
