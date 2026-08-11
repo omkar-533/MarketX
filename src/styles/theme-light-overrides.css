@@ -2908,86 +2908,105 @@ html[data-theme="light"] .dash-info__pop-body {
 }
 
 /* ── Wolf Opportunity desk ─────────────────────────────────── */
-html[data-theme="light"] .wolf-opp-desk {
+html[data-theme="light"] .wolf-opp {
   --opp-bg: var(--tf-bg);
-  --opp-panel: #ffffff;
+  --opp-panel: rgba(255, 255, 255, 0.86);
+  --opp-panel-solid: #ffffff;
   --opp-line: rgba(146, 64, 14, 0.22);
   --opp-gold: #92400e;
-  --opp-gold-soft: #92400e;
+  --opp-gold-soft: #78350f;
   --opp-muted: #525252;
   --opp-text: #0a0a0a;
   --opp-text-soft: #171717;
-  --opp-text-dim: #404040;
-  --opp-chip: #404040;
-  --opp-row: #f7f9fc;
+  --opp-row: #f4f6fa;
   --opp-hairline: #d5dee9;
   --opp-drawer: #ffffff;
-  background: var(--opp-bg);
+  background:
+    radial-gradient(120% 80% at 10% -10%, rgba(146, 64, 14, 0.08), transparent 42%),
+    radial-gradient(90% 60% at 95% 0%, rgba(15, 23, 42, 0.04), transparent 45%),
+    linear-gradient(180deg, #f8fafc 0%, var(--tf-bg) 55%, #eef2f7 100%);
   color: var(--opp-text);
 }
 
-html[data-theme="light"] .wolf-opp-desk__mkt.is-open { color: #047857; }
-html[data-theme="light"] .wolf-opp-desk__mkt.is-closed { color: #be123c; }
-html[data-theme="light"] .wolf-opp-desk__ix .up,
-html[data-theme="light"] .wolf-opp-card .up,
-html[data-theme="light"] .wolf-opp-drawer .up { color: #047857; }
-html[data-theme="light"] .wolf-opp-desk__ix .down,
-html[data-theme="light"] .wolf-opp-card .down,
-html[data-theme="light"] .wolf-opp-drawer .down { color: #be123c; }
+html[data-theme="light"] .wolf-opp__fog,
+html[data-theme="light"] .wolf-opp__orb,
+html[data-theme="light"] .wolf-opp__floor {
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+}
 
-html[data-theme="light"] .wolf-opp-card header {
-  background: linear-gradient(90deg, rgba(146, 64, 14, 0.12), rgba(146, 64, 14, 0.03));
+html[data-theme="light"] .wolf-opp__ring {
   border-color: rgba(146, 64, 14, 0.28);
+  box-shadow: 0 0 18px rgba(146, 64, 14, 0.08), inset 0 0 20px rgba(146, 64, 14, 0.05);
 }
 
-html[data-theme="light"] .wolf-opp-card header h2 {
-  text-shadow: none;
+html[data-theme="light"] .wolf-opp__mkt.is-open { color: #047857; }
+html[data-theme="light"] .wolf-opp__mkt.is-closed { color: #be123c; }
+html[data-theme="light"] .wolf-opp .up { color: #047857; }
+html[data-theme="light"] .wolf-opp .down { color: #be123c; }
+
+html[data-theme="light"] .wolf-opp__pulse,
+html[data-theme="light"] .wolf-opp__card,
+html[data-theme="light"] .wolf-opp__seg-row {
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="light"] .wolf-opp__title span {
+  background: linear-gradient(110deg, #78350f 0%, #92400e 40%, #b45309 70%, #78350f 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .wolf-opp__seg.is-on {
+  background: linear-gradient(180deg, rgba(146, 64, 14, 0.16), rgba(146, 64, 14, 0.08));
   color: #78350f;
+  box-shadow: 0 0 0 1px rgba(146, 64, 14, 0.28);
 }
 
-html[data-theme="light"] .wolf-opp__chip.is-on,
-html[data-theme="light"] .wolf-opp__btn--gold {
-  background: rgba(146, 64, 14, 0.08);
+html[data-theme="light"] .wolf-opp__cta {
+  color: #78350f;
   border-color: rgba(146, 64, 14, 0.35);
-  color: #78350f;
+  background: linear-gradient(135deg, rgba(146, 64, 14, 0.14), rgba(146, 64, 14, 0.04));
+  box-shadow: none;
 }
 
-html[data-theme="light"] .wolf-opp-desk__banner {
-  background: rgba(190, 18, 60, 0.08);
-  border-color: rgba(190, 18, 60, 0.25);
-  color: #9f1239;
-}
-
-html[data-theme="light"] .wolf-opp-desk__banner--demo {
+html[data-theme="light"] .wolf-opp__note {
   background: rgba(146, 64, 14, 0.08);
   border-color: rgba(146, 64, 14, 0.25);
   color: #78350f;
 }
 
-html[data-theme="light"] .wolf-opp-card__list {
+html[data-theme="light"] .wolf-opp__prime-card {
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border-color: rgba(146, 64, 14, 0.22);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .wolf-opp__prime-score,
+html[data-theme="light"] .wolf-opp__row-score,
+html[data-theme="light"] .wolf-opp__card header h3 {
+  color: #78350f;
+  text-shadow: none;
+}
+
+html[data-theme="light"] .wolf-opp__card ul {
   scrollbar-color: rgba(146, 64, 14, 0.4) #eef2f7;
 }
 
-html[data-theme="light"] .wolf-opp-drawer {
-  background: rgba(15, 23, 42, 0.4);
+html[data-theme="light"] .wolf-opp__drawer-backdrop {
+  background: rgba(15, 23, 42, 0.35);
 }
 
-html[data-theme="light"] .wolf-opp-drawer__panel,
-html[data-theme="light"] .wolf-opp-compare {
+html[data-theme="light"] .wolf-opp__drawer-panel {
   background: #ffffff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: -18px 0 40px rgba(15, 23, 42, 0.12);
 }
 
-html[data-theme="light"] .wolf-opp-drawer__alert,
-html[data-theme="light"] .wolf-opp-drawer li.ok { color: #047857; }
-
-html[data-theme="light"] .wolf-opp-drawer li.risk { color: #b45309; }
-
-html[data-theme="light"] .wolf-opp-drawer__actions button {
-  color: #78350f;
-  border-color: rgba(146, 64, 14, 0.35);
-  background: rgba(146, 64, 14, 0.08);
-}
+html[data-theme="light"] .wolf-opp__evidence li.ok { color: #047857; }
+html[data-theme="light"] .wolf-opp__evidence li.risk { color: #b45309; }
 
 /* ── Master AI analysis split / canvas ─────────────────────── */
 html[data-theme="light"] .wolf-split {
