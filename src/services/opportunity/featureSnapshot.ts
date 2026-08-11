@@ -86,10 +86,13 @@ export function buildFeatureSnapshot(
   const lastHigh = [...swings].reverse().find((s) => s.kind === 'high');
   const lastLow = [...swings].reverse().find((s) => s.kind === 'low');
 
-  const high10 = c.length >= 10 ? Math.max(...candles.slice(-10).map((b) => b.high)) : null;
-  const high20 = c.length >= 20 ? Math.max(...candles.slice(-20).map((b) => b.high)) : null;
-  const low10 = c.length >= 10 ? Math.min(...candles.slice(-10).map((b) => b.low)) : null;
-  const low20 = c.length >= 20 ? Math.min(...candles.slice(-20).map((b) => b.low)) : null;
+  // Prior-bar extremes (exclude last candle) so breakouts can actually trigger
+  const prior10 = candles.length >= 11 ? candles.slice(-11, -1) : null;
+  const prior20 = candles.length >= 21 ? candles.slice(-21, -1) : null;
+  const high10 = prior10 ? Math.max(...prior10.map((b) => b.high)) : null;
+  const high20 = prior20 ? Math.max(...prior20.map((b) => b.high)) : null;
+  const low10 = prior10 ? Math.min(...prior10.map((b) => b.low)) : null;
+  const low20 = prior20 ? Math.min(...prior20.map((b) => b.low)) : null;
 
   return {
     symbol,

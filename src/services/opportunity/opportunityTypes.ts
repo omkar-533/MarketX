@@ -111,16 +111,16 @@ export const OPPORTUNITY_SCANNERS: {
   requires: 'ohlc' | 'oi' | 'delivery' | 'options' | 'sector';
 }[] = [
   { id: 'momentum_surge', title: 'MOMENTUM SURGE', tagline: 'Price + volume expansion', requires: 'ohlc' },
-  { id: 'flow_shift', title: 'FLOW SHIFT', tagline: 'Futures / OI positioning', requires: 'oi' },
+  { id: 'flow_shift', title: 'FLOW SHIFT', tagline: 'Price×volume positioning proxy', requires: 'ohlc' },
   { id: 'liquidity_hunt', title: 'LIQUIDITY HUNT', tagline: 'Sweeps around key levels', requires: 'ohlc' },
   { id: 'compression_break', title: 'COMPRESSION BREAK', tagline: 'Range squeeze → expansion', requires: 'ohlc' },
   { id: 'momentum_fade', title: 'MOMENTUM FADE', tagline: 'Price up, momentum soft', requires: 'ohlc' },
   { id: 'breakout_radar', title: 'BREAKOUT RADAR', tagline: 'Swing / range breakouts', requires: 'ohlc' },
   { id: 'reversal_hunter', title: 'REVERSAL HUNTER', tagline: 'Exhaustion + reclaim watch', requires: 'ohlc' },
   { id: 'sector_leaders', title: 'SECTOR LEADERS', tagline: 'Relative sector strength', requires: 'sector' },
-  { id: 'delivery_flow', title: 'DELIVERY FLOW', tagline: 'Delivery % behaviour', requires: 'delivery' },
+  { id: 'delivery_flow', title: 'DELIVERY FLOW', tagline: 'Accumulation / distribution proxy', requires: 'ohlc' },
   { id: 'trend_rider', title: 'TREND RIDER', tagline: 'Aligned directional trends', requires: 'ohlc' },
-  { id: 'options_flow', title: 'OPTIONS FLOW', tagline: 'Strike / IV / PCR context', requires: 'options' },
+  { id: 'options_flow', title: 'OPTIONS FLOW', tagline: 'Vol / range expansion proxy', requires: 'ohlc' },
   { id: 'wolf_prime', title: 'WOLF PRIME', tagline: 'Composite high-conviction', requires: 'ohlc' },
 ];
 

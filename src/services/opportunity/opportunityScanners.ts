@@ -92,9 +92,54 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 02 — FLOW SHIFT (OI required — unavailable without futures OI feed) */
-export function scanFlowShift(_ctx: Ctx): OpportunityHit | null {
-  return null;
+/** 02 — FLOW SHIFT — price×volume positioning (OI feed offline → participation proxy) */
+export function scanFlowShift(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const rvol = f.volume.ratio;
+  const chg = f.changePercent;
+  if (rvol < 1.25 || Math.abs(chg) < 0.35) return null;
+
+  const priceUp = chg >= 0;
+  const volUp = rvol >= 1.35;
+  let stateLabel = 'NEUTRAL FLOW';
+  let direction: 'bullish' | 'bearish' = priceUp ? 'bullish' : 'bearish';
+  if (priceUp && volUp) stateLabel = 'LONG BUILDUP PROXY';
+  else if (!priceUp && volUp) stateLabel = 'SHORT BUILDUP PROXY';
+  else if (priceUp && !volUp) {
+    stateLabel = 'SHORT COVER PROXY';
+    direction = 'bullish';
+  } else {
+    stateLabel = 'LONG UNWIND PROXY';
+    direction = 'bearish';
+  }
+
+  const breakdown: ScoreBreakdown = {
+    oiProxy: volUp ? 28 : 14,
+    price: clampScore(Math.min(22, Math.abs(chg) * 10), 22),
+    volume: clampScore(Math.min(22, (rvol - 1) * 14), 22),
+    alignment: volUp && Math.abs(chg) >= 0.6 ? 16 : 8,
+    confirmation: f.volume.state === 'UNUSUAL' || f.volume.state === 'EXPANDING' ? 12 : 6,
+  };
+  const score = sumBreakdown(breakdown);
+  if (score < 55) return null;
+
+  return baseHit('flow_shift', ctx, {
+    direction,
+    status: score >= 78 ? 'ACTIVE' : 'WATCH',
+    score,
+    breakdown,
+    stateLabel,
+    why: `${stateLabel}: price ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% with RVOL ${rvol.toFixed(1)}× (OI feed offline — participation proxy).`,
+    keyLevel: direction === 'bullish' ? f.tech.ema21 : f.tech.ema21,
+    trigger: direction === 'bullish' ? f.high10 : f.low10,
+    invalidation: 'Volume dries up or price reverses through EMA21.',
+    confirmationNeeded: 'Prefer real futures OI confirmation when feed is live.',
+    evidence: [
+      { label: stateLabel, ok: true },
+      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.35 },
+      { label: 'Futures OI feed offline', ok: false, detail: 'Using price×volume proxy' },
+    ],
+  });
 }
 
 /** 03 — LIQUIDITY HUNT */
@@ -390,9 +435,58 @@ export function scanSectorLeaders(
   });
 }
 
-/** 09 — DELIVERY FLOW — unavailable without delivery feed */
-export function scanDeliveryFlow(_ctx: Ctx): OpportunityHit | null {
-  return null;
+/** 09 — DELIVERY FLOW — accumulation proxy when official delivery % feed is offline */
+export function scanDeliveryFlow(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const bars = f.candles.slice(-12);
+  if (bars.length < 8) return null;
+
+  let accum = 0;
+  let totalVol = 0;
+  for (const b of bars) {
+    const range = Math.max(b.high - b.low, 1e-6);
+    const closePos = (b.close - b.low) / range; // 0–1
+    const signed = (closePos - 0.5) * 2; // -1..1
+    accum += signed * (b.volume || 0);
+    totalVol += b.volume || 0;
+  }
+  if (!(totalVol > 0)) return null;
+  const accumScore = accum / totalVol; // -1..1
+  const rvol = f.volume.ratio;
+  if (Math.abs(accumScore) < 0.12 || rvol < 1.1) return null;
+
+  const bullish = accumScore > 0;
+  const breakdown: ScoreBreakdown = {
+    deliveryProxy: clampScore(Math.abs(accumScore) * 40, 30),
+    volume: clampScore(Math.min(22, (rvol - 1) * 12), 22),
+    persistence: Math.abs(f.changePercent) >= 0.4 ? 16 : 8,
+    trend: (bullish && f.changePercent >= 0) || (!bullish && f.changePercent <= 0) ? 18 : 8,
+    confirmation: f.volume.state === 'EXPANDING' || f.volume.state === 'UNUSUAL' ? 12 : 6,
+  };
+  const score = sumBreakdown(breakdown);
+  if (score < 55) return null;
+
+  return baseHit('delivery_flow', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: score >= 78 ? 'ACTIVE' : 'WATCH',
+    score,
+    breakdown,
+    stateLabel: bullish ? 'ACCUMULATION PROXY' : 'DISTRIBUTION PROXY',
+    why: `Close location × volume over last ${bars.length} bars suggests ${
+      bullish ? 'buying' : 'selling'
+    } pressure (official delivery % feed unavailable).`,
+    keyLevel: f.tech.vwap ?? f.tech.ema21,
+    trigger: bullish ? f.high10 : f.low10,
+    invalidation: bullish
+      ? 'Closes start pinning session lows on rising volume.'
+      : 'Closes start pinning session highs on rising volume.',
+    confirmationNeeded: 'Treat as participation hint until delivery % feed is live.',
+    evidence: [
+      { label: bullish ? 'Accumulation bias' : 'Distribution bias', ok: true },
+      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.2 },
+      { label: 'Delivery % feed offline', ok: false, detail: 'Using volume accumulation proxy' },
+    ],
+  });
 }
 
 /** 10 — TREND RIDER */
@@ -442,9 +536,44 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 11 — OPTIONS FLOW — unavailable without option chain */
-export function scanOptionsFlow(_ctx: Ctx): OpportunityHit | null {
-  return null;
+/** 11 — OPTIONS FLOW — strike feed offline → volatility / expansion proxy */
+export function scanOptionsFlow(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const atrExp = f.atrCompression != null && f.atrCompression >= 1.12;
+  const rangeWide = f.rangePct >= 1.4;
+  const rvol = f.volume.ratio;
+  const rsi = f.tech.rsi14 ?? 50;
+  if (!atrExp && !rangeWide) return null;
+  if (rvol < 1.2) return null;
+
+  const bullish = f.changePercent >= 0 && rsi >= 48;
+  const breakdown: ScoreBreakdown = {
+    volExpansion: atrExp ? 26 : 12,
+    range: rangeWide ? 20 : 10,
+    volume: clampScore(Math.min(22, (rvol - 1) * 12), 22),
+    momentum: clampScore(Math.min(18, Math.abs(f.changePercent) * 8), 18),
+    confirmation: Math.abs(rsi - 50) >= 8 ? 12 : 6,
+  };
+  const score = sumBreakdown(breakdown);
+  if (score < 55) return null;
+
+  return baseHit('options_flow', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: score >= 78 ? 'ACTIVE' : 'WATCH',
+    score,
+    breakdown,
+    stateLabel: atrExp ? 'IV/RANGE EXPANSION PROXY' : 'WIDE RANGE PROXY',
+    why: `ATR/range expansion with RVOL ${rvol.toFixed(1)}× (option-chain feed offline — volatility proxy, not strike OI).`,
+    keyLevel: f.tech.last,
+    trigger: bullish ? f.high10 : f.low10,
+    invalidation: 'Volatility compresses back and volume fades.',
+    confirmationNeeded: 'Confirm with live option chain / PCR when feed returns.',
+    evidence: [
+      { label: atrExp ? 'ATR expanding' : 'ATR steady', ok: atrExp },
+      { label: `Range ${f.rangePct.toFixed(1)}%`, ok: rangeWide },
+      { label: 'Option chain feed offline', ok: false, detail: 'Using vol expansion proxy' },
+    ],
+  });
 }
 
 /** 12 — WOLF PRIME composite from sibling hits on same symbol */
@@ -502,10 +631,13 @@ export function scanWolfPrime(
 
 export const OHLC_SCANNERS: OpportunityScannerId[] = [
   'momentum_surge',
+  'flow_shift',
   'liquidity_hunt',
   'compression_break',
   'momentum_fade',
   'breakout_radar',
   'reversal_hunter',
+  'delivery_flow',
   'trend_rider',
+  'options_flow',
 ];

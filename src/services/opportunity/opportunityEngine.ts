@@ -110,22 +110,6 @@ export async function runOpportunityScan(
     opts.onHit?.(hit);
   };
 
-  // Honest unavailable cards for feeds we do not have yet
-  const markUnavailable = (id: OpportunityScannerId, reason: string) => {
-    opts.onCard?.({
-      scannerId: id,
-      title: OPPORTUNITY_SCANNERS.find((s) => s.id === id)?.title || id,
-      tagline: OPPORTUNITY_SCANNERS.find((s) => s.id === id)?.tagline || '',
-      status: 'unavailable',
-      unavailableReason: reason,
-      hits: [],
-      updatedAt: Date.now(),
-    });
-  };
-  markUnavailable('flow_shift', 'Futures OI feed not connected — Flow Shift inactive.');
-  markUnavailable('delivery_flow', 'Delivery % data unavailable for this session.');
-  markUnavailable('options_flow', 'Options Intelligence unavailable — no option-chain feed.');
-
   let symbols: string[] = [];
   try {
     symbols = await provider.getSymbols(toRadarUniverse(filters.universe), filters.market);
@@ -185,12 +169,15 @@ export async function runOpportunityScan(
 
           const runners: Array<[OpportunityScannerId, () => OpportunityHit | null]> = [
             ['momentum_surge', () => scanMomentumSurge(ctx)],
+            ['flow_shift', () => scanFlowShift(ctx)],
             ['liquidity_hunt', () => scanLiquidityHunt(ctx)],
             ['compression_break', () => scanCompressionBreak(ctx)],
             ['momentum_fade', () => scanMomentumFade(ctx)],
             ['breakout_radar', () => scanBreakoutRadar(ctx)],
             ['reversal_hunter', () => scanReversalHunter(ctx)],
+            ['delivery_flow', () => scanDeliveryFlow(ctx)],
             ['trend_rider', () => scanTrendRider(ctx)],
+            ['options_flow', () => scanOptionsFlow(ctx)],
           ];
 
           for (const [, fn] of runners) {
@@ -200,10 +187,6 @@ export async function runOpportunityScan(
               emitHit(hit);
             }
           }
-
-          void scanFlowShift(ctx);
-          void scanDeliveryFlow(ctx);
-          void scanOptionsFlow(ctx);
 
           emitHit(scanWolfPrime(ctx, sibling));
 
@@ -246,22 +229,6 @@ export async function runOpportunityScan(
   const ranked = rankTrim(buckets, filters.minScore, filters.direction, topN);
   const now = Date.now();
   const cards: ScannerCardState[] = OPPORTUNITY_SCANNERS.map((s) => {
-    if (s.id === 'flow_shift' || s.id === 'delivery_flow' || s.id === 'options_flow') {
-      return {
-        scannerId: s.id,
-        title: s.title,
-        tagline: s.tagline,
-        status: 'unavailable',
-        unavailableReason:
-          s.id === 'flow_shift'
-            ? 'Futures OI feed not connected — Flow Shift inactive.'
-            : s.id === 'delivery_flow'
-              ? 'Delivery % data unavailable for this session.'
-              : 'Options Intelligence unavailable — no option-chain feed.',
-        hits: [],
-        updatedAt: now,
-      };
-    }
     const hits = ranked.get(s.id) || [];
     return {
       scannerId: s.id,
