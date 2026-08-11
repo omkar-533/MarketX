@@ -104,11 +104,16 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     void fetchAiHealth().then(setAiHealth);
   }, []);
 
+  useEffect(() => {
+    if (!tplDetailId) return;
+    const el = document.getElementById(`wolf-lab-tpl-${tplDetailId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [tplDetailId]);
+
   const filteredTemplates = useMemo(
     () => filterStrategyTemplates(tplCategory, tplQuery),
     [tplCategory, tplQuery],
   );
-  const tplDetail = tplDetailId ? STRATEGY_TEMPLATES.find((t) => t.id === tplDetailId) : null;
 
   const visible = useMemo(() => {
     return strategies.filter((s) => {
@@ -410,83 +415,91 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             </div>
           </div>
 
-          {tplDetail && (
-            <article className="wolf-lab__tpl-detail">
-              <header>
-                <strong>{tplDetail.name}</strong>
-                <em>{tplDetail.category}</em>
-                <button type="button" className="ghost" onClick={() => setTplDetailId(null)}>
-                  Close
-                </button>
-              </header>
-              <p>{tplDetail.description}</p>
-              <dl>
-                <div>
-                  <dt>WHAT IT LOOKS FOR</dt>
-                  <dd>{tplDetail.explanation.whatItLooksFor}</dd>
-                </div>
-                <div>
-                  <dt>WHY IT MATTERS</dt>
-                  <dd>{tplDetail.explanation.whyItMatters}</dd>
-                </div>
-                <div>
-                  <dt>HOW WOLF DETECTS IT</dt>
-                  <dd>{tplDetail.explanation.howWolfDetects}</dd>
-                </div>
-                <div>
-                  <dt>BEST USED FOR</dt>
-                  <dd>{tplDetail.explanation.bestUsedFor}</dd>
-                </div>
-                <div>
-                  <dt>MARKET COMPATIBILITY</dt>
-                  <dd>{tplDetail.explanation.marketCompatibility}</dd>
-                </div>
-                <div>
-                  <dt>LIMITATIONS</dt>
-                  <dd>{tplDetail.explanation.limitations}</dd>
-                </div>
-              </dl>
-              <ul>
-                {tplDetail.conditions.map((c, i) => (
-                  <li key={`${c.type}-${i}`}>{formatCondition({ ...c, id: `t${i}` })}</li>
-                ))}
-              </ul>
-              <div className="wolf-radar-desk__card-actions">
-                <button type="button" className="primary" onClick={() => useTemplate(tplDetail.id, true)}>
-                  USE THIS SCREENER
-                </button>
-                <button type="button" onClick={() => useTemplate(tplDetail.id, false)}>
-                  SAVE TO MY SCREENERS
-                </button>
-              </div>
-            </article>
-          )}
-
           <div className="wolf-lab__tpl-grid">
-            {filteredTemplates.map((t) => (
-              <article key={t.id} className="wolf-lab__tpl">
-                <strong>{t.name}</strong>
-                <em>{t.category}</em>
-                <p>{t.description}</p>
-                <small>
-                  {t.conditions.length} conditions ·{' '}
-                  {t.timeframeMode === 'MULTI'
-                    ? [t.timeframes.context, t.timeframes.structure, t.timeframes.setup]
-                        .filter(Boolean)
-                        .join(' → ')
-                        .toUpperCase() || t.timeframe.toUpperCase()
-                    : t.timeframe.toUpperCase()}
-                </small>
-                <div className="wolf-lab__tpl-acts">
-                  <button type="button" onClick={() => setTplDetailId(t.id)}>
-                    VIEW
-                  </button>
-                  <button type="button" className="primary" onClick={() => useTemplate(t.id, true)}>
-                    USE
-                  </button>
-                </div>
-              </article>
-            ))}
+            {filteredTemplates.map((t) => {
+              const open = tplDetailId === t.id;
+              return (
+                <article
+                  key={t.id}
+                  id={`wolf-lab-tpl-${t.id}`}
+                  className={`wolf-lab__tpl ${open ? 'is-open' : ''}`}
+                >
+                  <strong>{t.name}</strong>
+                  <em>{t.category}</em>
+                  <p>{t.description}</p>
+                  <small>
+                    {t.conditions.length} conditions ·{' '}
+                    {t.timeframeMode === 'MULTI'
+                      ? [t.timeframes.context, t.timeframes.structure, t.timeframes.setup]
+                          .filter(Boolean)
+                          .join(' → ')
+                          .toUpperCase() || t.timeframe.toUpperCase()
+                      : t.timeframe.toUpperCase()}
+                  </small>
+                  <div className="wolf-lab__tpl-acts">
+                    <button
+                      type="button"
+                      className={open ? 'is-on' : ''}
+                      onClick={() => setTplDetailId(open ? null : t.id)}
+                    >
+                      {open ? 'HIDE' : 'VIEW'}
+                    </button>
+                    <button type="button" className="primary" onClick={() => useTemplate(t.id, true)}>
+                      USE
+                    </button>
+                  </div>
+
+                  {open && (
+                    <div className="wolf-lab__tpl-detail wolf-lab__tpl-detail--inline">
+                      <p>{t.description}</p>
+                      <dl>
+                        <div>
+                          <dt>WHAT IT LOOKS FOR</dt>
+                          <dd>{t.explanation.whatItLooksFor}</dd>
+                        </div>
+                        <div>
+                          <dt>WHY IT MATTERS</dt>
+                          <dd>{t.explanation.whyItMatters}</dd>
+                        </div>
+                        <div>
+                          <dt>HOW WOLF DETECTS IT</dt>
+                          <dd>{t.explanation.howWolfDetects}</dd>
+                        </div>
+                        <div>
+                          <dt>BEST USED FOR</dt>
+                          <dd>{t.explanation.bestUsedFor}</dd>
+                        </div>
+                        <div>
+                          <dt>MARKET COMPATIBILITY</dt>
+                          <dd>{t.explanation.marketCompatibility}</dd>
+                        </div>
+                        <div>
+                          <dt>LIMITATIONS</dt>
+                          <dd>{t.explanation.limitations}</dd>
+                        </div>
+                      </dl>
+                      <ul>
+                        {t.conditions.map((c, i) => (
+                          <li key={`${c.type}-${i}`}>{formatCondition({ ...c, id: `t${i}` })}</li>
+                        ))}
+                      </ul>
+                      <div className="wolf-radar-desk__card-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={() => useTemplate(t.id, true)}
+                        >
+                          USE THIS SCREENER
+                        </button>
+                        <button type="button" onClick={() => useTemplate(t.id, false)}>
+                          SAVE TO MY SCREENERS
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
             {!filteredTemplates.length && (
               <p className="wolf-lab__note">No screeners match that filter.</p>
             )}

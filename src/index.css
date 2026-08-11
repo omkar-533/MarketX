@@ -26671,6 +26671,19 @@ body:has(.app-main--terminal-immersive) #root {
   display: grid;
   gap: 0.55rem;
 }
+.wolf-lab__tpl.is-open {
+  grid-column: 1 / -1;
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.04);
+}
+.wolf-lab__tpl-detail--inline {
+  margin-top: 0.55rem;
+  grid-column: 1 / -1;
+}
+.wolf-lab__tpl-acts button.is-on {
+  border-color: rgba(212, 175, 55, 0.55);
+  color: var(--tj-gold);
+}
 .wolf-lab__tpl-detail header {
   display: flex;
   flex-wrap: wrap;
