@@ -20,6 +20,7 @@ const commands = [
   ...(SHOW_DASHBOARD ? [{ id: 'dashboard', label: 'Open Dashboard', shortcut: 'D' }] : []),
   { id: 'wolf-ai', label: 'Open Wolf AI', shortcut: 'M' },
   { id: 'wolf-radar', label: 'Open WOLF Radar', shortcut: 'R' },
+  { id: 'wolf-opportunity', label: 'Open Wolf Opportunity', shortcut: 'Y' },
   { id: 'live-wolf', label: 'Open LIVE WOLF', shortcut: 'W' },
   { id: 'strategy-lab', label: 'Open Strategy Lab', shortcut: 'U' },
   { id: 'watchlist', label: 'Open Watchlist', shortcut: 'K' },

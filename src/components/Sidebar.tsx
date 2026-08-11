@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
   GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart, Swords,
-  Layers, Brain, LayoutDashboard, Radar, Activity, BookMarked, Bookmark,
+  Layers, Brain, LayoutDashboard, Radar, Activity, BookMarked, Bookmark, Crosshair,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
@@ -35,6 +35,7 @@ const productNavItems = [
     : []),
   { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
   { id: 'wolf-radar', label: PAGE_NAMES['wolf-radar'], icon: Radar },
+  { id: 'wolf-opportunity', label: PAGE_NAMES['wolf-opportunity'], icon: Crosshair },
   { id: 'live-wolf', label: PAGE_NAMES['live-wolf'], icon: Activity },
   { id: 'strategy-lab', label: PAGE_NAMES['strategy-lab'], icon: BookMarked },
   { id: 'watchlist', label: PAGE_NAMES.watchlist, icon: Bookmark },

@@ -45,6 +45,7 @@ const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const WolfAiWorkspace = lazy(() => import('./components/WolfAiWorkspace'));
 const WolfRadarPage = lazy(() => import('./components/masterai/radar/WolfRadarPage'));
+const WolfOpportunityRoute = lazy(() => import('./components/masterai/opportunity/WolfOpportunityRoute'));
 const LiveWolfRoute = lazy(() => import('./components/masterai/live/LiveWolfRoute'));
 const MySetupsPanel = lazy(() => import('./components/masterai/radar/MySetupsPanel'));
 const WatchlistPanel = lazy(() => import('./components/masterai/radar/WatchlistPanel'));
@@ -85,6 +86,7 @@ const VALID_TABS = new Set([
   'footprint',
   'wolf-ai',
   'wolf-radar',
+  'wolf-opportunity',
   'live-wolf',
   'strategy-lab',
   'mentor-ai',
@@ -334,6 +336,13 @@ function AppWorkspace() {
         return (
           <WolfRadarPage
             onAnalyze={() => handleTabChange('wolf-ai')}
+            onOpenLive={() => handleTabChange('live-wolf')}
+          />
+        );
+      case 'wolf-opportunity':
+        return (
+          <WolfOpportunityRoute
+            onOpenWolfAi={() => handleTabChange('wolf-ai')}
             onOpenLive={() => handleTabChange('live-wolf')}
           />
         );
