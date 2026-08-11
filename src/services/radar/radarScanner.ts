@@ -8,7 +8,7 @@ import { analyzeTechnical, atr, trendDirection, volumeRatio } from './TechnicalE
 import { detectStructure } from './StructureEngine';
 import { detectLiquidity } from './LiquidityEngine';
 import { detectVolume } from './VolumeEngine';
-import { classifySetup } from './SetupEngine';
+import { classifySetup, buildWatchSetup } from './SetupEngine';
 import { computeWolfScore } from './WolfScoringEngine';
 import { cacheLastResults } from './radarStore';
 import { evaluateStrategy } from '../strategy/conditionEvaluator';
@@ -22,7 +22,6 @@ import type {
   RadarScanProgress,
   RadarScanRequest,
   RadarScanSummary,
-  ScoreBreakdown,
 } from './radarTypes';
 
 export type ScanActivityRow = {
@@ -52,16 +51,6 @@ const MIN_SCORE = 62;
 /** Display only — full universe still scanned */
 export const DEFAULT_DISPLAY_LIMIT = 20;
 
-const EMPTY_BREAKDOWN: ScoreBreakdown = {
-  structure: 0,
-  liquidity: 0,
-  volume: 0,
-  momentum: 0,
-  htfAlignment: 0,
-  volatility: 0,
-  setupQuality: 0,
-};
-
 function htfFromTrend(t: 'up' | 'down' | 'range'): RadarBias {
   if (t === 'up') return 'bullish';
   if (t === 'down') return 'bearish';
@@ -79,14 +68,22 @@ export async function fetchMarketPulse(
   const items: MarketPulseItem[] = [];
 
   for (const symbol of symbols) {
-    // Prefer real index candles. Soft-fallback to a liquid equity proxy only if index fails.
-    let candles = await provider.getCandles(symbol, '15m', 80);
-    let usedProxy = false;
-    if (candles.length < 25) {
-      const proxy =
-        symbol === 'NIFTY' ? 'RELIANCE' : symbol === 'BANKNIFTY' ? 'HDFCBANK' : 'SBIN';
-      candles = await provider.getCandles(proxy, '15m', 80);
-      usedProxy = candles.length >= 25;
+    // Prefer real index candles. Never substitute equity proxies for MARKET CONTEXT —
+    // that produced misleading index cards labeled as NIFTY while using Reliance bars.
+    const aliases =
+      symbol === 'NIFTY' ? ['NIFTY', 'NIFTY50'] : symbol === 'BANKNIFTY' ? ['BANKNIFTY'] : ['FINNIFTY'];
+    let candles: Awaited<ReturnType<MarketDataProvider['getCandles']>> = [];
+    let sourceTf: '15m' | '1h' | '1D' = '15m';
+    for (const alias of aliases) {
+      for (const tf of ['15m', '1h', '1D'] as const) {
+        const chunk = await provider.getCandles(alias, tf, tf === '1D' ? 60 : 120);
+        if (chunk.length >= 25) {
+          candles = chunk;
+          sourceTf = tf;
+          break;
+        }
+      }
+      if (candles.length >= 25) break;
     }
 
     if (candles.length < 25) {
@@ -99,14 +96,15 @@ export async function fetchMarketPulse(
         momentum: '—',
         relativeVolume: null,
         regime: 'UNKNOWN',
-        note: 'Insufficient index history',
+        note: 'Index history unavailable (needs NIDX candles). Reconnect market data after API deploy.',
       });
       continue;
     }
 
+    const structureTf = sourceTf === '1D' ? '1D' : sourceTf === '1h' ? '1h' : '15m';
     const trend = trendDirection(candles);
     const tech = analyzeTechnical(candles);
-    const structure = detectStructure(candles, '15m');
+    const structure = detectStructure(candles, structureTf);
     const volRatio = volumeRatio(candles, 20);
     const atrVal = atr(candles, 14);
     const last = candles[candles.length - 1];
@@ -129,9 +127,9 @@ export async function fetchMarketPulse(
     }
 
     const structureLabel =
-      structure.structure === 'bullish'
+      structure.direction === 'bullish'
         ? 'BULLISH'
-        : structure.structure === 'bearish'
+        : structure.direction === 'bearish'
           ? 'BEARISH'
           : 'NEUTRAL';
 
@@ -144,7 +142,7 @@ export async function fetchMarketPulse(
       momentum,
       relativeVolume: volRatio != null ? Math.round(volRatio * 100) / 100 : null,
       regime,
-      note: usedProxy ? 'Proxy equity candles (index history unavailable)' : undefined,
+      note: sourceTf !== '15m' ? `Using ${sourceTf.toUpperCase()} index bars` : undefined,
     });
   }
 
@@ -297,7 +295,7 @@ export async function runRadarScanFull(
           const liquidity = detectLiquidity(ltf, req.timeframe);
           const volume = detectVolume(ltf);
           const htfTrend = trendDirection(htf);
-          const setup = classifySetup({
+          const classified = classifySetup({
             timeframe: req.timeframe,
             tech,
             structure,
@@ -305,10 +303,18 @@ export async function runRadarScanFull(
             volume,
             htfTrend,
           });
-
-          const scored = setup
-            ? computeWolfScore({ structure, liquidity, volume, tech, setup })
-            : { score: 0, breakdown: EMPTY_BREAKDOWN };
+          // Always score — strategy matches previously showed fake 0/100 when classifySetup returned null
+          const setup =
+            classified ||
+            buildWatchSetup({
+              timeframe: req.timeframe,
+              tech,
+              structure,
+              liquidity,
+              volume,
+              htfTrend,
+            });
+          const scored = computeWolfScore({ structure, liquidity, volume, tech, setup });
 
           let quotePrice = tech.last;
           try {
@@ -324,20 +330,20 @@ export async function runRadarScanFull(
             exchange: req.market,
             price: quotePrice,
             timeframe: req.timeframe,
-            setupType: setup?.setupType || 'Trend Continuation',
-            direction: setup?.direction || htfFromTrend(htfTrend),
+            setupType: setup.setupType,
+            direction: setup.direction,
             score: scored.score,
             scoreBreakdown: scored.breakdown,
-            status: setup?.status || 'WATCH',
-            confirmations: setup?.confirmations || [],
-            structure: setup?.structureLabel || structure.note || '—',
-            liquidity: setup?.liquidityLabel || liquidity.note || '—',
-            volume: setup?.volumeLabel || volume.note || '—',
-            momentum: setup?.momentumLabel || '—',
-            htfAlignment: setup?.htfAlignment ?? htfTrend !== 'range',
-            keyLevels: setup?.keyLevels || [],
-            invalidation: setup?.invalidation || '—',
-            explanation: setup?.explanation || 'Evaluated against scan engines / strategy.',
+            status: setup.status,
+            confirmations: setup.confirmations,
+            structure: setup.structureLabel || structure.note || '—',
+            liquidity: setup.liquidityLabel || liquidity.note || '—',
+            volume: setup.volumeLabel || volume.note || '—',
+            momentum: setup.momentumLabel || '—',
+            htfAlignment: setup.htfAlignment,
+            keyLevels: setup.keyLevels,
+            invalidation: setup.invalidation,
+            explanation: setup.explanation,
             detectedAt: Date.now(),
             dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
           };
@@ -361,12 +367,12 @@ export async function runRadarScanFull(
             return;
           }
 
-          if (!setup || scored.score < MIN_SCORE) {
+          if (!classified || scored.score < MIN_SCORE) {
             noMatchSoFar += 1;
             opts.onActivity?.({
               symbol,
               status: 'NO_MATCH',
-              reason: !setup ? 'No setup classified' : `Score ${scored.score} < ${MIN_SCORE}`,
+              reason: !classified ? 'No setup classified' : `Score ${scored.score} < ${MIN_SCORE}`,
               score: scored.score,
               at: Date.now(),
             });

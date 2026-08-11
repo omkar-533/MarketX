@@ -161,3 +161,67 @@ export function classifySetup(input: {
     explanation,
   };
 }
+
+/**
+ * Always-scoreable watch lean when no primary setup classified.
+ * Prevents strategy-matched cards from showing a fake 0/100.
+ */
+export function buildWatchSetup(input: {
+  timeframe: string;
+  tech: TechnicalSnapshot;
+  structure: StructureEvent;
+  liquidity: LiquidityEvent;
+  volume: VolumeEvent;
+  htfTrend: 'up' | 'down' | 'range';
+}): SetupDetection {
+  const { tech, structure, liquidity, volume, htfTrend, timeframe } = input;
+  const direction: RadarBias =
+    structure.direction !== 'neutral'
+      ? structure.direction
+      : htfTrend === 'up'
+        ? 'bullish'
+        : htfTrend === 'down'
+          ? 'bearish'
+          : 'neutral';
+  const htfAlignment =
+    (direction === 'bullish' && htfTrend === 'up') ||
+    (direction === 'bearish' && htfTrend === 'down') ||
+    (direction === 'neutral' && htfTrend !== 'range');
+
+  const atr = tech.atr14 ?? tech.last * 0.004;
+  const invPrice =
+    direction === 'bearish'
+      ? Number((tech.last + atr * 1.4).toFixed(2))
+      : Number((tech.last - atr * 1.4).toFixed(2));
+
+  const confirmations: string[] = ['Watch lean'];
+  if (structure.type !== 'RANGE') confirmations.push(structure.type.replace(/_/g, ' '));
+  if (liquidity.type === 'LIQUIDITY_SWEEP') confirmations.push('Liquidity Sweep');
+  if (volume.state === 'EXPANDING' || volume.state === 'UNUSUAL') confirmations.push('Volume Expansion');
+  if (htfAlignment) confirmations.push('HTF Alignment');
+
+  return {
+    setupType: 'Trend Continuation',
+    direction,
+    status: 'WATCH',
+    confirmations: [...new Set(confirmations)].slice(0, 4),
+    structureLabel:
+      structure.direction === 'bullish'
+        ? 'BULLISH'
+        : structure.direction === 'bearish'
+          ? 'BEARISH'
+          : 'NEUTRAL',
+    liquidityLabel: liquidity.type === 'NONE' ? 'CLEAR' : liquidity.type.replace(/_/g, ' '),
+    volumeLabel: volume.state,
+    momentumLabel: momentumLabel(tech),
+    htfAlignment,
+    keyLevels: [
+      { label: 'Spot', price: Number(tech.last.toFixed(2)) },
+      { label: 'Invalidation', price: invPrice },
+    ],
+    invalidation: `Watch lean only — ${timeframe} invalidate near ${invPrice}.`,
+    explanation:
+      structure.note ||
+      'No primary setup classified; scored as a watch lean from structure, volume, and HTF bias.',
+  };
+}
