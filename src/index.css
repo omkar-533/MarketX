@@ -27574,7 +27574,15 @@ body:has(.app-main--terminal-immersive) #root {
   --opp-panel: rgba(14, 18, 28, 0.96);
   --opp-line: rgba(212, 175, 55, 0.18);
   --opp-gold: #d4af37;
+  --opp-gold-soft: #f0d78c;
   --opp-muted: #8b93a7;
+  --opp-text: #e8ecf4;
+  --opp-text-soft: #cbd5e1;
+  --opp-text-dim: #a8b0c2;
+  --opp-chip: #94a3b8;
+  --opp-row: rgba(255, 255, 255, 0.02);
+  --opp-hairline: rgba(255, 255, 255, 0.06);
+  --opp-drawer: #0b0f18;
   height: calc(100vh - 3.5rem);
   max-height: calc(100vh - 3.5rem);
   display: grid;
@@ -27582,7 +27590,7 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.35rem;
   padding: 0.45rem 0.55rem 0.4rem;
   background: var(--opp-bg);
-  color: #e8ecf4;
+  color: var(--opp-text);
   overflow: hidden;
   font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
 }
@@ -27598,7 +27606,7 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.92rem;
   letter-spacing: 0.04em;
   font-weight: 800;
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
 }
 .wolf-opp-desk__brand p {
   margin: 0;
@@ -27627,7 +27635,7 @@ body:has(.app-main--terminal-immersive) #root {
   align-items: baseline;
   font-size: 0.68rem;
 }
-.wolf-opp-desk__ix b { color: #cbd5e1; font-weight: 700; }
+.wolf-opp-desk__ix b { color: var(--opp-text-soft); font-weight: 700; }
 .wolf-opp-desk__ix em { font-style: normal; font-weight: 700; }
 .wolf-opp-desk__ix .up, .wolf-opp-card .up, .wolf-opp-drawer .up { color: #34d399; }
 .wolf-opp-desk__ix .down, .wolf-opp-card .down, .wolf-opp-drawer .down { color: #f87171; }
@@ -27640,14 +27648,14 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.62rem;
   color: var(--opp-muted);
 }
-.wolf-opp-desk__feed { font-weight: 700; color: #e2e8f0; }
+.wolf-opp-desk__feed { font-weight: 700; color: var(--opp-text); }
 .wolf-opp__btn {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   border: 1px solid var(--opp-line);
-  background: rgba(255,255,255,0.03);
-  color: #e2e8f0;
+  background: var(--opp-row);
+  color: var(--opp-text);
   border-radius: 6px;
   padding: 0.22rem 0.45rem;
   font-size: 0.62rem;
@@ -27655,7 +27663,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__btn--gold {
   border-color: rgba(212,175,55,0.45);
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
 }
 .wolf-opp__btn:disabled { opacity: 0.5; cursor: wait; }
 .wolf-opp__btn .is-spin { animation: wolf-opp-spin 0.9s linear infinite; }
@@ -27668,8 +27676,8 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.35rem 0.55rem;
   align-items: center;
   padding: 0.25rem 0.15rem;
-  border-top: 1px solid rgba(255,255,255,0.05);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid var(--opp-hairline);
+  border-bottom: 1px solid var(--opp-hairline);
 }
 .wolf-opp-desk__filter-group {
   display: inline-flex;
@@ -27684,9 +27692,9 @@ body:has(.app-main--terminal-immersive) #root {
   margin-right: 0.15rem;
 }
 .wolf-opp__chip {
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--opp-hairline);
   background: transparent;
-  color: #94a3b8;
+  color: var(--opp-chip);
   border-radius: 999px;
   padding: 0.12rem 0.42rem;
   font-size: 0.6rem;
@@ -27695,7 +27703,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__chip.is-on {
   border-color: rgba(212,175,55,0.45);
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
   background: rgba(212,175,55,0.1);
 }
 .wolf-opp-desk__scan-line {
@@ -27714,7 +27722,7 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-opp-desk__banner--demo {
   background: rgba(212,175,55,0.08);
   border-color: rgba(212,175,55,0.25);
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
 }
 
 .wolf-opp-desk__grid {
@@ -27730,7 +27738,7 @@ body:has(.app-main--terminal-immersive) #root {
   display: flex;
   flex-direction: column;
   background: var(--opp-panel);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--opp-hairline);
   border-radius: 8px;
   padding: 0.4rem 0.45rem 0.35rem;
   overflow: hidden;
@@ -27747,14 +27755,14 @@ body:has(.app-main--terminal-immersive) #root {
   margin: 0;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
-  color: #ffe7a0;
+  color: var(--opp-gold-soft);
   font-weight: 800;
   text-shadow: 0 0 12px rgba(212,175,55,0.25);
 }
 .wolf-opp-card header small {
   display: block;
   font-size: 0.55rem;
-  color: #c4b27a;
+  color: var(--opp-muted);
   margin-top: 0.08rem;
   letter-spacing: 0.02em;
 }
@@ -27794,7 +27802,7 @@ body:has(.app-main--terminal-immersive) #root {
   width: 100%;
   text-align: left;
   border: 0;
-  background: rgba(255,255,255,0.02);
+  background: var(--opp-row);
   border-radius: 6px;
   padding: 0.28rem 0.35rem;
   color: inherit;
@@ -27818,13 +27826,13 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-opp-card__score em {
   font-style: normal;
   font-weight: 800;
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
   font-size: 0.85rem;
 }
 .wolf-opp-card__row p {
   margin: 0.15rem 0 0;
   font-size: 0.58rem;
-  color: #a8b0c2;
+  color: var(--opp-text-dim);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -27838,9 +27846,9 @@ body:has(.app-main--terminal-immersive) #root {
   margin-top: 0.15rem;
 }
 .wolf-opp-card__actions button {
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--opp-hairline);
   background: transparent;
-  color: #94a3b8;
+  color: var(--opp-chip);
   border-radius: 4px;
   padding: 0.1rem 0.28rem;
   font-size: 0.55rem;
@@ -27851,7 +27859,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp-card__actions button.is-on,
 .wolf-opp-card__actions button:hover {
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
   border-color: rgba(212,175,55,0.35);
 }
 
@@ -27866,10 +27874,11 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-opp-drawer__panel {
   width: min(26rem, 100%);
   height: 100%;
-  background: #0b0f18;
+  background: var(--opp-drawer);
   border-left: 1px solid var(--opp-line);
   padding: 0.85rem;
   overflow: auto;
+  color: var(--opp-text);
 }
 .wolf-opp-drawer__panel--why { width: min(22rem, 100%); }
 .wolf-opp-drawer__panel header {
@@ -27878,13 +27887,13 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
-.wolf-opp-drawer__panel h3 { margin: 0; font-size: 1rem; color: #f0d78c; }
+.wolf-opp-drawer__panel h3 { margin: 0; font-size: 1rem; color: var(--opp-gold-soft); }
 .wolf-opp-drawer__panel header p { margin: 0.2rem 0 0; font-size: 0.68rem; color: var(--opp-muted); }
 .wolf-opp-drawer__panel header button,
 .wolf-opp-compare header button {
   border: 0;
   background: transparent;
-  color: #94a3b8;
+  color: var(--opp-chip);
   cursor: pointer;
 }
 .wolf-opp-drawer dl {
@@ -27894,8 +27903,8 @@ body:has(.app-main--terminal-immersive) #root {
   margin: 0 0 0.75rem;
 }
 .wolf-opp-drawer dt { font-size: 0.58rem; color: var(--opp-muted); text-transform: uppercase; }
-.wolf-opp-drawer dd { margin: 0.1rem 0 0; font-size: 0.8rem; font-weight: 700; }
-.wolf-opp-drawer__why { font-size: 0.75rem; line-height: 1.4; color: #cbd5e1; }
+.wolf-opp-drawer dd { margin: 0.1rem 0 0; font-size: 0.8rem; font-weight: 700; color: var(--opp-text); }
+.wolf-opp-drawer__why { font-size: 0.75rem; line-height: 1.4; color: var(--opp-text-soft); }
 .wolf-opp-drawer__breakdown {
   display: flex;
   flex-wrap: wrap;
@@ -27904,12 +27913,12 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp-drawer__breakdown span {
   font-size: 0.6rem;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--opp-hairline);
   border-radius: 999px;
   padding: 0.15rem 0.4rem;
-  color: #94a3b8;
+  color: var(--opp-chip);
 }
-.wolf-opp-drawer__breakdown b { color: #f0d78c; }
+.wolf-opp-drawer__breakdown b { color: var(--opp-gold-soft); }
 .wolf-opp-drawer__actions {
   display: flex;
   flex-wrap: wrap;
@@ -27922,7 +27931,7 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.3rem;
   border: 1px solid rgba(212,175,55,0.35);
   background: rgba(212,175,55,0.08);
-  color: #f0d78c;
+  color: var(--opp-gold-soft);
   border-radius: 6px;
   padding: 0.35rem 0.55rem;
   font-size: 0.65rem;
@@ -27932,7 +27941,7 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-opp-drawer__alert { color: #86efac; font-size: 0.68rem; }
 .wolf-opp-drawer__note { font-size: 0.58rem; color: var(--opp-muted); }
 .wolf-opp-drawer ul { list-style: none; padding: 0; margin: 0 0 0.75rem; }
-.wolf-opp-drawer li { font-size: 0.72rem; margin: 0.25rem 0; }
+.wolf-opp-drawer li { font-size: 0.72rem; margin: 0.25rem 0; color: var(--opp-text); }
 .wolf-opp-drawer li.ok { color: #86efac; }
 .wolf-opp-drawer li.risk { color: #fbbf24; }
 
@@ -27943,11 +27952,12 @@ body:has(.app-main--terminal-immersive) #root {
   transform: translateX(-50%);
   z-index: 70;
   width: min(52rem, calc(100vw - 2rem));
-  background: #0b0f18;
+  background: var(--opp-drawer);
   border: 1px solid var(--opp-line);
   border-radius: 10px;
   padding: 0.65rem 0.75rem;
   box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+  color: var(--opp-text);
 }
 .wolf-opp-compare header {
   display: flex;
@@ -27955,15 +27965,15 @@ body:has(.app-main--terminal-immersive) #root {
   align-items: center;
   margin-bottom: 0.4rem;
 }
-.wolf-opp-compare h3 { margin: 0; font-size: 0.75rem; color: #f0d78c; }
+.wolf-opp-compare h3 { margin: 0; font-size: 0.75rem; color: var(--opp-gold-soft); }
 .wolf-opp-compare table { width: 100%; border-collapse: collapse; font-size: 0.65rem; }
 .wolf-opp-compare th, .wolf-opp-compare td {
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--opp-hairline);
   padding: 0.28rem 0.35rem;
   text-align: left;
-  color: #cbd5e1;
+  color: var(--opp-text-soft);
 }
-.wolf-opp-compare th { color: #f0d78c; }
+.wolf-opp-compare th { color: var(--opp-gold-soft); }
 
 @media (max-width: 1200px) {
   .wolf-opp-desk__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); }

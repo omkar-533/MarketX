@@ -67,14 +67,26 @@ export const FALLBACK_SCRIP_BY_SYMBOL = {
   JSWSTEEL: 'NSE_11723',
   ITC: 'NSE_1660',
   TATAMOTORS: 'NSE_3456',
-  // Indices — REST uses NIDX_/BIDX_ (equity CSV alone never includes these)
-  NIFTY: 'NIDX_26000',
-  NIFTY50: 'NIDX_26000',
+  // Indices — REST uses NIDX_/BIDX_. Prefer Instruments API (source=index).
+  // INDstocks docs example uses NIDX_40000001 for NIFTY (NOT classic NSE 26000).
+  NIFTY: 'NIDX_40000001',
+  NIFTY50: 'NIDX_40000001',
   BANKNIFTY: 'NIDX_26009',
   FINNIFTY: 'NIDX_26037',
   MIDCPNIFTY: 'NIDX_26074',
   INDIAVIX: 'NIDX_26017',
   SENSEX: 'BIDX_1',
+};
+
+/** Extra historical candidates when primary scrip returns empty candles. */
+const INDEX_SCRIP_ALTERNATES = {
+  NIFTY: ['NIDX_40000001', 'NIDX_26000', 'NSE_26000'],
+  NIFTY50: ['NIDX_40000001', 'NIDX_26000', 'NSE_26000'],
+  BANKNIFTY: ['NIDX_26009', 'NSE_26009'],
+  FINNIFTY: ['NIDX_26037', 'NSE_26037'],
+  MIDCPNIFTY: ['NIDX_26074', 'NSE_26074'],
+  INDIAVIX: ['NIDX_26017', 'NSE_26017'],
+  SENSEX: ['BIDX_1', 'BSE_1'],
 };
 
 const instrumentCache = {
@@ -189,7 +201,11 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
     });
     const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
     const raw = Array.isArray(block?.candles) ? block.candles : [];
-    if (!raw.length) break;
+    // Empty recent window (weekend / holiday) must NOT abort history — step further back.
+    if (!raw.length) {
+      end = Math.max(0, useStart - 1000);
+      continue;
+    }
 
     let oldestMs = end;
     let added = 0;
@@ -223,12 +239,12 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
       if (timestamp < oldestMs) oldestMs = timestamp;
     }
 
-    if (!added) break;
+    if (!added) {
+      end = Math.max(0, useStart - 1000);
+      continue;
+    }
     // Step further back; keep a 1-bar overlap so edges don't leave gaps.
     end = Math.max(0, oldestMs - 1000);
-    if (oldestMs <= useStart + 60_000) {
-      // Provider returned the earliest it has for this window — continue to next year/span.
-    }
   }
 
   const deduped = [...byTs.values()].sort((a, b) => a.timestamp - b.timestamp);
@@ -318,14 +334,28 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
     }
   }
 
-  // Seed + FORCE known index scrips. Equity CSV sometimes aliases NIFTY→NSE_* and
-  // blocks NIDX_26000 — then candle candidates never hit the real index token.
+  // Seed fallbacks only when instrument master omitted the symbol.
+  // Never overwrite index-master IDs with classic NSE tokens (26000) — INDstocks
+  // often uses NIDX_40000001-style SECURITY_IDs for indices.
   for (const [sym, scrip] of Object.entries(FALLBACK_SCRIP_BY_SYMBOL)) {
-    if (/^(NIDX|BIDX)_/i.test(scrip)) map.set(sym, scrip);
-    else if (!map.has(sym)) map.set(sym, scrip);
+    if (!map.has(sym)) map.set(sym, scrip);
   }
   if (map.has('NIFTY') && !map.has('NIFTY50')) {
     map.set('NIFTY50', map.get('NIFTY'));
+  }
+  // If equity CSV poisoned NIFTY with NSE_*, replace with index fallback.
+  for (const sym of Object.keys(INDEX_SCRIP_ALTERNATES)) {
+    const cur = String(map.get(sym) || '');
+    if (cur.startsWith('NSE_') || cur.startsWith('BSE_') || cur.startsWith('NFO_')) {
+      map.set(sym, FALLBACK_SCRIP_BY_SYMBOL[sym] || INDEX_SCRIP_ALTERNATES[sym][0]);
+    }
+  }
+  // Classic NSE index tokens (26000) often return empty /market/historical for INDMoney.
+  for (const sym of ['NIFTY', 'NIFTY50']) {
+    const cur = String(map.get(sym) || '');
+    if (cur === 'NIDX_26000' || cur === 'NSE_26000') {
+      map.set(sym, 'NIDX_40000001');
+    }
   }
 
   instrumentCache.at = Date.now();
@@ -352,7 +382,14 @@ export function normalizeIndSymbolKey(symbol) {
 export function resolveScripCode(symbol, exchange = 'NSE') {
   const key = normalizeIndSymbolKey(symbol);
   if (!key) return null;
-  if (instrumentCache.bySymbol.has(key)) return instrumentCache.bySymbol.get(key);
+  if (instrumentCache.bySymbol.has(key)) {
+    const hit = instrumentCache.bySymbol.get(key);
+    // Never serve classic NSE NIFTY token — historical candles come back empty.
+    if ((key === 'NIFTY' || key === 'NIFTY50') && (hit === 'NIDX_26000' || hit === 'NSE_26000')) {
+      return 'NIDX_40000001';
+    }
+    return hit;
+  }
   if (FALLBACK_SCRIP_BY_SYMBOL[key]) return FALLBACK_SCRIP_BY_SYMBOL[key];
   // Alias: "NIFTY 50" already stripped spaces → NIFTY50
   if (key === 'NIFTY50' && FALLBACK_SCRIP_BY_SYMBOL.NIFTY) return FALLBACK_SCRIP_BY_SYMBOL.NIFTY;
@@ -367,13 +404,18 @@ export function resolveScripCode(symbol, exchange = 'NSE') {
 export function resolveScripCodeCandidates(symbol) {
   const key = normalizeIndSymbolKey(symbol);
   const primary = resolveScripCode(symbol);
-  const forced =
-    FALLBACK_SCRIP_BY_SYMBOL[key] ||
-    (key === 'NIFTY50' ? FALLBACK_SCRIP_BY_SYMBOL.NIFTY : null);
   const out = [];
-  // Known indices: always try canonical NIDX/BIDX first (even if cache was poisoned).
-  if (forced && /^(NIDX|BIDX)_/i.test(forced)) out.push(forced);
+  // Documented INDMoney index IDs first (NIFTY → NIDX_40000001). Classic NSE
+  // tokens like NIDX_26000 often return empty historical candles.
+  const alts = INDEX_SCRIP_ALTERNATES[key] || (key === 'NIFTY50' ? INDEX_SCRIP_ALTERNATES.NIFTY : null);
+  if (alts) {
+    for (const a of alts) {
+      if (!out.includes(a)) out.push(a);
+    }
+  }
   if (primary && !out.includes(primary)) out.push(primary);
+  const forced = FALLBACK_SCRIP_BY_SYMBOL[key];
+  if (forced && !out.includes(forced)) out.push(forced);
   if (!out.length) return [];
   for (const code of [...out]) {
     const m = String(code).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);

@@ -554,7 +554,27 @@ export default function NativeChatChart({
             : '3mo';
       const res = await fetchMarketOhlc(apiSymbol, apiInterval, range);
       if (token !== requestRef.current) return;
-      const next = res?.bars ?? [];
+      let next = res?.bars ?? [];
+      // Index history can fail on wrong scrip while LTP/quote is live — seed one bar
+      // so the chart + live tip path stay usable until history resolves.
+      if (!next.length && !background) {
+        try {
+          const cached = getFyersCachedQuote(apiSymbol);
+          let px = Number(cached?.price) || 0;
+          let vol = Number(cached?.volume) || 0;
+          if (!(px > 0)) {
+            const { quote } = await fetchLiveQuote(apiSymbol);
+            px = Number(quote?.lastPrice || quote?.price) || 0;
+            vol = Number((quote as { volume?: number })?.volume) || 0;
+          }
+          if (px > 0) {
+            const t = barTimeSec(Date.now());
+            next = [{ time: t, open: px, high: px, low: px, close: px, volume: vol }];
+          }
+        } catch {
+          /* stay empty */
+        }
+      }
       if (!next.length) {
         // A background refresh coming back empty should not wipe a good chart.
         if (!background) {

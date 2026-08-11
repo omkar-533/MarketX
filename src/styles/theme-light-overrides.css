@@ -79,31 +79,47 @@ html[data-theme="light"] .text-\[\#f0d78c\] {
 }
 
 /* ── Surfaces: hardcoded dark hex → light tokens ───────────── */
+html[data-theme="light"] .bg-\[\#020617\],
 html[data-theme="light"] .bg-\[\#030408\],
 html[data-theme="light"] .bg-\[\#050505\],
 html[data-theme="light"] .bg-\[\#050608\],
 html[data-theme="light"] .bg-\[\#05070d\],
+html[data-theme="light"] .bg-\[\#05080f\],
 html[data-theme="light"] .bg-\[\#06080f\],
+html[data-theme="light"] .bg-\[\#07090f\],
+html[data-theme="light"] .bg-\[\#070a11\],
+html[data-theme="light"] .bg-\[\#070a12\],
+html[data-theme="light"] .bg-\[\#070b14\],
 html[data-theme="light"] .bg-\[\#080a12\],
+html[data-theme="light"] .bg-\[\#080b12\],
 html[data-theme="light"] .bg-\[\#0a0a0a\],
 html[data-theme="light"] .bg-\[\#0a0a0c\],
 html[data-theme="light"] .bg-\[\#0a0a0d\],
 html[data-theme="light"] .bg-\[\#0a0c12\],
 html[data-theme="light"] .bg-\[\#0a0c14\],
 html[data-theme="light"] .bg-\[\#0a0e14\],
+html[data-theme="light"] .bg-\[\#0a0e16\],
 html[data-theme="light"] .bg-\[\#0a0e17\],
 html[data-theme="light"] .bg-\[\#0a0f1a\],
+html[data-theme="light"] .bg-\[\#0b0b0c\],
+html[data-theme="light"] .bg-\[\#0b0e14\],
 html[data-theme="light"] .bg-\[\#0b0e17\],
+html[data-theme="light"] .bg-\[\#0b0f18\],
+html[data-theme="light"] .bg-\[\#0b1220\],
+html[data-theme="light"] .bg-\[\#0c0f14\],
 html[data-theme="light"] .bg-\[\#0d0c0a\],
 html[data-theme="light"] .bg-\[\#0d111c\],
 html[data-theme="light"] .bg-\[\#0d1220\],
 html[data-theme="light"] .bg-\[\#0d1728\],
 html[data-theme="light"] .bg-\[\#0e121c\],
 html[data-theme="light"] .bg-\[\#0f1219\],
+html[data-theme="light"] .bg-\[\#0f172a\],
 html[data-theme="light"] .bg-\[\#101420\],
+html[data-theme="light"] .bg-\[\#10151f\],
 html[data-theme="light"] .bg-\[\#10213b\],
 html[data-theme="light"] .bg-\[\#111827\],
 html[data-theme="light"] .bg-\[\#121520\],
+html[data-theme="light"] .bg-\[\#131722\],
 html[data-theme="light"] .bg-\[\#141820\],
 html[data-theme="light"] .bg-\[\#141822\],
 html[data-theme="light"] .bg-\[\#151a26\],
@@ -2891,5 +2907,228 @@ html[data-theme="light"] .dash-info__pop-body {
   color: #475569 !important;
 }
 
+/* ── Wolf Opportunity desk ─────────────────────────────────── */
+html[data-theme="light"] .wolf-opp-desk {
+  --opp-bg: var(--tf-bg);
+  --opp-panel: #ffffff;
+  --opp-line: rgba(146, 64, 14, 0.22);
+  --opp-gold: #92400e;
+  --opp-gold-soft: #92400e;
+  --opp-muted: #525252;
+  --opp-text: #0a0a0a;
+  --opp-text-soft: #171717;
+  --opp-text-dim: #404040;
+  --opp-chip: #404040;
+  --opp-row: #f7f9fc;
+  --opp-hairline: #d5dee9;
+  --opp-drawer: #ffffff;
+  background: var(--opp-bg);
+  color: var(--opp-text);
+}
+
+html[data-theme="light"] .wolf-opp-desk__mkt.is-open { color: #047857; }
+html[data-theme="light"] .wolf-opp-desk__mkt.is-closed { color: #be123c; }
+html[data-theme="light"] .wolf-opp-desk__ix .up,
+html[data-theme="light"] .wolf-opp-card .up,
+html[data-theme="light"] .wolf-opp-drawer .up { color: #047857; }
+html[data-theme="light"] .wolf-opp-desk__ix .down,
+html[data-theme="light"] .wolf-opp-card .down,
+html[data-theme="light"] .wolf-opp-drawer .down { color: #be123c; }
+
+html[data-theme="light"] .wolf-opp-card header {
+  background: linear-gradient(90deg, rgba(146, 64, 14, 0.12), rgba(146, 64, 14, 0.03));
+  border-color: rgba(146, 64, 14, 0.28);
+}
+
+html[data-theme="light"] .wolf-opp-card header h2 {
+  text-shadow: none;
+  color: #78350f;
+}
+
+html[data-theme="light"] .wolf-opp__chip.is-on,
+html[data-theme="light"] .wolf-opp__btn--gold {
+  background: rgba(146, 64, 14, 0.08);
+  border-color: rgba(146, 64, 14, 0.35);
+  color: #78350f;
+}
+
+html[data-theme="light"] .wolf-opp-desk__banner {
+  background: rgba(190, 18, 60, 0.08);
+  border-color: rgba(190, 18, 60, 0.25);
+  color: #9f1239;
+}
+
+html[data-theme="light"] .wolf-opp-desk__banner--demo {
+  background: rgba(146, 64, 14, 0.08);
+  border-color: rgba(146, 64, 14, 0.25);
+  color: #78350f;
+}
+
+html[data-theme="light"] .wolf-opp-card__list {
+  scrollbar-color: rgba(146, 64, 14, 0.4) #eef2f7;
+}
+
+html[data-theme="light"] .wolf-opp-drawer {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+html[data-theme="light"] .wolf-opp-drawer__panel,
+html[data-theme="light"] .wolf-opp-compare {
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .wolf-opp-drawer__alert,
+html[data-theme="light"] .wolf-opp-drawer li.ok { color: #047857; }
+
+html[data-theme="light"] .wolf-opp-drawer li.risk { color: #b45309; }
+
+html[data-theme="light"] .wolf-opp-drawer__actions button {
+  color: #78350f;
+  border-color: rgba(146, 64, 14, 0.35);
+  background: rgba(146, 64, 14, 0.08);
+}
+
+/* ── Master AI analysis split / canvas ─────────────────────── */
+html[data-theme="light"] .wolf-split {
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(14, 165, 233, 0.06), transparent 45%),
+    radial-gradient(90% 70% at 100% 0%, rgba(190, 18, 60, 0.04), transparent 40%),
+    var(--tf-bg);
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-split__bar {
+  background: #ffffff;
+  border-bottom-color: var(--tf-border);
+}
+
+html[data-theme="light"] .wolf-split__meta {
+  color: var(--tf-text-muted);
+}
+
+html[data-theme="light"] .wolf-split__ready {
+  color: #047857;
+}
+
+html[data-theme="light"] .wolf-split__market {
+  background: var(--tf-elevated);
+  border-right-color: var(--tf-border);
+}
+
+html[data-theme="light"] .wolf-split__stage .wolf-shot,
+html[data-theme="light"] .wolf-split__stage .wolf-shot__img {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .wolf-split__tease {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(146, 64, 14, 0.3);
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-split__cam {
+  background: #ffffff;
+  border-top-color: var(--tf-border);
+}
+
+html[data-theme="light"] .wolf-split__cam button {
+  color: var(--tf-text-secondary);
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .wolf-split__wolf {
+  background: #ffffff;
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-shot__frame,
+html[data-theme="light"] .wolf-shot__img {
+  background: #ffffff;
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .wolf-canvas,
+html[data-theme="light"] .wolf-ev,
+html[data-theme="light"] .wolf-desk__zoom {
+  background: #ffffff !important;
+  border-color: var(--tf-border) !important;
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-canvas.is-fullscreen {
+  background: var(--tf-bg) !important;
+}
+
+html[data-theme="light"] .wolf-canvas [style*="background: #020617"],
+html[data-theme="light"] .wolf-canvas [style*="background:#020617"] {
+  background: #ffffff !important;
+}
+
+/* ── LIVE WOLF chart shell ─────────────────────────────────── */
+html[data-theme="light"] .live-wolf-desk {
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .live-wolf-desk__chart-wrap {
+  background: #ffffff;
+  border-color: var(--tf-border);
+}
+
+html[data-theme="light"] .live-wolf-desk__id h1 {
+  color: var(--tf-text);
+}
+
+/* ── Radar connect modal ───────────────────────────────────── */
+html[data-theme="light"] .wolf-md-modal__backdrop {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+html[data-theme="light"] .wolf-md-modal__panel {
+  background: #ffffff;
+  border-color: var(--tf-border);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14);
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-md-modal__head h2 {
+  color: #78350f;
+}
+
+html[data-theme="light"] .wolf-radar-desk {
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .wolf-radar-desk__connect-banner {
+  background: rgba(146, 64, 14, 0.06);
+  border-color: rgba(146, 64, 14, 0.22);
+}
+
+/* ── Mentor / arena residual dark panels ───────────────────── */
+html[data-theme="light"] .wm-empire__chart,
+html[data-theme="light"] .wm-desk__chart {
+  background: #ffffff !important;
+  border-color: var(--tf-border) !important;
+}
+
+html[data-theme="light"] .mai-tv__fs-layer {
+  background: var(--tf-bg) !important;
+  color: var(--tf-text);
+}
+
+html[data-theme="light"] .mai-tv__fs-top {
+  background: #ffffff !important;
+  border-bottom-color: var(--tf-border) !important;
+  color: var(--tf-text) !important;
+}
+
+/* Opacity shells missing from utility remaps */
+html[data-theme="light"] .bg-\[\#070a12\]\/75,
+html[data-theme="light"] .bg-\[\#070a12\]\/80,
+html[data-theme="light"] .bg-\[\#0b0b0c\]\/80,
+html[data-theme="light"] .bg-\[\#020617\]\/80,
+html[data-theme="light"] .bg-\[\#05080f\]\/80 {
+  background-color: color-mix(in srgb, var(--tf-surface) 92%, transparent) !important;
+}
 
 
