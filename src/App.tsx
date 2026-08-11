@@ -70,7 +70,7 @@ const HIDDEN_TABS = new Set([
   ...(SHOW_TERMINAL ? [] : (['terminal'] as const)),
   ...(SHOW_PAPER_TRADING ? [] : (['papertrading'] as const)),
 ]);
-const DEFAULT_TAB = 'wolf-ai';
+const DEFAULT_TAB = 'wolf-opportunity';
 const TAB_STORAGE_KEY = 'wolf_active_tab';
 const FORCE_HOME_KEY = 'wolf_force_home';
 const AUTH_HASHES = new Set(['forgot', 'reset-password', 'signin']);
@@ -155,7 +155,7 @@ function clearPersistedTab() {
   }
 }
 
-/** Fresh visits and full reloads always land on Wolf AI — not the last page (e.g. Terminal). */
+/** Fresh visits and full reloads always land on Wolf Opportunity — not the last page. */
 function initialActiveTab() {
   return DEFAULT_TAB;
 }
@@ -206,7 +206,7 @@ function AppWorkspace() {
     }
   }, [auth.isLoggedIn, activeTab]);
 
-  /** Persist in-session navigation to hash/localStorage. Reload still lands on Wolf AI. */
+  /** Persist in-session navigation to hash/localStorage. Reload still lands on Wolf Opportunity. */
   useEffect(() => {
     if (!auth.isLoggedIn) return;
     if (shouldForceHome()) {
@@ -499,7 +499,7 @@ function AppWorkspace() {
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>
-                    <button type="button" onClick={() => handleTabChange('wolf-ai')}>
+                    <button type="button" onClick={() => handleTabChange('wolf-opportunity')}>
                       Unlock access
                     </button>
                   </div>

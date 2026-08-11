@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, ChevronLeft, ChevronRight, Crown, LogOut, Bot,
-  GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart, Swords,
+  Shield, ChevronLeft, ChevronRight, Crown, LogOut,
+  GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart,
   Layers, Brain, LayoutDashboard, Radar, Activity, BookMarked, Bookmark, Crosshair,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
@@ -33,14 +33,12 @@ const productNavItems = [
   ...(SHOW_DASHBOARD
     ? [{ id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard }]
     : []),
-  { id: 'wolf-ai', label: PAGE_NAMES['wolf-ai'], icon: Bot },
-  { id: 'wolf-radar', label: PAGE_NAMES['wolf-radar'], icon: Radar },
   { id: 'wolf-opportunity', label: PAGE_NAMES['wolf-opportunity'], icon: Crosshair },
+  { id: 'wolf-radar', label: PAGE_NAMES['wolf-radar'], icon: Radar },
   { id: 'live-wolf', label: PAGE_NAMES['live-wolf'], icon: Activity },
   { id: 'strategy-lab', label: PAGE_NAMES['strategy-lab'], icon: BookMarked },
   { id: 'watchlist', label: PAGE_NAMES.watchlist, icon: Bookmark },
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
-  { id: 'arena', label: PAGE_NAMES.arena, icon: Swords },
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart }] : []),
   ...(SHOW_OPTION_CHAIN
     ? [{ id: 'optionchain', label: PAGE_NAMES.optionchain, icon: Layers }]

@@ -30,7 +30,7 @@ export default function MentorRoadmap({
           <p className="wm-learn__eyebrow">Personalized learning roadmap</p>
           <h2 className="wm-learn__title">{studentName}, your Module 1 path</h2>
           <p className="wm-learn__lead">
-            Levels unlock after a quiz pass (4/5). Want a game? Open Wolf Arena from the sidebar — then study here.
+            Levels unlock after a quiz pass (4/5). Practice in Trading Lab, then come back here to study.
           </p>
         </div>
         <div className="wm-learn__roadmap-actions">
