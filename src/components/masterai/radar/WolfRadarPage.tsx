@@ -135,8 +135,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   const [activeStrategy, setActiveStrategy] = useState<StrategyDefinition | null>(
     () => peekPendingStrategyScan()?.strategy ?? null,
   );
-  const [scanActivity, setScanActivity] = useState<ScanActivityRow[]>([]);
-  const [activityOpen, setActivityOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -670,71 +668,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           <button type="button" onClick={() => setConnectOpen(true)}>
             CONNECT MARKET DATA
           </button>
-        </section>
-      )}
-
-      {(progress.status === 'scanning' || allMatches.length > 0) && (
-        <section className="wolf-radar-desk__live" aria-live="polite">
-          <div className="wolf-radar-desk__section-head">
-            <Radar size={14} />
-            <h2>{progress.status === 'scanning' ? 'WOLF IS SCANNING' : 'LIVE DISCOVERIES'}</h2>
-            <small>
-              {progress.symbolsChecked.toLocaleString('en-IN')} /{' '}
-              {Math.max(progress.symbolsTotal, universeLoaded).toLocaleString('en-IN')} · {scanPct}%
-              {progress.currentSymbol ? ` · CURRENT ${progress.currentSymbol}` : ''}
-            </small>
-          </div>
-          <div className="wolf-radar-desk__live-stats">
-            <span>
-              MATCHES <b>{progress.matchedSoFar ?? allMatches.length}</b>
-            </span>
-            <span>
-              NO MATCH <b>{progress.noMatchSoFar ?? 0}</b>
-            </span>
-            <span>
-              DATA ISSUES <b>{progress.unavailableSoFar ?? 0}</b>
-            </span>
-            <span>
-              ERRORS <b>{progress.errorsSoFar ?? 0}</b>
-            </span>
-          </div>
-          {allMatches.length > 0 && (
-            <ul className="wolf-radar-desk__discoveries">
-              {allMatches.slice(0, 8).map((r) => (
-                <li key={r.id}>
-                  <button type="button" onClick={() => setSelected(r)}>
-                    <strong>{r.symbol}</strong>
-                    <em>{r.score}/100</em>
-                    <span>{r.setupType}</span>
-                    <small>
-                      {progress.status === 'scanning'
-                        ? 'Just now'
-                        : formatTime(r.detectedAt)}
-                    </small>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <button
-            type="button"
-            className="wolf-radar-desk__activity-toggle"
-            onClick={() => setActivityOpen((o) => !o)}
-          >
-            SCAN ACTIVITY {activityOpen ? '▾' : '▸'}
-          </button>
-          {activityOpen && (
-            <ul className="wolf-radar-desk__activity">
-              {!scanActivity.length && <li className="empty">Evaluations appear here live.</li>}
-              {scanActivity.slice(0, 24).map((a, i) => (
-                <li key={`${a.symbol}-${a.at}-${i}`}>
-                  <strong>{a.symbol}</strong>
-                  <span className={`st is-${a.status.toLowerCase()}`}>{a.status.replace('_', ' ')}</span>
-                  <small>{a.reason || (a.score != null ? `${a.score}/100` : '')}</small>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       )}
 
