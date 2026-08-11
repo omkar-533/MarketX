@@ -9,7 +9,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT, type ScanActivityRow } from '../../../services/radar/radarScanner';
+import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
 import {
   addToWatchlist,
   loadLastResults,
@@ -136,11 +136,14 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     () => peekPendingStrategyScan()?.strategy ?? null,
   );
   const abortRef = useRef<AbortController | null>(null);
+  const scanGenRef = useRef(0);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     const pending = consumePendingStrategyScan();
     if (pending) {
       sessionStorage.removeItem('wolf_strategy_auto_scan_id');
+      sessionStorage.setItem('wolf_strategy_pending_auto', '1');
       setActiveStrategy(pending.strategy);
       setTimeframe(pending.strategy.timeframe);
       setScreenerKey(
@@ -153,6 +156,7 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       const detail = (ev as CustomEvent<PendingStrategyScan>).detail;
       if (detail?.strategy) {
         sessionStorage.removeItem('wolf_strategy_auto_scan_id');
+        sessionStorage.setItem('wolf_strategy_pending_auto', '1');
         setActiveStrategy(detail.strategy);
         setTimeframe(detail.strategy.timeframe);
         setScreenerKey(
@@ -224,13 +228,26 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     abortRef.current?.abort();
   }, []);
 
-  const scan = useCallback(async () => {
-    if (progress.status === 'scanning') return;
+  const scan = useCallback(async (strategyOverride?: StrategyDefinition | null) => {
+    if (inFlightRef.current) {
+      // Restart: drop the in-flight scan so a click always feels alive
+      abortRef.current?.abort();
+    }
     if (!dataConnected) {
       setConnectOpen(true);
       return;
     }
-    if (!screenerKey) {
+
+    let key = screenerKey;
+    const strategy =
+      strategyOverride !== undefined ? strategyOverride : activeStrategy;
+
+    if (!key && strategy) {
+      key = strategy.templateId ? `tpl:${strategy.templateId}` : `mine:${strategy.id}`;
+      setScreenerKey(key);
+    }
+
+    if (!key) {
       setProgress((p) => ({
         ...p,
         status: 'failed',
@@ -239,9 +256,12 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       }));
       return;
     }
-    abortRef.current?.abort();
+
     const ac = new AbortController();
+    const gen = ++scanGenRef.current;
+    abortRef.current?.abort();
     abortRef.current = ac;
+    inFlightRef.current = true;
 
     setSelected(null);
     setShowAllMatches(false);
@@ -250,26 +270,33 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     setScanIssues([]);
     setAllMatches([]);
     setResults([]);
-    setScanActivity([]);
     setProgress({
       status: 'scanning',
       symbolsChecked: 0,
       symbolsTotal: universeLoaded,
-      phase: activeStrategy ? `STRATEGY: ${activeStrategy.name}` : 'STARTING',
+      phase: strategy ? `STRATEGY: ${strategy.name}` : 'STARTING',
       lastScanAt: progress.lastScanAt,
       matchedSoFar: 0,
       noMatchSoFar: 0,
       unavailableSoFar: 0,
       errorsSoFar: 0,
       currentSymbol: null,
+      error: undefined,
     });
+
+    const isStale = () => scanGenRef.current !== gen || abortRef.current !== ac;
+
     try {
       const outcome = await runRadarScanFull(
         { market, universe, timeframe, displayLimit: DEFAULT_DISPLAY_LIMIT },
         {
           signal: ac.signal,
-          onProgress: (p) => setProgress((prev) => ({ ...prev, ...p })),
+          onProgress: (p) => {
+            if (isStale()) return;
+            setProgress((prev) => ({ ...prev, ...p }));
+          },
           onMatch: (row) => {
+            if (isStale()) return;
             setAllMatches((prev) => {
               const next = [...prev.filter((x) => x.symbol !== row.symbol), row].sort(
                 (a, b) => b.score - a.score,
@@ -278,23 +305,25 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               return next;
             });
           },
-          onActivity: (row) => {
-            setScanActivity((prev) => [row, ...prev].slice(0, 80));
-          },
-          strategy: activeStrategy,
+          strategy,
           displayLimit: DEFAULT_DISPLAY_LIMIT,
         },
         resolveScanProvider(mdStatus),
       );
+
+      if (isStale()) return;
+
       setAllMatches(outcome.allMatches);
       setResults(outcome.results);
       setScanSummary(outcome.summary);
       setScanIssues(outcome.issues);
       setUniverseCatalogCount(outcome.summary.universeLoaded);
       setUniverseLoaded(
-        Math.max(outcome.summary.scanned, outcome.summary.matched ? outcome.summary.scanned : universeLoaded),
+        Math.max(
+          outcome.summary.scanned,
+          outcome.summary.matched ? outcome.summary.scanned : universeLoaded,
+        ),
       );
-      // Keep authoritative scannable size from pre-scan when available
       setProgress((p) => ({
         ...p,
         status: 'complete',
@@ -305,15 +334,18 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         matchedSoFar: outcome.summary.matched,
         unavailableSoFar: outcome.summary.unavailable,
         errorsSoFar: outcome.summary.errors,
+        error: undefined,
       }));
     } catch (err) {
-      if (ac.signal.aborted) {
-        setProgress((p) => ({
-          ...p,
-          status: 'complete',
-          phase: 'STOPPED',
-          lastScanAt: Date.now(),
-        }));
+      if (isStale() || ac.signal.aborted) {
+        if (!isStale()) {
+          setProgress((p) => ({
+            ...p,
+            status: 'complete',
+            phase: 'STOPPED',
+            lastScanAt: Date.now(),
+          }));
+        }
         return;
       }
       const message = err instanceof Error ? err.message : 'SCAN FAILED — try again';
@@ -325,12 +357,12 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       }));
     } finally {
       if (abortRef.current === ac) abortRef.current = null;
+      if (scanGenRef.current === gen) inFlightRef.current = false;
     }
   }, [
     market,
     universe,
     timeframe,
-    progress.status,
     progress.lastScanAt,
     dataConnected,
     mdStatus,
@@ -363,15 +395,18 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     }
   };
 
-  // Auto-run once when Strategy Lab hands off a setup and data is already connected
+  // Auto-run ONLY for Strategy Lab handoff (not every screener dropdown change)
   useEffect(() => {
-    if (!activeStrategy || !dataConnected || progress.status === 'scanning') return;
-    const raw = sessionStorage.getItem('wolf_strategy_auto_scan_id');
-    if (raw === activeStrategy.id) return;
+    if (!activeStrategy || !dataConnected) return;
+    if (sessionStorage.getItem('wolf_strategy_pending_auto') !== '1') return;
+    if (sessionStorage.getItem('wolf_strategy_auto_scan_id') === activeStrategy.id) {
+      sessionStorage.removeItem('wolf_strategy_pending_auto');
+      return;
+    }
+    sessionStorage.removeItem('wolf_strategy_pending_auto');
     sessionStorage.setItem('wolf_strategy_auto_scan_id', activeStrategy.id);
-    void scan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot on strategy handoff
-  }, [activeStrategy?.id, dataConnected]);
+    void scan(activeStrategy);
+  }, [activeStrategy, dataConnected, scan]);
 
   const onAddWatch = (r: RadarResult) => {
     const list = addToWatchlist(r);
@@ -609,6 +644,18 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               : 'Connect market data to scan'}
           </span>
         </div>
+        {progress.status === 'scanning' && (
+          <p className="wolf-radar-desk__scan-live" aria-live="polite">
+            Scanning {progress.symbolsChecked}/{progress.symbolsTotal || universeLoaded}
+            {progress.currentSymbol ? ` · ${progress.currentSymbol}` : ''}
+            {progress.matchedSoFar != null ? ` · matches ${progress.matchedSoFar}` : ''}
+          </p>
+        )}
+        {progress.status === 'failed' && progress.error && (
+          <p className="wolf-radar-desk__scan-err" role="alert">
+            {progress.error}
+          </p>
+        )}
       </header>
 
       <section className="wolf-radar-desk__logic">
