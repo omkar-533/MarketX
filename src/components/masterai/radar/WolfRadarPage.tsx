@@ -17,7 +17,6 @@ import {
 import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type {
-  MarketPulseItem,
   RadarResult,
   RadarScanIssue,
   RadarScanProgress,
@@ -95,7 +94,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     return '';
   });
   const [myScreeners, setMyScreeners] = useState(() => loadStrategies());
-  const [pulse, setPulse] = useState<MarketPulseItem[]>([]);
   const [results, setResults] = useState<RadarResult[]>(() => loadLastResults());
   const [allMatches, setAllMatches] = useState<RadarResult[]>([]);
   const [scanSummary, setScanSummary] = useState<RadarScanSummary | null>(null);
@@ -182,8 +180,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           const svc = initMarketDataService(mockMarketDataProvider);
           await svc.connect();
         }
-        const provider = resolveScanProvider(s);
-        void fetchMarketPulse(provider).then((p) => setPulse(p.items));
       })
       .catch(() => {
         setMdStatus({
@@ -196,7 +192,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           orderAccess: 'NOT ENABLED',
           message: 'MARKET DATA DISCONNECTED',
         });
-        void fetchMarketPulse(mockMarketDataProvider).then((p) => setPulse(p.items));
       });
   }, []);
 
@@ -717,35 +712,6 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         </section>
       )}
 
-      <section className="wolf-radar-desk__pulse" aria-label="Market context">
-        <div className="wolf-radar-desk__section-head">
-          <Activity size={14} />
-          <h2>MARKET CONTEXT</h2>
-          <small>
-            {dataConnected && mdStatus?.mode === 'DEMO'
-              ? 'DEMO context — not a live feed claim'
-              : dataConnected
-                ? 'Broad-market environment (does not filter the scan universe)'
-                : 'Connect a data source to refresh context'}
-          </small>
-        </div>
-        <div className="wolf-radar-desk__pulse-grid">
-          {pulse.map((p) => (
-            <article key={p.symbol} className={`wolf-radar-desk__pulse-card ${biasClass(p.direction)}`}>
-              <strong>{p.symbol}</strong>
-              <span className="dir">{p.trendState}</span>
-              <small>Structure · {p.structure || '—'}</small>
-              <small>Momentum · {p.momentum || '—'}</small>
-              <small>
-                Rel Vol · {p.relativeVolume != null ? `${p.relativeVolume}x` : '—'}
-              </small>
-              <em>{p.regime || '—'}</em>
-              {p.note ? <small className="pulse-note">{p.note}</small> : null}
-            </article>
-          ))}
-        </div>
-      </section>
-
       {progress.status === 'scanning' && !allMatches.length ? (
         <section className="wolf-radar-desk__loading" aria-live="polite">
           <Sparkles size={16} className="text-gold" />
@@ -1047,10 +1013,8 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           setMdStatus(s);
           if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
             void initMarketDataService(serverMarketDataProvider).connect();
-            void fetchMarketPulse(serverMarketDataProvider).then((p) => setPulse(p.items));
           } else if (s.status === 'CONNECTED') {
             void initMarketDataService(mockMarketDataProvider).connect();
-            void fetchMarketPulse(mockMarketDataProvider).then((p) => setPulse(p.items));
           }
         }}
       />
