@@ -4,7 +4,17 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, RefreshCw, X, Sparkles, Link2, ChevronRight } from 'lucide-react';
+import {
+  Crosshair,
+  RefreshCw,
+  X,
+  Sparkles,
+  Link2,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { getMarketSession } from '../../../utils/marketHours';
 import { fetchMarketDataStatus } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService, getMarketDataService } from '../../../services/marketData/MarketDataService';
@@ -20,6 +30,7 @@ import {
 import type {
   DataFeedStatus,
   IndexPulse,
+  OpportunityDirection,
   OpportunityFilters,
   OpportunityHit,
   ScannerCardState,
@@ -56,6 +67,24 @@ function prettyTitle(raw: string): string {
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function biasOf(hit: OpportunityHit): OpportunityDirection {
+  if (hit.direction === 'bullish' || hit.direction === 'bearish') return hit.direction;
+  if ((hit.changePercent || 0) > 0) return 'bullish';
+  if ((hit.changePercent || 0) < 0) return 'bearish';
+  return 'neutral';
+}
+
+function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
+  const label = dir === 'bullish' ? 'Bullish' : dir === 'bearish' ? 'Bearish' : 'Neutral';
+  const Icon = dir === 'bullish' ? TrendingUp : dir === 'bearish' ? TrendingDown : Minus;
+  return (
+    <span className={`wolf-opp__bias wolf-opp__bias--${dir} wolf-opp__bias--${size}`}>
+      <Icon size={size === 'sm' ? 11 : 13} strokeWidth={2.5} />
+      {label}
+    </span>
+  );
 }
 
 type Props = {
@@ -363,7 +392,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                 void runScan({ reset: true, filtersOverride: { universe: u } });
               }}
             >
-              {u === 'F&O' ? 'F&O' : 'Nifty 50'}
+              {u === 'F&O' ? 'F&O' : 'Cash'}
             </Seg>
           ))}
         </div>
@@ -378,8 +407,8 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           {(
             [
               ['all', 'All'],
-              ['bullish', 'Bull'],
-              ['bearish', 'Bear'],
+              ['bullish', 'Bullish'],
+              ['bearish', 'Bearish'],
             ] as const
           ).map(([id, label]) => (
             <Seg
@@ -415,31 +444,37 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
             <h2>Top setups</h2>
           </div>
           <div className="wolf-opp__prime-grid">
-            {primeHits.map((hit, i) => (
-              <motion.button
-                key={hit.id}
-                type="button"
-                className="wolf-opp__prime-card"
-                style={{ ['--i' as string]: i }}
-                initial={{ opacity: 0, rotateX: 18, y: 28 }}
-                animate={{ opacity: 1, rotateX: 0, y: 0 }}
-                transition={{ delay: 0.08 * i, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -8, rotateY: i === 1 ? 0 : i === 0 ? 6 : -6, scale: 1.02 }}
-                onClick={() => setSelected(hit)}
-              >
-                <div className="wolf-opp__prime-glow" />
-                <span className="wolf-opp__prime-score">{hit.score}</span>
-                <strong>{hit.symbol}</strong>
-                <span className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                  {hit.changePercent >= 0 ? '+' : ''}
-                  {hit.changePercent.toFixed(2)}%
-                </span>
-                <em>{prettyTitle(hit.scannerId)}</em>
-                <span className="wolf-opp__prime-go">
-                  Open <ChevronRight size={14} />
-                </span>
-              </motion.button>
-            ))}
+            {primeHits.map((hit, i) => {
+              const bias = biasOf(hit);
+              return (
+                <motion.button
+                  key={hit.id}
+                  type="button"
+                  className={`wolf-opp__prime-card is-${bias}`}
+                  style={{ ['--i' as string]: i }}
+                  initial={{ opacity: 0, rotateX: 18, y: 28 }}
+                  animate={{ opacity: 1, rotateX: 0, y: 0 }}
+                  transition={{ delay: 0.08 * i, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                  whileHover={{ y: -8, rotateY: i === 1 ? 0 : i === 0 ? 6 : -6, scale: 1.02 }}
+                  onClick={() => setSelected(hit)}
+                >
+                  <div className="wolf-opp__prime-glow" />
+                  <div className="wolf-opp__prime-top">
+                    <BiasBadge dir={bias} />
+                    <span className="wolf-opp__prime-score">{hit.score}</span>
+                  </div>
+                  <strong>{hit.symbol}</strong>
+                  <span className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
+                    {hit.changePercent >= 0 ? '+' : ''}
+                    {hit.changePercent.toFixed(2)}%
+                  </span>
+                  <em>{prettyTitle(hit.scannerId)}</em>
+                  <span className="wolf-opp__prime-go">
+                    Open <ChevronRight size={14} />
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -466,32 +501,38 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                 </p>
               ) : (
                 <ul>
-                  {card.hits.slice(0, 4).map((hit) => (
-                    <li key={hit.id}>
-                      <button
-                        type="button"
-                        className="wolf-opp__row"
-                        onClick={() => setSelected(hit)}
-                      >
-                        <span className="wolf-opp__row-sym">
-                          <b>{hit.symbol}</b>
-                          <i className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                            {hit.changePercent >= 0 ? '+' : ''}
-                            {hit.changePercent.toFixed(2)}%
-                          </i>
-                        </span>
-                        <span className="wolf-opp__row-score">{hit.score}</span>
-                      </button>
-                      <div className="wolf-opp__row-actions">
-                        <button type="button" onClick={() => setWhyHit(hit)}>
-                          Why
+                  {card.hits.slice(0, 3).map((hit) => {
+                    const bias = biasOf(hit);
+                    return (
+                      <li key={hit.id} className={`is-${bias}`}>
+                        <button
+                          type="button"
+                          className="wolf-opp__row"
+                          onClick={() => setSelected(hit)}
+                        >
+                          <span className="wolf-opp__row-sym">
+                            <b>{hit.symbol}</b>
+                            <span className="wolf-opp__row-meta">
+                              <BiasBadge dir={bias} size="sm" />
+                              <i className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
+                                {hit.changePercent >= 0 ? '+' : ''}
+                                {hit.changePercent.toFixed(2)}%
+                              </i>
+                            </span>
+                          </span>
+                          <span className="wolf-opp__row-score">{hit.score}</span>
                         </button>
-                        <button type="button" onClick={() => openChart(hit)}>
-                          <Crosshair size={12} /> Chart
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="wolf-opp__row-actions">
+                          <button type="button" onClick={() => setWhyHit(hit)}>
+                            Why
+                          </button>
+                          <button type="button" onClick={() => openChart(hit)}>
+                            <Crosshair size={12} /> Chart
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </motion.article>
@@ -572,6 +613,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                   <p>
                     {prettyTitle(selected.scannerId)} · {selected.score}/100
                   </p>
+                  <div className="wolf-opp__drawer-bias">
+                    <BiasBadge dir={biasOf(selected)} />
+                  </div>
                 </div>
                 <button type="button" onClick={() => setSelected(null)}>
                   <X size={16} />

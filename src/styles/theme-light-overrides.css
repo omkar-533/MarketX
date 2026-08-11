@@ -3008,6 +3008,27 @@ html[data-theme="light"] .wolf-opp__drawer-panel {
 html[data-theme="light"] .wolf-opp__evidence li.ok { color: #047857; }
 html[data-theme="light"] .wolf-opp__evidence li.risk { color: #b45309; }
 
+html[data-theme="light"] .wolf-opp__bias--bullish {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(4, 120, 87, 0.35);
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__bias--bearish {
+  color: #be123c;
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(190, 18, 60, 0.3);
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__prime-card.is-bullish,
+html[data-theme="light"] .wolf-opp__card li.is-bullish {
+  background: rgba(16, 185, 129, 0.06);
+}
+html[data-theme="light"] .wolf-opp__prime-card.is-bearish,
+html[data-theme="light"] .wolf-opp__card li.is-bearish {
+  background: rgba(244, 63, 94, 0.05);
+}
+
 /* ── Master AI analysis split / canvas ─────────────────────── */
 html[data-theme="light"] .wolf-split {
   background:
