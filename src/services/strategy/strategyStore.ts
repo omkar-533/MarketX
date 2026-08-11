@@ -114,18 +114,23 @@ function migrateLegacy(setup: UserSetup): StrategyDefinition {
 
 export function loadStrategies(): StrategyDefinition[] {
   let list = readAll();
-  if (!list.length) {
-    const legacy = loadUserSetups();
-    if (legacy.length) {
-      list = legacy.map(migrateLegacy);
-      writeAll(list);
+  // Migrate legacy setups at most once — even if the user deleted everything after.
+  if (!hasMigrated()) {
+    if (!list.length) {
+      const legacy = loadUserSetups();
+      if (legacy.length) {
+        list = legacy.map(migrateLegacy);
+        writeAll(list);
+      }
     }
+    markMigrated();
   }
   return list;
 }
 
 export function saveStrategies(list: StrategyDefinition[]) {
   writeAll(list);
+  markMigrated();
 }
 
 export function getStrategy(id: string): StrategyDefinition | null {
@@ -136,12 +141,18 @@ export function upsertStrategy(strategy: StrategyDefinition): StrategyDefinition
   const list = loadStrategies().filter((s) => s.id !== strategy.id);
   list.unshift({ ...strategy, updatedAt: Date.now() });
   writeAll(list);
+  markMigrated();
   return list;
 }
 
 export function deleteStrategy(id: string): StrategyDefinition[] {
   const list = loadStrategies().filter((s) => s.id !== id);
   writeAll(list);
+  markMigrated();
+  // Keep legacy store in sync so a future migrate cannot resurrect this setup
+  for (const legacyId of legacyIdsForStrategy(id)) {
+    deleteUserSetup(legacyId);
+  }
   return list;
 }
 
