@@ -17589,6 +17589,19 @@ html.dark .mai-chat__shot-paths span {
   font-weight: 700;
   cursor: pointer;
 }
+.wolf-desk-recover__detail {
+  max-width: 28rem;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted, #94a3b8);
+  word-break: break-word;
+}
+.wolf-desk-recover__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
 
 /* --- Wolf loader (boot + Suspense) --- */
 .wolf-loader {

@@ -103,21 +103,60 @@ export async function fetchLiveQuote(symbol: string) {
   );
 }
 
+type LiveCandlesResponse = {
+  candles: import('../radar/radarTypes').Candle[];
+  mode: string;
+};
+
+/** Short TTL so chart + LIVE analysis share one INDstocks history pull. */
+const CANDLE_MEM_TTL_MS = 25_000;
+const candleMem = new Map<string, { at: number; barsWanted: number; data: LiveCandlesResponse }>();
+
+function candleMemKey(symbol: string, timeframe: string): string {
+  return `${String(symbol || '').toUpperCase()}|${String(timeframe || '').toLowerCase()}`;
+}
+
 export async function fetchLiveCandles(
   symbol: string,
   timeframe: string,
   bars = 80,
   beforeMs?: number,
-) {
+): Promise<LiveCandlesResponse> {
+  const want = Math.min(3200, Math.max(10, Math.floor(bars) || 80));
+  const key = candleMemKey(symbol, timeframe);
+  if (!beforeMs) {
+    const hit = candleMem.get(key);
+    if (
+      hit &&
+      Date.now() - hit.at < CANDLE_MEM_TTL_MS &&
+      Array.isArray(hit.data.candles) &&
+      hit.data.candles.length >= Math.min(want, 80) &&
+      (want <= 220 || hit.barsWanted >= want * 0.85 || hit.data.candles.length >= want * 0.85)
+    ) {
+      const slice =
+        hit.data.candles.length > want ? hit.data.candles.slice(-want) : hit.data.candles;
+      return { ...hit.data, candles: slice };
+    }
+  }
+
   const q = new URLSearchParams({
     symbol,
     timeframe,
-    bars: String(Math.min(3200, Math.max(10, Math.floor(bars) || 80))),
+    bars: String(want),
   });
   if (beforeMs && beforeMs > 0) q.set('before', String(Math.floor(beforeMs)));
-  return json<{ candles: import('../radar/radarTypes').Candle[]; mode: string }>(
-    `/api/market-data/candles?${q}`,
-  );
+  const data = await json<LiveCandlesResponse>(`/api/market-data/candles?${q}`);
+  if (!beforeMs && data?.candles?.length) {
+    const prev = candleMem.get(key);
+    if (!prev || data.candles.length >= prev.data.candles.length || Date.now() - prev.at > CANDLE_MEM_TTL_MS) {
+      candleMem.set(key, { at: Date.now(), barsWanted: want, data });
+      if (candleMem.size > 80) {
+        const oldest = [...candleMem.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+        if (oldest) candleMem.delete(oldest[0]);
+      }
+    }
+  }
+  return data;
 }
 
 export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scannable' = 'scannable') {

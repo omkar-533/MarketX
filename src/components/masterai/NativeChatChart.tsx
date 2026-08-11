@@ -904,26 +904,16 @@ export default function NativeChatChart({
         const cached = getFyersCachedQuote(apiSymbol);
         if (cached?.price) applyLivePrice(cached.price, cached.volume);
         unsub = onFyersMarketTicks((payload) => {
-          const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+          // Handler receives a quote array (legacy Fyers path is a no-op stub today).
+          const rows = Array.isArray(payload) ? payload : [];
+          const q = rows.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
           if (!q) return;
-          const forming =
-            payload.candles?.[apiSymbol] ||
-            payload.candles?.[normalizeMarketSymbol(apiSymbol)] ||
-            (quoteMatchesSymbol(String(q.symbol || ''), apiSymbol) ? q.candle : undefined);
           let px = Number(q.price) || 0;
           if (Number(q.bid) > 0 && Number(q.ask) > 0) {
             const mid = (Number(q.bid) + Number(q.ask)) / 2;
             if (!(px > 0) || Math.abs(mid - px) / px < 0.002) px = mid;
           }
-          if (forming?.close && apiInterval === '1m') {
-            applyLivePrice(forming.close, forming.volume ?? q.volume, {
-              high: forming.high,
-              low: forming.low,
-            });
-            return;
-          }
-          if (!(px > 0) && forming?.close) px = forming.close;
-          if (px > 0) applyLivePrice(px, q.volume ?? forming?.volume);
+          if (px > 0) applyLivePrice(px, q.volume);
         });
         legacyPoll = window.setInterval(() => {
           const quietMs = Date.now() - lastLiveAtRef.current;
@@ -933,7 +923,8 @@ export default function NativeChatChart({
             if (quietMs < 2_000) return;
           }
           void fetchMarketQuotes([apiSymbol]).then((res) => {
-            const q = res?.quotes?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+            const list = Array.isArray(res) ? res : res?.quotes;
+            const q = list?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
             if (q?.price) applyLivePrice(q.price, q.volume);
           });
         }, QUOTE_POLL_MS);

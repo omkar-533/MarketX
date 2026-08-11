@@ -70,6 +70,13 @@ function formatClock(ts: number | null) {
   });
 }
 
+/** Never render objects as React children (that throws and triggers Workspace hiccup). */
+function textOrDash(v: unknown): string {
+  if (v == null || v === '') return '—';
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return '—';
+}
+
 function resolveProvider(mode: 'DEMO' | 'LIVE' | null): MarketDataProvider {
   if (mode === 'LIVE') return serverMarketDataProvider;
   try {
@@ -115,7 +122,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
     boot ? tvFromPayload(boot) : defaultTerminalState().symbol,
   );
   const [timeframe, setTimeframe] = useState<RadarTimeframe>(() => boot?.timeframe || '5m');
-  const [interval, setInterval] = useState<TvInterval>(() =>
+  const [tvInterval, setTvInterval] = useState<TvInterval>(() =>
     RADAR_TO_TV[boot?.timeframe || '5m'] || '5',
   );
   const [study, setStudy] = useState(() => defaultTerminalState().study);
@@ -148,7 +155,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       setTvSymbol(tvFromPayload(pending));
       const tf = pending.timeframe || '5m';
       setTimeframe(tf);
-      setInterval(RADAR_TO_TV[tf] || '5');
+      setTvInterval(RADAR_TO_TV[tf] || '5');
       setEvents([]);
       setNarration([]);
       resetNarrationCooldown();
@@ -236,9 +243,12 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
     if (dataConnected) {
       setError(null);
       setReloadKey((k) => k + 1);
+      // Fresh connect — restart analysis without depending on startSession identity
+      // (that churn was remounting the chart in a loop → Workspace hiccup).
       void startSession();
     }
-  }, [dataConnected, startSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when connect flag flips
+  }, [dataConnected]);
 
   useEffect(() => {
     void startSession();
@@ -246,7 +256,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       void sessionRef.current?.stop();
       sessionRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: symbol-keyed boot
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- symbol-keyed boot only
   }, [symbolKey]);
 
   useEffect(() => {
@@ -282,11 +292,12 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
 
   const onTfClick = (tf: RadarTimeframe) => {
     setTimeframe(tf);
-    setInterval(RADAR_TO_TV[tf] || '5');
+    setTvInterval(RADAR_TO_TV[tf] || '5');
   };
 
   const onAsk = () => {
     if (!analysis) return;
+    const trend = String(analysis.htfTrend || '').toLowerCase();
     const asResult: RadarResult = {
       id: `live-${analysis.symbol}-${Date.now()}`,
       symbol: analysis.symbol,
@@ -294,9 +305,9 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       price: analysis.price,
       timeframe: analysis.timeframe as RadarTimeframe,
       setupType: (analysis.setupType as RadarResult['setupType']) || 'Trend Continuation',
-      direction: analysis.htfTrend.toLowerCase().includes('bear')
+      direction: trend.includes('bear')
         ? 'bearish'
-        : analysis.htfTrend.toLowerCase().includes('bull')
+        : trend.includes('bull')
           ? 'bullish'
           : 'neutral',
       score: analysis.score ?? 0,
@@ -428,7 +439,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
         <section className="live-wolf-desk__chart-wrap live-wolf-desk__chart-wrap--term">
           <TerminalChartHost
             symbol={tvSymbol}
-            interval={interval}
+            interval={tvInterval}
             study={study}
             chartStyle="1"
             reloadKey={reloadKey}
@@ -462,27 +473,27 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
           <dl className="live-wolf-desk__grid">
             <div>
               <dt>MARKET STRUCTURE</dt>
-              <dd>{analysis?.structure || '—'}</dd>
+              <dd>{textOrDash(analysis?.structure)}</dd>
             </div>
             <div>
               <dt>LIQUIDITY</dt>
-              <dd>{analysis?.liquidity || '—'}</dd>
+              <dd>{textOrDash(analysis?.liquidity)}</dd>
             </div>
             <div>
               <dt>VOLUME</dt>
-              <dd>{analysis?.volume || '—'}</dd>
+              <dd>{textOrDash(analysis?.volume)}</dd>
             </div>
             <div>
               <dt>MOMENTUM</dt>
-              <dd>{analysis?.momentum || '—'}</dd>
+              <dd>{textOrDash(analysis?.momentum)}</dd>
             </div>
             <div>
               <dt>HTF ALIGNMENT</dt>
               <dd>
                 {analysis
                   ? analysis.htfAlignment
-                    ? `YES · ${analysis.htfTrend}`
-                    : analysis.htfTrend
+                    ? `YES · ${textOrDash(analysis.htfTrend)}`
+                    : textOrDash(analysis.htfTrend)
                   : '—'}
               </dd>
             </div>
@@ -492,18 +503,21 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
             </div>
             <div>
               <dt>CURRENT STATE</dt>
-              <dd>{analysis?.status || '—'}</dd>
+              <dd>{textOrDash(analysis?.status)}</dd>
             </div>
           </dl>
 
           <div className="live-wolf-desk__why">
             <h3>WHY WOLF IS WATCHING</h3>
-            <p>{analysis?.explanation || 'Waiting for market structure to develop.'}</p>
-            {analysis?.invalidation && (
+            <p>{textOrDash(analysis?.explanation) === '—'
+              ? 'Waiting for market structure to develop.'
+              : textOrDash(analysis?.explanation)}
+            </p>
+            {analysis?.invalidation ? (
               <p className="inv">
-                <strong>Invalidation:</strong> {analysis.invalidation}
+                <strong>Invalidation:</strong> {textOrDash(analysis.invalidation)}
               </p>
-            )}
+            ) : null}
           </div>
 
           <div className="live-wolf-desk__narration">
