@@ -96,7 +96,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
   const [aiDraft, setAiDraft] = useState<ParsedStrategyDraft | null>(null);
   const [teachClarity, setTeachClarity] = useState<string | null>(null);
   const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
-  const [tplCategory, setTplCategory] = useState<ScreenerCategoryFilter>('ALL');
+  const [tplCategory, setTplCategory] = useState<ScreenerCategoryFilter | 'MY'>('ALL');
   const [tplQuery, setTplQuery] = useState('');
   const [tplDetailId, setTplDetailId] = useState<string | null>(null);
 
@@ -110,18 +110,26 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [tplDetailId]);
 
-  const filteredTemplates = useMemo(
-    () => filterStrategyTemplates(tplCategory, tplQuery),
-    [tplCategory, tplQuery],
-  );
+  const filteredTemplates = useMemo(() => {
+    if (tplCategory === 'MY') return [];
+    return filterStrategyTemplates(tplCategory, tplQuery);
+  }, [tplCategory, tplQuery]);
 
-  const visible = useMemo(() => {
+  const myLibraryScreeners = useMemo(() => {
+    const q = tplQuery.trim().toLowerCase();
     return strategies.filter((s) => {
-      if (filter === 'ACTIVE') return s.status === 'ACTIVE';
-      if (filter === 'PAUSED') return s.status === 'PAUSED';
-      return true;
+      if (filter === 'ACTIVE' && s.status !== 'ACTIVE') return false;
+      if (filter === 'PAUSED' && s.status !== 'PAUSED') return false;
+      if (!q) return true;
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.conditions.some((c) => formatCondition(c).toLowerCase().includes(q))
+      );
     });
-  }, [strategies, filter]);
+  }, [strategies, filter, tplQuery]);
+
+  const showMyInLibrary = tplCategory === 'ALL' || tplCategory === 'MY';
 
   const validation = validateStrategyDraft({ name, conditions, timeframe, timeframeMode: tfMode });
   const preview = formatStrategyPreview({
@@ -171,8 +179,9 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
       conditions,
     });
     refresh(upsertStrategy(strat));
-    setNote(`✓ SETUP SAVED — “${strat.name}” is available for WOLF Radar.`);
-    setTab('list');
+    setNote(`✓ SETUP SAVED — “${strat.name}” is in WOLF Screeners Library → MY SCREENERS.`);
+    setTplCategory('MY');
+    setTab('templates');
   };
 
   const useTemplate = (id: string, scanNow = false) => {
@@ -186,7 +195,8 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
       onScanSetup();
       return;
     }
-    setTab('list');
+    setTplCategory('MY');
+    setTab('templates');
   };
 
   const applyAiDraftToManual = (draft: ParsedStrategyDraft) => {
@@ -272,8 +282,9 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
       conditions: mapped,
     });
     refresh(upsertStrategy(strat));
-    setNote(`✓ SETUP SAVED — “${strat.name}” is available for WOLF Radar.`);
-    setTab('list');
+    setNote(`✓ SETUP SAVED — “${strat.name}” is in WOLF Screeners Library → MY SCREENERS.`);
+    setTplCategory('MY');
+    setTab('templates');
     setTeachPhase('idle');
     setAiDraft(null);
   };
@@ -329,35 +340,38 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
         )}
         {tab !== 'list' && (
           <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('list')}>
-            Back to list
+            Back to Strategy Lab
           </button>
         )}
       </header>
 
       {note && <p className="wolf-lab__note">{note}</p>}
 
-      {tab === 'list' && !strategies.length && (
+      {tab === 'list' && (
         <section className="wolf-lab__empty-hero">
-          <h2>TEACH WOLF YOUR FIRST SETUP</h2>
+          <h2>STRATEGY LAB</h2>
           <p>
-            Build a strategy manually, describe it in your own words, or start from a WOLF template.
+            Create a new screener, or open the library to manage your setups and WOLF predefined
+            screeners.
           </p>
           <div className="wolf-lab__method-grid">
-            <button type="button" onClick={() => setTab('manual')}>
-              <strong>BUILD MANUALLY</strong>
-              <span>Step-by-step conditions. No AI required.</span>
+            <button type="button" onClick={() => setTab('create')}>
+              <strong>+ CREATE NEW SCREENER</strong>
+              <span>Build manually, teach WOLF, or start from a template.</span>
             </button>
-            <button type="button" onClick={() => setTab('teach')}>
-              <strong>TEACH WOLF</strong>
+            <button
+              type="button"
+              onClick={() => {
+                setTplCategory('ALL');
+                setTab('templates');
+              }}
+            >
+              <strong>WOLF SCREENERS LIBRARY</strong>
               <span>
-                {aiHealth?.available
-                  ? 'Describe your setup — structured strategy only.'
-                  : 'If AI is offline, use BUILD MANUALLY or a template.'}
+                {strategies.length
+                  ? `${strategies.length} of your screeners · plus WOLF predefined`
+                  : 'Browse predefined WOLF screeners'}
               </span>
-            </button>
-            <button type="button" onClick={() => setTab('templates')}>
-              <strong>USE PREDEFINED SCREENER</strong>
-              <span>Start from a WOLF template with explanations.</span>
             </button>
           </div>
         </section>
@@ -380,9 +394,15 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                   : 'AI may be offline — you can still try; fallback to local parse.'}
               </span>
             </button>
-            <button type="button" onClick={() => setTab('templates')}>
+            <button
+              type="button"
+              onClick={() => {
+                setTplCategory('ALL');
+                setTab('templates');
+              }}
+            >
               <strong>3 · USE PREDEFINED SCREENER</strong>
-              <span>Start from a predefined WOLF strategy.</span>
+              <span>Open WOLF Screeners Library.</span>
             </button>
           </div>
         </section>
@@ -392,7 +412,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
         <section className="wolf-lab__templates">
           <h2>WOLF SCREENERS LIBRARY</h2>
           <p className="wolf-radar-desk__subtitle">
-            Ready-to-use screeners. Deterministic filters — work even if WOLF AI is offline.
+            Your screeners and WOLF predefined templates — deterministic filters, AI optional.
           </p>
           <div className="wolf-lab__tpl-toolbar">
             <input
@@ -402,7 +422,21 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
               onChange={(e) => setTplQuery(e.target.value)}
             />
             <div className="wolf-lab__tpl-cats">
-              {STRATEGY_TEMPLATE_CATEGORIES.map((cat) => (
+              <button
+                type="button"
+                className={tplCategory === 'ALL' ? 'is-on' : ''}
+                onClick={() => setTplCategory('ALL')}
+              >
+                ALL
+              </button>
+              <button
+                type="button"
+                className={tplCategory === 'MY' ? 'is-on' : ''}
+                onClick={() => setTplCategory('MY')}
+              >
+                MY SCREENERS
+              </button>
+              {STRATEGY_TEMPLATE_CATEGORIES.filter((c) => c !== 'ALL').map((cat) => (
                 <button
                   key={cat}
                   type="button"
@@ -413,97 +447,191 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                 </button>
               ))}
             </div>
+            {showMyInLibrary && (
+              <div className="wolf-lab__filters">
+                {(['ALL', 'ACTIVE', 'PAUSED'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className={filter === f ? 'is-on' : ''}
+                    onClick={() => setFilter(f)}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="wolf-lab__tpl-grid">
-            {filteredTemplates.map((t) => {
-              const open = tplDetailId === t.id;
-              return (
-                <article
-                  key={t.id}
-                  id={`wolf-lab-tpl-${t.id}`}
-                  className={`wolf-lab__tpl ${open ? 'is-open' : ''}`}
-                >
-                  <strong>{t.name}</strong>
-                  <em>{t.category}</em>
-                  <p>{t.description}</p>
-                  <small>
-                    {t.conditions.length} conditions ·{' '}
-                    {t.timeframeMode === 'MULTI'
-                      ? [t.timeframes.context, t.timeframes.structure, t.timeframes.setup]
-                          .filter(Boolean)
-                          .join(' → ')
-                          .toUpperCase() || t.timeframe.toUpperCase()
-                      : t.timeframe.toUpperCase()}
-                  </small>
-                  <div className="wolf-lab__tpl-acts">
-                    <button
-                      type="button"
-                      className={open ? 'is-on' : ''}
-                      onClick={() => setTplDetailId(open ? null : t.id)}
-                    >
-                      {open ? 'HIDE' : 'VIEW'}
-                    </button>
-                    <button type="button" className="primary" onClick={() => useTemplate(t.id, true)}>
-                      USE
-                    </button>
-                  </div>
-
-                  {open && (
-                    <div className="wolf-lab__tpl-detail wolf-lab__tpl-detail--inline">
-                      <p>{t.description}</p>
-                      <dl>
-                        <div>
-                          <dt>WHAT IT LOOKS FOR</dt>
-                          <dd>{t.explanation.whatItLooksFor}</dd>
+          {showMyInLibrary && (
+            <div className="wolf-lab__library-block">
+              <h3 className="wolf-lab__library-heading">MY SCREENERS</h3>
+              {!myLibraryScreeners.length ? (
+                <p className="wolf-lab__note">
+                  No saved screeners yet — create one or use a predefined template.
+                </p>
+              ) : (
+                <div className="wolf-setups__list" aria-label="My screeners">
+                  {myLibraryScreeners.map((s) => (
+                    <article key={s.id} className="wolf-radar-desk__card wolf-lab__card">
+                      <div className="wolf-radar-desk__card-main">
+                        <div className="wolf-radar-desk__card-top">
+                          <div>
+                            <h3>{s.name}</h3>
+                            <span className="price">
+                              {formatTimeframeStack(s)} · {s.conditions.length} conditions ·{' '}
+                              {s.creationMethod.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <span className={`wolf-lab__status ${s.status === 'ACTIVE' ? 'is-on' : ''}`}>
+                            {s.status === 'ACTIVE' ? '● ACTIVE' : '○ PAUSED'}
+                          </span>
                         </div>
-                        <div>
-                          <dt>WHY IT MATTERS</dt>
-                          <dd>{t.explanation.whyItMatters}</dd>
-                        </div>
-                        <div>
-                          <dt>HOW WOLF DETECTS IT</dt>
-                          <dd>{t.explanation.howWolfDetects}</dd>
-                        </div>
-                        <div>
-                          <dt>BEST USED FOR</dt>
-                          <dd>{t.explanation.bestUsedFor}</dd>
-                        </div>
-                        <div>
-                          <dt>MARKET COMPATIBILITY</dt>
-                          <dd>{t.explanation.marketCompatibility}</dd>
-                        </div>
-                        <div>
-                          <dt>LIMITATIONS</dt>
-                          <dd>{t.explanation.limitations}</dd>
-                        </div>
-                      </dl>
-                      <ul>
-                        {t.conditions.map((c, i) => (
-                          <li key={`${c.type}-${i}`}>{formatCondition({ ...c, id: `t${i}` })}</li>
-                        ))}
-                      </ul>
+                        <ul className="tags">
+                          {s.conditions.slice(0, 6).map((c) => (
+                            <li key={c.id}>{formatCondition(c)}</li>
+                          ))}
+                        </ul>
+                        {s.description && <p className="wolf-lab__desc">{s.description}</p>}
+                      </div>
                       <div className="wolf-radar-desk__card-actions">
+                        <button type="button" className="primary" onClick={() => onScan(s)}>
+                          <ScanSearch size={14} /> SCAN
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() =>
+                            refresh(
+                              setStrategyStatus(s.id, s.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'),
+                            )
+                          }
+                        >
+                          {s.status === 'ACTIVE' ? <Pause size={14} /> : <Play size={14} />}
+                          {s.status === 'ACTIVE' ? 'PAUSE' : 'ACTIVATE'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => refresh(duplicateStrategy(s.id))}
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => refresh(deleteStrategy(s.id))}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tplCategory !== 'MY' && (
+            <div className="wolf-lab__library-block">
+              <h3 className="wolf-lab__library-heading">WOLF PREDEFINED</h3>
+              <div className="wolf-lab__tpl-grid">
+                {filteredTemplates.map((t) => {
+                  const open = tplDetailId === t.id;
+                  return (
+                    <article
+                      key={t.id}
+                      id={`wolf-lab-tpl-${t.id}`}
+                      className={`wolf-lab__tpl ${open ? 'is-open' : ''}`}
+                    >
+                      <strong>{t.name}</strong>
+                      <em>{t.category}</em>
+                      <p>{t.description}</p>
+                      <small>
+                        {t.conditions.length} conditions ·{' '}
+                        {t.timeframeMode === 'MULTI'
+                          ? [t.timeframes.context, t.timeframes.structure, t.timeframes.setup]
+                              .filter(Boolean)
+                              .join(' → ')
+                              .toUpperCase() || t.timeframe.toUpperCase()
+                          : t.timeframe.toUpperCase()}
+                      </small>
+                      <div className="wolf-lab__tpl-acts">
+                        <button
+                          type="button"
+                          className={open ? 'is-on' : ''}
+                          onClick={() => setTplDetailId(open ? null : t.id)}
+                        >
+                          {open ? 'HIDE' : 'VIEW'}
+                        </button>
                         <button
                           type="button"
                           className="primary"
                           onClick={() => useTemplate(t.id, true)}
                         >
-                          USE THIS SCREENER
-                        </button>
-                        <button type="button" onClick={() => useTemplate(t.id, false)}>
-                          SAVE TO MY SCREENERS
+                          USE
                         </button>
                       </div>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-            {!filteredTemplates.length && (
-              <p className="wolf-lab__note">No screeners match that filter.</p>
-            )}
-          </div>
+
+                      {open && (
+                        <div className="wolf-lab__tpl-detail wolf-lab__tpl-detail--inline">
+                          <p>{t.description}</p>
+                          <dl>
+                            <div>
+                              <dt>WHAT IT LOOKS FOR</dt>
+                              <dd>{t.explanation.whatItLooksFor}</dd>
+                            </div>
+                            <div>
+                              <dt>WHY IT MATTERS</dt>
+                              <dd>{t.explanation.whyItMatters}</dd>
+                            </div>
+                            <div>
+                              <dt>HOW WOLF DETECTS IT</dt>
+                              <dd>{t.explanation.howWolfDetects}</dd>
+                            </div>
+                            <div>
+                              <dt>BEST USED FOR</dt>
+                              <dd>{t.explanation.bestUsedFor}</dd>
+                            </div>
+                            <div>
+                              <dt>MARKET COMPATIBILITY</dt>
+                              <dd>{t.explanation.marketCompatibility}</dd>
+                            </div>
+                            <div>
+                              <dt>LIMITATIONS</dt>
+                              <dd>{t.explanation.limitations}</dd>
+                            </div>
+                          </dl>
+                          <ul>
+                            {t.conditions.map((c, i) => (
+                              <li key={`${c.type}-${i}`}>
+                                {formatCondition({ ...c, id: `t${i}` })}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="wolf-radar-desk__card-actions">
+                            <button
+                              type="button"
+                              className="primary"
+                              onClick={() => useTemplate(t.id, true)}
+                            >
+                              USE THIS SCREENER
+                            </button>
+                            <button type="button" onClick={() => useTemplate(t.id, false)}>
+                              SAVE TO MY SCREENERS
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+                {!filteredTemplates.length && (
+                  <p className="wolf-lab__note">No predefined screeners match that filter.</p>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -841,76 +969,6 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             </div>
           </div>
         </section>
-      )}
-
-      {tab === 'list' && (
-        <>
-          <div className="wolf-lab__filters">
-            {(['ALL', 'ACTIVE', 'PAUSED'] as const).map((f) => (
-              <button key={f} type="button" className={filter === f ? 'is-on' : ''} onClick={() => setFilter(f)}>
-                {f}
-              </button>
-            ))}
-          </div>
-
-          <section className="wolf-setups__list" aria-label="Saved setups">
-            {!visible.length && (
-              <div className="wolf-radar-desk__empty">
-                <p>No saved setups yet</p>
-                <span>Create one manually, teach WOLF, or start from a template.</span>
-                <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('create')}>
-                  + CREATE NEW SETUP
-                </button>
-              </div>
-            )}
-
-            {visible.map((s) => (
-              <article key={s.id} className="wolf-radar-desk__card wolf-lab__card">
-                <div className="wolf-radar-desk__card-main">
-                  <div className="wolf-radar-desk__card-top">
-                    <div>
-                      <h3>{s.name}</h3>
-                      <span className="price">
-                        {formatTimeframeStack(s)} · {s.conditions.length} conditions ·{' '}
-                        {s.creationMethod.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <span className={`wolf-lab__status ${s.status === 'ACTIVE' ? 'is-on' : ''}`}>
-                      {s.status === 'ACTIVE' ? '● ACTIVE' : '○ PAUSED'}
-                    </span>
-                  </div>
-                  <ul className="tags">
-                    {s.conditions.slice(0, 6).map((c) => (
-                      <li key={c.id}>{formatCondition(c)}</li>
-                    ))}
-                  </ul>
-                  {s.description && <p className="wolf-lab__desc">{s.description}</p>}
-                </div>
-                <div className="wolf-radar-desk__card-actions">
-                  <button type="button" className="primary" onClick={() => onScan(s)}>
-                    <ScanSearch size={14} /> SCAN
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() =>
-                      refresh(setStrategyStatus(s.id, s.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE'))
-                    }
-                  >
-                    {s.status === 'ACTIVE' ? <Pause size={14} /> : <Play size={14} />}
-                    {s.status === 'ACTIVE' ? 'PAUSE' : 'ACTIVATE'}
-                  </button>
-                  <button type="button" className="ghost" onClick={() => refresh(duplicateStrategy(s.id))}>
-                    <Copy size={14} />
-                  </button>
-                  <button type="button" className="ghost" onClick={() => refresh(deleteStrategy(s.id))}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </article>
-            ))}
-          </section>
-        </>
       )}
     </div>
   );

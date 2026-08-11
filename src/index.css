@@ -26643,9 +26643,16 @@ body:has(.app-main--terminal-immersive) #root {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 0.65rem;
 }
-.wolf-lab__tpl-toolbar {
+.wolf-lab__library-block {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.wolf-lab__library-heading {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--tj-gold);
 }
 .wolf-lab__tpl-toolbar input[type='search'] {
   border-radius: 0.65rem;
