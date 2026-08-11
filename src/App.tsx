@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import AppErrorBoundary from './components/AppErrorBoundary';
@@ -239,11 +239,7 @@ function AppWorkspace() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [auth.isLoggedIn]);
 
-  if (!auth.ready) {
-    return <WolfLoader label="WOLF LOADING" />;
-  }
-
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback((tab: string) => {
     const resolved = normalizeTabId(tab);
     const next = HIDDEN_TABS.has(resolved) ? DEFAULT_TAB : resolved;
     setActiveTab(next);
@@ -266,7 +262,7 @@ function AppWorkspace() {
     pinTop();
     requestAnimationFrame(pinTop);
     window.setTimeout(pinTop, 50);
-  };
+  }, []);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
@@ -278,8 +274,11 @@ function AppWorkspace() {
       window.removeEventListener(RADAR_OPEN_EVENT, openRadar);
       window.removeEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- bind once for session; navigate via latest handleTabChange closure is fine for tab switches
-  }, [auth.isLoggedIn]);
+  }, [auth.isLoggedIn, handleTabChange]);
+
+  if (!auth.ready) {
+    return <WolfLoader label="WOLF LOADING" />;
+  }
 
   const handleLogout = () => {
     clearPersistedTab();
