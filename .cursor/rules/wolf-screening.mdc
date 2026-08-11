@@ -1,0 +1,42 @@
+---
+description: Screening, Strategy Lab, Radar, and WOLF Opportunities conventions
+globs: "{src/services/strategy/**,src/services/radar/**,src/components/masterai/radar/**,src/components/masterai/**/Wolf*.tsx}"
+alwaysApply: false
+---
+
+# WOLF — Screening & Strategies
+
+## One strategy definition
+
+- Predefined, manual, and AI-built screeners share the same `StrategyDefinition` + ConditionRegistry.
+- Gemini/LLM may emit structured strategy JSON only — never executable scanner code.
+- Predefined screeners must work without AI.
+
+## Screener output
+
+Prefer structured results (adapt to existing types):
+
+- symbol, matched, score, timestamps, metrics
+- triggeredConditions / failedConditions
+- explanation derived from real metrics — not vague “strong opportunity”
+
+## Scoring
+
+- WOLF SCORE = setup quality, never “% probability of profit”.
+- Never hardcode `0` scores when engines produced data; do not fabricate scores.
+
+## Radar UX
+
+- Screener = WHAT; Universe = WHERE (no duplicate MARKET picker).
+- User must know what/where/timeframe/conditions before and after scan.
+- Stream matches while scanning full universe; display limits ≠ scan limits.
+
+## WOLF Opportunities (12 defaults)
+
+Independent: Momentum Burst, Breakout/Breakdown Radar, Long/Short Build-Up, Short Covering, Long Unwinding, Contraction→Breakout, Volume Anomaly, RS Leaders, Reversal Radar.  
+**Confluence** combines them — multi-signal agreement, not double-counted indicator spam.
+
+## UI
+
+- Keep existing black/gold WOLF desk language; dense, professional, scannable.
+- Do not redesign unrelated screens.

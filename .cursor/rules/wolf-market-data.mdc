@@ -1,0 +1,34 @@
+---
+description: Market-data, INDstocks, universe, and live-feed conventions
+globs: "{src/services/marketData/**,src/services/radar/**,server/marketData/**,server/market/**}"
+alwaysApply: false
+---
+
+# WOLF — Market Data & Live Feeds
+
+## Reuse existing stack
+
+- Extend `server/marketData`, `MarketDataProvider`, `instrumentUniverse`, INDstocks client — do not add parallel brokers/feeds.
+- Universes come only from the existing Universe / instrument-master system.
+
+## Tokens & auth
+
+- Access tokens stay server-side; never put them in `localStorage`, query strings, or frontend logs.
+- Reuse existing connect/status/reconnect flows; sensible backoff, no infinite reconnect spam.
+
+## Pipeline
+
+```text
+INDstocks → authenticated feed → MarketDataService → normalized events
+  → shared state → analytics → strategy/radar → UI updates
+```
+
+- Prefer WebSocket/SSE for live; REST for config/history/CRUD.
+- Backend owns candle construction for core calc timeframes (1m–1D as project supports).
+- Multi-timeframe strategies request only needed TFs.
+
+## Quality
+
+- Isolate per-symbol errors so one failure cannot stop the scan engine.
+- Do not persist every tick; persist configs/strategies/audit only as needed.
+- Never show LIVE when the underlying connection is down; flag stale data.

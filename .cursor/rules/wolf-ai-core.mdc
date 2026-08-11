@@ -1,0 +1,44 @@
+---
+description: Core WOLF AI engineering standards — inspect first, reuse, never invent market data
+alwaysApply: true
+---
+
+# WOLF AI — Core Engineering
+
+Production trading intelligence. Correctness > polish.
+
+## Before coding
+
+1. Inspect existing services/components/APIs/types first.
+2. Reuse → extend → refactor only if needed → create last.
+3. Never duplicate pipelines (`MarketDataService2`, parallel feeds, etc.).
+4. Change the minimum files; do not casually touch auth, INDstocks, universe, Strategy Lab, charts, DB, or API contracts.
+
+## Market data is source of truth
+
+- Never fabricate LTP, OHLC, volume, OI, option chain, tokens, universes, or FII/DII in production paths.
+- If data is missing → explicit unavailable / no-signal — never guess.
+- Mock/demo only in isolated modes and must be labeled honestly.
+
+## AI vs math
+
+- Deterministic engines calculate facts (price, RVOL, OI, breakouts, levels).
+- AI may **explain** those facts only — never invent prices, indicators, or signals.
+
+## Live systems
+
+- Prefer event-driven updates over polling when a feed exists.
+- One normalized market-data pipeline; Radar / Strategy / analytics consume the same state.
+- Prefer incremental per-symbol updates over full-universe recalculation.
+- Connection states must be honest: CONNECTING / LIVE / RECONNECTING / OFFLINE / MARKET CLOSED.
+
+## Security
+
+- Never expose broker/access/refresh tokens or secrets to browser, URLs, logs, or API errors.
+- Keep INDstocks auth on the existing server-side token architecture.
+
+## Change discipline
+
+- Explainable signals only (metrics + triggered/failed conditions).
+- Test positive / negative / boundary / missing-data cases for screening logic.
+- Verify build/runtime before claiming done.
