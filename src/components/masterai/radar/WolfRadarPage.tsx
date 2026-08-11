@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Activity,
   Eye,
   Plus,
   Radar,
@@ -9,7 +8,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
+import { runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
 import {
   addToWatchlist,
   loadLastResults,
