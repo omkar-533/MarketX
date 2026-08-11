@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -9,7 +9,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
+import { fetchMarketPulse, runRadarScanFull, DEFAULT_DISPLAY_LIMIT, type ScanActivityRow } from '../../../services/radar/radarScanner';
 import {
   addToWatchlist,
   loadLastResults,
@@ -125,6 +125,9 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   const [activeStrategy, setActiveStrategy] = useState<StrategyDefinition | null>(
     () => peekPendingStrategyScan()?.strategy ?? null,
   );
+  const [scanActivity, setScanActivity] = useState<ScanActivityRow[]>([]);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const pending = consumePendingStrategyScan();
@@ -192,10 +195,15 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
 
   const statusLabel = useMemo(() => {
     if (progress.status === 'scanning') return 'SCANNING…';
+    if (progress.status === 'complete' && progress.phase === 'STOPPED') return 'SCAN STOPPED';
     if (progress.status === 'complete') return 'SCAN COMPLETE';
     if (progress.status === 'failed') return 'SCAN FAILED';
     return 'READY';
-  }, [progress.status]);
+  }, [progress.status, progress.phase]);
+
+  const stopScan = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const scan = useCallback(async () => {
     if (progress.status === 'scanning') return;
@@ -203,11 +211,18 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       setConnectOpen(true);
       return;
     }
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     setSelected(null);
     setShowAllMatches(false);
     setShowIssues(false);
     setScanSummary(null);
     setScanIssues([]);
+    setAllMatches([]);
+    setResults([]);
+    setScanActivity([]);
     setProgress({
       status: 'scanning',
       symbolsChecked: 0,
@@ -224,7 +239,20 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       const outcome = await runRadarScanFull(
         { market, universe, timeframe, displayLimit: DEFAULT_DISPLAY_LIMIT },
         {
+          signal: ac.signal,
           onProgress: (p) => setProgress((prev) => ({ ...prev, ...p })),
+          onMatch: (row) => {
+            setAllMatches((prev) => {
+              const next = [...prev.filter((x) => x.symbol !== row.symbol), row].sort(
+                (a, b) => b.score - a.score,
+              );
+              setResults(next.slice(0, DEFAULT_DISPLAY_LIMIT));
+              return next;
+            });
+          },
+          onActivity: (row) => {
+            setScanActivity((prev) => [row, ...prev].slice(0, 80));
+          },
           strategy: activeStrategy,
           displayLimit: DEFAULT_DISPLAY_LIMIT,
         },
@@ -234,17 +262,32 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       setResults(outcome.results);
       setScanSummary(outcome.summary);
       setScanIssues(outcome.issues);
-      setUniverseLoaded(outcome.summary.universeLoaded);
+      setUniverseCatalogCount(outcome.summary.universeLoaded);
+      setUniverseLoaded(
+        Math.max(outcome.summary.scanned, outcome.summary.matched ? outcome.summary.scanned : universeLoaded),
+      );
+      // Keep authoritative scannable size from pre-scan when available
       setProgress((p) => ({
         ...p,
         status: 'complete',
         lastScanAt: Date.now(),
-        phase: `COMPLETE · ${outcome.summary.scanned}/${outcome.summary.universeLoaded} scanned · ${outcome.summary.matched} matches`,
+        phase: ac.signal.aborted
+          ? `STOPPED · ${outcome.summary.scanned} scanned · ${outcome.summary.matched} matches`
+          : `COMPLETE · ${outcome.summary.scanned}/${outcome.summary.universeLoaded} scanned · ${outcome.summary.matched} matches`,
         matchedSoFar: outcome.summary.matched,
         unavailableSoFar: outcome.summary.unavailable,
         errorsSoFar: outcome.summary.errors,
       }));
     } catch (err) {
+      if (ac.signal.aborted) {
+        setProgress((p) => ({
+          ...p,
+          status: 'complete',
+          phase: 'STOPPED',
+          lastScanAt: Date.now(),
+        }));
+        return;
+      }
       const message = err instanceof Error ? err.message : 'SCAN FAILED — try again';
       setProgress((p) => ({
         ...p,
@@ -252,6 +295,8 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         error: message,
         phase: 'ERROR',
       }));
+    } finally {
+      if (abortRef.current === ac) abortRef.current = null;
     }
   }, [
     market,
@@ -461,6 +506,11 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
             <ScanSearch size={16} />
             SCAN MARKET
           </button>
+          {progress.status === 'scanning' ? (
+            <button type="button" className="wolf-radar-desk__stop-btn" onClick={stopScan}>
+              STOP SCAN
+            </button>
+          ) : null}
         </div>
 
         <div className="wolf-radar-desk__meta">
@@ -556,6 +606,71 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           <button type="button" onClick={() => setConnectOpen(true)}>
             CONNECT MARKET DATA
           </button>
+        </section>
+      )}
+
+      {(progress.status === 'scanning' || allMatches.length > 0) && (
+        <section className="wolf-radar-desk__live" aria-live="polite">
+          <div className="wolf-radar-desk__section-head">
+            <Radar size={14} />
+            <h2>{progress.status === 'scanning' ? 'WOLF IS SCANNING' : 'LIVE DISCOVERIES'}</h2>
+            <small>
+              {progress.symbolsChecked.toLocaleString('en-IN')} /{' '}
+              {Math.max(progress.symbolsTotal, universeLoaded).toLocaleString('en-IN')} · {scanPct}%
+              {progress.currentSymbol ? ` · CURRENT ${progress.currentSymbol}` : ''}
+            </small>
+          </div>
+          <div className="wolf-radar-desk__live-stats">
+            <span>
+              MATCHES <b>{progress.matchedSoFar ?? allMatches.length}</b>
+            </span>
+            <span>
+              NO MATCH <b>{progress.noMatchSoFar ?? 0}</b>
+            </span>
+            <span>
+              DATA ISSUES <b>{progress.unavailableSoFar ?? 0}</b>
+            </span>
+            <span>
+              ERRORS <b>{progress.errorsSoFar ?? 0}</b>
+            </span>
+          </div>
+          {allMatches.length > 0 && (
+            <ul className="wolf-radar-desk__discoveries">
+              {allMatches.slice(0, 8).map((r) => (
+                <li key={r.id}>
+                  <button type="button" onClick={() => setSelected(r)}>
+                    <strong>{r.symbol}</strong>
+                    <em>{r.score}/100</em>
+                    <span>{r.setupType}</span>
+                    <small>
+                      {progress.status === 'scanning'
+                        ? 'Just now'
+                        : formatTime(r.detectedAt)}
+                    </small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="wolf-radar-desk__activity-toggle"
+            onClick={() => setActivityOpen((o) => !o)}
+          >
+            SCAN ACTIVITY {activityOpen ? '▾' : '▸'}
+          </button>
+          {activityOpen && (
+            <ul className="wolf-radar-desk__activity">
+              {!scanActivity.length && <li className="empty">Evaluations appear here live.</li>}
+              {scanActivity.slice(0, 24).map((a, i) => (
+                <li key={`${a.symbol}-${a.at}-${i}`}>
+                  <strong>{a.symbol}</strong>
+                  <span className={`st is-${a.status.toLowerCase()}`}>{a.status.replace('_', ' ')}</span>
+                  <small>{a.reason || (a.score != null ? `${a.score}/100` : '')}</small>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

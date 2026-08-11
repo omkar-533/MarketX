@@ -25,13 +25,27 @@ import type {
   ScoreBreakdown,
 } from './radarTypes';
 
+export type ScanActivityRow = {
+  symbol: string;
+  status: 'MATCHED' | 'NO_MATCH' | 'DATA_UNAVAILABLE' | 'ERROR';
+  reason?: string;
+  score?: number;
+  at: number;
+};
+
 export type ScanCallbacks = {
   onProgress?: (p: RadarScanProgress) => void;
+  /** Fired immediately when a symbol matches — do not wait for scan end. */
+  onMatch?: (result: RadarResult) => void;
+  /** Recent evaluate outcomes for Scan Activity transparency. */
+  onActivity?: (row: ScanActivityRow) => void;
 };
 
 export type RunRadarScanOptions = ScanCallbacks & {
   strategy?: StrategyDefinition | null;
   displayLimit?: number;
+  /** Cancel mid-scan; partial matches remain with the caller. */
+  signal?: AbortSignal;
 };
 
 const MIN_SCORE = 62;
@@ -124,16 +138,13 @@ export async function runRadarScanFull(
   callbacksOrOpts?: ScanCallbacks | RunRadarScanOptions,
   provider: MarketDataProvider = mockMarketDataProvider,
 ): Promise<RadarScanOutcome> {
-  const opts: RunRadarScanOptions =
-    callbacksOrOpts && 'onProgress' in (callbacksOrOpts as object) && !('strategy' in (callbacksOrOpts as object))
-      ? { onProgress: (callbacksOrOpts as ScanCallbacks).onProgress }
-      : ((callbacksOrOpts as RunRadarScanOptions) || {});
-
+  const opts: RunRadarScanOptions = (callbacksOrOpts as RunRadarScanOptions) || {};
   const strategy = opts.strategy ?? null;
   const displayLimit = Math.max(
     1,
     opts.displayLimit ?? req.displayLimit ?? DEFAULT_DISPLAY_LIMIT,
   );
+  const signal = opts.signal;
 
   // Process entire universe — batched concurrency for data fetch only
   const CONCURRENCY = provider.isDemo ? 8 : 1;
@@ -179,10 +190,10 @@ export async function runRadarScanFull(
 
   const report = (i: number, phase: string, currentSymbol?: string | null) => {
     opts.onProgress?.({
-      status: 'scanning',
+      status: signal?.aborted ? 'complete' : 'scanning',
       symbolsChecked: Math.min(total, i),
       symbolsTotal: total,
-      phase,
+      phase: signal?.aborted ? 'STOPPED' : phase,
       lastScanAt: null,
       currentSymbol: currentSymbol ?? null,
       matchedSoFar,
@@ -192,15 +203,29 @@ export async function runRadarScanFull(
     });
   };
 
+  const pushMatch = (row: RadarResult) => {
+    matches.push(row);
+    matchedSoFar += 1;
+    opts.onMatch?.(row);
+    opts.onActivity?.({
+      symbol: row.symbol,
+      status: 'MATCHED',
+      score: row.score,
+      at: Date.now(),
+    });
+  };
+
   report(0, 'UNIVERSE');
   await new Promise((r) => setTimeout(r, 40));
 
   const htfTf = req.timeframe === '1D' || req.timeframe === '4h' ? '1D' : '1h';
 
   for (let start = 0; start < symbols.length; start += CONCURRENCY) {
+    if (signal?.aborted) break;
     const batch = symbols.slice(start, start + CONCURRENCY);
     await Promise.all(
       batch.map(async (symbol, bi) => {
+        if (signal?.aborted) return;
         const i = start + bi;
         report(i, 'EVALUATING', symbol);
         try {
@@ -211,6 +236,12 @@ export async function runRadarScanFull(
           if (ltf.length < 25) {
             unavailableSoFar += 1;
             issues.push({ symbol, reason: 'Insufficient historical candles' });
+            opts.onActivity?.({
+              symbol,
+              status: 'DATA_UNAVAILABLE',
+              reason: 'Insufficient historical candles',
+              at: Date.now(),
+            });
             return;
           }
 
@@ -268,28 +299,38 @@ export async function runRadarScanFull(
             const reportMatch = evaluateStrategy(strategy, row);
             if (!reportMatch.ok) {
               noMatchSoFar += 1;
+              opts.onActivity?.({
+                symbol,
+                status: 'NO_MATCH',
+                reason: 'Strategy conditions not met',
+                at: Date.now(),
+              });
               return;
             }
             row.matchedConditions = reportMatch.matched;
             row.strategyId = strategy.id;
             row.strategyName = strategy.name;
-            matches.push(row);
-            matchedSoFar += 1;
+            pushMatch(row);
             return;
           }
 
           if (!setup || scored.score < MIN_SCORE) {
             noMatchSoFar += 1;
+            opts.onActivity?.({
+              symbol,
+              status: 'NO_MATCH',
+              reason: !setup ? 'No setup classified' : `Score ${scored.score} < ${MIN_SCORE}`,
+              score: scored.score,
+              at: Date.now(),
+            });
             return;
           }
-          matches.push(row);
-          matchedSoFar += 1;
+          pushMatch(row);
         } catch (err) {
           errorsSoFar += 1;
-          issues.push({
-            symbol,
-            reason: err instanceof Error ? err.message : 'Evaluation error',
-          });
+          const reason = err instanceof Error ? err.message : 'Evaluation error';
+          issues.push({ symbol, reason });
+          opts.onActivity?.({ symbol, status: 'ERROR', reason, at: Date.now() });
         }
       }),
     );
@@ -303,10 +344,16 @@ export async function runRadarScanFull(
   cacheLastResults(displayed);
 
   const statusCounts = countStatuses(ranked);
+  const stopped = Boolean(signal?.aborted);
   const summary: RadarScanSummary = {
     universe: req.universe,
     universeLoaded: catalogSize,
-    scanned: total,
+    scanned: stopped
+      ? Math.min(
+          total,
+          matchedSoFar + noMatchSoFar + Math.max(0, unavailableSoFar - preUnavailable) + errorsSoFar,
+        )
+      : total,
     matched: ranked.length,
     unavailable: unavailableSoFar,
     errors: errorsSoFar,
@@ -320,9 +367,9 @@ export async function runRadarScanFull(
 
   opts.onProgress?.({
     status: 'complete',
-    symbolsChecked: total,
+    symbolsChecked: summary.scanned,
     symbolsTotal: total,
-    phase: 'COMPLETE',
+    phase: stopped ? 'STOPPED' : 'COMPLETE',
     lastScanAt: Date.now(),
     currentSymbol: null,
     matchedSoFar: ranked.length,
@@ -332,7 +379,7 @@ export async function runRadarScanFull(
   });
 
   console.info(
-    `[WOLF Radar] SCAN COMPLETE universe=${req.universe} loaded=${total} scanned=${total} matched=${ranked.length} displayed=${displayed.length} unavailable=${unavailableSoFar} errors=${errorsSoFar} ms=${summary.durationMs}`,
+    `[WOLF Radar] SCAN ${stopped ? 'STOPPED' : 'COMPLETE'} universe=${req.universe} loaded=${total} scanned=${summary.scanned} matched=${ranked.length} displayed=${displayed.length} unavailable=${unavailableSoFar} errors=${errorsSoFar} ms=${summary.durationMs}`,
   );
 
   return { results: displayed, allMatches: ranked, summary, issues };
