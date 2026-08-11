@@ -19,7 +19,6 @@ import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type {
   MarketPulseItem,
-  RadarMarket,
   RadarResult,
   RadarScanIssue,
   RadarScanProgress,
@@ -27,6 +26,9 @@ import type {
   RadarTimeframe,
   RadarUniverse,
 } from '../../../services/radar/radarTypes';
+import { marketFromUniverse } from '../../../services/radar/radarTypes';
+import { STRATEGY_TEMPLATES } from '../../../services/strategy/strategyTemplates';
+import { loadStrategies, strategyFromTemplate } from '../../../services/strategy/strategyStore';
 import { WOLF_SCORE_WEIGHTS } from '../../../services/radar/WolfScoringEngine';
 import {
   fetchMarketDataStatus,
@@ -83,9 +85,17 @@ function formatTime(ts: number | null) {
 }
 
 export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
-  const [market, setMarket] = useState<RadarMarket>('NSE');
   const [universe, setUniverse] = useState<RadarUniverse>('F&O');
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
+  const market = useMemo(() => marketFromUniverse(universe), [universe]);
+  /** Screener key: '' | '__default__' | `tpl:${id}` | `mine:${id}` */
+  const [screenerKey, setScreenerKey] = useState(() => {
+    const pending = peekPendingStrategyScan()?.strategy;
+    if (pending?.templateId) return `tpl:${pending.templateId}`;
+    if (pending?.id) return `mine:${pending.id}`;
+    return '';
+  });
+  const [myScreeners, setMyScreeners] = useState(() => loadStrategies());
   const [pulse, setPulse] = useState<MarketPulseItem[]>([]);
   const [results, setResults] = useState<RadarResult[]>(() => loadLastResults());
   const [allMatches, setAllMatches] = useState<RadarResult[]>([]);
@@ -135,6 +145,11 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
       sessionStorage.removeItem('wolf_strategy_auto_scan_id');
       setActiveStrategy(pending.strategy);
       setTimeframe(pending.strategy.timeframe);
+      setScreenerKey(
+        pending.strategy.templateId
+          ? `tpl:${pending.strategy.templateId}`
+          : `mine:${pending.strategy.id}`,
+      );
     }
     const onStrategyScan = (ev: Event) => {
       const detail = (ev as CustomEvent<PendingStrategyScan>).detail;
@@ -142,6 +157,12 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         sessionStorage.removeItem('wolf_strategy_auto_scan_id');
         setActiveStrategy(detail.strategy);
         setTimeframe(detail.strategy.timeframe);
+        setScreenerKey(
+          detail.strategy.templateId
+            ? `tpl:${detail.strategy.templateId}`
+            : `mine:${detail.strategy.id}`,
+        );
+        setMyScreeners(loadStrategies());
       }
     };
     window.addEventListener(STRATEGY_SCAN_EVENT, onStrategyScan);
@@ -209,6 +230,15 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     if (progress.status === 'scanning') return;
     if (!dataConnected) {
       setConnectOpen(true);
+      return;
+    }
+    if (!screenerKey) {
+      setProgress((p) => ({
+        ...p,
+        status: 'failed',
+        error: 'Select what WOLF should scan for (SCREENER) before starting.',
+        phase: 'SELECT SCREENER',
+      }));
       return;
     }
     abortRef.current?.abort();
@@ -308,7 +338,32 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     mdStatus,
     activeStrategy,
     universeLoaded,
+    screenerKey,
   ]);
+
+  const applyScreenerKey = (key: string) => {
+    setScreenerKey(key);
+    setMyScreeners(loadStrategies());
+    if (!key || key === '__default__') {
+      setActiveStrategy(null);
+      return;
+    }
+    if (key.startsWith('tpl:')) {
+      const tpl = STRATEGY_TEMPLATES.find((t) => t.id === key.slice(4));
+      if (!tpl) return;
+      const strat = strategyFromTemplate(tpl);
+      setActiveStrategy(strat);
+      setTimeframe(strat.timeframe);
+      return;
+    }
+    if (key.startsWith('mine:')) {
+      const list = loadStrategies();
+      const mine = list.find((s) => s.id === key.slice(5));
+      if (!mine) return;
+      setActiveStrategy(mine);
+      setTimeframe(mine.timeframe);
+    }
+  };
 
   // Auto-run once when Strategy Lab hands off a setup and data is already connected
   useEffect(() => {
@@ -412,21 +467,27 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         {activeStrategy && (
           <div className="wolf-radar-desk__strategy-banner">
             <div>
-              <span>Selected Setup</span>
+              <span>WHAT WOLF WILL SCAN</span>
               <strong>{activeStrategy.name}</strong>
               <small>
                 {formatTimeframeStack(activeStrategy)} · {activeStrategy.conditions.length} conditions
               </small>
+              <ul className="wolf-radar-desk__scan-conds">
+                {activeStrategy.conditions.map((c) => (
+                  <li key={c.id}>✓ {formatCondition(c)}</li>
+                ))}
+              </ul>
             </div>
             <button
               type="button"
               className="ghost"
               onClick={() => {
                 setActiveStrategy(null);
+                setScreenerKey('');
                 sessionStorage.removeItem('wolf_strategy_auto_scan_id');
               }}
             >
-              Clear filter
+              Clear screener
             </button>
           </div>
         )}
@@ -442,46 +503,49 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               {dataLabel}
             </button>
           </label>
-          <label>
-            <span>MARKET</span>
+          <label className="wolf-radar-desk__screener">
+            <span>SCREENER</span>
             <select
-              value={universe === 'BSE' ? 'BSE' : universe === 'F&O' ? 'F&O' : market}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === 'F&O') {
-                  setUniverse('F&O');
-                  setMarket('NSE');
-                } else if (v === 'BSE') {
-                  setUniverse('BSE');
-                  setMarket('BSE');
-                } else {
-                  setUniverse('NSE');
-                  setMarket('NSE');
-                }
-              }}
+              value={screenerKey}
+              onChange={(e) => applyScreenerKey(e.target.value)}
+              onFocus={() => setMyScreeners(loadStrategies())}
             >
-              <option value="NSE">NSE Equity ({countFor('NSE').toLocaleString('en-IN')})</option>
-              <option value="BSE">BSE Equity ({countFor('BSE').toLocaleString('en-IN')})</option>
-              <option value="F&O">F&O Underlyings ({countFor('F&O').toLocaleString('en-IN')})</option>
+              <option value="">Select a screener…</option>
+              <option value="__default__">WOLF default engines (unfiltered)</option>
+              <optgroup label="WOLF PREDEFINED">
+                {STRATEGY_TEMPLATES.map((t) => (
+                  <option key={t.id} value={`tpl:${t.id}`}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="MY SCREENERS">
+                {myScreeners.length ? (
+                  myScreeners.map((s) => (
+                    <option key={s.id} value={`mine:${s.id}`}>
+                      {s.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="__none_mine" disabled>
+                    No saved screeners yet
+                  </option>
+                )}
+              </optgroup>
             </select>
           </label>
-          <label>
+          <label className="wolf-radar-desk__universe">
             <span>UNIVERSE</span>
             <select
               value={universe}
-              onChange={(e) => {
-                const next = e.target.value as RadarUniverse;
-                setUniverse(next);
-                if (next === 'BSE') setMarket('BSE');
-                else setMarket('NSE');
-              }}
+              onChange={(e) => setUniverse(e.target.value as RadarUniverse)}
             >
-              <option value="F&O">F&O underlyings ({countFor('F&O').toLocaleString('en-IN')})</option>
-              <option value="NSE">NSE equity ({countFor('NSE').toLocaleString('en-IN')})</option>
-              <option value="BSE">BSE equity ({countFor('BSE').toLocaleString('en-IN')})</option>
+              <option value="NSE">NSE Equity ({countFor('NSE').toLocaleString('en-IN')})</option>
+              <option value="BSE">BSE Equity ({countFor('BSE').toLocaleString('en-IN')})</option>
+              <option value="F&O">F&O ({countFor('F&O').toLocaleString('en-IN')})</option>
               <option value="NIFTY50">NIFTY 50 ({countFor('NIFTY50')})</option>
-              <option value="BANKNIFTY">BANKNIFTY basket ({countFor('BANKNIFTY')})</option>
-              <option value="CASH">CASH / Nifty snapshot ({countFor('CASH')})</option>
+              <option value="BANKNIFTY">BANKNIFTY ({countFor('BANKNIFTY')})</option>
+              <option value="CASH">Cash snapshot ({countFor('CASH')})</option>
             </select>
           </label>
           <label>
@@ -497,20 +561,20 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            className="wolf-radar-desk__scan-btn"
-            onClick={() => void scan()}
-            disabled={progress.status === 'scanning'}
-          >
-            <ScanSearch size={16} />
-            SCAN MARKET
-          </button>
           {progress.status === 'scanning' ? (
             <button type="button" className="wolf-radar-desk__stop-btn" onClick={stopScan}>
               STOP SCAN
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              className="wolf-radar-desk__scan-btn"
+              onClick={() => void scan()}
+            >
+              <ScanSearch size={16} />
+              SCAN MARKET
+            </button>
+          )}
         </div>
 
         <div className="wolf-radar-desk__meta">

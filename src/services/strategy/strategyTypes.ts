@@ -52,6 +52,16 @@ export type StrategyDefinition = {
   lastScanAt?: number | null;
 };
 
+export type StrategyTemplateExplanation = {
+  /** Short card blurb */
+  whatItLooksFor: string;
+  whyItMatters: string;
+  howWolfDetects: string;
+  bestUsedFor: string;
+  limitations: string;
+  marketCompatibility: string;
+};
+
 export type StrategyTemplate = {
   id: string;
   name: string;
@@ -61,4 +71,5 @@ export type StrategyTemplate = {
   timeframe: RadarTimeframe;
   timeframes: MultiTimeframes;
   conditions: Omit<StrategyCondition, 'id'>[];
+  explanation: StrategyTemplateExplanation;
 };

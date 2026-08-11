@@ -21,7 +21,8 @@ import {
   type ConditionCategory,
   type ConditionDirection,
 } from '../../../services/strategy/conditionRegistry';
-import { STRATEGY_TEMPLATES } from '../../../services/strategy/strategyTemplates';
+import { STRATEGY_TEMPLATES, STRATEGY_TEMPLATE_CATEGORIES, filterStrategyTemplates } from '../../../services/strategy/strategyTemplates';
+import type { ScreenerCategoryFilter } from '../../../services/strategy/strategyTemplates';
 import {
   createStrategyFromParts,
   deleteStrategy,
@@ -95,10 +96,19 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
   const [aiDraft, setAiDraft] = useState<ParsedStrategyDraft | null>(null);
   const [teachClarity, setTeachClarity] = useState<string | null>(null);
   const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
+  const [tplCategory, setTplCategory] = useState<ScreenerCategoryFilter>('ALL');
+  const [tplQuery, setTplQuery] = useState('');
+  const [tplDetailId, setTplDetailId] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchAiHealth().then(setAiHealth);
   }, []);
+
+  const filteredTemplates = useMemo(
+    () => filterStrategyTemplates(tplCategory, tplQuery),
+    [tplCategory, tplQuery],
+  );
+  const tplDetail = tplDetailId ? STRATEGY_TEMPLATES.find((t) => t.id === tplDetailId) : null;
 
   const visible = useMemo(() => {
     return strategies.filter((s) => {
@@ -160,12 +170,17 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     setTab('list');
   };
 
-  const useTemplate = (id: string) => {
+  const useTemplate = (id: string, scanNow = false) => {
     const tpl = STRATEGY_TEMPLATES.find((t) => t.id === id);
     if (!tpl) return;
     const strat = strategyFromTemplate(tpl);
     refresh(upsertStrategy(strat));
-    setNote(`✓ Template saved — “${strat.name}”.`);
+    setNote(`✓ Screener ready — “${strat.name}”.`);
+    if (scanNow) {
+      requestStrategyScan(strat);
+      onScanSetup();
+      return;
+    }
     setTab('list');
   };
 
@@ -370,19 +385,111 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
 
       {tab === 'templates' && (
         <section className="wolf-lab__templates">
-          <h2>WOLF TEMPLATES</h2>
+          <h2>WOLF SCREENERS LIBRARY</h2>
+          <p className="wolf-radar-desk__subtitle">
+            Ready-to-use screeners. Deterministic filters — work even if WOLF AI is offline.
+          </p>
+          <div className="wolf-lab__tpl-toolbar">
+            <input
+              type="search"
+              placeholder="Search screeners…"
+              value={tplQuery}
+              onChange={(e) => setTplQuery(e.target.value)}
+            />
+            <div className="wolf-lab__tpl-cats">
+              {STRATEGY_TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={tplCategory === cat ? 'is-on' : ''}
+                  onClick={() => setTplCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {tplDetail && (
+            <article className="wolf-lab__tpl-detail">
+              <header>
+                <strong>{tplDetail.name}</strong>
+                <em>{tplDetail.category}</em>
+                <button type="button" className="ghost" onClick={() => setTplDetailId(null)}>
+                  Close
+                </button>
+              </header>
+              <p>{tplDetail.description}</p>
+              <dl>
+                <div>
+                  <dt>WHAT IT LOOKS FOR</dt>
+                  <dd>{tplDetail.explanation.whatItLooksFor}</dd>
+                </div>
+                <div>
+                  <dt>WHY IT MATTERS</dt>
+                  <dd>{tplDetail.explanation.whyItMatters}</dd>
+                </div>
+                <div>
+                  <dt>HOW WOLF DETECTS IT</dt>
+                  <dd>{tplDetail.explanation.howWolfDetects}</dd>
+                </div>
+                <div>
+                  <dt>BEST USED FOR</dt>
+                  <dd>{tplDetail.explanation.bestUsedFor}</dd>
+                </div>
+                <div>
+                  <dt>MARKET COMPATIBILITY</dt>
+                  <dd>{tplDetail.explanation.marketCompatibility}</dd>
+                </div>
+                <div>
+                  <dt>LIMITATIONS</dt>
+                  <dd>{tplDetail.explanation.limitations}</dd>
+                </div>
+              </dl>
+              <ul>
+                {tplDetail.conditions.map((c, i) => (
+                  <li key={`${c.type}-${i}`}>{formatCondition({ ...c, id: `t${i}` })}</li>
+                ))}
+              </ul>
+              <div className="wolf-radar-desk__card-actions">
+                <button type="button" className="primary" onClick={() => useTemplate(tplDetail.id, true)}>
+                  USE THIS SCREENER
+                </button>
+                <button type="button" onClick={() => useTemplate(tplDetail.id, false)}>
+                  SAVE TO MY SCREENERS
+                </button>
+              </div>
+            </article>
+          )}
+
           <div className="wolf-lab__tpl-grid">
-            {STRATEGY_TEMPLATES.map((t) => (
+            {filteredTemplates.map((t) => (
               <article key={t.id} className="wolf-lab__tpl">
                 <strong>{t.name}</strong>
                 <em>{t.category}</em>
                 <p>{t.description}</p>
-                <small>{t.conditions.length} conditions · {t.timeframeMode}</small>
-                <button type="button" className="primary" onClick={() => useTemplate(t.id)}>
-                  Use template
-                </button>
+                <small>
+                  {t.conditions.length} conditions ·{' '}
+                  {t.timeframeMode === 'MULTI'
+                    ? [t.timeframes.context, t.timeframes.structure, t.timeframes.setup]
+                        .filter(Boolean)
+                        .join(' → ')
+                        .toUpperCase() || t.timeframe.toUpperCase()
+                    : t.timeframe.toUpperCase()}
+                </small>
+                <div className="wolf-lab__tpl-acts">
+                  <button type="button" onClick={() => setTplDetailId(t.id)}>
+                    VIEW
+                  </button>
+                  <button type="button" className="primary" onClick={() => useTemplate(t.id, true)}>
+                    USE
+                  </button>
+                </div>
               </article>
             ))}
+            {!filteredTemplates.length && (
+              <p className="wolf-lab__note">No screeners match that filter.</p>
+            )}
           </div>
         </section>
       )}

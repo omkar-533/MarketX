@@ -6,6 +6,10 @@ export type RadarMarket = 'NSE' | 'BSE';
 
 export type RadarUniverse = 'F&O' | 'NSE' | 'BSE' | 'NIFTY50' | 'CASH' | 'BANKNIFTY';
 
+/** Derive exchange for API / scanner from universe — no separate UI market picker. */
+export function marketFromUniverse(universe: RadarUniverse): RadarMarket {
+  return universe === 'BSE' ? 'BSE' : 'NSE';
+}
 export type RadarBias = 'bullish' | 'bearish' | 'neutral';
 
 export type RadarSetupStatus =

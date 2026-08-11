@@ -25828,6 +25828,22 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-radar-desk__datasource {
   min-width: 11rem;
 }
+.wolf-radar-desk__universe select,
+.wolf-radar-desk__screener select {
+  min-width: 12.5rem;
+}
+.wolf-radar-desk__screener select {
+  min-width: 14rem;
+}
+.wolf-radar-desk__scan-conds {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--tf-text-secondary);
+}
 .wolf-radar-desk__source-btn {
   display: block;
   width: 100%;
@@ -26615,6 +26631,89 @@ body:has(.app-main--terminal-immersive) #root {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 0.65rem;
+}
+.wolf-lab__tpl-toolbar {
+  display: grid;
+  gap: 0.55rem;
+}
+.wolf-lab__tpl-toolbar input[type='search'] {
+  border-radius: 0.65rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.82rem;
+}
+.wolf-lab__tpl-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wolf-lab__tpl-cats button {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--tf-border);
+  background: transparent;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__tpl-cats button.is-on {
+  border-color: rgba(212, 175, 55, 0.55);
+  color: var(--tj-gold);
+  background: rgba(212, 175, 55, 0.08);
+}
+.wolf-lab__tpl-detail {
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: rgba(212, 175, 55, 0.05);
+  display: grid;
+  gap: 0.55rem;
+}
+.wolf-lab__tpl-detail header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+.wolf-lab__tpl-detail dl {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.wolf-lab__tpl-detail dt {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--tj-gold);
+}
+.wolf-lab__tpl-detail dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--tf-text-secondary);
+}
+.wolf-lab__tpl-detail ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+}
+.wolf-lab__tpl-acts {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.wolf-lab__tpl-acts button {
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  font-size: 0.72rem;
+}
+.wolf-lab__tpl-acts button.primary,
+.wolf-lab__tpl button.primary {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--tj-gold);
 }
 .wolf-lab__tpl {
   border: 1px solid var(--tf-border);
