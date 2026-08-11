@@ -293,7 +293,9 @@ router.get('/candles', async (req, res) => {
   try {
     let candles = [];
     let used = candidates[0];
-    for (const scrip of candidates) {
+    // Prefer known-good index/equity scrips first; abort a dead token quickly (client-side).
+    const tryList = bars <= 220 ? candidates.slice(0, 4) : candidates;
+    for (const scrip of tryList) {
       const chunk = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars, {
         beforeMs,
       });

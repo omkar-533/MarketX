@@ -54,7 +54,7 @@ interface FootprintCandle {
 }
 
 async function footprintFromOhlc(symbol: string, interval: string): Promise<FootprintCandle[]> {
-  const res = await fetchMarketOhlc(symbol, interval, '1d');
+  const res = await fetchMarketOhlc(symbol, interval, '1d', 80);
   if (!res?.bars?.length) return [];
   return res.bars.slice(-12).map((b, i) => {
     const d = new Date(b.time * 1000);

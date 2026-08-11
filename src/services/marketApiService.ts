@@ -1,5 +1,6 @@
 import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { apiFetch } from '../config/api';
+import { fetchLiveCandles } from './marketData/marketDataApi';
 
 export type MarketQuoteDto = {
   symbol: string;
@@ -119,6 +120,61 @@ export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotes
   }
 }
 
+/** Short in-memory OHLC cache — chart reopen / LIVE WOLF / resync share one fetch. */
+const OHLC_MEM_TTL_MS = 25_000;
+type OhlcMemEntry = {
+  at: number;
+  bars: MarketOhlcResponse['bars'];
+  source: string;
+  fetchedAt: string;
+};
+const ohlcMemCache = new Map<string, OhlcMemEntry>();
+
+function ohlcMemKey(symbol: string, interval: string): string {
+  return `${String(symbol || '').toUpperCase()}|${toMarketDataTimeframe(interval)}`;
+}
+
+function readOhlcMem(
+  symbol: string,
+  interval: string,
+  wantBars: number,
+): MarketOhlcResponse | null {
+  const hit = ohlcMemCache.get(ohlcMemKey(symbol, interval));
+  if (!hit?.bars?.length) return null;
+  if (Date.now() - hit.at > OHLC_MEM_TTL_MS) return null;
+  if (hit.bars.length < 40) return null;
+  const slice = hit.bars.length > wantBars ? hit.bars.slice(-wantBars) : hit.bars;
+  return {
+    symbol,
+    timeframe: interval,
+    bars: slice,
+    source: hit.source,
+    fetchedAt: hit.fetchedAt,
+  };
+}
+
+function writeOhlcMem(symbol: string, interval: string, data: MarketOhlcResponse) {
+  if (!data?.bars?.length) return;
+  const key = ohlcMemKey(symbol, interval);
+  const prev = ohlcMemCache.get(key);
+  // Keep the longer series when both are fresh.
+  if (prev && prev.bars.length > data.bars.length && Date.now() - prev.at < OHLC_MEM_TTL_MS) {
+    prev.at = Date.now();
+    return;
+  }
+  ohlcMemCache.set(key, {
+    at: Date.now(),
+    bars: data.bars,
+    source: data.source,
+    fetchedAt: data.fetchedAt,
+  });
+  // Bound map size (symbol×tf keys).
+  if (ohlcMemCache.size > 80) {
+    const oldest = [...ohlcMemCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) ohlcMemCache.delete(oldest[0]);
+  }
+}
+
 export async function fetchMarketOhlc(
   symbol: string,
   interval: string,
@@ -128,9 +184,21 @@ export async function fetchMarketOhlc(
 ): Promise<MarketOhlcResponse | null> {
   const wantBars = barsForOhlcRange(range, bars, interval);
 
+  // Scroll-back (`before`) must hit the network; live tip/resync can reuse cache.
+  if (!beforeMs) {
+    const cached = readOhlcMem(symbol, interval, wantBars);
+    // Cache hit only when it already covers the request (shallow always; deep if filled).
+    if (cached && (wantBars <= 220 || cached.bars.length >= wantBars * 0.85)) {
+      return cached;
+    }
+  }
+
   // Legacy /api/market/* stack is gone — prefer connected market-data (INDstocks / demo).
   const fromLive = await fetchOhlcFromMarketData(symbol, interval, wantBars, beforeMs);
-  if (fromLive?.bars?.length) return fromLive;
+  if (fromLive?.bars?.length) {
+    if (!beforeMs) writeOhlcMem(symbol, interval, fromLive);
+    return fromLive;
+  }
 
   if (!isMarketLiveEnabled()) {
     return (
@@ -150,7 +218,10 @@ export async function fetchMarketOhlc(
     const res = await apiFetch(`/api/market/ohlc?${q}`);
     if (!res.ok) return fromLive;
     const data = (await res.json()) as MarketOhlcResponse;
-    if (data?.bars?.length) return data;
+    if (data?.bars?.length) {
+      if (!beforeMs) writeOhlcMem(symbol, interval, data);
+      return data;
+    }
     return fromLive || data;
   } catch {
     return fromLive;
@@ -191,7 +262,6 @@ async function fetchOhlcFromMarketData(
   beforeMs?: number,
 ): Promise<MarketOhlcResponse | null> {
   try {
-    const { fetchLiveCandles } = await import('./marketData/marketDataApi');
     const tf = toMarketDataTimeframe(interval);
     const data = await fetchLiveCandles(symbol, tf, bars, beforeMs);
     const next = (data?.candles || [])

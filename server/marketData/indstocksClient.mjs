@@ -177,15 +177,20 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   const interval = wolfTfToIndInterval(wolfTf);
   if (!interval) throw new Error(`Unsupported timeframe: ${wolfTf}`);
   const maxSpan = MAX_SPAN_MS[interval] || 7 * 86_400_000;
-  const maxChunks = MAX_HISTORY_CHUNKS[interval] || 4;
   // Daily: aim for multi-year; intraday: fill requested depth within chunk budget.
   const hardCap = interval === '1day' ? 3200 : 2500;
-  const wantBars = Math.max(80, Math.min(hardCap, Number(bars) || 120));
+  const wantBars = Math.max(20, Math.min(hardCap, Number(bars) || 120));
+  // First-paint / shallow requests must not wait for a 14-window stitch.
+  const shallow = wantBars <= 220;
+  const maxChunks = shallow
+    ? Math.min(2, MAX_HISTORY_CHUNKS[interval] || 4)
+    : MAX_HISTORY_CHUNKS[interval] || 4;
   const beforeMs = Number(opts.beforeMs);
   let end = Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now();
 
-  /** @type {Array<Record<string, unknown>>} */
+  /** @type {Map<number, Record<string, unknown>>} */
   const byTs = new Map();
+  let emptyStreak = 0;
 
   for (let chunk = 0; chunk < maxChunks && byTs.size < wantBars; chunk++) {
     const useStart = end - maxSpan + 60_000;
@@ -202,7 +207,10 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
     const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
     const raw = Array.isArray(block?.candles) ? block.candles : [];
     // Empty recent window (weekend / holiday) must NOT abort history — step further back.
+    // Dead / wrong scrip: abort after 2 empty windows so candidate loop can try the next token.
     if (!raw.length) {
+      emptyStreak += 1;
+      if (byTs.size === 0 && emptyStreak >= 2) break;
       end = Math.max(0, useStart - 1000);
       continue;
     }
@@ -240,9 +248,12 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
     }
 
     if (!added) {
+      emptyStreak += 1;
+      if (byTs.size === 0 && emptyStreak >= 2) break;
       end = Math.max(0, useStart - 1000);
       continue;
     }
+    emptyStreak = 0;
     // Step further back; keep a 1-bar overlap so edges don't leave gaps.
     end = Math.max(0, oldestMs - 1000);
   }

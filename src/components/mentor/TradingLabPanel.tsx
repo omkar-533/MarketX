@@ -224,7 +224,8 @@ export default function TradingLabPanel({
     setNote('Loading historical market for replay…');
     try {
       const range = interval === '1d' ? '1y' : interval === '1h' ? '6mo' : '3mo';
-      const res = await fetchMarketOhlc(market.apiSymbol, interval, range);
+      // Cap depth so lab opens quickly; replay does not need 2000-bar stitch.
+      const res = await fetchMarketOhlc(market.apiSymbol, interval, range, 600);
       const next = res?.bars ?? [];
       if (next.length < 40) {
         setBars([]);

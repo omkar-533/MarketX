@@ -127,8 +127,13 @@ const UP = '#26a69a';
 const DOWN = '#ef5350';
 const UP_FILL = 'rgba(38,166,154,0.5)';
 const DOWN_FILL = 'rgba(239,83,80,0.5)';
-/** Full OHLC resync (history/volume). Live LTP uses market-data quotes + tip paint. */
-const OHLC_RESYNC_MS = 15_000;
+/** Shallow OHLC resync (history tip). Live LTP uses market-data quotes + tip paint. */
+const OHLC_RESYNC_MS = 30_000;
+/** First paint — enough for viewport; deep history loads after ready. */
+const CHART_INITIAL_BARS = 160;
+/** Background deepen after first paint (pan-left still loads older via scroll). */
+const CHART_DEEP_BARS = 1200;
+const CHART_RESYNC_BARS = 200;
 /** Market-data LIVE quote poll (INDstocks). Keep gentle — tip still updates every tick. */
 const LIVE_QUOTE_POLL_MS = 1_250;
 /** Legacy Fyers cache/WS poll — only when market-data feed is offline. */
@@ -531,7 +536,7 @@ export default function NativeChatChart({
   const loadOlderRef = useRef<() => void>(() => undefined);
 
   const load = useCallback(
-    async (background: boolean) => {
+    async (background: boolean, depth: 'shallow' | 'deep' = 'shallow') => {
       if (!apiInterval) {
         setStatus('error');
         return;
@@ -544,28 +549,42 @@ export default function NativeChatChart({
           setStatus('loading');
         }
       }
-      // Longer history so Wolf Mentor / pan-left still shows candles (not empty void).
-      // Daily uses chunked multi-year INDstocks history (≤1y per API call).
       const range =
         apiInterval === '1d' || apiInterval === '1w'
           ? 'max'
           : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
             ? '1y'
             : '3mo';
-      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range);
+      const wantBars =
+        depth === 'deep'
+          ? apiInterval === '1d' || apiInterval === '1w'
+            ? 2000
+            : CHART_DEEP_BARS
+          : background
+            ? CHART_RESYNC_BARS
+            : CHART_INITIAL_BARS;
+
+      // Quote must not block first paint — merge tip when it arrives.
+      const cachedQuote = getFyersCachedQuote(apiSymbol);
+      const quotePromise =
+        !cachedQuote?.price && !background
+          ? fetchLiveQuote(apiSymbol).catch(() => null)
+          : Promise.resolve(null);
+
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars);
       if (token !== requestRef.current) return;
       let next = res?.bars ?? [];
       // Index history can fail on wrong scrip while LTP/quote is live — seed one bar
       // so the chart + live tip path stay usable until history resolves.
       if (!next.length && !background) {
         try {
-          const cached = getFyersCachedQuote(apiSymbol);
-          let px = Number(cached?.price) || 0;
-          let vol = Number(cached?.volume) || 0;
+          let px = Number(cachedQuote?.price) || 0;
+          let vol = Number(cachedQuote?.volume) || 0;
           if (!(px > 0)) {
-            const { quote } = await fetchLiveQuote(apiSymbol);
+            const qRes = await quotePromise;
+            const quote = qRes && 'quote' in qRes ? qRes.quote : null;
             px = Number(quote?.lastPrice || quote?.price) || 0;
-            vol = Number((quote as { volume?: number })?.volume) || 0;
+            vol = Number((quote as { volume?: number } | null)?.volume) || 0;
           }
           if (px > 0) {
             const t = barTimeSec(Date.now());
@@ -589,31 +608,33 @@ export default function NativeChatChart({
         }
         return;
       }
-      // Background resync must keep the live tip (history often lags LTP).
+      // Background deepen/resync must keep the live tip (history often lags LTP).
       let preserved = background ? mergeLiveTipIntoHistory(next, barsRef.current) : next;
-      const cached = getFyersCachedQuote(apiSymbol);
-      if (cached?.price) {
-        const tip = applyLivePriceToBars(preserved, cached.price, apiInterval, {
-          volume: cached.volume,
+      if (cachedQuote?.price) {
+        const tip = applyLivePriceToBars(preserved, cachedQuote.price, apiInterval, {
+          volume: cachedQuote.volume,
         });
         if (tip) preserved = tip.bars;
-      } else {
-        try {
-          const { quote } = await fetchLiveQuote(apiSymbol);
-          const px = Number(quote?.lastPrice || quote?.price) || 0;
-          if (px > 0) {
-            const tip = applyLivePriceToBars(preserved, px, apiInterval);
-            if (tip) preserved = tip.bars;
-          }
-        } catch {
-          /* offline */
-        }
       }
       if (token !== requestRef.current) return;
       barsRef.current = preserved;
       setBars(preserved);
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
       setStatus('ready');
+
+      // Apply live tip after paint when quote was in flight.
+      if (!cachedQuote?.price) {
+        void quotePromise.then((qRes) => {
+          if (token !== requestRef.current) return;
+          const quote = qRes && 'quote' in qRes ? qRes.quote : null;
+          const px = Number(quote?.lastPrice || quote?.price) || 0;
+          if (!(px > 0)) return;
+          const tip = applyLivePriceToBars(barsRef.current, px, apiInterval);
+          if (!tip) return;
+          barsRef.current = tip.bars;
+          setBars(tip.bars);
+        });
+      }
     },
     [apiSymbol, apiInterval, symbol],
   );
@@ -624,11 +645,20 @@ export default function NativeChatChart({
     barsRef.current = [];
     setBars([]);
     setStatus('loading');
-    void load(false);
+    let cancelled = false;
+    void (async () => {
+      await load(false, 'shallow');
+      if (cancelled) return;
+      // Deepen after first paint so pan-left has history without delaying open.
+      void load(true, 'deep');
+    })();
     const timer = window.setInterval(() => {
-      void load(true);
+      void load(true, 'shallow');
     }, OHLC_RESYNC_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [apiSymbol, apiInterval, reloadKey, load]);
 
   const paintLiveTip = useCallback(

@@ -16,8 +16,8 @@ import type {
 const STALE_MS = 12_000;
 const ANALYSIS_THROTTLE_MS = 2_000;
 const UI_BARS_THROTTLE_MS = 250;
-/** Engines need ~20–25 bars; pull more history for LIVE so we don't open short. */
-const LIVE_HISTORY_BARS = 200;
+/** Engines need ~20–25 bars; keep shallow so chart + analysis share one fast fetch. */
+const LIVE_HISTORY_BARS = 160;
 
 function seedCandleFromQuote(
   symbol: string,

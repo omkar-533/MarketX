@@ -13,7 +13,8 @@ import type {
 } from './types';
 import { ALL_WOLF_TIMEFRAMES } from './types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from '../radar/radarTypes';
-import { fetchLiveCandles, fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
+import { fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
+import { fetchMarketOhlc } from '../marketApiService';
 
 export class ServerMarketDataProvider implements MarketDataProvider {
   readonly id = 'indstocks-live';
@@ -147,8 +148,23 @@ export class ServerMarketDataProvider implements MarketDataProvider {
 
   async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
     try {
-      const { candles } = await fetchLiveCandles(symbol, timeframe, Math.max(bars, 120));
-      return Array.isArray(candles) ? candles : [];
+      // Shared OHLC cache with NativeChatChart — avoids double INDstocks history on LIVE WOLF.
+      const res = await fetchMarketOhlc(symbol, timeframe, undefined, Math.max(bars, 120));
+      const sym = String(symbol || '').toUpperCase();
+      return (res?.bars || []).map((b) => {
+        const ts = Number(b.time);
+        return {
+          symbol: sym,
+          exchange: 'NSE',
+          timeframe,
+          timestamp: ts > 1e12 ? ts : ts * 1000,
+          open: Number(b.open),
+          high: Number(b.high),
+          low: Number(b.low),
+          close: Number(b.close),
+          volume: Number(b.volume || 0),
+        };
+      });
     } catch (err) {
       // Soft-fail — scanner marks unavailable; LIVE session retries / seeds from quote
       console.warn('[ServerMarketDataProvider] candles', symbol, err instanceof Error ? err.message : err);
