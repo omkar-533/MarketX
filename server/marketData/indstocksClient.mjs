@@ -294,7 +294,10 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
       for (const n of names) {
         // Prefer equity SCRIP for underlying names; don't overwrite NSE_ with NFO_
         if (!map.has(n)) map.set(n, scrip);
-        else if (source === 'equity' && String(map.get(n) || '').startsWith('NFO_')) {
+        else if (source === 'index') {
+          // Index master wins over equity/FNO aliases (NIFTY must stay NIDX_*)
+          map.set(n, scrip);
+        } else if (source === 'equity' && String(map.get(n) || '').startsWith('NFO_')) {
           map.set(n, scrip);
         } else if (source === 'equity' && String(map.get(n) || '').startsWith('BFO_')) {
           map.set(n, scrip);
@@ -315,9 +318,11 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
     }
   }
 
-  // seed fallbacks (indices included)
+  // Seed + FORCE known index scrips. Equity CSV sometimes aliases NIFTY→NSE_* and
+  // blocks NIDX_26000 — then candle candidates never hit the real index token.
   for (const [sym, scrip] of Object.entries(FALLBACK_SCRIP_BY_SYMBOL)) {
-    if (!map.has(sym)) map.set(sym, scrip);
+    if (/^(NIDX|BIDX)_/i.test(scrip)) map.set(sym, scrip);
+    else if (!map.has(sym)) map.set(sym, scrip);
   }
   if (map.has('NIFTY') && !map.has('NIFTY50')) {
     map.set('NIFTY50', map.get('NIFTY'));
@@ -360,11 +365,19 @@ export function resolveScripCode(symbol, exchange = 'NSE') {
  * endpoints accept either depending on account / instrument master revision.
  */
 export function resolveScripCodeCandidates(symbol) {
+  const key = normalizeIndSymbolKey(symbol);
   const primary = resolveScripCode(symbol);
-  if (!primary) return [];
-  const out = [primary];
-  const m = String(primary).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);
-  if (m) {
+  const forced =
+    FALLBACK_SCRIP_BY_SYMBOL[key] ||
+    (key === 'NIFTY50' ? FALLBACK_SCRIP_BY_SYMBOL.NIFTY : null);
+  const out = [];
+  // Known indices: always try canonical NIDX/BIDX first (even if cache was poisoned).
+  if (forced && /^(NIDX|BIDX)_/i.test(forced)) out.push(forced);
+  if (primary && !out.includes(primary)) out.push(primary);
+  if (!out.length) return [];
+  for (const code of [...out]) {
+    const m = String(code).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);
+    if (!m) continue;
     const seg = m[1].toUpperCase();
     const id = m[2];
     if (seg === 'NIDX') out.push(`NSE_${id}`);

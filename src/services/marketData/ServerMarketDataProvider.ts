@@ -178,7 +178,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
       }
     };
     void tick();
-    this.polls.set(id, setInterval(() => void tick(), 2_500));
+    this.polls.set(id, setInterval(() => void tick(), 1_250));
     return id;
   }
 

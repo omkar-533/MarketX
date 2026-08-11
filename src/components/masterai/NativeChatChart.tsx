@@ -74,6 +74,7 @@ import {
 } from '../../services/chart/chartNavActions';
 import { Eye, EyeOff, Settings2, X } from 'lucide-react';
 import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
+import { fetchLiveQuote, fetchMarketDataStatus } from '../../services/marketData/marketDataApi';
 import {
   applyLivePriceToBars,
   barTimeSec,
@@ -126,9 +127,11 @@ const UP = '#26a69a';
 const DOWN = '#ef5350';
 const UP_FILL = 'rgba(38,166,154,0.5)';
 const DOWN_FILL = 'rgba(239,83,80,0.5)';
-/** Full OHLC resync (history/volume). Live LTP uses WS + fast quote poll. */
-const OHLC_RESYNC_MS = 120_000;
-/** Paint tip from cache often; REST only when WS quiet. */
+/** Full OHLC resync (history/volume). Live LTP uses market-data quotes + tip paint. */
+const OHLC_RESYNC_MS = 15_000;
+/** Market-data LIVE quote poll (INDstocks). Keep gentle — tip still updates every tick. */
+const LIVE_QUOTE_POLL_MS = 1_250;
+/** Legacy Fyers cache/WS poll — only when market-data feed is offline. */
 const QUOTE_POLL_MS = 100;
 /** Soft-expand locked price scale at most this often (ms). */
 const PRICE_ENSURE_MS = 180;
@@ -574,7 +577,19 @@ export default function NativeChatChart({
           volume: cached.volume,
         });
         if (tip) preserved = tip.bars;
+      } else {
+        try {
+          const { quote } = await fetchLiveQuote(apiSymbol);
+          const px = Number(quote?.lastPrice || quote?.price) || 0;
+          if (px > 0) {
+            const tip = applyLivePriceToBars(preserved, px, apiInterval);
+            if (tip) preserved = tip.bars;
+          }
+        } catch {
+          /* offline */
+        }
       }
+      if (token !== requestRef.current) return;
       barsRef.current = preserved;
       setBars(preserved);
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
@@ -806,57 +821,74 @@ export default function NativeChatChart({
     return () => window.clearInterval(timer);
   }, [symbol]);
 
-  // Real-time: Socket.IO ticks + quote poll fallback so the candle tip keeps running.
+  // Real-time tip: prefer connected market-data quotes; Fyers path is legacy fallback.
   useEffect(() => {
     if (!apiSymbol || !apiInterval) return;
-    startFyersSocketClient();
-    subscribeFyersMarketSymbols([apiSymbol]);
+    let cancelled = false;
+    let livePoll: ReturnType<typeof setInterval> | null = null;
+    let legacyPoll: ReturnType<typeof setInterval> | null = null;
+    let unsub = () => undefined;
 
-    const cached = getFyersCachedQuote(apiSymbol);
-    if (cached?.price) applyLivePrice(cached.price, cached.volume);
-
-    const unsub = onFyersMarketTicks((payload) => {
-      const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
-      if (!q) return;
-
-      // Prefer forming 1m candle for *this* symbol only — never sibling wick.
-      const forming =
-        payload.candles?.[apiSymbol] ||
-        payload.candles?.[normalizeMarketSymbol(apiSymbol)] ||
-        (quoteMatchesSymbol(String(q.symbol || ''), apiSymbol) ? q.candle : undefined);
-
-      let px = Number(q.price) || 0;
-      // Bid/ask mid keeps tip moving between sparse last prints (FX/crypto).
-      if (Number(q.bid) > 0 && Number(q.ask) > 0) {
-        const mid = (Number(q.bid) + Number(q.ask)) / 2;
-        if (!(px > 0) || Math.abs(mid - px) / px < 0.002) px = mid;
+    const paintFromLiveQuote = async () => {
+      try {
+        const { quote } = await fetchLiveQuote(apiSymbol);
+        if (cancelled) return;
+        const px = Number(quote?.lastPrice || quote?.price) || 0;
+        if (px > 0) applyLivePrice(px);
+      } catch {
+        /* not connected / expired — keep trying gently */
       }
-      if (forming?.close && apiInterval === '1m') {
-        px = forming.close;
-        applyLivePrice(px, forming.volume ?? q.volume, {
-          high: forming.high,
-          low: forming.low,
+    };
+
+    void fetchMarketDataStatus()
+      .then((s) => {
+        if (cancelled) return;
+        if (s.status === 'CONNECTED' && s.mode === 'LIVE' && s.liveQuotes) {
+          void paintFromLiveQuote();
+          livePoll = window.setInterval(() => void paintFromLiveQuote(), LIVE_QUOTE_POLL_MS);
+          return;
+        }
+        // Legacy / disabled feed path
+        startFyersSocketClient();
+        subscribeFyersMarketSymbols([apiSymbol]);
+        const cached = getFyersCachedQuote(apiSymbol);
+        if (cached?.price) applyLivePrice(cached.price, cached.volume);
+        unsub = onFyersMarketTicks((payload) => {
+          const q = payload.quotes.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+          if (!q) return;
+          const forming =
+            payload.candles?.[apiSymbol] ||
+            payload.candles?.[normalizeMarketSymbol(apiSymbol)] ||
+            (quoteMatchesSymbol(String(q.symbol || ''), apiSymbol) ? q.candle : undefined);
+          let px = Number(q.price) || 0;
+          if (Number(q.bid) > 0 && Number(q.ask) > 0) {
+            const mid = (Number(q.bid) + Number(q.ask)) / 2;
+            if (!(px > 0) || Math.abs(mid - px) / px < 0.002) px = mid;
+          }
+          if (forming?.close && apiInterval === '1m') {
+            applyLivePrice(forming.close, forming.volume ?? q.volume, {
+              high: forming.high,
+              low: forming.low,
+            });
+            return;
+          }
+          if (!(px > 0) && forming?.close) px = forming.close;
+          if (px > 0) applyLivePrice(px, q.volume ?? forming?.volume);
         });
-        return;
-      }
-      if (!(px > 0) && forming?.close) px = forming.close;
-      if (px > 0) applyLivePrice(px, q.volume ?? forming?.volume);
-    });
-
-    const poll = window.setInterval(() => {
-      const quietMs = Date.now() - lastLiveAtRef.current;
-      const cachedNow = getFyersCachedQuote(apiSymbol);
-      // Always paint hottest cache — do not wait for REST round-trip when tape is warm.
-      if (cachedNow?.price) {
-        applyLivePrice(cachedNow.price, cachedNow.volume);
-        // Fresh WS/cache → skip REST. Only fetch when quiet/stale.
-        if (quietMs < 2_000) return;
-      }
-      void fetchMarketQuotes([apiSymbol]).then((res) => {
-        const q = res?.quotes?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
-        if (q?.price) applyLivePrice(q.price, q.volume);
-      });
-    }, QUOTE_POLL_MS);
+        legacyPoll = window.setInterval(() => {
+          const quietMs = Date.now() - lastLiveAtRef.current;
+          const cachedNow = getFyersCachedQuote(apiSymbol);
+          if (cachedNow?.price) {
+            applyLivePrice(cachedNow.price, cachedNow.volume);
+            if (quietMs < 2_000) return;
+          }
+          void fetchMarketQuotes([apiSymbol]).then((res) => {
+            const q = res?.quotes?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
+            if (q?.price) applyLivePrice(q.price, q.volume);
+          });
+        }, QUOTE_POLL_MS);
+      })
+      .catch(() => undefined);
 
     const stale = window.setInterval(() => {
       if (Date.now() - lastLiveAtRef.current > 8_000) {
@@ -866,9 +898,11 @@ export default function NativeChatChart({
     }, 2_000);
 
     return () => {
+      cancelled = true;
       unsub();
       unsubscribeFyersMarketSymbols([apiSymbol]);
-      window.clearInterval(poll);
+      if (livePoll) window.clearInterval(livePoll);
+      if (legacyPoll) window.clearInterval(legacyPoll);
       window.clearInterval(stale);
       if (liveRafRef.current) {
         cancelAnimationFrame(liveRafRef.current);
