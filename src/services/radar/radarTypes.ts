@@ -58,8 +58,14 @@ export type WolfScore = {
 export type MarketPulseItem = {
   symbol: string;
   direction: RadarBias;
-  strength: number;
+  /** Optional legacy score — omit when not meaningfully computed. */
+  strength?: number | null;
   trendState: string;
+  structure?: string;
+  momentum?: string;
+  relativeVolume?: number | null;
+  regime?: string;
+  note?: string;
 };
 
 export type RadarResult = {

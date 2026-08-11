@@ -4,7 +4,7 @@
  */
 import type { MarketDataProvider } from './MarketDataProvider';
 import { mockMarketDataProvider } from './MockMarketDataProvider';
-import { analyzeTechnical, trendDirection } from './TechnicalEngine';
+import { analyzeTechnical, atr, trendDirection, volumeRatio } from './TechnicalEngine';
 import { detectStructure } from './StructureEngine';
 import { detectLiquidity } from './LiquidityEngine';
 import { detectVolume } from './VolumeEngine';
@@ -77,30 +77,77 @@ export async function fetchMarketPulse(
 }> {
   const symbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY'];
   const items: MarketPulseItem[] = [];
+
   for (const symbol of symbols) {
-    const proxy =
-      symbol === 'NIFTY' ? 'RELIANCE' : symbol === 'BANKNIFTY' ? 'HDFCBANK' : 'SBIN';
-    const candles = await provider.getCandles(proxy, '15m', 60);
+    // Prefer real index candles. Soft-fallback to a liquid equity proxy only if index fails.
+    let candles = await provider.getCandles(symbol, '15m', 80);
+    let usedProxy = false;
+    if (candles.length < 25) {
+      const proxy =
+        symbol === 'NIFTY' ? 'RELIANCE' : symbol === 'BANKNIFTY' ? 'HDFCBANK' : 'SBIN';
+      candles = await provider.getCandles(proxy, '15m', 80);
+      usedProxy = candles.length >= 25;
+    }
+
+    if (candles.length < 25) {
+      items.push({
+        symbol,
+        direction: 'neutral',
+        strength: null,
+        trendState: 'Unavailable',
+        structure: '—',
+        momentum: '—',
+        relativeVolume: null,
+        regime: 'UNKNOWN',
+        note: 'Insufficient index history',
+      });
+      continue;
+    }
+
     const trend = trendDirection(candles);
     const tech = analyzeTechnical(candles);
-    const strength = Math.round(
-      Math.min(
-        95,
-        Math.max(
-          35,
-          50 +
-            (trend === 'up' ? 20 : trend === 'down' ? -10 : 0) +
-            ((tech.rsi14 ?? 50) - 50),
-        ),
-      ),
-    );
+    const structure = detectStructure(candles, '15m');
+    const volRatio = volumeRatio(candles, 20);
+    const atrVal = atr(candles, 14);
+    const last = candles[candles.length - 1];
+    const atrPct = atrVal && last.close > 0 ? (atrVal / last.close) * 100 : null;
+
+    let momentum = 'NEUTRAL';
+    if (tech.rsi14 != null) {
+      if (tech.rsi14 >= 60) momentum = 'STRONG';
+      else if (tech.rsi14 <= 40) momentum = 'WEAK';
+      else momentum = 'MODERATE';
+    }
+
+    let regime = 'RANGE';
+    if (trend !== 'range' && (volRatio == null || volRatio >= 0.85)) {
+      regime = atrPct != null && atrPct >= 1.2 ? 'HIGH VOLATILITY TREND' : 'TRENDING';
+    } else if (atrPct != null && atrPct >= 1.4) {
+      regime = 'HIGH VOLATILITY';
+    } else if (trend === 'range') {
+      regime = 'RANGE';
+    }
+
+    const structureLabel =
+      structure.structure === 'bullish'
+        ? 'BULLISH'
+        : structure.structure === 'bearish'
+          ? 'BEARISH'
+          : 'NEUTRAL';
+
     items.push({
       symbol,
       direction: htfFromTrend(trend),
-      strength,
-      trendState: trend === 'up' ? 'Uptrend' : trend === 'down' ? 'Downtrend' : 'Range',
+      strength: null, // no fake midpoint score
+      trendState: trend === 'up' ? 'BULLISH' : trend === 'down' ? 'BEARISH' : 'RANGE',
+      structure: structureLabel,
+      momentum,
+      relativeVolume: volRatio != null ? Math.round(volRatio * 100) / 100 : null,
+      regime,
+      note: usedProxy ? 'Proxy equity candles (index history unavailable)' : undefined,
     });
   }
+
   return {
     items,
     dataMode: provider.isDemo ? 'DEMO' : 'LIVE',

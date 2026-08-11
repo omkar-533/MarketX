@@ -674,31 +674,36 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
         </section>
       )}
 
-      <section className="wolf-radar-desk__pulse" aria-label="Market pulse">
+      <section className="wolf-radar-desk__pulse" aria-label="Market context">
         <div className="wolf-radar-desk__section-head">
           <Activity size={14} />
-          <h2>MARKET PULSE</h2>
+          <h2>MARKET CONTEXT</h2>
           <small>
             {dataConnected && mdStatus?.mode === 'DEMO'
-              ? 'DEMO snapshot — not a live feed claim'
+              ? 'DEMO context — not a live feed claim'
               : dataConnected
-                ? 'Authorized market-data source'
-                : 'Connect a data source to refresh pulse'}
+                ? 'Broad-market environment (does not filter the scan universe)'
+                : 'Connect a data source to refresh context'}
           </small>
         </div>
         <div className="wolf-radar-desk__pulse-grid">
           {pulse.map((p) => (
             <article key={p.symbol} className={`wolf-radar-desk__pulse-card ${biasClass(p.direction)}`}>
               <strong>{p.symbol}</strong>
-              <span className="dir">{p.direction.toUpperCase()}</span>
-              <em>{p.strength}/100</em>
-              <small>{p.trendState}</small>
+              <span className="dir">{p.trendState}</span>
+              <small>Structure · {p.structure || '—'}</small>
+              <small>Momentum · {p.momentum || '—'}</small>
+              <small>
+                Rel Vol · {p.relativeVolume != null ? `${p.relativeVolume}x` : '—'}
+              </small>
+              <em>{p.regime || '—'}</em>
+              {p.note ? <small className="pulse-note">{p.note}</small> : null}
             </article>
           ))}
         </div>
       </section>
 
-      {progress.status === 'scanning' && (
+      {progress.status === 'scanning' && !allMatches.length ? (
         <section className="wolf-radar-desk__loading" aria-live="polite">
           <Sparkles size={16} className="text-gold" />
           <div>
@@ -708,16 +713,14 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
               {scanPct}%)
             </p>
             <p className="phase">
-              Current: {progress.currentSymbol || '—'} · Matched: {progress.matchedSoFar ?? 0} · No
-              match: {progress.noMatchSoFar ?? 0} · Unavailable: {progress.unavailableSoFar ?? 0} ·
-              Errors: {progress.errorsSoFar ?? 0}
+              Current: {progress.currentSymbol || '—'} · Matched: {progress.matchedSoFar ?? 0}
             </p>
           </div>
           <div className="wolf-radar-desk__bar">
             <i style={{ width: `${Math.min(100, scanPct || 4)}%` }} />
           </div>
         </section>
-      )}
+      ) : null}
 
       {scanSummary && progress.status === 'complete' && (
         <section className="wolf-radar-desk__summary">
