@@ -204,6 +204,8 @@ export function getCashUniverse(): string[] {
 
 export type CatalogUniverseId =
   | 'F&O'
+  | 'NSE'
+  | 'BSE'
   | 'NIFTY50'
   | 'CASH'
   | 'NIFTY'
@@ -216,6 +218,10 @@ export function resolveCatalogUniverse(id: string): string[] {
       return getNifty50Universe();
     case 'CASH':
       return getCashUniverse();
+    case 'NSE':
+    case 'BSE':
+      // DEMO / offline: honest snapshot only — full lists come from LIVE instrument master.
+      return getFnoUniverse();
     case 'BANKNIFTY':
       return [
         'HDFCBANK',
@@ -241,6 +247,8 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
   const symbols = resolveCatalogUniverse(id);
   const labels: Record<string, string> = {
     'F&O': 'F&O underlyings',
+    NSE: 'NSE equity (DEMO snapshot)',
+    BSE: 'BSE equity (DEMO snapshot)',
     NIFTY50: 'NIFTY 50',
     CASH: 'Cash (Nifty 50 snapshot)',
     NIFTY: 'NIFTY 50',
@@ -252,7 +260,9 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
     count: symbols.length,
     note:
       id === 'F&O'
-        ? 'Equity underlyings from WOLF instrument master (not every FO contract).'
-        : 'Constituent snapshot from WOLF instrument master.',
+        ? 'Equity underlyings from WOLF instrument master (not every FO contract). Connect LIVE for the full FO underlying list.'
+        : id === 'NSE' || id === 'BSE'
+          ? 'Connect INDstocks to load the complete equity universe from the official instrument master. DEMO shows a snapshot only.'
+          : 'Constituent snapshot from WOLF instrument master.',
   };
 }

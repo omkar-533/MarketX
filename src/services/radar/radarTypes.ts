@@ -4,7 +4,7 @@ export type RadarTimeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | 
 
 export type RadarMarket = 'NSE' | 'BSE';
 
-export type RadarUniverse = 'F&O' | 'NIFTY50' | 'CASH' | 'BANKNIFTY';
+export type RadarUniverse = 'F&O' | 'NSE' | 'BSE' | 'NIFTY50' | 'CASH' | 'BANKNIFTY';
 
 export type RadarBias = 'bullish' | 'bearish' | 'neutral';
 

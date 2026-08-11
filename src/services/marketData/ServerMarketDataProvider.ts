@@ -24,7 +24,42 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   private subSeq = 0;
   private readonly polls = new Map<string, ReturnType<typeof setInterval>>();
   /** Last symbols() meta — catalog vs actually resolvable */
-  lastUniverseMeta: { universeLoaded: number; dataAvailable: number } | null = null;
+  lastUniverseMeta: {
+    universeLoaded: number;
+    dataAvailable: number;
+    dataUnavailable: number;
+    source?: string;
+    note?: string;
+  } | null = null;
+
+  async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
+    try {
+      const data = await fetchLiveSymbols(universe, 'scannable');
+      const loaded = data.universeLoaded ?? data.catalog?.length ?? data.symbols?.length ?? 0;
+      const available = data.dataAvailable ?? data.scannable?.length ?? data.symbols?.length ?? 0;
+      this.lastUniverseMeta = {
+        universeLoaded: loaded,
+        dataAvailable: available,
+        dataUnavailable: data.dataUnavailable ?? Math.max(0, loaded - available),
+        source: data.source,
+        note: data.note,
+      };
+      if (data.symbols?.length) return data.symbols;
+      const catalog = await fetchLiveSymbols(universe, 'catalog');
+      this.lastUniverseMeta = {
+        universeLoaded: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
+        dataAvailable: 0,
+        dataUnavailable: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
+        source: catalog.source,
+        note: catalog.note,
+      };
+      return catalog.symbols || [];
+    } catch (err) {
+      console.warn('[ServerMarketDataProvider] getSymbols failed', err);
+      this.lastUniverseMeta = null;
+      throw err;
+    }
+  }
 
   async connect(): Promise<void> {
     this.connected = true;
@@ -65,26 +100,6 @@ export class ServerMarketDataProvider implements MarketDataProvider {
       serverTime: Date.now(),
       raw: 'provider-status-unknown',
     };
-  }
-
-  async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
-    try {
-      const data = await fetchLiveSymbols(universe, 'scannable');
-      const loaded = data.universeLoaded ?? data.catalog?.length ?? data.symbols?.length ?? 0;
-      const available = data.dataAvailable ?? data.scannable?.length ?? data.symbols?.length ?? 0;
-      this.lastUniverseMeta = { universeLoaded: loaded, dataAvailable: available };
-      if (data.symbols?.length) return data.symbols;
-      const catalog = await fetchLiveSymbols(universe, 'catalog');
-      this.lastUniverseMeta = {
-        universeLoaded: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
-        dataAvailable: 0,
-      };
-      return catalog.symbols || [];
-    } catch (err) {
-      console.warn('[ServerMarketDataProvider] getSymbols failed', err);
-      this.lastUniverseMeta = null;
-      throw err;
-    }
   }
 
   async getInstrumentList(): Promise<NormalizedInstrument[]> {

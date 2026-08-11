@@ -125,10 +125,39 @@ export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scan
     symbols: string[];
     catalog?: string[];
     scannable?: string[];
+    universe?: string;
     universeLoaded?: number;
     dataAvailable?: number;
     dataUnavailable?: number;
+    source?: string;
+    note?: string;
+    instrumentMaster?: {
+      nseEquity: number;
+      bseEquity: number;
+      fnoUnderlyings: number;
+      indices: number;
+      refreshedAt: number | null;
+      source: string;
+    };
   }>(
     `/api/market-data/symbols?universe=${encodeURIComponent(universe)}&mode=${mode === 'scannable' ? 'scannable' : 'catalog'}`,
   );
+}
+
+export async function fetchUniversesMeta() {
+  return json<{
+    source: string;
+    instrumentMaster: {
+      nseEquity: number;
+      bseEquity: number;
+      fnoUnderlyings: number;
+      indices: number;
+      refreshedAt: number | null;
+      source: string;
+    };
+    universes: Record<
+      string,
+      { id: string; catalogCount: number; scannableCount: number; unavailableCount: number }
+    >;
+  }>('/api/market-data/universes');
 }

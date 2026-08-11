@@ -30,6 +30,7 @@ import {
   INDSTOCKS_CAPABILITIES,
   INDSTOCKS_PERMISSION_NOTE,
 } from './indstocksClient.mjs';
+import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -197,6 +198,8 @@ router.get('/symbols', (req, res) => {
   const catalog = listUniverseSymbols(universe);
   const scannable = listScannableUniverseSymbols(universe);
   const preferScannable = String(req.query.mode || '') === 'scannable';
+  const stats = getInstrumentUniverseStats();
+  const fromLive = Boolean(stats.refreshedAt);
   res.json({
     symbols: preferScannable ? scannable : catalog,
     catalog,
@@ -205,8 +208,37 @@ router.get('/symbols', (req, res) => {
     universeLoaded: catalog.length,
     dataAvailable: scannable.length,
     dataUnavailable: Math.max(0, catalog.length - scannable.length),
-    note:
-      'Equity underliers for radar screening. Scannable = scrip resolved via instrument master / fallback map.',
+    instrumentMaster: stats,
+    source: fromLive ? 'indstocks-instrument-master' : 'static-catalog-fallback',
+    note: fromLive
+      ? 'Universe derived from connected INDstocks instrument master (equity / index / F&O CSVs). Scannable = resolvable scrips only.'
+      : 'Static WOLF catalog fallback (connect INDstocks to load the full instrument master). Scannable = resolvable scrips only.',
+  });
+});
+
+router.get('/universes', (_req, res) => {
+  const stats = getInstrumentUniverseStats();
+  const mk = (id) => {
+    const catalog = listUniverseSymbols(id);
+    const scannable = listScannableUniverseSymbols(id);
+    return {
+      id,
+      catalogCount: catalog.length,
+      scannableCount: scannable.length,
+      unavailableCount: Math.max(0, catalog.length - scannable.length),
+    };
+  };
+  res.json({
+    source: stats.refreshedAt ? 'indstocks-instrument-master' : 'static-catalog-fallback',
+    instrumentMaster: stats,
+    universes: {
+      NSE: mk('NSE'),
+      BSE: mk('BSE'),
+      'F&O': mk('F&O'),
+      NIFTY50: mk('NIFTY50'),
+      CASH: mk('CASH'),
+      BANKNIFTY: mk('BANKNIFTY'),
+    },
   });
 });
 

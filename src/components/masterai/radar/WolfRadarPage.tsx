@@ -30,6 +30,7 @@ import type {
 import { WOLF_SCORE_WEIGHTS } from '../../../services/radar/WolfScoringEngine';
 import {
   fetchMarketDataStatus,
+  fetchUniversesMeta,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService, getMarketDataService } from '../../../services/marketData/MarketDataService';
@@ -94,6 +95,20 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   const [showIssues, setShowIssues] = useState(false);
   const [logicOpen, setLogicOpen] = useState(true);
   const [universeLoaded, setUniverseLoaded] = useState(() => catalogUniverseMeta('F&O').count);
+  const [universeCatalogCount, setUniverseCatalogCount] = useState(
+    () => catalogUniverseMeta('F&O').count,
+  );
+  const [universeUnavailable, setUniverseUnavailable] = useState(0);
+  const [universeNote, setUniverseNote] = useState(() => catalogUniverseMeta('F&O').note);
+  const [universeSource, setUniverseSource] = useState('static-catalog-fallback');
+  const [optionCounts, setOptionCounts] = useState<Record<string, number>>(() => ({
+    'F&O': catalogUniverseMeta('F&O').count,
+    NSE: catalogUniverseMeta('NSE').count,
+    BSE: catalogUniverseMeta('BSE').count,
+    NIFTY50: 50,
+    BANKNIFTY: catalogUniverseMeta('BANKNIFTY').count,
+    CASH: catalogUniverseMeta('CASH').count,
+  }));
   const [selected, setSelected] = useState<RadarResult | null>(null);
   const [progress, setProgress] = useState<RadarScanProgress>({
     status: 'idle',
@@ -280,18 +295,57 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
     void resolveScanProvider(mdStatus)
       .getSymbols(universe, market)
       .then((syms) => {
-        if (!cancelled) setUniverseLoaded(syms.length);
+        if (cancelled) return;
+        const provider = resolveScanProvider(mdStatus);
+        const meta =
+          'lastUniverseMeta' in provider
+            ? (provider as typeof serverMarketDataProvider).lastUniverseMeta
+            : null;
+        if (meta) {
+          setUniverseCatalogCount(meta.universeLoaded);
+          setUniverseLoaded(meta.dataAvailable || syms.length);
+          setUniverseUnavailable(meta.dataUnavailable ?? 0);
+          setUniverseNote(meta.note || catalogUniverseMeta(universe).note);
+          setUniverseSource(meta.source || 'connected');
+        } else {
+          setUniverseLoaded(syms.length);
+          setUniverseCatalogCount(syms.length);
+          setUniverseUnavailable(0);
+          setUniverseNote(catalogUniverseMeta(universe).note);
+          setUniverseSource(mdStatus?.mode === 'LIVE' ? 'connected' : 'static-catalog-fallback');
+        }
       })
       .catch(() => {
-        if (!cancelled) setUniverseLoaded(catalogUniverseMeta(universe).count);
+        if (cancelled) return;
+        const m = catalogUniverseMeta(universe);
+        setUniverseLoaded(m.count);
+        setUniverseCatalogCount(m.count);
+        setUniverseUnavailable(0);
+        setUniverseNote(m.note);
+        setUniverseSource('static-catalog-fallback');
       });
+
+    if (mdStatus?.status === 'CONNECTED') {
+      void fetchUniversesMeta()
+        .then((meta) => {
+          if (cancelled || !meta?.universes) return;
+          const next: Record<string, number> = {};
+          for (const [id, row] of Object.entries(meta.universes)) {
+            next[id] = row.scannableCount || row.catalogCount;
+          }
+          setOptionCounts((prev) => ({ ...prev, ...next }));
+          if (meta.source) setUniverseSource(meta.source);
+        })
+        .catch(() => undefined);
+    }
+
     return () => {
       cancelled = true;
     };
   }, [universe, market, mdStatus]);
 
   const visibleResults = showAllMatches && allMatches.length ? allMatches : results;
-  const universeMeta = catalogUniverseMeta(universe);
+  const countFor = (id: RadarUniverse) => optionCounts[id] ?? catalogUniverseMeta(id).count;
   const scanPct =
     progress.symbolsTotal > 0
       ? Math.round((progress.symbolsChecked / progress.symbolsTotal) * 1000) / 10
@@ -345,21 +399,44 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
           </label>
           <label>
             <span>MARKET</span>
-            <select value={market} onChange={(e) => setMarket(e.target.value as RadarMarket)}>
-              <option value="NSE">NSE</option>
-              <option value="BSE">BSE</option>
+            <select
+              value={universe === 'BSE' ? 'BSE' : universe === 'F&O' ? 'F&O' : market}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === 'F&O') {
+                  setUniverse('F&O');
+                  setMarket('NSE');
+                } else if (v === 'BSE') {
+                  setUniverse('BSE');
+                  setMarket('BSE');
+                } else {
+                  setUniverse('NSE');
+                  setMarket('NSE');
+                }
+              }}
+            >
+              <option value="NSE">NSE Equity ({countFor('NSE').toLocaleString('en-IN')})</option>
+              <option value="BSE">BSE Equity ({countFor('BSE').toLocaleString('en-IN')})</option>
+              <option value="F&O">F&O Underlyings ({countFor('F&O').toLocaleString('en-IN')})</option>
             </select>
           </label>
           <label>
             <span>UNIVERSE</span>
             <select
               value={universe}
-              onChange={(e) => setUniverse(e.target.value as RadarUniverse)}
+              onChange={(e) => {
+                const next = e.target.value as RadarUniverse;
+                setUniverse(next);
+                if (next === 'BSE') setMarket('BSE');
+                else setMarket('NSE');
+              }}
             >
-              <option value="F&O">F&O ({catalogUniverseMeta('F&O').count})</option>
-              <option value="NIFTY50">NIFTY 50 (50)</option>
-              <option value="BANKNIFTY">BANKNIFTY basket</option>
-              <option value="CASH">CASH / Nifty snapshot</option>
+              <option value="F&O">F&O underlyings ({countFor('F&O').toLocaleString('en-IN')})</option>
+              <option value="NSE">NSE equity ({countFor('NSE').toLocaleString('en-IN')})</option>
+              <option value="BSE">BSE equity ({countFor('BSE').toLocaleString('en-IN')})</option>
+              <option value="NIFTY50">NIFTY 50 ({countFor('NIFTY50')})</option>
+              <option value="BANKNIFTY">BANKNIFTY basket ({countFor('BANKNIFTY')})</option>
+              <option value="CASH">CASH / Nifty snapshot ({countFor('CASH')})</option>
             </select>
           </label>
           <label>
@@ -388,7 +465,23 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
 
         <div className="wolf-radar-desk__meta">
           <span>
-            Universe loaded: <b>{universeLoaded}</b> · {universeMeta.note}
+            Universe:{' '}
+            <b>
+              {universeLoaded.toLocaleString('en-IN')} scannable
+            </b>
+            {universeCatalogCount !== universeLoaded ? (
+              <>
+                {' '}
+                · catalog {universeCatalogCount.toLocaleString('en-IN')}
+                {universeUnavailable > 0
+                  ? ` · ${universeUnavailable.toLocaleString('en-IN')} unresolved`
+                  : ''}
+              </>
+            ) : null}{' '}
+            · {universeNote}
+          </span>
+          <span title={universeSource}>
+            Source: <b>{universeSource.includes('instrument') ? 'INSTRUMENT MASTER' : 'CATALOG'}</b>
           </span>
           <span>
             Last scan: <b>{formatTime(progress.lastScanAt)}</b>

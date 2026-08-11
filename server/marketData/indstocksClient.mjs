@@ -6,6 +6,7 @@
  * Tokens must never be logged or returned to clients.
  */
 import { resolveServerUniverse } from './universeLists.mjs';
+import { rebuildInstrumentUniverses, resolveUniverseSymbols } from './instrumentUniverse.mjs';
 
 const BASE = 'https://api.indstocks.com';
 
@@ -254,39 +255,55 @@ function parseCsv(text) {
   });
 }
 
-/** Refresh equity + index instrument map (SYMBOL → SEGMENT_SECURITY_ID). */
+/** Refresh equity + index + F&O instrument map and classified universes. */
 export async function refreshIndstocksInstrumentMap(accessToken) {
   const map = new Map();
+  /** @type {{ equity: object[], index: object[], fno: object[] }} */
+  const packs = { equity: [], index: [], fno: [] };
 
   const ingest = (rows, source) => {
+    packs[source] = rows;
     for (const row of rows) {
       const sid = row.SECURITY_ID;
       if (!sid) continue;
       const exch = (row.EXCH || 'NSE').toUpperCase();
       let scrip;
       if (source === 'index') {
-        // Glossary: REST index scrips use NIDX_/BIDX_, not NSE_/BSE_.
         if (exch === 'BSE' || exch === 'BIDX') scrip = `BIDX_${sid}`;
         else scrip = `NIDX_${sid}`;
+      } else if (source === 'fno') {
+        // F&O contracts live on NFO/BFO; equity underlyings still map via equity CSV.
+        // Keep SYMBOL_NAME → NFO contract only when no equity mapping exists yet.
+        const seg = exch === 'BSE' || exch === 'BFO' ? 'BFO' : 'NFO';
+        scrip = `${seg}_${sid}`;
       } else {
         scrip = `${exch}_${sid}`;
       }
       const names = [row.SYMBOL_NAME, row.TRADING_SYMBOL, row.CUSTOM_SYMBOL]
-        .map((s) =>
-          String(s || '')
+        .flatMap((s) => {
+          const n = String(s || '')
             .toUpperCase()
             .replace(/-EQ$/, '')
             .replace(/\s+/g, '')
-            .trim(),
-        )
-        .filter(Boolean);
+            .trim();
+          if (!n) return [];
+          const keys = [n];
+          if (n.includes('&')) keys.push(n.replace(/&/g, ''));
+          return keys;
+        });
       for (const n of names) {
+        // Prefer equity SCRIP for underlying names; don't overwrite NSE_ with NFO_
         if (!map.has(n)) map.set(n, scrip);
+        else if (source === 'equity' && String(map.get(n) || '').startsWith('NFO_')) {
+          map.set(n, scrip);
+        } else if (source === 'equity' && String(map.get(n) || '').startsWith('BFO_')) {
+          map.set(n, scrip);
+        }
       }
     }
   };
 
-  for (const source of ['equity', 'index']) {
+  for (const source of ['equity', 'index', 'fno']) {
     try {
       const { text } = await indFetch('/market/instruments', accessToken, {
         searchParams: { source },
@@ -302,13 +319,16 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
   for (const [sym, scrip] of Object.entries(FALLBACK_SCRIP_BY_SYMBOL)) {
     if (!map.has(sym)) map.set(sym, scrip);
   }
-  // Friendly aliases
   if (map.has('NIFTY') && !map.has('NIFTY50')) {
     map.set('NIFTY50', map.get('NIFTY'));
   }
 
   instrumentCache.at = Date.now();
   instrumentCache.bySymbol = map;
+
+  const stats = rebuildInstrumentUniverses(packs);
+  console.log('[indstocks] instrument universes', stats);
+
   return map.size;
 }
 
@@ -356,10 +376,8 @@ export function resolveScripCodeCandidates(symbol) {
 }
 
 export function listUniverseSymbols(universe) {
-  const wanted = resolveServerUniverse(universe);
-  // Prefer full catalog size for honesty. LIVE candle fetch resolves scrips via
-  // instrument map + FALLBACK; unresolved symbols are marked unavailable in scanner.
-  return wanted;
+  // Prefer live instrument-master derived sets when available (falls back to static catalog).
+  return resolveUniverseSymbols(universe);
 }
 
 /** Symbols we can actually resolve to a scrip right now (after instrument map refresh). */
