@@ -118,6 +118,37 @@ app.get('/api/chat/status', (req, res) => {
   });
 });
 
+/** Strategy Lab / Teach WOLF — AI availability without exposing secrets. */
+app.get('/api/ai/health', (req, res) => {
+  const chain = resolveAiKeyChain(req);
+  const serverKey = envOpenRouterKey || '';
+  const first = chain[0] || '';
+  let provider = null;
+  if (first.startsWith('AQ.') || first.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(first)) {
+    provider = 'gemini';
+  } else if (first.startsWith('sk-or-')) {
+    provider = 'openrouter';
+  } else if (first.startsWith('sk-')) {
+    provider = 'openai';
+  }
+  const configured = Boolean(first);
+  res.json({
+    provider,
+    configured,
+    available: configured,
+    strategyParse: {
+      model: provider === 'gemini' ? 'gemini-2.0-flash' : provider === 'openai' ? 'gpt-4o-mini' : provider === 'openrouter' ? 'google/gemini-2.0-flash-001' : null,
+      acceptsModernGeminiKeys: true,
+    },
+    keySource: first
+      ? first === serverKey
+        ? 'server'
+        : 'profile'
+      : 'none',
+    // Never include key material
+  });
+});
+
 app.get('/api/chat/models', (_req, res) => {
   res.json({ models: MASTER_AI_MODELS });
 });

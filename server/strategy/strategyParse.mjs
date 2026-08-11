@@ -452,9 +452,14 @@ function buildUserPrompt(description, answers) {
     .join('\n\n');
 }
 
+function isGeminiApiKey(apiKey) {
+  const k = String(apiKey || '').trim();
+  return k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k);
+}
+
 function detectProvider(apiKey) {
-  const k = String(apiKey || '');
-  if (k.startsWith('AIza')) return 'gemini';
+  const k = String(apiKey || '').trim();
+  if (isGeminiApiKey(k)) return 'gemini';
   if (k.startsWith('sk-or-')) return 'openrouter';
   if (k.startsWith('sk-')) return 'openai';
   return null;

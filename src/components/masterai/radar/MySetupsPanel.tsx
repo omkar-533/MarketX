@@ -3,7 +3,7 @@
  * Manual builder + templates + Teach WOLF (controlled NL → structured conditions).
  * Strategies are private (localStorage). Scanner uses structured conditions only.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BookMarked,
   Copy,
@@ -40,6 +40,7 @@ import {
   type ClarificationQuestion,
   type ParsedStrategyDraft,
 } from '../../../services/strategy/strategyParseApi';
+import { fetchAiHealth, type AiHealth } from '../../../services/strategy/aiHealth';
 import type { StrategyCondition, StrategyDefinition, TimeframeMode } from '../../../services/strategy/strategyTypes';
 import type { RadarTimeframe } from '../../../services/radar/radarTypes';
 
@@ -93,6 +94,11 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [aiDraft, setAiDraft] = useState<ParsedStrategyDraft | null>(null);
   const [teachClarity, setTeachClarity] = useState<string | null>(null);
+  const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
+
+  useEffect(() => {
+    void fetchAiHealth().then(setAiHealth);
+  }, []);
 
   const visible = useMemo(() => {
     return strategies.filter((s) => {
@@ -283,14 +289,22 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
         <div className="wolf-radar-desk__brand">
           <div className="wolf-radar-desk__title-row">
             <BookMarked size={18} className="text-gold" />
-            <h1>MY SETUPS</h1>
-            <span className="wolf-lab__badge">STRATEGY LAB</span>
+            <h1>STRATEGY LAB</h1>
+            <span className="wolf-lab__badge">MY SETUPS</span>
           </div>
-          <p className="wolf-radar-desk__subtitle">Teach WOLF what to hunt.</p>
+          <p className="wolf-radar-desk__subtitle">
+            Create, teach and manage the setups WOLF hunts for.
+          </p>
+          <p
+            className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
+            title={aiHealth?.provider || 'none'}
+          >
+            WOLF AI · {aiHealth?.available ? `● READY (${(aiHealth.provider || 'ai').toUpperCase()})` : '○ AI BUILDER UNAVAILABLE'}
+          </p>
         </div>
         {tab === 'list' && (
           <button type="button" className="wolf-radar-desk__scan-btn" onClick={() => setTab('create')}>
-            <Plus size={16} /> CREATE NEW SETUP
+            <Plus size={16} /> CREATE NEW SCREENER
           </button>
         )}
         {tab !== 'list' && (
@@ -302,21 +316,52 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
 
       {note && <p className="wolf-lab__note">{note}</p>}
 
-      {tab === 'create' && (
-        <section className="wolf-lab__create">
-          <h2>CREATE YOUR SETUP</h2>
-          <p>How would you like to create it?</p>
+      {tab === 'list' && !strategies.length && (
+        <section className="wolf-lab__empty-hero">
+          <h2>TEACH WOLF YOUR FIRST SETUP</h2>
+          <p>
+            Build a strategy manually, describe it in your own words, or start from a WOLF template.
+          </p>
           <div className="wolf-lab__method-grid">
             <button type="button" onClick={() => setTab('manual')}>
               <strong>BUILD MANUALLY</strong>
-              <span>Build using predefined WOLF conditions.</span>
+              <span>Step-by-step conditions. No AI required.</span>
             </button>
             <button type="button" onClick={() => setTab('teach')}>
               <strong>TEACH WOLF</strong>
-              <span>Describe your setup in your own words.</span>
+              <span>
+                {aiHealth?.available
+                  ? 'Describe your setup — structured strategy only.'
+                  : 'If AI is offline, use BUILD MANUALLY or a template.'}
+              </span>
             </button>
             <button type="button" onClick={() => setTab('templates')}>
-              <strong>USE WOLF TEMPLATE</strong>
+              <strong>USE PREDEFINED SCREENER</strong>
+              <span>Start from a WOLF template with explanations.</span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {tab === 'create' && (
+        <section className="wolf-lab__create">
+          <h2>CREATE NEW SCREENER</h2>
+          <p>How do you want to create it?</p>
+          <div className="wolf-lab__method-grid">
+            <button type="button" onClick={() => setTab('manual')}>
+              <strong>1 · BUILD MANUALLY</strong>
+              <span>Build using predefined WOLF conditions.</span>
+            </button>
+            <button type="button" onClick={() => setTab('teach')}>
+              <strong>2 · TEACH WOLF</strong>
+              <span>
+                {aiHealth?.available
+                  ? 'Describe your setup in your own words.'
+                  : 'AI may be offline — you can still try; fallback to local parse.'}
+              </span>
+            </button>
+            <button type="button" onClick={() => setTab('templates')}>
+              <strong>3 · USE PREDEFINED SCREENER</strong>
               <span>Start from a predefined WOLF strategy.</span>
             </button>
           </div>
@@ -346,6 +391,13 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
         <section className="wolf-lab__teach">
           <h2>TEACH WOLF</h2>
           <p className="wolf-radar-desk__subtitle">Explain your setup in your own words.</p>
+          <p
+            className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
+          >
+            {aiHealth?.available
+              ? `WOLF AI · ● READY · ${aiHealth.strategyParse?.model || aiHealth.provider || 'model'}`
+              : 'WOLF AI · ○ AI BUILDER UNAVAILABLE — try manual or local parse fallback'}
+          </p>
           <textarea
             rows={6}
             value={teachText}

@@ -26523,6 +26523,43 @@ body:has(.app-main--terminal-immersive) #root {
   border-radius: 999px;
   padding: 0.18rem 0.5rem;
 }
+.wolf-lab__ai-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--tf-text-muted);
+}
+.wolf-lab__ai-status.is-on {
+  color: #7dba6f;
+}
+.wolf-lab__ai-status.is-off {
+  color: #c9a227;
+}
+.wolf-lab__empty-hero {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: linear-gradient(160deg, rgba(212, 175, 55, 0.08), rgba(0, 0, 0, 0.25));
+}
+.wolf-lab__empty-hero h2 {
+  margin: 0;
+  letter-spacing: 0.08em;
+  font-size: 1rem;
+  color: var(--tj-gold);
+}
+.wolf-lab__empty-hero > p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--tf-text-secondary);
+  max-width: 42rem;
+}
+.wolf-lab__method-grid button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .wolf-lab__note {
   margin: 0 0 0.75rem;
   padding: 0.65rem 0.85rem;
