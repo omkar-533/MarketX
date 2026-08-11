@@ -42,6 +42,9 @@ export const PAGE_NAMES: Record<string, string> = {
   'wolf-ai': AI_PRODUCT_NAME,
   /** @deprecated Use wolf-ai — kept so old links/storage still resolve. */
   trafi: AI_PRODUCT_NAME,
+  'wolf-radar': 'WOLF Radar',
+  'live-wolf': 'LIVE WOLF',
+  'strategy-lab': 'Strategy Lab',
   'mentor-ai': 'Wolf Mentor',
   arena: 'Wolf Arena',
   terminal: 'Wolf Terminal',

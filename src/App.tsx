@@ -12,6 +12,8 @@ import {
   SHOW_PAPER_TRADING,
   SHOW_TERMINAL,
 } from './constants/featureFlags';
+import { RADAR_OPEN_EVENT } from './services/radar/radarBridge';
+import { LIVE_WOLF_OPEN_EVENT } from './services/live/liveBridge';
 
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
@@ -28,7 +30,6 @@ const OptionSimulator = lazy(() => import('./components/OptionSimulator'));
 const StrategyBuilder = lazy(() => import('./components/StrategyBuilder'));
 const Scanners = lazy(() => import('./components/Scanners'));
 const MasterTX = lazy(() => import('./components/MasterTX'));
-const Watchlist = lazy(() => import('./components/Watchlist'));
 const Alerts = lazy(() => import('./components/Alerts'));
 const News = lazy(() => import('./components/News'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
@@ -43,6 +44,10 @@ const OIIntelligence = lazy(() => import('./components/OIIntelligence'));
 const FootprintChart = lazy(() => import('./components/FootprintChart'));
 const MasterAI = lazy(() => import('./components/MasterAI'));
 const WolfAiWorkspace = lazy(() => import('./components/WolfAiWorkspace'));
+const WolfRadarPage = lazy(() => import('./components/masterai/radar/WolfRadarPage'));
+const LiveWolfRoute = lazy(() => import('./components/masterai/live/LiveWolfRoute'));
+const MySetupsPanel = lazy(() => import('./components/masterai/radar/MySetupsPanel'));
+const WatchlistPanel = lazy(() => import('./components/masterai/radar/WatchlistPanel'));
 const MentorAI = lazy(() => import('./components/MentorAI'));
 const WolfArenaPage = lazy(() => import('./components/WolfArenaPage'));
 const TerminalPage = lazy(() => import('./components/terminal/TerminalPage'));
@@ -79,6 +84,9 @@ const VALID_TABS = new Set([
   ...(SHOW_OI_INTELLIGENCE ? (['oiintelligence'] as const) : []),
   'footprint',
   'wolf-ai',
+  'wolf-radar',
+  'live-wolf',
+  'strategy-lab',
   'mentor-ai',
   'arena',
   ...(SHOW_TERMINAL ? (['terminal'] as const) : []),
@@ -260,6 +268,19 @@ function AppWorkspace() {
     window.setTimeout(pinTop, 50);
   };
 
+  useEffect(() => {
+    if (!auth.isLoggedIn) return;
+    const openRadar = () => handleTabChange('wolf-radar');
+    const openLive = () => handleTabChange('live-wolf');
+    window.addEventListener(RADAR_OPEN_EVENT, openRadar);
+    window.addEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
+    return () => {
+      window.removeEventListener(RADAR_OPEN_EVENT, openRadar);
+      window.removeEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bind once for session; navigate via latest handleTabChange closure is fine for tab switches
+  }, [auth.isLoggedIn]);
+
   const handleLogout = () => {
     clearPersistedTab();
     markForceHome();
@@ -310,6 +331,17 @@ function AppWorkspace() {
         return <FootprintChart />;
       case 'wolf-ai':
         return <WolfAiWorkspace />;
+      case 'wolf-radar':
+        return (
+          <WolfRadarPage
+            onAnalyze={() => handleTabChange('wolf-ai')}
+            onOpenLive={() => handleTabChange('live-wolf')}
+          />
+        );
+      case 'live-wolf':
+        return <LiveWolfRoute onAskWolf={() => handleTabChange('wolf-ai')} />;
+      case 'strategy-lab':
+        return <MySetupsPanel onScanSetup={() => handleTabChange('wolf-radar')} />;
       case 'mentor-ai':
         return <MentorAI onNavigate={handleTabChange} />;
       case 'arena':
@@ -340,7 +372,12 @@ function AppWorkspace() {
       case 'master-tx':
         return <MasterTX />;
       case 'watchlist':
-        return <Watchlist />;
+        return (
+          <WatchlistPanel
+            onAnalyze={() => handleTabChange('wolf-ai')}
+            onOpenRadar={() => handleTabChange('wolf-radar')}
+          />
+        );
       case 'alerts':
         return <Alerts />;
       case 'news':

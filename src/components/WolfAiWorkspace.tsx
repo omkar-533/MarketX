@@ -1,46 +1,19 @@
-import { useEffect, useState } from 'react';
-import { Activity, Bot, Bookmark, BookMarked, Radar } from 'lucide-react';
+/**
+ * Wolf AI product page — AI Analyst only.
+ * Radar / LIVE / Strategy Lab / Watchlist live as top-level product menu routes.
+ */
+import { useEffect } from 'react';
 import MasterAI from './MasterAI';
-import WolfRadarPage from './masterai/radar/WolfRadarPage';
-import MySetupsPanel from './masterai/radar/MySetupsPanel';
-import WatchlistPanel from './masterai/radar/WatchlistPanel';
-import LiveWolfPage from './masterai/live/LiveWolfPage';
-import ConnectMarketDataModal from './masterai/radar/ConnectMarketDataModal';
-import {
-  RADAR_OPEN_EVENT,
-  type WolfAiDeskTab,
-} from '../services/radar/radarBridge';
-import { LIVE_WOLF_OPEN_EVENT } from '../services/live/liveBridge';
-import {
-  fetchMarketDataStatus,
-  type ServerConnectionStatus,
-} from '../services/marketData/marketDataApi';
 import { initMarketDataService } from '../services/marketData/MarketDataService';
 import { mockMarketDataProvider } from '../services/radar/MockMarketDataProvider';
 import { serverMarketDataProvider } from '../services/marketData/ServerMarketDataProvider';
-
-const TABS: { id: WolfAiDeskTab; label: string; icon: typeof Bot }[] = [
-  { id: 'analyst', label: 'AI ANALYST', icon: Bot },
-  { id: 'radar', label: 'WOLF RADAR', icon: Radar },
-  { id: 'live', label: 'LIVE WOLF', icon: Activity },
-  { id: 'setups', label: 'STRATEGY LAB', icon: BookMarked },
-  { id: 'watchlist', label: 'WATCHLIST', icon: Bookmark },
-];
+import { fetchMarketDataStatus } from '../services/marketData/marketDataApi';
 
 export default function WolfAiWorkspace() {
-  const [desk, setDesk] = useState<WolfAiDeskTab>('analyst');
-  const [connectOpen, setConnectOpen] = useState(false);
-  const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
-
   useEffect(() => {
     initMarketDataService(mockMarketDataProvider);
-    const openRadar = () => setDesk('radar');
-    const openLive = () => setDesk('live');
-    window.addEventListener(RADAR_OPEN_EVENT, openRadar);
-    window.addEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
     void fetchMarketDataStatus()
       .then(async (s) => {
-        setMdStatus(s);
         if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
           await initMarketDataService(serverMarketDataProvider).connect();
         } else if (s.status === 'CONNECTED') {
@@ -48,68 +21,15 @@ export default function WolfAiWorkspace() {
         }
       })
       .catch(() => undefined);
-    return () => {
-      window.removeEventListener(RADAR_OPEN_EVENT, openRadar);
-      window.removeEventListener(LIVE_WOLF_OPEN_EVENT, openLive);
-    };
   }, []);
 
   return (
-    <div className={`wolf-ai-workspace ${desk === 'analyst' ? 'is-analyst' : 'is-panel'}`}>
-      <nav className="wolf-ai-workspace__nav" aria-label="Wolf AI modes">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const on = desk === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              className={`wolf-ai-workspace__tab ${on ? 'is-on' : ''}`}
-              onClick={() => setDesk(tab.id)}
-              aria-current={on ? 'page' : undefined}
-            >
-              <Icon size={14} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
+    <div className="wolf-ai-workspace is-analyst">
       <div className="wolf-ai-workspace__body">
-        <div className={desk === 'analyst' ? 'wolf-ai-workspace__pane is-show' : 'wolf-ai-workspace__pane'}>
+        <div className="wolf-ai-workspace__pane is-show">
           <MasterAI />
         </div>
-        {desk === 'radar' && (
-          <WolfRadarPage
-            onAnalyze={() => setDesk('analyst')}
-            onOpenLive={() => setDesk('live')}
-          />
-        )}
-        {desk === 'live' && (
-          <LiveWolfPage
-            onAskWolf={() => setDesk('analyst')}
-            onConnectData={() => setConnectOpen(true)}
-          />
-        )}
-        {desk === 'setups' && <MySetupsPanel onScanSetup={() => setDesk('radar')} />}
-        {desk === 'watchlist' && (
-          <WatchlistPanel onAnalyze={() => setDesk('analyst')} onOpenRadar={() => setDesk('radar')} />
-        )}
       </div>
-
-      <ConnectMarketDataModal
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        status={mdStatus}
-        onStatusChange={(s) => {
-          setMdStatus(s);
-          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
-            void initMarketDataService(serverMarketDataProvider).connect();
-          } else if (s.status === 'CONNECTED') {
-            void initMarketDataService(mockMarketDataProvider).connect();
-          }
-        }}
-      />
     </div>
   );
 }
