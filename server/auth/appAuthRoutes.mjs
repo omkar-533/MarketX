@@ -40,6 +40,7 @@ import {
   createPromoCode,
   deletePromoCode,
   getPromoCodesStore,
+  peekPromoCode,
   publicAdminPromoList,
   redeemPromoCode,
   updatePromoCode,
@@ -413,13 +414,16 @@ function signupSkipOtpEnabled() {
   return raw === '1' || raw === 'true' || raw === 'yes';
 }
 
-/** POST /api/app-auth/signup/start — validate, then SMS an OTP. No account yet.
- *  When SIGNUP_SKIP_OTP=true, creates the account immediately (no SMS). */
+/** POST /api/app-auth/signup/start — validate promo + details, then SMS OTP (or create if skip OTP). */
 router.post('/signup/start', async (req, res) => {
   const { error, value } = validateSignup(req.body || {});
   if (error) return res.status(400).json({ error });
 
   try {
+    const promoPeek = await peekPromoCode(req.body?.promoCode);
+    const grantDays = promoPeek.grantDays > 0 ? promoPeek.grantDays : 0;
+    const planId = promoPeek.planId || 'monthly';
+
     if (value.email === ADMIN_EMAIL) {
       return res.status(409).json({ error: 'This email already has an account. Please sign in.' });
     }
@@ -433,7 +437,6 @@ router.post('/signup/start', async (req, res) => {
     }
 
     if (signupSkipOtpEnabled()) {
-      const trialDays = await getConfiguredTrialDays();
       const created = await createAppUser({
         email: value.email,
         passwordHash: hashPassword(value.password),
@@ -443,16 +446,23 @@ router.post('/signup/start', async (req, res) => {
         plan: 'free',
         role: 'user',
         createdBy: 'self-signup',
-        trialDays,
-        planId: 'trial',
+        trialDays: 0,
+        accessStatus: 'granted',
+        accessDays: grantDays,
+        planId,
       });
+      try {
+        await redeemPromoCode(promoPeek.promo.code, created.id);
+      } catch {
+        /* access already granted on create */
+      }
       const user = (await recordLogin(created.id)) || created;
       return res.status(201).json({
         skippedOtp: true,
         token: signAppToken(user),
         user,
-        trialDays,
-        source: 'trial',
+        source: 'promo',
+        promo: promoPeek.promo,
         ...(await accessPayloadFor(user)),
       });
     }
@@ -462,6 +472,7 @@ router.post('/signup/start', async (req, res) => {
       email: value.email,
       phone: value.phone,
       passwordHash: hashPassword(value.password),
+      promoCode: promoPeek.promo.code,
     });
 
     const sent = await sendOtpSms(value.phone, code);
@@ -475,7 +486,7 @@ router.post('/signup/start', async (req, res) => {
       devCode: sent.devCode ?? null,
     });
   } catch (err) {
-    return failed(res, err, 'Could not send OTP');
+    return failed(res, err, 'Could not start signup');
   }
 });
 
@@ -489,6 +500,10 @@ router.post('/signup/resend', async (req, res) => {
     if (!payload) {
       return res.status(400).json({ error: 'Please start the signup again.' });
     }
+    if (!payload.promoCode) {
+      return res.status(400).json({ error: 'Promo code missing — start signup again with a code.' });
+    }
+    await peekPromoCode(payload.promoCode);
 
     const { code, expiresInSec } = await issueOtp(phone, 'signup', payload);
     const sent = await sendOtpSms(phone, code);
@@ -506,7 +521,7 @@ router.post('/signup/resend', async (req, res) => {
   }
 });
 
-/** POST /api/app-auth/signup/verify — creates the account + full trial */
+/** POST /api/app-auth/signup/verify — creates the account + applies promo access */
 router.post('/signup/verify', async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   const code = String(req.body?.code || '').trim();
@@ -520,8 +535,14 @@ router.post('/signup/verify', async (req, res) => {
     if (!payload?.email) {
       return res.status(400).json({ error: 'Signup expired. Please start again.' });
     }
+    if (!payload.promoCode) {
+      return res.status(400).json({ error: 'Promo code required — start signup again with a code.' });
+    }
 
-    const trialDays = await getConfiguredTrialDays();
+    const promoPeek = await peekPromoCode(payload.promoCode);
+    const grantDays = promoPeek.grantDays > 0 ? promoPeek.grantDays : 0;
+    const planId = promoPeek.planId || 'monthly';
+
     const created = await createAppUser({
       email: payload.email,
       passwordHash: payload.passwordHash,
@@ -531,16 +552,24 @@ router.post('/signup/verify', async (req, res) => {
       plan: 'free',
       role: 'user',
       createdBy: 'self-signup',
-      trialDays,
-      planId: 'trial',
+      trialDays: 0,
+      accessStatus: 'granted',
+      accessDays: grantDays,
+      planId,
     });
+
+    try {
+      await redeemPromoCode(promoPeek.promo.code, created.id);
+    } catch {
+      /* access already granted on create */
+    }
 
     const user = (await recordLogin(created.id)) || created;
     return res.status(201).json({
       token: signAppToken(user),
       user,
-      trialDays,
-      source: 'trial',
+      source: 'promo',
+      promo: promoPeek.promo,
       ...(await accessPayloadFor(user)),
     });
   } catch (err) {

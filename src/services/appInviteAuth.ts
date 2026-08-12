@@ -143,19 +143,20 @@ export type SignupStartResult =
   | { kind: 'otp'; challenge: OtpChallenge }
   | { kind: 'done'; session: AppSession; snapshot: AccessSnapshot | null };
 
-/** Step 1 of sign-up: OTP SMS, or full account when server has SIGNUP_SKIP_OTP. */
+/** Step 1 of sign-up: requires a valid promo code, then OTP (or immediate account if skip OTP). */
 export async function startSignup(input: {
   name: string;
   email: string;
   phone: string;
   password: string;
+  promoCode: string;
 }): Promise<SignupStartResult> {
   const res = await apiFetch('/api/app-auth/signup/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
-  const data = await readJson(res, 'Could not send the OTP');
+  const data = await readJson(res, 'Could not start signup');
   if (data.skippedOtp === true && data.token) {
     const session = toSession(data);
     saveAppSession(session);

@@ -348,19 +348,21 @@ export function useAuth() {
     [refreshAccess],
   );
 
-  /** Step 1 of the trial sign-up: OTP, or immediate account when SIGNUP_SKIP_OTP. */
+  /** Step 1 of promo sign-up: OTP, or immediate account when SIGNUP_SKIP_OTP. */
   const signupStart = useCallback(
     async (input: {
       name: string;
       email: string;
       phone: string;
       password: string;
+      promoCode: string;
     }): Promise<SignupStartResult> => {
       const result = await startSignup({
         name: input.name.trim(),
         email: input.email.trim().toLowerCase(),
         phone: input.phone,
         password: input.password,
+        promoCode: input.promoCode.trim(),
       });
       if (result.kind === 'done') {
         setUser(withStoredAvatar(result.session.user));
@@ -378,7 +380,7 @@ export function useAuth() {
     [],
   );
 
-  /** Step 2: the verified account is signed in with the free trial already live. */
+  /** Step 2: OTP proves the number; promo access is already applied on the server. */
   const signupVerify = useCallback(async (phone: string, code: string) => {
     const session = await verifySignupOtp(phone, code);
     setUser(withStoredAvatar(session.user));
@@ -388,7 +390,7 @@ export function useAuth() {
   }, []);
 
   const signup = useCallback(async () => {
-    throw new Error('Sign-up needs mobile verification — use the free trial button.');
+    throw new Error('Sign-up needs a promo code — use Create account with your code.');
   }, []);
 
   const logout = useCallback(async () => {

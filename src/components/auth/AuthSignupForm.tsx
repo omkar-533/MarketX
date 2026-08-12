@@ -11,6 +11,7 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
+  Ticket,
   User as UserIcon,
 } from 'lucide-react';
 import AuthField from './AuthField';
@@ -26,11 +27,11 @@ export type AuthSignupFormProps = {
     email: string;
     phone: string;
     password: string;
+    promoCode: string;
   }) => Promise<SignupStartResult>;
   onSignupVerify: (email: string, code: string) => Promise<void>;
   onSignupResend: (email: string) => Promise<OtpChallenge>;
   onSwitchToSignIn: () => void;
-  /** Plan the visitor clicked — paid plans still start on the free trial. */
   selectedPlan?: PlanId;
 };
 
@@ -40,7 +41,7 @@ function isValidMobile(value: string) {
   return /^[6-9]\d{9}$/.test(value.replace(/\D/g, ''));
 }
 
-/** Two steps: details → mobile OTP. The account only exists once the OTP clears. */
+/** Two steps: promo + details → mobile OTP. Account only exists after OTP (or skip-OTP). */
 export default function AuthSignupForm({
   onSignupStart,
   onSignupVerify,
@@ -53,6 +54,7 @@ export default function AuthSignupForm({
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [promoCode, setPromoCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
@@ -66,7 +68,6 @@ export default function AuthSignupForm({
 
   const { plans, skipOtp } = usePlansCatalog();
   const plan = planById(selectedPlan === 'trial' ? 'monthly' : selectedPlan, plans);
-  const isPaidIntent = plan.price > 0;
   const emailValid = isValidEmail(email);
   const mobileValid = isValidMobile(mobile);
   const showEmailError = emailTouched && email.length > 0 && !emailValid;
@@ -102,6 +103,10 @@ export default function AuthSignupForm({
       setErrorMessage('Password must be at least 6 characters.');
       return;
     }
+    if (promoCode.trim().length < 3) {
+      setErrorMessage('Enter the promo code from the desk to create an account.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -110,6 +115,7 @@ export default function AuthSignupForm({
         email: email.trim().toLowerCase(),
         phone: mobile.replace(/\D/g, ''),
         password,
+        promoCode: promoCode.trim(),
       });
       if (next.kind === 'done') return;
       setChallenge(next.challenge);
@@ -260,7 +266,7 @@ export default function AuthSignupForm({
     <div className="auth-form-panel relative z-[1]">
       <div className="auth-kicker auth-kicker--ai mb-5">
         <Sparkles className="w-3 h-3" />
-        Create account
+        Promo signup
       </div>
 
       <motion.div
@@ -272,13 +278,24 @@ export default function AuthSignupForm({
           Create your <span>account</span>
         </h1>
         <p className="auth-subtitle">
-          {isPaidIntent
-            ? `After signup, Call or WhatsApp us to activate your ${plan.name} plan — payment gateway coming soon.`
-            : 'Create your account, then Call or WhatsApp the desk to activate a plan — or use desk verification.'}
+          Signup needs a promo code from the desk. Enter it below to unlock access
+          {plan.name ? ` (${plan.name})` : ''}.
         </p>
       </motion.div>
 
       <form onSubmit={(e) => void handleDetails(e)} className="mt-7 space-y-5">
+        <AuthField
+          label="Promo code"
+          type="text"
+          placeholder="WOLFXXXX"
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+          required
+          autoComplete="off"
+          hint="Ask the desk for a code — signup is invite-only."
+          icon={<Ticket className="w-4 h-4" />}
+        />
+
         <AuthField
           label="Full name"
           type="text"

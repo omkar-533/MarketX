@@ -178,6 +178,43 @@ export async function deletePromoCode(id, updatedBy = 'admin') {
 }
 
 /**
+ * Validate a promo without consuming it (signup gate).
+ * Returns the same shape as redeemPromoCode.
+ */
+export async function peekPromoCode(rawCode) {
+  const code = normalizePromoCode(rawCode);
+  if (!code) {
+    throw Object.assign(new Error('Enter a promo code to sign up'), { status: 400 });
+  }
+
+  const store = await getPromoCodesStore();
+  const promo = store.codes.find((c) => c.code === code);
+  if (!promo) {
+    throw Object.assign(new Error('Invalid promo code'), { status: 404 });
+  }
+  if (!promo.enabled) {
+    throw Object.assign(new Error('This promo code is disabled'), { status: 400 });
+  }
+  if (promo.expiresAt && Date.parse(promo.expiresAt) < Date.now()) {
+    throw Object.assign(new Error('This promo code has expired'), { status: 400 });
+  }
+  if (promo.maxRedemptions != null && promo.usedCount >= promo.maxRedemptions) {
+    throw Object.assign(new Error('This promo code has reached its limit'), { status: 400 });
+  }
+
+  return {
+    promo: {
+      code: promo.code,
+      label: promo.label,
+      grantDays: promo.grantDays,
+      planId: promo.planId,
+    },
+    grantDays: promo.grantDays,
+    planId: promo.planId,
+  };
+}
+
+/**
  * Apply a promo for a signed-in user.
  * Returns { promo, grantDays, planId } — caller runs setUserAccess.
  */

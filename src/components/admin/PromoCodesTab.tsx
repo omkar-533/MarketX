@@ -133,8 +133,8 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
           Create promo code
         </h3>
         <p className="text-[11px] text-slate-500">
-          Share the code with a user. After they sign in, they redeem it on Premium / Subscription to
-          unlock access for the days you set (0 = lifetime).
+          Share the code with a user. They must enter it on signup — without a promo code, signup is blocked.
+          Days = access length after they create the account (0 = lifetime).
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
