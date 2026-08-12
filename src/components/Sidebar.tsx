@@ -37,7 +37,6 @@ const productNavItems = [
   { id: 'wolf-radar', label: PAGE_NAMES['wolf-radar'], icon: Radar },
   { id: 'live-wolf', label: PAGE_NAMES['live-wolf'], icon: Activity },
   { id: 'strategy-lab', label: PAGE_NAMES['strategy-lab'], icon: BookMarked },
-  { id: 'watchlist', label: PAGE_NAMES.watchlist, icon: Bookmark },
   { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart }] : []),
   ...(SHOW_OPTION_CHAIN
@@ -53,6 +52,7 @@ const productNavItems = [
     ? [{ id: 'papertrading', label: PAGE_NAMES.papertrading, icon: Wallet }]
     : []),
   { id: 'tradingjournal', label: PAGE_NAMES.tradingjournal, icon: NotebookPen },
+  { id: 'watchlist', label: PAGE_NAMES.watchlist, icon: Bookmark },
 ];
 
 const navIdle =
