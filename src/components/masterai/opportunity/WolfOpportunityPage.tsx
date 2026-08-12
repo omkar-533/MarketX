@@ -1,6 +1,5 @@
 /**
- * WOLF OPPORTUNITY — iOS split desk: Long vs Short, vertical cards.
- * Scanner logic unchanged.
+ * WOLF OPPORTUNITY — every scanner kept; Long / Short split inside each.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,7 +34,6 @@ import type {
 } from '../../../services/opportunity/opportunityTypes';
 import {
   OPPORTUNITY_CARD_POOL,
-  OPPORTUNITY_CARD_VISIBLE,
   OPPORTUNITY_SCANNERS,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
@@ -94,8 +92,6 @@ function formatHitClock(ms: number): string {
   });
 }
 
-const SIDE_VISIBLE = Math.max(OPPORTUNITY_CARD_VISIBLE, 8);
-
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
   const label = dir === 'bullish' ? 'Long' : dir === 'bearish' ? 'Short' : 'Neutral';
   const Icon = dir === 'bullish' ? TrendingUp : dir === 'bearish' ? TrendingDown : Minus;
@@ -105,22 +101,6 @@ function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm
       {label}
     </span>
   );
-}
-
-type SideGroup = { scannerId: string; title: string; tagline: string; hits: OpportunityHit[] };
-
-function groupsForSide(
-  cards: ScannerCardState[],
-  side: 'bullish' | 'bearish',
-): SideGroup[] {
-  return cards
-    .map((card) => ({
-      scannerId: card.scannerId,
-      title: prettyTitle(card.title),
-      tagline: card.tagline,
-      hits: card.hits.filter((h) => biasOf(h) === side).slice(0, SIDE_VISIBLE),
-    }))
-    .filter((g) => g.hits.length > 0);
 }
 
 type Props = {
@@ -387,13 +367,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   const hitCount = cards.reduce((n, c) => n + c.hits.length, 0);
   const showLong = filters.direction !== 'bearish';
   const showShort = filters.direction !== 'bullish';
-  const longGroups = showLong ? groupsForSide(cards, 'bullish') : [];
-  const shortGroups = showShort ? groupsForSide(cards, 'bearish') : [];
-  const longCount = longGroups.reduce((n, g) => n + g.hits.length, 0);
-  const shortCount = shortGroups.reduce((n, g) => n + g.hits.length, 0);
 
   return (
-    <div className="wolf-opp wolf-opp--split">
+    <div className="wolf-opp wolf-opp--sheets">
       <div className="wolf-opp__stage" aria-hidden>
         <div className="wolf-opp__fog" />
       </div>
@@ -409,7 +385,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Longs and shorts, side by side.</p>
+          <p className="wolf-opp__lead">Every scanner. Long and short, kept apart.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -510,103 +486,102 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </p>
       ) : null}
 
-      <section className="wolf-opp__desk" aria-label="Long and short setups">
-        <div
-          className={`wolf-opp__split${showLong && showShort ? '' : ' is-single'}`}
-        >
-          {showLong ? (
-            <motion.section
-              className="wolf-opp__col wolf-opp__col--long"
-              aria-label="Long setups"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <header className="wolf-opp__col-head">
-                <div>
-                  <h2>
-                    <TrendingUp size={16} strokeWidth={2.4} /> Long
-                  </h2>
-                  <p>Bullish setups</p>
-                </div>
-                <span className="wolf-opp__col-count">{longCount}</span>
-              </header>
-              <div className="wolf-opp__col-body">
-                {!longGroups.length ? (
-                  <p className="wolf-opp__col-empty">
-                    {scanning || bgBusy ? 'Looking for longs…' : 'No longs above your filters'}
-                  </p>
-                ) : (
-                  longGroups.map((group) => (
-                    <div key={`long-${group.scannerId}`} className="wolf-opp__group">
-                      <h3>{group.title}</h3>
-                      <p>{group.tagline}</p>
-                      <div className="wolf-opp__stack">
-                        <AnimatePresence initial={false}>
-                          {group.hits.map((hit) => (
-                            <HitTile
-                              key={hit.id}
-                              hit={hit}
-                              onOpen={() => setSelected(hit)}
-                              onWhy={() => setWhyHit(hit)}
-                              onChart={() => openChart(hit)}
-                            />
-                          ))}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.section>
-          ) : null}
+      <section className="wolf-opp__desk" aria-label="Scanners">
+        <div className="wolf-opp__sheets">
+          {cards.map((card, idx) => {
+            const longs = showLong ? card.hits.filter((h) => biasOf(h) === 'bullish') : [];
+            const shorts = showShort ? card.hits.filter((h) => biasOf(h) === 'bearish') : [];
+            const neutrals =
+              filters.direction === 'all'
+                ? card.hits.filter((h) => biasOf(h) === 'neutral')
+                : [];
+            return (
+              <motion.article
+                key={card.scannerId}
+                className="wolf-opp__sheet"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.03 * Math.min(idx, 11),
+                  duration: 0.42,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <header className="wolf-opp__sheet-head">
+                  <div>
+                    <h3>{prettyTitle(card.title)}</h3>
+                    <p>{card.tagline}</p>
+                  </div>
+                  <span className="wolf-opp__sheet-count">{card.hits.length}</span>
+                </header>
 
-          {showShort ? (
-            <motion.section
-              className="wolf-opp__col wolf-opp__col--short"
-              aria-label="Short setups"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <header className="wolf-opp__col-head">
-                <div>
-                  <h2>
-                    <TrendingDown size={16} strokeWidth={2.4} /> Short
-                  </h2>
-                  <p>Bearish setups</p>
-                </div>
-                <span className="wolf-opp__col-count">{shortCount}</span>
-              </header>
-              <div className="wolf-opp__col-body">
-                {!shortGroups.length ? (
-                  <p className="wolf-opp__col-empty">
-                    {scanning || bgBusy ? 'Looking for shorts…' : 'No shorts above your filters'}
-                  </p>
+                {card.status === 'unavailable' ? (
+                  <p className="wolf-opp__sheet-empty">{card.unavailableReason}</p>
                 ) : (
-                  shortGroups.map((group) => (
-                    <div key={`short-${group.scannerId}`} className="wolf-opp__group">
-                      <h3>{group.title}</h3>
-                      <p>{group.tagline}</p>
-                      <div className="wolf-opp__stack">
-                        <AnimatePresence initial={false}>
-                          {group.hits.map((hit) => (
-                            <HitTile
-                              key={hit.id}
-                              hit={hit}
-                              onOpen={() => setSelected(hit)}
-                              onWhy={() => setWhyHit(hit)}
-                              onChart={() => openChart(hit)}
-                            />
-                          ))}
-                        </AnimatePresence>
+                  <div className={`wolf-opp__sides${!showLong || !showShort ? ' is-single' : ''}`}>
+                    {showLong ? (
+                      <div className="wolf-opp__side wolf-opp__side--long">
+                        <h4>
+                          <TrendingUp size={14} strokeWidth={2.4} /> Long
+                          <em>{longs.length}</em>
+                        </h4>
+                        <div className="wolf-opp__stack">
+                          {!longs.length ? (
+                            <p className="wolf-opp__side-empty">
+                              {scanning || bgBusy ? 'Hunting…' : 'No longs'}
+                            </p>
+                          ) : (
+                            <AnimatePresence initial={false}>
+                              {longs.map((hit) => (
+                                <HitTile
+                                  key={hit.id}
+                                  hit={hit}
+                                  onOpen={() => setSelected(hit)}
+                                  onWhy={() => setWhyHit(hit)}
+                                  onChart={() => openChart(hit)}
+                                />
+                              ))}
+                            </AnimatePresence>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ) : null}
+
+                    {showShort ? (
+                      <div className="wolf-opp__side wolf-opp__side--short">
+                        <h4>
+                          <TrendingDown size={14} strokeWidth={2.4} /> Short
+                          <em>{shorts.length}</em>
+                        </h4>
+                        <div className="wolf-opp__stack">
+                          {!shorts.length ? (
+                            <p className="wolf-opp__side-empty">
+                              {scanning || bgBusy ? 'Hunting…' : 'No shorts'}
+                            </p>
+                          ) : (
+                            <AnimatePresence initial={false}>
+                              {shorts.map((hit) => (
+                                <HitTile
+                                  key={hit.id}
+                                  hit={hit}
+                                  onOpen={() => setSelected(hit)}
+                                  onWhy={() => setWhyHit(hit)}
+                                  onChart={() => openChart(hit)}
+                                />
+                              ))}
+                            </AnimatePresence>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 )}
-              </div>
-            </motion.section>
-          ) : null}
+                {neutrals.length ? (
+                  <p className="wolf-opp__neutral-note">{neutrals.length} unlabelled</p>
+                ) : null}
+              </motion.article>
+            );
+          })}
         </div>
       </section>
 
