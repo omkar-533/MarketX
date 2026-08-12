@@ -29245,11 +29245,25 @@ body:has(.app-main--terminal-immersive) #root {
   background: #fda4af;
 }
 .wolf-opp__stack {
+  --opp-row: 5.7rem;
+  --opp-gap: 0.45rem;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  max-height: none;
-  overflow: visible;
+  gap: var(--opp-gap);
+  max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.2rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.5) rgba(255, 255, 255, 0.04);
+}
+.wolf-opp__stack::-webkit-scrollbar {
+  width: 5px;
+}
+.wolf-opp__stack::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.45);
+  border-radius: 999px;
 }
 .wolf-opp__side-empty {
   margin: 0;
@@ -29268,7 +29282,8 @@ body:has(.app-main--terminal-immersive) #root {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: stretch;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-height: var(--opp-row, 5.7rem);
   border-radius: 16px;
   background: rgba(8, 10, 16, 0.45);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -29489,6 +29504,9 @@ body:has(.app-main--terminal-immersive) #root {
   margin-top: 1.1rem;
 }
 
+@media (max-width: 1100px) {
+  .wolf-opp__sheets { grid-template-columns: 1fr; }
+}
 @media (max-width: 960px) {
   .wolf-opp__sides { grid-template-columns: 1fr; }
   .wolf-opp__hero {

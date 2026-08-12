@@ -3055,7 +3055,7 @@ html[data-theme="light"] .wolf-opp__side--short .wolf-opp__tile-actions button:h
   background: rgba(244, 63, 94, 0.1);
 }
 html[data-theme="light"] .wolf-opp__stack {
-  scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
+  scrollbar-color: rgba(146, 64, 14, 0.4) #eef2f7;
 }
 
 html[data-theme="light"] .wolf-opp__title span {
