@@ -57,18 +57,23 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
       </button>
 
       <div className="shrink-0 min-w-0 mr-auto" title={BRAND}>
-        <BrandMark size="sm" nameClassName="truncate text-[1.05rem] sm:text-[1.2rem]" />
+        <BrandMark
+          size="sm"
+          nameClassName="inline-block truncate text-[0.95rem] sm:text-[1.2rem] max-w-[7.5rem] sm:max-w-none"
+        />
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <HeaderClock />
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
+        <div className="hidden sm:block">
+          <HeaderClock />
+        </div>
         <ThemeToggle />
 
         {user && (
           <button
             type="button"
             onClick={onProfile}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--tf-elevated)] transition-colors"
+            className="flex items-center gap-2 px-1.5 sm:px-2 py-1.5 rounded-lg hover:bg-[var(--tf-elevated)] transition-colors shrink-0"
           >
             <div className="w-7 h-7 bg-gold/20 rounded-full flex items-center justify-center shrink-0 overflow-hidden">
               {user.avatar ? (

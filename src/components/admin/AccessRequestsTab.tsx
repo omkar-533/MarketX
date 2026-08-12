@@ -194,35 +194,37 @@ export default function AccessRequestsTab({
                       placeholder="Note for the user (optional)"
                       className="w-full px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-xs text-slate-200"
                     />
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 min-w-0">
                         <input
                           type="number"
                           min={0}
                           value={days[row.id] ?? String(defaultGrantDays)}
                           onChange={(e) => setDays((p) => ({ ...p, [row.id]: e.target.value }))}
-                          className="w-16 px-2 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-xs text-slate-200"
+                          className="w-14 sm:w-16 px-2 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-xs text-slate-200"
                         />
-                        <span className="text-[10px] text-slate-500">days (0 = lifetime)</span>
+                        <span className="text-[10px] text-slate-500 whitespace-nowrap">days (0 = lifetime)</span>
                       </div>
-                      <button
-                        type="button"
-                        disabled={busyId === row.id}
-                        onClick={() => void review(row, true)}
-                        className="ml-auto px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-50"
-                      >
-                        <Check className="w-3 h-3" />
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === row.id}
-                        onClick={() => void review(row, false)}
-                        className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-50"
-                      >
-                        <X className="w-3 h-3" />
-                        Reject
-                      </button>
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => void review(row, true)}
+                          className="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <Check className="w-3 h-3" />
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => void review(row, false)}
+                          className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <X className="w-3 h-3" />
+                          Reject
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : null}

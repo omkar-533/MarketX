@@ -508,7 +508,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         </p>
       </div>
 
-      <div className="flex overflow-x-auto bg-dark-elevated rounded-lg border border-dark-border">
+      <div className="admin-panel__tabs flex overflow-x-auto bg-dark-elevated rounded-lg border border-dark-border">
         {(isSubAdmin
           ? ([
               { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
@@ -550,7 +550,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all shrink-0 ${
+              className={`admin-panel__tab flex items-center gap-1.5 px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all shrink-0 ${
                 activeTab === t.id ? 'bg-gold/10 text-gold' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
