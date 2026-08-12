@@ -21,6 +21,7 @@ import {
   CalendarRange,
   ShieldCheck,
   Search,
+  Ticket,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -54,6 +55,7 @@ import ApprovedAccessTab, { countApprovedAccessUsers } from './admin/ApprovedAcc
 import IndicatorsTab from './admin/IndicatorsTab';
 import KnowledgeTab from './admin/KnowledgeTab';
 import PlansTab from './admin/PlansTab';
+import PromoCodesTab from './admin/PromoCodesTab';
 import TvAccessRequestsTab from './admin/TvAccessRequestsTab';
 import { SHOW_INDICATORS } from '../constants/featureFlags';
 
@@ -75,6 +77,7 @@ type AdminTab =
   | 'indicators'
   | 'knowledge'
   | 'plans'
+  | 'promos'
   | 'users'
   | 'approved'
   | 'settings'
@@ -528,6 +531,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                 : []),
               { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
               { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
+              { id: 'promos' as const, label: 'Promo codes', icon: Ticket, badge: 0 },
               { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
               {
                 id: 'approved' as const,
@@ -585,6 +589,10 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
 
       {!isSubAdmin && activeTab === 'plans' && (
         <PlansTab adminEmail={adminEmail} adminPassword={adminPassword} />
+      )}
+
+      {!isSubAdmin && activeTab === 'promos' && (
+        <PromoCodesTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
       {!isSubAdmin && activeTab === 'settings' && (

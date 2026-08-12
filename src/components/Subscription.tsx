@@ -4,11 +4,14 @@ import {
   Check,
   Crown,
   Hourglass,
+  Loader2,
   Star,
+  Ticket,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { usePlansCatalog } from '../hooks/usePlansCatalog';
 import type { AccessPopup, AccessState } from '../services/appInviteAuth';
+import { redeemPromoCode } from '../services/promoCodes';
 import AccessUnlockPanel from './access/AccessUnlockPanel';
 import { PlanContactActions, PlanContactModal } from './PlanContactActions';
 import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../constants/featureFlags';
@@ -47,6 +50,10 @@ export default function Subscription({
   const { plans } = usePlansCatalog();
   const showUnlock = Boolean(popup && popup.enabled !== false && access?.status !== 'blocked');
   const [buyPlan, setBuyPlan] = useState<string | null>(null);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [promoOk, setPromoOk] = useState('');
 
   useEffect(() => {
     try {
@@ -57,6 +64,30 @@ export default function Subscription({
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, []);
+
+  const applyPromo = async () => {
+    setPromoError('');
+    setPromoOk('');
+    if (!user) {
+      setPromoError('Sign in first to redeem a promo code.');
+      return;
+    }
+    if (!promoInput.trim()) {
+      setPromoError('Enter a promo code.');
+      return;
+    }
+    setPromoBusy(true);
+    try {
+      const result = await redeemPromoCode(promoInput.trim());
+      setPromoOk(result.message || 'Promo applied.');
+      setPromoInput('');
+      await onAccessSubmitted?.();
+    } catch (err) {
+      setPromoError(err instanceof Error ? err.message : 'Could not redeem promo code');
+    } finally {
+      setPromoBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -76,6 +107,38 @@ export default function Subscription({
       <div className="w-full flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[#1a1f2e] bg-[#0b0e17]">
         <Hourglass className="w-4 h-4 text-[#d4af37] shrink-0" />
         <p className="text-xs text-slate-300">{statusLine(access)}</p>
+      </div>
+
+      <div className="w-full rounded-xl border border-[#1a1f2e] bg-[#0b0e17] p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-bold text-[#d4af37]">
+          <Ticket className="w-4 h-4" />
+          Have a promo code?
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Enter the code from the desk to unlock access instantly.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={promoInput}
+            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+            placeholder="WOLFXXXX"
+            className="flex-1 px-3 py-2.5 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 tracking-wider focus:outline-none focus:border-[#d4af37]/40"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void applyPromo();
+            }}
+          />
+          <button
+            type="button"
+            disabled={promoBusy}
+            onClick={() => void applyPromo()}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#d4af37] text-[#0b0e17] text-xs font-bold disabled:opacity-50"
+          >
+            {promoBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Redeem
+          </button>
+        </div>
+        {promoError ? <p className="text-xs text-rose-400">{promoError}</p> : null}
+        {promoOk ? <p className="text-xs text-emerald-400">{promoOk}</p> : null}
       </div>
 
       {showUnlock ? (

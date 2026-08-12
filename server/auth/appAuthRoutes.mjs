@@ -37,6 +37,14 @@ import {
   setSubscriptionCatalog,
 } from './appSettingsStore.mjs';
 import {
+  createPromoCode,
+  deletePromoCode,
+  getPromoCodesStore,
+  publicAdminPromoList,
+  redeemPromoCode,
+  updatePromoCode,
+} from './promoCodesStore.mjs';
+import {
   createAccessRequest,
   latestRequestForUser,
   listAccessRequests,
@@ -1786,6 +1794,105 @@ router.put('/admin/plans', requireFullAdmin, async (req, res) => {
     return res.json(catalog);
   } catch (err) {
     return failed(res, err, 'Could not save plans');
+  }
+});
+
+/* ────────────────────────── promo codes ────────────────────────── */
+
+/** GET /api/app-auth/admin/promo-codes */
+router.get('/admin/promo-codes', requireFullAdmin, async (_req, res) => {
+  try {
+    const store = await getPromoCodesStore();
+    return res.json(publicAdminPromoList(store));
+  } catch (err) {
+    return failed(res, err, 'Could not load promo codes');
+  }
+});
+
+/** POST /api/app-auth/admin/promo-codes */
+router.post('/admin/promo-codes', requireFullAdmin, async (req, res) => {
+  try {
+    const created = await createPromoCode(req.body || {}, req.adminActor || 'admin');
+    return res.status(201).json({
+      code: {
+        id: created.id,
+        code: created.code,
+        label: created.label,
+        grantDays: created.grantDays,
+        planId: created.planId,
+        maxRedemptions: created.maxRedemptions,
+        usedCount: created.usedCount,
+        expiresAt: created.expiresAt,
+        enabled: created.enabled,
+        createdAt: created.createdAt,
+        createdBy: created.createdBy,
+      },
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not create promo code');
+  }
+});
+
+/** PATCH /api/app-auth/admin/promo-codes/:id */
+router.patch('/admin/promo-codes/:id', requireFullAdmin, async (req, res) => {
+  try {
+    const updated = await updatePromoCode(req.params.id, req.body || {}, req.adminActor || 'admin');
+    return res.json({
+      code: {
+        id: updated.id,
+        code: updated.code,
+        label: updated.label,
+        grantDays: updated.grantDays,
+        planId: updated.planId,
+        maxRedemptions: updated.maxRedemptions,
+        usedCount: updated.usedCount,
+        expiresAt: updated.expiresAt,
+        enabled: updated.enabled,
+        createdAt: updated.createdAt,
+        createdBy: updated.createdBy,
+      },
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not update promo code');
+  }
+});
+
+/** DELETE /api/app-auth/admin/promo-codes/:id */
+router.delete('/admin/promo-codes/:id', requireFullAdmin, async (req, res) => {
+  try {
+    await deletePromoCode(req.params.id, req.adminActor || 'admin');
+    return res.json({ ok: true });
+  } catch (err) {
+    return failed(res, err, 'Could not delete promo code');
+  }
+});
+
+/** POST /api/app-auth/promo-codes/redeem — signed-in user */
+router.post('/promo-codes/redeem', requireUser, async (req, res) => {
+  try {
+    const result = await redeemPromoCode(req.body?.code, req.appUser.id);
+    const days = result.grantDays > 0 ? result.grantDays : null;
+    const user = await setUserAccess(req.appUser.id, {
+      status: 'granted',
+      days,
+      planId: result.planId || undefined,
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const payload = await accessPayloadFor(user);
+    return res.json({
+      ok: true,
+      message:
+        result.grantDays > 0
+          ? `Promo applied — ${result.grantDays} day${result.grantDays === 1 ? '' : 's'} of access unlocked.`
+          : 'Promo applied — lifetime access unlocked.',
+      promo: result.promo,
+      user: publicUser(user),
+      ...payload,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not redeem promo code');
   }
 });
 
