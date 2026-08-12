@@ -330,7 +330,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
             title={aiHealth?.provider || 'none'}
           >
-            WOLF AI · {aiHealth?.available ? `● READY (${(aiHealth.provider || 'ai').toUpperCase()})` : '○ AI BUILDER UNAVAILABLE'}
+            WOLF AI · {aiHealth?.available ? '● READY' : '○ AI BUILDER UNAVAILABLE'}
           </p>
         </div>
         {tab === 'list' && (
