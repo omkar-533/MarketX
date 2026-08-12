@@ -117,19 +117,25 @@ type CounterProps = {
 /** Counts up from zero the first time it scrolls into view. */
 export function Counter({ to, suffix = '', decimals = 0, duration = 1.7 }: CounterProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-12%' });
+  const inView = useInView(ref, { once: true, amount: 0.2 });
   const reduced = useReducedMotion();
   const [value, setValue] = useState(reduced ? to : 0);
 
   useEffect(() => {
-    if (!inView || reduced) return;
+    if (reduced) {
+      setValue(to);
+      return;
+    }
+    if (!inView) return;
 
     let raf = 0;
     const started = performance.now();
+    const from = 0;
     const tick = (now: number) => {
       const p = Math.min(1, (now - started) / (duration * 1000));
-      setValue(to * (1 - (1 - p) ** 3));
+      setValue(from + (to - from) * (1 - (1 - p) ** 3));
       if (p < 1) raf = requestAnimationFrame(tick);
+      else setValue(to);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -137,7 +143,7 @@ export function Counter({ to, suffix = '', decimals = 0, duration = 1.7 }: Count
 
   return (
     <span ref={ref}>
-      {value.toLocaleString('en-IN', {
+      {Math.round(value).toLocaleString('en-IN', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       })}

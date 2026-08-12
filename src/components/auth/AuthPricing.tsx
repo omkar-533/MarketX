@@ -99,7 +99,11 @@ function PlanCard({
           <button
             type="button"
             className={`plan__cta ${plan.featured ? 'plan__cta--solid' : ''}`}
-            onClick={onSelect}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect();
+            }}
           >
             {plan.featured ? <Zap className="w-4 h-4" aria-hidden /> : null}
             {plan.cta}

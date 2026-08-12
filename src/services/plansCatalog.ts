@@ -33,13 +33,16 @@ function authHeaders(adminEmail?: string | null, adminPassword?: string | null):
 
 function normalizePlan(raw: Partial<Plan> | null | undefined, fallback: Plan): Plan {
   const price = Number(raw?.price);
+  let nextPrice = Number.isFinite(price) && price >= 0 ? Math.round(price) : fallback.price;
+  // Paid plans must never render as ₹0 (bad admin/catalog overwrite).
+  if (fallback.id !== 'trial' && nextPrice <= 0) nextPrice = fallback.price;
   const features = Array.isArray(raw?.features)
     ? raw!.features.map((f) => String(f || '').trim()).filter(Boolean)
     : [...fallback.features];
   return {
     id: fallback.id,
     name: String(raw?.name || fallback.name).trim() || fallback.name,
-    price: Number.isFinite(price) && price >= 0 ? Math.round(price) : fallback.price,
+    price: nextPrice,
     period: String(raw?.period || fallback.period).trim() || fallback.period,
     equivalent: raw?.equivalent ? String(raw.equivalent).trim() : fallback.equivalent,
     tagline: String(raw?.tagline || fallback.tagline).trim() || fallback.tagline,

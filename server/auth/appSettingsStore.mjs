@@ -113,8 +113,8 @@ export const DEFAULT_SUBSCRIPTION_CATALOG = {
       badge: 'Start here',
       cta: 'Start free trial',
       note: 'No card required · instant access',
-      featured: true,
-      enabled: true,
+      featured: false,
+      enabled: false,
       features: [
         'Wolf AI — limited daily questions',
         'Indicators — browse & open invite links',
@@ -129,8 +129,8 @@ export const DEFAULT_SUBSCRIPTION_CATALOG = {
       price: 2999,
       period: 'per month',
       tagline: 'Full access to Wolf AI, Indicators, and Trading Journal — cancel anytime.',
-      cta: 'Choose monthly',
-      note: 'Cancel anytime from profile',
+      cta: 'Buy monthly',
+      note: 'Call or WhatsApp to activate',
       featured: false,
       enabled: true,
       features: [
@@ -151,9 +151,9 @@ export const DEFAULT_SUBSCRIPTION_CATALOG = {
         'Better rate for 3 months — deeper AI usage, full Indicators library, and journal analytics.',
       badge: 'Best balance',
       save: 'Save ₹2,998',
-      cta: 'Choose 3 months',
-      note: 'Billed once for 3 months',
-      featured: false,
+      cta: 'Buy 3 months',
+      note: 'Call or WhatsApp to activate',
+      featured: true,
       enabled: true,
       features: [
         'Everything in Monthly',
@@ -172,8 +172,8 @@ export const DEFAULT_SUBSCRIPTION_CATALOG = {
       tagline: 'Best value year — max Wolf AI, full Indicators vault, and advanced journal reviews.',
       badge: 'Best value',
       save: 'Save ₹20,989',
-      cta: 'Choose yearly',
-      note: 'Billed once for 12 months',
+      cta: 'Buy yearly',
+      note: 'Call or WhatsApp to activate',
       featured: false,
       enabled: true,
       features: [
@@ -205,10 +205,14 @@ function sanitizeFeatures(input, fallback) {
 function sanitizePlan(input, defaults) {
   const src = { ...defaults, ...(input || {}) };
   const price = Number(src.price);
+  let nextPrice =
+    Number.isFinite(price) && price >= 0 ? Math.min(10_000_000, Math.round(price)) : defaults.price;
+  // Paid plans must never be stored/served as ₹0.
+  if (defaults.id !== 'trial' && nextPrice <= 0) nextPrice = defaults.price;
   const plan = {
     id: defaults.id,
     name: clampStr(src.name, defaults.name, 60),
-    price: Number.isFinite(price) && price >= 0 ? Math.min(10_000_000, Math.round(price)) : defaults.price,
+    price: nextPrice,
     period: clampStr(src.period, defaults.period, 60),
     tagline: clampStr(src.tagline, defaults.tagline, 280),
     cta: clampStr(src.cta, defaults.cta, 80),
