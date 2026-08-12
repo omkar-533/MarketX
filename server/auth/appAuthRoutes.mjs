@@ -577,9 +577,9 @@ router.post('/signup/verify', async (req, res) => {
   }
 });
 
-/* ────────────────────────── forgot password (SMS OTP) ────────────────────────── */
+/* ────────────────────────── forgot password (registered mobile, no OTP) ────────────────────────── */
 
-const RESET_PURPOSE = 'reset';
+const RESET_TICKET_TTL_SEC = 15 * 60;
 
 /** Enough of the number to recognise it, not enough to learn it from an email. */
 function maskPhone(phone) {
@@ -594,7 +594,7 @@ async function resolveResetTarget(identifier) {
     throw Object.assign(new Error('Enter your 10-digit mobile number'), { status: 400 });
   }
 
-  // Password reset is mobile-only (SMS OTP). Reject email identifiers.
+  // Password reset is mobile-only. Reject email identifiers.
   if (raw.includes('@')) {
     throw Object.assign(
       new Error('Use your registered mobile number only — email cannot reset the password.'),
@@ -625,52 +625,78 @@ async function resolveResetTarget(identifier) {
   return user;
 }
 
-async function sendResetOtp(user) {
-  const { code, expiresInSec } = await issueOtp(user.phone, RESET_PURPOSE, { userId: user.id });
-  const sent = await sendOtpSms(user.phone, code);
+function signPasswordResetTicket(user) {
+  return jwt.sign(
+    {
+      typ: 'pwd-reset',
+      sub: user.id,
+      phone: user.phone,
+    },
+    JWT_SECRET,
+    { expiresIn: RESET_TICKET_TTL_SEC },
+  );
+}
+
+function verifyPasswordResetTicket(token) {
+  try {
+    const payload = jwt.verify(String(token || '').trim(), JWT_SECRET);
+    if (payload?.typ !== 'pwd-reset' || !payload?.sub) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function beginPasswordReset(user) {
   return {
-    sent: true,
+    verified: true,
     phoneMasked: maskPhone(user.phone),
-    expiresInSec,
-    channel: 'sms',
-    devMode: isDevSmsMode(),
-    devCode: sent.devCode ?? null,
+    expiresInSec: RESET_TICKET_TTL_SEC,
+    resetToken: signPasswordResetTicket(user),
   };
 }
 
-/** POST /api/app-auth/password/forgot — texts a reset code to the number on file */
+/** POST /api/app-auth/password/forgot — verify registered mobile, issue reset ticket (no SMS) */
 router.post('/password/forgot', async (req, res) => {
   try {
-    return res.json(await sendResetOtp(await resolveResetTarget(req.body?.identifier)));
+    return res.json(await beginPasswordReset(await resolveResetTarget(req.body?.identifier)));
   } catch (err) {
-    return failed(res, err, 'Could not send the reset code');
+    return failed(res, err, 'Could not verify the mobile number');
   }
 });
 
-/** POST /api/app-auth/password/resend */
+/** POST /api/app-auth/password/resend — re-issue reset ticket after mobile verify */
 router.post('/password/resend', async (req, res) => {
   try {
-    return res.json(await sendResetOtp(await resolveResetTarget(req.body?.identifier)));
+    return res.json(await beginPasswordReset(await resolveResetTarget(req.body?.identifier)));
   } catch (err) {
-    return failed(res, err, 'Could not resend the reset code');
+    return failed(res, err, 'Could not re-verify the mobile number');
   }
 });
 
-/** POST /api/app-auth/password/reset — sets the new password and signs the user in */
+/** POST /api/app-auth/password/reset — set new password with reset ticket (no current password / OTP) */
 router.post('/password/reset', async (req, res) => {
-  const code = String(req.body?.code || '').trim();
   const password = String(req.body?.password || '');
+  const resetToken = String(req.body?.resetToken || req.body?.code || '').trim();
 
-  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Enter the 6-digit OTP' });
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
+  if (!resetToken) {
+    return res.status(400).json({ error: 'Verify your mobile number first' });
+  }
 
   try {
+    const ticket = verifyPasswordResetTicket(resetToken);
+    if (!ticket) {
+      return res.status(400).json({
+        error: 'Reset session expired. Enter your mobile number again.',
+      });
+    }
+
     const target = await resolveResetTarget(req.body?.identifier);
-    const payload = await consumeOtp(target.phone, RESET_PURPOSE, code);
-    if (payload?.userId && payload.userId !== target.id) {
-      return res.status(400).json({ error: 'This code belongs to another account.' });
+    if (ticket.sub !== target.id || String(ticket.phone || '') !== String(target.phone || '')) {
+      return res.status(400).json({ error: 'Reset session does not match this mobile number.' });
     }
 
     await setUserPassword(target.id, password);

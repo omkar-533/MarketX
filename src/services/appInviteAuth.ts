@@ -197,29 +197,32 @@ export type ResetChallenge = {
   /** Masked on the server — the full number is never sent back to the browser. */
   phoneMasked: string;
   expiresInSec: number;
-  channel: 'sms';
-  devMode: boolean;
-  devCode: string | null;
+  /** Short-lived ticket after mobile verify — required to set the new password. */
+  resetToken: string;
+  verified: boolean;
 };
 
 function toResetChallenge(data: Record<string, unknown>): ResetChallenge {
+  const resetToken = String(data.resetToken || '');
+  if (!resetToken) {
+    throw new Error('Could not verify the mobile number');
+  }
   return {
     phoneMasked: String(data.phoneMasked || ''),
-    expiresInSec: Number(data.expiresInSec) || 600,
-    channel: 'sms',
-    devMode: data.devMode === true,
-    devCode: data.devCode ? String(data.devCode) : null,
+    expiresInSec: Number(data.expiresInSec) || 900,
+    resetToken,
+    verified: data.verified !== false,
   };
 }
 
-/** Step 1: texts a reset code to the mobile number on file for this login. */
+/** Step 1: verify the registered mobile (no SMS OTP). */
 export async function startPasswordReset(identifier: string): Promise<ResetChallenge> {
   const res = await apiFetch('/api/app-auth/password/forgot', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier }),
   });
-  return toResetChallenge(await readJson(res, 'Could not send the reset code'));
+  return toResetChallenge(await readJson(res, 'Could not verify the mobile number'));
 }
 
 export async function resendPasswordResetOtp(identifier: string): Promise<ResetChallenge> {
@@ -228,19 +231,19 @@ export async function resendPasswordResetOtp(identifier: string): Promise<ResetC
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier }),
   });
-  return toResetChallenge(await readJson(res, 'Could not resend the reset code'));
+  return toResetChallenge(await readJson(res, 'Could not re-verify the mobile number'));
 }
 
-/** Step 2: the code sets the new password and signs the user straight in. */
+/** Step 2: set the new password with the reset ticket (no current password). */
 export async function completePasswordReset(
   identifier: string,
-  code: string,
+  resetToken: string,
   password: string,
 ): Promise<AppSession & { snapshot: AccessSnapshot | null }> {
   const res = await apiFetch('/api/app-auth/password/reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier, code, password }),
+    body: JSON.stringify({ identifier, resetToken, password }),
   });
   const data = await readJson(res, 'Could not reset the password');
   const session = toSession(data);

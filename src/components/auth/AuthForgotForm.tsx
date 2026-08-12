@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -18,22 +18,19 @@ import type { ResetChallenge } from '../../services/appInviteAuth';
 export type AuthForgotFormProps = {
   onResetStart: (identifier: string) => Promise<ResetChallenge>;
   onResetResend: (identifier: string) => Promise<ResetChallenge>;
-  onResetComplete: (identifier: string, code: string, password: string) => Promise<void>;
+  onResetComplete: (identifier: string, resetToken: string, password: string) => Promise<void>;
   onSwitchToSignIn: () => void;
 };
-
-const RESEND_SECONDS = 45;
 
 function isValidMobile(value: string) {
   return /^[6-9]\d{9}$/.test(value.replace(/\D/g, '').slice(-10));
 }
 
 /**
- * Reset runs on the mobile number only: identify → SMS OTP → new password.
+ * Reset: verify registered mobile (no OTP) → set a new password (no current password).
  */
 export default function AuthForgotForm({
   onResetStart,
-  onResetResend,
   onResetComplete,
   onSwitchToSignIn,
 }: AuthForgotFormProps) {
@@ -41,27 +38,14 @@ export default function AuthForgotForm({
   const [identifier, setIdentifier] = useState('');
   const [identifierTouched, setIdentifierTouched] = useState(false);
   const [challenge, setChallenge] = useState<ResetChallenge | null>(null);
-  const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const otpInputRef = useRef<HTMLInputElement>(null);
 
   const identifierValid = isValidMobile(identifier);
   const showIdentifierError = identifierTouched && identifier.length > 0 && !identifierValid;
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [cooldown]);
-
-  useEffect(() => {
-    if (step === 'reset') otpInputRef.current?.focus();
-  }, [step]);
 
   const handleIdentify = async (e: FormEvent) => {
     e.preventDefault();
@@ -76,11 +60,11 @@ export default function AuthForgotForm({
     try {
       const next = await onResetStart(identifier);
       setChallenge(next);
-      setCode(next.devCode ?? '');
-      setCooldown(RESEND_SECONDS);
+      setPassword('');
+      setConfirm('');
       setStep('reset');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not send the reset code.');
+      setErrorMessage(error instanceof Error ? error.message : 'Could not verify the mobile number.');
     } finally {
       setIsLoading(false);
     }
@@ -90,8 +74,8 @@ export default function AuthForgotForm({
     e.preventDefault();
     setErrorMessage('');
 
-    if (!/^\d{6}$/.test(code)) {
-      setErrorMessage('Enter the 6-digit code from the SMS.');
+    if (!challenge?.resetToken) {
+      setErrorMessage('Verify your mobile number first.');
       return;
     }
     if (password.length < 6) {
@@ -105,25 +89,9 @@ export default function AuthForgotForm({
 
     setIsLoading(true);
     try {
-      await onResetComplete(identifier, code, password);
+      await onResetComplete(identifier, challenge.resetToken, password);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Could not reset the password.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (cooldown > 0) return;
-    setErrorMessage('');
-    setIsLoading(true);
-    try {
-      const next = await onResetResend(identifier);
-      setChallenge(next);
-      setCode(next.devCode ?? '');
-      setCooldown(RESEND_SECONDS);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Could not resend the code.');
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +118,7 @@ export default function AuthForgotForm({
       <div className="auth-form-panel relative z-[1]">
         <div className="auth-kicker mb-5">
           <ShieldCheck className="w-3 h-3" />
-          Verify &amp; set a new password
+          Mobile verified
         </div>
 
         <motion.div
@@ -162,35 +130,13 @@ export default function AuthForgotForm({
             Choose a new <span>password</span>
           </h1>
           <p className="auth-subtitle">
-            We sent a 6-digit code to{' '}
-            <strong className="text-slate-200">{challenge?.phoneMasked || 'your mobile'}</strong>.
-            It is valid for {Math.round((challenge?.expiresInSec ?? 600) / 60)} minutes.
+            <strong className="text-slate-200">{challenge?.phoneMasked || 'Your mobile'}</strong>{' '}
+            matched a registered account. Set a new password — no OTP or current password needed.
+            This window is open for {Math.round((challenge?.expiresInSec ?? 900) / 60)} minutes.
           </p>
         </motion.div>
 
         <form onSubmit={(e) => void handleReset(e)} className="mt-7 space-y-5">
-          <AuthField
-            ref={otpInputRef}
-            label="Reset code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="6-digit code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            maxLength={6}
-            className="tracking-[0.45em] text-center text-lg"
-            valid={/^\d{6}$/.test(code)}
-            icon={<ShieldCheck className="w-4 h-4" />}
-          />
-
-          {challenge?.devMode ? (
-            <p className="auth-otp-devnote">
-              SMS / Twilio not configured — test code <strong>{challenge.devCode}</strong> filled in
-              for you.
-            </p>
-          ) : null}
-
           <AuthField
             label="New password"
             type={showPassword ? 'text' : 'password'}
@@ -247,19 +193,12 @@ export default function AuthForgotForm({
               className="auth-inline-link inline-flex items-center gap-1"
               onClick={() => {
                 setStep('identify');
+                setChallenge(null);
                 setErrorMessage('');
               }}
             >
               <ArrowLeft className="w-3 h-3" />
-              Use another account
-            </button>
-            <button
-              type="button"
-              className="auth-inline-link disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => void handleResend()}
-              disabled={cooldown > 0 || isLoading}
-            >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+              Use another number
             </button>
           </div>
         </form>
@@ -285,8 +224,8 @@ export default function AuthForgotForm({
           Forgot your <span>password</span>
         </h1>
         <p className="auth-subtitle">
-          Enter your registered mobile number. We text a 6-digit code there, then you set a new
-          password.
+          Enter the mobile number you used at signup. If it matches an account, you can set a new
+          password right away — no OTP.
         </p>
       </motion.div>
 
@@ -315,7 +254,7 @@ export default function AuthForgotForm({
           ) : (
             <>
               <ShieldCheck className="w-4 h-4" />
-              Send reset code
+              Verify mobile
               <ArrowRight className="w-4 h-4" />
             </>
           )}

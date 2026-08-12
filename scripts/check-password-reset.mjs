@@ -1,11 +1,11 @@
 /**
- * End-to-end smoke test for the forgot-password flow.
+ * End-to-end smoke test for the forgot-password flow (mobile verify, no OTP).
  *
  *   node scripts/check-password-reset.mjs [baseUrl]
  *
- * Signs up a throwaway account, resets its password over mobile OTP, and checks
- * that the old password dies while the new one signs in from email and mobile.
- * Needs the dev SMS mode (no provider key) so the OTP comes back in the response.
+ * Signs up a throwaway account, verifies its mobile, sets a new password with
+ * the reset ticket, and checks that the old password dies while the new one
+ * signs in from email and mobile.
  */
 
 const base = process.argv[2] || process.env.API_BASE || 'http://localhost:4000';
@@ -56,10 +56,6 @@ async function main() {
   });
   log(created.status === 201, 'test account created', created.data.error);
 
-  // The OTP throttle is per number, so the signup code has to age out first.
-  console.log('waiting out the 45s OTP cooldown...');
-  await new Promise((done) => setTimeout(done, 47_000));
-
   const unknown = await call('/api/app-auth/password/forgot', {
     method: 'POST',
     body: { identifier: '9999999999' },
@@ -80,7 +76,11 @@ async function main() {
     method: 'POST',
     body: { identifier: user.phone },
   });
-  log(forgot.status === 200 && Boolean(forgot.data.devCode), 'forgot sends a code', forgot.data.error);
+  log(
+    forgot.status === 200 && Boolean(forgot.data.resetToken) && forgot.data.verified === true,
+    'forgot verifies mobile and returns reset ticket',
+    forgot.data.error,
+  );
   log(
     typeof forgot.data.phoneMasked === 'string' &&
       forgot.data.phoneMasked.includes('••••') &&
@@ -91,28 +91,26 @@ async function main() {
 
   const wrong = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.phone, code: '000000', password: NEW_PASSWORD },
+    body: { identifier: user.phone, resetToken: 'not-a-real-ticket', password: NEW_PASSWORD },
   });
-  log(wrong.status === 400, 'wrong code is rejected', wrong.data.error);
+  log(wrong.status === 400, 'bad reset ticket is rejected', wrong.data.error);
 
   const short = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.phone, code: forgot.data.devCode, password: 'abc' },
+    body: { identifier: user.phone, resetToken: forgot.data.resetToken, password: 'abc' },
   });
   log(short.status === 400, 'short password is rejected', short.data.error);
 
   const reset = await call('/api/app-auth/password/reset', {
     method: 'POST',
-    body: { identifier: user.phone, code: forgot.data.devCode, password: NEW_PASSWORD },
+    body: {
+      identifier: user.phone,
+      resetToken: forgot.data.resetToken,
+      password: NEW_PASSWORD,
+    },
   });
   log(reset.status === 200 && Boolean(reset.data.token), 'reset succeeds', reset.data.error);
   log(Boolean(reset.data?.access), 'reset returns the access snapshot', reset.data?.access?.status);
-
-  const replay = await call('/api/app-auth/password/reset', {
-    method: 'POST',
-    body: { identifier: user.phone, code: forgot.data.devCode, password: 'another123' },
-  });
-  log(replay.status === 400, 'the same code cannot be reused', replay.data.error);
 
   const oldPass = await call('/api/app-auth/login', {
     method: 'POST',
@@ -137,7 +135,7 @@ async function main() {
     body: { identifier: user.phone },
   });
   log(
-    byMobile.status === 200 || byMobile.status === 429,
+    byMobile.status === 200 && Boolean(byMobile.data.resetToken),
     'forgot accepts the mobile number again',
     byMobile.data.error,
   );

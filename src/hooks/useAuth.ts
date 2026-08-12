@@ -415,7 +415,7 @@ export function useAuth() {
     throw new Error('Phone OTP is disabled. Use the email & password from admin.');
   }, []);
 
-  /** Step 1 of the reset: an OTP goes to the mobile number saved on the account. */
+  /** Step 1 of the reset: verify the registered mobile (no SMS OTP). */
   const resetStart = useCallback(
     async (identifier: string): Promise<ResetChallenge> =>
       startPasswordReset(identifier.trim()),
@@ -428,10 +428,10 @@ export function useAuth() {
     [],
   );
 
-  /** Step 2: the new password is saved and the session starts right away. */
+  /** Step 2: save the new password with the reset ticket and sign in. */
   const resetComplete = useCallback(
-    async (identifier: string, code: string, password: string) => {
-      const session = await completePasswordReset(identifier.trim(), code, password);
+    async (identifier: string, resetToken: string, password: string) => {
+      const session = await completePasswordReset(identifier.trim(), resetToken, password);
       setUser(withStoredAvatar(session.user));
       setAccess(session.snapshot);
       setIsLoggedIn(true);
