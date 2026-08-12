@@ -4919,9 +4919,71 @@ input[type="number"] { -moz-appearance: textfield; }
   .auth-lux-modal__panel {
     max-width: 100%;
     max-height: min(94dvh, 100%);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     border-radius: 1.15rem 1.15rem 0 0;
-    padding: 1.25rem 1rem 1.4rem;
-    padding-bottom: max(1.4rem, env(safe-area-inset-bottom));
+    padding: 1rem 0.95rem 1.15rem;
+    padding-bottom: max(1.15rem, env(safe-area-inset-bottom));
+  }
+
+  .auth-lux-modal__panel .auth-kicker {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .auth-lux-modal__panel .auth-title {
+    font-size: 1.4rem;
+  }
+
+  .auth-lux-modal__panel .auth-subtitle {
+    font-size: 0.8rem;
+    margin-top: 0.35rem;
+  }
+
+  .auth-lux-modal__panel form.mt-7 {
+    margin-top: 1.1rem !important;
+  }
+
+  .auth-lux-modal__panel form.space-y-5 {
+    row-gap: 0.7rem;
+  }
+
+  .auth-lux-modal__panel form.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.7rem;
+  }
+
+  .auth-lux-modal__panel .auth-field {
+    height: 2.85rem;
+  }
+
+  .auth-lux-modal__panel .auth-label {
+    margin-bottom: 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .auth-lux-modal__panel .auth-submit-btn,
+  .auth-lux-modal__panel .auth-signup-btn {
+    min-height: 2.7rem;
+  }
+
+  .auth-lux__review {
+    padding: 0.95rem 0.9rem 0.9rem;
+  }
+
+  .auth-lux__review-text {
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .auth-lux__review-meta {
+    padding-top: 0.85rem;
+  }
+
+  .auth-lux__footer .auth-lux__footer-links {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.55rem 1rem;
   }
 
   .auth-lux__footer-top {
@@ -4930,17 +4992,11 @@ input[type="number"] { -moz-appearance: textfield; }
     gap: 1rem;
   }
 
-  .auth-lux__footer-links {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-    gap: 0.65rem 1rem;
-  }
-
   .auth-lux__footer-links a,
   .auth-lux__footer-links button {
     text-align: left;
-    padding: 0.25rem 0;
+    padding: 0.35rem 0;
+    min-height: 2rem;
   }
 
   .auth-lux__footer-note {
@@ -4950,6 +5006,7 @@ input[type="number"] { -moz-appearance: textfield; }
   .auth-lux__bottom-cta {
     padding-top: 3.5rem;
     padding-bottom: 3.5rem;
+    scroll-margin-top: calc(4.25rem + env(safe-area-inset-top, 0px));
   }
 
   .auth-lux__plans-foot {
@@ -4972,6 +5029,18 @@ input[type="number"] { -moz-appearance: textfield; }
   .plan-contact__btn {
     font-size: 0.74rem;
     padding: 0.55rem 0.85rem;
+  }
+
+  .auth-lux-modal__panel .auth-title {
+    font-size: 1.28rem;
+  }
+
+  .auth-lux-modal__panel form.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.55rem;
+  }
+
+  .auth-lux-modal__panel .auth-field {
+    height: 2.7rem;
   }
 }
 
