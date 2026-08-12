@@ -28196,7 +28196,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__card header h3 {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.95rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--opp-gold-soft);
@@ -28287,7 +28287,7 @@ body:has(.app-main--terminal-immersive) #root {
   min-width: 0;
 }
 .wolf-opp__row-sym b {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
