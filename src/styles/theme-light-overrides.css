@@ -3171,18 +3171,83 @@ html[data-theme="light"] .live-wolf-desk__id h1 {
 
 /* ?? Radar connect modal ????????????????????????????????????? */
 html[data-theme="light"] .wolf-md-modal__backdrop {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 html[data-theme="light"] .wolf-md-modal__panel {
-  background: #ffffff;
-  border-color: var(--tf-border);
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(180, 83, 9, 0.08), transparent 48%),
+    linear-gradient(165deg, #ffffff 0%, #f7f9fc 100%);
+  border-color: rgba(146, 64, 14, 0.2);
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.16);
   color: var(--tf-text);
 }
 
-html[data-theme="light"] .wolf-md-modal__head h2 {
+html[data-theme="light"] .wolf-md-modal__glow {
+  background: radial-gradient(circle, rgba(180, 83, 9, 0.12), transparent 68%);
+}
+
+html[data-theme="light"] .wolf-md-modal__eyebrow,
+html[data-theme="light"] .wolf-md-modal__head h2,
+html[data-theme="light"] .wolf-md-steps .is-on,
+html[data-theme="light"] .wolf-md-card__cta,
+html[data-theme="light"] .wolf-md-card__lock,
+html[data-theme="light"] .wolf-md-token h3,
+html[data-theme="light"] .wolf-md-token a,
+html[data-theme="light"] .wolf-md-detect__pulse {
+  color: #92400e !important;
+}
+
+html[data-theme="light"] .wolf-md-steps__rail {
+  background: linear-gradient(90deg, #b45309, #f0d78c 55%, rgba(180, 83, 9, 0.12));
+}
+
+html[data-theme="light"] .wolf-md-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .wolf-md-card.is-demo,
+html[data-theme="light"] .wolf-md-card.is-selected,
+html[data-theme="light"] .wolf-md-card.is-enabled:hover {
+  border-color: rgba(146, 64, 14, 0.35);
+}
+
+html[data-theme="light"] .wolf-md-card__top strong,
+html[data-theme="light"] .wolf-md-card ul b {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .wolf-md-card__top em.is-demo,
+html[data-theme="light"] .wolf-md-card__top em.is-ok {
+  color: #92400e;
+  border-color: rgba(146, 64, 14, 0.28);
+  background: rgba(146, 64, 14, 0.08);
+}
+
+html[data-theme="light"] .wolf-md-detect__banner {
+  background: rgba(146, 64, 14, 0.06);
+  border-color: rgba(146, 64, 14, 0.18);
+}
+
+html[data-theme="light"] .wolf-md-token input {
+  background: #f8fafc;
+  border-color: #d5dee9;
+  color: #0f172a;
+}
+
+html[data-theme="light"] .wolf-md-token__actions .primary {
   color: #78350f;
+  border-color: rgba(146, 64, 14, 0.35);
+  background: linear-gradient(180deg, #f0d78c, #e8c04a);
+}
+
+html[data-theme="light"] .wolf-md-modal__x {
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 html[data-theme="light"] .wolf-radar-desk {

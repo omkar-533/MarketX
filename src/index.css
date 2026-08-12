@@ -26616,53 +26616,125 @@ body:has(.app-main--terminal-immersive) #root {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(4, 6, 12, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   cursor: pointer;
 }
 .wolf-md-modal__panel {
   position: relative;
-  width: min(920px, 100%);
-  max-height: min(86vh, 840px);
+  width: min(960px, 100%);
+  max-height: min(88vh, 880px);
   overflow: auto;
-  border-radius: 16px;
+  border-radius: 1.25rem;
   border: 1px solid rgba(212, 175, 55, 0.28);
-  background: #0b0b0c;
-  padding: 1.1rem 1.15rem 1.25rem;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(212, 175, 55, 0.1), transparent 48%),
+    radial-gradient(90% 70% at 100% 0%, rgba(80, 120, 255, 0.08), transparent 42%),
+    linear-gradient(165deg, #12141c 0%, #0b0b0c 48%, #090a0f 100%);
+  padding: 1.2rem 1.25rem 1.35rem;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 28px 80px rgba(0, 0, 0, 0.58);
+}
+.wolf-md-modal__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: auto -10% -30% auto;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.18), transparent 68%);
+  filter: blur(8px);
+  animation: wolf-md-orb 7s ease-in-out infinite;
+}
+.wolf-md-modal__sheen {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.04) 48%, transparent 62%);
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+@keyframes wolf-md-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate(-12%, -8%) scale(1.12); opacity: 0.9; }
 }
 .wolf-md-modal__head {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
 }
+.wolf-md-modal__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0d78c;
+}
 .wolf-md-modal__head h2 {
   margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
+  font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+  letter-spacing: 0.1em;
   color: var(--tj-gold);
+  font-weight: 800;
 }
 .wolf-md-modal__head p {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 0.78rem;
   color: var(--tf-text-muted);
+  max-width: 36rem;
+  line-height: 1.45;
 }
 .wolf-md-modal__x {
-  border: 0;
-  background: transparent;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
   color: var(--tf-text-muted);
   cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, transform 0.2s;
+}
+.wolf-md-modal__x:hover {
+  color: var(--tj-gold);
+  border-color: rgba(212, 175, 55, 0.4);
+  transform: rotate(90deg);
 }
 .wolf-md-modal__status {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 10px;
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  background: rgba(52, 211, 153, 0.06);
-  font-size: 0.75rem;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  background:
+    linear-gradient(145deg, rgba(52, 211, 153, 0.1), rgba(16, 185, 129, 0.03));
+  font-size: 0.78rem;
   color: var(--tf-text-secondary);
+}
+.wolf-md-modal__status-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.25rem;
+}
+.wolf-md-modal__status-head strong {
+  color: #6ee7b7;
+  font-size: 0.9rem;
 }
 .wolf-md-modal__status button {
   justify-self: start;
@@ -26676,98 +26748,244 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-md-modal__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+.wolf-md-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex-shrink: 0;
+}
+.wolf-md-logo svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.28));
 }
 .wolf-md-card {
+  position: relative;
+  overflow: hidden;
   text-align: left;
-  padding: 0.85rem;
-  border-radius: 12px;
+  padding: 1rem 0.95rem 0.95rem;
+  border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
   color: inherit;
   cursor: pointer;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.wolf-md-card__aura {
+  pointer-events: none;
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 70%;
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.14), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.wolf-md-card:hover .wolf-md-card__aura,
+.wolf-md-card.is-selected .wolf-md-card__aura {
+  opacity: 1;
 }
 .wolf-md-card.is-demo {
-  border-color: rgba(212, 175, 55, 0.35);
+  border-color: rgba(212, 175, 55, 0.38);
 }
 .wolf-md-card.is-selected {
-  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.55);
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.25),
+    0 16px 36px rgba(0, 0, 0, 0.28);
+}
+.wolf-md-card.is-enabled:hover {
+  border-color: rgba(212, 175, 55, 0.42);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
 }
 .wolf-md-steps {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem 1rem;
-  margin: 0 0 1rem;
+  margin: 0 0 1.15rem;
+  padding-bottom: 0.85rem;
   font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--tf-text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wolf-md-steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 650;
+}
+.wolf-md-steps__dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.65rem;
+  font-weight: 800;
 }
 .wolf-md-steps .is-on {
   color: var(--tj-gold);
 }
+.wolf-md-steps .is-on .wolf-md-steps__dot {
+  border-color: rgba(212, 175, 55, 0.55);
+  background: linear-gradient(180deg, rgba(232, 192, 74, 0.35), rgba(212, 175, 55, 0.12));
+  color: #f8e7a8;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.25);
+}
+.wolf-md-steps .is-done .wolf-md-steps__dot {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+.wolf-md-steps__rail {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d4af37, #f0d78c 55%, rgba(212, 175, 55, 0.15));
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.45);
+}
 .wolf-md-detect__banner {
   display: flex;
-  gap: 0.55rem;
+  gap: 0.65rem;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(255, 255, 255, 0.02));
   font-size: 0.75rem;
   color: var(--tf-text-secondary);
 }
+.wolf-md-detect__pulse {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  color: var(--tj-gold);
+  background: rgba(212, 175, 55, 0.12);
+  animation: wolf-md-pulse 2.4s ease-in-out infinite;
+}
+@keyframes wolf-md-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
+}
 .wolf-md-detect__banner p {
   margin: 0;
+  line-height: 1.45;
 }
 .wolf-md-detect__hint {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
   font-size: 0.72rem;
   color: var(--tf-text-muted);
 }
 .wolf-md-card.is-locked {
-  opacity: 0.72;
+  opacity: 0.78;
+  cursor: pointer;
 }
 .wolf-md-card__top {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+.wolf-md-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
 }
 .wolf-md-card__top strong {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+  color: var(--tf-text);
 }
 .wolf-md-card__top em {
   font-style: normal;
-  font-size: 0.65rem;
-  letter-spacing: 0.06em;
-  color: var(--tj-gold);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.wolf-md-card__top em.is-demo,
+.wolf-md-card__top em.is-ok {
+  color: #f0d78c;
+  border-color: rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.12);
+}
+.wolf-md-card__top em.is-off {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.08);
 }
 .wolf-md-card ul {
+  position: relative;
+  z-index: 1;
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.7rem;
   color: var(--tf-text-muted);
   display: grid;
-  gap: 0.2rem;
+  gap: 0.28rem;
+}
+.wolf-md-card ul li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.wolf-md-card ul span {
+  opacity: 0.85;
+}
+.wolf-md-card ul b {
+  font-weight: 650;
+  color: var(--tf-text-secondary);
 }
 .wolf-md-card small {
+  position: relative;
+  z-index: 1;
   display: block;
-  margin-top: 0.55rem;
+  margin-top: 0.65rem;
   font-size: 0.68rem;
+  line-height: 1.4;
   color: var(--tf-text-muted);
 }
 .wolf-md-card__lock,
 .wolf-md-card__cta {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.55rem;
-  font-size: 0.68rem;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--tj-gold);
+}
+.wolf-md-card__cta {
+  transition: gap 0.2s ease;
+}
+.wolf-md-card:hover .wolf-md-card__cta {
+  gap: 0.5rem;
 }
 .wolf-md-modal__error {
   margin: 0.85rem 0 0;
@@ -26779,13 +26997,20 @@ body:has(.app-main--terminal-immersive) #root {
   line-height: 1.35;
 }
 .wolf-md-token {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 0.65rem;
+  gap: 0.75rem;
   padding: 0.35rem 0 0.5rem;
+}
+.wolf-md-token__brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 .wolf-md-token h3 {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--tj-gold);
   letter-spacing: 0.04em;
 }
@@ -26794,15 +27019,16 @@ body:has(.app-main--terminal-immersive) #root {
   padding-left: 1.15rem;
   font-size: 0.78rem;
   color: var(--tf-text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 .wolf-md-token a {
   color: var(--tj-gold);
 }
 .wolf-md-token__warn {
-  margin: 0;
+  margin: 0.3rem 0 0;
   font-size: 0.72rem;
   color: var(--tf-text-muted);
+  line-height: 1.4;
 }
 .wolf-md-token label {
   display: grid;
@@ -26811,8 +27037,8 @@ body:has(.app-main--terminal-immersive) #root {
   color: var(--tf-text-muted);
 }
 .wolf-md-token input {
-  padding: 0.55rem 0.65rem;
-  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.4);
   color: var(--tf-text);
@@ -26822,14 +27048,20 @@ body:has(.app-main--terminal-immersive) #root {
   display: flex;
   gap: 0.55rem;
   justify-content: flex-end;
+  margin-top: 0.25rem;
 }
 .wolf-md-token__actions .ghost,
 .wolf-md-token__actions .primary {
-  padding: 0.45rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.72rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.wolf-md-token__actions .ghost:hover,
+.wolf-md-token__actions .primary:hover {
+  transform: translateY(-1px);
 }
 .wolf-md-token__actions .ghost {
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -26838,9 +27070,30 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-md-token__actions .primary {
   border: 1px solid rgba(212, 175, 55, 0.45);
-  background: rgba(212, 175, 55, 0.18);
-  color: var(--tj-gold);
-  font-weight: 600;
+  background: linear-gradient(180deg, rgba(232, 192, 74, 0.28), rgba(212, 175, 55, 0.14));
+  color: #f0d78c;
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wolf-md-modal__glow,
+  .wolf-md-detect__pulse {
+    animation: none !important;
+  }
+}
+@media (max-width: 640px) {
+  .wolf-md-modal {
+    padding: 0.55rem;
+    align-items: end;
+  }
+  .wolf-md-modal__panel {
+    width: 100%;
+    max-height: min(92dvh, 920px);
+    border-radius: 1.1rem 1.1rem 0.85rem 0.85rem;
+    padding: 1rem 0.9rem 1.1rem;
+  }
+  .wolf-md-modal__grid {
+    grid-template-columns: 1fr;
+  }
 }
 @keyframes wolf-radar-pulse {
   0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); }

@@ -5,7 +5,8 @@
  * Detection ≠ authorization. No cookie scrape / password / OTP / TOTP.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Link2, Radar, ShieldOff, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Check, Link2, Radar, ShieldOff, Sparkles, X } from 'lucide-react';
 import type { CatalogProvider, ServerConnectionStatus } from '../../../services/marketData/marketDataApi';
 import {
   detectSupportedBrokers,
@@ -17,6 +18,7 @@ import {
   revokeMarketDataAuthorization,
   type AuthorizationPlan,
 } from '../../../services/marketData/BrokerAuthorization';
+import BrokerLogoMark from './BrokerLogoMark';
 
 type Props = {
   open: boolean;
@@ -27,12 +29,15 @@ type Props = {
 
 type Step = 'detect' | 'authorize' | 'connected';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 export default function ConnectMarketDataModal({
   open,
   onClose,
   status,
   onStatusChange,
 }: Props) {
+  const reduced = useReducedMotion();
   const [step, setStep] = useState<Step>('detect');
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [selected, setSelected] = useState<CatalogProvider | null>(null);
@@ -94,7 +99,6 @@ export default function ConnectMarketDataModal({
       accessToken: plan.mechanism === 'official_access_token' ? tokenDraft : undefined,
     });
     setBusy(false);
-    // Clear token from React state immediately
     setTokenDraft('');
     if (!result.ok) {
       setError(result.error || 'Authorization failed');
@@ -112,154 +116,263 @@ export default function ConnectMarketDataModal({
     setBusy(false);
   };
 
+  const steps: { id: Step; label: string; n: number }[] = [
+    { id: 'detect', label: 'Detect', n: 1 },
+    { id: 'authorize', label: 'Authorize', n: 2 },
+    { id: 'connected', label: 'Connected', n: 3 },
+  ];
+  const stepIndex = steps.findIndex((s) => s.id === step);
+
   return (
     <div className="wolf-md-modal" role="dialog" aria-modal="true" aria-label="Connect Market Data">
-      <button type="button" className="wolf-md-modal__backdrop" onClick={onClose} aria-label="Close" />
-      <div className="wolf-md-modal__panel">
+      <motion.button
+        type="button"
+        className="wolf-md-modal__backdrop"
+        onClick={onClose}
+        aria-label="Close"
+        initial={reduced ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.28 }}
+      />
+      <motion.div
+        className="wolf-md-modal__panel"
+        initial={reduced ? false : { opacity: 0, y: 28, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: EASE }}
+      >
+        <div className="wolf-md-modal__glow" aria-hidden />
+        <div className="wolf-md-modal__sheen" aria-hidden />
+
         <header className="wolf-md-modal__head">
           <div>
+            <p className="wolf-md-modal__eyebrow">
+              <Sparkles size={12} />
+              Market desk
+            </p>
             <h2>CONNECT MARKET DATA</h2>
             <p>Official broker authorization only · Order access never enabled</p>
           </div>
-          <button type="button" className="wolf-md-modal__x" onClick={onClose}>
+          <button type="button" className="wolf-md-modal__x" onClick={onClose} aria-label="Close">
             <X size={16} />
           </button>
         </header>
 
         <nav className="wolf-md-steps" aria-label="Connect steps">
-          <span className={step === 'detect' ? 'is-on' : ''}>1 · Detect</span>
-          <span className={step === 'authorize' ? 'is-on' : ''}>2 · Authorize</span>
-          <span className={step === 'connected' ? 'is-on' : ''}>3 · Connected</span>
+          {steps.map((s, i) => {
+            const on = step === s.id;
+            const done = i < stepIndex;
+            return (
+              <span key={s.id} className={`wolf-md-steps__item ${on ? 'is-on' : ''} ${done ? 'is-done' : ''}`}>
+                <span className="wolf-md-steps__dot">{done ? <Check size={11} /> : s.n}</span>
+                {s.label}
+              </span>
+            );
+          })}
+          <motion.span
+            className="wolf-md-steps__rail"
+            aria-hidden
+            initial={false}
+            animate={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+            transition={{ duration: 0.45, ease: EASE }}
+          />
         </nav>
 
-        {step === 'detect' && (
-          <section className="wolf-md-detect">
-            <div className="wolf-md-detect__banner">
-              <Radar size={14} />
-              <p>
-                {detection?.message ||
-                  'Listing supported market-data sources. Other-tab logins are never read.'}
-              </p>
-            </div>
-            {preferredLabel && (
-              <p className="wolf-md-detect__hint">
-                Last preferred: <strong>{preferredLabel}</strong> (preference only — not a live
-                session).
-              </p>
-            )}
-            <div className="wolf-md-modal__grid">
-              {(detection?.brokers || []).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked'} ${
-                    p.isDemo ? 'is-demo' : ''
-                  } ${selected?.id === p.id ? 'is-selected' : ''}`}
-                  onClick={() => goAuthorize(p)}
-                  disabled={busy}
-                >
-                  <div className="wolf-md-card__top">
-                    <strong>{p.name}</strong>
-                    {p.isDemo ? <em>DEMO</em> : p.enabled ? <em>SUPPORTED</em> : <em>UNSUPPORTED</em>}
-                  </div>
-                  <ul>
-                    <li>Historical: {p.capabilities.historicalCandles ? 'Yes' : 'No'}</li>
-                    <li>Quotes: {p.capabilities.liveQuotes ? 'Yes' : 'No'}</li>
-                    <li>Auth: {authLabel(p)}</li>
-                    <li>Order access: NOT ENABLED</li>
-                  </ul>
-                  <small>{p.notes}</small>
-                  {!p.enabled && (
-                    <span className="wolf-md-card__lock">
-                      <ShieldOff size={12} /> No unofficial workaround
-                    </span>
-                  )}
-                  {p.enabled && (
-                    <span className="wolf-md-card__cta">
-                      <Link2 size={12} /> Continue to authorize
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {step === 'authorize' && plan && selected && (
-          <section className="wolf-md-token">
-            <h3>{plan.name}</h3>
-            <p className="wolf-md-token__warn">
-              Mechanism: <strong>{mechanismLabel(plan.mechanism)}</strong>
-              {plan.canAuthorize
-                ? ' · Detection is complete; authorization still required.'
-                : ' · Cannot authorize without an official API.'}
-            </p>
-            <ol>
-              {plan.steps.map((s) => (
-                <li key={s}>{s}</li>
-              ))}
-            </ol>
-
-            {plan.tokenPortalUrl && (
-              <p>
-                <a href={plan.tokenPortalUrl} target="_blank" rel="noreferrer">
-                  Open official INDstocks Access Tokens →
-                </a>
-              </p>
-            )}
-
-            {plan.mechanism === 'official_access_token' && plan.canAuthorize && (
-              <label>
-                <span>Official access token (not password / OTP)</span>
-                <input
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={tokenDraft}
-                  onChange={(e) => setTokenDraft(e.target.value)}
-                  placeholder="Paste token from broker portal"
-                />
-              </label>
-            )}
-
-            <div className="wolf-md-token__actions">
-              <button type="button" className="ghost" onClick={() => setStep('detect')} disabled={busy}>
-                Back
-              </button>
-              {plan.canAuthorize && (
-                <button type="button" className="primary" onClick={() => void runAuthorize()} disabled={busy}>
-                  {busy ? 'Authorizing…' : 'Authorize market data'}
-                </button>
+        <AnimatePresence mode="wait">
+          {step === 'detect' && (
+            <motion.section
+              key="detect"
+              className="wolf-md-detect"
+              initial={reduced ? false : { opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.32, ease: EASE }}
+            >
+              <div className="wolf-md-detect__banner">
+                <span className="wolf-md-detect__pulse" aria-hidden>
+                  <Radar size={14} />
+                </span>
+                <p>
+                  {detection?.message ||
+                    'Showing WOLF-supported market-data sources. Other-tab broker logins are never read or reused.'}
+                </p>
+              </div>
+              {preferredLabel && (
+                <p className="wolf-md-detect__hint">
+                  Last preferred: <strong>{preferredLabel}</strong> (preference only — not a live
+                  session).
+                </p>
               )}
-            </div>
-          </section>
-        )}
+              <div className="wolf-md-modal__grid">
+                {(detection?.brokers || []).map((p, i) => (
+                  <motion.button
+                    key={p.id}
+                    type="button"
+                    className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked'} ${
+                      p.isDemo ? 'is-demo' : ''
+                    } ${selected?.id === p.id ? 'is-selected' : ''}`}
+                    onClick={() => goAuthorize(p)}
+                    disabled={busy}
+                    initial={reduced ? false : { opacity: 0, y: 18, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: 0.05 + i * 0.055, duration: 0.4, ease: EASE }}
+                    whileHover={reduced || !p.enabled ? undefined : { y: -4, scale: 1.015 }}
+                    whileTap={reduced ? undefined : { scale: 0.985 }}
+                  >
+                    <div className="wolf-md-card__aura" aria-hidden />
+                    <div className="wolf-md-card__top">
+                      <div className="wolf-md-card__brand">
+                        <BrokerLogoMark id={p.id} name={p.name} />
+                        <strong>{p.name}</strong>
+                      </div>
+                      {p.isDemo ? (
+                        <em className="is-demo">DEMO</em>
+                      ) : p.enabled ? (
+                        <em className="is-ok">SUPPORTED</em>
+                      ) : (
+                        <em className="is-off">UNSUPPORTED</em>
+                      )}
+                    </div>
+                    <ul>
+                      <li>
+                        <span>Historical</span>
+                        <b>{p.capabilities.historicalCandles ? 'Yes' : 'No'}</b>
+                      </li>
+                      <li>
+                        <span>Quotes</span>
+                        <b>{p.capabilities.liveQuotes ? 'Yes' : 'No'}</b>
+                      </li>
+                      <li>
+                        <span>Auth</span>
+                        <b>{authLabel(p)}</b>
+                      </li>
+                      <li>
+                        <span>Order access</span>
+                        <b>NOT ENABLED</b>
+                      </li>
+                    </ul>
+                    <small>{p.notes}</small>
+                    {!p.enabled && (
+                      <span className="wolf-md-card__lock">
+                        <ShieldOff size={12} /> No unofficial workaround
+                      </span>
+                    )}
+                    {p.enabled && (
+                      <span className="wolf-md-card__cta">
+                        <Link2 size={12} /> Continue to authorize
+                      </span>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.section>
+          )}
 
-        {step === 'connected' && status?.status === 'CONNECTED' && (
-          <div className="wolf-md-modal__status">
-            <strong>● {status.message}</strong>
-            <span>Source: {status.providerName}</span>
-            <span>Mode: {status.mode}</span>
-            <span>Historical: {status.historical ? 'Available' : '—'}</span>
-            <span>Live Quotes: {status.liveQuotes ? 'Available' : 'Not available'}</span>
-            <span>Order Access: NOT ENABLED</span>
-            {status.permissionNote && <span className="wolf-md-modal__note">{status.permissionNote}</span>}
-            <p className="wolf-md-detect__hint">
-              Scanner is broker-agnostic — it only sees normalized WOLF market data.
-            </p>
-            <div className="wolf-md-token__actions">
-              <button type="button" className="ghost" onClick={() => void onDisconnect()} disabled={busy}>
-                Disconnect
-              </button>
-              <button type="button" className="primary" onClick={onClose}>
-                Continue to Radar
-              </button>
-            </div>
-          </div>
-        )}
+          {step === 'authorize' && plan && selected && (
+            <motion.section
+              key="authorize"
+              className="wolf-md-token"
+              initial={reduced ? false : { opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.32, ease: EASE }}
+            >
+              <div className="wolf-md-token__brand">
+                <BrokerLogoMark id={selected.id} name={selected.name} />
+                <div>
+                  <h3>{plan.name}</h3>
+                  <p className="wolf-md-token__warn">
+                    Mechanism: <strong>{mechanismLabel(plan.mechanism)}</strong>
+                    {plan.canAuthorize
+                      ? ' · Detection is complete; authorization still required.'
+                      : ' · Cannot authorize without an official API.'}
+                  </p>
+                </div>
+              </div>
+              <ol>
+                {plan.steps.map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ol>
 
-        {error && <p className="wolf-md-modal__error">{error}</p>}
-      </div>
+              {plan.tokenPortalUrl && (
+                <p>
+                  <a href={plan.tokenPortalUrl} target="_blank" rel="noreferrer">
+                    Open official INDstocks Access Tokens →
+                  </a>
+                </p>
+              )}
+
+              {plan.mechanism === 'official_access_token' && plan.canAuthorize && (
+                <label>
+                  <span>Official access token (not password / OTP)</span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={tokenDraft}
+                    onChange={(e) => setTokenDraft(e.target.value)}
+                    placeholder="Paste token from broker portal"
+                  />
+                </label>
+              )}
+
+              <div className="wolf-md-token__actions">
+                <button type="button" className="ghost" onClick={() => setStep('detect')} disabled={busy}>
+                  Back
+                </button>
+                {plan.canAuthorize && (
+                  <button type="button" className="primary" onClick={() => void runAuthorize()} disabled={busy}>
+                    {busy ? 'Authorizing…' : 'Authorize market data'}
+                  </button>
+                )}
+              </div>
+            </motion.section>
+          )}
+
+          {step === 'connected' && status?.status === 'CONNECTED' && (
+            <motion.div
+              key="connected"
+              className="wolf-md-modal__status"
+              initial={reduced ? false : { opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35, ease: EASE }}
+            >
+              <div className="wolf-md-modal__status-head">
+                <BrokerLogoMark id={status.providerId || selected?.id || ''} name={status.providerName || ''} />
+                <strong>● {status.message}</strong>
+              </div>
+              <span>Source: {status.providerName}</span>
+              <span>Mode: {status.mode}</span>
+              <span>Historical: {status.historical ? 'Available' : '—'}</span>
+              <span>Live Quotes: {status.liveQuotes ? 'Available' : 'Not available'}</span>
+              <span>Order Access: NOT ENABLED</span>
+              {status.permissionNote && <span className="wolf-md-modal__note">{status.permissionNote}</span>}
+              <p className="wolf-md-detect__hint">
+                Scanner is broker-agnostic — it only sees normalized WOLF market data.
+              </p>
+              <div className="wolf-md-token__actions">
+                <button type="button" className="ghost" onClick={() => void onDisconnect()} disabled={busy}>
+                  Disconnect
+                </button>
+                <button type="button" className="primary" onClick={onClose}>
+                  Continue to Radar
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {error && (
+          <motion.p
+            className="wolf-md-modal__error"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {error}
+          </motion.p>
+        )}
+      </motion.div>
     </div>
   );
 }
