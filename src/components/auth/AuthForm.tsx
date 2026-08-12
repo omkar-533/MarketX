@@ -137,13 +137,13 @@ export default function AuthForm({
           }
         />
 
-        <div className="flex items-center justify-between -mt-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 -mt-1">
           <label className="auth-checkbox">
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             <span>Keep me signed in</span>
           </label>
           {onForgotClick ? (
-            <button type="button" className="auth-inline-link text-[11px]" onClick={onForgotClick}>
+            <button type="button" className="auth-inline-link text-[11px] shrink-0" onClick={onForgotClick}>
               Forgot password?
             </button>
           ) : null}

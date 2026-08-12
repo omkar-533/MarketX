@@ -4694,6 +4694,245 @@ input[type="number"] { -moz-appearance: textfield; }
   filter: brightness(1.05);
 }
 
+/* ── Mobile fit: landing + auth + plan modals ───────────────── */
+@media (max-width: 720px) {
+  .auth-lux__nav {
+    height: 3.85rem;
+  }
+
+  .auth-lux__nav-inner {
+    padding: 0 0.85rem;
+    gap: 0.55rem;
+  }
+
+  .auth-lux__brand-text {
+    font-size: 1.05rem !important;
+    letter-spacing: 0.06em;
+  }
+
+  .auth-lux__nav-actions {
+    gap: 0.4rem;
+  }
+
+  .auth-lux__btn-ghost,
+  .auth-lux__btn-solid {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .auth-lux__main {
+    padding-top: 3.85rem;
+    overflow-x: clip;
+  }
+
+  .auth-lux__hero {
+    padding: 2.25rem 1rem 3.25rem;
+  }
+
+  .auth-lux__headline {
+    font-size: clamp(2.15rem, 11vw, 3rem);
+    line-height: 1.05;
+  }
+
+  .auth-lux__sub,
+  .auth-lux__section-sub {
+    padding-inline: 0.15rem;
+    font-size: 0.95rem;
+  }
+
+  .auth-lux__hero-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .auth-lux__hero-actions .auth-lux__btn-solid,
+  .auth-lux__hero-actions .auth-lux__btn-ghost {
+    width: 100%;
+    max-width: 22rem;
+  }
+
+  .auth-lux__hero-stage {
+    margin-top: 2.25rem;
+  }
+
+  .auth-lux__band {
+    padding: 3rem 1rem;
+    gap: 1.5rem;
+  }
+
+  .auth-lux__band-title,
+  .auth-lux__section-title {
+    font-size: clamp(1.7rem, 7.5vw, 2.35rem);
+  }
+
+  .auth-lux__features-inner,
+  .auth-lux__reviews,
+  .auth-lux__pricing-inner,
+  .auth-lux__bottom-cta,
+  .auth-lux__footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .auth-lux__features-inner {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .auth-lux__reviews {
+    padding-top: 3.5rem;
+    padding-bottom: 3.25rem;
+    overflow-x: clip;
+  }
+
+  /* Stop horizontal marquee clipping — stack review cards fully on screen */
+  .auth-lux__reviews .fx-marquee {
+    mask-image: none;
+    -webkit-mask-image: none;
+    overflow: visible;
+  }
+
+  .auth-lux__reviews .fx-marquee__track {
+    animation: none !important;
+    flex-direction: column;
+    width: 100%;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .auth-lux__reviews .fx-marquee__set {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.85rem;
+  }
+
+  .auth-lux__reviews .fx-marquee__set[aria-hidden='true'] {
+    display: none;
+  }
+
+  .auth-lux__review {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 1.15rem 1rem 1.1rem;
+  }
+
+  .auth-lux__review-text {
+    font-size: 0.88rem;
+  }
+
+  .auth-lux__pricing {
+    padding: 3.25rem 1rem 3.75rem;
+  }
+
+  .auth-lux__pricing-inner {
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .plan__body {
+    padding: 1.25rem 1.05rem 1.35rem;
+  }
+
+  .plan__amount {
+    font-size: 2.1rem;
+  }
+
+  .plan__promo-side {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+    padding: 0.28rem 0.5rem;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.3;
+  }
+
+  .plan__cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .plan-contact {
+    padding: 1rem 0.9rem;
+  }
+
+  .plan-contact__btns {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plan-contact__btn {
+    width: 100%;
+  }
+
+  .plan-contact-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .plan-contact-modal__panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(92dvh, 100%);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.15rem 1rem 1.25rem;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .plan-contact-modal .plan-contact__btns {
+    flex-direction: column;
+  }
+
+  .auth-lux-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .auth-lux-modal__panel {
+    max-width: 100%;
+    max-height: min(94dvh, 100%);
+    border-radius: 1.15rem 1.15rem 0 0;
+    padding: 1.25rem 1rem 1.4rem;
+    padding-bottom: max(1.4rem, env(safe-area-inset-bottom));
+  }
+
+  .auth-lux__footer-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .auth-lux__footer-links {
+    gap: 0.75rem 1rem;
+  }
+
+  .auth-lux__bottom-cta {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .auth-lux__btn-ghost {
+    padding: 0.42rem 0.65rem;
+  }
+
+  .auth-lux__pill {
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .plan-contact__btn {
+    font-size: 0.74rem;
+    padding: 0.55rem 0.85rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .plan--featured,
   .plan__sheen::after,
