@@ -4487,13 +4487,14 @@ input[type="number"] { -moz-appearance: textfield; }
   transform: translateY(-1px);
 }
 .plan-contact__btn--call {
-  background: #121520;
-  color: var(--tf-text);
-  border: 1px solid var(--tf-border);
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #1e293b;
 }
 .plan-contact__btn--call:hover {
-  border-color: rgba(212, 175, 55, 0.45);
-  color: var(--tj-gold);
+  border-color: rgba(212, 175, 55, 0.55);
+  color: #fde68a;
+  background: #111827;
 }
 .plan-contact__btn--wa {
   background: #25d366;
@@ -4529,18 +4530,24 @@ input[type="number"] { -moz-appearance: textfield; }
   border: 1px solid rgba(212, 175, 55, 0.35);
   background: var(--tf-elevated);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  color: var(--tf-text);
 }
 .plan-contact-modal__panel h3 {
   margin: 0 0 0.45rem;
   font-size: 1.05rem;
-  color: var(--tj-gold);
+  color: var(--tj-gold-strong, var(--tj-gold));
   letter-spacing: 0.04em;
+  font-weight: 800;
 }
 .plan-contact-modal__panel > p {
   margin: 0 0 1rem;
   font-size: 0.82rem;
   color: var(--tf-text-secondary);
   line-height: 1.45;
+}
+.plan-contact-modal__panel > p strong {
+  color: var(--tf-text);
+  font-weight: 800;
 }
 .plan-contact-modal__close {
   position: absolute;

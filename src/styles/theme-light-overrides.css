@@ -3172,3 +3172,54 @@ html[data-theme="light"] .bg-\[\#05080f\]\/80 {
 }
 
 
+
+/* Plan contact modal + Call/WhatsApp — light mode contrast */
+html[data-theme="light"] .plan-contact {
+  background: linear-gradient(180deg, #fff9ef, #ffffff) !important;
+  border-color: #e7d3a8 !important;
+}
+html[data-theme="light"] .plan-contact__lead {
+  color: #404040 !important;
+}
+html[data-theme="light"] .plan-contact__btn--call {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #0f172a !important;
+}
+html[data-theme="light"] .plan-contact__btn--call:hover {
+  color: #fde68a !important;
+  background: #111827 !important;
+  border-color: #b45309 !important;
+}
+html[data-theme="light"] .plan-contact__btn--wa {
+  color: #052e16 !important;
+}
+html[data-theme="light"] .plan-contact-modal__backdrop {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+html[data-theme="light"] .plan-contact-modal__panel {
+  background: #ffffff !important;
+  border-color: #d5dee9 !important;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16) !important;
+  color: #0a0a0a !important;
+}
+html[data-theme="light"] .plan-contact-modal__panel h3 {
+  color: #78350f !important;
+}
+html[data-theme="light"] .plan-contact-modal__panel > p {
+  color: #404040 !important;
+}
+html[data-theme="light"] .plan-contact-modal__panel > p strong {
+  color: #0a0a0a !important;
+}
+html[data-theme="light"] .plan-contact-modal__close {
+  color: #525252 !important;
+}
+html[data-theme="light"] .plan-contact-modal__close:hover {
+  color: #0a0a0a !important;
+  background: #f1f5f9 !important;
+}
+html[data-theme="light"] .plan-contact-modal .plan-contact {
+  background: transparent !important;
+  border: 0 !important;
+}
