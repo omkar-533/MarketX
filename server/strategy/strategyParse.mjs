@@ -117,6 +117,34 @@ export function detectClarifications(description, answered = {}) {
   return need;
 }
 
+function normalizeDescription(raw) {
+  let t = String(raw || '');
+  // Timeframe slang
+  t = t.replace(/\b(\d+)\s*(?:mnt|min(?:ute)?s?|mins)\b/gi, '$1m');
+  t = t.replace(/\b(\d+)\s*(?:hr|hrs|hour|hours)\b/gi, '$1h');
+  t = t.replace(/\bdaily\b/gi, '1D');
+  t = t.replace(/\bintraday\b/gi, '5m');
+  // EMA / SMA shorthand
+  t = t.replace(/\bema[\s_-]*(\d+)\b/gi, '$1 ema');
+  t = t.replace(/\bsma[\s_-]*(\d+)\b/gi, '$1 ema');
+  t = t.replace(/\bma[\s_-]*(\d+)\b/gi, '$1 ema');
+  // Cross / direction slang (EN + Hinglish)
+  t = t.replace(/\bcrossover\b/gi, 'cross');
+  t = t.replace(/\bcros\b/gi, 'cross');
+  t = t.replace(/\bcut\s*(above|below|upar|neeche)\b/gi, 'cross $1');
+  t = t.replace(/\bupar\b/gi, 'above');
+  t = t.replace(/\bneeche\b/gi, 'below');
+  t = t.replace(/\bteji|bull\b/gi, 'bullish');
+  t = t.replace(/\bmandi|bear\b/gi, 'bearish');
+  t = t.replace(/\bzyada\s*volume|high\s*vol\b/gi, 'volume expansion');
+  t = t.replace(/\bkam\s*volume|low\s*vol\b/gi, 'volume contraction');
+  t = t.replace(/\btod\s*(diya|dena|na)|break\s*out\b/gi, 'breakout');
+  t = t.replace(/\bgir\s*(gaya|na)|break\s*down\b/gi, 'breakdown');
+  t = t.replace(/\bgolden\s*crossover\b/gi, 'golden cross');
+  t = t.replace(/\bdeath\s*crossover\b/gi, 'death cross');
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 function normalizeTf(raw) {
   const s = String(raw || '')
     .trim()
@@ -134,6 +162,8 @@ function normalizeTf(raw) {
     '1d': '1D',
     d: '1D',
     daily: '1D',
+    '5mnt': '5m',
+    '15mnt': '15m',
   };
   return map[s] || null;
 }
@@ -142,9 +172,13 @@ function normalizeTf(raw) {
  * Keyword / rule local parser — used offline and as LLM fallback sanitizer seed.
  */
 export function localParseStrategy(description, answers = {}) {
-  const t = description.toLowerCase();
+  const t = normalizeDescription(description).toLowerCase();
   const conditions = [];
-  const push = (c) => conditions.push(c);
+  const push = (c) => {
+    if (!conditions.some((x) => x.type === c.type && x.timeframe === c.timeframe && x.value === c.value && x.operator === c.operator)) {
+      conditions.push(c);
+    }
+  };
 
   const tfFromContext = (fallback = '5m') => {
     if (/1\s*h|1h|hour/.test(t) && /15/.test(t) && /5/.test(t)) return fallback;
@@ -313,6 +347,54 @@ export function localParseStrategy(description, answers = {}) {
     push({ type: 'PRICE_BELOW_EMA', timeframe: tfFromContext('15m'), value: 21 });
   }
 
+  // RSI
+  const rsiAbove = /rsi\s*(?:is\s*)?(?:>|>=|above|over)\s*(\d{1,3})/i.exec(t) || /rsi\s*(\d{1,3})\s*(?:plus|\+)/i.exec(t);
+  const rsiBelow = /rsi\s*(?:is\s*)?(?:<|<=|below|under)\s*(\d{1,3})/i.exec(t);
+  if (rsiAbove) {
+    push({
+      type: 'RSI_ABOVE',
+      timeframe: tfFromContext('15m'),
+      operator: '>=',
+      value: Number(rsiAbove[1]) || 60,
+    });
+  } else if (rsiBelow) {
+    push({
+      type: 'RSI_BELOW',
+      timeframe: tfFromContext('15m'),
+      operator: '<=',
+      value: Number(rsiBelow[1]) || 40,
+    });
+  } else if (/\brsi\b/.test(t) && /oversold|neeche|weak/.test(t)) {
+    push({ type: 'RSI_BELOW', timeframe: tfFromContext('15m'), operator: '<=', value: 30 });
+  } else if (/\brsi\b/.test(t) && /overbought|upar|strong/.test(t)) {
+    push({ type: 'RSI_ABOVE', timeframe: tfFromContext('15m'), operator: '>=', value: 70 });
+  }
+
+  // Structure swings
+  if (/\bhigher\s*high|\bhh\b/.test(t)) push({ type: 'HH', timeframe: tfFromContext('15m') });
+  if (/\bhigher\s*low|\bhl\b/.test(t)) push({ type: 'HL', timeframe: tfFromContext('15m') });
+  if (/\blower\s*high|\blh\b/.test(t)) push({ type: 'LH', timeframe: tfFromContext('15m') });
+  if (/\blower\s*low|\bll\b/.test(t)) push({ type: 'LL', timeframe: tfFromContext('15m') });
+
+  if (/trend\s*continuation|continuation\s*trade|with\s*trend/.test(t)) {
+    push({
+      type: 'TREND_CONTINUATION',
+      timeframe: tfFromContext('15m'),
+      direction: /bear/.test(t) && !/bull/.test(t) ? 'BEARISH' : 'BULLISH',
+    });
+  }
+  if (/\breversal\b|ululta|mean\s*reversion/.test(t)) {
+    push({
+      type: 'REVERSAL',
+      timeframe: tfFromContext('15m'),
+      direction: /bear/.test(t) && !/bull/.test(t) ? 'BEARISH' : 'BULLISH',
+    });
+  }
+
+  if (/volume\s*contraction|dry\s*up|shrinking\s*volume/.test(t)) {
+    push({ type: 'VOLUME_CONTRACTION', timeframe: tfFromContext('5m') });
+  }
+
   const logicOp = /\bor\b/.test(t) && !/\band\b/.test(t) ? 'OR' : 'AND';
 
   const tfsUsed = [...new Set(conditions.map((c) => c.timeframe))];
@@ -447,11 +529,28 @@ export function sanitizeParsedStrategy(parsed) {
 
 function buildSystemPrompt() {
   return [
-    'You convert trading strategy descriptions into STRICT JSON for WOLF Strategy Lab.',
-    'NEVER invent unsupported data (no order flow, smart money, institutional footprints).',
-    'NEVER output code, SQL, or functions. JSON only inside one ```strategy fence.',
-    `Allowed condition types: ${ALLOWED_CONDITION_TYPES.join(', ')}.`,
-    `Allowed timeframes: ${ALLOWED_TFS.join(', ')}.`,
+    'You are WOLF Strategy Lab parser. Convert ANY trader prompt (English, Hinglish, typos, slang) into STRICT strategy JSON.',
+    'Understand intent first — fix spelling mentally (mnt=minute, cros=cross, upar=above, neeche=below, teji=bullish, mandi=bearish).',
+    'NEVER invent unsupported data (no order flow, smart money, institutional footprints, news, dark pool).',
+    'NEVER output code, SQL, or prose. JSON only inside one ```strategy fence.',
+    `Allowed condition types ONLY: ${ALLOWED_CONDITION_TYPES.join(', ')}.`,
+    `Allowed timeframes ONLY: ${ALLOWED_TFS.join(', ')}.`,
+    '',
+    'Mapping rules:',
+    '- "200 ema cross above / price above 200 ema / 200 ema upar" → PRICE_ABOVE_EMA value=200 (NOT death cross).',
+    '- "200 ema cross below / neeche" → PRICE_BELOW_EMA value=200.',
+    '- "50 ema above 200 ema / golden cross / 50>200" → EMA_CROSS operator=">" value=50 target="200" direction=BULLISH.',
+    '- "50 ema below 200 / death cross" → EMA_CROSS operator="<" value=50 target="200" direction=BEARISH.',
+    '- "rsi above 60 / rsi>60" → RSI_ABOVE; "rsi below 40" → RSI_BELOW.',
+    '- "volume expansion / zyada volume / high volume" → VOLUME_EXPANSION; "1.5x / 2x volume" → RELATIVE_VOLUME.',
+    '- "liquidity sweep prev low" → LIQUIDITY_SWEEP target PREVIOUS_LOW; structure shift/MSS → STRUCTURE_SHIFT; BOS → BOS.',
+    '- "breakout / range todna" → BREAKOUT; "breakdown" → BREAKDOWN.',
+    '- "1h trend bullish" → HTF_TREND timeframe 1h direction BULLISH.',
+    '- "5 mnt / 5 min / 5m" → timeframe 5m. Multi TFs → timeframeMode MULTI + timeframes object.',
+    '- Prefer AND unless user clearly says OR.',
+    '- Name should match intent (e.g. Price Above EMA 200), never mislabel golden as death.',
+    '- If something cannot map to allowed types, omit it; keep other valid conditions. Only empty conditions if nothing maps.',
+    '',
     'Schema:',
     '{',
     '  "name": string,',
@@ -464,18 +563,19 @@ function buildSystemPrompt() {
     '  "clarity": "CLEAR"|"PARTIALLY_CLEAR"|"NEEDS_CLARIFICATION",',
     '  "unsupportedReason": string|null',
     '}',
-    'If the ask cannot be mapped, return conditions:[] and clarity NEEDS_CLARIFICATION or set unsupportedReason.',
   ].join('\n');
 }
 
 function buildUserPrompt(description, answers) {
+  const normalized = normalizeDescription(description);
   return [
-    'User strategy description:',
+    'Trader prompt (raw):',
     description,
+    normalized !== description ? `Normalized hint: ${normalized}` : '',
     answers && Object.keys(answers).length
       ? `Clarification answers: ${JSON.stringify(answers)}`
       : '',
-    'Respond with one ```strategy JSON block only.',
+    'Map every understandable piece into allowed conditions. Respond with one ```strategy JSON block only.',
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -544,7 +644,7 @@ async function completeRaw(apiKey, system, user) {
  * Full parse pipeline for HTTP handler.
  */
 export async function parseStrategyDescription({ apiKey, description, answers = {}, preferLocal = false }) {
-  const text = String(description || '').trim();
+  const text = normalizeDescription(description);
   if (!text) {
     return { ok: false, status: 400, error: 'description required' };
   }
@@ -593,7 +693,7 @@ export async function parseStrategyDescription({ apiKey, description, answers = 
           ok: false,
           clarity: 'NEEDS_CLARIFICATION',
           message:
-            "I couldn't confidently translate that strategy into WOLF-supported conditions.",
+            "I couldn't confidently translate that strategy into WOLF-supported conditions. Try naming timeframe + indicator clearly (e.g. \"200 ema cross above on 5m\").",
           clarifications: [],
           strategy: null,
           errors: sanitized.errors,
@@ -638,9 +738,24 @@ export async function parseStrategyDescription({ apiKey, description, answers = 
       };
     }
     let sanitized = sanitizeParsedStrategy(extracted);
+    // Prefer richer valid LLM result; if weak/empty, fall back to local
+    const localSanitized = sanitizeParsedStrategy(local);
+    if (
+      (!sanitized.ok || !sanitized.strategy?.conditions?.length) &&
+      localSanitized.ok &&
+      localSanitized.strategy?.conditions?.length
+    ) {
+      sanitized = localSanitized;
+    } else if (
+      sanitized.ok &&
+      localSanitized.ok &&
+      (localSanitized.strategy.conditions?.length || 0) > (sanitized.strategy.conditions?.length || 0)
+    ) {
+      // Keep LLM name/desc if present, but merge missing local conditions by preferring longer local when LLM under-mapped
+      sanitized = localSanitized;
+    }
     if (!sanitized.ok) {
-      // fallback to local map if LLM failed schema
-      sanitized = sanitizeParsedStrategy(local);
+      sanitized = localSanitized;
     }
     if (!sanitized.ok) {
       return {
@@ -650,7 +765,7 @@ export async function parseStrategyDescription({ apiKey, description, answers = 
           ok: false,
           clarity: 'NEEDS_CLARIFICATION',
           message:
-            "I couldn't confidently translate that strategy into WOLF-supported conditions.",
+            "I couldn't confidently translate that strategy into WOLF-supported conditions. Add timeframe + clear rules (EMA/RSI/sweep/breakout).",
           clarifications: [],
           strategy: null,
           errors: sanitized.errors,
@@ -680,15 +795,19 @@ export async function parseStrategyDescription({ apiKey, description, answers = 
         status: 200,
         result: {
           ok: true,
-          clarity: sanitized.strategy.clarity,
-          message: 'Strategy built (local parse — AI unavailable).',
+          clarity: sanitized.strategy.clarity || 'CLEAR',
+          message: 'Strategy built (local fallback).',
           clarifications: [],
           strategy: sanitized.strategy,
-          source: 'local',
+          source: 'local-fallback',
           warning: err instanceof Error ? err.message : 'AI unavailable',
         },
       };
     }
-    throw err;
+    return {
+      ok: false,
+      status: err?.status || 503,
+      error: err instanceof Error ? err.message : 'Strategy parse failed',
+    };
   }
 }
