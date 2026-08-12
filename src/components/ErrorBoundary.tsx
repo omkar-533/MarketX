@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { isStaleChunkError, reloadOnceForStaleChunk } from '../utils/lazyWithRetry';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -12,9 +13,18 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[App] Render error:', error, info.componentStack);
+    if (isStaleChunkError(error)) {
+      reloadOnceForStaleChunk();
+    }
   }
 
   render() {
+    if (this.state.error && isStaleChunkError(this.state.error)) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[var(--tf-bg,#0a0e17)]" aria-busy="true" />
+      );
+    }
+
     if (this.state.error) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 bg-[#0a0e17] text-slate-200">

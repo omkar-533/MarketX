@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowDownRight,
@@ -79,9 +79,10 @@ import {
 } from '../services/journalTradeCalc';
 import HunterMark from './HunterMark';
 import LuxSelect from './ui/LuxSelect';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
-const GlobalInstrumentPicker = lazy(() => import('./journal/GlobalInstrumentPicker'));
-const JournalSymbolPicker = lazy(() => import('./journal/JournalSymbolPicker'));
+const GlobalInstrumentPicker = lazyWithRetry(() => import('./journal/GlobalInstrumentPicker'));
+const JournalSymbolPicker = lazyWithRetry(() => import('./journal/JournalSymbolPicker'));
 
 type NotificationItem = {
   id: string;

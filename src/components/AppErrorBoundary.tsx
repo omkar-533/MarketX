@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { isStaleChunkError, reloadOnceForStaleChunk } from '../utils/lazyWithRetry';
 
 type Props = {
   children: ReactNode;
@@ -11,7 +12,7 @@ const MAX_SOFT_RECOVERIES = 1;
 
 /**
  * Soft recovery boundary — navigates home, then remounts once.
- * Never remounts the same crashing tree in-place (that caused LIVE WOLF hiccup loops).
+ * Stale deploy chunks auto-reload once (no "Workspace hiccup" for that case).
  */
 export default class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: null, recoverKey: 0, attempts: 0 };
@@ -31,10 +32,14 @@ export default class AppErrorBoundary extends Component<Props, State> {
     } catch {
       /* ignore */
     }
+
+    if (isStaleChunkError(error) && reloadOnceForStaleChunk()) {
+      return;
+    }
+
     if (this.recoverTimer) clearTimeout(this.recoverTimer);
     const nextAttempts = this.state.attempts + 1;
 
-    // Leave the broken tab immediately so remount cannot re-open the same crash.
     try {
       this.props.onReset?.();
     } catch {
@@ -60,6 +65,11 @@ export default class AppErrorBoundary extends Component<Props, State> {
   }
 
   render() {
+    if (this.state.error && isStaleChunkError(this.state.error)) {
+      // Reload in progress (or already attempted) — keep quiet.
+      return <div className="wolf-desk-recover wolf-desk-recover--quiet" aria-busy="true" />;
+    }
+
     if (this.state.error && this.state.attempts >= MAX_SOFT_RECOVERIES) {
       const detail =
         this.state.error.message ||
