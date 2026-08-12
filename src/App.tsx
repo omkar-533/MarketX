@@ -478,7 +478,9 @@ function AppWorkspace() {
                           ? 'page-content page-content--terminal'
                           : activeTab === 'optionchain'
                             ? 'page-content page-content--optionchain'
-                            : 'page-content page-content--full'
+                            : activeTab === 'wolf-opportunity'
+                              ? 'page-content page-content--opportunity'
+                              : 'page-content page-content--full'
                 : ''
             }
           >
