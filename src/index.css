@@ -4697,7 +4697,13 @@ input[type="number"] { -moz-appearance: textfield; }
 /* ── Mobile fit: landing + auth + plan modals ───────────────── */
 @media (max-width: 720px) {
   .auth-lux__nav {
-    height: 3.85rem;
+    height: calc(3.85rem + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(5, 5, 5, 0.94);
+  }
+
+  .auth-lux__nav.is-scrolled {
+    background: rgba(5, 5, 5, 0.97);
   }
 
   .auth-lux__nav-inner {
@@ -4722,7 +4728,7 @@ input[type="number"] { -moz-appearance: textfield; }
   }
 
   .auth-lux__main {
-    padding-top: 3.85rem;
+    padding-top: calc(3.85rem + env(safe-area-inset-top, 0px));
     overflow-x: clip;
   }
 
@@ -4765,6 +4771,8 @@ input[type="number"] { -moz-appearance: textfield; }
   .auth-lux__band-title,
   .auth-lux__section-title {
     font-size: clamp(1.7rem, 7.5vw, 2.35rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .auth-lux__features-inner,
@@ -4785,6 +4793,7 @@ input[type="number"] { -moz-appearance: textfield; }
     padding-top: 3.5rem;
     padding-bottom: 3.25rem;
     overflow-x: clip;
+    scroll-margin-top: calc(4.25rem + env(safe-area-inset-top, 0px));
   }
 
   /* Stop horizontal marquee clipping — stack review cards fully on screen */
@@ -4823,8 +4832,13 @@ input[type="number"] { -moz-appearance: textfield; }
     font-size: 0.88rem;
   }
 
+  .auth-lux__review-meta span {
+    overflow-wrap: anywhere;
+  }
+
   .auth-lux__pricing {
     padding: 3.25rem 1rem 3.75rem;
+    scroll-margin-top: calc(4.25rem + env(safe-area-inset-top, 0px));
   }
 
   .auth-lux__pricing-inner {
@@ -4853,6 +4867,7 @@ input[type="number"] { -moz-appearance: textfield; }
   .plan__cta {
     width: 100%;
     justify-content: center;
+    min-height: 2.75rem;
   }
 
   .plan-contact {
@@ -4866,6 +4881,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
   .plan-contact__btn {
     width: 100%;
+    min-height: 2.75rem;
   }
 
   .plan-contact-modal {
@@ -4888,6 +4904,13 @@ input[type="number"] { -moz-appearance: textfield; }
     flex-direction: column;
   }
 
+  .plan-contact-modal__verify,
+  .plan-contact-modal__signup {
+    min-height: 2.65rem;
+    width: 100%;
+    justify-content: center;
+  }
+
   .auth-lux-modal {
     align-items: flex-end;
     padding: 0;
@@ -4904,15 +4927,34 @@ input[type="number"] { -moz-appearance: textfield; }
   .auth-lux__footer-top {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
   }
 
   .auth-lux__footer-links {
-    gap: 0.75rem 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.65rem 1rem;
+  }
+
+  .auth-lux__footer-links a,
+  .auth-lux__footer-links button {
+    text-align: left;
+    padding: 0.25rem 0;
+  }
+
+  .auth-lux__footer-note {
+    font-size: 0.7rem;
   }
 
   .auth-lux__bottom-cta {
     padding-top: 3.5rem;
     padding-bottom: 3.5rem;
+  }
+
+  .auth-lux__plans-foot {
+    font-size: 0.72rem;
+    line-height: 1.5;
   }
 }
 

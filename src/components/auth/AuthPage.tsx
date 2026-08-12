@@ -83,7 +83,7 @@ const avatar = (n: number) => `${import.meta.env.BASE_URL}landing/avatars/trader
 const REVIEWS = [
   {
     name: 'Rohan Mehta',
-    role: 'Options trader � Mumbai',
+    role: 'Options trader · Mumbai',
     rating: 5,
     photo: avatar(1),
     quote:
@@ -91,23 +91,23 @@ const REVIEWS = [
   },
   {
     name: 'Ananya Kulkarni',
-    role: 'Prop desk � Bengaluru',
+    role: 'Prop desk · Bengaluru',
     rating: 5,
     photo: avatar(2),
     quote:
-      'The Trading Journal is what actually changed things for me. Tagging every entry showed most of my losses came from the first fifteen minutes � so I stopped trading the open.',
+      'The Trading Journal is what actually changed things for me. Tagging every entry showed most of my losses came from the first fifteen minutes — so I stopped trading the open.',
   },
   {
     name: 'Vikram Singh',
-    role: 'Intraday F&O � Delhi',
+    role: 'Intraday F&O · Delhi',
     rating: 5,
     photo: avatar(3),
     quote:
-      'Indicators library is clean � open a card, read the note, copy the code. I stopped hunting scripts on Telegram and Discord every morning.',
+      'Indicators library is clean — open a card, read the note, copy the code. I stopped hunting scripts on Telegram and Discord every morning.',
   },
   {
     name: 'Neha Patil',
-    role: 'Swing trader � Pune',
+    role: 'Swing trader · Pune',
     rating: 4,
     photo: avatar(4),
     quote:
@@ -115,15 +115,15 @@ const REVIEWS = [
   },
   {
     name: 'Karthik Raman',
-    role: 'Positional trader � Chennai',
+    role: 'Positional trader · Chennai',
     rating: 5,
     photo: avatar(5),
     quote:
-      'I keep the Indicators page bookmarked. New scripts show up with a cover and description � I preview, copy, and I am on my chart in under a minute.',
+      'I keep the Indicators page bookmarked. New scripts show up with a cover and description — I preview, copy, and I am on my chart in under a minute.',
   },
   {
     name: 'Sneha Desai',
-    role: 'Options seller � Hyderabad',
+    role: 'Options seller · Hyderabad',
     rating: 4,
     photo: avatar(6),
     quote:
@@ -131,15 +131,15 @@ const REVIEWS = [
   },
   {
     name: 'Aditya Joshi',
-    role: 'F&O trader � Ahmedabad',
+    role: 'F&O trader · Ahmedabad',
     rating: 5,
     photo: avatar(7),
     quote:
-      'Setup took ten minutes. What sold me was Wolf AI plus the Journal together � ask a question, then log the trade the same session. Simple loop.',
+      'Setup took ten minutes. What sold me was Wolf AI plus the Journal together — ask a question, then log the trade the same session. Simple loop.',
   },
   {
     name: 'Meera Sharma',
-    role: 'Part-time trader � Kolkata',
+    role: 'Part-time trader · Kolkata',
     rating: 5,
     photo: avatar(8),
     quote:
@@ -263,7 +263,7 @@ function StoryBand({
 }
 
 /**
- * LuxAlgo-style premium landing � cinematic hero, story bands, reviews.
+ * LuxAlgo-style premium landing · cinematic hero, story bands, reviews.
  * Login ONLY via Sign In modal (invite-only).
  */
 type AuthView =
@@ -383,7 +383,7 @@ export default function AuthPage(props: AuthPageProps) {
             >
               <span className="auth-lux__pill-dot" />
               <span className="auth-lux__pill-brand">{BRAND}</span>
-              <span className="auth-lux__pill-sep">�</span>
+              <span className="auth-lux__pill-sep">·</span>
               <span>{BRAND_TAGLINE}</span>
             </motion.p>
             <h1 className="auth-lux__headline">
@@ -455,7 +455,7 @@ export default function AuthPage(props: AuthPageProps) {
           ))}
         </section>
 
-        {/* Reviews � auto-scrolling trader stories */}
+        {/* Reviews · auto-scrolling trader stories */}
         <section className="auth-lux__reviews" id="reviews">
           <div className="auth-lux__reviews-head">
             <Reveal y={26} blur={false}>
@@ -592,7 +592,7 @@ export default function AuthPage(props: AuthPageProps) {
           <p className="auth-lux__footer-note">
             Trading &amp; investing are risky and many will lose money. Content on this site is not financial
             advice. Past performance does not guarantee future results. Hypothetical results have
-            limitations. � {new Date().getFullYear()} {BRAND}.
+            limitations. · {new Date().getFullYear()} {BRAND}.
           </p>
         </footer>
       </main>
