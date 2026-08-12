@@ -195,7 +195,7 @@ export function getFnoUniverse() {
 export function resolveServerUniverse(universe) {
   const id = String(universe || 'F&O');
   if (id === 'NIFTY50' || id === 'NIFTY') return getNifty50Universe();
-  if (id === 'CASH') return getNifty50Universe();
+  if (id === 'CASH') return getNifty50Universe(); // live master overrides via getLiveUniverseSymbols
   if (id === 'NSE' || id === 'NSE_EQ') {
     // Without live instrument master, honest DEMO snapshot = F&O underlyings + Nifty50 (not fake 6500).
     return getFnoUniverse();

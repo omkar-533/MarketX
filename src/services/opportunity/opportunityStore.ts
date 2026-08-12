@@ -19,7 +19,12 @@ export function loadOpportunityFilters(): OpportunityFilters {
   try {
     const raw = localStorage.getItem(FILTERS_KEY);
     if (!raw) return { ...DEFAULT_OPPORTUNITY_FILTERS };
-    return { ...DEFAULT_OPPORTUNITY_FILTERS, ...(JSON.parse(raw) as Partial<OpportunityFilters>) };
+    const parsed = JSON.parse(raw) as Partial<OpportunityFilters>;
+    const next = { ...DEFAULT_OPPORTUNITY_FILTERS, ...parsed };
+    if (next.universe === 'NIFTY50' || next.universe === 'NIFTY500') {
+      next.universe = 'CASH';
+    }
+    return next;
   } catch {
     return { ...DEFAULT_OPPORTUNITY_FILTERS };
   }

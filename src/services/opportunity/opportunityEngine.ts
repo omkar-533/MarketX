@@ -44,8 +44,8 @@ export type RunOpportunityOptions = {
 function toRadarUniverse(u: OpportunityFilters['universe']): RadarUniverse {
   if (u === 'F&O') return 'F&O';
   if (u === 'NIFTY50') return 'NIFTY50';
-  if (u === 'NIFTY500') return 'NSE';
-  return 'NIFTY50';
+  if (u === 'CASH' || u === 'NIFTY500') return 'CASH';
+  return 'CASH';
 }
 
 function emptyCards(reason?: string): ScannerCardState[] {
@@ -133,7 +133,7 @@ export async function runOpportunityScan(
     };
   }
 
-  const CONCURRENCY = provider.isDemo ? 8 : 3;
+  const CONCURRENCY = provider.isDemo ? 12 : symbols.length > 400 ? 5 : 3;
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;

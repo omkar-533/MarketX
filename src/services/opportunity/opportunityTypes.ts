@@ -31,7 +31,7 @@ export type DataFeedStatus = 'LIVE' | 'DELAYED' | 'OFFLINE' | 'DEMO';
 
 export type OpportunityTimeframe = '5m' | '15m' | '1h' | '1D';
 
-export type OpportunityUniverse = 'F&O' | 'NIFTY50' | 'NIFTY500' | 'CUSTOM';
+export type OpportunityUniverse = 'F&O' | 'NIFTY50' | 'NIFTY500' | 'CASH' | 'CUSTOM';
 
 export type OpportunityMarket = 'NSE' | 'BSE';
 

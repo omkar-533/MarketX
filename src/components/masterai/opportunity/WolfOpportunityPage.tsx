@@ -433,10 +433,16 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         transition={{ delay: 0.08, duration: 0.45 }}
       >
         <div className="wolf-opp__seg-row" role="group" aria-label="Universe">
-          {(['F&O', 'NIFTY50'] as const).map((u) => (
+          {(['F&O', 'CASH'] as const).map((u) => (
             <Seg
               key={u}
-              on={filters.universe === u}
+              on={
+                u === 'CASH'
+                  ? filters.universe === 'CASH' ||
+                    filters.universe === 'NIFTY50' ||
+                    filters.universe === 'NIFTY500'
+                  : filters.universe === u
+              }
               onClick={() => {
                 patchFilters({ universe: u });
                 void runScan({ reset: true, filtersOverride: { universe: u } });

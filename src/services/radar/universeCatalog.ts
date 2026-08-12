@@ -6,6 +6,7 @@
  * Note: F&O here = equity UNDERLYINGS commonly available for chart/scan analysis,
  * not every option/futures contract row.
  */
+import nseEquityData from '../../data/nseEquity.json';
 export const NIFTY_50_SYMBOLS = [
   'ADANIENT',
   'ADANIPORTS',
@@ -199,7 +200,8 @@ export function getFnoUniverse(): string[] {
 }
 
 export function getCashUniverse(): string[] {
-  return getNifty50Universe();
+  const rows = nseEquityData as Array<{ s?: string }>;
+  return [...new Set(rows.map((r) => String(r.s || '').toUpperCase()).filter(Boolean))];
 }
 
 export type CatalogUniverseId =
@@ -250,7 +252,7 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
     NSE: 'NSE equity (DEMO snapshot)',
     BSE: 'BSE equity (DEMO snapshot)',
     NIFTY50: 'NIFTY 50',
-    CASH: 'Cash (Nifty 50 snapshot)',
+    CASH: 'NSE cash (all EQ)',
     NIFTY: 'NIFTY 50',
     BANKNIFTY: 'Bank Nifty basket',
   };
