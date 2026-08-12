@@ -1,6 +1,6 @@
 /**
- * WOLF OPPORTUNITY — premium one-screen market intelligence desk.
- * Logic unchanged; UI simplified for clarity + luxury motion.
+ * WOLF OPPORTUNITY — futuristic HUD market intelligence desk.
+ * Logic unchanged; pods + motion replace plain card boxes.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,20 +95,20 @@ function formatHitClock(ms: number): string {
   });
 }
 
-/** Asymmetric desk mosaic — varied spans so cards never look cookie-cutter. */
-const CARD_MOSAIC: Record<OpportunityScannerId, string> = {
-  momentum_surge: 'wolf-opp__card--hero',
-  flow_shift: 'wolf-opp__card--tall',
-  liquidity_hunt: 'wolf-opp__card--wide',
-  compression_break: 'wolf-opp__card--compact',
-  momentum_fade: 'wolf-opp__card--tall',
-  breakout_radar: 'wolf-opp__card--wide',
-  reversal_hunter: 'wolf-opp__card--compact',
-  sector_leaders: 'wolf-opp__card--hero',
-  delivery_flow: 'wolf-opp__card--compact',
-  trend_rider: 'wolf-opp__card--tall',
-  options_flow: 'wolf-opp__card--wide',
-  wolf_prime: 'wolf-opp__card--prime',
+/** Futuristic HUD pods — varied silhouettes (not plain boxes). */
+const CARD_POD: Record<OpportunityScannerId, string> = {
+  momentum_surge: 'wolf-opp__pod--nova',
+  flow_shift: 'wolf-opp__pod--blade',
+  liquidity_hunt: 'wolf-opp__pod--wing',
+  compression_break: 'wolf-opp__pod--chip',
+  momentum_fade: 'wolf-opp__pod--blade',
+  breakout_radar: 'wolf-opp__pod--wing',
+  reversal_hunter: 'wolf-opp__pod--chip',
+  sector_leaders: 'wolf-opp__pod--nova',
+  delivery_flow: 'wolf-opp__pod--chip',
+  trend_rider: 'wolf-opp__pod--blade',
+  options_flow: 'wolf-opp__pod--wing',
+  wolf_prime: 'wolf-opp__pod--core',
 };
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
@@ -467,34 +467,50 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
       ) : null}
 
       <section className="wolf-opp__desk" aria-label="Scanners">
-        <div className="wolf-opp__grid wolf-opp__grid--mosaic">
+        <div className="wolf-opp__grid wolf-opp__grid--lattice">
           {cards.map((card, idx) => {
-            const mosaic = CARD_MOSAIC[card.scannerId] || 'wolf-opp__card--compact';
+            const pod = CARD_POD[card.scannerId] || 'wolf-opp__pod--chip';
             const visibleHits = card.hits.slice(0, OPPORTUNITY_CARD_VISIBLE);
             const extra = Math.max(0, card.hits.length - visibleHits.length);
             return (
               <motion.article
                 key={card.scannerId}
-                className={`wolf-opp__card ${mosaic}`}
-                initial={{ opacity: 0, y: 28, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={`wolf-opp__pod ${pod}`}
+                initial={{ opacity: 0, y: 36, rotateX: 8, filter: 'blur(6px)' }}
+                animate={{ opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }}
                 transition={{
-                  delay: 0.04 * Math.min(idx, 10),
-                  duration: 0.55,
+                  delay: 0.05 * Math.min(idx, 11),
+                  duration: 0.65,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                whileHover={{ y: -5, transition: { duration: 0.22 } }}
+                whileHover={{
+                  y: -8,
+                  scale: 1.012,
+                  transition: { type: 'spring', stiffness: 380, damping: 22 },
+                }}
               >
-                <div className="wolf-opp__card-glow" aria-hidden />
-                <header>
-                  <div className="wolf-opp__card-head">
-                    <h3>{prettyTitle(card.title)}</h3>
+                <div className="wolf-opp__pod-beam" aria-hidden />
+                <div className="wolf-opp__pod-scan" aria-hidden />
+                <span className="wolf-opp__pod-corner wolf-opp__pod-corner--tl" aria-hidden />
+                <span className="wolf-opp__pod-corner wolf-opp__pod-corner--tr" aria-hidden />
+                <span className="wolf-opp__pod-corner wolf-opp__pod-corner--bl" aria-hidden />
+                <span className="wolf-opp__pod-corner wolf-opp__pod-corner--br" aria-hidden />
+
+                <header className="wolf-opp__pod-head">
+                  <div className="wolf-opp__pod-head-row">
+                    <div className="wolf-opp__pod-title-wrap">
+                      <span className="wolf-opp__pod-sig" aria-hidden />
+                      <h3>{prettyTitle(card.title)}</h3>
+                    </div>
                     {card.hits.length ? (
-                      <span className="wolf-opp__card-count">{card.hits.length}</span>
+                      <span className="wolf-opp__pod-hex" title={`${card.hits.length} setups`}>
+                        <span>{card.hits.length}</span>
+                      </span>
                     ) : null}
                   </div>
                   <p>{card.tagline}</p>
                 </header>
+
                 {card.status === 'unavailable' ? (
                   <p className="wolf-opp__empty">{card.unavailableReason}</p>
                 ) : !card.hits.length ? (
@@ -503,18 +519,22 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                   </p>
                 ) : (
                   <>
-                    <ul>
+                    <ul className="wolf-opp__pod-list">
                       <AnimatePresence initial={false}>
                         {visibleHits.map((hit, hitIdx) => {
                           const bias = biasOf(hit);
                           return (
                             <motion.li
                               key={hit.id}
-                              className={`is-${bias}`}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ delay: hitIdx * 0.035, duration: 0.28 }}
+                              className={`wolf-opp__signal is-${bias}`}
+                              initial={{ opacity: 0, x: -16, scale: 0.98 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: 8 }}
+                              transition={{
+                                delay: hitIdx * 0.04,
+                                duration: 0.32,
+                                ease: [0.22, 1, 0.36, 1],
+                              }}
                               layout
                             >
                               <button
@@ -538,7 +558,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                                     </span>
                                   </span>
                                 </span>
-                                <span className="wolf-opp__row-score">{hit.score}</span>
+                                <span className="wolf-opp__row-score">
+                                  <span className="wolf-opp__score-ring">{hit.score}</span>
+                                </span>
                               </button>
                               <div className="wolf-opp__row-actions">
                                 <button type="button" onClick={() => setWhyHit(hit)}>

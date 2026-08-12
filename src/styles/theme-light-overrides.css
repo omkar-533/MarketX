@@ -2996,10 +2996,67 @@ html[data-theme="light"] .wolf-opp .up { color: #047857; }
 html[data-theme="light"] .wolf-opp .down { color: #be123c; }
 
 html[data-theme="light"] .wolf-opp__pulse,
-html[data-theme="light"] .wolf-opp__card,
 html[data-theme="light"] .wolf-opp__seg-row {
   background: #ffffff;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="light"] .wolf-opp__pod {
+  background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(146, 64, 14, 0.12);
+}
+html[data-theme="light"] .wolf-opp__pod:hover {
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(146, 64, 14, 0.28);
+  filter: none;
+}
+html[data-theme="light"] .wolf-opp__pod::before {
+  opacity: 0.35;
+}
+html[data-theme="light"] .wolf-opp__pod--nova {
+  background:
+    radial-gradient(90% 70% at 0% 0%, rgba(146, 64, 14, 0.1), transparent 55%),
+    linear-gradient(155deg, #ffffff, #f8fafc);
+}
+html[data-theme="light"] .wolf-opp__pod--core {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(146, 64, 14, 0.12), transparent 48%),
+    linear-gradient(145deg, #ffffff, #f8fafc);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(146, 64, 14, 0.2);
+}
+html[data-theme="light"] .wolf-opp__pod-beam {
+  opacity: 0.35;
+}
+html[data-theme="light"] .wolf-opp__pod-corner {
+  border-color: rgba(146, 64, 14, 0.55);
+}
+html[data-theme="light"] .wolf-opp__pod:hover .wolf-opp__pod-corner {
+  border-color: #92400e;
+}
+html[data-theme="light"] .wolf-opp__pod-sig {
+  background: linear-gradient(135deg, #b45309, #92400e);
+}
+html[data-theme="light"] .wolf-opp__signal {
+  background: #f4f6fa;
+  border-color: #e2e8f0;
+}
+html[data-theme="light"] .wolf-opp__signal:hover {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .wolf-opp__score-ring {
+  color: #78350f;
+  background: radial-gradient(circle at 35% 30%, rgba(146, 64, 14, 0.12), transparent 55%), #fff7ed;
+  box-shadow: 0 0 0 1px rgba(146, 64, 14, 0.35), inset 0 0 8px rgba(146, 64, 14, 0.06);
+  text-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__row-actions button {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #525252;
+}
+html[data-theme="light"] .wolf-opp__row-actions button:hover {
+  color: #78350f;
+  border-color: rgba(146, 64, 14, 0.35);
+  background: rgba(146, 64, 14, 0.06);
 }
 
 html[data-theme="light"] .wolf-opp__title span {
@@ -3033,7 +3090,7 @@ html[data-theme="light"] .wolf-opp__row-time {
   border-color: #e2e8f0;
 }
 
-html[data-theme="light"] .wolf-opp__card-count {
+html[data-theme="light"] .wolf-opp__pod-hex span {
   color: #0b0e17;
 }
 
@@ -3045,12 +3102,13 @@ html[data-theme="light"] .wolf-opp__prime-card {
 
 html[data-theme="light"] .wolf-opp__prime-score,
 html[data-theme="light"] .wolf-opp__row-score,
-html[data-theme="light"] .wolf-opp__card header h3 {
+html[data-theme="light"] .wolf-opp__score-ring,
+html[data-theme="light"] .wolf-opp__pod-head h3 {
   color: #78350f;
   text-shadow: none;
 }
 
-html[data-theme="light"] .wolf-opp__card ul {
+html[data-theme="light"] .wolf-opp__pod-list {
   scrollbar-color: rgba(146, 64, 14, 0.4) #eef2f7;
 }
 
@@ -3079,11 +3137,11 @@ html[data-theme="light"] .wolf-opp__bias--bearish {
   box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__prime-card.is-bullish,
-html[data-theme="light"] .wolf-opp__card li.is-bullish {
-  background: rgba(16, 185, 129, 0.06);
+html[data-theme="light"] .wolf-opp__signal.is-bullish {
+  background: rgba(16, 185, 129, 0.08);
 }
 html[data-theme="light"] .wolf-opp__prime-card.is-bearish,
-html[data-theme="light"] .wolf-opp__card li.is-bearish {
+html[data-theme="light"] .wolf-opp__signal.is-bearish {
   background: rgba(244, 63, 94, 0.05);
 }
 

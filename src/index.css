@@ -29102,7 +29102,7 @@ body:has(.app-main--terminal-immersive) #root {
   position: relative;
 }
 
-/* Scanner grid — asymmetric mosaic */
+/* Scanner lattice — futuristic HUD pods (not plain boxes) */
 .wolf-opp__desk {
   flex: 1;
   min-height: 0;
@@ -29113,114 +29113,315 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.75rem;
   align-content: start;
 }
-.wolf-opp__grid--mosaic {
+.wolf-opp__grid--lattice {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-auto-flow: dense;
-  gap: 0.85rem;
+  gap: 1rem;
   align-items: stretch;
+  perspective: 1600px;
 }
-.wolf-opp__card {
+
+@property --beam {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes wolf-opp-beam {
+  0% { --beam: 0deg; }
+  100% { --beam: 360deg; }
+}
+@keyframes wolf-opp-scan {
+  0% { transform: translateY(-120%); opacity: 0; }
+  18% { opacity: 0.55; }
+  55% { opacity: 0.2; }
+  100% { transform: translateY(220%); opacity: 0; }
+}
+@keyframes wolf-opp-sig-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); opacity: 1; }
+  50% { box-shadow: 0 0 0 6px rgba(212, 175, 55, 0); opacity: 0.75; }
+}
+@keyframes wolf-opp-hex-breathe {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.35)); }
+  50% { filter: drop-shadow(0 0 14px rgba(240, 215, 140, 0.55)); }
+}
+
+.wolf-opp__pod {
+  --pod-cut: 16px;
   position: relative;
   min-height: 13.5rem;
   max-height: 22rem;
   display: flex;
   flex-direction: column;
-  background: var(--opp-panel);
-  border: 1px solid var(--opp-hairline);
-  border-radius: 18px;
-  padding: 0.85rem 0.9rem 0.75rem;
+  padding: 0.95rem 1rem 0.8rem;
   overflow: hidden;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  color: var(--opp-text);
+  background:
+    linear-gradient(155deg, rgba(18, 24, 38, 0.88) 0%, rgba(8, 10, 18, 0.92) 55%, rgba(12, 16, 28, 0.9) 100%);
+  clip-path: polygon(
+    var(--pod-cut) 0,
+    calc(100% - var(--pod-cut)) 0,
+    100% var(--pod-cut),
+    100% calc(100% - var(--pod-cut)),
+    calc(100% - var(--pod-cut)) 100%,
+    var(--pod-cut) 100%,
+    0 calc(100% - var(--pod-cut)),
+    0 var(--pod-cut)
+  );
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(212, 175, 55, 0.12);
+  transition: box-shadow 0.3s ease, filter 0.3s ease;
 }
-.wolf-opp__card-glow {
-  pointer-events: none;
+.wolf-opp__pod::before {
+  content: "";
   position: absolute;
-  inset: -35% -15% auto;
-  height: 55%;
-  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.14), transparent 70%);
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.05) 50%, transparent 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.015) 2px,
+      rgba(255, 255, 255, 0.015) 3px
+    );
+  opacity: 0.7;
+}
+.wolf-opp__pod:hover {
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(240, 215, 140, 0.35),
+    0 0 40px rgba(212, 175, 55, 0.12);
+  filter: brightness(1.04);
+}
+
+/* Rotating gold beam edge */
+.wolf-opp__pod-beam {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background: conic-gradient(
+    from var(--beam, 0deg),
+    transparent 0%,
+    transparent 62%,
+    rgba(212, 175, 55, 0.05) 72%,
+    rgba(240, 215, 140, 0.85) 78%,
+    rgba(212, 175, 55, 0.15) 84%,
+    transparent 92%,
+    transparent 100%
+  );
+  animation: wolf-opp-beam 5.5s linear infinite;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  padding: 1.5px;
+}
+.wolf-opp__pod:hover .wolf-opp__pod-beam {
+  opacity: 0.95;
+  animation-duration: 2.8s;
+}
+
+/* Vertical scan sweep */
+.wolf-opp__pod-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 28%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(212, 175, 55, 0.12),
+    transparent
+  );
+  animation: wolf-opp-scan 4.8s ease-in-out infinite;
   opacity: 0;
-  transition: opacity 0.35s ease;
 }
-.wolf-opp__card:hover .wolf-opp__card-glow {
+.wolf-opp__pod:hover .wolf-opp__pod-scan {
+  animation-duration: 2.4s;
+}
+
+/* HUD corner brackets */
+.wolf-opp__pod-corner {
+  position: absolute;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  border-color: rgba(240, 215, 140, 0.75);
+  border-style: solid;
+  opacity: 0.55;
+  transition: opacity 0.25s, border-color 0.25s;
+}
+.wolf-opp__pod:hover .wolf-opp__pod-corner {
   opacity: 1;
+  border-color: #f0d78c;
 }
-.wolf-opp__card--compact {
+.wolf-opp__pod-corner--tl {
+  top: 8px;
+  left: 10px;
+  border-width: 2px 0 0 2px;
+}
+.wolf-opp__pod-corner--tr {
+  top: 8px;
+  right: 10px;
+  border-width: 2px 2px 0 0;
+}
+.wolf-opp__pod-corner--bl {
+  bottom: 8px;
+  left: 10px;
+  border-width: 0 0 2px 2px;
+}
+.wolf-opp__pod-corner--br {
+  bottom: 8px;
+  right: 10px;
+  border-width: 0 2px 2px 0;
+}
+
+/* Size / silhouette variants */
+.wolf-opp__pod--chip {
+  --pod-cut: 12px;
   grid-column: span 3;
   min-height: 14rem;
   max-height: 18rem;
 }
-.wolf-opp__card--tall {
+.wolf-opp__pod--blade {
+  --pod-cut: 22px;
   grid-column: span 3;
-  min-height: 18rem;
+  min-height: 18.5rem;
   max-height: 24rem;
+  clip-path: polygon(
+    0 18px,
+    18px 0,
+    100% 0,
+    100% calc(100% - 22px),
+    calc(100% - 22px) 100%,
+    0 100%
+  );
 }
-.wolf-opp__card--wide {
+.wolf-opp__pod--wing {
+  --pod-cut: 14px;
   grid-column: span 6;
   min-height: 15rem;
   max-height: 20rem;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 28px) 0,
+    100% 28px,
+    100% 100%,
+    28px 100%,
+    0 calc(100% - 28px)
+  );
 }
-.wolf-opp__card--hero {
+.wolf-opp__pod--nova {
+  --pod-cut: 20px;
   grid-column: span 6;
   min-height: 19rem;
   max-height: 26rem;
-  border-color: rgba(212, 175, 55, 0.28);
   background:
-    linear-gradient(160deg, rgba(212, 175, 55, 0.07), transparent 42%),
-    var(--opp-panel);
+    radial-gradient(90% 70% at 0% 0%, rgba(212, 175, 55, 0.16), transparent 55%),
+    linear-gradient(155deg, rgba(22, 28, 44, 0.92), rgba(8, 10, 18, 0.94));
+  clip-path: polygon(
+    20px 0,
+    calc(100% - 20px) 0,
+    100% 20px,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 calc(100% - 14px),
+    0 20px
+  );
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(212, 175, 55, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
-.wolf-opp__card--prime {
+.wolf-opp__pod--core {
+  --pod-cut: 24px;
   grid-column: span 12;
-  min-height: 16rem;
+  min-height: 16.5rem;
   max-height: 22rem;
-  border-color: rgba(212, 175, 55, 0.38);
   background:
-    radial-gradient(120% 80% at 100% 0%, rgba(212, 175, 55, 0.12), transparent 50%),
-    var(--opp-panel);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(212, 175, 55, 0.08) inset;
+    radial-gradient(120% 90% at 100% 0%, rgba(212, 175, 55, 0.2), transparent 48%),
+    radial-gradient(80% 60% at 0% 100%, rgba(56, 100, 180, 0.12), transparent 50%),
+    linear-gradient(145deg, rgba(24, 30, 46, 0.95), rgba(6, 8, 14, 0.96));
+  clip-path: polygon(
+    0 24px,
+    24px 0,
+    calc(100% - 40px) 0,
+    100% 40px,
+    100% calc(100% - 24px),
+    calc(100% - 24px) 100%,
+    40px 100%,
+    0 calc(100% - 40px)
+  );
+  box-shadow:
+    0 26px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.28),
+    0 0 48px rgba(212, 175, 55, 0.1);
 }
-.wolf-opp__card:hover {
-  border-color: rgba(212, 175, 55, 0.38);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.42);
+.wolf-opp__pod--core .wolf-opp__pod-beam {
+  opacity: 0.85;
+  animation-duration: 3.8s;
 }
-.wolf-opp__card header {
+
+/* Pod header */
+.wolf-opp__pod-head {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   flex-shrink: 0;
-  margin-bottom: 0.65rem;
-  padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--opp-hairline);
+  margin-bottom: 0.7rem;
+  padding: 0.15rem 0.15rem 0.65rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
 }
-.wolf-opp__card-head {
+.wolf-opp__pod-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
-.wolf-opp__card-count {
+.wolf-opp__pod-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.wolf-opp__pod-sig {
   flex-shrink: 0;
-  min-width: 1.4rem;
-  height: 1.4rem;
-  padding: 0 0.35rem;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #0b0e17;
-  background: linear-gradient(180deg, #f0d78c, #d4af37);
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  rotate: 45deg;
+  background: linear-gradient(135deg, #f0d78c, #d4af37);
+  animation: wolf-opp-sig-pulse 2.4s ease-in-out infinite;
 }
-.wolf-opp__card header h3 {
+.wolf-opp__pod-head h3 {
   margin: 0;
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
+  font-size: 0.88rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--opp-gold-soft);
   font-weight: 800;
+  font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.wolf-opp__card header p {
-  margin: 0.22rem 0 0;
+.wolf-opp__pod-head p {
+  margin: 0.28rem 0 0;
   font-size: 0.62rem;
   color: var(--opp-muted);
   line-height: 1.35;
@@ -29229,84 +29430,136 @@ body:has(.app-main--terminal-immersive) #root {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Hexagonal count badge */
+.wolf-opp__pod-hex {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: linear-gradient(180deg, #f0d78c, #b8922a);
+  animation: wolf-opp-hex-breathe 3s ease-in-out infinite;
+}
+.wolf-opp__pod-hex span {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #0b0e17;
+  font-family: Orbitron, sans-serif;
+  line-height: 1;
+}
+
 .wolf-opp__empty {
+  position: relative;
+  z-index: 2;
   margin: 0.65rem 0 0;
   font-size: 0.68rem;
   color: var(--opp-muted);
   line-height: 1.4;
 }
 .wolf-opp__more {
+  position: relative;
+  z-index: 2;
   flex-shrink: 0;
   margin: 0.45rem 0 0;
   font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--opp-muted);
 }
-.wolf-opp__card ul {
+
+/* Signal list */
+.wolf-opp__pod-list {
   list-style: none;
   margin: 0;
   padding: 0 0.15rem 0.15rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
   flex: 1 1 auto;
+  position: relative;
+  z-index: 2;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(212, 175, 55, 0.55) rgba(255, 255, 255, 0.04);
 }
-.wolf-opp__card ul::-webkit-scrollbar {
+.wolf-opp__pod-list::-webkit-scrollbar {
   width: 5px;
 }
-.wolf-opp__card ul::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.45);
+.wolf-opp__pod-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f0d78c, #d4af37);
   border-radius: 999px;
 }
-.wolf-opp__card ul::-webkit-scrollbar-track {
+.wolf-opp__pod-list::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 999px;
 }
-.wolf-opp__card li {
+
+/* Signal blades — cut-corner chips */
+.wolf-opp__signal {
   position: relative;
   flex-shrink: 0;
-  border-radius: 14px;
-  background: var(--opp-row);
-  border: 1px solid transparent;
-  padding-left: 0.15rem;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
+  background: linear-gradient(
+    105deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
+  transition: transform 0.22s ease, border-color 0.22s, box-shadow 0.22s, background 0.22s;
   overflow: hidden;
 }
-.wolf-opp__card li::before {
+.wolf-opp__signal::before {
   content: "";
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
   width: 3px;
-  background: rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.4);
 }
-.wolf-opp__card li.is-bullish::before {
-  background: linear-gradient(180deg, #34d399, #059669);
-  box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+.wolf-opp__signal.is-bullish {
+  background: linear-gradient(
+    105deg,
+    rgba(16, 185, 129, 0.12) 0%,
+    rgba(255, 255, 255, 0.02) 70%
+  );
+  border-color: rgba(52, 211, 153, 0.18);
 }
-.wolf-opp__card li.is-bearish::before {
-  background: linear-gradient(180deg, #fb7185, #e11d48);
-  box-shadow: 0 0 12px rgba(251, 113, 133, 0.4);
+.wolf-opp__signal.is-bullish::before {
+  background: linear-gradient(180deg, #6ee7b7, #059669);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.55);
 }
-.wolf-opp__card li.is-bullish {
-  background: rgba(16, 185, 129, 0.06);
+.wolf-opp__signal.is-bearish {
+  background: linear-gradient(
+    105deg,
+    rgba(244, 63, 94, 0.12) 0%,
+    rgba(255, 255, 255, 0.02) 70%
+  );
+  border-color: rgba(251, 113, 133, 0.18);
 }
-.wolf-opp__card li.is-bearish {
-  background: rgba(244, 63, 94, 0.06);
+.wolf-opp__signal.is-bearish::before {
+  background: linear-gradient(180deg, #fda4af, #e11d48);
+  box-shadow: 0 0 14px rgba(251, 113, 133, 0.5);
 }
-.wolf-opp__card li:hover {
-  border-color: rgba(212, 175, 55, 0.28);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  transform: translateX(2px);
+.wolf-opp__signal:hover {
+  transform: translateX(4px) translateY(-1px);
+  border-color: rgba(240, 215, 140, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28), 0 0 24px rgba(212, 175, 55, 0.08);
 }
+
 .wolf-opp__row {
   width: 100%;
   display: flex;
@@ -29316,7 +29569,7 @@ body:has(.app-main--terminal-immersive) #root {
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 0.5rem 0.55rem 0.2rem 0.6rem;
+  padding: 0.55rem 0.65rem 0.25rem 0.7rem;
   color: inherit;
   cursor: pointer;
 }
@@ -29333,9 +29586,9 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.4rem 0.55rem;
 }
 .wolf-opp__row-sym b {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 .wolf-opp__row-px {
   font-style: normal;
@@ -29361,36 +29614,59 @@ body:has(.app-main--terminal-immersive) #root {
   letter-spacing: 0.02em;
   color: var(--opp-muted);
   font-variant-numeric: tabular-nums;
-  padding: 0.12rem 0.35rem;
-  border-radius: 999px;
-  border: 1px solid var(--opp-hairline);
-  background: rgba(0, 0, 0, 0.18);
+  padding: 0.12rem 0.4rem;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  border: 0;
+  background: rgba(212, 175, 55, 0.1);
 }
 .wolf-opp__row-score {
+  flex-shrink: 0;
+}
+.wolf-opp__score-ring {
+  display: grid;
+  place-items: center;
+  min-width: 2.35rem;
+  height: 2.35rem;
+  padding: 0 0.2rem;
   font-family: Orbitron, sans-serif;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: var(--opp-gold-soft);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(240, 215, 140, 0.22), transparent 55%),
+    rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.45),
+    0 0 16px rgba(212, 175, 55, 0.2),
+    inset 0 0 10px rgba(212, 175, 55, 0.12);
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
 }
 .wolf-opp__row-actions {
   display: flex;
   gap: 0.4rem;
-  padding: 0 0.65rem 0.45rem 0.7rem;
+  padding: 0 0.7rem 0.5rem 0.75rem;
 }
 .wolf-opp__row-actions button {
-  border: 0;
-  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--opp-muted);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.15rem 0.2rem;
+  padding: 0.22rem 0.45rem;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 .wolf-opp__row-actions button:hover {
   color: var(--opp-gold-soft);
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.1);
 }
 .wolf-opp__drawer-bias {
   margin-top: 0.45rem;
@@ -29510,12 +29786,12 @@ body:has(.app-main--terminal-immersive) #root {
 
 @media (max-width: 1200px) {
   .wolf-opp__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .wolf-opp__grid--mosaic { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .wolf-opp__card--compact,
-  .wolf-opp__card--tall { grid-column: span 3; }
-  .wolf-opp__card--wide,
-  .wolf-opp__card--hero { grid-column: span 6; }
-  .wolf-opp__card--prime { grid-column: span 6; }
+  .wolf-opp__grid--lattice { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .wolf-opp__pod--chip,
+  .wolf-opp__pod--blade { grid-column: span 3; }
+  .wolf-opp__pod--wing,
+  .wolf-opp__pod--nova { grid-column: span 6; }
+  .wolf-opp__pod--core { grid-column: span 6; }
   .wolf-opp { max-height: none; }
 }
 @media (max-width: 960px) {
@@ -29527,12 +29803,12 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__hero-actions { justify-content: flex-start; }
   .wolf-opp__prime-grid { grid-template-columns: 1fr; }
   .wolf-opp__grid { grid-template-columns: 1fr; }
-  .wolf-opp__grid--mosaic { grid-template-columns: 1fr; }
-  .wolf-opp__card--compact,
-  .wolf-opp__card--tall,
-  .wolf-opp__card--wide,
-  .wolf-opp__card--hero,
-  .wolf-opp__card--prime {
+  .wolf-opp__grid--lattice { grid-template-columns: 1fr; }
+  .wolf-opp__pod--chip,
+  .wolf-opp__pod--blade,
+  .wolf-opp__pod--wing,
+  .wolf-opp__pod--nova,
+  .wolf-opp__pod--core {
     grid-column: span 1;
     max-height: 20rem;
   }
@@ -29541,7 +29817,7 @@ body:has(.app-main--terminal-immersive) #root {
 @media (max-width: 640px) {
   .wolf-opp { padding: 0.65rem 0.7rem; }
   .wolf-opp__grid { grid-template-columns: 1fr; }
-  .wolf-opp__grid--mosaic { grid-template-columns: 1fr; }
+  .wolf-opp__grid--lattice { grid-template-columns: 1fr; }
   .wolf-opp__status-line { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -29550,7 +29826,10 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__ring,
   .wolf-opp__prime-glow,
   .wolf-opp__title span,
-  .wolf-opp__card-glow {
+  .wolf-opp__pod-beam,
+  .wolf-opp__pod-scan,
+  .wolf-opp__pod-sig,
+  .wolf-opp__pod-hex {
     animation: none !important;
   }
 }
