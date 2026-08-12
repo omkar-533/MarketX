@@ -100,6 +100,16 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
   const [tplQuery, setTplQuery] = useState('');
   const [tplDetailId, setTplDetailId] = useState<string | null>(null);
 
+  // Build manually — AI prompt (same parse pipeline as Teach WOLF)
+  const [manualPrompt, setManualPrompt] = useState('');
+  const [manualAiPhase, setManualAiPhase] = useState<
+    'idle' | 'understanding' | 'clarify' | 'done' | 'fail'
+  >('idle');
+  const [manualAiMsg, setManualAiMsg] = useState<string | null>(null);
+  const [manualFromAi, setManualFromAi] = useState(false);
+  const [manualClarifications, setManualClarifications] = useState<ClarificationQuestion[]>([]);
+  const [manualAnswers, setManualAnswers] = useState<Record<string, string>>({});
+
   useEffect(() => {
     void fetchAiHealth().then(setAiHealth);
   }, []);
@@ -164,7 +174,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     const strat = createStrategyFromParts({
       name,
       description,
-      creationMethod: 'MANUAL',
+      creationMethod: manualFromAi ? 'AI_ASSISTED' : 'MANUAL',
       timeframeMode: tfMode,
       timeframe: tfMode === 'MULTI' ? (mtf.setup as RadarTimeframe) || timeframe : timeframe,
       timeframes:
@@ -180,6 +190,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     });
     refresh(upsertStrategy(strat));
     setNote(`✓ SETUP SAVED — “${strat.name}” is in WOLF Screeners Library → MY SCREENERS.`);
+    setManualFromAi(false);
     setTplCategory('MY');
     setTab('templates');
   };
@@ -199,9 +210,10 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
     setTab('templates');
   };
 
-  const applyAiDraftToManual = (draft: ParsedStrategyDraft) => {
+  const applyAiDraftToManual = (draft: ParsedStrategyDraft, sourceText?: string) => {
+    const src = (sourceText || teachText || '').slice(0, 160);
     setName(draft.name);
-    setDescription(draft.description || teachText.slice(0, 160));
+    setDescription(draft.description || src);
     setTfMode(draft.timeframeMode);
     setTimeframe(draft.timeframe);
     setMtf({
@@ -217,6 +229,44 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
         timeframe: c.timeframe,
       })),
     );
+    setManualFromAi(true);
+  };
+
+  const runManualAiParse = async (nextAnswers: Record<string, string> = manualAnswers) => {
+    setManualAiPhase('understanding');
+    setManualAiMsg('WOLF is reading your prompt and building conditions…');
+    try {
+      const result = await parseStrategyFromText(manualPrompt, nextAnswers);
+      if (result.clarity === 'UNSUPPORTED') {
+        setManualAiPhase('fail');
+        setManualAiMsg(result.message);
+        return;
+      }
+      if (result.clarifications?.length) {
+        setManualClarifications(result.clarifications);
+        setManualAiPhase('clarify');
+        setManualAiMsg(result.message || 'Need a bit more detail to finish the setup.');
+        return;
+      }
+      if (!result.ok || !result.strategy?.conditions?.length) {
+        setManualAiPhase('fail');
+        setManualAiMsg(
+          result.message ||
+            "Couldn't turn that prompt into WOLF-supported conditions. Tweak the text or add conditions by hand.",
+        );
+        return;
+      }
+      applyAiDraftToManual(result.strategy, manualPrompt);
+      setManualAiPhase('done');
+      setManualAiMsg(
+        `Built “${result.strategy.name}” — review name, timeframe & conditions below, then save.`,
+      );
+      setManualClarifications([]);
+      setManualAnswers({});
+    } catch (e) {
+      setManualAiPhase('fail');
+      setManualAiMsg(e instanceof Error ? e.message : 'AI build failed.');
+    }
   };
 
   const runTeachParse = async (nextAnswers: Record<string, string> = answers) => {
@@ -643,7 +693,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
           >
             {aiHealth?.available
-              ? `WOLF AI · ● READY · ${aiHealth.strategyParse?.model || aiHealth.provider || 'model'}`
+              ? 'WOLF AI · ● READY'
               : 'WOLF AI · ○ AI BUILDER UNAVAILABLE — try manual or local parse fallback'}
           </p>
           <textarea
@@ -758,6 +808,92 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
       {tab === 'manual' && (
         <section className="wolf-lab__manual">
           <h2>BUILD MANUALLY</h2>
+          <p className="wolf-radar-desk__subtitle">
+            Type conditions by hand — or describe the setup and let WOLF AI fill the form.
+          </p>
+
+          <div className="wolf-lab__manual-ai">
+            <div className="wolf-lab__manual-ai-head">
+              <Wand2 size={15} />
+              <strong>AI PROMPTING</strong>
+              <span
+                className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
+              >
+                {aiHealth?.available ? '● READY' : '○ UNAVAILABLE'}
+              </span>
+            </div>
+            <textarea
+              rows={4}
+              value={manualPrompt}
+              onChange={(e) => {
+                setManualPrompt(e.target.value);
+                if (manualAiPhase !== 'idle' && manualAiPhase !== 'understanding') {
+                  setManualAiPhase('idle');
+                  setManualAiMsg(null);
+                  setManualClarifications([]);
+                }
+              }}
+              placeholder='e.g. "Hunt stocks where 15m low is swept, then 5m turns bullish with volume expansion, and 1h trend is up."'
+              disabled={manualAiPhase === 'understanding'}
+            />
+            <button
+              type="button"
+              className="wolf-radar-desk__scan-btn"
+              onClick={() => void runManualAiParse({})}
+              disabled={!manualPrompt.trim() || manualAiPhase === 'understanding'}
+            >
+              <Wand2 size={16} /> BUILD FROM PROMPT
+            </button>
+
+            {manualAiPhase === 'understanding' && (
+              <div className="wolf-lab__loading" aria-live="polite">
+                <p>{manualAiMsg}</p>
+                <small>Same AI engine as Teach WOLF · Timeframes · Conditions · Logic</small>
+              </div>
+            )}
+
+            {manualAiPhase === 'clarify' && (
+              <div className="wolf-lab__clarify">
+                <p className="wolf-lab__note">{manualAiMsg}</p>
+                {manualClarifications.map((q) => (
+                  <div key={q.id} className="wolf-lab__clarify-q">
+                    <strong>{q.prompt}</strong>
+                    <div className="wolf-lab__clarify-opts">
+                      {q.options.map((o) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          className={manualAnswers[q.id] === o.id ? 'is-on' : ''}
+                          onClick={() =>
+                            setManualAnswers((a) => ({ ...a, [q.id]: o.id }))
+                          }
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="wolf-radar-desk__scan-btn"
+                  disabled={manualClarifications.some((q) => !manualAnswers[q.id])}
+                  onClick={() => void runManualAiParse(manualAnswers)}
+                >
+                  CONTINUE
+                </button>
+              </div>
+            )}
+
+            {(manualAiPhase === 'done' || manualAiPhase === 'fail') && manualAiMsg ? (
+              <p
+                className={`wolf-lab__note ${manualAiPhase === 'done' ? 'wolf-lab__note--ok' : ''}`}
+              >
+                {manualAiMsg}
+              </p>
+            ) : null}
+          </div>
+
           <div className="wolf-setups__builder">
             <label className="wolf-setups__field">
               <span>SETUP NAME</span>
