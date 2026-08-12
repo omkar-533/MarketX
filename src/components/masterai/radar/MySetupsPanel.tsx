@@ -434,7 +434,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
           <div className="wolf-lab__method-grid">
             <button type="button" onClick={() => setTab('manual')}>
               <strong>1 · BUILD MANUALLY</strong>
-              <span>Build using predefined WOLF conditions.</span>
+              <span>Hand-edit conditions, or AI-prompt WOLF to fill the form.</span>
             </button>
             <button type="button" onClick={() => setTab('teach')}>
               <strong>2 · TEACH WOLF</strong>
