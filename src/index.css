@@ -29153,9 +29153,9 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__sheet-head h3 {
   margin: 0;
-  font-size: 1.02rem;
+  font-size: 1.35rem;
   font-weight: 650;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
   font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
   color: var(--opp-text);
 }
