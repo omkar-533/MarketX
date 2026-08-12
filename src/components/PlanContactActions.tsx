@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Phone, MessageCircle, Ticket, X, ArrowRight } from 'lucide-react';
+import { Phone, MessageCircle, Ticket, X, ArrowRight, Loader2, Check } from 'lucide-react';
 import {
   deskPhoneDisplay,
   deskTelHref,
   deskWhatsAppUrl,
 } from '../constants/deskContact';
+import { verifyPromoCode } from '../services/promoCodes';
 
 type PlanContactActionsProps = {
   /** Optional plan label for WhatsApp prefill. */
@@ -57,7 +58,7 @@ type PlanContactModalProps = {
   open: boolean;
   onClose: () => void;
   planName?: string;
-  /** When set, entering a promo reveals Sign up and calls this with the code. */
+  /** After a promo is verified, Sign up appears and calls this with the code. */
   onSignUpWithPromo?: (promoCode: string) => void;
 };
 
@@ -69,10 +70,18 @@ export function PlanContactModal({
   onSignUpWithPromo,
 }: PlanContactModalProps) {
   const [promoCode, setPromoCode] = useState('');
+  const [verifiedCode, setVerifiedCode] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [verifyOk, setVerifyOk] = useState('');
 
   useEffect(() => {
     if (!open) {
       setPromoCode('');
+      setVerifiedCode(null);
+      setVerifying(false);
+      setVerifyError('');
+      setVerifyOk('');
       return;
     }
     const prev = document.body.style.overflow;
@@ -89,7 +98,39 @@ export function PlanContactModal({
 
   if (!open || typeof document === 'undefined') return null;
 
-  const canSignUp = Boolean(onSignUpWithPromo) && promoCode.trim().length >= 3;
+  const trimmed = promoCode.trim();
+  const isVerified = Boolean(verifiedCode && verifiedCode === trimmed);
+  const canSignUp = Boolean(onSignUpWithPromo) && isVerified;
+
+  const runVerify = async () => {
+    setVerifyError('');
+    setVerifyOk('');
+    setVerifiedCode(null);
+    if (trimmed.length < 3) {
+      setVerifyError('Enter a promo code first.');
+      return;
+    }
+    setVerifying(true);
+    try {
+      const result = await verifyPromoCode(trimmed);
+      if (!result.valid) {
+        setVerifyError(result.error || 'Invalid promo code');
+        return;
+      }
+      const code = result.promo?.code || trimmed;
+      setVerifiedCode(code);
+      setPromoCode(code);
+      setVerifyOk(
+        result.promo?.grantDays && result.promo.grantDays > 0
+          ? `Code verified — ${result.promo.grantDays} day access.`
+          : 'Code verified — ready to sign up.',
+      );
+    } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : 'Could not verify promo code');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return createPortal(
     <div
@@ -132,21 +173,45 @@ export function PlanContactModal({
                 id="plan-contact-promo"
                 className="plan-contact-modal__promo-input"
                 value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  setVerifiedCode(null);
+                  setVerifyOk('');
+                  setVerifyError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void runVerify();
+                  }
+                }}
                 placeholder="WOLFXXXX"
                 autoComplete="off"
                 spellCheck={false}
               />
             </div>
+            <button
+              type="button"
+              className="plan-contact-modal__verify"
+              disabled={verifying || trimmed.length < 3}
+              onClick={() => void runVerify()}
+            >
+              {verifying ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+              ) : isVerified ? (
+                <Check className="w-4 h-4" aria-hidden />
+              ) : null}
+              {verifying ? 'Verifying…' : isVerified ? 'Verified' : 'Verify code'}
+            </button>
+            {verifyError ? <p className="plan-contact-modal__promo-err">{verifyError}</p> : null}
+            {verifyOk ? <p className="plan-contact-modal__promo-ok">{verifyOk}</p> : null}
             {canSignUp ? (
               <button
                 type="button"
                 className="plan-contact-modal__signup"
                 onClick={() => {
-                  const code = promoCode.trim();
-                  if (code.length < 3) return;
                   onClose();
-                  onSignUpWithPromo(code);
+                  onSignUpWithPromo(verifiedCode!);
                 }}
               >
                 Sign up
@@ -154,7 +219,7 @@ export function PlanContactModal({
               </button>
             ) : (
               <p className="plan-contact-modal__promo-hint">
-                Enter your promo code to unlock Sign up.
+                Verify a valid promo code to unlock Sign up.
               </p>
             )}
           </div>

@@ -4620,6 +4620,42 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--tf-text-muted);
   text-align: left;
 }
+.plan-contact-modal__promo-err {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #fb7185;
+  text-align: left;
+}
+.plan-contact-modal__promo-ok {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #34d399;
+  text-align: left;
+}
+.plan-contact-modal__verify {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 2.45rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--tf-border);
+  background: var(--tf-elevated);
+  color: var(--tf-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.plan-contact-modal__verify:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.plan-contact-modal__verify:not(:disabled):hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--tj-gold);
+}
 .plan-contact-modal__signup {
   display: inline-flex;
   align-items: center;

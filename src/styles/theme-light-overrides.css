@@ -3242,3 +3242,15 @@ html[data-theme="light"] .plan-contact-modal__promo-icon {
 html[data-theme="light"] .plan-contact-modal__signup {
   color: #0b0e17 !important;
 }
+
+html[data-theme="light"] .plan-contact-modal__verify {
+  background: #f8fafc !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+html[data-theme="light"] .plan-contact-modal__promo-err {
+  color: #be123c !important;
+}
+html[data-theme="light"] .plan-contact-modal__promo-ok {
+  color: #047857 !important;
+}

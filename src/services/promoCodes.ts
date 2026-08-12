@@ -123,6 +123,33 @@ export async function adminDeletePromoCode(
   await readJson(res, 'Could not delete promo code');
 }
 
+/** Public check — does not redeem the code. */
+export async function verifyPromoCode(code: string): Promise<{
+  ok: boolean;
+  valid: boolean;
+  promo?: { code: string; label: string | null; grantDays: number; planId: string | null };
+  error?: string;
+}> {
+  const res = await apiFetch('/api/app-auth/promo-codes/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      ok: false,
+      valid: false,
+      error: (data as { error?: string })?.error || 'Invalid promo code',
+    };
+  }
+  return data as {
+    ok: boolean;
+    valid: boolean;
+    promo?: { code: string; label: string | null; grantDays: number; planId: string | null };
+  };
+}
+
 /** Signed-in member redeems a promo for access days. */
 export async function redeemPromoCode(code: string): Promise<PromoRedeemResult> {
   const res = await apiFetch('/api/app-auth/promo-codes/redeem', {

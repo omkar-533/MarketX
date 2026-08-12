@@ -1897,6 +1897,30 @@ router.delete('/admin/promo-codes/:id', requireFullAdmin, async (req, res) => {
   }
 });
 
+/** POST /api/app-auth/promo-codes/verify — public check (does not redeem) */
+router.post('/promo-codes/verify', async (req, res) => {
+  try {
+    const result = await peekPromoCode(req.body?.code ?? req.body?.promoCode);
+    return res.json({
+      ok: true,
+      valid: true,
+      promo: {
+        code: result.promo.code,
+        label: result.promo.label || null,
+        grantDays: result.grantDays,
+        planId: result.planId,
+      },
+    });
+  } catch (err) {
+    const status = err?.status || 400;
+    return res.status(status >= 400 && status < 600 ? status : 400).json({
+      ok: false,
+      valid: false,
+      error: err instanceof Error ? err.message : 'Invalid promo code',
+    });
+  }
+});
+
 /** POST /api/app-auth/promo-codes/redeem — signed-in user */
 router.post('/promo-codes/redeem', requireUser, async (req, res) => {
   try {
