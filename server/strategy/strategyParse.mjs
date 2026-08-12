@@ -148,8 +148,8 @@ export function localParseStrategy(description, answers = {}) {
 
   const tfFromContext = (fallback = '5m') => {
     if (/1\s*h|1h|hour/.test(t) && /15/.test(t) && /5/.test(t)) return fallback;
-    if (/15\s*m|15m/.test(t)) return '15m';
-    if (/5\s*m|5m/.test(t)) return '5m';
+    if (/15\s*(?:m(?:in(?:ute)?s?|nt)?|m)\b|15m/.test(t)) return '15m';
+    if (/5\s*(?:m(?:in(?:ute)?s?|nt)?|m)\b|5m/.test(t)) return '5m';
     if (/1\s*h|1h/.test(t)) return '1h';
     if (/1\s*d|daily/.test(t)) return '1D';
     return fallback;
@@ -238,14 +238,35 @@ export function localParseStrategy(description, answers = {}) {
   }
 
   // "50 ema < 200 ema", "ema50 below ema200", "death cross", "golden cross"
+  // Also: "200 ema cross above" / "price cross above 200 ema" → price vs EMA
+  const singleEmaA = /(\d+)\s*ema\s*(?:cross(?:es|ing)?\s*)?(above|below|over|under)\b/i.exec(t);
+  const singleEmaB =
+    /(?:cross(?:es|ing)?|price)\s*(above|below|over|under)\s*(?:the\s*)?(\d+)\s*ema/i.exec(t);
+  const singleEmaCross = singleEmaA || singleEmaB;
   const emaCmp =
     /(\d+)\s*ema\s*(<|>|<=|>=|below|above|under|over)\s*(\d+)\s*ema/i.exec(t) ||
     /ema\s*(\d+)\s*(<|>|<=|>=|below|above|under|over)\s*ema\s*(\d+)/i.exec(t) ||
     /(\d+)\s*\/\s*(\d+)\s*ema/.exec(t);
-  if (emaCmp || /death\s*cross|golden\s*cross|ema\s*cross/.test(t)) {
+
+  if (singleEmaCross && !emaCmp && !/death\s*cross|golden\s*cross/.test(t)) {
+    const period = Number(singleEmaA ? singleEmaA[1] : singleEmaB[2]);
+    const rel = String(singleEmaA ? singleEmaA[2] : singleEmaB[1]).toLowerCase();
+    const above = rel === 'above' || rel === 'over';
+    push({
+      type: above ? 'PRICE_ABOVE_EMA' : 'PRICE_BELOW_EMA',
+      timeframe: tfFromContext('5m'),
+      value: Number.isFinite(period) && period > 0 ? period : 200,
+    });
+  } else if (emaCmp || /death\s*cross|golden\s*cross|ema\s*cross/.test(t)) {
     let fast = 50;
     let slow = 200;
-    let op = '<';
+    // Default bullish when user says "cross above" / golden; only bearish for death/below
+    let op =
+      /death\s*cross|cross\s*below|below|under/.test(t) && !/cross\s*above|above|over|golden|bull/.test(t)
+        ? '<'
+        : /cross\s*above|above|over|golden|bull/.test(t)
+          ? '>'
+          : '<';
     if (emaCmp) {
       if (emaCmp[3] && /\d/.test(emaCmp[1]) && /<|>|below|above/.test(String(emaCmp[2] || ''))) {
         fast = Number(emaCmp[1]);
@@ -256,7 +277,7 @@ export function localParseStrategy(description, answers = {}) {
         // 50/200 ema form from third regex — groups are fast/slow only
         fast = Number(emaCmp[1]);
         slow = Number(emaCmp[2]);
-        op = /bull|golden|>/.test(t) ? '>' : '<';
+        op = /bull|golden|>|above|over|cross\s*above/.test(t) ? '>' : '<';
       }
     }
     if (/golden\s*cross/.test(t)) {
@@ -285,10 +306,10 @@ export function localParseStrategy(description, answers = {}) {
     });
   }
 
-  if (/price\s*(above|over)\s*(the\s*)?ema|\babove\s*ema\b/.test(t) && !emaCmp) {
+  if (/price\s*(above|over)\s*(the\s*)?ema|\babove\s*ema\b/.test(t) && !emaCmp && !singleEmaCross) {
     push({ type: 'PRICE_ABOVE_EMA', timeframe: tfFromContext('15m'), value: 21 });
   }
-  if (/price\s*(below|under)\s*(the\s*)?ema|\bbelow\s*ema\b/.test(t) && !emaCmp) {
+  if (/price\s*(below|under)\s*(the\s*)?ema|\bbelow\s*ema\b/.test(t) && !emaCmp && !singleEmaCross) {
     push({ type: 'PRICE_BELOW_EMA', timeframe: tfFromContext('15m'), value: 21 });
   }
 
@@ -327,6 +348,14 @@ function suggestName(conditions, description) {
   if (conditions.some((c) => c.type === 'EMA_CROSS')) {
     const c = conditions.find((x) => x.type === 'EMA_CROSS');
     return c?.operator === '>' ? 'EMA Golden Stack' : 'EMA Death Stack';
+  }
+  if (conditions.some((c) => c.type === 'PRICE_ABOVE_EMA')) {
+    const c = conditions.find((x) => x.type === 'PRICE_ABOVE_EMA');
+    return c?.value ? `Price Above EMA ${c.value}` : 'Price Above EMA';
+  }
+  if (conditions.some((c) => c.type === 'PRICE_BELOW_EMA')) {
+    const c = conditions.find((x) => x.type === 'PRICE_BELOW_EMA');
+    return c?.value ? `Price Below EMA ${c.value}` : 'Price Below EMA';
   }
   if (conditions.some((c) => c.type === 'HTF_TREND')) return 'Multi-Timeframe Trend';
   return 'Taught Setup';

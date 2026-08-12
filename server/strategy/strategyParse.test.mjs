@@ -53,6 +53,16 @@ describe('clarifications', () => {
     assert.equal(c.target, '200');
     assert.equal(c.operator, '<');
   });
+
+  it('maps 200 ema cross above on 5m as price above EMA', () => {
+    const draft = localParseStrategy('200 ema cross above in 5 mnt');
+    assert.equal(draft.name, 'Price Above EMA 200');
+    assert.equal(draft.timeframe, '5m');
+    const c = draft.conditions.find((x) => x.type === 'PRICE_ABOVE_EMA');
+    assert.ok(c);
+    assert.equal(c.value, 200);
+    assert.equal(c.timeframe, '5m');
+  });
 });
 
 describe('local parse OR', () => {
