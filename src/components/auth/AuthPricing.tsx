@@ -12,6 +12,8 @@ type AuthPricingProps = {
   onStartTrial: () => void;
   onChoosePlan: (planId: string) => void;
   onSignIn?: () => void;
+  /** Open signup with a promo code from the buy modal. */
+  onSignUpWithPromo?: (promoCode: string, planId?: string) => void;
 };
 
 function PlanCard({
@@ -134,10 +136,15 @@ function PlanCard({
 }
 
 /** Pricing wall — paid plans + Call / WhatsApp (no free trial, no payment gateway yet). */
-export default function AuthPricing({ onStartTrial: _onStartTrial, onChoosePlan: _onChoosePlan, onSignIn }: AuthPricingProps) {
+export default function AuthPricing({
+  onStartTrial: _onStartTrial,
+  onChoosePlan: _onChoosePlan,
+  onSignIn,
+  onSignUpWithPromo,
+}: AuthPricingProps) {
   const { plans } = usePlansCatalog();
   const [popup, setPopup] = useState<AccessPopup | null>(null);
-  const [buyPlan, setBuyPlan] = useState<string | null>(null);
+  const [buyPlan, setBuyPlan] = useState<{ name: string; id: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,7 +183,7 @@ export default function AuthPricing({ onStartTrial: _onStartTrial, onChoosePlan:
               key={plan.id}
               plan={plan}
               index={i}
-              onSelect={() => setBuyPlan(plan.name)}
+              onSelect={() => setBuyPlan({ name: plan.name, id: plan.id })}
             />
           ))}
         </div>
@@ -219,8 +226,13 @@ export default function AuthPricing({ onStartTrial: _onStartTrial, onChoosePlan:
 
       <PlanContactModal
         open={Boolean(buyPlan)}
-        planName={buyPlan || undefined}
+        planName={buyPlan?.name}
         onClose={() => setBuyPlan(null)}
+        onSignUpWithPromo={
+          onSignUpWithPromo
+            ? (code) => onSignUpWithPromo(code, buyPlan?.id)
+            : undefined
+        }
       />
     </section>
   );

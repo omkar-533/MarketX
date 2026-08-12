@@ -266,7 +266,10 @@ function StoryBand({
  * LuxAlgo-style premium landing � cinematic hero, story bands, reviews.
  * Login ONLY via Sign In modal (invite-only).
  */
-type AuthView = { kind: 'signin' } | { kind: 'signup'; plan: PlanId } | { kind: 'forgot' };
+type AuthView =
+  | { kind: 'signin' }
+  | { kind: 'signup'; plan: PlanId; promoCode?: string }
+  | { kind: 'forgot' };
 
 export default function AuthPage(props: AuthPageProps) {
   const {
@@ -309,7 +312,8 @@ export default function AuthPage(props: AuthPageProps) {
   }, [authView]);
 
   const openSignIn = () => setAuthView({ kind: 'signin' });
-  const openSignUp = (plan: PlanId = 'monthly') => setAuthView({ kind: 'signup', plan });
+  const openSignUp = (plan: PlanId = 'monthly', promoCode?: string) =>
+    setAuthView({ kind: 'signup', plan, promoCode: promoCode?.trim() || undefined });
   const openForgot = () => setAuthView({ kind: 'forgot' });
   const closeAuth = () => {
     setAuthView(null);
@@ -517,9 +521,12 @@ export default function AuthPage(props: AuthPageProps) {
         </section>
 
         <AuthPricing
-          onStartTrial={() => openSignUp('trial')}
-          onChoosePlan={openSignUp}
+          onStartTrial={() => openSignUp('monthly')}
+          onChoosePlan={(id) => openSignUp((id as PlanId) || 'monthly')}
           onSignIn={openSignIn}
+          onSignUpWithPromo={(code, planId) =>
+            openSignUp((planId as PlanId) || 'monthly', code)
+          }
         />
 
         {/* Bottom CTA */}
@@ -637,6 +644,7 @@ export default function AuthPage(props: AuthPageProps) {
                   onSignupResend={onSignupResend}
                   onSwitchToSignIn={openSignIn}
                   selectedPlan={authView.plan}
+                  initialPromoCode={authView.promoCode}
                 />
               ) : authView.kind === 'forgot' ? (
                 <AuthForgotForm

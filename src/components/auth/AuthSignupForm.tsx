@@ -33,6 +33,8 @@ export type AuthSignupFormProps = {
   onSignupResend: (email: string) => Promise<OtpChallenge>;
   onSwitchToSignIn: () => void;
   selectedPlan?: PlanId;
+  /** Prefill from buy modal / invite link. */
+  initialPromoCode?: string;
 };
 
 const RESEND_SECONDS = 45;
@@ -48,13 +50,14 @@ export default function AuthSignupForm({
   onSignupResend,
   onSwitchToSignIn,
   selectedPlan = 'monthly',
+  initialPromoCode = '',
 }: AuthSignupFormProps) {
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  const [promoCode, setPromoCode] = useState('');
+  const [promoCode, setPromoCode] = useState(() => initialPromoCode.trim().toUpperCase());
   const [showPassword, setShowPassword] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [mobileTouched, setMobileTouched] = useState(false);
@@ -82,6 +85,11 @@ export default function AuthSignupForm({
   useEffect(() => {
     if (step === 'otp') otpInputRef.current?.focus();
   }, [step]);
+
+  useEffect(() => {
+    const next = initialPromoCode.trim().toUpperCase();
+    if (next) setPromoCode(next);
+  }, [initialPromoCode]);
 
   const handleDetails = async (e: FormEvent) => {
     e.preventDefault();

@@ -3223,3 +3223,22 @@ html[data-theme="light"] .plan-contact-modal .plan-contact {
   background: transparent !important;
   border: 0 !important;
 }
+
+html[data-theme="light"] .plan-contact-modal__promo {
+  border-top-color: #e2e8f0 !important;
+}
+html[data-theme="light"] .plan-contact-modal__promo-label,
+html[data-theme="light"] .plan-contact-modal__promo-hint {
+  color: #525252 !important;
+}
+html[data-theme="light"] .plan-contact-modal__promo-input {
+  background: #f8fafc !important;
+  border-color: #d5dee9 !important;
+  color: #0a0a0a !important;
+}
+html[data-theme="light"] .plan-contact-modal__promo-icon {
+  color: #64748b !important;
+}
+html[data-theme="light"] .plan-contact-modal__signup {
+  color: #0b0e17 !important;
+}
