@@ -23,6 +23,12 @@ const PLAN_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 };
 
+const PLAN_ACCESS_DAYS: Record<string, number> = {
+  monthly: 30,
+  quarterly: 90,
+  yearly: 365,
+};
+
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out = 'WOLF';
@@ -40,6 +46,11 @@ function planLabel(planId: string | null | undefined) {
   return PLAN_LABELS[planId] || planId;
 }
 
+function accessDaysForPlan(planId: string | null | undefined) {
+  if (!planId) return 0;
+  return PLAN_ACCESS_DAYS[planId] || 0;
+}
+
 /** Admin: create / toggle / delete promo codes users can redeem for access. */
 export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesTabProps) {
   const [rows, setRows] = useState<PromoCodeRow[]>([]);
@@ -50,7 +61,6 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
 
   const [code, setCode] = useState(randomCode);
   const [label, setLabel] = useState('');
-  const [grantDays, setGrantDays] = useState(30);
   const [planId, setPlanId] = useState<string>('');
   const [discountPercent, setDiscountPercent] = useState<string>('');
   const [maxRedemptions, setMaxRedemptions] = useState<string>('');
@@ -87,6 +97,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
     try {
       const discount = Math.min(100, Math.max(0, Math.round(Number(discountPercent) || 0)));
       const createdCode = code.trim().toUpperCase();
+      const days = accessDaysForPlan(planId || null);
       await adminCreatePromoCode(
         {
           code: createdCode,
@@ -95,7 +106,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
             (discount > 0
               ? `${discount}% off${planId ? ` ${planLabel(planId)}` : ''}`.trim()
               : undefined),
-          grantDays: Number(grantDays) || 0,
+          grantDays: days,
           planId: planId || null,
           discountPercent: discount,
           maxRedemptions: maxRedemptions.trim() ? Number(maxRedemptions) : null,
@@ -107,12 +118,11 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
       );
       setMsg(
         discount > 0
-          ? `Created ${createdCode} — ${discount}% off${planId ? ` ${planLabel(planId)}` : ''}.`
+          ? `Created ${createdCode} — ${discount}% off${planId ? ` ${planLabel(planId)}` : ''}${days ? ` · ${days}d access` : ''}.`
           : `Created ${createdCode} — share it with the user.`,
       );
       setCode(randomCode());
       setLabel('');
-      setGrantDays(30);
       setPlanId('');
       setDiscountPercent('');
       setMaxRedemptions('');
@@ -169,8 +179,9 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
           Create promo code
         </h3>
         <p className="text-[11px] text-slate-500">
-          Pick any plan and set your own % off (0–100). Share the code with a user — signup needs a
-          valid promo. Days = access length after they create the account (0 = lifetime).
+          Choose a plan and set % off (0–100). Access length comes from the plan automatically
+          (Monthly 30d · 3 Months 90d · Yearly 365d). No plan = signup unlock only (lifetime until
+          desk changes it).
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
@@ -196,23 +207,20 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
             />
           </div>
           <div>
-            <label className={LABEL}>Access days (0 = lifetime)</label>
-            <input
-              className={FIELD}
-              type="number"
-              min={0}
-              value={grantDays}
-              onChange={(e) => setGrantDays(Number(e.target.value))}
-            />
-          </div>
-          <div>
             <label className={LABEL}>Plan</label>
             <select className={FIELD} value={planId} onChange={(e) => setPlanId(e.target.value)}>
               <option value="">Any / none</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">3 Months</option>
-              <option value="yearly">Yearly</option>
+              <option value="monthly">Monthly (30 days)</option>
+              <option value="quarterly">3 Months (90 days)</option>
+              <option value="yearly">Yearly (365 days)</option>
             </select>
+            {planId ? (
+              <p className="mt-1 text-[10px] text-emerald-500/80">
+                Access = {accessDaysForPlan(planId)} days from this plan
+              </p>
+            ) : (
+              <p className="mt-1 text-[10px] text-slate-600">No plan tag — access days not tied to a plan</p>
+            )}
           </div>
           <div>
             <label className={LABEL}>% off (0–100)</label>
@@ -280,7 +288,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
                 <tr>
                   <th className="px-4 py-2">Code</th>
                   <th className="px-4 py-2">Plan / % off</th>
-                  <th className="px-4 py-2">Days</th>
+                  <th className="px-4 py-2">Access</th>
                   <th className="px-4 py-2">Uses</th>
                   <th className="px-4 py-2">Expires</th>
                   <th className="px-4 py-2">Status</th>
@@ -313,7 +321,11 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-300">
-                      {row.grantDays > 0 ? `${row.grantDays}d` : 'Lifetime'}
+                      {row.planId
+                        ? `${row.grantDays > 0 ? row.grantDays : accessDaysForPlan(row.planId)}d`
+                        : row.grantDays > 0
+                          ? `${row.grantDays}d`
+                          : 'Lifetime'}
                     </td>
                     <td className="px-4 py-3 text-slate-300">
                       {row.usedCount}

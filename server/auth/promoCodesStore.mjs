@@ -10,6 +10,13 @@ export const PROMO_CODES_KEY = 'promo_codes';
 
 const PLAN_IDS = new Set(['monthly', 'quarterly', 'yearly']);
 
+/** Access length follows the tagged plan — no separate “days” knob needed. */
+export const PLAN_ACCESS_DAYS = {
+  monthly: 30,
+  quarterly: 90,
+  yearly: 365,
+};
+
 function clampStr(value, fallback, max) {
   const s = String(value ?? '').trim();
   if (!s) return fallback;
@@ -34,11 +41,19 @@ function sanitizePromoCode(input, { preserveId = true } = {}) {
     throw Object.assign(new Error('Promo code is too long'), { status: 400 });
   }
 
-  const grantDaysRaw = Number(src.grantDays);
-  const grantDays =
-    Number.isFinite(grantDaysRaw) && grantDaysRaw >= 0
-      ? Math.min(3650, Math.round(grantDaysRaw))
-      : 30;
+  const planRaw = String(src.planId || '').trim().toLowerCase();
+  const planId = PLAN_IDS.has(planRaw) ? planRaw : null;
+
+  // Plan wins: Monthly=30, 3 Months=90, Yearly=365. No plan → lifetime (0).
+  let grantDays = 0;
+  if (planId) {
+    grantDays = PLAN_ACCESS_DAYS[planId];
+  } else {
+    const grantDaysRaw = Number(src.grantDays);
+    if (Number.isFinite(grantDaysRaw) && grantDaysRaw > 0) {
+      grantDays = Math.min(3650, Math.round(grantDaysRaw));
+    }
+  }
 
   const maxRaw = src.maxRedemptions;
   let maxRedemptions = null;
@@ -48,8 +63,6 @@ function sanitizePromoCode(input, { preserveId = true } = {}) {
   }
 
   const usedCount = Math.max(0, Math.round(Number(src.usedCount) || 0));
-  const planRaw = String(src.planId || '').trim().toLowerCase();
-  const planId = PLAN_IDS.has(planRaw) ? planRaw : null;
 
   const discountRaw = Number(src.discountPercent);
   let discountPercent = 0;
