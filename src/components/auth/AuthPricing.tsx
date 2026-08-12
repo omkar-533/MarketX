@@ -165,7 +165,7 @@ export default function AuthPricing({ onStartTrial: _onStartTrial, onChoosePlan:
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
               Features grow with each plan. Pick the term that fits — then Call or WhatsApp us to
-              activate. Online payment gateway is coming soon.
+              activate.
             </p>
           </Reveal>
         </div>

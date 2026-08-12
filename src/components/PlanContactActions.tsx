@@ -33,7 +33,7 @@ export function PlanContactActions({
     <div className={`plan-contact plan-contact--${variant} ${className}`.trim()}>
       {variant === 'section' ? (
         <p className="plan-contact__lead">
-          Payment gateway coming soon — call or WhatsApp us to activate your plan.
+          Call or WhatsApp us to activate your plan.
         </p>
       ) : null}
       <div className="plan-contact__btns">
@@ -88,8 +88,7 @@ export function PlanContactModal({ open, onClose, planName }: PlanContactModalPr
         </button>
         <h3 id="plan-contact-title">{planName ? `Get ${planName}` : 'Contact desk'}</h3>
         <p>
-          No online payment yet. Call or WhatsApp <strong>{deskPhoneDisplay()}</strong> and we will
-          activate your access.
+          Call or WhatsApp <strong>{deskPhoneDisplay()}</strong> and we will activate your access.
         </p>
         <PlanContactActions planName={planName} variant="inline" />
       </div>
