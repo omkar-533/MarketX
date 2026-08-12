@@ -278,8 +278,8 @@ export default function AuthSignupForm({
           Create your <span>account</span>
         </h1>
         <p className="auth-subtitle">
-          <strong>Promo code compulsory hai</strong> — bina valid code ke account nahi banega. Desk se
-          code lo, neeche daalo, phir signup karo.
+          A promo code is required to create an account. Enter the code provided by the desk below
+          to continue.
         </p>
       </motion.div>
 
@@ -292,7 +292,7 @@ export default function AuthSignupForm({
           onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
           required
           autoComplete="off"
-          hint="Bina promo code ke signup blocked hai."
+          hint="Signup is invite-only — a valid promo code is required."
           icon={<Ticket className="w-4 h-4" />}
         />
 
