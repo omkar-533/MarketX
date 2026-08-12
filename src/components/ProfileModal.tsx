@@ -305,7 +305,7 @@ export default function ProfileModal({
                   <span className="text-sm text-slate-400">Role</span>
                   <span className="flex items-center gap-1.5 text-sm font-bold text-emerald-400">
                     <Shield className="w-4 h-4" />
-                    Admin
+                    {user.role === 'subadmin' ? 'Sub Admin' : 'Admin'}
                   </span>
                 </div>
               )}

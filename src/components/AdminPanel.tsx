@@ -506,31 +506,40 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       </div>
 
       <div className="flex overflow-x-auto bg-dark-elevated rounded-lg border border-dark-border">
-        {(
-          [
-            { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
-            ...(SHOW_INDICATORS
-              ? [
-                  { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
-                  { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
-                ]
-              : []),
-            { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
-            { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
-            { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
-            {
-              id: 'approved' as const,
-              label: 'Approved access',
-              icon: ShieldCheck,
-              badge: approvedCount,
-            },
-            { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
-            { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
-            { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
-          ] as const
-        )
-          .filter((tab) => !isSubAdmin || SUBADMIN_TABS.includes(tab.id))
-          .map((t) => {
+        {(isSubAdmin
+          ? ([
+              { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
+              { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
+              { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+              {
+                id: 'approved' as const,
+                label: 'Approved access',
+                icon: ShieldCheck,
+                badge: approvedCount,
+              },
+            ] as const)
+          : ([
+              { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
+              ...(SHOW_INDICATORS
+                ? [
+                    { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
+                    { id: 'indicators' as const, label: 'Indicators', icon: Code2, badge: 0 },
+                  ]
+                : []),
+              { id: 'knowledge' as const, label: 'Teach AI', icon: BookOpen, badge: 0 },
+              { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
+              { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+              {
+                id: 'approved' as const,
+                label: 'Approved access',
+                icon: ShieldCheck,
+                badge: approvedCount,
+              },
+              { id: 'settings' as const, label: 'Settings', icon: Settings, badge: 0 },
+              { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
+              { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
+            ] as const)
+        ).map((t) => {
           const Icon = t.icon;
           return (
             <button
@@ -562,23 +571,23 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         />
       )}
 
-      {SHOW_INDICATORS && activeTab === 'tv' && (
+      {activeTab === 'tv' && (isSubAdmin || SHOW_INDICATORS) && (
         <TvAccessRequestsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
-      {SHOW_INDICATORS && activeTab === 'indicators' && (
+      {SHOW_INDICATORS && !isSubAdmin && activeTab === 'indicators' && (
         <IndicatorsTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
-      {activeTab === 'knowledge' && (
+      {!isSubAdmin && activeTab === 'knowledge' && (
         <KnowledgeTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
-      {activeTab === 'plans' && (
+      {!isSubAdmin && activeTab === 'plans' && (
         <PlansTab adminEmail={adminEmail} adminPassword={adminPassword} />
       )}
 
-      {activeTab === 'settings' && (
+      {!isSubAdmin && activeTab === 'settings' && (
         <AccessSettingsTab
           adminEmail={adminEmail}
           adminPassword={adminPassword}
@@ -1015,7 +1024,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         </div>
       )}
 
-      {activeTab === 'overview' && (
+      {!isSubAdmin && activeTab === 'overview' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
@@ -1078,11 +1087,11 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
         </>
       )}
 
-      {activeTab === 'analytics' && (
+      {!isSubAdmin && activeTab === 'analytics' && (
         <AdminAnalyticsTab rows={rows} loading={loading} />
       )}
 
-      {activeTab === 'payments' && (
+      {!isSubAdmin && activeTab === 'payments' && (
         <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl p-4 text-sm text-slate-500">
           Payments integration coming later. Plans on invite users are set when you create the login.
         </div>

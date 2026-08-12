@@ -76,9 +76,11 @@ import {
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
-const SUBADMIN_PHONE = String(process.env.SUBADMIN_PHONE || '9988774455').trim();
+const SUBADMIN_PHONE_RAW = String(process.env.SUBADMIN_PHONE || '9988774455').trim();
+const SUBADMIN_PHONE = normalizePhone(SUBADMIN_PHONE_RAW) || normalizePhone('9988774455');
 const SUBADMIN_PASSWORD = process.env.SUBADMIN_PASSWORD || 'Wolf@12345';
 const SUBADMIN_NAME = process.env.SUBADMIN_NAME || 'Sub Admin';
+const SUBADMIN_EMAIL = `${String(SUBADMIN_PHONE_RAW).replace(/\D/g, '').slice(-10)}@phone.wolftrade.local`;
 const JWT_SECRET =
   process.env.APP_AUTH_JWT_SECRET ||
   process.env.JWT_SECRET ||
@@ -98,10 +100,29 @@ const LOCAL_ADMIN = {
   accessExpiresAt: null,
 };
 
+const LOCAL_SUBADMIN = {
+  id: 'admin_local_subadmin',
+  name: SUBADMIN_NAME,
+  email: SUBADMIN_EMAIL,
+  role: 'subadmin',
+  plan: 'premium',
+  verified: true,
+  active: true,
+  phone: SUBADMIN_PHONE,
+  phoneVerified: true,
+  accessStatus: 'granted',
+  accessExpiresAt: null,
+};
+
+function isSubAdminPair(identifier, password) {
+  const phone = normalizePhone(identifier);
+  return Boolean(phone && SUBADMIN_PHONE && phone === SUBADMIN_PHONE && String(password) === SUBADMIN_PASSWORD);
+}
+
 /** Create / sync the desk sub-admin (phone login + limited panel). */
 let subAdminEnsurePromise = null;
 async function ensureSubAdminAccount() {
-  const phone = normalizePhone(SUBADMIN_PHONE);
+  const phone = SUBADMIN_PHONE;
   if (!phone) return null;
   const existing = await findAppUserByPhone(phone);
   if (!existing) {
@@ -237,9 +258,19 @@ async function requireUser(req, res, next) {
     return next();
   }
 
+  if (payload.role === 'subadmin' && payload.sub === LOCAL_SUBADMIN.id) {
+    req.appUser = { ...LOCAL_SUBADMIN, createdAt: new Date().toISOString() };
+    return next();
+  }
+
   try {
     const record = await findAppUserById(payload.sub);
     if (!record) return res.status(401).json({ error: 'Account not found' });
+    // Keep the desk sub-admin phone on the limited role even if DB drifts.
+    if (record.phone && SUBADMIN_PHONE && record.phone === SUBADMIN_PHONE) {
+      req.appUser = { ...publicUser(record), role: 'subadmin' };
+      return next();
+    }
     req.appUser = publicUser(record);
     return next();
   } catch (err) {
@@ -267,7 +298,9 @@ async function accessPayloadFor(user) {
   const state = accessStateFor(user);
   const [popup, request, trialDays] = await Promise.all([
     getAccessPopup(),
-    user.role === 'admin' ? Promise.resolve(null) : latestRequestForUser(user.id),
+    user.role === 'admin' || user.role === 'subadmin'
+      ? Promise.resolve(null)
+      : latestRequestForUser(user.id),
     getConfiguredTrialDays(),
   ]);
 
@@ -307,6 +340,26 @@ router.post('/login', async (req, res) => {
       token: signAppToken(user),
       user,
       source: 'admin',
+      ...(await accessPayloadFor(user)),
+    });
+  }
+
+  if (isSubAdminPair(identifier, password)) {
+    let user = null;
+    try {
+      user = await ensureSubAdminOnce();
+    } catch {
+      user = null;
+    }
+    if (!user) {
+      user = { ...LOCAL_SUBADMIN, createdAt: new Date().toISOString() };
+    } else {
+      user = { ...user, role: 'subadmin', name: user.name || SUBADMIN_NAME };
+    }
+    return res.json({
+      token: signAppToken(user),
+      user,
+      source: 'subadmin',
       ...(await accessPayloadFor(user)),
     });
   }
