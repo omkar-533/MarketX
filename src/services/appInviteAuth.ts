@@ -94,7 +94,7 @@ function toSession(data: {
       id: String(raw.id),
       name: String(raw.name),
       email: String(raw.email),
-      role: raw.role === 'admin' ? 'admin' : 'user',
+      role: raw.role === 'admin' || raw.role === 'subadmin' ? raw.role : 'user',
       plan: raw.plan === 'premium' || raw.plan === 'pro' ? raw.plan : 'free',
       verified: true,
       createdAt: str(raw.createdAt) || new Date().toISOString(),
@@ -350,7 +350,7 @@ export async function submitAccessRequest(input: {
 
 function authHeaders(adminEmail?: string | null, adminPassword?: string | null): HeadersInit {
   const session = loadAppSession();
-  if (session?.token && session.user.role === 'admin') {
+  if (session?.token && (session.user.role === 'admin' || session.user.role === 'subadmin')) {
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.token}`,

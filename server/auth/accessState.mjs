@@ -15,7 +15,7 @@ export function accessStateFor(user) {
     };
   }
 
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || user.role === 'subadmin') {
     return {
       status: 'granted',
       unlocked: true,

@@ -30,7 +30,7 @@ function formatDateTime(value?: string | null) {
 }
 
 function isGrantedUser(row: InviteUserRow) {
-  return row.role !== 'admin' && (row.accessStatus === 'granted' || row.access?.status === 'granted');
+  return row.role !== 'admin' && row.role !== 'subadmin' && (row.accessStatus === 'granted' || row.access?.status === 'granted');
 }
 
 function accessSummary(row: InviteUserRow) {

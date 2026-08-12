@@ -14,7 +14,7 @@ const storePath = resolve(dataDir, 'app-users.json');
  *  email: string,
  *  name: string,
  *  passwordHash: string,
- *  role: 'user' | 'admin',
+ *  role: 'user' | 'admin' | 'subadmin',
  *  plan: 'free' | 'pro' | 'premium',
  *  active: boolean,
  *  createdAt: string,
@@ -70,7 +70,14 @@ function writeStore(store) {
   writeFileSync(storePath, JSON.stringify(store, null, 2), 'utf8');
 }
 
-/* ────────────────────────── passwords ────────────────────────── */
+export function normalizeAppRole(role) {
+  if (role === 'admin' || role === 'subadmin') return role;
+  return 'user';
+}
+
+export function isDeskStaffRole(role) {
+  return role === 'admin' || role === 'subadmin';
+}
 
 export function hashPassword(password) {
   const salt = randomBytes(16).toString('hex');
@@ -291,7 +298,7 @@ export async function createAppUser({
     email: normalized,
     name: displayName,
     passwordHash: passwordHash || hashPassword(pwd),
-    role: role === 'admin' ? 'admin' : 'user',
+    role: normalizeAppRole(role),
     plan: plan === 'premium' || plan === 'pro' ? plan : 'free',
     active: true,
     createdAt: new Date(now).toISOString(),
@@ -362,9 +369,9 @@ export async function setAppUserActive(id, active) {
   return patchUser(id, { active: Boolean(active) }, { active: Boolean(active) });
 }
 
-/** Promote / demote desk access (user ↔ admin). */
+/** Promote / demote desk access (user ↔ admin ↔ subadmin). */
 export async function setAppUserRole(id, role) {
-  const next = role === 'admin' ? 'admin' : 'user';
+  const next = normalizeAppRole(role);
   return patchUser(id, { role: next }, { role: next });
 }
 

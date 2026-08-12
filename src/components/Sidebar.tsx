@@ -189,7 +189,7 @@ export default function Sidebar({
         <div className="app-sidebar__section px-3 pb-1.5 pt-0.5 text-[10px] font-bold uppercase tracking-[0.35em]">
           {collapsed ? '·' : 'Account'}
         </div>
-        {user?.role === 'admin' && (
+        {user?.role === 'admin' || user?.role === 'subadmin' ? (
           <button
             type="button"
             onClick={() => {

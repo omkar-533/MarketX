@@ -70,17 +70,23 @@ function randomPassword(len = 10) {
 }
 
 type AdminTab =
-  | 'users'
-  | 'approved'
   | 'requests'
   | 'tv'
   | 'indicators'
   | 'knowledge'
   | 'plans'
+  | 'users'
+  | 'approved'
   | 'settings'
   | 'overview'
   | 'analytics'
   | 'payments';
+
+function isStaffRole(role: User['role'] | undefined) {
+  return role === 'admin' || role === 'subadmin';
+}
+
+const SUBADMIN_TABS: AdminTab[] = ['requests', 'tv', 'users', 'approved'];
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -113,7 +119,7 @@ const TONE_CLASS = {
 };
 
 function isUnseenNewUser(u: InviteUserRow): boolean {
-  return u.role !== 'admin' && !u.adminSeenAt;
+  return !isStaffRole(u.role) && !u.adminSeenAt;
 }
 
 function startOfLocalDay(d = new Date()) {
@@ -134,12 +140,12 @@ function parseCreatedMs(u: InviteUserRow) {
 }
 
 function countUsersSince(users: InviteUserRow[], sinceMs: number) {
-  return users.filter((u) => u.role !== 'admin' && parseCreatedMs(u) >= sinceMs).length;
+  return users.filter((u) => !isStaffRole(u.role) && parseCreatedMs(u) >= sinceMs).length;
 }
 
 function countUsersInRange(users: InviteUserRow[], fromMs: number, toMs: number) {
   return users.filter((u) => {
-    if (u.role === 'admin') return false;
+    if (isStaffRole(u.role)) return false;
     const t = parseCreatedMs(u);
     return t >= fromMs && t <= toMs;
   }).length;
@@ -154,7 +160,7 @@ function toInputDate(d: Date) {
 
 function exportUsersExcel(users: InviteUserRow[], filename: string) {
   const rows = users
-    .filter((u) => u.role !== 'admin')
+    .filter((u) => !isStaffRole(u.role))
     .map((u) => {
       const badge = accessLabel(u);
       return {
@@ -178,6 +184,8 @@ function exportUsersExcel(users: InviteUserRow[], filename: string) {
 }
 
 export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
+  const isSubAdmin = user?.role === 'subadmin';
+
   const [activeTab, setActiveTab] = useState<AdminTab>('requests');
   const [rows, setRows] = useState<InviteUserRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -203,11 +211,17 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   const [userSearch, setUserSearch] = useState('');
   const tvPendingRef = useRef(-1);
 
+  useEffect(() => {
+    if (user?.role === 'subadmin' && !SUBADMIN_TABS.includes(activeTab)) {
+      setActiveTab('requests');
+    }
+  }, [user?.role, activeTab]);
+
   const adminEmail = user?.email ?? null;
   const newUserCount = rows.filter((r) => isUnseenNewUser(r)).length;
   const approvedCount = useMemo(() => countApprovedAccessUsers(rows), [rows]);
 
-  const memberRows = useMemo(() => rows.filter((r) => r.role !== 'admin'), [rows]);
+  const memberRows = useMemo(() => rows.filter((r) => !isStaffRole(r.role)), [rows]);
 
   const userStats = useMemo(() => {
     const now = new Date();
@@ -234,7 +248,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
       : Number.POSITIVE_INFINITY;
 
     return rows.filter((u) => {
-      if (u.role === 'admin') return !q; // hide admins while searching members
+      if (isStaffRole(u.role)) return !q; // hide desk staff while searching members
       if (rangeFilterActive) {
         const t = parseCreatedMs(u);
         if (t < fromMs || t > toMs) return false;
@@ -255,11 +269,11 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
 
   const rangeCount = useMemo(() => {
     if (!rangeFilterActive && !searchActive) return null;
-    return filteredRows.filter((u) => u.role !== 'admin').length;
+    return filteredRows.filter((u) => !isStaffRole(u.role)).length;
   }, [filteredRows, rangeFilterActive, searchActive]);
 
   const exportVisible = () => {
-    const list = filteredRows.filter((u) => u.role !== 'admin');
+    const list = filteredRows.filter((u) => !isStaffRole(u.role));
     const stamp = toInputDate(new Date());
     const suffix =
       rangeFilterActive && (dateFrom || dateTo)
@@ -347,7 +361,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [activeTab, refresh]);
 
   const overviewSignupSeries = useMemo(() => {
-    const members = rows.filter((r) => r.role !== 'admin');
+    const members = rows.filter((r) => !isStaffRole(r.role));
     const days = 14;
     const today = startOfLocalDay(new Date());
     const out: { date: string; users: number }[] = [];
@@ -368,7 +382,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   }, [rows]);
 
   const overviewAccessBars = useMemo(() => {
-    const members = rows.filter((r) => r.role !== 'admin');
+    const members = rows.filter((r) => !isStaffRole(r.role));
     let trial = 0;
     let granted = 0;
     let locked = 0;
@@ -485,7 +499,9 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           Admin Panel
         </h2>
         <p className="text-sm text-slate-400">
-          Trial signups, access approvals and invite logins — all in one place
+          {isSubAdmin
+            ? 'Sub-admin desk — Access requests, TV access, Users & Approved access'
+            : 'Trial signups, access approvals and invite logins — all in one place'}
         </p>
       </div>
 
@@ -512,7 +528,9 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
             { id: 'overview' as const, label: 'Overview', icon: BarChart3, badge: 0 },
             { id: 'analytics' as const, label: 'Analytics', icon: Activity, badge: 0 },
           ] as const
-        ).map((t) => {
+        )
+          .filter((tab) => !isSubAdmin || SUBADMIN_TABS.includes(tab.id))
+          .map((t) => {
           const Icon = t.icon;
           return (
             <button
@@ -785,7 +803,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               <button
                 type="button"
                 onClick={exportVisible}
-                disabled={filteredRows.filter((u) => u.role !== 'admin').length === 0}
+                disabled={filteredRows.filter((u) => !isStaffRole(u.role)).length === 0}
                 className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/25 disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -801,7 +819,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#1a1f2e]">
               <h3 className="text-sm font-bold text-white">
-                Users ({filteredRows.filter((u) => u.role !== 'admin').length}
+                Users ({filteredRows.filter((u) => !isStaffRole(u.role)).length}
                 {rangeFilterActive || searchActive ? ` filtered · ${memberRows.length} total` : ''})
                 {newUserCount ? (
                   <span className="ml-2 text-[10px] font-bold text-[#d4af37]">

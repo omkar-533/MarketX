@@ -310,7 +310,7 @@ function AppWorkspace() {
         return (
           <TradingJournal
             user={auth.user}
-            isAdmin={auth.user?.role === 'admin'}
+            isAdmin={auth.user?.role === 'admin' || auth.user?.role === 'subadmin'}
             onNavigate={handleTabChange}
           />
         );
@@ -553,7 +553,9 @@ function AppWorkspace() {
             onRefresh={auth.refreshAccess}
           />
           <TvAccessGrantedPopup
-            userId={auth.user?.role === 'admin' ? null : auth.user?.id}
+            userId={
+              auth.user?.role === 'admin' || auth.user?.role === 'subadmin' ? null : auth.user?.id
+            }
             onOpenIndicator={openGrantedIndicator}
           />
           <AccessGate

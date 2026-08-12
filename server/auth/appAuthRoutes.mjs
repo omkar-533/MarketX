@@ -20,6 +20,7 @@ import {
   setUserAccess,
   setUserPassword,
   setUserPhone,
+  isDeskStaffRole,
 } from './appUserStore.mjs';
 import { accessStateFor } from './accessState.mjs';
 import { consumeOtp, issueOtp, pendingOtpPayload } from './otpStore.mjs';
@@ -75,6 +76,9 @@ import {
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'omkarchauhan533@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Omkar@12345';
+const SUBADMIN_PHONE = String(process.env.SUBADMIN_PHONE || '9988774455').trim();
+const SUBADMIN_PASSWORD = process.env.SUBADMIN_PASSWORD || 'Wolf@12345';
+const SUBADMIN_NAME = process.env.SUBADMIN_NAME || 'Sub Admin';
 const JWT_SECRET =
   process.env.APP_AUTH_JWT_SECRET ||
   process.env.JWT_SECRET ||
@@ -93,6 +97,51 @@ const LOCAL_ADMIN = {
   accessStatus: 'granted',
   accessExpiresAt: null,
 };
+
+/** Create / sync the desk sub-admin (phone login + limited panel). */
+let subAdminEnsurePromise = null;
+async function ensureSubAdminAccount() {
+  const phone = normalizePhone(SUBADMIN_PHONE);
+  if (!phone) return null;
+  const existing = await findAppUserByPhone(phone);
+  if (!existing) {
+    return createAppUser({
+      phone,
+      password: SUBADMIN_PASSWORD,
+      name: SUBADMIN_NAME,
+      role: 'subadmin',
+      plan: 'premium',
+      phoneVerified: true,
+      accessStatus: 'granted',
+      accessDays: 0,
+      createdBy: 'system',
+    });
+  }
+  let user = existing;
+  if (user.role !== 'subadmin') {
+    user = (await setAppUserRole(user.id, 'subadmin')) || user;
+  }
+  user = (await setUserPassword(user.id, SUBADMIN_PASSWORD)) || user;
+  user = (await setUserAccess(user.id, { status: 'granted', days: 0 })) || user;
+  if (user.active === false) {
+    user = (await setAppUserActive(user.id, true)) || user;
+  }
+  return user;
+}
+
+function ensureSubAdminOnce() {
+  if (!subAdminEnsurePromise) {
+    subAdminEnsurePromise = ensureSubAdminAccount().catch((err) => {
+      console.warn('[auth] subadmin ensure failed:', err?.message || err);
+      subAdminEnsurePromise = null;
+      return null;
+    });
+  }
+  return subAdminEnsurePromise;
+}
+
+// Seed on boot so the account exists before first login.
+void ensureSubAdminOnce();
 
 function signAppToken(user) {
   return jwt.sign(
@@ -138,22 +187,44 @@ function failed(res, err, fallback) {
   return res.status(status).json({ error: err instanceof Error ? err.message : fallback });
 }
 
-/** Admin gate: local admin credentials OR invite JWT with role=admin */
+/** Desk staff gate: full admin credentials OR JWT with admin/subadmin */
 function requireAdmin(req, res, next) {
   const headerEmail = String(req.headers['x-admin-email'] || '').trim().toLowerCase();
   const headerPassword = String(req.headers['x-admin-password'] || '');
   if (isAdminPair(headerEmail, headerPassword)) {
     req.adminActor = headerEmail;
+    req.adminRole = 'admin';
+    return next();
+  }
+
+  const payload = bearerPayload(req);
+  if (isDeskStaffRole(payload?.role)) {
+    req.adminActor = payload.email;
+    req.adminRole = payload.role;
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Admin access required' });
+}
+
+/** Full owner-only gate (Indicators / Teach AI / Plans / Settings writes). */
+function requireFullAdmin(req, res, next) {
+  const headerEmail = String(req.headers['x-admin-email'] || '').trim().toLowerCase();
+  const headerPassword = String(req.headers['x-admin-password'] || '');
+  if (isAdminPair(headerEmail, headerPassword)) {
+    req.adminActor = headerEmail;
+    req.adminRole = 'admin';
     return next();
   }
 
   const payload = bearerPayload(req);
   if (payload?.role === 'admin') {
     req.adminActor = payload.email;
+    req.adminRole = 'admin';
     return next();
   }
 
-  return res.status(401).json({ error: 'Admin access required' });
+  return res.status(403).json({ error: 'Full admin access required' });
 }
 
 /** Signed-in gate that always resolves the live record, never the stale JWT. */
@@ -252,6 +323,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
+    await ensureSubAdminOnce();
     const authed = await authenticateAppUser(phone, password);
     if (!authed) {
       return res.status(401).json({ error: 'Wrong mobile number or password' });
@@ -1145,7 +1217,7 @@ router.post('/indicators/:id/tv-access', requireUser, async (req, res) => {
 });
 
 /** GET /api/app-auth/admin/indicators */
-router.get('/admin/indicators', requireAdmin, async (_req, res) => {
+router.get('/admin/indicators', requireFullAdmin, async (_req, res) => {
   try {
     const indicators = await listAllIndicators();
     return res.json({ indicators: indicators.map(adminIndicator) });
@@ -1155,7 +1227,7 @@ router.get('/admin/indicators', requireAdmin, async (_req, res) => {
 });
 
 /** POST /api/app-auth/admin/indicators */
-router.post('/admin/indicators', requireAdmin, async (req, res) => {
+router.post('/admin/indicators', requireFullAdmin, async (req, res) => {
   try {
     const indicator = await createIndicator({
       title: req.body?.title,
@@ -1216,7 +1288,7 @@ async function handleAdminIndicatorUpdate(req, res) {
 }
 
 /** PUT /api/app-auth/admin/indicators/reorder — MUST be before /:id */
-router.put('/admin/indicators/reorder', requireAdmin, async (req, res) => {
+router.put('/admin/indicators/reorder', requireFullAdmin, async (req, res) => {
   try {
     const orderedIds = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : [];
     const indicators = await reorderIndicators(orderedIds);
@@ -1227,11 +1299,11 @@ router.put('/admin/indicators/reorder', requireAdmin, async (req, res) => {
 });
 
 /** PUT + PATCH — PUT preferred (CORS allow-list historically missed PATCH). */
-router.put('/admin/indicators/:id', requireAdmin, handleAdminIndicatorUpdate);
-router.patch('/admin/indicators/:id', requireAdmin, handleAdminIndicatorUpdate);
+router.put('/admin/indicators/:id', requireFullAdmin, handleAdminIndicatorUpdate);
+router.patch('/admin/indicators/:id', requireFullAdmin, handleAdminIndicatorUpdate);
 
 /** PUT /api/app-auth/admin/indicators/:id/how-to-video — video URL only */
-router.put('/admin/indicators/:id/how-to-video', requireAdmin, async (req, res) => {
+router.put('/admin/indicators/:id/how-to-video', requireFullAdmin, async (req, res) => {
   try {
     const indicator = await setIndicatorHowToVideo(
       req.params.id,
@@ -1244,7 +1316,7 @@ router.put('/admin/indicators/:id/how-to-video', requireAdmin, async (req, res) 
 });
 
 /** DELETE /api/app-auth/admin/indicators/:id */
-router.delete('/admin/indicators/:id', requireAdmin, async (req, res) => {
+router.delete('/admin/indicators/:id', requireFullAdmin, async (req, res) => {
   try {
     await deleteIndicator(req.params.id);
     return res.json({ ok: true });
@@ -1254,7 +1326,7 @@ router.delete('/admin/indicators/:id', requireAdmin, async (req, res) => {
 });
 
 /** GET /api/app-auth/admin/knowledge — Analyse AI owner teachings */
-router.get('/admin/knowledge', requireAdmin, async (_req, res) => {
+router.get('/admin/knowledge', requireFullAdmin, async (_req, res) => {
   try {
     const documents = await listKnowledgeDocs();
     return res.json({ documents });
@@ -1264,7 +1336,7 @@ router.get('/admin/knowledge', requireAdmin, async (_req, res) => {
 });
 
 /** POST /api/app-auth/admin/knowledge — upload PDF or paste text notes */
-router.post('/admin/knowledge', requireAdmin, async (req, res) => {
+router.post('/admin/knowledge', requireFullAdmin, async (req, res) => {
   try {
     const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
     const pdfDataUrl = typeof req.body?.pdfDataUrl === 'string' ? req.body.pdfDataUrl : '';
@@ -1287,7 +1359,7 @@ router.post('/admin/knowledge', requireAdmin, async (req, res) => {
 });
 
 /** DELETE /api/app-auth/admin/knowledge/:id */
-router.delete('/admin/knowledge/:id', requireAdmin, async (req, res) => {
+router.delete('/admin/knowledge/:id', requireFullAdmin, async (req, res) => {
   try {
     await deleteKnowledgeDoc(req.params.id);
     return res.json({ ok: true });
@@ -1372,7 +1444,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
       phone,
       phoneVerified: true,
       plan: req.body?.plan,
-      role: req.body?.role === 'admin' ? 'admin' : 'user',
+      role: req.adminRole === 'subadmin' ? 'user' : req.body?.role === 'admin' ? 'admin' : 'user',
       createdBy: req.adminActor || 'admin',
       accessStatus: 'granted',
       accessDays: Number(req.body?.accessDays) || 0,
@@ -1391,6 +1463,9 @@ router.patch('/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     let user = null;
     if (typeof req.body?.role === 'string') {
+      if (req.adminRole === 'subadmin' && req.body.role !== 'user') {
+        return res.status(403).json({ error: 'Sub-admin cannot change desk roles' });
+      }
       user = await setAppUserRole(req.params.id, req.body.role);
     }
     if (typeof req.body?.active === 'boolean') {
@@ -1599,7 +1674,7 @@ router.get('/admin/settings', requireAdmin, async (_req, res) => {
 });
 
 /** PUT /api/app-auth/admin/settings */
-router.put('/admin/settings', requireAdmin, async (req, res) => {
+router.put('/admin/settings', requireFullAdmin, async (req, res) => {
   try {
     const popup = await setAccessPopup(req.body?.popup || req.body, req.adminActor || 'admin');
     return res.json({ popup });
@@ -1636,7 +1711,7 @@ router.get('/plans', async (_req, res) => {
 });
 
 /** GET /api/app-auth/admin/plans — full catalog including disabled */
-router.get('/admin/plans', requireAdmin, async (_req, res) => {
+router.get('/admin/plans', requireFullAdmin, async (_req, res) => {
   try {
     const catalog = await getSubscriptionCatalog();
     return res.json({
@@ -1649,7 +1724,7 @@ router.get('/admin/plans', requireAdmin, async (_req, res) => {
 });
 
 /** PUT /api/app-auth/admin/plans — save full catalog */
-router.put('/admin/plans', requireAdmin, async (req, res) => {
+router.put('/admin/plans', requireFullAdmin, async (req, res) => {
   try {
     const catalog = await setSubscriptionCatalog(
       req.body?.catalog || req.body,

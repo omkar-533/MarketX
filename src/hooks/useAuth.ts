@@ -32,7 +32,7 @@ export interface User {
   email: string;
   phone?: string;
   avatar?: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'subadmin';
   plan: 'free' | 'pro' | 'premium';
   verified: boolean;
   createdAt: string;
@@ -100,7 +100,7 @@ function mapSupabaseUser(user: SupabaseUser | null): User | null {
   if (!user) return null;
 
   const appMeta = (user.app_metadata ?? {}) as {
-    role?: 'user' | 'admin';
+    role?: 'user' | 'admin' | 'subadmin';
     plan?: 'free' | 'pro' | 'premium';
   };
 
@@ -329,7 +329,9 @@ export function useAuth() {
         setAccess(session.snapshot);
         setIsLoggedIn(true);
         setShowAuth(false);
-        if (session.user.role === 'admin') setAdminPassword(password);
+        if (session.user.role === 'admin' || session.user.role === 'subadmin') {
+          setAdminPassword(password);
+        }
         void refreshAccess();
         return;
       } catch (err) {
@@ -482,7 +484,8 @@ export function useAuth() {
     resetResend,
     resetComplete,
     adminPassword,
-    adminEmail: user?.role === 'admin' ? user.email : null,
+    adminEmail:
+      user?.role === 'admin' || user?.role === 'subadmin' ? user.email : null,
     access: access?.access ?? null,
     accessPopup: access?.popup ?? null,
     refreshAccess,

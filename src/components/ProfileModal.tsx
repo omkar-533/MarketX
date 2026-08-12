@@ -300,7 +300,7 @@ export default function ProfileModal({
                   {planLabel}
                 </span>
               </div>
-              {user.role === 'admin' && (
+              {(user.role === 'admin' || user.role === 'subadmin') && (
                 <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border">
                   <span className="text-sm text-slate-400">Role</span>
                   <span className="flex items-center gap-1.5 text-sm font-bold text-emerald-400">
