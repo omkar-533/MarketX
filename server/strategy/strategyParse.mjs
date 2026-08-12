@@ -594,23 +594,61 @@ function detectProvider(apiKey) {
   return null;
 }
 
+const GEMINI_STRATEGY_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+const OPENROUTER_STRATEGY_MODELS = ['google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite'];
+
+function isRetiredOrMissingModelError(err) {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return /404|not found|no longer available|is not found|INVALID_ARGUMENT.*model/i.test(msg);
+}
+
+function friendlyAiError(err) {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  if (isRetiredOrMissingModelError(msg) || /GoogleGenerativeAI/i.test(msg)) {
+    return 'AI model briefly unavailable. Try again, or use BUILD MANUALLY.';
+  }
+  if (/429|quota|rate limit|resource.?exhausted/i.test(msg)) {
+    return 'AI is busy right now. Wait a moment and try again.';
+  }
+  if (/401|403|API[_ ]?key|permission/i.test(msg)) {
+    return 'AI key rejected. Check the Gemini key in Profile, or rely on the server key.';
+  }
+  // Never leak raw provider stack traces into the Strategy Lab UI.
+  if (msg.length > 180 || /https?:\/\//i.test(msg)) {
+    return 'Could not build this setup with AI. Try clearer rules, or BUILD MANUALLY.';
+  }
+  return msg || 'Strategy parse failed';
+}
+
 async function completeRaw(apiKey, system, user) {
   const provider = detectProvider(apiKey);
   if (!provider) throw Object.assign(new Error('No AI key'), { status: 503 });
 
   if (provider === 'gemini') {
     const gemini = new GoogleGenerativeAI(apiKey);
-    const model = gemini.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: system,
-      generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
-    });
-    const result = await model.generateContent(user);
-    return {
-      text: String(result?.response?.text?.() ?? '').trim(),
-      modelUsed: 'gemini-2.5-flash',
-      source: 'gemini',
-    };
+    let lastErr = null;
+    for (const modelId of GEMINI_STRATEGY_MODELS) {
+      try {
+        const model = gemini.getGenerativeModel({
+          model: modelId,
+          systemInstruction: system,
+          generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
+        });
+        const result = await model.generateContent(user);
+        return {
+          text: String(result?.response?.text?.() ?? '').trim(),
+          modelUsed: modelId,
+          source: 'gemini',
+        };
+      } catch (err) {
+        lastErr = err;
+        if (isRetiredOrMissingModelError(err)) continue;
+        throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+          status: err?.status || 502,
+        });
+      }
+    }
+    throw Object.assign(new Error(friendlyAiError(lastErr)), { status: 502 });
   }
 
   const client =
@@ -624,20 +662,50 @@ async function completeRaw(apiKey, system, user) {
             'X-Title': 'Wolf Trade AI - Strategy Lab',
           },
         });
-  const completion = await client.chat.completions.create({
-    model: provider === 'openai' ? 'gpt-4o-mini' : 'google/gemini-2.5-flash',
-    temperature: 0.1,
-    max_tokens: 900,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ],
-  });
-  return {
-    text: String(completion.choices?.[0]?.message?.content || '').trim(),
-    modelUsed: completion.model,
-    source: provider,
-  };
+
+  if (provider === 'openai') {
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.1,
+      max_tokens: 900,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    });
+    return {
+      text: String(completion.choices?.[0]?.message?.content || '').trim(),
+      modelUsed: completion.model || 'gpt-4o-mini',
+      source: provider,
+    };
+  }
+
+  let lastErr = null;
+  for (const modelId of OPENROUTER_STRATEGY_MODELS) {
+    try {
+      const completion = await client.chat.completions.create({
+        model: modelId,
+        temperature: 0.1,
+        max_tokens: 900,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      });
+      return {
+        text: String(completion.choices?.[0]?.message?.content || '').trim(),
+        modelUsed: completion.model || modelId,
+        source: provider,
+      };
+    } catch (err) {
+      lastErr = err;
+      if (isRetiredOrMissingModelError(err)) continue;
+      throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+        status: err?.status || 502,
+      });
+    }
+  }
+  throw Object.assign(new Error(friendlyAiError(lastErr)), { status: 502 });
 }
 
 /**
@@ -800,14 +868,14 @@ export async function parseStrategyDescription({ apiKey, description, answers = 
           clarifications: [],
           strategy: sanitized.strategy,
           source: 'local-fallback',
-          warning: err instanceof Error ? err.message : 'AI unavailable',
+          warning: friendlyAiError(err),
         },
       };
     }
     return {
       ok: false,
       status: err?.status || 503,
-      error: err instanceof Error ? err.message : 'Strategy parse failed',
+      error: friendlyAiError(err),
     };
   }
 }

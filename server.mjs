@@ -30,6 +30,17 @@ import { parseStrategyDescription } from './server/strategy/strategyParse.mjs';
 import { getLiveWsStatus } from './server/market/liveFeed.mjs';
 import { getActiveMarketProvider } from './server/market/provider.mjs';
 
+function friendlyStrategyWarning(error) {
+  const msg = error instanceof Error ? error.message : String(error || '');
+  if (/404|no longer available|GoogleGenerativeAI|generativelanguage\.googleapis/i.test(msg)) {
+    return 'AI model briefly unavailable. Try again, or use BUILD MANUALLY.';
+  }
+  if (msg.length > 180 || /https?:\/\//i.test(msg)) {
+    return 'Could not build this setup with AI. Try clearer rules, or BUILD MANUALLY.';
+  }
+  return msg || 'AI unavailable';
+}
+
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)));
 
 loadServerEnv();
@@ -139,6 +150,7 @@ app.get('/api/ai/health', (req, res) => {
     strategyParse: {
       model: provider === 'gemini' ? 'gemini-2.5-flash' : provider === 'openai' ? 'gpt-4o-mini' : provider === 'openrouter' ? 'google/gemini-2.5-flash' : null,
       acceptsModernGeminiKeys: true,
+      engine: 'gemini-2.5-flash-v2',
     },
     keySource: first
       ? first === serverKey
@@ -240,11 +252,11 @@ app.post('/api/strategies/parse', async (req, res) => {
         if (localOut.error) return res.status(localOut.status || 400).json({ error: localOut.error });
         return res.status(200).json({
           ...localOut.result,
-          warning: error instanceof Error ? error.message : 'AI unavailable',
+          warning: error instanceof Error ? friendlyStrategyWarning(error) : 'AI unavailable',
         });
       }
     }
-    const message = lastError instanceof Error ? lastError.message : 'Parse failed';
+    const message = lastError instanceof Error ? friendlyStrategyWarning(lastError) : 'Parse failed';
     return res.status(500).json({ error: message });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Parse failed';
