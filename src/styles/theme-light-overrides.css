@@ -1,13 +1,13 @@
 /* Light mode: professional surfaces, readable text, fix dark leftovers */
 
-/* ?? Tokens polish ??????????????????????????????????????????? */
+/* ── Tokens polish ─────────────────────────────────────────── */
 html[data-theme="light"] {
   --tf-bg: #f0f3f8;
   --tf-surface: #ffffff;
   --tf-elevated: #f7f9fc;
   --tf-border: #d5dee9;
   --tf-border-soft: #e6edf5;
-  /* Near-black primary text ? grey only for tiny captions */
+  /* Near-black primary text — grey only for tiny captions */
   --tf-text: #0a0a0a;
   --tf-text-secondary: #171717;
   --tf-text-muted: #404040;
@@ -33,7 +33,7 @@ html[data-theme="light"] {
   --color-dark-muted: var(--tf-text-muted);
 }
 
-/* ?? Text: dark-theme utilities ? black/near-black on light ? */
+/* ── Text: dark-theme utilities → black/near-black on light ─ */
 html[data-theme="light"] .text-white,
 html[data-theme="light"] .text-slate-100,
 html[data-theme="light"] .text-slate-200,
@@ -78,7 +78,7 @@ html[data-theme="light"] .text-\[\#f0d78c\] {
   color: #a16207 !important;
 }
 
-/* ?? Surfaces: hardcoded dark hex ? light tokens ????????????? */
+/* ── Surfaces: hardcoded dark hex → light tokens ───────────── */
 html[data-theme="light"] .bg-\[\#020617\],
 html[data-theme="light"] .bg-\[\#030408\],
 html[data-theme="light"] .bg-\[\#050505\],
@@ -207,7 +207,7 @@ html[data-theme="light"] .bg-gradient-to-br.from-\[\#121520\] {
   ) !important;
 }
 
-/* ?? Glass / shell ??????????????????????????????????????????? */
+/* ── Glass / shell ─────────────────────────────────────────── */
 html[data-theme="light"] .glass {
   background: var(--tf-glass);
   border-color: var(--tf-border);
@@ -218,7 +218,7 @@ html[data-theme="light"] .glass-light {
   background: rgba(255, 255, 255, 0.88);
 }
 
-/* ?? Forms ??????????????????????????????????????????????????? */
+/* ── Forms ─────────────────────────────────────────────────── */
 html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 html[data-theme="light"] select,
 html[data-theme="light"] textarea {
@@ -239,7 +239,7 @@ html[data-theme="light"] select {
   background-size: 12px 12px !important;
 }
 
-/* ?? Auth form fields ???????????????????????????????????????? */
+/* ── Auth form fields ──────────────────────────────────────── */
 html[data-theme="light"] .auth-page {
   background: var(--tf-bg);
 }
@@ -438,7 +438,7 @@ html[data-theme="light"] .auth-app-modal__close:hover {
   background: #ffffff !important;
 }
 
-/* ?? Auth lux marketing / landing page (full light pass) ????? */
+/* ── Auth lux marketing / landing page (full light pass) ───── */
 html[data-theme="light"] .auth-lux {
   --lux-bg: #f0f3f8;
   --lux-surface: #ffffff;
@@ -769,7 +769,7 @@ html[data-theme="light"] .auth-lux-feature__detail {
   color: #92400e !important;
 }
 
-/* ?? Master AI / Wolf AI chat ???????????????????????????????? */
+/* ── Master AI / Wolf AI chat ──────────────────────────────── */
 html[data-theme="light"] .mai-chat,
 html[data-theme="light"] .mai-chat__topbar,
 html[data-theme="light"] .mai-chat__composer-wrap,
@@ -903,7 +903,7 @@ html[data-theme="light"] .mai-chat__suggest-icon {
   color: #78350f !important;
 }
 
-/* ?? Indicators library ?????????????????????????????????????? */
+/* ── Indicators library ────────────────────────────────────── */
 html[data-theme="light"] .lux-lib,
 html[data-theme="light"] .lux-ind {
   color: var(--tf-text);
@@ -1039,7 +1039,7 @@ html[data-theme="light"] .lux-lib__hero-orb {
   opacity: 0.35;
 }
 
-/* ?? Trading Journal ????????????????????????????????????????? */
+/* ── Trading Journal ───────────────────────────────────────── */
 html[data-theme="light"] .tj-page {
   color: var(--tf-text);
 }
@@ -1172,7 +1172,7 @@ html[data-theme="light"] .tj-page textarea {
   border-color: var(--tf-border) !important;
 }
 
-/* ?? Admin tables polish ????????????????????????????????????? */
+/* ── Admin tables polish ───────────────────────────────────── */
 html[data-theme="light"] table thead,
 html[data-theme="light"] thead tr {
   background-color: var(--tf-elevated) !important;
@@ -1186,7 +1186,7 @@ html[data-theme="light"] tbody tr:hover {
   background-color: #f3f6fa !important;
 }
 
-/* ?? Charts / tooltips ??????????????????????????????????????? */
+/* ── Charts / tooltips ─────────────────────────────────────── */
 html[data-theme="light"] .recharts-cartesian-grid line {
   stroke: #dce4ef !important;
 }
@@ -1207,7 +1207,7 @@ html[data-theme="light"] .recharts-tooltip-item {
   color: #0f172a !important;
 }
 
-/* ?? Scrollbar ??????????????????????????????????????????????? */
+/* ── Scrollbar ─────────────────────────────────────────────── */
 html[data-theme="light"] ::-webkit-scrollbar-thumb {
   background: #b8c5d6;
 }
@@ -1222,9 +1222,9 @@ html[data-theme="light"] .app-card-elevated {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
 }
 
-/* ???????????????????????????????????????????????????????????
-   SITEWIDE LIGHT MODE SAFETY NET ? no black panels, readable text
-   ??????????????????????????????????????????????????????????? */
+/* ═══════════════════════════════════════════════════════════
+   SITEWIDE LIGHT MODE SAFETY NET — no black panels, readable text
+   ═══════════════════════════════════════════════════════════ */
 
 html[data-theme="light"] body,
 html[data-theme="light"] .app-shell,
@@ -1238,7 +1238,7 @@ html[data-theme="light"] .app-header.glass {
   border-color: var(--tf-border) !important;
 }
 
-/* Header / any brand wordmark ? pale gold is unreadable on white */
+/* Header / any brand wordmark — pale gold is unreadable on white */
 html[data-theme="light"] .brand-lockup__name {
   color: #0a0a0a !important;
   text-shadow: none !important;
@@ -1285,7 +1285,7 @@ html[data-theme="light"] .to-\[\#0b0e17\] {
   --tw-gradient-to: var(--tf-bg) !important;
 }
 
-/* AccessGate neon modal ? light theme: keep green accents, force dark readable text */
+/* AccessGate neon modal — light theme: keep green accents, force dark readable text */
 html[data-theme="light"] .access-gate {
   --ag-neon: #0f9f4a;
   --ag-neon-soft: #0b7a38;
@@ -1575,7 +1575,7 @@ html[data-theme="light"] .text-yellow-400 {
   color: #b45309 !important;
 }
 
-/* Journal form psych / fields / upload ? never stay black in light */
+/* Journal form psych / fields / upload — never stay black in light */
 html[data-theme="light"] .tj-psych,
 html[data-theme="light"] .tj-psych-desk,
 html[data-theme="light"] .tj-trade-preview,
@@ -1628,7 +1628,7 @@ html[data-theme="light"] .tj-psych-out__wr {
   color: var(--tj-gold) !important;
 }
 
-/* Calendar desk ? no dark hero / board / cells in light */
+/* Calendar desk — no dark hero / board / cells in light */
 html[data-theme="light"] .tj-cal__hero,
 html[data-theme="light"] .tj-cal__board,
 html[data-theme="light"] .tj-cal__detail {
@@ -1690,7 +1690,7 @@ html[data-theme="light"] .tj-cal-weekcell strong.is-down {
   text-shadow: none !important;
 }
 
-/* ??? Journal Analytics + Calendar ? force light surfaces (no black islands) ??? */
+/* ═══ Journal Analytics + Calendar — force light surfaces (no black islands) ═══ */
 html[data-theme="light"] .tj-analytics__hero,
 html[data-theme="light"] .tj-cal__hero,
 html[data-theme="light"] .tj-cal__board,
@@ -1799,7 +1799,7 @@ html:not([data-theme="light"]) .tj-alert-card {
   background: linear-gradient(155deg, rgba(22,26,38,0.95), rgba(10,12,18,0.98));
 }
 
-/* Chat attach + prompt icon + assist ? light safety */
+/* Chat attach + prompt icon + assist — light safety */
 html[data-theme="light"] .mai-chat__attach,
 html[data-theme="light"] .mai-chat__prompt-trigger {
   background: #f7f9fc !important;
@@ -1829,7 +1829,7 @@ html:not([data-theme="light"]) .tj-assist {
     linear-gradient(155deg, rgba(40, 34, 18, 0.55) 0%, rgba(14, 16, 24, 0.97) 42%, rgba(10, 12, 18, 0.99) 100%);
 }
 
-/* Header clock ? always readable in both themes */
+/* Header clock — always readable in both themes */
 html[data-theme="light"] .header-clock,
 html[data-theme="light"] .header-clock span {
   color: #0a0a0a !important;
@@ -1851,7 +1851,7 @@ html:not([data-theme="light"]) .header-clock svg {
   color: #94a3b8 !important;
 }
 
-/* Sidebar labels ? dark = white, light = black */
+/* Sidebar labels — dark = white, light = black */
 html[data-theme="dark"] .app-sidebar,
 html:not([data-theme="light"]) .app-sidebar {
   color: #ffffff;
@@ -1896,7 +1896,7 @@ html:not([data-theme="light"]) .app-sidebar__link.text-gold svg {
   color: var(--tj-gold-strong, #d4af37) !important;
 }
 
-/* Wolf AI topbar ? dark mode readable white labels */
+/* Wolf AI topbar — dark mode readable white labels */
 html[data-theme="dark"] .mai-chat__title,
 html:not([data-theme="light"]) .mai-chat__title,
 html[data-theme="dark"] .mai-chat__status,
@@ -1930,9 +1930,9 @@ html[data-theme="light"] .mai-chat__lang-label {
   color: #0a0a0a !important;
 }
 
-/* ???????????????????????????????????????????????????????????
-   Option Chain ? light mode: all cells / chips readable
-   ??????????????????????????????????????????????????????????? */
+/* ═══════════════════════════════════════════════════════════
+   Option Chain — light mode: all cells / chips readable
+   ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] .page-content--optionchain,
 html[data-theme="light"] .option-chain-page {
   color: #0a0a0a;
@@ -2054,9 +2054,9 @@ html[data-theme="light"] .page-content--optionchain {
     #f0f3f8;
 }
 
-/* ???????????????????????????????????????????????????????????
-   Wolf Terminal ? full light chrome (top / sides / bottom)
-   ??????????????????????????????????????????????????????????? */
+/* ═══════════════════════════════════════════════════════════
+   Wolf Terminal — full light chrome (top / sides / bottom)
+   ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] .page-content--terminal,
 html[data-theme="light"] .app-main--terminal-immersive {
   background: #eef2f7 !important;
@@ -2342,9 +2342,9 @@ html[data-theme="light"] .wolf-term__ind-modal-foot button.primary {
   color: #ffffff !important;
 }
 
-/* ???????????????????????????????????????????????????????????
-   Native chart tools (mai-nc) ? left rail, sheets, flyouts
-   ??????????????????????????????????????????????????????????? */
+/* ═══════════════════════════════════════════════════════════
+   Native chart tools (mai-nc) — left rail, sheets, flyouts
+   ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] .mai-nc__rail,
 html[data-theme="light"] .mai-nc__rail--desk {
   --nc-rail-bg: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
@@ -2509,7 +2509,7 @@ html[data-theme="light"] .mai-nc__study-detail {
   color: #475569 !important;
 }
 
-/* Legend Buy/Sell chip ? no outer white panel rectangle */
+/* Legend Buy/Sell chip — no outer white panel rectangle */
 html[data-theme="light"] .wolf-term__trade--legend {
   background: transparent !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
@@ -2668,7 +2668,7 @@ html[data-theme="light"] .mai-nc__history-load {
   color: #475569 !important;
 }
 
-/* Countdown follows forming candle ? never force a neutral light panel */
+/* Countdown follows forming candle — never force a neutral light panel */
 html[data-theme="light"] .mai-nc__bar-cd--axis.mai-nc__bar-cd--up {
   background: #26a69a !important;
   color: #ffffff !important;
@@ -2913,7 +2913,7 @@ html[data-theme="light"] .dash-info__pop-body {
   color: #475569 !important;
 }
 
-/* ?? Wolf Opportunity desk ??????????????????????????????????? */
+/* ── Wolf Opportunity desk ─────────────────────────────────── */
 html[data-theme="light"] .wolf-opp {
   --opp-bg: var(--tf-bg);
   --opp-panel: rgba(255, 255, 255, 0.86);
@@ -3035,7 +3035,7 @@ html[data-theme="light"] .wolf-opp__card li.is-bearish {
   background: rgba(244, 63, 94, 0.05);
 }
 
-/* ?? Master AI analysis split / canvas ??????????????????????? */
+/* ── Master AI analysis split / canvas ─────────────────────── */
 html[data-theme="light"] .wolf-split {
   background:
     radial-gradient(120% 80% at 0% 0%, rgba(14, 165, 233, 0.06), transparent 45%),
@@ -3111,7 +3111,7 @@ html[data-theme="light"] .wolf-canvas [style*="background:#020617"] {
   background: #ffffff !important;
 }
 
-/* ?? LIVE WOLF chart shell ??????????????????????????????????? */
+/* ── LIVE WOLF chart shell ─────────────────────────────────── */
 html[data-theme="light"] .live-wolf-desk {
   color: var(--tf-text);
 }
@@ -3125,7 +3125,7 @@ html[data-theme="light"] .live-wolf-desk__id h1 {
   color: var(--tf-text);
 }
 
-/* ?? Radar connect modal ????????????????????????????????????? */
+/* ── Radar connect modal ───────────────────────────────────── */
 html[data-theme="light"] .wolf-md-modal__backdrop {
   background: rgba(15, 23, 42, 0.4);
 }
@@ -3150,7 +3150,7 @@ html[data-theme="light"] .wolf-radar-desk__connect-banner {
   border-color: rgba(146, 64, 14, 0.22);
 }
 
-/* ?? Mentor / arena residual dark panels ????????????????????? */
+/* ── Mentor / arena residual dark panels ───────────────────── */
 html[data-theme="light"] .wm-empire__chart,
 html[data-theme="light"] .wm-desk__chart {
   background: #ffffff !important;
@@ -3179,7 +3179,7 @@ html[data-theme="light"] .bg-\[\#05080f\]\/80 {
 
 
 
-/* Plan contact modal + Call/WhatsApp ? light mode contrast */
+/* Plan contact modal + Call/WhatsApp � light mode contrast */
 html[data-theme="light"] .plan-contact {
   background: linear-gradient(180deg, #fff9ef, #ffffff) !important;
   border-color: #e7d3a8 !important;
