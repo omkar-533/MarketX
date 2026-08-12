@@ -278,21 +278,21 @@ export default function AuthSignupForm({
           Create your <span>account</span>
         </h1>
         <p className="auth-subtitle">
-          Signup needs a promo code from the desk. Enter it below to unlock access
-          {plan.name ? ` (${plan.name})` : ''}.
+          <strong>Promo code compulsory hai</strong> — bina valid code ke account nahi banega. Desk se
+          code lo, neeche daalo, phir signup karo.
         </p>
       </motion.div>
 
       <form onSubmit={(e) => void handleDetails(e)} className="mt-7 space-y-5">
         <AuthField
-          label="Promo code"
+          label="Promo code (required)"
           type="text"
           placeholder="WOLFXXXX"
           value={promoCode}
           onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
           required
           autoComplete="off"
-          hint="Ask the desk for a code — signup is invite-only."
+          hint="Bina promo code ke signup blocked hai."
           icon={<Ticket className="w-4 h-4" />}
         />
 
@@ -363,19 +363,23 @@ export default function AuthSignupForm({
 
         {errorBanner}
 
-        <button type="submit" disabled={isLoading} className="auth-submit-btn w-full">
+        <button
+          type="submit"
+          disabled={isLoading || promoCode.trim().length < 3}
+          className="auth-submit-btn w-full"
+        >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : skipOtp ? (
             <>
               <Sparkles className="w-4 h-4" />
-              Create account
+              Create account with promo
               <ArrowRight className="w-4 h-4" />
             </>
           ) : (
             <>
               <ShieldCheck className="w-4 h-4" />
-              Send OTP
+              Verify promo &amp; send OTP
               <ArrowRight className="w-4 h-4" />
             </>
           )}

@@ -194,7 +194,9 @@ export async function deletePromoCode(id, updatedBy = 'admin') {
 export async function peekPromoCode(rawCode) {
   const code = normalizePromoCode(rawCode);
   if (!code) {
-    throw Object.assign(new Error('Enter a promo code to sign up'), { status: 400 });
+    throw Object.assign(new Error('Promo code is compulsory — enter a valid code to sign up'), {
+      status: 400,
+    });
   }
 
   const store = await getPromoCodesStore();
