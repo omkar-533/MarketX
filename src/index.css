@@ -16481,15 +16481,20 @@ html.dark .mai-chat__shot-paths span {
   .tj-tabs {
     padding: 0.22rem;
     gap: 0.15rem;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
   .tj-tab {
-    padding: 0.45rem 0.7rem;
-    font-size: 0.7rem;
-    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.68rem;
+    gap: 0.25rem;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: calc(50% - 0.2rem);
   }
   .tj-tab svg {
-    width: 0.85rem;
-    height: 0.85rem;
+    width: 0.8rem;
+    height: 0.8rem;
   }
   .tj-hero {
     padding: 1rem 0.85rem 0.9rem;
