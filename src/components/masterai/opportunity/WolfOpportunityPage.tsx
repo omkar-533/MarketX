@@ -1,5 +1,5 @@
 /**
- * WOLF OPPORTUNITY — signal-river desk (lanes + capsules, no card grid).
+ * WOLF OPPORTUNITY — iOS split desk: Long vs Short, vertical cards.
  * Scanner logic unchanged.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -94,10 +94,10 @@ function formatHitClock(ms: number): string {
   });
 }
 
-const LANE_VISIBLE = Math.max(OPPORTUNITY_CARD_VISIBLE, 10);
+const SIDE_VISIBLE = Math.max(OPPORTUNITY_CARD_VISIBLE, 8);
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
-  const label = dir === 'bullish' ? 'Bullish' : dir === 'bearish' ? 'Bearish' : 'Neutral';
+  const label = dir === 'bullish' ? 'Long' : dir === 'bearish' ? 'Short' : 'Neutral';
   const Icon = dir === 'bullish' ? TrendingUp : dir === 'bearish' ? TrendingDown : Minus;
   return (
     <span className={`wolf-opp__bias wolf-opp__bias--${dir} wolf-opp__bias--${size}`}>
@@ -105,6 +105,22 @@ function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm
       {label}
     </span>
   );
+}
+
+type SideGroup = { scannerId: string; title: string; tagline: string; hits: OpportunityHit[] };
+
+function groupsForSide(
+  cards: ScannerCardState[],
+  side: 'bullish' | 'bearish',
+): SideGroup[] {
+  return cards
+    .map((card) => ({
+      scannerId: card.scannerId,
+      title: prettyTitle(card.title),
+      tagline: card.tagline,
+      hits: card.hits.filter((h) => biasOf(h) === side).slice(0, SIDE_VISIBLE),
+    }))
+    .filter((g) => g.hits.length > 0);
 }
 
 type Props = {
@@ -136,6 +152,54 @@ function Seg({
     <button type="button" className={`wolf-opp__seg ${on ? 'is-on' : ''}`} onClick={onClick}>
       {children}
     </button>
+  );
+}
+
+function HitTile({
+  hit,
+  onOpen,
+  onWhy,
+  onChart,
+}: {
+  hit: OpportunityHit;
+  onOpen: () => void;
+  onWhy: () => void;
+  onChart: () => void;
+}) {
+  const bias = biasOf(hit);
+  return (
+    <motion.article
+      layout
+      className={`wolf-opp__tile is-${bias}`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 500, damping: 28 } }}
+      whileTap={{ scale: 0.985 }}
+    >
+      <button type="button" className="wolf-opp__tile-main" onClick={onOpen}>
+        <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+        <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
+          {hit.changePercent >= 0 ? '+' : ''}
+          {hit.changePercent.toFixed(2)}%
+        </span>
+        <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
+        <span className="wolf-opp__tile-score">{hit.score}</span>
+        <span className="wolf-opp__tile-meta">
+          <BiasBadge dir={bias} size="sm" />
+          <em>{formatHitClock(hit.detectedAt)}</em>
+        </span>
+      </button>
+      <div className="wolf-opp__tile-actions">
+        <button type="button" onClick={onWhy}>
+          Why
+        </button>
+        <button type="button" onClick={onChart}>
+          <Crosshair size={12} /> Chart
+        </button>
+      </div>
+    </motion.article>
   );
 }
 
@@ -321,26 +385,31 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
 
   const liveOk = feedStatus === 'LIVE';
   const hitCount = cards.reduce((n, c) => n + c.hits.length, 0);
+  const showLong = filters.direction !== 'bearish';
+  const showShort = filters.direction !== 'bullish';
+  const longGroups = showLong ? groupsForSide(cards, 'bullish') : [];
+  const shortGroups = showShort ? groupsForSide(cards, 'bearish') : [];
+  const longCount = longGroups.reduce((n, g) => n + g.hits.length, 0);
+  const shortCount = shortGroups.reduce((n, g) => n + g.hits.length, 0);
 
   return (
-    <div className="wolf-opp wolf-opp--rivers">
+    <div className="wolf-opp wolf-opp--split">
       <div className="wolf-opp__stage" aria-hidden>
         <div className="wolf-opp__fog" />
-        <div className="wolf-opp__floor" />
       </div>
 
       <motion.header
         className="wolf-opp__hero wolf-opp__hero--slim"
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="wolf-opp__hero-copy">
           <p className="wolf-opp__eyebrow">Wolf Trade AI</p>
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Clear setups across every scanner.</p>
+          <p className="wolf-opp__lead">Longs and shorts, side by side.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -441,95 +510,103 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </p>
       ) : null}
 
-      <section className="wolf-opp__desk" aria-label="Scanner rivers">
-        <div className="wolf-opp__rivers">
-          {cards.map((card, idx) => {
-            const visibleHits = card.hits.slice(0, LANE_VISIBLE);
-            const extra = Math.max(0, card.hits.length - visibleHits.length);
-            const tone = idx % 4;
-            const isQuiet =
-              card.status === 'unavailable' || (!visibleHits.length && !(scanning || bgBusy));
-            return (
-              <motion.article
-                key={card.scannerId}
-                className={`wolf-opp__lane tone-${tone}${isQuiet ? ' is-quiet' : ''}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.025 * Math.min(idx, 12),
-                  duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <header className="wolf-opp__lane-meta">
-                  <div>
-                    <h3>{prettyTitle(card.title)}</h3>
-                    <p>{card.tagline}</p>
-                  </div>
-                  <span className="wolf-opp__lane-count">{card.hits.length}</span>
-                </header>
-
-                <div className="wolf-opp__lane-track" role="list">
-                  {card.status === 'unavailable' ? (
-                    <p className="wolf-opp__lane-quiet">{card.unavailableReason}</p>
-                  ) : !visibleHits.length ? (
-                    <p className="wolf-opp__lane-quiet">
-                      {scanning || bgBusy ? 'Hunting…' : 'Quiet'}
-                    </p>
-                  ) : (
-                    <AnimatePresence initial={false}>
-                      {visibleHits.map((hit, hitIdx) => {
-                        const bias = biasOf(hit);
-                        return (
-                          <motion.div
-                            key={hit.id}
-                            role="listitem"
-                            className={`wolf-opp__token is-${bias}`}
-                            initial={{ opacity: 0, x: 14 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.96 }}
-                            transition={{ delay: hitIdx * 0.025, duration: 0.28 }}
-                            layout
-                          >
-                            <button
-                              type="button"
-                              className="wolf-opp__token-main"
-                              onClick={() => setSelected(hit)}
-                            >
-                              <span className="wolf-opp__token-top">
-                                <b>{hit.symbol}</b>
-                                <strong>{hit.score}</strong>
-                              </span>
-                              <span className="wolf-opp__token-mid">
-                                <em>₹{formatHitPrice(hit.price)}</em>
-                                <i className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                                  {hit.changePercent >= 0 ? '+' : ''}
-                                  {hit.changePercent.toFixed(2)}%
-                                </i>
-                              </span>
-                              <span className="wolf-opp__token-bot">
-                                <BiasBadge dir={bias} size="sm" />
-                                <span className="wolf-opp__token-time">{formatHitClock(hit.detectedAt)}</span>
-                              </span>
-                            </button>
-                            <div className="wolf-opp__token-actions">
-                              <button type="button" onClick={() => setWhyHit(hit)}>
-                                Why
-                              </button>
-                              <button type="button" onClick={() => openChart(hit)}>
-                                <Crosshair size={11} /> Chart
-                              </button>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                  )}
-                  {extra > 0 ? <span className="wolf-opp__lane-more">+{extra}</span> : null}
+      <section className="wolf-opp__desk" aria-label="Long and short setups">
+        <div
+          className={`wolf-opp__split${showLong && showShort ? '' : ' is-single'}`}
+        >
+          {showLong ? (
+            <motion.section
+              className="wolf-opp__col wolf-opp__col--long"
+              aria-label="Long setups"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <header className="wolf-opp__col-head">
+                <div>
+                  <h2>
+                    <TrendingUp size={16} strokeWidth={2.4} /> Long
+                  </h2>
+                  <p>Bullish setups</p>
                 </div>
-              </motion.article>
-            );
-          })}
+                <span className="wolf-opp__col-count">{longCount}</span>
+              </header>
+              <div className="wolf-opp__col-body">
+                {!longGroups.length ? (
+                  <p className="wolf-opp__col-empty">
+                    {scanning || bgBusy ? 'Looking for longs…' : 'No longs above your filters'}
+                  </p>
+                ) : (
+                  longGroups.map((group) => (
+                    <div key={`long-${group.scannerId}`} className="wolf-opp__group">
+                      <h3>{group.title}</h3>
+                      <p>{group.tagline}</p>
+                      <div className="wolf-opp__stack">
+                        <AnimatePresence initial={false}>
+                          {group.hits.map((hit) => (
+                            <HitTile
+                              key={hit.id}
+                              hit={hit}
+                              onOpen={() => setSelected(hit)}
+                              onWhy={() => setWhyHit(hit)}
+                              onChart={() => openChart(hit)}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.section>
+          ) : null}
+
+          {showShort ? (
+            <motion.section
+              className="wolf-opp__col wolf-opp__col--short"
+              aria-label="Short setups"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <header className="wolf-opp__col-head">
+                <div>
+                  <h2>
+                    <TrendingDown size={16} strokeWidth={2.4} /> Short
+                  </h2>
+                  <p>Bearish setups</p>
+                </div>
+                <span className="wolf-opp__col-count">{shortCount}</span>
+              </header>
+              <div className="wolf-opp__col-body">
+                {!shortGroups.length ? (
+                  <p className="wolf-opp__col-empty">
+                    {scanning || bgBusy ? 'Looking for shorts…' : 'No shorts above your filters'}
+                  </p>
+                ) : (
+                  shortGroups.map((group) => (
+                    <div key={`short-${group.scannerId}`} className="wolf-opp__group">
+                      <h3>{group.title}</h3>
+                      <p>{group.tagline}</p>
+                      <div className="wolf-opp__stack">
+                        <AnimatePresence initial={false}>
+                          {group.hits.map((hit) => (
+                            <HitTile
+                              key={hit.id}
+                              hit={hit}
+                              onOpen={() => setSelected(hit)}
+                              onWhy={() => setWhyHit(hit)}
+                              onChart={() => openChart(hit)}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.section>
+          ) : null}
         </div>
       </section>
 

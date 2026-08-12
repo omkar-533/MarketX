@@ -3001,69 +3001,58 @@ html[data-theme="light"] .wolf-opp__seg-row {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-html[data-theme="light"] .wolf-opp__lane {
-  background: transparent;
-  border-top-color: #e2e8f0;
-  box-shadow: none;
+html[data-theme="light"] .wolf-opp__col--long {
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.16) 0%, #ffffff 32%);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(4, 120, 87, 0.12);
 }
-html[data-theme="light"] .wolf-opp__lane:hover {
-  background: rgba(15, 23, 42, 0.02);
+html[data-theme="light"] .wolf-opp__col--short {
+  background:
+    linear-gradient(180deg, rgba(244, 63, 94, 0.12) 0%, #ffffff 32%);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(190, 18, 60, 0.1);
 }
-html[data-theme="light"] .wolf-opp__lane.tone-0 {
-  border-left-color: #b45309;
-  box-shadow: none;
+html[data-theme="light"] .wolf-opp__col--long .wolf-opp__col-head h2 { color: #047857; }
+html[data-theme="light"] .wolf-opp__col--short .wolf-opp__col-head h2 { color: #be123c; }
+html[data-theme="light"] .wolf-opp__col--long .wolf-opp__col-count {
+  color: #ffffff;
+  background: #047857;
 }
-html[data-theme="light"] .wolf-opp__lane.tone-1 {
-  border-left-color: #2563eb;
-  box-shadow: none;
+html[data-theme="light"] .wolf-opp__col--short .wolf-opp__col-count {
+  color: #ffffff;
+  background: #be123c;
 }
-html[data-theme="light"] .wolf-opp__lane.tone-2 {
-  border-left-color: #047857;
-  box-shadow: none;
-}
-html[data-theme="light"] .wolf-opp__lane.tone-3 {
-  border-left-color: #c2410c;
-  box-shadow: none;
-}
-html[data-theme="light"] .wolf-opp__lane-meta h3 {
-  color: #0a0a0a;
-}
-html[data-theme="light"] .wolf-opp__lane-count {
-  color: #0b0e17;
-}
-html[data-theme="light"] .wolf-opp__lane-quiet,
-html[data-theme="light"] .wolf-opp__lane-more {
-  background: #f1f5f9;
-  color: #525252;
-}
-html[data-theme="light"] .wolf-opp__token-top strong {
-  color: #78350f;
-}
-html[data-theme="light"] .wolf-opp__token {
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e8f0, 0 6px 16px rgba(15, 23, 42, 0.05);
-}
-html[data-theme="light"] .wolf-opp__token.is-bullish {
-  background: linear-gradient(160deg, rgba(16, 185, 129, 0.1), #ffffff);
-  box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.2);
-}
-html[data-theme="light"] .wolf-opp__token.is-bearish {
-  background: linear-gradient(160deg, rgba(244, 63, 94, 0.08), #ffffff);
-  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.18);
-}
-html[data-theme="light"] .wolf-opp__token:hover {
-  box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.28), 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-html[data-theme="light"] .wolf-opp__token-actions button {
+html[data-theme="light"] .wolf-opp__col-empty {
   background: #f8fafc;
   color: #525252;
 }
-html[data-theme="light"] .wolf-opp__token-actions button:hover {
-  color: #78350f;
-  background: rgba(146, 64, 14, 0.08);
+html[data-theme="light"] .wolf-opp__group h3 { color: #171717; }
+html[data-theme="light"] .wolf-opp__tile {
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05), inset 0 0 0 1px #e8eef5;
 }
-html[data-theme="light"] .wolf-opp__lane-track {
-  scrollbar-color: rgba(146, 64, 14, 0.35) #eef2f7;
+html[data-theme="light"] .wolf-opp__tile.is-bullish {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), #ffffff);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05), inset 0 0 0 1px rgba(4, 120, 87, 0.18);
+}
+html[data-theme="light"] .wolf-opp__tile.is-bearish {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.08), #ffffff);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05), inset 0 0 0 1px rgba(190, 18, 60, 0.16);
+}
+html[data-theme="light"] .wolf-opp__tile-score { color: #78350f; }
+html[data-theme="light"] .wolf-opp__tile-actions button {
+  background: #f1f5f9;
+  color: #525252;
+}
+html[data-theme="light"] .wolf-opp__col--long .wolf-opp__tile-actions button:hover {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+}
+html[data-theme="light"] .wolf-opp__col--short .wolf-opp__tile-actions button:hover {
+  color: #be123c;
+  background: rgba(244, 63, 94, 0.1);
+}
+html[data-theme="light"] .wolf-opp__col-body {
+  scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
 }
 
 html[data-theme="light"] .wolf-opp__title span {
