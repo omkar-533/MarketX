@@ -3023,10 +3023,18 @@ html[data-theme="light"] .wolf-opp__cta {
   box-shadow: none;
 }
 
-html[data-theme="light"] .wolf-opp__note {
-  background: rgba(146, 64, 14, 0.08);
-  border-color: rgba(146, 64, 14, 0.25);
-  color: #78350f;
+html[data-theme="light"] .wolf-opp__row-px {
+  color: #92400e;
+}
+
+html[data-theme="light"] .wolf-opp__row-time {
+  color: #475569;
+  background: rgba(15, 23, 42, 0.04);
+  border-color: #e2e8f0;
+}
+
+html[data-theme="light"] .wolf-opp__card-count {
+  color: #0b0e17;
 }
 
 html[data-theme="light"] .wolf-opp__prime-card {

@@ -29102,7 +29102,7 @@ body:has(.app-main--terminal-immersive) #root {
   position: relative;
 }
 
-/* Scanner grid */
+/* Scanner grid — asymmetric mosaic */
 .wolf-opp__desk {
   flex: 1;
   min-height: 0;
@@ -29113,29 +29113,103 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.75rem;
   align-content: start;
 }
+.wolf-opp__grid--mosaic {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: 0.85rem;
+  align-items: stretch;
+}
 .wolf-opp__card {
-  min-height: 12.5rem;
+  position: relative;
+  min-height: 13.5rem;
+  max-height: 22rem;
   display: flex;
   flex-direction: column;
   background: var(--opp-panel);
   border: 1px solid var(--opp-hairline);
-  border-radius: 16px;
-  padding: 0.8rem 0.85rem 0.7rem;
+  border-radius: 18px;
+  padding: 0.85rem 0.9rem 0.75rem;
   overflow: hidden;
   backdrop-filter: blur(14px);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
-  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.wolf-opp__card-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -35% -15% auto;
+  height: 55%;
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.14), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.wolf-opp__card:hover .wolf-opp__card-glow {
+  opacity: 1;
+}
+.wolf-opp__card--compact {
+  grid-column: span 3;
+  min-height: 14rem;
+  max-height: 18rem;
+}
+.wolf-opp__card--tall {
+  grid-column: span 3;
+  min-height: 18rem;
+  max-height: 24rem;
+}
+.wolf-opp__card--wide {
+  grid-column: span 6;
+  min-height: 15rem;
+  max-height: 20rem;
+}
+.wolf-opp__card--hero {
+  grid-column: span 6;
+  min-height: 19rem;
+  max-height: 26rem;
+  border-color: rgba(212, 175, 55, 0.28);
+  background:
+    linear-gradient(160deg, rgba(212, 175, 55, 0.07), transparent 42%),
+    var(--opp-panel);
+}
+.wolf-opp__card--prime {
+  grid-column: span 12;
+  min-height: 16rem;
+  max-height: 22rem;
+  border-color: rgba(212, 175, 55, 0.38);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(212, 175, 55, 0.12), transparent 50%),
+    var(--opp-panel);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(212, 175, 55, 0.08) inset;
 }
 .wolf-opp__card:hover {
-  border-color: rgba(212, 175, 55, 0.32);
-  transform: translateY(-3px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.38);
+  border-color: rgba(212, 175, 55, 0.38);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.42);
 }
 .wolf-opp__card header {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   margin-bottom: 0.65rem;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--opp-hairline);
+}
+.wolf-opp__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.wolf-opp__card-count {
+  flex-shrink: 0;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #0b0e17;
+  background: linear-gradient(180deg, #f0d78c, #d4af37);
 }
 .wolf-opp__card header h3 {
   margin: 0;
@@ -29161,26 +29235,48 @@ body:has(.app-main--terminal-immersive) #root {
   color: var(--opp-muted);
   line-height: 1.4;
 }
+.wolf-opp__more {
+  flex-shrink: 0;
+  margin: 0.45rem 0 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--opp-muted);
+}
 .wolf-opp__card ul {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0.15rem 0.15rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
+  scrollbar-color: rgba(212, 175, 55, 0.55) rgba(255, 255, 255, 0.04);
+}
+.wolf-opp__card ul::-webkit-scrollbar {
+  width: 5px;
+}
+.wolf-opp__card ul::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.45);
+  border-radius: 999px;
+}
+.wolf-opp__card ul::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 999px;
 }
 .wolf-opp__card li {
   position: relative;
+  flex-shrink: 0;
   border-radius: 14px;
   background: var(--opp-row);
   border: 1px solid transparent;
   padding-left: 0.15rem;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
   overflow: hidden;
 }
 .wolf-opp__card li::before {
@@ -29209,6 +29305,7 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-opp__card li:hover {
   border-color: rgba(212, 175, 55, 0.28);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  transform: translateX(2px);
 }
 .wolf-opp__row {
   width: 100%;
@@ -29229,10 +29326,23 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.28rem;
   min-width: 0;
 }
+.wolf-opp__row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.55rem;
+}
 .wolf-opp__row-sym b {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.02em;
+}
+.wolf-opp__row-px {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--opp-gold-soft);
+  font-variant-numeric: tabular-nums;
 }
 .wolf-opp__row-meta {
   display: flex;
@@ -29244,6 +29354,17 @@ body:has(.app-main--terminal-immersive) #root {
   font-style: normal;
   font-size: 0.65rem;
   font-weight: 800;
+}
+.wolf-opp__row-time {
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--opp-muted);
+  font-variant-numeric: tabular-nums;
+  padding: 0.12rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--opp-hairline);
+  background: rgba(0, 0, 0, 0.18);
 }
 .wolf-opp__row-score {
   font-family: Orbitron, sans-serif;
@@ -29389,6 +29510,12 @@ body:has(.app-main--terminal-immersive) #root {
 
 @media (max-width: 1200px) {
   .wolf-opp__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wolf-opp__grid--mosaic { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .wolf-opp__card--compact,
+  .wolf-opp__card--tall { grid-column: span 3; }
+  .wolf-opp__card--wide,
+  .wolf-opp__card--hero { grid-column: span 6; }
+  .wolf-opp__card--prime { grid-column: span 6; }
   .wolf-opp { max-height: none; }
 }
 @media (max-width: 960px) {
@@ -29400,11 +29527,21 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__hero-actions { justify-content: flex-start; }
   .wolf-opp__prime-grid { grid-template-columns: 1fr; }
   .wolf-opp__grid { grid-template-columns: 1fr; }
+  .wolf-opp__grid--mosaic { grid-template-columns: 1fr; }
+  .wolf-opp__card--compact,
+  .wolf-opp__card--tall,
+  .wolf-opp__card--wide,
+  .wolf-opp__card--hero,
+  .wolf-opp__card--prime {
+    grid-column: span 1;
+    max-height: 20rem;
+  }
   .wolf-opp__ring-wrap { opacity: 0.35; }
 }
 @media (max-width: 640px) {
   .wolf-opp { padding: 0.65rem 0.7rem; }
   .wolf-opp__grid { grid-template-columns: 1fr; }
+  .wolf-opp__grid--mosaic { grid-template-columns: 1fr; }
   .wolf-opp__status-line { margin-left: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -29412,7 +29549,8 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__orb,
   .wolf-opp__ring,
   .wolf-opp__prime-glow,
-  .wolf-opp__title span {
+  .wolf-opp__title span,
+  .wolf-opp__card-glow {
     animation: none !important;
   }
 }

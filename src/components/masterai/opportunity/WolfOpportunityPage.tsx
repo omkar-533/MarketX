@@ -31,10 +31,12 @@ import type {
   OpportunityDirection,
   OpportunityFilters,
   OpportunityHit,
+  OpportunityScannerId,
   ScannerCardState,
 } from '../../../services/opportunity/opportunityTypes';
 import {
   OPPORTUNITY_CARD_POOL,
+  OPPORTUNITY_CARD_VISIBLE,
   OPPORTUNITY_SCANNERS,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
@@ -73,6 +75,41 @@ function biasOf(hit: OpportunityHit): OpportunityDirection {
   if ((hit.changePercent || 0) < 0) return 'bearish';
   return 'neutral';
 }
+
+function formatHitPrice(price: number): string {
+  if (!Number.isFinite(price) || price <= 0) return '—';
+  return price.toLocaleString('en-IN', {
+    maximumFractionDigits: price >= 100 ? 2 : 3,
+    minimumFractionDigits: 2,
+  });
+}
+
+function formatHitClock(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '—';
+  return new Date(ms).toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
+  });
+}
+
+/** Asymmetric desk mosaic — varied spans so cards never look cookie-cutter. */
+const CARD_MOSAIC: Record<OpportunityScannerId, string> = {
+  momentum_surge: 'wolf-opp__card--hero',
+  flow_shift: 'wolf-opp__card--tall',
+  liquidity_hunt: 'wolf-opp__card--wide',
+  compression_break: 'wolf-opp__card--compact',
+  momentum_fade: 'wolf-opp__card--tall',
+  breakout_radar: 'wolf-opp__card--wide',
+  reversal_hunter: 'wolf-opp__card--compact',
+  sector_leaders: 'wolf-opp__card--hero',
+  delivery_flow: 'wolf-opp__card--compact',
+  trend_rider: 'wolf-opp__card--tall',
+  options_flow: 'wolf-opp__card--wide',
+  wolf_prime: 'wolf-opp__card--prime',
+};
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
   const label = dir === 'bullish' ? 'Bullish' : dir === 'bearish' ? 'Bearish' : 'Neutral';
@@ -430,63 +467,100 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
       ) : null}
 
       <section className="wolf-opp__desk" aria-label="Scanners">
-        <div className="wolf-opp__grid">
-          {cards.map((card, idx) => (
-            <motion.article
-              key={card.scannerId}
-              className="wolf-opp__card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.03 * Math.min(idx, 8), duration: 0.45 }}
-            >
-              <header>
-                <h3>{prettyTitle(card.title)}</h3>
-                <p>{card.tagline}</p>
-              </header>
-              {card.status === 'unavailable' ? (
-                <p className="wolf-opp__empty">{card.unavailableReason}</p>
-              ) : !card.hits.length ? (
-                <p className="wolf-opp__empty">
-                  {scanning || bgBusy ? 'Hunting…' : 'Nothing above your filters.'}
-                </p>
-              ) : (
-                <ul>
-                  {card.hits.slice(0, 3).map((hit) => {
-                    const bias = biasOf(hit);
-                    return (
-                      <li key={hit.id} className={`is-${bias}`}>
-                        <button
-                          type="button"
-                          className="wolf-opp__row"
-                          onClick={() => setSelected(hit)}
-                        >
-                          <span className="wolf-opp__row-sym">
-                            <b>{hit.symbol}</b>
-                            <span className="wolf-opp__row-meta">
-                              <BiasBadge dir={bias} size="sm" />
-                              <i className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                                {hit.changePercent >= 0 ? '+' : ''}
-                                {hit.changePercent.toFixed(2)}%
-                              </i>
-                            </span>
-                          </span>
-                          <span className="wolf-opp__row-score">{hit.score}</span>
-                        </button>
-                        <div className="wolf-opp__row-actions">
-                          <button type="button" onClick={() => setWhyHit(hit)}>
-                            Why
-                          </button>
-                          <button type="button" onClick={() => openChart(hit)}>
-                            <Crosshair size={12} /> Chart
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </motion.article>
-          ))}
+        <div className="wolf-opp__grid wolf-opp__grid--mosaic">
+          {cards.map((card, idx) => {
+            const mosaic = CARD_MOSAIC[card.scannerId] || 'wolf-opp__card--compact';
+            const visibleHits = card.hits.slice(0, OPPORTUNITY_CARD_VISIBLE);
+            const extra = Math.max(0, card.hits.length - visibleHits.length);
+            return (
+              <motion.article
+                key={card.scannerId}
+                className={`wolf-opp__card ${mosaic}`}
+                initial={{ opacity: 0, y: 28, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  delay: 0.04 * Math.min(idx, 10),
+                  duration: 0.55,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                whileHover={{ y: -5, transition: { duration: 0.22 } }}
+              >
+                <div className="wolf-opp__card-glow" aria-hidden />
+                <header>
+                  <div className="wolf-opp__card-head">
+                    <h3>{prettyTitle(card.title)}</h3>
+                    {card.hits.length ? (
+                      <span className="wolf-opp__card-count">{card.hits.length}</span>
+                    ) : null}
+                  </div>
+                  <p>{card.tagline}</p>
+                </header>
+                {card.status === 'unavailable' ? (
+                  <p className="wolf-opp__empty">{card.unavailableReason}</p>
+                ) : !card.hits.length ? (
+                  <p className="wolf-opp__empty">
+                    {scanning || bgBusy ? 'Hunting…' : 'Nothing above your filters.'}
+                  </p>
+                ) : (
+                  <>
+                    <ul>
+                      <AnimatePresence initial={false}>
+                        {visibleHits.map((hit, hitIdx) => {
+                          const bias = biasOf(hit);
+                          return (
+                            <motion.li
+                              key={hit.id}
+                              className={`is-${bias}`}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ delay: hitIdx * 0.035, duration: 0.28 }}
+                              layout
+                            >
+                              <button
+                                type="button"
+                                className="wolf-opp__row"
+                                onClick={() => setSelected(hit)}
+                              >
+                                <span className="wolf-opp__row-sym">
+                                  <span className="wolf-opp__row-title">
+                                    <b>{hit.symbol}</b>
+                                    <em className="wolf-opp__row-px">₹{formatHitPrice(hit.price)}</em>
+                                  </span>
+                                  <span className="wolf-opp__row-meta">
+                                    <BiasBadge dir={bias} size="sm" />
+                                    <i className={(hit.changePercent || 0) >= 0 ? 'up' : 'down'}>
+                                      {hit.changePercent >= 0 ? '+' : ''}
+                                      {hit.changePercent.toFixed(2)}%
+                                    </i>
+                                    <span className="wolf-opp__row-time" title="Entered opportunity">
+                                      {formatHitClock(hit.detectedAt)}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="wolf-opp__row-score">{hit.score}</span>
+                              </button>
+                              <div className="wolf-opp__row-actions">
+                                <button type="button" onClick={() => setWhyHit(hit)}>
+                                  Why
+                                </button>
+                                <button type="button" onClick={() => openChart(hit)}>
+                                  <Crosshair size={12} /> Chart
+                                </button>
+                              </div>
+                            </motion.li>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </ul>
+                    {extra > 0 ? (
+                      <p className="wolf-opp__more">+{extra} more in pool</p>
+                    ) : null}
+                  </>
+                )}
+              </motion.article>
+            );
+          })}
         </div>
       </section>
 
