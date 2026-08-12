@@ -194,7 +194,7 @@ export function PlanContactModal({
                     void runVerify();
                   }
                 }}
-                placeholder="WOLFXXXX"
+                placeholder="XXXXXX"
                 autoComplete="off"
                 spellCheck={false}
               />

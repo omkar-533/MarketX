@@ -295,7 +295,7 @@ export default function AuthSignupForm({
         <AuthField
           label="Promo code (required)"
           type="text"
-          placeholder="WOLFXXXX"
+          placeholder="XXXXXX"
           value={promoCode}
           onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
           required

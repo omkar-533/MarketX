@@ -121,7 +121,7 @@ export default function Subscription({
           <input
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-            placeholder="WOLFXXXX"
+            placeholder="XXXXXX"
             className="flex-1 px-3 py-2.5 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 tracking-wider focus:outline-none focus:border-[#d4af37]/40"
             onKeyDown={(e) => {
               if (e.key === 'Enter') void applyPromo();
