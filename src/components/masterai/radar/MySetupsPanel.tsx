@@ -833,7 +833,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                   setManualClarifications([]);
                 }
               }}
-              placeholder='e.g. "Hunt stocks where 15m low is swept, then 5m turns bullish with volume expansion, and 1h trend is up."'
+              placeholder='English / Hinglish OK — e.g. "200 ema cross above on 5m", "15m prev low sweep then 5m bullish structure + volume", "rsi below 30 reversal"'
               disabled={manualAiPhase === 'understanding'}
             />
             <button
