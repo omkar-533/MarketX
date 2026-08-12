@@ -23,20 +23,15 @@ export type PromoRedeemResult = {
 
 function authHeaders(adminEmail?: string | null, adminPassword?: string | null): HeadersInit {
   const session = loadAppSession();
-  if (session?.token && (session.user.role === 'admin' || session.user.role === 'subadmin')) {
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.token}`,
-    };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (session?.token && session.user.role === 'admin') {
+    headers.Authorization = `Bearer ${session.token}`;
   }
   if (adminEmail && adminPassword) {
-    return {
-      'Content-Type': 'application/json',
-      'X-Admin-Email': adminEmail,
-      'X-Admin-Password': adminPassword,
-    };
+    headers['X-Admin-Email'] = adminEmail;
+    headers['X-Admin-Password'] = adminPassword;
   }
-  return { 'Content-Type': 'application/json' };
+  return headers;
 }
 
 function sessionHeaders(): HeadersInit {
@@ -57,11 +52,18 @@ export async function adminListPromoCodes(
   adminEmail?: string | null,
   adminPassword?: string | null,
 ): Promise<PromoCodeRow[]> {
-  const res = await apiFetch('/api/app-auth/admin/promo-codes', {
-    headers: authHeaders(adminEmail, adminPassword),
-  });
-  const data = (await readJson(res, 'Could not load promo codes')) as { codes?: PromoCodeRow[] };
-  return Array.isArray(data.codes) ? data.codes : [];
+  try {
+    const res = await apiFetch(
+      '/api/app-auth/admin/promo-codes',
+      { headers: authHeaders(adminEmail, adminPassword) },
+      { retries: 3, timeoutMs: 25_000 },
+    );
+    if (res.status === 404) return [];
+    const data = (await readJson(res, 'Could not load promo codes')) as { codes?: PromoCodeRow[] };
+    return Array.isArray(data.codes) ? data.codes : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function adminCreatePromoCode(

@@ -1834,7 +1834,8 @@ router.get('/admin/promo-codes', requireFullAdmin, async (_req, res) => {
     const store = await getPromoCodesStore();
     return res.json(publicAdminPromoList(store));
   } catch (err) {
-    return failed(res, err, 'Could not load promo codes');
+    console.warn('[promo-codes] list failed', err?.message || err);
+    return res.json({ codes: [] });
   }
 });
 

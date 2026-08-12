@@ -96,12 +96,22 @@ function sanitizeStore(input) {
 }
 
 export async function getPromoCodesStore() {
-  return sanitizeStore(await readSetting(PROMO_CODES_KEY));
+  try {
+    return sanitizeStore(await readSetting(PROMO_CODES_KEY));
+  } catch (err) {
+    console.warn('[promoCodes] read failed, using empty store', err?.message || err);
+    return { codes: [] };
+  }
 }
 
 async function writePromoCodesStore(store, updatedBy) {
   const next = sanitizeStore(store);
-  await writeSetting(PROMO_CODES_KEY, next, updatedBy);
+  try {
+    await writeSetting(PROMO_CODES_KEY, next, updatedBy);
+  } catch (err) {
+    console.error('[promoCodes] write failed', err?.message || err);
+    throw Object.assign(new Error('Could not save promo codes — try again'), { status: 503 });
+  }
   return next;
 }
 

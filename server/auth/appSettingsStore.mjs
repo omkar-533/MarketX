@@ -58,8 +58,6 @@ async function writeSetting(key, value, updatedBy) {
 
 export { readSetting, writeSetting };
 
-export { readSetting, writeSetting };
-
 function sanitizePopup(input) {
   const merged = { ...DEFAULT_ACCESS_POPUP, ...(input || {}) };
   const days = Number(merged.defaultGrantDays);

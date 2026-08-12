@@ -50,8 +50,8 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
     try {
       const list = await adminListPromoCodes(adminEmail, adminPassword);
       setRows(list);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load promo codes');
+    } catch {
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,14 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
 
   useEffect(() => {
     void load();
-  }, [load]);
+    const t = window.setInterval(() => {
+      void adminListPromoCodes(adminEmail, adminPassword).then((list) => {
+        setRows(list);
+        setLoading(false);
+      });
+    }, 12_000);
+    return () => window.clearInterval(t);
+  }, [load, adminEmail, adminPassword]);
 
   const create = async () => {
     setSaving(true);
@@ -88,7 +95,12 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
       setExpiresAt('');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create promo code');
+      const raw = err instanceof Error ? err.message : 'Could not create promo code';
+      setError(
+        /cannot get|not found|404/i.test(raw)
+          ? 'API is updating — wait ~1 minute, then click Create again.'
+          : raw,
+      );
     } finally {
       setSaving(false);
     }
