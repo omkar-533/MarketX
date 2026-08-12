@@ -137,7 +137,7 @@ app.get('/api/ai/health', (req, res) => {
     configured,
     available: configured,
     strategyParse: {
-      model: provider === 'gemini' ? 'gemini-2.0-flash' : provider === 'openai' ? 'gpt-4o-mini' : provider === 'openrouter' ? 'google/gemini-2.0-flash-001' : null,
+      model: provider === 'gemini' ? 'gemini-2.5-flash' : provider === 'openai' ? 'gpt-4o-mini' : provider === 'openrouter' ? 'google/gemini-2.5-flash' : null,
       acceptsModernGeminiKeys: true,
     },
     keySource: first

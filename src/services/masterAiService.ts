@@ -546,7 +546,6 @@ export const MASTER_AI_MODELS: MasterAiModel[] = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', description: 'Smart default — fast trading chat + charts' },
   { id: 'gemini-2.5-flash', name: 'Flash', provider: 'Google', description: 'Best quality / cost for trading chat + charts' },
   { id: 'gemini-2.5-flash-lite', name: 'Flash Lite', provider: 'Google', description: 'Cheapest — lighter answers' },
-  { id: 'gemini-2.0-flash', name: 'Flash 2.0', provider: 'Google', description: 'Fast multilingual fallback' },
   { id: 'gemini-2.5-pro', name: 'Pro', provider: 'Google', description: 'Deepest analysis (uses more credits)' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', description: 'Picks a strong model automatically' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', description: 'Deeper analysis & charts' },

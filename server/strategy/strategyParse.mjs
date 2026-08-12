@@ -601,14 +601,14 @@ async function completeRaw(apiKey, system, user) {
   if (provider === 'gemini') {
     const gemini = new GoogleGenerativeAI(apiKey);
     const model = gemini.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: system,
       generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
     });
     const result = await model.generateContent(user);
     return {
       text: String(result?.response?.text?.() ?? '').trim(),
-      modelUsed: 'gemini-2.0-flash',
+      modelUsed: 'gemini-2.5-flash',
       source: 'gemini',
     };
   }
@@ -625,7 +625,7 @@ async function completeRaw(apiKey, system, user) {
           },
         });
   const completion = await client.chat.completions.create({
-    model: provider === 'openai' ? 'gpt-4o-mini' : 'google/gemini-2.0-flash-001',
+    model: provider === 'openai' ? 'gpt-4o-mini' : 'google/gemini-2.5-flash',
     temperature: 0.1,
     max_tokens: 900,
     messages: [

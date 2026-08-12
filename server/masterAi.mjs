@@ -15,9 +15,7 @@ export const MASTER_AI_MODELS = [
   { id: 'gemini/auto', name: 'Auto (Flash)', provider: 'Google', web: false },
   { id: 'gemini-2.5-flash', name: 'Flash', provider: 'Google' },
   { id: 'gemini-2.5-flash-lite', name: 'Flash Lite', provider: 'Google' },
-  { id: 'gemini-2.0-flash', name: 'Flash 2.0', provider: 'Google' },
   { id: 'gemini-2.5-pro', name: 'Pro', provider: 'Google' },
-  { id: 'gemini-1.5-flash', name: 'Flash 1.5', provider: 'Google' },
   { id: 'openrouter/auto', name: 'Auto (OpenRouter)', provider: 'OpenRouter', web: false },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
@@ -33,14 +31,10 @@ export const GEMINI_COST_MODE = {
 };
 const GEMINI_TEXT_CHAIN = [
   GEMINI_COST_MODE.textDefault,
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
   'gemini-2.5-flash-lite',
 ];
 const GEMINI_VISION_CHAIN = [
   GEMINI_COST_MODE.visionDefault,
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
   'gemini-2.5-flash-lite',
 ];
 const HISTORY_TURNS = 24;
@@ -1914,7 +1908,7 @@ function pickTextModels(requested, needsWeb, langCode, provider, wantsMarkup = f
   // Free-tier keys often hit paid-model walls — try free endpoints first.
   chain.push(
     'google/gemma-4-31b-it:free',
-    'google/gemini-2.0-flash-lite:free',
+    'google/gemini-2.5-flash-lite:free',
     ...(wantsMarkup
       ? ['openai/gpt-4o-mini', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite']
       : ['google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini', 'google/gemini-2.5-flash']),
@@ -1955,9 +1949,8 @@ function mapRequestedToGemini(requested) {
   if (r === 'gemini-2.5-flash-lite' || r.endsWith('flash-lite')) return 'gemini-2.5-flash-lite';
   if (r === 'gemini-2.5-pro' || r.endsWith('2.5-pro')) return 'gemini-2.5-pro';
   if (r === 'gemini-2.5-flash' || r.includes('gemini-2.5-flash')) return 'gemini-2.5-flash';
-  if (r.includes('gemini-2.0')) return 'gemini-2.0-flash';
-  if (r.includes('gemini-1.5-pro')) return 'gemini-1.5-pro';
-  if (r.includes('gemini-1.5-flash')) return 'gemini-1.5-flash';
+  // Retired Gemini IDs → current Flash
+  if (r.includes('gemini-2.0') || r.includes('gemini-1.5')) return 'gemini-2.5-flash';
   if (r.startsWith('gemini-')) return r;
   return null;
 }
