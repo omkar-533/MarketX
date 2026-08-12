@@ -7,6 +7,8 @@ export type PromoCodeRow = {
   label: string;
   grantDays: number;
   planId: 'monthly' | 'quarterly' | 'yearly' | null;
+  /** 0–100 — percent off the tagged plan (desk / signup display). */
+  discountPercent: number;
   maxRedemptions: number | null;
   usedCount: number;
   expiresAt: string | null;
@@ -18,7 +20,13 @@ export type PromoCodeRow = {
 export type PromoRedeemResult = {
   ok: boolean;
   message: string;
-  promo?: { code: string; label: string; grantDays: number; planId: string | null };
+  promo?: {
+    code: string;
+    label: string;
+    grantDays: number;
+    planId: string | null;
+    discountPercent?: number;
+  };
 };
 
 function authHeaders(adminEmail?: string | null, adminPassword?: string | null): HeadersInit {
@@ -72,6 +80,7 @@ export async function adminCreatePromoCode(
     label?: string;
     grantDays: number;
     planId?: string | null;
+    discountPercent?: number;
     maxRedemptions?: number | null;
     expiresAt?: string | null;
     enabled?: boolean;
@@ -95,6 +104,7 @@ export async function adminUpdatePromoCode(
     label: string;
     grantDays: number;
     planId: string | null;
+    discountPercent: number;
     maxRedemptions: number | null;
     expiresAt: string | null;
     enabled: boolean;
@@ -127,7 +137,13 @@ export async function adminDeletePromoCode(
 export async function verifyPromoCode(code: string): Promise<{
   ok: boolean;
   valid: boolean;
-  promo?: { code: string; label: string | null; grantDays: number; planId: string | null };
+  promo?: {
+    code: string;
+    label: string | null;
+    grantDays: number;
+    planId: string | null;
+    discountPercent?: number;
+  };
   error?: string;
 }> {
   const res = await apiFetch('/api/app-auth/promo-codes/verify', {
@@ -146,7 +162,13 @@ export async function verifyPromoCode(code: string): Promise<{
   return data as {
     ok: boolean;
     valid: boolean;
-    promo?: { code: string; label: string | null; grantDays: number; planId: string | null };
+    promo?: {
+      code: string;
+      label: string | null;
+      grantDays: number;
+      planId: string | null;
+      discountPercent?: number;
+    };
   };
 }
 

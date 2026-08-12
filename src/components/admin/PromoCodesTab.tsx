@@ -17,6 +17,12 @@ const FIELD =
   'w-full px-3 py-2 rounded-lg bg-[#121520] border border-[#1a1f2e] text-sm text-slate-200 focus:outline-none focus:border-[#d4af37]/40';
 const LABEL = 'block text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold';
 
+const PLAN_LABELS: Record<string, string> = {
+  monthly: 'Monthly',
+  quarterly: '3 Months',
+  yearly: 'Yearly',
+};
+
 function randomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out = 'WOLF';
@@ -27,6 +33,11 @@ function randomCode() {
 function formatExpiry(iso: string | null) {
   if (!iso) return 'No expiry';
   return new Date(iso).toLocaleDateString('en-IN', { dateStyle: 'medium' });
+}
+
+function planLabel(planId: string | null | undefined) {
+  if (!planId) return null;
+  return PLAN_LABELS[planId] || planId;
 }
 
 /** Admin: create / toggle / delete promo codes users can redeem for access. */
@@ -41,6 +52,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
   const [label, setLabel] = useState('');
   const [grantDays, setGrantDays] = useState(30);
   const [planId, setPlanId] = useState<string>('');
+  const [discountPercent, setDiscountPercent] = useState<string>('');
   const [maxRedemptions, setMaxRedemptions] = useState<string>('');
   const [expiresAt, setExpiresAt] = useState('');
 
@@ -73,12 +85,19 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
     setError('');
     setMsg('');
     try {
+      const discount = Math.min(100, Math.max(0, Math.round(Number(discountPercent) || 0)));
+      const createdCode = code.trim().toUpperCase();
       await adminCreatePromoCode(
         {
-          code,
-          label: label.trim() || undefined,
+          code: createdCode,
+          label:
+            label.trim() ||
+            (discount > 0
+              ? `${discount}% off${planId ? ` ${planLabel(planId)}` : ''}`.trim()
+              : undefined),
           grantDays: Number(grantDays) || 0,
           planId: planId || null,
+          discountPercent: discount,
           maxRedemptions: maxRedemptions.trim() ? Number(maxRedemptions) : null,
           expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59`).toISOString() : null,
           enabled: true,
@@ -86,11 +105,16 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
         adminEmail,
         adminPassword,
       );
-      setMsg(`Created ${code.toUpperCase()} — share it with the user.`);
+      setMsg(
+        discount > 0
+          ? `Created ${createdCode} — ${discount}% off${planId ? ` ${planLabel(planId)}` : ''}.`
+          : `Created ${createdCode} — share it with the user.`,
+      );
       setCode(randomCode());
       setLabel('');
       setGrantDays(30);
       setPlanId('');
+      setDiscountPercent('');
       setMaxRedemptions('');
       setExpiresAt('');
       await load();
@@ -145,8 +169,8 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
           Create promo code
         </h3>
         <p className="text-[11px] text-slate-500">
-          Share the code with a user. They must enter it on signup — without a promo code, signup is blocked.
-          Days = access length after they create the account (0 = lifetime).
+          Pick any plan and set your own % off (0–100). Share the code with a user — signup needs a
+          valid promo. Days = access length after they create the account (0 = lifetime).
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
@@ -168,7 +192,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
               className={FIELD}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Launch offer"
+              placeholder="30% Quarterly offer"
             />
           </div>
           <div>
@@ -182,13 +206,25 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
             />
           </div>
           <div>
-            <label className={LABEL}>Plan tag</label>
+            <label className={LABEL}>Plan</label>
             <select className={FIELD} value={planId} onChange={(e) => setPlanId(e.target.value)}>
-              <option value="">None</option>
+              <option value="">Any / none</option>
               <option value="monthly">Monthly</option>
               <option value="quarterly">3 Months</option>
               <option value="yearly">Yearly</option>
             </select>
+          </div>
+          <div>
+            <label className={LABEL}>% off (0–100)</label>
+            <input
+              className={FIELD}
+              type="number"
+              min={0}
+              max={100}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+              placeholder="e.g. 30"
+            />
           </div>
           <div>
             <label className={LABEL}>Max uses (blank = unlimited)</label>
@@ -243,6 +279,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
               <thead className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#1a1f2e]">
                 <tr>
                   <th className="px-4 py-2">Code</th>
+                  <th className="px-4 py-2">Plan / % off</th>
                   <th className="px-4 py-2">Days</th>
                   <th className="px-4 py-2">Uses</th>
                   <th className="px-4 py-2">Expires</th>
@@ -256,9 +293,24 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
                     <td className="px-4 py-3">
                       <div className="font-bold text-[#d4af37] tracking-wider">{row.code}</div>
                       {row.label ? <div className="text-[10px] text-slate-500">{row.label}</div> : null}
-                      {row.planId ? (
-                        <div className="text-[10px] text-slate-600 uppercase">{row.planId}</div>
-                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 text-slate-300">
+                      {row.discountPercent > 0 || row.planId ? (
+                        <>
+                          {row.discountPercent > 0 ? (
+                            <div className="font-bold text-emerald-400">{row.discountPercent}% off</div>
+                          ) : null}
+                          {row.planId ? (
+                            <div className="text-[10px] text-slate-500 uppercase">
+                              {planLabel(row.planId)}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-slate-600">Any plan</div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-300">
                       {row.grantDays > 0 ? `${row.grantDays}d` : 'Lifetime'}

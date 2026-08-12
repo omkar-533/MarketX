@@ -120,11 +120,20 @@ export function PlanContactModal({
       const code = result.promo?.code || trimmed;
       setVerifiedCode(code);
       setPromoCode(code);
-      setVerifyOk(
-        result.promo?.grantDays && result.promo.grantDays > 0
-          ? `Code verified — ${result.promo.grantDays} day access.`
-          : 'Code verified — ready to sign up.',
-      );
+      const planNames: Record<string, string> = {
+        monthly: 'Monthly',
+        quarterly: '3 Months',
+        yearly: 'Yearly',
+      };
+      const discount = Number(result.promo?.discountPercent) || 0;
+      const planName = result.promo?.planId ? planNames[result.promo.planId] || result.promo.planId : '';
+      const bits: string[] = [];
+      if (discount > 0) bits.push(`${discount}% off${planName ? ` ${planName}` : ''}`);
+      else if (planName) bits.push(planName);
+      if (result.promo?.grantDays && result.promo.grantDays > 0) {
+        bits.push(`${result.promo.grantDays} day access`);
+      }
+      setVerifyOk(bits.length ? `Code verified — ${bits.join(' · ')}.` : 'Code verified — ready to sign up.');
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : 'Could not verify promo code');
     } finally {

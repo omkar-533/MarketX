@@ -1876,6 +1876,7 @@ router.post('/admin/promo-codes', requireFullAdmin, async (req, res) => {
         label: created.label,
         grantDays: created.grantDays,
         planId: created.planId,
+        discountPercent: created.discountPercent || 0,
         maxRedemptions: created.maxRedemptions,
         usedCount: created.usedCount,
         expiresAt: created.expiresAt,
@@ -1900,6 +1901,7 @@ router.patch('/admin/promo-codes/:id', requireFullAdmin, async (req, res) => {
         label: updated.label,
         grantDays: updated.grantDays,
         planId: updated.planId,
+        discountPercent: updated.discountPercent || 0,
         maxRedemptions: updated.maxRedemptions,
         usedCount: updated.usedCount,
         expiresAt: updated.expiresAt,
@@ -1935,6 +1937,7 @@ router.post('/promo-codes/verify', async (req, res) => {
         label: result.promo.label || null,
         grantDays: result.grantDays,
         planId: result.planId,
+        discountPercent: result.discountPercent || 0,
       },
     });
   } catch (err) {

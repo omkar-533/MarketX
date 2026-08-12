@@ -51,6 +51,12 @@ function sanitizePromoCode(input, { preserveId = true } = {}) {
   const planRaw = String(src.planId || '').trim().toLowerCase();
   const planId = PLAN_IDS.has(planRaw) ? planRaw : null;
 
+  const discountRaw = Number(src.discountPercent);
+  let discountPercent = 0;
+  if (Number.isFinite(discountRaw) && discountRaw > 0) {
+    discountPercent = Math.min(100, Math.round(discountRaw));
+  }
+
   let expiresAt = null;
   if (src.expiresAt) {
     const t = Date.parse(String(src.expiresAt));
@@ -67,6 +73,7 @@ function sanitizePromoCode(input, { preserveId = true } = {}) {
     label: clampStr(src.label, '', 80),
     grantDays,
     planId,
+    discountPercent,
     maxRedemptions,
     usedCount,
     expiresAt,
@@ -124,6 +131,7 @@ export function publicAdminPromoList(store) {
       label: c.label,
       grantDays: c.grantDays,
       planId: c.planId,
+      discountPercent: c.discountPercent || 0,
       maxRedemptions: c.maxRedemptions,
       usedCount: c.usedCount,
       expiresAt: c.expiresAt,
@@ -220,9 +228,11 @@ export async function peekPromoCode(rawCode) {
       label: promo.label,
       grantDays: promo.grantDays,
       planId: promo.planId,
+      discountPercent: promo.discountPercent || 0,
     },
     grantDays: promo.grantDays,
     planId: promo.planId,
+    discountPercent: promo.discountPercent || 0,
   };
 }
 
@@ -270,8 +280,10 @@ export async function redeemPromoCode(rawCode, userId) {
       label: promo.label,
       grantDays: promo.grantDays,
       planId: promo.planId,
+      discountPercent: promo.discountPercent || 0,
     },
     grantDays: promo.grantDays,
     planId: promo.planId,
+    discountPercent: promo.discountPercent || 0,
   };
 }
