@@ -129,17 +129,12 @@ export default function AccessUnlockPanel({
       {guestMode ? (
         <div className="access-unlock__guest">
           <p className="access-unlock__guest-note">
-            After your free trial ends, sign in and submit demat + F&O screenshot here — or start a
-            trial now and unlock when ready.
+            Sign in to submit demat + F&amp;O screenshot for desk verification — or Call / WhatsApp
+            us to buy a plan.
           </p>
           <div className="access-unlock__guest-actions">
-            {onGuestStartTrial ? (
-              <button type="button" className="access-unlock__cta" onClick={onGuestStartTrial}>
-                Start free trial
-              </button>
-            ) : null}
             {onGuestSignIn ? (
-              <button type="button" className="access-unlock__ghost" onClick={onGuestSignIn}>
+              <button type="button" className="access-unlock__cta" onClick={onGuestSignIn}>
                 Sign in to submit
               </button>
             ) : null}

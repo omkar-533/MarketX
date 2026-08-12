@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
-import { TRIAL_DAYS } from '../constants/plans';
 import { openExternalUrl } from '../utils/openExternalUrl';
 import ProtectedGuideVideo from './indicators/ProtectedGuideVideo';
 import IndicatorSettingsForm from './indicators/IndicatorSettingsForm';
@@ -388,14 +387,14 @@ export default function Indicators({
                   <p>
                     With an active Wolf AI subscription, every published indicator unlocks
                     automatically in this section — open the invite link to add it on TradingView.
-                    Trial users still submit a TradingView username for desk approval first.
+                    New users submit a TradingView username for desk approval first.
                   </p>
                 </div>
                 <div className="lux-ind__faq-item">
-                  <h3>What happens after the {TRIAL_DAYS}-day demo?</h3>
+                  <h3>How do I get full indicator access?</h3>
                   <p>
-                    Workspace access may lock when the demo ends. Submit a fresh request so the desk
-                    can approve longer access.
+                    Buy a plan via Call or WhatsApp, or submit demat + F&amp;O verification so the
+                    desk can approve longer access.
                   </p>
                 </div>
               </section>
@@ -422,7 +421,7 @@ export default function Indicators({
                       ? 'Approved on TradingView. The invite appears here once your plan access is active.'
                       : tvStatus === 'pending'
                         ? 'Request is with the desk. Invite unlocks here as soon as they Approve.'
-                        : 'Active Wolf AI plans unlock every indicator here automatically. Trial users submit a TradingView username for desk approval.'}
+                        : 'Active Wolf AI plans unlock every indicator here automatically. New users submit a TradingView username for desk approval.'}
                   </p>
                 </div>
 
@@ -578,8 +577,7 @@ export default function Indicators({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.18, ...softSpring }}
             >
-              Curated indicators — previewed, linked, and ready for your desk. {TRIAL_DAYS}-day demo
-              included; longer access after approval.
+              Curated indicators — previewed, linked, and ready for your desk.
             </motion.p>
           </header>
 

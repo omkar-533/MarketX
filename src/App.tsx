@@ -19,7 +19,6 @@ const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const Header = lazy(() => import('./components/Header'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
-const TrialReminderPopup = lazy(() => import('./components/access/TrialReminderPopup'));
 const TvAccessGrantedPopup = lazy(() => import('./components/access/TvAccessGrantedPopup'));
 const AccessGate = lazy(() => import('./components/access/AccessGate'));
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
@@ -545,13 +544,6 @@ function AppWorkspace() {
     </div>
       {auth.isLoggedIn ? (
         <Suspense fallback={null}>
-          <TrialReminderPopup
-            access={auth.access}
-            userId={auth.user?.id}
-            userName={auth.user?.name}
-            userPhone={auth.user?.phone}
-            onRefresh={auth.refreshAccess}
-          />
           <TvAccessGrantedPopup
             userId={
               auth.user?.role === 'admin' || auth.user?.role === 'subadmin' ? null : auth.user?.id

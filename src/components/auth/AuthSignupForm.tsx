@@ -46,7 +46,7 @@ export default function AuthSignupForm({
   onSignupVerify,
   onSignupResend,
   onSwitchToSignIn,
-  selectedPlan = 'trial',
+  selectedPlan = 'monthly',
 }: AuthSignupFormProps) {
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [name, setName] = useState('');
@@ -64,8 +64,8 @@ export default function AuthSignupForm({
   const [cooldown, setCooldown] = useState(0);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  const { plans, trialDays, skipOtp } = usePlansCatalog();
-  const plan = planById(selectedPlan, plans);
+  const { plans, skipOtp } = usePlansCatalog();
+  const plan = planById(selectedPlan === 'trial' ? 'monthly' : selectedPlan, plans);
   const isPaidIntent = plan.price > 0;
   const emailValid = isValidEmail(email);
   const mobileValid = isValidMobile(mobile);
@@ -224,7 +224,7 @@ export default function AuthSignupForm({
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Verify & start my {trialDays}-day trial
+                Verify & create account
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -260,7 +260,7 @@ export default function AuthSignupForm({
     <div className="auth-form-panel relative z-[1]">
       <div className="auth-kicker auth-kicker--ai mb-5">
         <Sparkles className="w-3 h-3" />
-        {trialDays}-day free trial
+        Create account
       </div>
 
       <motion.div
@@ -273,8 +273,8 @@ export default function AuthSignupForm({
         </h1>
         <p className="auth-subtitle">
           {isPaidIntent
-            ? `Your ${plan.name.toLowerCase()} plan starts with ${trialDays} free days — the desk activates billing after that.`
-            : `Full access to Wolf AI, Indicators, and Trading Journal for ${trialDays} days. No card, no commitment.`}
+            ? `After signup, Call or WhatsApp us to activate your ${plan.name} plan — payment gateway coming soon.`
+            : 'Create your account, then Call or WhatsApp the desk to activate a plan — or use desk verification.'}
         </p>
       </motion.div>
 
@@ -352,7 +352,7 @@ export default function AuthSignupForm({
           ) : skipOtp ? (
             <>
               <Sparkles className="w-4 h-4" />
-              Start my {trialDays}-day trial
+              Create account
               <ArrowRight className="w-4 h-4" />
             </>
           ) : (

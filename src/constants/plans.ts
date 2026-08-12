@@ -41,8 +41,9 @@ export const DEFAULT_PLANS: readonly Plan[] = [
     badge: 'Start here',
     cta: 'Start 3-day free trial',
     note: 'No card required · instant access',
-    featured: true,
-    enabled: true,
+    featured: false,
+    /** Hidden from public pricing — free trial removed site-wide. */
+    enabled: false,
     features: [
       'Wolf AI — limited daily questions',
       'Indicators — browse & open invite links',
@@ -57,8 +58,8 @@ export const DEFAULT_PLANS: readonly Plan[] = [
     price: 2999,
     period: 'per month',
     tagline: 'Full access to Wolf AI, Indicators, and Trading Journal — cancel anytime.',
-    cta: 'Choose monthly',
-    note: 'Cancel anytime from profile',
+    cta: 'Buy monthly',
+    note: 'Call or WhatsApp to activate',
     enabled: true,
     features: [
       'Wolf AI — full copilot access',
@@ -77,8 +78,9 @@ export const DEFAULT_PLANS: readonly Plan[] = [
     tagline: 'Better rate for 3 months — deeper AI usage, full Indicators library, and journal analytics.',
     badge: 'Best balance',
     save: 'Save ₹2,998',
-    cta: 'Choose 3 months',
-    note: 'Billed once for 3 months',
+    cta: 'Buy 3 months',
+    note: 'Call or WhatsApp to activate',
+    featured: true,
     enabled: true,
     features: [
       'Everything in Monthly',
@@ -97,8 +99,8 @@ export const DEFAULT_PLANS: readonly Plan[] = [
     tagline: 'Best value year — max Wolf AI, full Indicators vault, and advanced journal reviews.',
     badge: 'Best value',
     save: 'Save ₹20,989',
-    cta: 'Choose yearly',
-    note: 'Billed once for 12 months',
+    cta: 'Buy yearly',
+    note: 'Call or WhatsApp to activate',
     enabled: true,
     features: [
       'Everything in 3 Months',

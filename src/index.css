@@ -4077,7 +4077,7 @@ input[type="number"] { -moz-appearance: textfield; }
 
 @media (min-width: 1180px) {
   .auth-lux__plans {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.15rem;
   }
 }
@@ -4441,6 +4441,127 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 0.78rem;
   line-height: 1.6;
   color: rgba(190, 190, 198, 0.7);
+}
+
+/* Desk Call / WhatsApp — plan activation without payment gateway */
+.plan-contact {
+  margin-top: 1.5rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), rgba(18, 21, 32, 0.65));
+  text-align: center;
+}
+.plan-contact--pricing {
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.plan-contact__lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  color: var(--tf-text-secondary);
+  line-height: 1.45;
+}
+.plan-contact__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+}
+.plan-contact__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.55rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.plan-contact__btn:hover {
+  transform: translateY(-1px);
+}
+.plan-contact__btn--call {
+  background: #121520;
+  color: var(--tf-text);
+  border: 1px solid var(--tf-border);
+}
+.plan-contact__btn--call:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--tj-gold);
+}
+.plan-contact__btn--wa {
+  background: #25d366;
+  color: #062816;
+  border: 1px solid rgba(37, 211, 102, 0.55);
+}
+.plan-contact__btn--wa:hover {
+  background: #1ebe5a;
+}
+.plan-contact-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.plan-contact-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(2, 4, 10, 0.72);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.plan-contact-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(26rem, 100%);
+  padding: 1.35rem 1.25rem 1.2rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: var(--tf-elevated);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.plan-contact-modal__panel h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+  color: var(--tj-gold);
+  letter-spacing: 0.04em;
+}
+.plan-contact-modal__panel > p {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--tf-text-secondary);
+  line-height: 1.45;
+}
+.plan-contact-modal__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  border: 0;
+  background: transparent;
+  color: var(--tf-text-muted);
+  padding: 0.35rem;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+.plan-contact-modal__close:hover {
+  color: var(--tf-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+.plan-contact-modal .plan-contact {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,27 +1,26 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { ArrowRight, Check, Sparkles, Zap } from 'lucide-react';
-import type { Plan, PlanId } from '../../constants/plans';
+import type { Plan } from '../../constants/plans';
 import { usePlansCatalog } from '../../hooks/usePlansCatalog';
 import { fetchPublicAccessPopup, type AccessPopup } from '../../services/appInviteAuth';
 import AccessUnlockPanel from '../access/AccessUnlockPanel';
+import { PlanContactActions, PlanContactModal } from '../PlanContactActions';
 import { Counter, EASE, GradientLine, Reveal, Words } from './scrollFx';
 
 type AuthPricingProps = {
   onStartTrial: () => void;
-  onChoosePlan: (plan: PlanId) => void;
+  onChoosePlan: (planId: string) => void;
   onSignIn?: () => void;
 };
 
 function PlanCard({
   plan,
   index,
-  trialDays,
   onSelect,
 }: {
   plan: Plan;
   index: number;
-  trialDays: number;
   onSelect: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -79,20 +78,11 @@ function PlanCard({
           <h3 className="plan__name">{plan.name}</h3>
 
           <div className="plan__price">
-            {plan.price === 0 ? (
-              <>
-                <span className="plan__amount plan__amount--free">Free</span>
-                <span className="plan__period">for {trialDays} days</span>
-              </>
-            ) : (
-              <>
-                <span className="plan__amount">
-                  <i aria-hidden>₹</i>
-                  <Counter to={plan.price} duration={1.4} />
-                </span>
-                <span className="plan__period">{plan.period}</span>
-              </>
-            )}
+            <span className="plan__amount">
+              <i aria-hidden>₹</i>
+              <Counter to={plan.price} duration={1.4} />
+            </span>
+            <span className="plan__period">{plan.period}</span>
           </div>
 
           {plan.equivalent || plan.save ? (
@@ -139,10 +129,11 @@ function PlanCard({
   );
 }
 
-/** Pricing wall — catalog from admin (fallback to defaults) + unlock path. */
-export default function AuthPricing({ onStartTrial, onChoosePlan, onSignIn }: AuthPricingProps) {
-  const { plans, trialDays } = usePlansCatalog();
+/** Pricing wall — paid plans + Call / WhatsApp (no free trial, no payment gateway yet). */
+export default function AuthPricing({ onStartTrial: _onStartTrial, onChoosePlan: _onChoosePlan, onSignIn }: AuthPricingProps) {
+  const { plans } = usePlansCatalog();
   const [popup, setPopup] = useState<AccessPopup | null>(null);
+  const [buyPlan, setBuyPlan] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,8 +160,8 @@ export default function AuthPricing({ onStartTrial, onChoosePlan, onSignIn }: Au
           </h2>
           <Reveal delay={0.26} y={22}>
             <p className="auth-lux__section-sub">
-              Features grow with each plan. Pick the term that matches how deep you want Wolf AI and
-              Journal — or unlock free after trial with desk verification.
+              Features grow with each plan. Pick the term that fits — then Call or WhatsApp us to
+              activate. Online payment gateway is coming soon.
             </p>
           </Reveal>
         </div>
@@ -181,30 +172,32 @@ export default function AuthPricing({ onStartTrial, onChoosePlan, onSignIn }: Au
               key={plan.id}
               plan={plan}
               index={i}
-              trialDays={trialDays}
-              onSelect={() => (plan.id === 'trial' ? onStartTrial() : onChoosePlan(plan.id))}
+              onSelect={() => setBuyPlan(plan.name)}
             />
           ))}
         </div>
+
+        <Reveal delay={0.12} y={18} blur={false}>
+          <PlanContactActions className="plan-contact--pricing" />
+        </Reveal>
 
         {popup?.enabled !== false ? (
           <div className="auth-lux__unlock" id="unlock">
             <Reveal y={24} blur={false}>
               <div className="auth-lux__unlock-grid">
                 <div className="auth-lux__unlock-copy">
-                  <p className="auth-lux__kicker">After free trial</p>
+                  <p className="auth-lux__kicker">Desk verification</p>
                   <h3>Unlock with desk approval</h3>
                   <p>
-                    When your free trial ends, follow the same steps we show in-app — open the
-                    referral link, take a small F&amp;O trade, then submit demat + screenshot after
-                    sign-in. The desk verifies and unlocks premium access.
+                    Prefer the verification path? Open the referral link, take a small F&amp;O
+                    trade, then sign in and submit demat + screenshot. The desk verifies and
+                    unlocks access.
                   </p>
                 </div>
                 <AccessUnlockPanel
                   className="access-unlock--inline"
                   popup={popup}
                   guestMode
-                  onGuestStartTrial={onStartTrial}
                   onGuestSignIn={onSignIn}
                 />
               </div>
@@ -214,12 +207,17 @@ export default function AuthPricing({ onStartTrial, onChoosePlan, onSignIn }: Au
 
         <Reveal delay={0.2} y={18} blur={false}>
           <p className="auth-lux__plans-foot">
-            Prices in INR, inclusive of taxes. Paid plans are activated by the desk after signup —
-            your trial keeps running until then. Free unlock uses the verification form above after
-            you sign in.
+            Prices in INR, inclusive of taxes. Paid plans are activated by the desk after you Call
+            or WhatsApp. Free unlock uses the verification form above after you sign in.
           </p>
         </Reveal>
       </div>
+
+      <PlanContactModal
+        open={Boolean(buyPlan)}
+        planName={buyPlan || undefined}
+        onClose={() => setBuyPlan(null)}
+      />
     </section>
   );
 }

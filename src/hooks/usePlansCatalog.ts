@@ -9,11 +9,14 @@ export type PlansCatalogState = {
   loading: boolean;
 };
 
+function publicPlans(list: readonly Plan[]): Plan[] {
+  return list
+    .filter((p) => p.id !== 'trial' && p.enabled !== false)
+    .map((p) => ({ ...p, features: [...p.features] }));
+}
+
 const FALLBACK: PlansCatalogState = {
-  plans: DEFAULT_PLANS.filter((p) => p.enabled !== false).map((p) => ({
-    ...p,
-    features: [...p.features],
-  })),
+  plans: publicPlans(DEFAULT_PLANS),
   trialDays: TRIAL_DAYS,
   skipOtp: true,
   loading: false,
@@ -29,7 +32,7 @@ export function usePlansCatalog(): PlansCatalogState {
       const catalog = await fetchPublicPlans();
       if (cancelled) return;
       setState({
-        plans: catalog.plans,
+        plans: publicPlans(catalog.plans),
         trialDays: catalog.trialDays,
         skipOtp: catalog.skipOtp,
         loading: false,

@@ -180,7 +180,7 @@ export default function AuthForm({
           <UserPlus className="w-4 h-4" />
           Sign up
         </button>
-        <p className="auth-form-switch__hint">Start the free trial — takes under a minute.</p>
+        <p className="auth-form-switch__hint">Create an account, then Call or WhatsApp to activate.</p>
       </div>
     </div>
   );

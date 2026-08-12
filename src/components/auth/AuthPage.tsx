@@ -16,7 +16,7 @@ import AuthSignupForm, { type AuthSignupFormProps as SignupFormProps } from './A
 import BrandMark from '../BrandMark';
 import { BRAND, BRAND_TAGLINE, BRAND_TAGLINE_FULL } from '../../constants/brandLabels';
 import { SHOW_INDICATORS, SHOW_PAPER_TRADING } from '../../constants/featureFlags';
-import { TRIAL_DAYS, type PlanId } from '../../constants/plans';
+import { type PlanId } from '../../constants/plans';
 import { Counter, EASE, GradientLine, Marquee, Reveal, Words } from './scrollFx';
 
 type AuthPageProps = Omit<AuthFormProps, 'headerExtra'> & {
@@ -162,7 +162,7 @@ const STATS = SHOW_INDICATORS
       { to: 2, suffix: '', label: 'core modules' },
       { to: 1, suffix: '', label: 'AI copilot desk' },
       { to: 1, suffix: '', label: 'trading journal' },
-      { to: TRIAL_DAYS, suffix: '', label: 'day free trial' },
+      { to: 1, suffix: '', label: 'live desk support' },
     ] as const);
 
 const ease = EASE;
@@ -309,7 +309,7 @@ export default function AuthPage(props: AuthPageProps) {
   }, [authView]);
 
   const openSignIn = () => setAuthView({ kind: 'signin' });
-  const openSignUp = (plan: PlanId = 'trial') => setAuthView({ kind: 'signup', plan });
+  const openSignUp = (plan: PlanId = 'monthly') => setAuthView({ kind: 'signup', plan });
   const openForgot = () => setAuthView({ kind: 'forgot' });
   const closeAuth = () => {
     setAuthView(null);
@@ -358,8 +358,10 @@ export default function AuthPage(props: AuthPageProps) {
             <button type="button" className="auth-lux__btn-ghost" onClick={openSignIn}>
               Sign In
             </button>
-            <button type="button" className="auth-lux__btn-solid" onClick={() => openSignUp()}>
-              Start free trial
+            <button type="button" className="auth-lux__btn-solid" onClick={() => {
+              document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+            }}>
+              Get access
             </button>
           </div>
         </div>
@@ -403,9 +405,11 @@ export default function AuthPage(props: AuthPageProps) {
               <button
                 type="button"
                 className="auth-lux__btn-solid auth-lux__btn-solid--xl"
-                onClick={() => openSignUp()}
+                onClick={() => {
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
-                Start {TRIAL_DAYS}-day free trial
+                See plans &amp; buy
                 <ArrowRight className="w-5 h-5" aria-hidden />
               </button>
               <a href="#pricing" className="auth-lux__link-underline">
@@ -420,7 +424,7 @@ export default function AuthPage(props: AuthPageProps) {
             >
               <Stars rating={5} size="lg" />
               <p>
-                Loved by desks that care about process � {TRIAL_DAYS} days free, no card required
+                Loved by desks that care about process — Call or WhatsApp to activate your plan
               </p>
             </motion.div>
           </motion.div>
@@ -522,26 +526,28 @@ export default function AuthPage(props: AuthPageProps) {
         <section className="auth-lux__bottom-cta">
           <div className="auth-lux__bottom-cta-inner">
             <Reveal y={24} blur={false}>
-              <p className="auth-lux__kicker">{TRIAL_DAYS} days free</p>
+              <p className="auth-lux__kicker">Ready when you are</p>
             </Reveal>
             <h2 className="auth-lux__section-title">
-              <Words text="Try the whole desk" />
+              <Words text="Get the whole desk" />
               <br />
-              <GradientLine text="before you pay" delay={0.22} />
+              <GradientLine text="via Call or WhatsApp" delay={0.22} />
             </h2>
             <Reveal delay={0.26} y={22}>
               <p className="auth-lux__section-sub">
-                Create your account in under a minute � every module unlocks instantly for{' '}
-                {TRIAL_DAYS} days. Cancel anytime from profile.
+                Pick a plan below, then Call or WhatsApp us — we activate access after confirmation.
+                Online payment gateway is coming soon.
               </p>
             </Reveal>
             <Reveal delay={0.36} y={20} blur={false}>
               <button
                 type="button"
                 className="auth-lux__btn-solid auth-lux__btn-solid--xl"
-                onClick={() => openSignUp()}
+                onClick={() => {
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
-                Start free on {BRAND}
+                View plans on {BRAND}
                 <ArrowRight className="w-5 h-5" aria-hidden />
               </button>
             </Reveal>
