@@ -28604,13 +28604,12 @@ body:has(.app-main--terminal-immersive) #root {
   position: relative;
   isolation: isolate;
   min-height: calc(100vh - 3.5rem);
-  max-height: calc(100vh - 3.5rem);
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 1rem 1.25rem 0.9rem;
-  overflow: auto;
-  overflow-x: clip;
+  padding: 1rem 1.25rem 2.5rem;
+  overflow: visible;
   color: var(--opp-text);
   font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
   background:
@@ -29109,14 +29108,14 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.75rem 1rem;
 }
 .wolf-opp__desk {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
 }
 .wolf-opp__sheets {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding-bottom: 0.4rem;
+  padding-bottom: 2rem;
 }
 
 .wolf-opp__sheet {
@@ -29484,7 +29483,6 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__pulse,
   .wolf-opp__hero-actions { justify-content: flex-start; }
   .wolf-opp__prime-grid { grid-template-columns: 1fr; }
-  .wolf-opp { max-height: none; }
 }
 @media (max-width: 640px) {
   .wolf-opp { padding: 0.65rem 0.7rem; }
