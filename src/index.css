@@ -29125,13 +29125,18 @@ body:has(.app-main--terminal-immersive) #root {
   min-height: 0;
 }
 .wolf-opp__sheets {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
   padding-bottom: 2rem;
 }
 
 .wolf-opp__sheet {
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   border-radius: 24px;
   padding: 0.95rem 1rem 0.9rem;
   background: rgba(255, 255, 255, 0.035);
@@ -29189,6 +29194,7 @@ body:has(.app-main--terminal-immersive) #root {
   grid-template-columns: 1fr 1fr;
   gap: 0.7rem;
   align-items: start;
+  flex: 1;
 }
 .wolf-opp__sides.is-single {
   grid-template-columns: 1fr;
