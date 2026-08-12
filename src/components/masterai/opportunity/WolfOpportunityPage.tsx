@@ -321,11 +321,6 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
 
   const liveOk = feedStatus === 'LIVE';
   const hitCount = cards.reduce((n, c) => n + c.hits.length, 0);
-  const hotHits = cards
-    .flatMap((c) => c.hits)
-    .sort((a, b) => b.score - a.score)
-    .filter((h, i, arr) => arr.findIndex((x) => x.symbol === h.symbol) === i)
-    .slice(0, 8);
 
   return (
     <div className="wolf-opp wolf-opp--rivers">
@@ -345,7 +340,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Signal rivers — swipe lanes, tap setups.</p>
+          <p className="wolf-opp__lead">Clear setups across every scanner.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -446,62 +441,23 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </p>
       ) : null}
 
-      {hotHits.length ? (
-        <motion.section
-          className="wolf-opp__hot"
-          aria-label="Top setups"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-        >
-          <div className="wolf-opp__hot-label">
-            <span>Hot now</span>
-            <em>Highest conviction across scanners</em>
-          </div>
-          <div className="wolf-opp__hot-track">
-            {hotHits.map((hit, i) => {
-              const bias = biasOf(hit);
-              return (
-                <motion.button
-                  key={hit.id}
-                  type="button"
-                  className={`wolf-opp__capsule is-${bias}`}
-                  onClick={() => setSelected(hit)}
-                  initial={{ opacity: 0, scale: 0.92, y: 8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: 0.04 * i, duration: 0.35 }}
-                  whileHover={{ y: -4, scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span className="wolf-opp__capsule-sym">{hit.symbol}</span>
-                  <span className="wolf-opp__capsule-px">₹{formatHitPrice(hit.price)}</span>
-                  <span className={`wolf-opp__capsule-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
-                    {hit.changePercent >= 0 ? '+' : ''}
-                    {hit.changePercent.toFixed(2)}%
-                  </span>
-                  <span className="wolf-opp__capsule-score">{hit.score}</span>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.section>
-      ) : null}
-
       <section className="wolf-opp__desk" aria-label="Scanner rivers">
         <div className="wolf-opp__rivers">
           {cards.map((card, idx) => {
             const visibleHits = card.hits.slice(0, LANE_VISIBLE);
             const extra = Math.max(0, card.hits.length - visibleHits.length);
             const tone = idx % 4;
+            const isQuiet =
+              card.status === 'unavailable' || (!visibleHits.length && !(scanning || bgBusy));
             return (
               <motion.article
                 key={card.scannerId}
-                className={`wolf-opp__lane tone-${tone}`}
-                initial={{ opacity: 0, x: -24 }}
-                animate={{ opacity: 1, x: 0 }}
+                className={`wolf-opp__lane tone-${tone}${isQuiet ? ' is-quiet' : ''}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  delay: 0.03 * Math.min(idx, 12),
-                  duration: 0.45,
+                  delay: 0.025 * Math.min(idx, 12),
+                  duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
               >
@@ -518,7 +474,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                     <p className="wolf-opp__lane-quiet">{card.unavailableReason}</p>
                   ) : !visibleHits.length ? (
                     <p className="wolf-opp__lane-quiet">
-                      {scanning || bgBusy ? 'Hunting…' : 'Quiet — nothing above filters'}
+                      {scanning || bgBusy ? 'Hunting…' : 'Quiet'}
                     </p>
                   ) : (
                     <AnimatePresence initial={false}>
@@ -529,10 +485,10 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                             key={hit.id}
                             role="listitem"
                             className={`wolf-opp__token is-${bias}`}
-                            initial={{ opacity: 0, x: 18 }}
+                            initial={{ opacity: 0, x: 14 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, scale: 0.96 }}
-                            transition={{ delay: hitIdx * 0.03, duration: 0.28 }}
+                            transition={{ delay: hitIdx * 0.025, duration: 0.28 }}
                             layout
                           >
                             <button

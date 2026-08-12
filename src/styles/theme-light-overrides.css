@@ -3002,23 +3002,31 @@ html[data-theme="light"] .wolf-opp__seg-row {
 }
 
 html[data-theme="light"] .wolf-opp__lane {
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: inset 3px 0 0 0 #b45309, 0 8px 22px rgba(15, 23, 42, 0.05);
+  background: transparent;
+  border-top-color: #e2e8f0;
+  box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__lane:hover {
-  background: #ffffff;
+  background: rgba(15, 23, 42, 0.02);
+}
+html[data-theme="light"] .wolf-opp__lane.tone-0 {
+  border-left-color: #b45309;
+  box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__lane.tone-1 {
-  box-shadow: inset 3px 0 0 0 #2563eb, 0 8px 22px rgba(15, 23, 42, 0.05);
+  border-left-color: #2563eb;
+  box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__lane.tone-2 {
-  box-shadow: inset 3px 0 0 0 #047857, 0 8px 22px rgba(15, 23, 42, 0.05);
+  border-left-color: #047857;
+  box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__lane.tone-3 {
-  box-shadow: inset 3px 0 0 0 #c2410c, 0 8px 22px rgba(15, 23, 42, 0.05);
+  border-left-color: #c2410c;
+  box-shadow: none;
 }
 html[data-theme="light"] .wolf-opp__lane-meta h3 {
-  color: #78350f;
+  color: #0a0a0a;
 }
 html[data-theme="light"] .wolf-opp__lane-count {
   color: #0b0e17;
@@ -3028,21 +3036,7 @@ html[data-theme="light"] .wolf-opp__lane-more {
   background: #f1f5f9;
   color: #525252;
 }
-html[data-theme="light"] .wolf-opp__capsule {
-  background: linear-gradient(120deg, rgba(146, 64, 14, 0.1), #ffffff 55%);
-  box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.2), 0 8px 20px rgba(15, 23, 42, 0.06);
-}
-html[data-theme="light"] .wolf-opp__capsule.is-bullish {
-  background: linear-gradient(120deg, rgba(16, 185, 129, 0.12), #ffffff 60%);
-  box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.25), 0 8px 20px rgba(15, 23, 42, 0.05);
-}
-html[data-theme="light"] .wolf-opp__capsule.is-bearish {
-  background: linear-gradient(120deg, rgba(244, 63, 94, 0.1), #ffffff 60%);
-  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.22), 0 8px 20px rgba(15, 23, 42, 0.05);
-}
-html[data-theme="light"] .wolf-opp__capsule-score,
-html[data-theme="light"] .wolf-opp__token-top strong,
-html[data-theme="light"] .wolf-opp__hot-label span {
+html[data-theme="light"] .wolf-opp__token-top strong {
   color: #78350f;
 }
 html[data-theme="light"] .wolf-opp__token {
@@ -3073,11 +3067,10 @@ html[data-theme="light"] .wolf-opp__lane-track {
 }
 
 html[data-theme="light"] .wolf-opp__title span {
-  background: linear-gradient(110deg, #78350f 0%, #92400e 40%, #b45309 70%, #78350f 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #0a0a0a;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
 }
 
 html[data-theme="light"] .wolf-opp__seg.is-on {

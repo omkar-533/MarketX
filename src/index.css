@@ -28612,7 +28612,7 @@ body:has(.app-main--terminal-immersive) #root {
   overflow: auto;
   overflow-x: clip;
   color: var(--opp-text);
-  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
   background:
     radial-gradient(120% 80% at 10% -10%, rgba(212, 175, 55, 0.12), transparent 42%),
     radial-gradient(90% 60% at 95% 0%, rgba(56, 80, 140, 0.18), transparent 45%),
@@ -28763,28 +28763,27 @@ body:has(.app-main--terminal-immersive) #root {
   padding: 0.15rem 0.1rem 0.35rem;
 }
 .wolf-opp__eyebrow {
-  margin: 0 0 0.2rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--opp-gold);
-  font-weight: 700;
+  font-weight: 600;
 }
 .wolf-opp__title {
   margin: 0;
-  font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: clamp(1.55rem, 2.6vw, 2.05rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
   line-height: 1.05;
 }
 .wolf-opp__title span {
-  background: linear-gradient(110deg, #fff8e7 0%, var(--opp-gold-soft) 35%, #c9a227 55%, #fff1c4 80%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: wolf-opp-shimmer 7s ease-in-out infinite alternate;
+  color: var(--opp-text);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  animation: none;
 }
 .wolf-opp__lead {
   margin: 0.25rem 0 0;
@@ -29060,12 +29059,13 @@ body:has(.app-main--terminal-immersive) #root {
   margin-bottom: 0.65rem;
 }
 .wolf-opp__prime-score {
-  font-family: Orbitron, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-size: 1.55rem;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--opp-gold-soft);
-  text-shadow: 0 0 20px rgba(212, 175, 55, 0.45);
+  text-shadow: none;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .wolf-opp__prime-card strong {
   display: block;
@@ -29119,129 +29119,44 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.55rem;
 }
 
-/* Hot now — soft capsule strip */
-.wolf-opp__hot {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.75rem 1rem;
-  align-items: center;
-  padding: 0.55rem 0.15rem 0.35rem;
-}
-.wolf-opp__hot-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 6.5rem;
-}
-.wolf-opp__hot-label span {
-  font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: var(--opp-gold-soft);
-}
-.wolf-opp__hot-label em {
-  font-style: normal;
-  font-size: 0.58rem;
-  color: var(--opp-muted);
-  line-height: 1.3;
-  max-width: 8rem;
-}
-.wolf-opp__hot-track {
-  display: flex;
-  gap: 0.55rem;
-  overflow-x: auto;
-  padding: 0.35rem 0.15rem 0.55rem;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
-}
-.wolf-opp__capsule {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  gap: 0.12rem 0.65rem;
-  align-items: baseline;
-  padding: 0.55rem 0.95rem 0.55rem 1rem;
-  border: 0;
-  cursor: pointer;
-  color: inherit;
-  border-radius: 999px;
-  background:
-    linear-gradient(120deg, rgba(212, 175, 55, 0.14), rgba(255, 255, 255, 0.04) 55%);
-  box-shadow:
-    inset 0 0 0 1px rgba(212, 175, 55, 0.22),
-    0 10px 28px rgba(0, 0, 0, 0.22);
-  transition: box-shadow 0.2s ease, background 0.2s ease;
-}
-.wolf-opp__capsule.is-bullish {
-  background: linear-gradient(120deg, rgba(16, 185, 129, 0.18), rgba(255, 255, 255, 0.03) 60%);
-  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28), 0 10px 28px rgba(0, 0, 0, 0.2);
-}
-.wolf-opp__capsule.is-bearish {
-  background: linear-gradient(120deg, rgba(244, 63, 94, 0.16), rgba(255, 255, 255, 0.03) 60%);
-  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.28), 0 10px 28px rgba(0, 0, 0, 0.2);
-}
-.wolf-opp__capsule:hover {
-  box-shadow:
-    inset 0 0 0 1px rgba(240, 215, 140, 0.45),
-    0 14px 32px rgba(0, 0, 0, 0.28);
-}
-.wolf-opp__capsule-sym {
-  grid-column: 1;
-  font-weight: 800;
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
-}
-.wolf-opp__capsule-score {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: center;
-  font-family: Orbitron, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--opp-gold-soft);
-}
-.wolf-opp__capsule-px {
-  font-size: 0.62rem;
-  color: var(--opp-text-soft);
-  font-variant-numeric: tabular-nums;
-}
-.wolf-opp__capsule-chg {
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
 /* Full-width scanner lane */
 .wolf-opp__lane {
   display: grid;
   grid-template-columns: minmax(9.5rem, 12.5rem) 1fr;
-  gap: 0.65rem 0.85rem;
+  gap: 0.55rem 1rem;
   align-items: stretch;
-  min-height: 5.6rem;
-  padding: 0.55rem 0.55rem 0.55rem 0.7rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.025);
-  box-shadow: inset 3px 0 0 0 rgba(212, 175, 55, 0.55);
-  transition: background 0.2s ease, transform 0.2s ease;
+  min-height: 0;
+  padding: 0.85rem 0.35rem 0.85rem 0;
+  border-radius: 0;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  transition: background 0.2s ease;
+}
+.wolf-opp__lane:first-child {
+  border-top: 0;
 }
 .wolf-opp__lane:hover {
-  background: rgba(255, 255, 255, 0.045);
-  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.02);
+  transform: none;
 }
-.wolf-opp__lane.tone-1 {
-  box-shadow: inset 3px 0 0 0 rgba(96, 165, 250, 0.55);
+.wolf-opp__lane.is-quiet {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  opacity: 0.72;
 }
-.wolf-opp__lane.tone-2 {
-  box-shadow: inset 3px 0 0 0 rgba(52, 211, 153, 0.5);
-}
+.wolf-opp__lane.tone-0,
+.wolf-opp__lane.tone-1,
+.wolf-opp__lane.tone-2,
 .wolf-opp__lane.tone-3 {
-  box-shadow: inset 3px 0 0 0 rgba(251, 146, 60, 0.5);
+  box-shadow: none;
+  border-left: 2px solid transparent;
+  padding-left: 0.75rem;
 }
+.wolf-opp__lane.tone-0 { border-left-color: rgba(212, 175, 55, 0.55); }
+.wolf-opp__lane.tone-1 { border-left-color: rgba(96, 165, 250, 0.45); }
+.wolf-opp__lane.tone-2 { border-left-color: rgba(52, 211, 153, 0.45); }
+.wolf-opp__lane.tone-3 { border-left-color: rgba(251, 146, 60, 0.45); }
 .wolf-opp__lane-meta {
   display: flex;
   flex-direction: column;
@@ -29252,12 +29167,12 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__lane-meta h3 {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: var(--opp-gold-soft);
-  font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  font-weight: 650;
+  color: var(--opp-text);
+  font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
   line-height: 1.25;
 }
 .wolf-opp__lane-meta p {
@@ -29377,9 +29292,11 @@ body:has(.app-main--terminal-immersive) #root {
   letter-spacing: 0.03em;
 }
 .wolf-opp__token-top strong {
-  font-family: Orbitron, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-size: 0.85rem;
+  font-weight: 700;
   color: var(--opp-gold-soft);
+  font-variant-numeric: tabular-nums;
 }
 .wolf-opp__token-mid {
   display: flex;
@@ -29479,8 +29396,9 @@ body:has(.app-main--terminal-immersive) #root {
   margin: 0;
   font-size: 1.15rem;
   color: var(--opp-gold-soft);
-  font-family: Orbitron, sans-serif;
-  letter-spacing: 0.03em;
+  font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 650;
 }
 .wolf-opp__drawer-panel header p {
   margin: 0.25rem 0 0;
@@ -29553,9 +29471,6 @@ body:has(.app-main--terminal-immersive) #root {
 }
 
 @media (max-width: 960px) {
-  .wolf-opp__hot {
-    grid-template-columns: 1fr;
-  }
   .wolf-opp__lane {
     grid-template-columns: 1fr;
     min-height: 0;
