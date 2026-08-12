@@ -454,7 +454,15 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </div>
         <div className="wolf-opp__seg-row" role="group" aria-label="Timeframe">
           {(['5m', '15m', '1h', '1D'] as const).map((t) => (
-            <Seg key={t} on={filters.timeframe === t} onClick={() => patchFilters({ timeframe: t })}>
+            <Seg
+              key={t}
+              on={filters.timeframe === t}
+              onClick={() => {
+                if (filters.timeframe === t) return;
+                patchFilters({ timeframe: t });
+                void runScan({ reset: true, filtersOverride: { timeframe: t } });
+              }}
+            >
               {t}
             </Seg>
           ))}
@@ -470,7 +478,11 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
             <Seg
               key={id}
               on={filters.direction === id}
-              onClick={() => patchFilters({ direction: id })}
+              onClick={() => {
+                if (filters.direction === id) return;
+                patchFilters({ direction: id });
+                void runScan({ reset: true, filtersOverride: { direction: id } });
+              }}
             >
               {label}
             </Seg>
