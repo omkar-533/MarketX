@@ -21,6 +21,7 @@ const Header = lazy(() => import('./components/Header'));
 const AuthModal = lazy(() => import('./components/AuthModal'));
 const TvAccessGrantedPopup = lazy(() => import('./components/access/TvAccessGrantedPopup'));
 const AccessGate = lazy(() => import('./components/access/AccessGate'));
+const ConnectLiveNudgePopup = lazy(() => import('./components/access/ConnectLiveNudgePopup'));
 const ProfileModal = lazy(() => import('./components/ProfileModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const TradingJournal = lazy(() => import('./components/TradingJournal'));
@@ -282,6 +283,11 @@ function AppWorkspace() {
   }
 
   const handleLogout = () => {
+    try {
+      if (auth.user?.id) sessionStorage.removeItem(`wolf_live_connect_nudge_${auth.user.id}`);
+    } catch {
+      /* ignore */
+    }
     clearPersistedTab();
     markForceHome();
     setActiveTab(DEFAULT_TAB);
@@ -549,6 +555,10 @@ function AppWorkspace() {
               auth.user?.role === 'admin' || auth.user?.role === 'subadmin' ? null : auth.user?.id
             }
             onOpenIndicator={openGrantedIndicator}
+          />
+          <ConnectLiveNudgePopup
+            enabled={auth.isLoggedIn && Boolean(auth.user?.id) && !locked}
+            userId={auth.user?.id}
           />
           <AccessGate
             access={planPeek ? null : auth.access}

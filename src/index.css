@@ -6814,13 +6814,19 @@ input[type="number"] { -moz-appearance: textfield; }
 }
 
 .trial-nudge__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   width: 100%;
   padding: 0.5rem 0.9rem;
+  border: 0;
   border-radius: 0.6rem;
   font-size: 0.78rem;
   font-weight: 700;
   color: #0b0e16;
   background: linear-gradient(135deg, #f0d67a, #d4af37);
+  cursor: pointer;
 }
 
 .trial-nudge__footer {
@@ -26601,7 +26607,7 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-md-modal {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 140;
   display: grid;
   place-items: center;
   padding: 1rem;
