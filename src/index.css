@@ -26951,9 +26951,35 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.35rem;
   align-items: center;
 }
+.wolf-lab__cond-head select,
 .wolf-lab__cond-row select,
+.wolf-lab__manual select,
+.wolf-setups__conditions select {
+  min-width: 0;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background-color: var(--tf-elevated);
+  color: var(--tf-text);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
+}
+.wolf-lab__cond-head select option,
+.wolf-lab__cond-row select option,
+.wolf-lab__manual select option,
+.wolf-setups__conditions select option,
+.wolf-setups__field select option,
+.wolf-radar-desk__controls select option {
+  background-color: var(--tf-elevated);
+  color: var(--tf-text);
+}
 .wolf-lab__cond-row input {
   min-width: 0;
+  border-radius: 0.55rem;
+  border: 1px solid var(--tf-border);
+  background-color: var(--tf-elevated);
+  color: var(--tf-text);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
 }
 .wolf-lab__preview {
   border: 1px solid rgba(212, 175, 55, 0.28);

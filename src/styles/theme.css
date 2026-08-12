@@ -19,6 +19,7 @@ html[data-theme="dark"] {
   --tj-gold-strong: #d4af37;
   --tj-up: #34d399;
   --tj-down: #fb7185;
+  color-scheme: dark;
 
   /* Legacy aliases used in custom CSS */
   --color-dark-bg: var(--tf-bg);
