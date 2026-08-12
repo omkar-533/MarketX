@@ -29102,327 +29102,167 @@ body:has(.app-main--terminal-immersive) #root {
   position: relative;
 }
 
-/* Scanner lattice — futuristic HUD pods (not plain boxes) */
+/* Signal rivers — full-width lanes + soft capsules (no card grid, no beams) */
+.wolf-opp--rivers {
+  gap: 0.7rem;
+}
+.wolf-opp__hero--slim {
+  gap: 0.75rem 1rem;
+}
 .wolf-opp__desk {
   flex: 1;
   min-height: 0;
 }
-.wolf-opp__grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  align-content: start;
-}
-.wolf-opp__grid--lattice {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-flow: dense;
-  gap: 1rem;
-  align-items: stretch;
-  perspective: 1600px;
-}
-
-@property --beam {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-@keyframes wolf-opp-beam {
-  0% { --beam: 0deg; }
-  100% { --beam: 360deg; }
-}
-@keyframes wolf-opp-scan {
-  0% { transform: translateY(-120%); opacity: 0; }
-  18% { opacity: 0.55; }
-  55% { opacity: 0.2; }
-  100% { transform: translateY(220%); opacity: 0; }
-}
-@keyframes wolf-opp-sig-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); opacity: 1; }
-  50% { box-shadow: 0 0 0 6px rgba(212, 175, 55, 0); opacity: 0.75; }
-}
-@keyframes wolf-opp-hex-breathe {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.35)); }
-  50% { filter: drop-shadow(0 0 14px rgba(240, 215, 140, 0.55)); }
-}
-
-.wolf-opp__pod {
-  --pod-cut: 16px;
-  position: relative;
-  min-height: 13.5rem;
-  max-height: 22rem;
+.wolf-opp__rivers {
   display: flex;
   flex-direction: column;
-  padding: 0.95rem 1rem 0.8rem;
-  overflow: hidden;
-  transform-style: preserve-3d;
-  isolation: isolate;
-  color: var(--opp-text);
-  background:
-    linear-gradient(155deg, rgba(18, 24, 38, 0.88) 0%, rgba(8, 10, 18, 0.92) 55%, rgba(12, 16, 28, 0.9) 100%);
-  clip-path: polygon(
-    var(--pod-cut) 0,
-    calc(100% - var(--pod-cut)) 0,
-    100% var(--pod-cut),
-    100% calc(100% - var(--pod-cut)),
-    calc(100% - var(--pod-cut)) 100%,
-    var(--pod-cut) 100%,
-    0 calc(100% - var(--pod-cut)),
-    0 var(--pod-cut)
-  );
-  box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(212, 175, 55, 0.12);
-  transition: box-shadow 0.3s ease, filter 0.3s ease;
-}
-.wolf-opp__pod::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.05) 50%, transparent 100%),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 255, 255, 0.015) 2px,
-      rgba(255, 255, 255, 0.015) 3px
-    );
-  opacity: 0.7;
-}
-.wolf-opp__pod:hover {
-  box-shadow:
-    0 28px 64px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(240, 215, 140, 0.35),
-    0 0 40px rgba(212, 175, 55, 0.12);
-  filter: brightness(1.04);
-}
-
-/* Rotating gold beam edge */
-.wolf-opp__pod-beam {
-  position: absolute;
-  inset: -1px;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.55;
-  background: conic-gradient(
-    from var(--beam, 0deg),
-    transparent 0%,
-    transparent 62%,
-    rgba(212, 175, 55, 0.05) 72%,
-    rgba(240, 215, 140, 0.85) 78%,
-    rgba(212, 175, 55, 0.15) 84%,
-    transparent 92%,
-    transparent 100%
-  );
-  animation: wolf-opp-beam 5.5s linear infinite;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  padding: 1.5px;
-}
-.wolf-opp__pod:hover .wolf-opp__pod-beam {
-  opacity: 0.95;
-  animation-duration: 2.8s;
-}
-
-/* Vertical scan sweep */
-.wolf-opp__pod-scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 28%;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(212, 175, 55, 0.12),
-    transparent
-  );
-  animation: wolf-opp-scan 4.8s ease-in-out infinite;
-  opacity: 0;
-}
-.wolf-opp__pod:hover .wolf-opp__pod-scan {
-  animation-duration: 2.4s;
-}
-
-/* HUD corner brackets */
-.wolf-opp__pod-corner {
-  position: absolute;
-  z-index: 3;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  border-color: rgba(240, 215, 140, 0.75);
-  border-style: solid;
-  opacity: 0.55;
-  transition: opacity 0.25s, border-color 0.25s;
-}
-.wolf-opp__pod:hover .wolf-opp__pod-corner {
-  opacity: 1;
-  border-color: #f0d78c;
-}
-.wolf-opp__pod-corner--tl {
-  top: 8px;
-  left: 10px;
-  border-width: 2px 0 0 2px;
-}
-.wolf-opp__pod-corner--tr {
-  top: 8px;
-  right: 10px;
-  border-width: 2px 2px 0 0;
-}
-.wolf-opp__pod-corner--bl {
-  bottom: 8px;
-  left: 10px;
-  border-width: 0 0 2px 2px;
-}
-.wolf-opp__pod-corner--br {
-  bottom: 8px;
-  right: 10px;
-  border-width: 0 2px 2px 0;
-}
-
-/* Size / silhouette variants */
-.wolf-opp__pod--chip {
-  --pod-cut: 12px;
-  grid-column: span 3;
-  min-height: 14rem;
-  max-height: 18rem;
-}
-.wolf-opp__pod--blade {
-  --pod-cut: 22px;
-  grid-column: span 3;
-  min-height: 18.5rem;
-  max-height: 24rem;
-  clip-path: polygon(
-    0 18px,
-    18px 0,
-    100% 0,
-    100% calc(100% - 22px),
-    calc(100% - 22px) 100%,
-    0 100%
-  );
-}
-.wolf-opp__pod--wing {
-  --pod-cut: 14px;
-  grid-column: span 6;
-  min-height: 15rem;
-  max-height: 20rem;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 28px) 0,
-    100% 28px,
-    100% 100%,
-    28px 100%,
-    0 calc(100% - 28px)
-  );
-}
-.wolf-opp__pod--nova {
-  --pod-cut: 20px;
-  grid-column: span 6;
-  min-height: 19rem;
-  max-height: 26rem;
-  background:
-    radial-gradient(90% 70% at 0% 0%, rgba(212, 175, 55, 0.16), transparent 55%),
-    linear-gradient(155deg, rgba(22, 28, 44, 0.92), rgba(8, 10, 18, 0.94));
-  clip-path: polygon(
-    20px 0,
-    calc(100% - 20px) 0,
-    100% 20px,
-    100% calc(100% - 14px),
-    calc(100% - 14px) 100%,
-    14px 100%,
-    0 calc(100% - 14px),
-    0 20px
-  );
-  box-shadow:
-    0 22px 56px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(212, 175, 55, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-.wolf-opp__pod--core {
-  --pod-cut: 24px;
-  grid-column: span 12;
-  min-height: 16.5rem;
-  max-height: 22rem;
-  background:
-    radial-gradient(120% 90% at 100% 0%, rgba(212, 175, 55, 0.2), transparent 48%),
-    radial-gradient(80% 60% at 0% 100%, rgba(56, 100, 180, 0.12), transparent 50%),
-    linear-gradient(145deg, rgba(24, 30, 46, 0.95), rgba(6, 8, 14, 0.96));
-  clip-path: polygon(
-    0 24px,
-    24px 0,
-    calc(100% - 40px) 0,
-    100% 40px,
-    100% calc(100% - 24px),
-    calc(100% - 24px) 100%,
-    40px 100%,
-    0 calc(100% - 40px)
-  );
-  box-shadow:
-    0 26px 64px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(212, 175, 55, 0.28),
-    0 0 48px rgba(212, 175, 55, 0.1);
-}
-.wolf-opp__pod--core .wolf-opp__pod-beam {
-  opacity: 0.85;
-  animation-duration: 3.8s;
-}
-
-/* Pod header */
-.wolf-opp__pod-head {
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-  margin-bottom: 0.7rem;
-  padding: 0.15rem 0.15rem 0.65rem;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
-}
-.wolf-opp__pod-head-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 0.55rem;
 }
-.wolf-opp__pod-title-wrap {
-  display: flex;
+
+/* Hot now — soft capsule strip */
+.wolf-opp__hot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 1rem;
   align-items: center;
-  gap: 0.45rem;
+  padding: 0.55rem 0.15rem 0.35rem;
+}
+.wolf-opp__hot-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 6.5rem;
+}
+.wolf-opp__hot-label span {
+  font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--opp-gold-soft);
+}
+.wolf-opp__hot-label em {
+  font-style: normal;
+  font-size: 0.58rem;
+  color: var(--opp-muted);
+  line-height: 1.3;
+  max-width: 8rem;
+}
+.wolf-opp__hot-track {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.15rem 0.55rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
+}
+.wolf-opp__capsule {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 0.12rem 0.65rem;
+  align-items: baseline;
+  padding: 0.55rem 0.95rem 0.55rem 1rem;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 999px;
+  background:
+    linear-gradient(120deg, rgba(212, 175, 55, 0.14), rgba(255, 255, 255, 0.04) 55%);
+  box-shadow:
+    inset 0 0 0 1px rgba(212, 175, 55, 0.22),
+    0 10px 28px rgba(0, 0, 0, 0.22);
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+.wolf-opp__capsule.is-bullish {
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.18), rgba(255, 255, 255, 0.03) 60%);
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28), 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+.wolf-opp__capsule.is-bearish {
+  background: linear-gradient(120deg, rgba(244, 63, 94, 0.16), rgba(255, 255, 255, 0.03) 60%);
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.28), 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+.wolf-opp__capsule:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 215, 140, 0.45),
+    0 14px 32px rgba(0, 0, 0, 0.28);
+}
+.wolf-opp__capsule-sym {
+  grid-column: 1;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+}
+.wolf-opp__capsule-score {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: Orbitron, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--opp-gold-soft);
+}
+.wolf-opp__capsule-px {
+  font-size: 0.62rem;
+  color: var(--opp-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+.wolf-opp__capsule-chg {
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+/* Full-width scanner lane */
+.wolf-opp__lane {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 12.5rem) 1fr;
+  gap: 0.65rem 0.85rem;
+  align-items: stretch;
+  min-height: 5.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 0.7rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 3px 0 0 0 rgba(212, 175, 55, 0.55);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.wolf-opp__lane:hover {
+  background: rgba(255, 255, 255, 0.045);
+  transform: translateX(2px);
+}
+.wolf-opp__lane.tone-1 {
+  box-shadow: inset 3px 0 0 0 rgba(96, 165, 250, 0.55);
+}
+.wolf-opp__lane.tone-2 {
+  box-shadow: inset 3px 0 0 0 rgba(52, 211, 153, 0.5);
+}
+.wolf-opp__lane.tone-3 {
+  box-shadow: inset 3px 0 0 0 rgba(251, 146, 60, 0.5);
+}
+.wolf-opp__lane-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.2rem;
   min-width: 0;
 }
-.wolf-opp__pod-sig {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  rotate: 45deg;
-  background: linear-gradient(135deg, #f0d78c, #d4af37);
-  animation: wolf-opp-sig-pulse 2.4s ease-in-out infinite;
-}
-.wolf-opp__pod-head h3 {
+.wolf-opp__lane-meta h3 {
   margin: 0;
-  font-size: 0.88rem;
-  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--opp-gold-soft);
   font-weight: 800;
+  color: var(--opp-gold-soft);
   font-family: Orbitron, "Plus Jakarta Sans", sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
 }
-.wolf-opp__pod-head p {
-  margin: 0.28rem 0 0;
-  font-size: 0.62rem;
+.wolf-opp__lane-meta p {
+  margin: 0.2rem 0 0;
+  font-size: 0.58rem;
   color: var(--opp-muted);
   line-height: 1.35;
   display: -webkit-box;
@@ -29430,244 +29270,172 @@ body:has(.app-main--terminal-immersive) #root {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-/* Hexagonal count badge */
-.wolf-opp__pod-hex {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2.15rem;
-  display: grid;
+.wolf-opp__lane-count {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  min-width: 1.55rem;
+  height: 1.35rem;
+  padding: 0 0.4rem;
+  display: inline-grid;
   place-items: center;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  background: linear-gradient(180deg, #f0d78c, #b8922a);
-  animation: wolf-opp-hex-breathe 3s ease-in-out infinite;
-}
-.wolf-opp__pod-hex span {
-  font-size: 0.68rem;
-  font-weight: 900;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
   color: #0b0e17;
-  font-family: Orbitron, sans-serif;
-  line-height: 1;
+  background: linear-gradient(180deg, #f0d78c, #d4af37);
 }
-
-.wolf-opp__empty {
-  position: relative;
-  z-index: 2;
-  margin: 0.65rem 0 0;
-  font-size: 0.68rem;
-  color: var(--opp-muted);
-  line-height: 1.4;
-}
-.wolf-opp__more {
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-  margin: 0.45rem 0 0;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--opp-muted);
-}
-
-/* Signal list */
-.wolf-opp__pod-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 0.15rem 0.15rem 0;
+.wolf-opp__lane-track {
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
   gap: 0.55rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
-  flex: 1 1 auto;
-  position: relative;
-  z-index: 2;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 0.25rem 0.35rem;
+  min-width: 0;
+  scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.55) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(212, 175, 55, 0.45) rgba(255, 255, 255, 0.03);
 }
-.wolf-opp__pod-list::-webkit-scrollbar {
-  width: 5px;
+.wolf-opp__lane-track::-webkit-scrollbar {
+  height: 5px;
 }
-.wolf-opp__pod-list::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #f0d78c, #d4af37);
+.wolf-opp__lane-track::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.45);
   border-radius: 999px;
 }
-.wolf-opp__pod-list::-webkit-scrollbar-track {
+.wolf-opp__lane-quiet {
+  margin: auto 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.68rem;
+  color: var(--opp-muted);
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+.wolf-opp__lane-more {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--opp-muted);
+  padding: 0.45rem 0.65rem;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-/* Signal blades — cut-corner chips */
-.wolf-opp__signal {
-  position: relative;
-  flex-shrink: 0;
-  background: linear-gradient(
-    105deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% 100%,
-    12px 100%,
-    0 calc(100% - 12px)
-  );
-  transition: transform 0.22s ease, border-color 0.22s, box-shadow 0.22s, background 0.22s;
-  overflow: hidden;
-}
-.wolf-opp__signal::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: rgba(212, 175, 55, 0.4);
-}
-.wolf-opp__signal.is-bullish {
-  background: linear-gradient(
-    105deg,
-    rgba(16, 185, 129, 0.12) 0%,
-    rgba(255, 255, 255, 0.02) 70%
-  );
-  border-color: rgba(52, 211, 153, 0.18);
-}
-.wolf-opp__signal.is-bullish::before {
-  background: linear-gradient(180deg, #6ee7b7, #059669);
-  box-shadow: 0 0 14px rgba(52, 211, 153, 0.55);
-}
-.wolf-opp__signal.is-bearish {
-  background: linear-gradient(
-    105deg,
-    rgba(244, 63, 94, 0.12) 0%,
-    rgba(255, 255, 255, 0.02) 70%
-  );
-  border-color: rgba(251, 113, 133, 0.18);
-}
-.wolf-opp__signal.is-bearish::before {
-  background: linear-gradient(180deg, #fda4af, #e11d48);
-  box-shadow: 0 0 14px rgba(251, 113, 133, 0.5);
-}
-.wolf-opp__signal:hover {
-  transform: translateX(4px) translateY(-1px);
-  border-color: rgba(240, 215, 140, 0.35);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28), 0 0 24px rgba(212, 175, 55, 0.08);
-}
-
-.wolf-opp__row {
-  width: 100%;
+/* Soft token (not a box card) */
+.wolf-opp__token {
+  flex: 0 0 auto;
+  width: min(11.5rem, 72vw);
+  scroll-snap-align: start;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.45rem;
-  text-align: left;
+  flex-direction: column;
+  border-radius: 22px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.wolf-opp__token:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 215, 140, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.28);
+}
+.wolf-opp__token.is-bullish {
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.16), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.22);
+}
+.wolf-opp__token.is-bearish {
+  background: linear-gradient(160deg, rgba(244, 63, 94, 0.14), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.22);
+}
+.wolf-opp__token-main {
   border: 0;
   background: transparent;
-  padding: 0.55rem 0.65rem 0.25rem 0.7rem;
   color: inherit;
+  text-align: left;
   cursor: pointer;
-}
-.wolf-opp__row-sym {
+  padding: 0.65rem 0.75rem 0.35rem;
   display: flex;
   flex-direction: column;
   gap: 0.28rem;
-  min-width: 0;
+  width: 100%;
 }
-.wolf-opp__row-title {
+.wolf-opp__token-top {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: baseline;
-  gap: 0.4rem 0.55rem;
+  gap: 0.4rem;
 }
-.wolf-opp__row-sym b {
-  font-size: 0.76rem;
+.wolf-opp__token-top b {
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
-.wolf-opp__row-px {
+.wolf-opp__token-top strong {
+  font-family: Orbitron, sans-serif;
+  font-size: 0.85rem;
+  color: var(--opp-gold-soft);
+}
+.wolf-opp__token-mid {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+.wolf-opp__token-mid em {
   font-style: normal;
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--opp-gold-soft);
+  color: var(--opp-text-soft);
   font-variant-numeric: tabular-nums;
 }
-.wolf-opp__row-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-}
-.wolf-opp__row-sym i {
+.wolf-opp__token-mid i {
   font-style: normal;
   font-size: 0.65rem;
   font-weight: 800;
 }
-.wolf-opp__row-time {
-  font-size: 0.58rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+.wolf-opp__token-bot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.wolf-opp__token-time {
+  font-size: 0.55rem;
   color: var(--opp-muted);
   font-variant-numeric: tabular-nums;
-  padding: 0.12rem 0.4rem;
-  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
-  border: 0;
-  background: rgba(212, 175, 55, 0.1);
 }
-.wolf-opp__row-score {
-  flex-shrink: 0;
-}
-.wolf-opp__score-ring {
-  display: grid;
-  place-items: center;
-  min-width: 2.35rem;
-  height: 2.35rem;
-  padding: 0 0.2rem;
-  font-family: Orbitron, sans-serif;
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--opp-gold-soft);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 30%, rgba(240, 215, 140, 0.22), transparent 55%),
-    rgba(0, 0, 0, 0.35);
-  box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.45),
-    0 0 16px rgba(212, 175, 55, 0.2),
-    inset 0 0 10px rgba(212, 175, 55, 0.12);
-  text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
-}
-.wolf-opp__row-actions {
+.wolf-opp__token-actions {
   display: flex;
-  gap: 0.4rem;
-  padding: 0 0.7rem 0.5rem 0.75rem;
+  gap: 0.25rem;
+  padding: 0 0.55rem 0.5rem;
 }
-.wolf-opp__row-actions button {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+.wolf-opp__token-actions button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--opp-muted);
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.22rem 0.45rem;
-  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  gap: 0.2rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s;
 }
-.wolf-opp__row-actions button:hover {
+.wolf-opp__token-actions button:hover {
   color: var(--opp-gold-soft);
-  border-color: rgba(212, 175, 55, 0.4);
-  background: rgba(212, 175, 55, 0.1);
+  background: rgba(212, 175, 55, 0.12);
 }
+
 .wolf-opp__drawer-bias {
   margin-top: 0.45rem;
 }
@@ -29784,17 +29552,22 @@ body:has(.app-main--terminal-immersive) #root {
   margin-top: 1.1rem;
 }
 
-@media (max-width: 1200px) {
-  .wolf-opp__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .wolf-opp__grid--lattice { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .wolf-opp__pod--chip,
-  .wolf-opp__pod--blade { grid-column: span 3; }
-  .wolf-opp__pod--wing,
-  .wolf-opp__pod--nova { grid-column: span 6; }
-  .wolf-opp__pod--core { grid-column: span 6; }
-  .wolf-opp { max-height: none; }
-}
 @media (max-width: 960px) {
+  .wolf-opp__hot {
+    grid-template-columns: 1fr;
+  }
+  .wolf-opp__lane {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .wolf-opp__lane-meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .wolf-opp__lane-meta p {
+    display: none;
+  }
   .wolf-opp__hero {
     grid-template-columns: 1fr;
     align-items: start;
@@ -29802,34 +29575,20 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__pulse,
   .wolf-opp__hero-actions { justify-content: flex-start; }
   .wolf-opp__prime-grid { grid-template-columns: 1fr; }
-  .wolf-opp__grid { grid-template-columns: 1fr; }
-  .wolf-opp__grid--lattice { grid-template-columns: 1fr; }
-  .wolf-opp__pod--chip,
-  .wolf-opp__pod--blade,
-  .wolf-opp__pod--wing,
-  .wolf-opp__pod--nova,
-  .wolf-opp__pod--core {
-    grid-column: span 1;
-    max-height: 20rem;
-  }
-  .wolf-opp__ring-wrap { opacity: 0.35; }
+  .wolf-opp { max-height: none; }
 }
 @media (max-width: 640px) {
   .wolf-opp { padding: 0.65rem 0.7rem; }
-  .wolf-opp__grid { grid-template-columns: 1fr; }
-  .wolf-opp__grid--lattice { grid-template-columns: 1fr; }
   .wolf-opp__status-line { margin-left: 0; width: 100%; }
+  .wolf-opp__token { width: min(10.5rem, 78vw); }
 }
 @media (prefers-reduced-motion: reduce) {
   .wolf-opp__fog,
   .wolf-opp__orb,
   .wolf-opp__ring,
   .wolf-opp__prime-glow,
-  .wolf-opp__title span,
-  .wolf-opp__pod-beam,
-  .wolf-opp__pod-scan,
-  .wolf-opp__pod-sig,
-  .wolf-opp__pod-hex {
+  .wolf-opp__title span {
     animation: none !important;
   }
 }
+

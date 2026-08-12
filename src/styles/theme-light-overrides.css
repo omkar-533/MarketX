@@ -3001,62 +3001,75 @@ html[data-theme="light"] .wolf-opp__seg-row {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-html[data-theme="light"] .wolf-opp__pod {
-  background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(146, 64, 14, 0.12);
+html[data-theme="light"] .wolf-opp__lane {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 3px 0 0 0 #b45309, 0 8px 22px rgba(15, 23, 42, 0.05);
 }
-html[data-theme="light"] .wolf-opp__pod:hover {
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(146, 64, 14, 0.28);
-  filter: none;
+html[data-theme="light"] .wolf-opp__lane:hover {
+  background: #ffffff;
 }
-html[data-theme="light"] .wolf-opp__pod::before {
-  opacity: 0.35;
+html[data-theme="light"] .wolf-opp__lane.tone-1 {
+  box-shadow: inset 3px 0 0 0 #2563eb, 0 8px 22px rgba(15, 23, 42, 0.05);
 }
-html[data-theme="light"] .wolf-opp__pod--nova {
-  background:
-    radial-gradient(90% 70% at 0% 0%, rgba(146, 64, 14, 0.1), transparent 55%),
-    linear-gradient(155deg, #ffffff, #f8fafc);
+html[data-theme="light"] .wolf-opp__lane.tone-2 {
+  box-shadow: inset 3px 0 0 0 #047857, 0 8px 22px rgba(15, 23, 42, 0.05);
 }
-html[data-theme="light"] .wolf-opp__pod--core {
-  background:
-    radial-gradient(120% 90% at 100% 0%, rgba(146, 64, 14, 0.12), transparent 48%),
-    linear-gradient(145deg, #ffffff, #f8fafc);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(146, 64, 14, 0.2);
+html[data-theme="light"] .wolf-opp__lane.tone-3 {
+  box-shadow: inset 3px 0 0 0 #c2410c, 0 8px 22px rgba(15, 23, 42, 0.05);
 }
-html[data-theme="light"] .wolf-opp__pod-beam {
-  opacity: 0.35;
-}
-html[data-theme="light"] .wolf-opp__pod-corner {
-  border-color: rgba(146, 64, 14, 0.55);
-}
-html[data-theme="light"] .wolf-opp__pod:hover .wolf-opp__pod-corner {
-  border-color: #92400e;
-}
-html[data-theme="light"] .wolf-opp__pod-sig {
-  background: linear-gradient(135deg, #b45309, #92400e);
-}
-html[data-theme="light"] .wolf-opp__signal {
-  background: #f4f6fa;
-  border-color: #e2e8f0;
-}
-html[data-theme="light"] .wolf-opp__signal:hover {
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-}
-html[data-theme="light"] .wolf-opp__score-ring {
+html[data-theme="light"] .wolf-opp__lane-meta h3 {
   color: #78350f;
-  background: radial-gradient(circle at 35% 30%, rgba(146, 64, 14, 0.12), transparent 55%), #fff7ed;
-  box-shadow: 0 0 0 1px rgba(146, 64, 14, 0.35), inset 0 0 8px rgba(146, 64, 14, 0.06);
-  text-shadow: none;
 }
-html[data-theme="light"] .wolf-opp__row-actions button {
-  background: #f8fafc;
-  border-color: #e2e8f0;
+html[data-theme="light"] .wolf-opp__lane-count {
+  color: #0b0e17;
+}
+html[data-theme="light"] .wolf-opp__lane-quiet,
+html[data-theme="light"] .wolf-opp__lane-more {
+  background: #f1f5f9;
   color: #525252;
 }
-html[data-theme="light"] .wolf-opp__row-actions button:hover {
+html[data-theme="light"] .wolf-opp__capsule {
+  background: linear-gradient(120deg, rgba(146, 64, 14, 0.1), #ffffff 55%);
+  box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.2), 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+html[data-theme="light"] .wolf-opp__capsule.is-bullish {
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.12), #ffffff 60%);
+  box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.25), 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+html[data-theme="light"] .wolf-opp__capsule.is-bearish {
+  background: linear-gradient(120deg, rgba(244, 63, 94, 0.1), #ffffff 60%);
+  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.22), 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+html[data-theme="light"] .wolf-opp__capsule-score,
+html[data-theme="light"] .wolf-opp__token-top strong,
+html[data-theme="light"] .wolf-opp__hot-label span {
   color: #78350f;
-  border-color: rgba(146, 64, 14, 0.35);
-  background: rgba(146, 64, 14, 0.06);
+}
+html[data-theme="light"] .wolf-opp__token {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e8f0, 0 6px 16px rgba(15, 23, 42, 0.05);
+}
+html[data-theme="light"] .wolf-opp__token.is-bullish {
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.1), #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.2);
+}
+html[data-theme="light"] .wolf-opp__token.is-bearish {
+  background: linear-gradient(160deg, rgba(244, 63, 94, 0.08), #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.18);
+}
+html[data-theme="light"] .wolf-opp__token:hover {
+  box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.28), 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .wolf-opp__token-actions button {
+  background: #f8fafc;
+  color: #525252;
+}
+html[data-theme="light"] .wolf-opp__token-actions button:hover {
+  color: #78350f;
+  background: rgba(146, 64, 14, 0.08);
+}
+html[data-theme="light"] .wolf-opp__lane-track {
+  scrollbar-color: rgba(146, 64, 14, 0.35) #eef2f7;
 }
 
 html[data-theme="light"] .wolf-opp__title span {
@@ -3090,26 +3103,15 @@ html[data-theme="light"] .wolf-opp__row-time {
   border-color: #e2e8f0;
 }
 
-html[data-theme="light"] .wolf-opp__pod-hex span {
-  color: #0b0e17;
-}
-
 html[data-theme="light"] .wolf-opp__prime-card {
   background: linear-gradient(145deg, #ffffff, #f8fafc);
   border-color: rgba(146, 64, 14, 0.22);
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
 }
 
-html[data-theme="light"] .wolf-opp__prime-score,
-html[data-theme="light"] .wolf-opp__row-score,
-html[data-theme="light"] .wolf-opp__score-ring,
-html[data-theme="light"] .wolf-opp__pod-head h3 {
+html[data-theme="light"] .wolf-opp__prime-score {
   color: #78350f;
   text-shadow: none;
-}
-
-html[data-theme="light"] .wolf-opp__pod-list {
-  scrollbar-color: rgba(146, 64, 14, 0.4) #eef2f7;
 }
 
 html[data-theme="light"] .wolf-opp__drawer-backdrop {
@@ -3136,12 +3138,10 @@ html[data-theme="light"] .wolf-opp__bias--bearish {
   border-color: rgba(190, 18, 60, 0.3);
   box-shadow: none;
 }
-html[data-theme="light"] .wolf-opp__prime-card.is-bullish,
-html[data-theme="light"] .wolf-opp__signal.is-bullish {
-  background: rgba(16, 185, 129, 0.08);
+html[data-theme="light"] .wolf-opp__prime-card.is-bullish {
+  background: rgba(16, 185, 129, 0.06);
 }
-html[data-theme="light"] .wolf-opp__prime-card.is-bearish,
-html[data-theme="light"] .wolf-opp__signal.is-bearish {
+html[data-theme="light"] .wolf-opp__prime-card.is-bearish {
   background: rgba(244, 63, 94, 0.05);
 }
 
