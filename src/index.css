@@ -4314,6 +4314,23 @@ input[type="number"] { -moz-appearance: textfield; }
   color: var(--lux-muted);
 }
 
+.plan__promo-side {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-top: 0.15rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  background: rgba(201, 162, 39, 0.12);
+  color: #e8d48b;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .plan__meta {
   margin: 0.7rem 0 0;
   display: flex;

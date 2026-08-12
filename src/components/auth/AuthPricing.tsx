@@ -85,6 +85,9 @@ function PlanCard({
               <Counter to={plan.price} duration={1.4} />
             </span>
             <span className="plan__period">{plan.period}</span>
+            {plan.id === 'monthly' ? (
+              <span className="plan__promo-side">USE PROMO CODE FOR FREE 30 DAYS ACCESS</span>
+            ) : null}
           </div>
 
           {plan.equivalent || plan.save ? (
