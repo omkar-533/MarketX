@@ -19258,8 +19258,9 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-term__sym-tabs {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.15rem;
-  padding: 0 0.65rem 0.45rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.75rem 0.55rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -19270,26 +19271,32 @@ body:has(.app-main--terminal-immersive) #root {
 
 .wolf-term__sym-tabs button {
   flex: 0 0 auto;
-  height: 24px;
-  padding: 0 0.55rem;
-  border: 0;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid #363a45;
+  border-radius: 8px;
   background: transparent;
-  color: #787b86;
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: #d1d4dc;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .wolf-term__sym-tabs button:hover {
-  color: #d1d4dc;
-  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #4a5060;
 }
 
 .wolf-term__sym-tabs button.on {
   background: #fff;
   color: #131722;
+  border-color: #fff;
   font-weight: 700;
 }
 

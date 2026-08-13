@@ -2211,12 +2211,21 @@ html[data-theme="light"] .wolf-term__sym-search input {
 }
 
 html[data-theme="light"] .wolf-term__sym-tabs button {
-  color: #64748b !important;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-tabs button:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
 }
 
 html[data-theme="light"] .wolf-term__sym-tabs button.on {
   background: #0f172a !important;
   color: #ffffff !important;
+  border-color: #0f172a !important;
 }
 
 html[data-theme="light"] .wolf-term__sym-list {
@@ -2226,7 +2235,6 @@ html[data-theme="light"] .wolf-term__sym-list {
 html[data-theme="light"] .wolf-term__ind-copy em,
 html[data-theme="light"] .wolf-term__search-item span,
 html[data-theme="light"] .wolf-term__search-item em,
-html[data-theme="light"] .wolf-term__sym-tabs button:not(.on),
 html[data-theme="light"] .wolf-term__bottom-brand span,
 html[data-theme="light"] .wolf-term__badge {
   color: #64748b !important;
