@@ -145,7 +145,7 @@ export default function TerminalSymbolSearch({
               type="button"
               role="tab"
               aria-selected={category === tab.id}
-              className={category === tab.id ? 'on' : ''}
+              className={`wolf-term__sym-tab${category === tab.id ? ' on' : ''}`}
               title={
                 tab.id === 'bonds' || tab.id === 'economy'
                   ? 'Coming soon'
