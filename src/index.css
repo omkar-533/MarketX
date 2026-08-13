@@ -19257,33 +19257,30 @@ body:has(.app-main--terminal-immersive) #root {
 
 .wolf-term__sym-tabs {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0 0.75rem 0.55rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.wolf-term__sym-tabs::-webkit-scrollbar {
-  display: none;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  overflow: visible;
 }
 
 .wolf-term__sym-tabs button,
 .wolf-term__sym-tab {
+  box-sizing: border-box;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 34px;
-  padding: 0 0.85rem;
-  border: 1.5px solid #4a5060;
+  height: auto;
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 1px solid #4a5060;
   border-radius: 8px;
-  background: #2a2e39;
-  color: #f0f3fa;
-  font-size: 0.84rem;
-  font-weight: 700;
-  line-height: 1;
+  background: transparent;
+  color: #d1d4dc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -19291,16 +19288,15 @@ body:has(.app-main--terminal-immersive) #root {
 .wolf-term__sym-tabs button:hover,
 .wolf-term__sym-tab:hover {
   color: #fff;
-  background: #363a45;
-  border-color: #6a7184;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .wolf-term__sym-tabs button.on,
 .wolf-term__sym-tab.on {
-  background: #fff;
-  color: #131722;
-  border-color: #fff;
-  font-weight: 800;
+  background: transparent;
+  color: #fff;
+  border-color: #d4af37;
+  font-weight: 700;
 }
 
 .wolf-term__sym-list {
@@ -29665,35 +29661,5 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__title span {
     animation: none !important;
   }
-}
-
-html[data-theme="light"] .wolf-term__sym-tab,
-html.theme-light .wolf-term__sym-tab,
-html[data-theme="light"] .wolf-term__sym-tabs button,
-html.theme-light .wolf-term__sym-tabs button {
-  color: #0a0a0a !important;
-  background: #ffffff !important;
-  border: 2px solid #0f172a !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  height: 36px !important;
-  opacity: 1 !important;
-}
-
-html[data-theme="light"] .wolf-term__sym-tab:hover,
-html.theme-light .wolf-term__sym-tab:hover,
-html[data-theme="light"] .wolf-term__sym-tabs button:hover,
-html.theme-light .wolf-term__sym-tabs button:hover {
-  background: #e8edf5 !important;
-  color: #0a0a0a !important;
-}
-
-html[data-theme="light"] .wolf-term__sym-tab.on,
-html.theme-light .wolf-term__sym-tab.on,
-html[data-theme="light"] .wolf-term__sym-tabs button.on,
-html.theme-light .wolf-term__sym-tabs button.on {
-  background: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #0f172a !important;
 }
 

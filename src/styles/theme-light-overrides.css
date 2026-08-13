@@ -2211,27 +2211,29 @@ html[data-theme="light"] .wolf-term__sym-search input {
 
 html[data-theme="light"] .wolf-term__sym-tabs button,
 html[data-theme="light"] .wolf-term__sym-tab {
-  color: #0a0a0a !important;
+  color: #0f172a !important;
   background: #ffffff !important;
-  border: 2px solid #0f172a !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  height: 36px !important;
+  border: 1px solid #94a3b8 !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  height: auto !important;
+  min-height: 32px !important;
   opacity: 1 !important;
 }
 
 html[data-theme="light"] .wolf-term__sym-tabs button:hover,
 html[data-theme="light"] .wolf-term__sym-tab:hover {
-  background: #e2e8f0 !important;
-  color: #0a0a0a !important;
-  border-color: #0f172a !important;
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #64748b !important;
 }
 
 html[data-theme="light"] .wolf-term__sym-tabs button.on,
 html[data-theme="light"] .wolf-term__sym-tab.on {
-  background: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #0f172a !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #b45309 !important;
+  font-weight: 700 !important;
 }
 
 html[data-theme="light"] .wolf-term__sym-list {
