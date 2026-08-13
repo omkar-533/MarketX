@@ -12,11 +12,15 @@ const TABS: { id: TerminalSymbolCategory; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'stocks', label: 'Stocks' },
   { id: 'futures', label: 'Futures' },
-  { id: 'forex', label: 'Forex' },
-  { id: 'crypto', label: 'Crypto' },
   { id: 'indices', label: 'Indices' },
   { id: 'options', label: 'Options' },
 ];
+
+const INDIAN_EXCHANGES = new Set(['NSE', 'BSE', 'MCX']);
+
+function isIndianMarket(hit: TerminalSymbolHit) {
+  return INDIAN_EXCHANGES.has(String(hit.exchange || '').toUpperCase());
+}
 
 export type TerminalSymbolSearchProps = {
   open: boolean;
@@ -39,7 +43,7 @@ export default function TerminalSymbolSearch({
   const counts = useMemo(() => terminalCategoryCounts(), []);
 
   const hits = useMemo(
-    () => searchTerminalSymbols(query, 80, category),
+    () => searchTerminalSymbols(query, 80, category).filter(isIndianMarket),
     [query, category],
   );
 
@@ -180,7 +184,6 @@ export default function TerminalSymbolSearch({
                     <em>{hit.name}</em>
                   </span>
                   <span className="wolf-term__sym-meta">
-                    <span className="wolf-term__sym-type">{hit.typeLabel}</span>
                     <span className="wolf-term__sym-ex">{hit.exchange}</span>
                   </span>
                 </button>
