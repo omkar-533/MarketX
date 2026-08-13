@@ -106,9 +106,10 @@ export const BROKER_PROVIDERS = [
 ];
 
 export function listProviders() {
-  return [DEMO_PROVIDER, ...BROKER_PROVIDERS];
+  return [...BROKER_PROVIDERS];
 }
 
 export function getProvider(id) {
+  if (id === 'mock-demo') return DEMO_PROVIDER;
   return listProviders().find((p) => p.id === id) || null;
 }

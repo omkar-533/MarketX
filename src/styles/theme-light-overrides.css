@@ -3303,6 +3303,17 @@ html[data-theme="light"] .wolf-md-modal__panel {
 
 html[data-theme="light"] .wolf-md-modal__glow {
   background: radial-gradient(circle, rgba(180, 83, 9, 0.12), transparent 68%);
+  opacity: 0.4;
+}
+
+html[data-theme="light"] .wolf-md-detect__search {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+html[data-theme="light"] .wolf-md-detect__search input {
+  color: #0f172a;
 }
 
 html[data-theme="light"] .wolf-md-modal__eyebrow,

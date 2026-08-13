@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, Link2, Radar, ShieldOff, Sparkles, X } from 'lucide-react';
+import { Check, Link2, Radar, Search, ShieldOff, Sparkles, X } from 'lucide-react';
 import type { CatalogProvider, ServerConnectionStatus } from '../../../services/marketData/marketDataApi';
 import {
   detectSupportedBrokers,
@@ -45,11 +45,13 @@ export default function ConnectMarketDataModal({
   const [tokenDraft, setTokenDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setTokenDraft('');
+    setQuery('');
     setBusy(true);
     void detectSupportedBrokers()
       .then((d) => {
@@ -71,9 +73,22 @@ export default function ConnectMarketDataModal({
   }, [open, status?.status]);
 
   const preferredLabel = useMemo(() => {
-    if (!detection?.lastPreferredId) return null;
+    if (!detection?.lastPreferredId || /demo/i.test(detection.lastPreferredId)) return null;
     return detection.brokers.find((b) => b.id === detection.lastPreferredId)?.name || null;
   }, [detection]);
+
+  const visibleBrokers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = (detection?.brokers || []).filter(
+      (b) => !b.isDemo && b.id !== 'mock-demo' && !/demo/i.test(b.name),
+    );
+    const filtered = q
+      ? list.filter((b) => b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q))
+      : list;
+    return [...filtered].sort(
+      (a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name),
+    );
+  }, [detection, query]);
 
   if (!open) return null;
 
@@ -202,20 +217,31 @@ export default function ConnectMarketDataModal({
                   session).
                 </p>
               )}
+              <label className="wolf-md-detect__search">
+                <Search size={14} />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search Indian brokers"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
               <div className="wolf-md-modal__grid">
-                {(detection?.brokers || []).map((p, i) => (
+                {visibleBrokers.map((p, i) => (
                   <motion.button
                     key={p.id}
                     type="button"
-                    className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked'} ${
-                      p.isDemo ? 'is-demo' : ''
-                    } ${selected?.id === p.id ? 'is-selected' : ''}`}
+                    className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked is-compact'} ${
+                      selected?.id === p.id ? 'is-selected' : ''
+                    }`}
                     onClick={() => goAuthorize(p)}
                     disabled={busy}
-                    initial={reduced ? false : { opacity: 0, y: 18, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ delay: 0.05 + i * 0.055, duration: 0.4, ease: EASE }}
-                    whileHover={reduced || !p.enabled ? undefined : { y: -4, scale: 1.015 }}
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(0.04 + i * 0.012, 0.28), duration: 0.28, ease: EASE }}
+                    whileHover={reduced || !p.enabled ? undefined : { y: -3, scale: 1.01 }}
                     whileTap={reduced ? undefined : { scale: 0.985 }}
                   >
                     <div className="wolf-md-card__aura" aria-hidden />
@@ -224,46 +250,51 @@ export default function ConnectMarketDataModal({
                         <BrokerLogoMark id={p.id} name={p.name} />
                         <strong>{p.name}</strong>
                       </div>
-                      {p.isDemo ? (
-                        <em className="is-demo">DEMO</em>
-                      ) : p.enabled ? (
+                      {p.enabled ? (
                         <em className="is-ok">SUPPORTED</em>
                       ) : (
                         <em className="is-off">UNSUPPORTED</em>
                       )}
                     </div>
-                    <ul>
-                      <li>
-                        <span>Historical</span>
-                        <b>{p.capabilities.historicalCandles ? 'Yes' : 'No'}</b>
-                      </li>
-                      <li>
-                        <span>Quotes</span>
-                        <b>{p.capabilities.liveQuotes ? 'Yes' : 'No'}</b>
-                      </li>
-                      <li>
-                        <span>Auth</span>
-                        <b>{authLabel(p)}</b>
-                      </li>
-                      <li>
-                        <span>Order access</span>
-                        <b>NOT ENABLED</b>
-                      </li>
-                    </ul>
-                    <small>{p.notes}</small>
-                    {!p.enabled && (
-                      <span className="wolf-md-card__lock">
-                        <ShieldOff size={12} /> No unofficial workaround
-                      </span>
-                    )}
-                    {p.enabled && (
-                      <span className="wolf-md-card__cta">
-                        <Link2 size={12} /> Continue to authorize
-                      </span>
+                    {p.enabled ? (
+                      <>
+                        <ul>
+                          <li>
+                            <span>Historical</span>
+                            <b>{p.capabilities.historicalCandles ? 'Yes' : 'No'}</b>
+                          </li>
+                          <li>
+                            <span>Quotes</span>
+                            <b>{p.capabilities.liveQuotes ? 'Yes' : 'No'}</b>
+                          </li>
+                          <li>
+                            <span>Auth</span>
+                            <b>{authLabel(p)}</b>
+                          </li>
+                          <li>
+                            <span>Order access</span>
+                            <b>NOT ENABLED</b>
+                          </li>
+                        </ul>
+                        <small>{p.notes}</small>
+                        <span className="wolf-md-card__cta">
+                          <Link2 size={12} /> Continue to authorize
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <small>{p.notes}</small>
+                        <span className="wolf-md-card__lock">
+                          <ShieldOff size={12} /> No unofficial workaround
+                        </span>
+                      </>
                     )}
                   </motion.button>
                 ))}
               </div>
+              {!busy && visibleBrokers.length === 0 && (
+                <p className="wolf-md-detect__hint">No brokers match that search.</p>
+              )}
             </motion.section>
           )}
 
