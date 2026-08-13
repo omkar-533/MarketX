@@ -29391,6 +29391,88 @@ body:has(.app-main--terminal-immersive) #root {
   margin-top: 0.45rem;
 }
 
+.wolf-opp__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+.wolf-opp__modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(4, 6, 12, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+.wolf-opp__modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(28rem, 100%);
+  max-height: min(78vh, 40rem);
+  overflow: auto;
+  border-radius: 24px;
+  padding: 1.2rem 1.25rem 1.3rem;
+  background: #12161f;
+  color: #eef2f8;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.wolf-opp__modal-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+.wolf-opp__modal-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  color: #c8b06a;
+  letter-spacing: 0.04em;
+}
+.wolf-opp__modal-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-family: "Modern Era", "Plus Jakarta Sans", system-ui, sans-serif;
+  color: #f4ead0;
+}
+.wolf-opp__modal-card header button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9aa3b5;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.wolf-opp__modal-card header button:hover {
+  color: #f4ead0;
+  background: rgba(255, 255, 255, 0.1);
+}
+.wolf-opp__modal-card .wolf-opp__why {
+  margin: 0 0 0.85rem;
+}
+.wolf-opp__modal-card .wolf-opp__evidence {
+  margin-bottom: 0.85rem;
+}
+.wolf-opp__modal-card > p {
+  font-size: 0.8rem;
+  color: #c8d0de;
+  line-height: 1.45;
+  margin: 0.4rem 0;
+}
+.wolf-opp__modal-card > p b {
+  color: #f0d78c;
+  margin-right: 0.25rem;
+}
+
 /* Drawers */
 .wolf-opp__drawer {
   position: fixed;

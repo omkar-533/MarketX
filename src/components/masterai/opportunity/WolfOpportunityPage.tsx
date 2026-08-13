@@ -2,6 +2,7 @@
  * WOLF OPPORTUNITY — every scanner kept; Long / Short split inside each.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Crosshair,
@@ -172,10 +173,24 @@ function HitTile({
         </span>
       </button>
       <div className="wolf-opp__tile-actions">
-        <button type="button" onClick={onWhy}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onWhy();
+          }}
+        >
           Why
         </button>
-        <button type="button" onClick={onChart}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onChart();
+          }}
+        >
           <Crosshair size={12} /> Chart
         </button>
       </div>
@@ -603,51 +618,67 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </div>
       </section>
 
-      <AnimatePresence>
-        {whyHit ? (
-          <motion.div
-            className="wolf-opp__drawer"
-            role="dialog"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <button
-              type="button"
-              className="wolf-opp__drawer-backdrop"
-              aria-label="Close"
-              onClick={() => setWhyHit(null)}
-            />
-            <motion.div
-              className="wolf-opp__drawer-panel"
-              initial={{ x: 40, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 28, opacity: 0 }}
-            >
-              <header>
-                <h3>Why {whyHit.symbol}?</h3>
-                <button type="button" onClick={() => setWhyHit(null)}>
-                  <X size={16} />
-                </button>
-              </header>
-              <ul className="wolf-opp__evidence">
-                {whyHit.evidence.map((e) => (
-                  <li key={e.label} className={e.ok ? 'ok' : 'risk'}>
-                    {e.ok ? '✓' : '·'} {e.label}
-                    {e.detail ? ` — ${e.detail}` : ''}
-                  </li>
-                ))}
-              </ul>
-              <p>
-                <b>Next</b> {whyHit.confirmationNeeded}
-              </p>
-              <p>
-                <b>Risk</b> {whyHit.invalidation}
-              </p>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <AnimatePresence>
+              {whyHit ? (
+                <motion.div
+                  className="wolf-opp__modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="wolf-opp-why-title"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <button
+                    type="button"
+                    className="wolf-opp__modal-backdrop"
+                    aria-label="Close"
+                    onClick={() => setWhyHit(null)}
+                  />
+                  <motion.div
+                    className="wolf-opp__modal-card"
+                    initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.97 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                  >
+                    <header>
+                      <div>
+                        <p className="wolf-opp__modal-kicker">{prettyTitle(whyHit.scannerId)}</p>
+                        <h3 id="wolf-opp-why-title">Why {whyHit.symbol}?</h3>
+                      </div>
+                      <button type="button" onClick={() => setWhyHit(null)} aria-label="Close">
+                        <X size={18} />
+                      </button>
+                    </header>
+                    {whyHit.why ? <p className="wolf-opp__why">{whyHit.why}</p> : null}
+                    <ul className="wolf-opp__evidence">
+                      {(whyHit.evidence || []).map((e) => (
+                        <li key={e.label} className={e.ok ? 'ok' : 'risk'}>
+                          {e.ok ? '✓' : '·'} {e.label}
+                          {e.detail ? ` — ${e.detail}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                    {whyHit.confirmationNeeded ? (
+                      <p>
+                        <b>Next</b> {whyHit.confirmationNeeded}
+                      </p>
+                    ) : null}
+                    {whyHit.invalidation ? (
+                      <p>
+                        <b>Risk</b> {whyHit.invalidation}
+                      </p>
+                    ) : null}
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
 
       <AnimatePresence>
         {selected ? (
