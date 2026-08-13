@@ -3337,6 +3337,17 @@ html[data-theme="light"] .wolf-md-card {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
+html[data-theme="light"] .wolf-md-card--live {
+  background: linear-gradient(165deg, #fffdf7, #ffffff);
+  border-color: rgba(146, 64, 14, 0.28);
+}
+
+html[data-theme="light"] .wolf-md-card__cta--btn {
+  color: #78350f !important;
+  border-color: rgba(146, 64, 14, 0.35);
+  background: linear-gradient(180deg, #f0d78c, #e8c04a);
+}
+
 html[data-theme="light"] .wolf-md-card.is-demo,
 html[data-theme="light"] .wolf-md-card.is-selected,
 html[data-theme="light"] .wolf-md-card.is-enabled:hover {

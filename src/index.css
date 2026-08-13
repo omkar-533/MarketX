@@ -26687,9 +26687,9 @@ body:has(.app-main--terminal-immersive) #root {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(960px, 100%);
-  height: min(90vh, 920px);
-  max-height: min(90vh, 920px);
+  width: min(520px, 100%);
+  height: auto;
+  max-height: min(88vh, 720px);
   overflow: hidden;
   border-radius: 1.25rem;
   border: 1px solid rgba(212, 175, 55, 0.28);
@@ -26815,9 +26815,12 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-md-modal__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 0.7rem;
-  padding-bottom: 0.85rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+.wolf-md-modal__grid--live {
+  max-width: 100%;
 }
 .wolf-md-logo {
   display: inline-grid;
@@ -26875,9 +26878,37 @@ body:has(.app-main--terminal-immersive) #root {
     0 0 0 1px rgba(212, 175, 55, 0.25),
     0 16px 36px rgba(0, 0, 0, 0.28);
 }
-.wolf-md-card.is-enabled:hover {
-  border-color: rgba(212, 175, 55, 0.42);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
+.wolf-md-card--live {
+  padding: 1.15rem 1.1rem 1.05rem;
+  border-color: rgba(212, 175, 55, 0.32);
+  background:
+    linear-gradient(165deg, rgba(212, 175, 55, 0.1), rgba(255, 255, 255, 0.03));
+}
+.wolf-md-card--live .wolf-md-logo {
+  width: 2.85rem;
+  height: 2.85rem;
+}
+.wolf-md-card__ex {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tf-text-muted);
+}
+.wolf-md-card__cta--btn {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.95rem;
+  padding: 0.62rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: linear-gradient(180deg, rgba(232, 192, 74, 0.28), rgba(212, 175, 55, 0.14));
+  color: #f0d78c;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 .wolf-md-steps {
   position: relative;
@@ -27032,8 +27063,8 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-md-card__brand {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
+  align-items: flex-start;
+  gap: 0.7rem;
   min-width: 0;
 }
 .wolf-md-card__top strong {
@@ -27215,8 +27246,8 @@ body:has(.app-main--terminal-immersive) #root {
   }
   .wolf-md-modal__panel {
     width: 100%;
-    height: min(92dvh, 920px);
-    max-height: min(92dvh, 920px);
+    height: auto;
+    max-height: min(92dvh, 720px);
     border-radius: 1.1rem 1.1rem 0.85rem 0.85rem;
     padding: 1rem 0.9rem 0.75rem;
   }

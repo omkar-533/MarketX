@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, Link2, Radar, Search, ShieldOff, Sparkles, X } from 'lucide-react';
+import { Check, Link2, Radar, Sparkles, X } from 'lucide-react';
 import type { CatalogProvider, ServerConnectionStatus } from '../../../services/marketData/marketDataApi';
 import {
   detectSupportedBrokers,
@@ -45,13 +45,11 @@ export default function ConnectMarketDataModal({
   const [tokenDraft, setTokenDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setTokenDraft('');
-    setQuery('');
     setBusy(true);
     void detectSupportedBrokers()
       .then((d) => {
@@ -72,23 +70,10 @@ export default function ConnectMarketDataModal({
       .finally(() => setBusy(false));
   }, [open, status?.status]);
 
-  const preferredLabel = useMemo(() => {
-    if (!detection?.lastPreferredId || /demo/i.test(detection.lastPreferredId)) return null;
-    return detection.brokers.find((b) => b.id === detection.lastPreferredId)?.name || null;
-  }, [detection]);
-
-  const visibleBrokers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = (detection?.brokers || []).filter(
-      (b) => !b.isDemo && b.id !== 'mock-demo' && !/demo/i.test(b.name),
-    );
-    const filtered = q
-      ? list.filter((b) => b.name.toLowerCase().includes(q) || b.id.toLowerCase().includes(q))
-      : list;
-    return [...filtered].sort(
-      (a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name),
-    );
-  }, [detection, query]);
+  const visibleBrokers = useMemo(
+    () => (detection?.connectable || detection?.brokers || []).filter((b) => b.enabled && !b.isDemo),
+    [detection],
+  );
 
   if (!open) return null;
 
@@ -211,89 +196,60 @@ export default function ConnectMarketDataModal({
                     'Showing WOLF-supported market-data sources. Other-tab broker logins are never read or reused.'}
                 </p>
               </div>
-              {preferredLabel && (
-                <p className="wolf-md-detect__hint">
-                  Last preferred: <strong>{preferredLabel}</strong> (preference only — not a live
-                  session).
-                </p>
-              )}
-              <label className="wolf-md-detect__search">
-                <Search size={14} />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search Indian brokers"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </label>
-              <div className="wolf-md-modal__grid">
+              <div className="wolf-md-modal__grid wolf-md-modal__grid--live">
                 {visibleBrokers.map((p, i) => (
                   <motion.button
                     key={p.id}
                     type="button"
-                    className={`wolf-md-card ${p.enabled ? 'is-enabled' : 'is-locked is-compact'} ${
+                    className={`wolf-md-card wolf-md-card--live ${
                       selected?.id === p.id ? 'is-selected' : ''
                     }`}
                     onClick={() => goAuthorize(p)}
                     disabled={busy}
                     initial={reduced ? false : { opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(0.04 + i * 0.012, 0.28), duration: 0.28, ease: EASE }}
-                    whileHover={reduced || !p.enabled ? undefined : { y: -3, scale: 1.01 }}
-                    whileTap={reduced ? undefined : { scale: 0.985 }}
+                    transition={{ delay: Math.min(0.04 + i * 0.04, 0.2), duration: 0.28, ease: EASE }}
+                    whileHover={reduced ? undefined : { y: -2 }}
+                    whileTap={reduced ? undefined : { scale: 0.99 }}
                   >
                     <div className="wolf-md-card__aura" aria-hidden />
                     <div className="wolf-md-card__top">
                       <div className="wolf-md-card__brand">
                         <BrokerLogoMark id={p.id} name={p.name} />
-                        <strong>{p.name}</strong>
+                        <span>
+                          <strong>{p.name}</strong>
+                          <small className="wolf-md-card__ex">{p.supportedExchanges.join(' · ')}</small>
+                        </span>
                       </div>
-                      {p.enabled ? (
-                        <em className="is-ok">SUPPORTED</em>
-                      ) : (
-                        <em className="is-off">UNSUPPORTED</em>
-                      )}
+                      <em className="is-ok">LIVE API</em>
                     </div>
-                    {p.enabled ? (
-                      <>
-                        <ul>
-                          <li>
-                            <span>Historical</span>
-                            <b>{p.capabilities.historicalCandles ? 'Yes' : 'No'}</b>
-                          </li>
-                          <li>
-                            <span>Quotes</span>
-                            <b>{p.capabilities.liveQuotes ? 'Yes' : 'No'}</b>
-                          </li>
-                          <li>
-                            <span>Auth</span>
-                            <b>{authLabel(p)}</b>
-                          </li>
-                          <li>
-                            <span>Order access</span>
-                            <b>NOT ENABLED</b>
-                          </li>
-                        </ul>
-                        <small>{p.notes}</small>
-                        <span className="wolf-md-card__cta">
-                          <Link2 size={12} /> Continue to authorize
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <small>{p.notes}</small>
-                        <span className="wolf-md-card__lock">
-                          <ShieldOff size={12} /> No unofficial workaround
-                        </span>
-                      </>
-                    )}
+                    <ul>
+                      <li>
+                        <span>Historical</span>
+                        <b>{p.capabilities.historicalCandles ? 'Yes' : 'No'}</b>
+                      </li>
+                      <li>
+                        <span>Live quotes</span>
+                        <b>{p.capabilities.liveQuotes ? 'Yes' : 'No'}</b>
+                      </li>
+                      <li>
+                        <span>Auth</span>
+                        <b>{authLabel(p)}</b>
+                      </li>
+                      <li>
+                        <span>Order access</span>
+                        <b>NOT ENABLED</b>
+                      </li>
+                    </ul>
+                    <small>{p.notes}</small>
+                    <span className="wolf-md-card__cta wolf-md-card__cta--btn">
+                      <Link2 size={14} /> Continue to authorize
+                    </span>
                   </motion.button>
                 ))}
               </div>
               {!busy && visibleBrokers.length === 0 && (
-                <p className="wolf-md-detect__hint">No brokers match that search.</p>
+                <p className="wolf-md-detect__hint">No live market-data API is available to connect right now.</p>
               )}
             </motion.section>
           )}
