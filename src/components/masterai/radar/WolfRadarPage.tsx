@@ -14,7 +14,6 @@ import {
   loadLastResults,
   loadWatchlist,
 } from '../../../services/radar/radarStore';
-import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type {
   RadarResult,
@@ -52,7 +51,6 @@ import {
 import { catalogUniverseMeta } from '../../../services/radar/universeCatalog';
 
 type Props = {
-  onAnalyze: () => void;
   onOpenLive?: () => void;
 };
 
@@ -82,7 +80,7 @@ function formatTime(ts: number | null) {
   });
 }
 
-export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
+export default function WolfRadarPage({ onOpenLive }: Props) {
   const [universe, setUniverse] = useState<RadarUniverse>('F&O');
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
   const market = useMemo(() => marketFromUniverse(universe), [universe]);
@@ -408,8 +406,8 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
   };
 
   const onAnalyzeClick = (r: RadarResult) => {
-    setPendingRadarAnalyze(r);
-    onAnalyze();
+    openLiveWolfFromRadarResult(r);
+    onOpenLive?.();
   };
 
   const onOpenLiveClick = (r: RadarResult) => {
@@ -995,7 +993,7 @@ export default function WolfRadarPage({ onAnalyze, onOpenLive }: Props) {
 
             <div className="wolf-radar-desk__card-actions">
               <button type="button" className="primary" onClick={() => onAnalyzeClick(selected)}>
-                ANALYZE IN WOLF AI
+                ANALYZE IN LIVE WOLF
               </button>
               <button type="button" className="ghost" onClick={() => onAddWatch(selected)}>
                 ADD TO WATCHLIST

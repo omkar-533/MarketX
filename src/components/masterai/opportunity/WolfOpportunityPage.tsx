@@ -20,7 +20,7 @@ import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataPr
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
 import { runOpportunityScan } from '../../../services/opportunity/opportunityEngine';
-import { openOpportunityInWolfAi } from '../../../services/opportunity/opportunityBridge';
+import { opportunityToRadarResult } from '../../../services/opportunity/opportunityBridge';
 import {
   loadOpportunityFilters,
   saveOpportunityFilters,
@@ -38,7 +38,6 @@ import {
   OPPORTUNITY_SCANNERS,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
-import { opportunityToRadarResult } from '../../../services/opportunity/opportunityBridge';
 
 function mergeHitIntoCards(
   prev: ScannerCardState[],
@@ -369,7 +368,8 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   }, [filters.autoRefresh, filters.refreshSec, runScan]);
 
   const openAnalyze = (hit: OpportunityHit) => {
-    openOpportunityInWolfAi(hit);
+    openLiveWolfFromRadarResult(opportunityToRadarResult(hit));
+    onOpenLive?.();
     onOpenWolfAi();
   };
 

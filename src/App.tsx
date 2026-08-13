@@ -43,8 +43,6 @@ const SignalsPanel = lazyWithRetry(() => import('./components/SignalsPanel'));
 const FuturesAnalytics = lazyWithRetry(() => import('./components/FuturesAnalytics'));
 const OIIntelligence = lazyWithRetry(() => import('./components/OIIntelligence'));
 const FootprintChart = lazyWithRetry(() => import('./components/FootprintChart'));
-const MasterAI = lazyWithRetry(() => import('./components/MasterAI'));
-const WolfAiWorkspace = lazyWithRetry(() => import('./components/WolfAiWorkspace'));
 const WolfRadarPage = lazyWithRetry(() => import('./components/masterai/radar/WolfRadarPage'));
 const WolfOpportunityRoute = lazyWithRetry(() => import('./components/masterai/opportunity/WolfOpportunityRoute'));
 const LiveWolfRoute = lazyWithRetry(() => import('./components/masterai/live/LiveWolfRoute'));
@@ -64,6 +62,8 @@ function PageLoader() {
 const HIDDEN_TABS = new Set([
   'heatmap',
   'scanner',
+  'wolf-ai',
+  'trafi',
   ...(SHOW_DASHBOARD ? [] : (['dashboard'] as const)),
   ...(SHOW_OI_INTELLIGENCE ? [] : (['oiintelligence'] as const)),
   ...(SHOW_OPTION_CHAIN ? [] : (['optionchain'] as const)),
@@ -110,14 +110,17 @@ const VALID_TABS = new Set([
 ]);
 
 function normalizeTabId(raw: string): string {
-  return raw === 'trafi' ? 'wolf-ai' : raw;
+  if (raw === 'trafi' || raw === 'wolf-ai') return 'live-wolf';
+  return raw;
 }
 
 function tabFromHash(): string | null {
   const raw = window.location.hash.replace(/^#\/?/, '').split(/[?&]/)[0]?.trim() || '';
   if (!raw || AUTH_HASHES.has(raw.toLowerCase())) return null;
-  if (!VALID_TABS.has(raw) || HIDDEN_TABS.has(raw)) return null;
-  return normalizeTabId(raw);
+  const resolved = normalizeTabId(raw);
+  if (!VALID_TABS.has(raw) && !VALID_TABS.has(resolved)) return null;
+  if (HIDDEN_TABS.has(resolved)) return null;
+  return resolved;
 }
 
 function shouldForceHome() {
@@ -195,6 +198,12 @@ function AppWorkspace() {
   }, [activeTab]);
 
   useEffect(() => {
+    const resolved = normalizeTabId(activeTab);
+    if (resolved !== activeTab) {
+      setActiveTab(resolved);
+      persistTab(resolved);
+      return;
+    }
     if (HIDDEN_TABS.has(activeTab)) {
       setActiveTab(DEFAULT_TAB);
       persistTab(DEFAULT_TAB);
@@ -327,9 +336,14 @@ function AppWorkspace() {
   const renderLoggedInContent = () => {
     if (locked && !planPeek) return null;
 
+    const liveWolf = () => handleTabChange('live-wolf');
+    const opportunity = (
+      <WolfOpportunityRoute onOpenWolfAi={liveWolf} onOpenLive={liveWolf} />
+    );
+
     switch (activeTab) {
       case 'dashboard':
-        return SHOW_DASHBOARD ? <Dashboard onNavigate={handleTabChange} /> : <MasterAI />;
+        return SHOW_DASHBOARD ? <Dashboard onNavigate={handleTabChange} /> : opportunity;
       case 'ltpcalc':
         return <LtpCalculator onNavigate={handleTabChange} />;
       case 'tradingjournal':
@@ -341,7 +355,7 @@ function AppWorkspace() {
           />
         );
       case 'optionchain':
-        return SHOW_OPTION_CHAIN ? <TradeXOptionChain /> : <MasterAI />;
+        return SHOW_OPTION_CHAIN ? <TradeXOptionChain /> : opportunity;
       case 'optionsimulator':
         return <OptionSimulator />;
       case 'strategy':
@@ -352,28 +366,20 @@ function AppWorkspace() {
         return SHOW_OI_INTELLIGENCE ? (
           <OIIntelligence onNavigate={handleTabChange} />
         ) : (
-          <MasterAI />
+          opportunity
         );
       case 'footprint':
         return <FootprintChart />;
       case 'wolf-ai':
-        return <WolfAiWorkspace />;
+        return <LiveWolfRoute />;
       case 'wolf-radar':
         return (
-          <WolfRadarPage
-            onAnalyze={() => handleTabChange('wolf-ai')}
-            onOpenLive={() => handleTabChange('live-wolf')}
-          />
+          <WolfRadarPage onOpenLive={liveWolf} />
         );
       case 'wolf-opportunity':
-        return (
-          <WolfOpportunityRoute
-            onOpenWolfAi={() => handleTabChange('wolf-ai')}
-            onOpenLive={() => handleTabChange('live-wolf')}
-          />
-        );
+        return opportunity;
       case 'live-wolf':
-        return <LiveWolfRoute onAskWolf={() => handleTabChange('wolf-ai')} />;
+        return <LiveWolfRoute />;
       case 'strategy-lab':
         return <MySetupsPanel onScanSetup={() => handleTabChange('wolf-radar')} />;
       case 'mentor-ai':
@@ -381,7 +387,7 @@ function AppWorkspace() {
       case 'arena':
         return <WolfArenaPage onNavigate={handleTabChange} />;
       case 'terminal':
-        return SHOW_TERMINAL ? <TerminalPage onNavigate={handleTabChange} /> : <MasterAI />;
+        return SHOW_TERMINAL ? <TerminalPage onNavigate={handleTabChange} /> : opportunity;
       case 'indicators':
         return (
           <Indicators
@@ -393,7 +399,7 @@ function AppWorkspace() {
         return SHOW_PAPER_TRADING ? (
           <PaperTrading user={auth.user} onNavigate={handleTabChange} />
         ) : (
-          <MasterAI />
+          opportunity
         );
       case 'backtesting':
         return <Backtesting />;
@@ -408,7 +414,7 @@ function AppWorkspace() {
       case 'watchlist':
         return (
           <WatchlistPanel
-            onAnalyze={() => handleTabChange('wolf-ai')}
+            onAnalyze={() => handleTabChange('live-wolf')}
             onOpenRadar={() => handleTabChange('wolf-radar')}
           />
         );
@@ -430,7 +436,7 @@ function AppWorkspace() {
           />
         );
       default:
-        return <MasterAI />;
+        return opportunity;
     }
   };
 

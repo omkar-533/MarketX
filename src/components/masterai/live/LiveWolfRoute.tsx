@@ -13,7 +13,7 @@ import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataPr
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 
 type Props = {
-  onAskWolf: () => void;
+  onAskWolf?: () => void;
 };
 
 export default function LiveWolfRoute({ onAskWolf }: Props) {

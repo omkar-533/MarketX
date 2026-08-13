@@ -42,7 +42,7 @@ import {
 import { defaultTerminalState } from '../../../services/terminalState';
 
 type Props = {
-  onAskWolf: () => void;
+  onAskWolf?: () => void;
   onConnectData: () => void;
   /** From ConnectMarketDataModal — keeps chart CTA in sync after connect. */
   dataConnected?: boolean;
@@ -334,7 +334,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       dataMode: analysis.dataMode,
     };
     setPendingRadarAnalyze(asResult);
-    onAskWolf();
+    onAskWolf?.();
   };
 
   const onSpeakLatest = () => {
@@ -536,9 +536,11 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
           </div>
 
           <div className="live-wolf-desk__actions">
-            <button type="button" className="live-wolf-desk__ask" onClick={onAsk} disabled={!analysis}>
-              <MessageSquare size={14} /> ASK WOLF
-            </button>
+            {onAskWolf ? (
+              <button type="button" className="live-wolf-desk__ask" onClick={onAsk} disabled={!analysis}>
+                <MessageSquare size={14} /> ASK WOLF
+              </button>
+            ) : null}
             <button
               type="button"
               className="live-wolf-desk__speak"

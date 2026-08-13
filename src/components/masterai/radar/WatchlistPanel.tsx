@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Bookmark, Sparkles, Trash2 } from 'lucide-react';
 import { loadLastResults, loadWatchlist, removeFromWatchlist } from '../../../services/radar/radarStore';
-import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
+import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type { WatchlistItem } from '../../../services/radar/radarTypes';
 
 type Props = {
@@ -15,7 +15,7 @@ export default function WatchlistPanel({ onAnalyze, onOpenRadar }: Props) {
   const analyze = (item: WatchlistItem) => {
     const cached = loadLastResults().find((r) => r.symbol === item.symbol || r.id === item.resultId);
     if (cached) {
-      setPendingRadarAnalyze(cached);
+      openLiveWolfFromRadarResult(cached);
       onAnalyze();
       return;
     }

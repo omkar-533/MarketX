@@ -885,7 +885,7 @@ export default function TradingJournal({
 
   const openHunterReview = () => {
     queueHunterJournalReview();
-    onNavigate?.('wolf-ai');
+    onNavigate?.('live-wolf');
   };
 
   const [selectedSymbolMeta, setSelectedSymbolMeta] = useState<JournalSymbolSelection | null>(null);
