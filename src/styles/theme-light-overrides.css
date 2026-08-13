@@ -1282,6 +1282,15 @@ html[data-theme="light"] .app-header.glass {
   border-color: var(--tf-border) !important;
 }
 
+html[data-theme="light"] .header-back {
+  background: #f1f5f9;
+  color: #0a0a0a;
+}
+html[data-theme="light"] .header-back:hover {
+  background: rgba(146, 64, 14, 0.1);
+  color: #78350f;
+}
+
 /* Header / any brand wordmark ? pale gold is unreadable on white */
 html[data-theme="light"] .brand-lockup__name {
   color: #0a0a0a !important;

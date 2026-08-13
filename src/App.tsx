@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { AutoRefreshProvider } from './context/AutoRefreshContext';
 import AppErrorBoundary from './components/AppErrorBoundary';
@@ -161,7 +161,7 @@ function initialActiveTab() {
   return DEFAULT_TAB;
 }
 
-function persistTab(tab: string) {
+function persistTab(tab: string, mode: 'push' | 'replace' = 'replace') {
   try {
     localStorage.setItem(TAB_STORAGE_KEY, tab);
   } catch {
@@ -169,8 +169,13 @@ function persistTab(tab: string) {
   }
   const search = window.location.search || '';
   const next = `/${search}#${tab}`;
-  if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
-    window.history.replaceState({}, '', next);
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` === next) {
+    return;
+  }
+  if (mode === 'push') {
+    window.history.pushState({ tab }, '', next);
+  } else {
+    window.history.replaceState({ tab }, '', next);
   }
 }
 
@@ -182,6 +187,8 @@ function AppWorkspace() {
   const [showProfile, setShowProfile] = useState(false);
   const [pendingIndicatorId, setPendingIndicatorId] = useState<string | null>(null);
   const auth = useAuth();
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -221,14 +228,18 @@ function AppWorkspace() {
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
-    const onHash = () => {
+    const syncFromLocation = () => {
       if (shouldForceHome()) return;
       const fromHash = tabFromHash();
-      if (fromHash && fromHash !== activeTab) setActiveTab(fromHash);
+      if (fromHash && fromHash !== activeTabRef.current) setActiveTab(fromHash);
     };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, [auth.isLoggedIn, activeTab]);
+    window.addEventListener('hashchange', syncFromLocation);
+    window.addEventListener('popstate', syncFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncFromLocation);
+      window.removeEventListener('popstate', syncFromLocation);
+    };
+  }, [auth.isLoggedIn]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
@@ -245,9 +256,10 @@ function AppWorkspace() {
   const handleTabChange = useCallback((tab: string) => {
     const resolved = normalizeTabId(tab);
     const next = HIDDEN_TABS.has(resolved) ? DEFAULT_TAB : resolved;
+    const changed = next !== activeTabRef.current;
     setActiveTab(next);
     setMobileMenuOpen(false);
-    persistTab(next);
+    persistTab(next, changed ? 'push' : 'replace');
     // Mobile: closing the drawer / leaving chat left a stale scrollY so Upgrade
     // felt like “jump up then land halfway down the page”. Always pin to top.
     const pinTop = () => {
@@ -266,6 +278,14 @@ function AppWorkspace() {
     requestAnimationFrame(pinTop);
     window.setTimeout(pinTop, 50);
   }, []);
+
+  const handleBack = useCallback(() => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    if (activeTabRef.current !== DEFAULT_TAB) handleTabChange(DEFAULT_TAB);
+  }, [handleTabChange]);
 
   useEffect(() => {
     if (!auth.isLoggedIn) return;
@@ -456,6 +476,7 @@ function AppWorkspace() {
             user={auth.user}
                 onMenuClick={() => setMobileMenuOpen(true)}
                 onProfile={() => setShowProfile(true)}
+                onBack={handleBack}
                 className={headerClass}
           />
         </>

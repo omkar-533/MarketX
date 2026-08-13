@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Clock, Menu } from 'lucide-react';
+import { Clock, Menu, ArrowLeft } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import type { User } from '../hooks/useAuth';
 import { BRAND } from '../constants/brandLabels';
@@ -10,6 +10,7 @@ interface HeaderProps {
   user: User | null;
   onProfile: () => void;
   onMenuClick?: () => void;
+  onBack?: () => void;
   className?: string;
 }
 
@@ -42,7 +43,7 @@ function HeaderClock() {
 }
 
 /** Clean app header — ticker/search/alerts stay hidden as requested earlier. */
-export default function Header({ user, onProfile, onMenuClick, className = '' }: HeaderProps) {
+export default function Header({ user, onProfile, onMenuClick, onBack, className = '' }: HeaderProps) {
   return (
     <header
       className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-[var(--tf-border)] ${className}`}
@@ -55,6 +56,19 @@ export default function Header({ user, onProfile, onMenuClick, className = '' }:
       >
         <Menu className="w-5 h-5" />
       </button>
+
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="header-back"
+          aria-label="Go back"
+          title="Back"
+        >
+          <ArrowLeft className="w-4 h-4" strokeWidth={2.4} />
+          <span>Back</span>
+        </button>
+      ) : null}
 
       <div className="shrink-0 min-w-0 mr-auto" title={BRAND}>
         <BrandMark
