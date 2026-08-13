@@ -2377,6 +2377,29 @@ html[data-theme="light"] .wolf-term__btn-trade {
   color: #ffffff !important;
 }
 
+html[data-theme="light"] .wolf-term__sym-ticker b {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-ticker em {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-row:hover,
+html[data-theme="light"] .wolf-term__sym-row.on {
+  background: rgba(37, 99, 235, 0.1) !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-type {
+  background: #eef2f7 !important;
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .wolf-term__sym-ex {
+  background: #e8eefc !important;
+  color: #3b5bcc !important;
+}
+
 html[data-theme="light"] .wolf-term__sym-ico {
   background: #e2e8f0 !important;
   color: #0f172a !important;

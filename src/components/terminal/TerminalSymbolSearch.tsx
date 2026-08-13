@@ -101,7 +101,7 @@ export default function TerminalSymbolSearch({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="wolf-term__sym-head">
-          <b>Symbol search</b>
+          <b>Search symbol</b>
           <button type="button" className="wolf-term__icon-btn" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </button>
@@ -128,7 +128,7 @@ export default function TerminalSymbolSearch({
                 setHighlight((h) => Math.max(0, h - 1));
               }
             }}
-            placeholder="Symbol, ISIN, or CUSIP"
+            placeholder="Symbol or company name"
             spellCheck={false}
             autoComplete="off"
           />
@@ -179,8 +179,10 @@ export default function TerminalSymbolSearch({
                     <b>{hit.label}</b>
                     <em>{hit.name}</em>
                   </span>
-                  <span className="wolf-term__sym-type">{hit.typeLabel}</span>
-                  <span className="wolf-term__sym-ex">{hit.exchange}</span>
+                  <span className="wolf-term__sym-meta">
+                    <span className="wolf-term__sym-type">{hit.typeLabel}</span>
+                    <span className="wolf-term__sym-ex">{hit.exchange}</span>
+                  </span>
                 </button>
               );
             })
