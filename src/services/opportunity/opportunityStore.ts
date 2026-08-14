@@ -53,7 +53,9 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
       ...prev,
       title: blank.title,
       tagline: blank.tagline,
-      hits: Array.isArray(prev.hits) ? prev.hits.filter((h) => h.dataMode === 'LIVE') : [],
+      hits: rankHitsByScore(
+        Array.isArray(prev.hits) ? prev.hits.filter((h) => h.dataMode === 'LIVE') : [],
+      ),
       status: prev.hits?.some((h) => h.dataMode === 'LIVE') ? 'ready' : 'idle',
     };
   });
@@ -95,6 +97,10 @@ function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: Opportunit
   };
 }
 
+export function rankHitsByScore(hits: OpportunityHit[]): OpportunityHit[] {
+  return [...hits].sort((a, b) => b.score - a.score || a.symbol.localeCompare(b.symbol));
+}
+
 /** Append new names; update price/score in place; never drop a name during the IST day. */
 export function mergeOpportunityHitIntoCards(
   prev: ScannerCardState[],
@@ -109,7 +115,9 @@ export function mergeOpportunityHitIntoCards(
       return {
         ...card,
         status: 'ready',
-        hits: card.hits.map((h) => (h.symbol === hit.symbol ? mergeHitKeepFirstSeen(h, hit) : h)),
+        hits: rankHitsByScore(
+          card.hits.map((h) => (h.symbol === hit.symbol ? mergeHitKeepFirstSeen(h, hit) : h)),
+        ),
         updatedAt: Date.now(),
         unavailableReason: undefined,
       };
@@ -118,7 +126,7 @@ export function mergeOpportunityHitIntoCards(
     return {
       ...card,
       status: 'ready',
-      hits: [...card.hits, hit],
+      hits: rankHitsByScore([...card.hits, hit]),
       updatedAt: Date.now(),
       unavailableReason: undefined,
     };
@@ -135,7 +143,10 @@ export function mergeOpportunityCardSets(
       next = mergeOpportunityHitIntoCards(next, hit);
     }
   }
-  return next;
+  return next.map((card) => ({
+    ...card,
+    hits: rankHitsByScore(card.hits || []),
+  }));
 }
 
 export type OpportunityAlertRule = {

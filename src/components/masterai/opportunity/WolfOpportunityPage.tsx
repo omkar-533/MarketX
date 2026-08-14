@@ -29,6 +29,7 @@ import {
   mergeOpportunityHitIntoCards,
   mergeOpportunityCardSets,
   opportunityBoardKey,
+  rankHitsByScore,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -527,7 +528,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
       <section className="wolf-opp__desk" aria-label="Scanners">
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
-            const tfHits = card.hits.filter((h) => h.timeframe === filters.timeframe);
+            const tfHits = rankHitsByScore(card.hits.filter((h) => h.timeframe === filters.timeframe));
             const longs = showLong ? tfHits.filter((h) => biasOf(h) === 'bullish') : [];
             const shorts = showShort ? tfHits.filter((h) => biasOf(h) === 'bearish') : [];
             const neutrals =
