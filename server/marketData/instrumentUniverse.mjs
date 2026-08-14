@@ -147,7 +147,10 @@ export function getLiveUniverseSymbols(universeId) {
     return null;
   }
   if (id === 'F&O') {
-    if (state.fnoUnderlyings.length) return [...state.fnoUnderlyings];
+    const fallback = resolveServerUniverse('F&O');
+    if (state.fnoUnderlyings.length) {
+      return sortedUnique(new Set([...state.fnoUnderlyings, ...fallback]));
+    }
     return null;
   }
   if (id === 'INDEX' || id === 'INDICES') {

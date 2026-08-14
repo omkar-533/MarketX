@@ -2,6 +2,21 @@ import type { FnoInstrument } from './fnoUniverse';
 
 /** Compact NSE F&O names — [symbol, display name, sector, ref price] */
 const RAW: [string, string, string, number][] = [
+  ['ADANIENSOL', 'Adani Energy Solutions', 'Power', 985],
+  ['ADANIGREEN', 'Adani Green Energy', 'Power', 1685],
+  ['ADANIPOWER', 'Adani Power', 'Power', 205],
+  ['COCHINSHIP', 'Cochin Shipyard', 'Defence', 1685],
+  ['ETERNAL', 'Eternal (Zomato)', 'Services', 285],
+  ['FORCEMOT', 'Force Motors', 'Auto', 12850],
+  ['GVT&D', 'GE Vernova T&D India', 'Capital Goods', 2285],
+  ['HYUNDAI', 'Hyundai Motor India', 'Auto', 2285],
+  ['ICICIGI', 'ICICI Lombard', 'Insurance', 1985],
+  ['INDIANB', 'Indian Bank', 'Banking', 685],
+  ['LTM', 'LTIMindtree', 'IT', 6285],
+  ['POWERINDIA', 'Hitachi Energy India', 'Capital Goods', 16850],
+  ['PREMIERENE', 'Premier Energies', 'Capital Goods', 1285],
+  ['TMPV', 'Tata Motors Passenger Vehicles', 'Auto', 953],
+  ['VMM', 'Vishal Mega Mart', 'Retail', 148],
   ['AARTIIND', 'Aarti Industries', 'Chemical', 485],
   ['ABBOTINDIA', 'Abbott India', 'Pharma', 28500],
   ['ABCAPITAL', 'Aditya Birla Capital', 'NBFC', 185],

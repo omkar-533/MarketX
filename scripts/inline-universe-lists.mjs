@@ -13,7 +13,7 @@ export function getNifty50Universe() {
 }
 
 export function getFnoUniverse() {
-  return [...new Set([...NIFTY_50_SYMBOLS, ...FNO_EXTRA_UNDERLYINGS])];
+  return [...new Set(FNO_EXTRA_UNDERLYINGS)];
 }
 
 export function resolveServerUniverse(universe) {

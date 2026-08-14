@@ -50,7 +50,8 @@ function testFnoUnderlyingsDedupedNotContracts() {
   assert.ok(stats.indices >= 1);
 
   const fno = resolveUniverseSymbols('F&O');
-  assert.deepEqual(fno, ['INFY', 'RELIANCE']);
+  assert.ok(fno.includes('INFY') && fno.includes('RELIANCE'));
+  assert.ok(fno.length >= 200, 'F&O catalog is the full NSE equity FO underlying list');
   const nse = resolveUniverseSymbols('NSE');
   assert.ok(nse.includes('RELIANCE') && nse.includes('INFY'));
 }

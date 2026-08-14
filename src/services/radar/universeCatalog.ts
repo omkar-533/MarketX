@@ -7,6 +7,8 @@
  * not every option/futures contract row.
  */
 import nseEquityData from '../../data/nseEquity.json';
+import { NSE_FNO_EQUITY_UNDERLYINGS } from '../../data/nseFnoUnderlyings';
+
 export const NIFTY_50_SYMBOLS = [
   'ADANIENT',
   'ADANIPORTS',
@@ -60,143 +62,17 @@ export const NIFTY_50_SYMBOLS = [
   'LICI',
 ] as const;
 
-/** Mid/large F&O underlyings beyond Nifty 50 (scan universe expansion). */
-export const FNO_EXTRA_UNDERLYINGS = [
-  'ABB',
-  'ABCAPITAL',
-  'ABFRL',
-  'ACC',
-  'AARTIIND',
-  'ALKEM',
-  'AMBUJACEM',
-  'ANGELONE',
-  'ASHOKLEY',
-  'ASTRAL',
-  'ATUL',
-  'AUBANK',
-  'AUROPHARMA',
-  'BALKRISIND',
-  'BANDHANBNK',
-  'BANKBARODA',
-  'BATAINDIA',
-  'BERGEPAINT',
-  'BIOCON',
-  'BHEL',
-  'BOSCHLTD',
-  'CANBK',
-  'CANFINHOME',
-  'CHAMBLFERT',
-  'CHOLAFIN',
-  'COLPAL',
-  'CONCOR',
-  'COROMANDEL',
-  'CROMPTON',
-  'CUMMINSIND',
-  'DABUR',
-  'DALBHARAT',
-  'DEEPAKNTR',
-  'DELHIVERY',
-  'DIXON',
-  'DLF',
-  'DMART',
-  'ESCORTS',
-  'EXIDEIND',
-  'FEDERALBNK',
-  'GAIL',
-  'GLENMARK',
-  'GMRINFRA',
-  'GNFC',
-  'GODREJCP',
-  'GODREJPROP',
-  'GRANULES',
-  'HAL',
-  'HAVELLS',
-  'HDFCAMC',
-  'HINDPETRO',
-  'HINDZINC',
-  'IDFC',
-  'IDFCFIRSTB',
-  'IEX',
-  'IGL',
-  'INDIACEM',
-  'INDIAMART',
-  'INDIGO',
-  'INDUSTOWER',
-  'IOC',
-  'IPCALAB',
-  'IRCTC',
-  'IRFC',
-  'JINDALSTEL',
-  'JIOFIN',
-  'JKCEMENT',
-  'JUBLFOOD',
-  'KALYANKJIL',
-  'KEI',
-  'LALPATHLAB',
-  'LAURUSLABS',
-  'LICHSGFIN',
-  'LODHA',
-  'LTIM',
-  'LUPIN',
-  'MANAPPURAM',
-  'MARICO',
-  'MCX',
-  'METROPOLIS',
-  'MFSL',
-  'MGL',
-  'MOTHERSON',
-  'MPHASIS',
-  'MRF',
-  'MUTHOOTFIN',
-  'NAM-INDIA',
-  'NAUKRI',
-  'NAVINFLUOR',
-  'NMDC',
-  'OBEROIRLTY',
-  'OFSS',
-  'PAGEIND',
-  'PATANJALI',
-  'PEL',
-  'PERSISTENT',
-  'PETRONET',
-  'PFC',
-  'PIDILITIND',
-  'PIIND',
-  'PNB',
-  'POLYCAB',
-  'PVRINOX',
-  'RAMCOCEM',
-  'RBLBANK',
-  'RECLTD',
-  'SAIL',
-  'SBICARD',
-  'SHREECEM',
-  'SIEMENS',
-  'SRF',
-  'SUPREMEIND',
-  'SYNGENE',
-  'TATACHEM',
-  'TATACOMM',
-  'TATAELXSI',
-  'TATAPOWER',
-  'TORNTPHARM',
-  'TORNTPOWER',
-  'TVSMOTOR',
-  'UBL',
-  'UPL',
-  'VEDL',
-  'VOLTAS',
-  'YESBANK',
-  'ZOMATO',
-  'ZYDUSLIFE',
-] as const;
+/** F&O equity underlyings beyond Nifty 50 — derived from the live FO master. */
+export const FNO_EXTRA_UNDERLYINGS = NSE_FNO_EQUITY_UNDERLYINGS.filter(
+  (s) => !(NIFTY_50_SYMBOLS as readonly string[]).includes(s),
+);
 
 export function getNifty50Universe(): string[] {
   return [...NIFTY_50_SYMBOLS];
 }
 
 export function getFnoUniverse(): string[] {
-  return [...new Set([...NIFTY_50_SYMBOLS, ...FNO_EXTRA_UNDERLYINGS])];
+  return [...NSE_FNO_EQUITY_UNDERLYINGS];
 }
 
 export function getCashUniverse(): string[] {
@@ -262,7 +138,7 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
     count: symbols.length,
     note:
       id === 'F&O'
-        ? 'Equity underlyings from WOLF instrument master (not every FO contract). Connect LIVE for the full FO underlying list.'
+        ? 'NSE F&O equity underlyings from the live FO master (not every futures/options contract).'
         : id === 'NSE' || id === 'BSE'
           ? 'Connect INDstocks to load the complete equity universe from the official instrument master. DEMO shows a snapshot only.'
           : 'Constituent snapshot from WOLF instrument master.',
