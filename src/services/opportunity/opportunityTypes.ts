@@ -110,18 +110,78 @@ export const OPPORTUNITY_SCANNERS: {
   tagline: string;
   requires: 'ohlc' | 'oi' | 'delivery' | 'options' | 'sector';
 }[] = [
-  { id: 'momentum_surge', title: 'MOMENTUM SURGE', tagline: 'Price + volume expansion', requires: 'ohlc' },
-  { id: 'flow_shift', title: 'FLOW SHIFT', tagline: 'Price×volume positioning proxy', requires: 'ohlc' },
-  { id: 'liquidity_hunt', title: 'LIQUIDITY HUNT', tagline: 'Sweeps around key levels', requires: 'ohlc' },
-  { id: 'compression_break', title: 'COMPRESSION BREAK', tagline: 'Range squeeze → expansion', requires: 'ohlc' },
-  { id: 'momentum_fade', title: 'MOMENTUM FADE', tagline: 'Price up, momentum soft', requires: 'ohlc' },
-  { id: 'breakout_radar', title: 'BREAKOUT RADAR', tagline: 'Swing / range breakouts', requires: 'ohlc' },
-  { id: 'reversal_hunter', title: 'REVERSAL HUNTER', tagline: 'Exhaustion + reclaim watch', requires: 'ohlc' },
-  { id: 'sector_leaders', title: 'SECTOR LEADERS', tagline: 'Relative sector strength', requires: 'sector' },
-  { id: 'delivery_flow', title: 'DELIVERY FLOW', tagline: 'Accumulation / distribution proxy', requires: 'ohlc' },
-  { id: 'trend_rider', title: 'TREND RIDER', tagline: 'Aligned directional trends', requires: 'ohlc' },
-  { id: 'options_flow', title: 'OPTIONS FLOW', tagline: 'Vol / range expansion proxy', requires: 'ohlc' },
-  { id: 'wolf_prime', title: 'WOLF PRIME', tagline: 'Composite high-conviction', requires: 'ohlc' },
+  {
+    id: 'breakout_radar',
+    title: 'BREAKOUT RADAR',
+    tagline: 'Price closed above a recent high or below a recent low, with volume confirming the break.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'momentum_surge',
+    title: 'MOMENTUM SURGE',
+    tagline: 'Sharp price move plus unusual volume versus the stock\'s own recent average (RVOL).',
+    requires: 'ohlc',
+  },
+  {
+    id: 'compression_break',
+    title: 'COMPRESSION BREAK',
+    tagline: 'ATR/range squeezed tight, then price left that box — expansion after a quiet coil.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'trend_rider',
+    title: 'TREND RIDER',
+    tagline: 'EMA 21/50 stacked one way, RSI agreeing, and price holding a pullback to the trend.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'liquidity_hunt',
+    title: 'LIQUIDITY HUNT',
+    tagline: 'Equal highs/lows swept (stop-hunt), then reclaim — SMC liquidity, not a random mover.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'wolf_prime',
+    title: 'WOLF PRIME',
+    tagline: 'Same name hits 2+ of the scanners above on this bar — conviction overlay, not a new setup.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'momentum_fade',
+    title: 'MOMENTUM FADE',
+    tagline: 'Price still stretching while RSI momentum cools — a watch for exhaustion, not a reversal call.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'reversal_hunter',
+    title: 'REVERSAL HUNTER',
+    tagline: 'Extended RSI/move plus a liquidity sweep. Needs reclaim confirmation before it is a trade.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'sector_leaders',
+    title: 'SECTOR LEADERS',
+    tagline: 'Stocks leading or lagging their sector versus peers on the same scan (relative strength).',
+    requires: 'sector',
+  },
+  {
+    id: 'delivery_flow',
+    title: 'DELIVERY FLOW',
+    tagline: 'Where the candle closes inside its range × volume. Proxy only — not official NSE delivery %.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'flow_shift',
+    title: 'FLOW SHIFT',
+    tagline: 'Price up/down with volume up/down as a futures OI buildup proxy. Live OI feed is not used.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'options_flow',
+    title: 'OPTIONS FLOW',
+    tagline: 'ATR and the day range expanding with volume. Not option-chain OI, PCR, or strike data.',
+    requires: 'ohlc',
+  },
 ];
 
 /** Visible rows per card before inner scrollbar. Ranked pool can be larger. */

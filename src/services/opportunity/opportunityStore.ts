@@ -51,6 +51,8 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
     return {
       ...blank,
       ...prev,
+      title: blank.title,
+      tagline: blank.tagline,
       hits: Array.isArray(prev.hits) ? prev.hits.filter((h) => h.dataMode === 'LIVE') : [],
       status: prev.hits?.some((h) => h.dataMode === 'LIVE') ? 'ready' : 'idle',
     };
