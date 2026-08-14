@@ -151,7 +151,7 @@ function HitTile({
         <span className="wolf-opp__tile-score">{hit.score}</span>
         <span className="wolf-opp__tile-meta">
           <BiasBadge dir={bias} size="sm" />
-          <em>Setup {formatHitClock(hit.detectedAt)}</em>
+          <em>Created {formatHitClock(hit.detectedAt)}</em>
         </span>
       </button>
       <div className="wolf-opp__tile-actions">
@@ -665,7 +665,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                         <p className="wolf-opp__modal-kicker">{prettyTitle(whyHit.scannerId)}</p>
                         <h3 id="wolf-opp-why-title">Why {whyHit.symbol}?</h3>
                         <p className="wolf-opp__setup-at">
-                          Setup made at {formatHitClock(whyHit.detectedAt)} IST
+                          Created at {formatHitClock(whyHit.detectedAt)} IST
                         </p>
                       </div>
                       <button type="button" onClick={() => setWhyHit(null)} aria-label="Close">
@@ -727,7 +727,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                     {prettyTitle(selected.scannerId)} · {selected.score}/100
                   </p>
                   <p className="wolf-opp__setup-at">
-                    Setup made at {formatHitClock(selected.detectedAt)} IST
+                    Created at {formatHitClock(selected.detectedAt)} IST
                   </p>
                   <div className="wolf-opp__drawer-bias">
                     <BiasBadge dir={biasOf(selected)} />
@@ -749,7 +749,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                   </dd>
                 </div>
                 <div>
-                  <dt>Setup at</dt>
+                  <dt>Created at</dt>
                   <dd>{formatHitClock(selected.detectedAt)} IST</dd>
                 </div>
                 <div>

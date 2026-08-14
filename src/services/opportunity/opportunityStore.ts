@@ -85,10 +85,12 @@ export function clearOpportunityDayBoard() {
 
 function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: OpportunityHit): OpportunityHit {
   if (!prev) return hit;
+  const a = prev.detectedAt || 0;
+  const b = hit.detectedAt || 0;
   return {
     ...hit,
     id: prev.id,
-    detectedAt: prev.detectedAt,
+    detectedAt: a && b ? Math.min(a, b) : a || b,
   };
 }
 

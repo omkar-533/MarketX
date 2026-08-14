@@ -35,7 +35,7 @@ function baseHit(
     price,
     changePercent: ctx.f.changePercent,
     timeframe: ctx.timeframe,
-    detectedAt: Date.now(),
+    detectedAt: ctx.f.setupAt || 0,
     dataMode: ctx.dataMode,
     ...partial,
   };

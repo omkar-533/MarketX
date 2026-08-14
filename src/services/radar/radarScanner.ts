@@ -11,6 +11,7 @@ import { detectVolume } from './VolumeEngine';
 import { classifySetup, buildWatchSetup } from './SetupEngine';
 import { computeWolfScore } from './WolfScoringEngine';
 import { cacheLastResults } from './radarStore';
+import { setupCreatedAtMs } from './barTime';
 import { evaluateStrategy } from '../strategy/conditionEvaluator';
 import type { StrategyDefinition } from '../strategy/strategyTypes';
 import type {
@@ -406,7 +407,7 @@ export async function runRadarScanFull(
           keyLevels: setup.keyLevels,
           invalidation: setup.invalidation,
           explanation: setup.explanation,
-          detectedAt: Date.now(),
+          detectedAt: setupCreatedAtMs(ltf[ltf.length - 1]?.timestamp || 0, req.timeframe),
           dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
         };
 

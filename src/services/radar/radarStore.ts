@@ -61,12 +61,14 @@ export function clearRadarDayBoard() {
 export function mergeRadarResultKeepFirstSeen(prev: RadarResult[], row: RadarResult): RadarResult[] {
   const existing = prev.find((r) => r.symbol === row.symbol);
   if (existing) {
+    const a = existing.detectedAt || 0;
+    const b = row.detectedAt || 0;
     return prev.map((r) =>
       r.symbol === row.symbol
         ? {
             ...row,
             id: existing.id,
-            detectedAt: existing.detectedAt,
+            detectedAt: a && b ? Math.min(a, b) : a || b,
           }
         : r,
     );
