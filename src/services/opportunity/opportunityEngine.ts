@@ -5,7 +5,8 @@
 import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import { buildFeatureSnapshot } from './featureSnapshot';
+import { firstConsecutiveHitTime } from '../radar/barTime';
+import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
   OHLC_SCANNERS,
@@ -209,29 +210,49 @@ export async function runOpportunityScan(
         const quotePrice = f.tech.last;
         const ctx = { f, timeframe: tf, dataMode, quotePrice };
         const sibling: Partial<Record<OpportunityScannerId, number>> = {};
+        const featAt = new Map<number, FeatureSnapshot | null>();
+        const snapshotAt = (i: number): FeatureSnapshot | null => {
+          if (featAt.has(i)) return featAt.get(i) ?? null;
+          const snap = buildFeatureSnapshot(symbol, filters.market, tf, candles.slice(0, i + 1));
+          featAt.set(i, snap);
+          return snap;
+        };
+        const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number =>
+          firstConsecutiveHitTime(candles, tf, (i) => {
+            const snap = snapshotAt(i);
+            if (!snap) return false;
+            return !!scan({ f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last });
+          });
 
-        const runners: Array<[OpportunityScannerId, () => OpportunityHit | null]> = [
-          ['momentum_surge', () => scanMomentumSurge(ctx)],
-          ['flow_shift', () => scanFlowShift(ctx)],
-          ['liquidity_hunt', () => scanLiquidityHunt(ctx)],
-          ['compression_break', () => scanCompressionBreak(ctx)],
-          ['momentum_fade', () => scanMomentumFade(ctx)],
-          ['breakout_radar', () => scanBreakoutRadar(ctx)],
-          ['reversal_hunter', () => scanReversalHunter(ctx)],
-          ['delivery_flow', () => scanDeliveryFlow(ctx)],
-          ['trend_rider', () => scanTrendRider(ctx)],
-          ['options_flow', () => scanOptionsFlow(ctx)],
+        const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
+          ['momentum_surge', scanMomentumSurge],
+          ['flow_shift', scanFlowShift],
+          ['liquidity_hunt', scanLiquidityHunt],
+          ['compression_break', scanCompressionBreak],
+          ['momentum_fade', scanMomentumFade],
+          ['breakout_radar', scanBreakoutRadar],
+          ['reversal_hunter', scanReversalHunter],
+          ['delivery_flow', scanDeliveryFlow],
+          ['trend_rider', scanTrendRider],
+          ['options_flow', scanOptionsFlow],
         ];
 
-        for (const [, fn] of runners) {
-          const hit = fn();
+        const siblingTimes: number[] = [];
+        for (const [, scan] of runners) {
+          const hit = scan(ctx);
           if (hit) {
+            hit.detectedAt = createdAtFor(scan);
             sibling[hit.scannerId] = hit.score;
+            if (hit.detectedAt) siblingTimes.push(hit.detectedAt);
             emitHit(hit);
           }
         }
 
-        emitHit(scanWolfPrime(ctx, sibling));
+        const prime = scanWolfPrime(ctx, sibling);
+        if (prime) {
+          prime.detectedAt = siblingTimes.length ? Math.min(...siblingTimes) : createdAtFor((c) => scanWolfPrime(c, sibling));
+          emitHit(prime);
+        }
 
         const sec = sectorOf(symbol);
         const bag = sectorBag.get(sec) || [];

@@ -78,7 +78,6 @@ function formatHitClock(ms: number): string {
   return new Date(ms).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
-    second: '2-digit',
     hour12: true,
     timeZone: 'Asia/Kolkata',
   });
@@ -151,7 +150,7 @@ function HitTile({
         <span className="wolf-opp__tile-score">{hit.score}</span>
         <span className="wolf-opp__tile-meta">
           <BiasBadge dir={bias} size="sm" />
-          <em>Created {formatHitClock(hit.detectedAt)}</em>
+          <em>Created {formatHitClock(hit.detectedAt)} IST</em>
         </span>
       </button>
       <div className="wolf-opp__tile-actions">

@@ -3,7 +3,7 @@
  * Deterministic — no fabricated prices when candles missing.
  */
 import type { Candle } from '../radar/radarTypes';
-import { setupCreatedAtMs } from '../radar/barTime';
+import { setupCreatedAtFromCandles } from '../radar/barTime';
 import {
   analyzeTechnical,
   atr,
@@ -120,7 +120,7 @@ export function buildFeatureSnapshot(
     high20,
     low10,
     low20,
-    setupAt: setupCreatedAtMs(candles[candles.length - 1]?.timestamp || 0, timeframe),
+    setupAt: setupCreatedAtFromCandles(candles, timeframe),
   };
 }
 

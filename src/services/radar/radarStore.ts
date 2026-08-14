@@ -4,7 +4,7 @@ import type { RadarResult, UserSetup, UserSetupCondition, WatchlistItem } from '
 const WATCH_KEY = 'wolf_radar_watchlist_v1';
 const SETUPS_KEY = 'wolf_radar_setups_v1';
 const LAST_RESULTS_KEY = 'wolf_radar_last_results_v1';
-const DAY_BOARD_KEY = 'wolf_radar_day_board_v1';
+const DAY_BOARD_KEY = 'wolf_radar_day_board_v2';
 const DAY_RESULT_CAP = 120;
 
 type RadarDayBoard = {
@@ -63,12 +63,19 @@ export function mergeRadarResultKeepFirstSeen(prev: RadarResult[], row: RadarRes
   if (existing) {
     const a = existing.detectedAt || 0;
     const b = row.detectedAt || 0;
+    const now = Date.now();
+    const aScan = !a || Math.abs(now - a) < 90_000;
+    const bScan = !b || Math.abs(now - b) < 90_000;
+    let detectedAt = b || a;
+    if (aScan && !bScan) detectedAt = b;
+    else if (!aScan && bScan) detectedAt = a;
+    else if (!aScan && !bScan) detectedAt = Math.min(a, b);
     return prev.map((r) =>
       r.symbol === row.symbol
         ? {
             ...row,
             id: existing.id,
-            detectedAt: a && b ? Math.min(a, b) : a || b,
+            detectedAt,
           }
         : r,
     );

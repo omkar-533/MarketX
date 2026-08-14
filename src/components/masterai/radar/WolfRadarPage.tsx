@@ -80,7 +80,6 @@ function formatTime(ts: number | null) {
   return new Date(ts).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
-    second: '2-digit',
     hour12: true,
     timeZone: 'Asia/Kolkata',
   });
@@ -896,7 +895,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                   <p className="setup wolf-radar-desk__strategy-tag">SETUP: {r.strategyName}</p>
                 )}
                 <div className={`state ${statusClass(r.status)}`}>{r.status}</div>
-                <time>Created {formatTime(r.detectedAt)}</time>
+                <time>Created {formatTime(r.detectedAt)} IST</time>
               </button>
               <div className="wolf-radar-desk__card-actions">
                 <button type="button" className="primary" onClick={() => onOpenLiveClick(r)}>

@@ -5,7 +5,7 @@ import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunity
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v2';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v3';
 const DAY_HIT_CAP = 80;
 
 type OpportunityDayBoard = {
@@ -83,14 +83,25 @@ export function clearOpportunityDayBoard() {
   }
 }
 
+function looksLikeScanClock(ms: number): boolean {
+  if (!ms) return true;
+  return Math.abs(Date.now() - ms) < 90_000;
+}
+
 function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: OpportunityHit): OpportunityHit {
   if (!prev) return hit;
   const a = prev.detectedAt || 0;
   const b = hit.detectedAt || 0;
+  const aScan = looksLikeScanClock(a);
+  const bScan = looksLikeScanClock(b);
+  let detectedAt = b || a;
+  if (aScan && !bScan) detectedAt = b;
+  else if (!aScan && bScan) detectedAt = a;
+  else if (!aScan && !bScan) detectedAt = Math.min(a, b);
   return {
     ...hit,
     id: prev.id,
-    detectedAt: a && b ? Math.min(a, b) : a || b,
+    detectedAt,
   };
 }
 
