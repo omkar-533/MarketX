@@ -28470,6 +28470,13 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.85rem;
   min-height: 420px;
 }
+.live-wolf-desk__chart-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+}
 .live-wolf-desk__chart-wrap {
   position: relative;
   min-height: 420px;
@@ -28633,9 +28640,11 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .live-wolf-desk__ask:disabled { opacity: 0.5; cursor: not-allowed; }
 .live-wolf-desk__timeline {
+  flex: 0 0 auto;
   padding: 0.75rem 0.85rem;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0, 0, 0, 0.28);
 }
 .live-wolf-desk__timeline h3 {
   margin: 0 0 0.55rem;

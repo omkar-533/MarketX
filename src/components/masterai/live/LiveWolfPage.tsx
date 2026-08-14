@@ -539,25 +539,50 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       )}
 
       <div className="live-wolf-desk__main">
-        <section className="live-wolf-desk__chart-wrap live-wolf-desk__chart-wrap--term">
-          <TerminalChartHost
-            symbol={tvSymbol}
-            interval={tvInterval}
-            study={study}
-            chartStyle="1"
-            reloadKey={reloadKey}
-            nativeFailed={false}
-            showRail
-            levels={chartLevels}
-            onNativeUnavailable={() => undefined}
-            onClearIndicators={() => setStudy('none')}
-            onApplyStudy={setStudy}
-            onStudyChange={setStudy}
-            needsLiveDataConnect={!connected}
-            onConnectLiveData={onConnectData}
-            wolfLiveFeed
-          />
-        </section>
+        <div className="live-wolf-desk__chart-col">
+          <section className="live-wolf-desk__chart-wrap live-wolf-desk__chart-wrap--term">
+            <TerminalChartHost
+              symbol={tvSymbol}
+              interval={tvInterval}
+              study={study}
+              chartStyle="1"
+              reloadKey={reloadKey}
+              nativeFailed={false}
+              showRail
+              levels={chartLevels}
+              onNativeUnavailable={() => undefined}
+              onClearIndicators={() => setStudy('none')}
+              onApplyStudy={setStudy}
+              onStudyChange={setStudy}
+              needsLiveDataConnect={!connected}
+              onConnectLiveData={onConnectData}
+              wolfLiveFeed
+            />
+          </section>
+
+          <section className="live-wolf-desk__timeline" aria-label="WOLF timeline">
+            <h3>WOLF TIMELINE</h3>
+            {!events.length && <p className="empty">Events appear when something meaningful changes.</p>}
+            <ul>
+              {events.map((e) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    className="live-wolf-desk__tl-btn"
+                    onClick={() => {
+                      const line = narrateEvent(e, analysis);
+                      if (line) setNarration((prev) => [line, ...prev].slice(0, 30));
+                    }}
+                  >
+                    <time>{formatClock(e.timestamp)}</time>
+                    <strong>{e.type.replace(/_/g, ' ')}</strong>
+                    <span>{e.message}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
 
         <aside className="live-wolf-desk__panel">
           <div className="live-wolf-desk__panel-head">
@@ -656,29 +681,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
           </div>
         </aside>
       </div>
-
-      <section className="live-wolf-desk__timeline" aria-label="WOLF timeline">
-        <h3>WOLF TIMELINE</h3>
-        {!events.length && <p className="empty">Events appear when something meaningful changes.</p>}
-        <ul>
-          {events.map((e) => (
-            <li key={e.id}>
-              <button
-                type="button"
-                className="live-wolf-desk__tl-btn"
-                onClick={() => {
-                  const line = narrateEvent(e, analysis);
-                  if (line) setNarration((prev) => [line, ...prev].slice(0, 30));
-                }}
-              >
-                <time>{formatClock(e.timestamp)}</time>
-                <strong>{e.type.replace(/_/g, ' ')}</strong>
-                <span>{e.message}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       <TerminalSymbolSearch
         open={searchOpen}
