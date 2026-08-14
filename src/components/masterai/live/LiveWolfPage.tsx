@@ -98,7 +98,9 @@ function levelsFromAnalysis(
   enabled: boolean,
 ): ChartLevel[] | undefined {
   if (!enabled || !levels?.length) return undefined;
-  return levels.slice(0, 8).map((lv) => {
+  const drawn = levels.filter((lv) => !/invalid/i.test(lv.label)).slice(0, 8);
+  if (!drawn.length) return undefined;
+  return drawn.map((lv) => {
     const lower = lv.label.toLowerCase();
     const kind: ChartLevel['kind'] = lower.includes('res') || lower.includes('high')
       ? 'resistance'
