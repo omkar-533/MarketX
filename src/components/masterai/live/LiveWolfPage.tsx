@@ -120,7 +120,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
   const [tvInterval, setTvInterval] = useState<TvInterval>(() =>
     RADAR_TO_TV[boot?.timeframe || '5m'] || '5',
   );
-  const [study, setStudy] = useState(() => defaultTerminalState().study);
+  const [study, setStudy] = useState('none');
   const [reloadKey, setReloadKey] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [analysis, setAnalysis] = useState<LiveAnalysisSnapshot | null>(null);

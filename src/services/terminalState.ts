@@ -63,7 +63,7 @@ export function defaultTerminalState(): TerminalState {
   return {
     symbol: 'NSE:NIFTY',
     interval: '5',
-    study: 'ema,rsi,volume',
+    study: 'none',
     chartStyle: '1',
     watchlist: [...DEFAULT_WATCHLIST],
     rightPanel: 'watchlist',
@@ -73,6 +73,21 @@ export function defaultTerminalState(): TerminalState {
     chartSymbols: ['NSE:NIFTY'],
     activeChartIndex: 0,
   };
+}
+
+const LEGACY_FACTORY_STUDIES = new Set(['ema,rsi,volume', 'ema,rsi', 'rsi,volume', 'ema,volume']);
+
+function migrateCleanStudy(raw: unknown, fallback: string): string {
+  const study = String(raw ?? fallback);
+  if (!study || study === 'none') return 'none';
+  const key = study
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && s !== 'none')
+    .sort()
+    .join(',');
+  if (LEGACY_FACTORY_STUDIES.has(study) || LEGACY_FACTORY_STUDIES.has(key)) return 'none';
+  return study;
 }
 
 function parseRightPanel(raw: unknown, fallback: TerminalRightPanel): TerminalRightPanel {
@@ -117,7 +132,7 @@ export function loadTerminalState(): TerminalState {
       ...parsed,
       symbol,
       interval: (parsed.interval || base.interval) as TvInterval,
-      study: String(parsed.study ?? base.study),
+      study: migrateCleanStudy(parsed.study, base.study),
       chartStyle: (parsed.chartStyle || base.chartStyle) as TvChartStyle,
       watchlist,
       rightPanel,
