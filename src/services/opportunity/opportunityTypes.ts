@@ -131,7 +131,7 @@ export const OPPORTUNITY_CARD_POOL = 12;
 export const DEFAULT_OPPORTUNITY_FILTERS: OpportunityFilters = {
   market: 'NSE',
   universe: 'F&O',
-  timeframe: '15m',
+  timeframe: '5m',
   direction: 'all',
   minScore: 60,
   autoRefresh: true,

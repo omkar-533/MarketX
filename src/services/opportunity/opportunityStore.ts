@@ -2,16 +2,20 @@ import { istCalendarDay } from '../../utils/marketHours';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
-const FILTERS_KEY = 'wolf_opportunity_filters_v2';
+const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v1';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v2';
 const DAY_HIT_CAP = 80;
 
 type OpportunityDayBoard = {
   day: string;
-  cards: ScannerCardState[];
+  byKey: Record<string, ScannerCardState[]>;
 };
+
+export function opportunityBoardKey(universe: string, timeframe: string): string {
+  return `${universe}|${timeframe}`;
+}
 
 export function emptyOpportunityCards(): ScannerCardState[] {
   return OPPORTUNITY_SCANNERS.map((s) => ({
@@ -29,18 +33,17 @@ function readDayBoard(): OpportunityDayBoard | null {
     const raw = localStorage.getItem(DAY_BOARD_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as OpportunityDayBoard;
-    if (!parsed || typeof parsed.day !== 'string' || !Array.isArray(parsed.cards)) return null;
+    if (!parsed || typeof parsed.day !== 'string' || !parsed.byKey || typeof parsed.byKey !== 'object') {
+      return null;
+    }
     return parsed;
   } catch {
     return null;
   }
 }
 
-/** Today's IST board. Empty after logout or when a new IST day starts. */
-export function loadOpportunityDayBoard(): ScannerCardState[] {
-  const stored = readDayBoard();
-  if (!stored || stored.day !== istCalendarDay()) return emptyOpportunityCards();
-  const byId = new Map(stored.cards.map((c) => [c.scannerId, c]));
+function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[] {
+  const byId = new Map((cards || []).map((c) => [c.scannerId, c]));
   return emptyOpportunityCards().map((blank) => {
     const prev = byId.get(blank.scannerId);
     if (!prev) return blank;
@@ -53,10 +56,20 @@ export function loadOpportunityDayBoard(): ScannerCardState[] {
   });
 }
 
-export function saveOpportunityDayBoard(cards: ScannerCardState[]) {
+/** Today's IST board for this universe + timeframe. Empty after logout or a new IST day. */
+export function loadOpportunityDayBoard(key: string): ScannerCardState[] {
+  const stored = readDayBoard();
+  if (!stored || stored.day !== istCalendarDay()) return emptyOpportunityCards();
+  return hydrateCards(stored.byKey[key]);
+}
+
+export function saveOpportunityDayBoard(key: string, cards: ScannerCardState[]) {
   try {
-    const payload: OpportunityDayBoard = { day: istCalendarDay(), cards };
-    localStorage.setItem(DAY_BOARD_KEY, JSON.stringify(payload));
+    const day = istCalendarDay();
+    const stored = readDayBoard();
+    const byKey = stored && stored.day === day ? { ...stored.byKey } : {};
+    byKey[key] = cards;
+    localStorage.setItem(DAY_BOARD_KEY, JSON.stringify({ day, byKey } satisfies OpportunityDayBoard));
   } catch {
     /* quota */
   }
@@ -135,12 +148,12 @@ export type OpportunityAlertRule = {
 export function loadOpportunityFilters(): OpportunityFilters {
   try {
     const raw = localStorage.getItem(FILTERS_KEY);
-    if (!raw) return { ...DEFAULT_OPPORTUNITY_FILTERS };
-    const parsed = JSON.parse(raw) as Partial<OpportunityFilters>;
+    const parsed = raw ? (JSON.parse(raw) as Partial<OpportunityFilters>) : {};
     const next = { ...DEFAULT_OPPORTUNITY_FILTERS, ...parsed };
     if (next.universe === 'NIFTY50' || next.universe === 'NIFTY500') {
       next.universe = 'CASH';
     }
+    next.timeframe = '5m';
     return next;
   } catch {
     return { ...DEFAULT_OPPORTUNITY_FILTERS };

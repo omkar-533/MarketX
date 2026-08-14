@@ -29494,7 +29494,7 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__tile-meta em {
   font-style: normal;
-  font-size: 0.56rem;
+  font-size: 0.62rem;
   color: var(--opp-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -29579,6 +29579,13 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.68rem;
   color: #c8b06a;
   letter-spacing: 0.04em;
+}
+.wolf-opp__setup-at {
+  margin: 0.28rem 0 0;
+  font-size: 0.78rem;
+  color: #d4af37;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 .wolf-opp__modal-card h3 {
   margin: 0;

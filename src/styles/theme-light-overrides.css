@@ -3166,6 +3166,7 @@ html[data-theme="light"] .wolf-opp__modal-card {
 }
 html[data-theme="light"] .wolf-opp__modal-card h3 { color: #0a0a0a; }
 html[data-theme="light"] .wolf-opp__modal-kicker { color: #92400e; }
+html[data-theme="light"] .wolf-opp__setup-at { color: #92400e; }
 html[data-theme="light"] .wolf-opp__modal-card header button {
   background: #f1f5f9;
   color: #525252;

@@ -28,6 +28,7 @@ import {
   saveOpportunityDayBoard,
   mergeOpportunityHitIntoCards,
   mergeOpportunityCardSets,
+  opportunityBoardKey,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -150,7 +151,7 @@ function HitTile({
         <span className="wolf-opp__tile-score">{hit.score}</span>
         <span className="wolf-opp__tile-meta">
           <BiasBadge dir={bias} size="sm" />
-          <em>{formatHitClock(hit.detectedAt)}</em>
+          <em>Setup {formatHitClock(hit.detectedAt)}</em>
         </span>
       </button>
       <div className="wolf-opp__tile-actions">
@@ -181,7 +182,10 @@ function HitTile({
 
 export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnectData }: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
-  const [cards, setCards] = useState<ScannerCardState[]>(() => loadOpportunityDayBoard());
+  const [cards, setCards] = useState<ScannerCardState[]>(() => {
+    const f = loadOpportunityFilters();
+    return loadOpportunityDayBoard(opportunityBoardKey(f.universe, f.timeframe));
+  });
   const [feedStatus, setFeedStatus] = useState<DataFeedStatus>('OFFLINE');
   const [dataMode, setDataMode] = useState<'LIVE' | 'DEMO'>('DEMO');
   const [scanning, setScanning] = useState(false);
@@ -197,13 +201,18 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
+  const scanGenRef = useRef(0);
   const lastProgAtRef = useRef(0);
   const persistTimerRef = useRef<number | null>(null);
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
   const marketOpen = getMarketSession('NSE:NIFTY').open;
 
-  const persistCards = useCallback((next: ScannerCardState[]) => {
+  const persistCards = useCallback((next: ScannerCardState[], key?: string) => {
+    const f = filtersRef.current;
+    const boardKey = key || opportunityBoardKey(f.universe, f.timeframe);
     if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = window.setTimeout(() => saveOpportunityDayBoard(next), 400);
+    persistTimerRef.current = window.setTimeout(() => saveOpportunityDayBoard(boardKey, next), 400);
   }, []);
 
   const patchFilters = useCallback((patch: Partial<OpportunityFilters>) => {
@@ -243,23 +252,22 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
     }) => {
       const quiet = Boolean(opts?.quiet);
       const activeFilters = { ...filters, ...opts?.filtersOverride };
+      const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
       if (quiet && scanningRef.current) return;
       if (!quiet) abortRef.current?.abort();
       else if (scanningRef.current) return;
 
       const ac = new AbortController();
       abortRef.current = ac;
+      const gen = ++scanGenRef.current;
+      const isStale = () => scanGenRef.current !== gen || ac.signal.aborted;
       scanningRef.current = true;
       if (quiet) setBgBusy(true);
       else {
         setScanning(true);
         setProgress('Scanning market…');
         if (opts?.reset) {
-          setCards((prev) =>
-            prev.map((c) =>
-              c.status === 'unavailable' ? c : { ...c, status: 'scanning' as const },
-            ),
-          );
+          setCards(loadOpportunityDayBoard(boardKey));
         }
       }
 
@@ -308,23 +316,28 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               );
             },
             onHit: (hit) => {
+              if (isStale()) return;
+              if (hit.timeframe !== activeFilters.timeframe) return;
               setCards((prev) => {
                 const next = mergeHitIntoCards(prev, hit, OPPORTUNITY_CARD_POOL);
-                persistCards(next);
+                persistCards(next, boardKey);
                 return next;
               });
             },
             onCard: (card) => {
-              if (card.status !== 'unavailable') return;
+              if (isStale() || card.status !== 'unavailable') return;
               setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
             },
           },
           provider,
         );
-        if (!ac.signal.aborted) {
+        if (!isStale()) {
           setCards((prev) => {
-            const next = mergeOpportunityCardSets(prev, out.cards);
-            saveOpportunityDayBoard(next);
+            const next = mergeOpportunityCardSets(prev, out.cards).map((card) => ({
+              ...card,
+              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+            }));
+            saveOpportunityDayBoard(boardKey, next);
             return next;
           });
           setDataMode(out.dataMode);
@@ -332,13 +345,13 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
         }
       } catch (e) {
-        if (!ac.signal.aborted) {
+        if (!isStale()) {
           if (!quiet) setProgress(e instanceof Error ? e.message : 'Scan failed');
           setFeedStatus((f) => (f === 'LIVE' ? 'DELAYED' : f));
         }
       } finally {
-        scanningRef.current = false;
-        if (!ac.signal.aborted) {
+        if (scanGenRef.current === gen) {
+          scanningRef.current = false;
           setScanning(false);
           setBgBusy(false);
         }
@@ -374,7 +387,10 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   };
 
   const liveOk = feedStatus === 'LIVE';
-  const hitCount = cards.reduce((n, c) => n + c.hits.length, 0);
+  const hitCount = cards.reduce(
+    (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
+    0,
+  );
   const showLong = filters.direction !== 'bearish';
   const showShort = filters.direction !== 'bullish';
 
@@ -455,6 +471,8 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               }
               onClick={() => {
                 patchFilters({ universe: u });
+                setSelected(null);
+                setWhyHit(null);
                 void runScan({ reset: true, filtersOverride: { universe: u } });
               }}
             >
@@ -470,6 +488,8 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               onClick={() => {
                 if (filters.timeframe === t) return;
                 patchFilters({ timeframe: t });
+                setSelected(null);
+                setWhyHit(null);
                 void runScan({ reset: true, filtersOverride: { timeframe: t } });
               }}
             >
@@ -517,11 +537,12 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
       <section className="wolf-opp__desk" aria-label="Scanners">
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
-            const longs = showLong ? card.hits.filter((h) => biasOf(h) === 'bullish') : [];
-            const shorts = showShort ? card.hits.filter((h) => biasOf(h) === 'bearish') : [];
+            const tfHits = card.hits.filter((h) => h.timeframe === filters.timeframe);
+            const longs = showLong ? tfHits.filter((h) => biasOf(h) === 'bullish') : [];
+            const shorts = showShort ? tfHits.filter((h) => biasOf(h) === 'bearish') : [];
             const neutrals =
               filters.direction === 'all'
-                ? card.hits.filter((h) => biasOf(h) === 'neutral')
+                ? tfHits.filter((h) => biasOf(h) === 'neutral')
                 : [];
             return (
               <motion.article
@@ -540,7 +561,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                     <h3>{prettyTitle(card.title)}</h3>
                     <p>{card.tagline}</p>
                   </div>
-                  <span className="wolf-opp__sheet-count">{card.hits.length}</span>
+                  <span className="wolf-opp__sheet-count">{tfHits.length}</span>
                 </header>
 
                 {card.status === 'unavailable' ? (
@@ -643,6 +664,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                       <div>
                         <p className="wolf-opp__modal-kicker">{prettyTitle(whyHit.scannerId)}</p>
                         <h3 id="wolf-opp-why-title">Why {whyHit.symbol}?</h3>
+                        <p className="wolf-opp__setup-at">
+                          Setup made at {formatHitClock(whyHit.detectedAt)} IST
+                        </p>
                       </div>
                       <button type="button" onClick={() => setWhyHit(null)} aria-label="Close">
                         <X size={18} />
@@ -702,6 +726,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                   <p>
                     {prettyTitle(selected.scannerId)} · {selected.score}/100
                   </p>
+                  <p className="wolf-opp__setup-at">
+                    Setup made at {formatHitClock(selected.detectedAt)} IST
+                  </p>
                   <div className="wolf-opp__drawer-bias">
                     <BiasBadge dir={biasOf(selected)} />
                   </div>
@@ -720,6 +747,10 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                   <dd className={selected.changePercent >= 0 ? 'up' : 'down'}>
                     {selected.changePercent.toFixed(2)}%
                   </dd>
+                </div>
+                <div>
+                  <dt>Setup at</dt>
+                  <dd>{formatHitClock(selected.detectedAt)} IST</dd>
                 </div>
                 <div>
                   <dt>Timeframe</dt>
