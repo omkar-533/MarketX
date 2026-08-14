@@ -94,6 +94,28 @@ const instrumentCache = {
   bySymbol: /** @type {Map<string, string>} */ (new Map()),
 };
 
+const INSTRUMENT_MAP_TTL_MS = 6 * 60 * 60 * 1000;
+let mapRefreshInflight = null;
+
+/** Cold instances / skipped connect refresh: load instrument master before resolving scrips. */
+export async function ensureInstrumentMap(accessToken, { force = false } = {}) {
+  const fresh =
+    !force &&
+    instrumentCache.bySymbol.size > 100 &&
+    Date.now() - instrumentCache.at < INSTRUMENT_MAP_TTL_MS;
+  if (fresh) return instrumentCache.bySymbol.size;
+  if (mapRefreshInflight) return mapRefreshInflight;
+  mapRefreshInflight = refreshIndstocksInstrumentMap(accessToken)
+    .catch((e) => {
+      console.warn('[indstocks] instrument map refresh failed', e?.message || e);
+      return instrumentCache.bySymbol.size;
+    })
+    .finally(() => {
+      mapRefreshInflight = null;
+    });
+  return mapRefreshInflight;
+}
+
 function authHeaders(accessToken) {
   return {
     Authorization: String(accessToken || '').trim(),
@@ -170,6 +192,60 @@ export async function validateIndstocksToken(accessToken) {
 
 export function wolfTfToIndInterval(tf) {
   return TF_MAP[tf] || null;
+}
+
+function istCalendarDay(ms) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
+}
+
+function istWeekday(ms) {
+  const w = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+  }).format(new Date(ms));
+  return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[w] ?? new Date(ms).getUTCDay();
+}
+
+function istSessionCloseMs(ymd) {
+  return Date.parse(`${ymd}T15:30:00+05:30`);
+}
+
+function shiftIstYmd(ymd, days) {
+  const t = Date.parse(`${ymd}T12:00:00+05:30`) + days * 86_400_000;
+  return istCalendarDay(t);
+}
+
+/**
+ * Last completed NSE cash session close (15:30 IST).
+ * After hours / weekend INDstocks historical often returns empty when end_time is "now".
+ */
+export function lastCompletedNseSessionEndMs(now = Date.now()) {
+  let ymd = istCalendarDay(now);
+  const wd = istWeekday(now);
+  const closeToday = istSessionCloseMs(ymd);
+  const openToday = Date.parse(`${ymd}T09:15:00+05:30`);
+
+  if (wd === 0) ymd = shiftIstYmd(ymd, -2);
+  else if (wd === 6) ymd = shiftIstYmd(ymd, -1);
+  else if (now >= closeToday) return closeToday;
+  else if (now >= openToday) return now;
+  else ymd = shiftIstYmd(ymd, wd === 1 ? -3 : -1);
+
+  const close = istSessionCloseMs(ymd);
+  return Number.isFinite(close) ? close : now;
+}
+
+function historicalEndMs(interval, requestedEnd) {
+  const now = Number.isFinite(requestedEnd) && requestedEnd > 0 ? requestedEnd : Date.now();
+  if (interval === '1day' || interval === '1week' || interval === '1month') return now;
+  const sessionEnd = lastCompletedNseSessionEndMs(now);
+  // Exclusive end must sit after the 15:30 bar so that candle is included.
+  return Math.min(now, sessionEnd + 60_000);
 }
 
 function parseIndstocksQuote(scripCode, data) {
@@ -256,14 +332,10 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   // Daily: aim for multi-year; intraday: fill requested depth within chunk budget.
   const hardCap = interval === '1day' ? 3200 : 2500;
   const wantBars = Math.max(20, Math.min(hardCap, Number(bars) || 120));
-  // Scan / first-paint: one window is enough for ≤90 bars (5m–1D).
-  const maxChunks = wantBars <= 90
-    ? 1
-    : wantBars <= 220
-      ? Math.min(2, MAX_HISTORY_CHUNKS[interval] || 4)
-      : MAX_HISTORY_CHUNKS[interval] || 4;
+  // After-hours first window can be empty — walk back a few sessions, but don't stampede INDstocks.
+  const maxChunks = Math.max(4, wantBars <= 220 ? 4 : Math.min(8, MAX_HISTORY_CHUNKS[interval] || 8));
   const beforeMs = Number(opts.beforeMs);
-  let end = Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now();
+  let end = historicalEndMs(interval, Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now());
 
   /** @type {Map<number, Record<string, unknown>>} */
   const byTs = new Map();
@@ -273,21 +345,33 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
     const useStart = end - maxSpan + 60_000;
     if (useStart >= end) break;
 
-    const { json } = await indFetch(`/market/historical/${interval}`, accessToken, {
-      searchParams: {
-        'scrip-codes': scripCode,
-        start_time: String(Math.floor(useStart)),
-        // Docs: end_time is exclusive.
-        end_time: String(Math.floor(end)),
-      },
-    });
+    let json = null;
+    try {
+      const fetched = await indFetch(`/market/historical/${interval}`, accessToken, {
+        searchParams: {
+          'scrip-codes': scripCode,
+          start_time: String(Math.floor(useStart)),
+          // Docs: end_time is exclusive.
+          end_time: String(Math.floor(end)),
+        },
+      });
+      json = fetched.json;
+    } catch (e) {
+      // DataException / 429 after close — step the window back instead of aborting the chart.
+      emptyStreak += 1;
+      if (byTs.size === 0 && emptyStreak >= 6) break;
+      if (e?.status === 429) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      end = Math.max(0, useStart - 1000);
+      continue;
+    }
     const block = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
     const raw = Array.isArray(block?.candles) ? block.candles : [];
     // Empty recent window (weekend / holiday) must NOT abort history — step further back.
-    // Dead / wrong scrip: abort after 2 empty windows so candidate loop can try the next token.
     if (!raw.length) {
       emptyStreak += 1;
-      if (byTs.size === 0 && emptyStreak >= 2) break;
+      if (byTs.size === 0 && emptyStreak >= 6) break;
       end = Math.max(0, useStart - 1000);
       continue;
     }
@@ -326,7 +410,7 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
 
     if (!added) {
       emptyStreak += 1;
-      if (byTs.size === 0 && emptyStreak >= 2) break;
+      if (byTs.size === 0 && emptyStreak >= 6) break;
       end = Math.max(0, useStart - 1000);
       continue;
     }

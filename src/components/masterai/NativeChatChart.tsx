@@ -681,9 +681,16 @@ export default function NativeChatChart({
     const timer = window.setInterval(() => {
       void loadRef.current(true, 'shallow');
     }, OHLC_RESYNC_MS);
+    // Quote-stub (1 bar) must not sit forever — keep hitting history until we have a real series.
+    const refill = window.setInterval(() => {
+      if (cancelled) return;
+      if (barsRef.current.length >= 20) return;
+      void loadRef.current(true, 'shallow');
+    }, 2_000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      window.clearInterval(refill);
     };
   }, [apiSymbol, apiInterval, reloadKey, wolfLiveFeed]);
 

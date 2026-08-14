@@ -65,6 +65,7 @@ export class LiveWolfSession {
   private staleTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private historyTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnecting = false;
 
   constructor(private opts: LiveWolfSessionOpts) {}
@@ -121,6 +122,11 @@ export class LiveWolfSession {
       this.builder = new LiveCandleBuilder(symbol, timeframe, ltf || [], exchange);
       this.emitBars(true);
       this.runAnalysis(true);
+
+      // LIVE: keep pulling history after a quote-stub so analysis is never stuck at 1/20.
+      if (!provider.isDemo && (ltf?.length || 0) < MIN_ANALYSIS_BARS) {
+        this.scheduleHistoryRefill(0);
+      }
 
       if (this.subId) {
         await provider.unsubscribeQuotes(this.subId).catch(() => undefined);
@@ -204,6 +210,8 @@ export class LiveWolfSession {
     this.staleTimer = null;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    if (this.historyTimer) clearTimeout(this.historyTimer);
+    this.historyTimer = null;
     if (this.subId) {
       await this.opts.provider.unsubscribeQuotes(this.subId).catch(() => undefined);
       this.subId = null;
@@ -213,6 +221,46 @@ export class LiveWolfSession {
 
   getSnapshot() {
     return this.snapshot;
+  }
+
+  private scheduleHistoryRefill(attempt: number) {
+    if (this.stopped || this.opts.provider.isDemo) return;
+    if (attempt > 8) return;
+    const delay = Math.min(8_000, 700 * 2 ** attempt);
+    if (this.historyTimer) clearTimeout(this.historyTimer);
+    this.historyTimer = setTimeout(() => {
+      void this.refillHistory(attempt);
+    }, delay);
+  }
+
+  private async refillHistory(attempt: number) {
+    if (this.stopped) return;
+    const { symbol, timeframe, provider } = this.opts;
+    try {
+      const [ltf, htf] = await Promise.all([
+        provider.getCandles(symbol, timeframe, LIVE_HISTORY_BARS),
+        provider.getCandles(symbol, pickHtf(timeframe), LIVE_HISTORY_BARS),
+      ]);
+      if (this.stopped) return;
+      if (htf.length > (this.htfCandles?.length || 0)) this.htfCandles = htf;
+      if (ltf.length >= MIN_ANALYSIS_BARS) {
+        if (this.builder) this.builder.replaceHistory(ltf);
+        else {
+          this.builder = new LiveCandleBuilder(
+            symbol,
+            timeframe,
+            ltf,
+            this.opts.exchange || 'NSE',
+          );
+        }
+        this.emitBars(true);
+        this.runAnalysis(true);
+        return;
+      }
+    } catch {
+      /* retry */
+    }
+    this.scheduleHistoryRefill(attempt + 1);
   }
 
   private emitBars(force: boolean) {

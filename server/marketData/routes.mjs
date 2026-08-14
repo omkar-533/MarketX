@@ -21,6 +21,7 @@ import { attachOptionalAppUser } from './optionalAuth.mjs';
 import {
   validateIndstocksToken,
   refreshIndstocksInstrumentMap,
+  ensureInstrumentMap,
   resolveScripCode,
   resolveScripCodeCandidates,
   listUniverseSymbols,
@@ -52,11 +53,12 @@ function readCandleCache(symbol, timeframe, bars) {
     candleCache.delete(candleCacheKey(symbol, timeframe, bars));
     return null;
   }
-  return Array.isArray(hit.candles) ? hit.candles : null;
+  if (!Array.isArray(hit.candles) || hit.candles.length < 20) return null;
+  return hit.candles;
 }
 
 function writeCandleCache(symbol, timeframe, bars, candles) {
-  if (!candles?.length) return;
+  if (!candles?.length || candles.length < 20) return;
   candleCache.set(candleCacheKey(symbol, timeframe, bars), { at: Date.now(), candles });
   if (candleCache.size > 800) {
     const oldest = [...candleCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
@@ -78,18 +80,12 @@ async function mapPool(items, limit, fn) {
   return out;
 }
 
-function looksLikeMcx(symbol) {
-  const s = String(symbol || '').toUpperCase();
-  if (s.startsWith('MCX:') || s.startsWith('MCX_') || s.startsWith('NCDEX:')) return true;
-  const key = s.replace(/^MCX:/, '').replace(/^NCDEX:/, '');
-  return /^(GOLD|GOLDM|GOLDGUINEA|GOLDPETAL|SILVER|SILVERM|SILVERMIC|CRUDEOIL|CRUDEOILM|NATURALGAS|NATGASMINI|COPPER|COPPERM|ZINC|ZINCMINI|LEAD|ALUMINIUM|NICKEL|MENTHAOIL|COTTON)$/.test(key);
-}
-
 async function resolveCandidates(accessToken, symbol) {
+  await ensureInstrumentMap(accessToken);
   let candidates = resolveScripCodeCandidates(symbol);
-  if (!candidates.length && looksLikeMcx(symbol)) {
+  if (!candidates.length) {
     try {
-      await refreshIndstocksInstrumentMap(accessToken);
+      await ensureInstrumentMap(accessToken, { force: true });
     } catch {
       /* keep empty */
     }
@@ -107,16 +103,24 @@ async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
     err.status = 404;
     throw err;
   }
-  const tryN = bars <= 90 ? Math.min(2, candidates.length) : Math.min(4, candidates.length);
+  const tryN = Math.min(candidates.length, 6);
   const tryList = candidates.slice(0, tryN);
   let candles = [];
   let used = tryList[0];
   for (const scrip of tryList) {
-    const chunk = await fetchIndstocksCandles(accessToken, scrip, timeframe, bars, { beforeMs });
-    if (chunk?.length) {
-      candles = chunk;
-      used = scrip;
-      break;
+    try {
+      const chunk = await fetchIndstocksCandles(accessToken, scrip, timeframe, bars, { beforeMs });
+      if (chunk?.length >= 20) {
+        candles = chunk;
+        used = scrip;
+        break;
+      }
+      if (chunk?.length > candles.length) {
+        candles = chunk;
+        used = scrip;
+      }
+    } catch {
+      /* try next scrip — never fail the desk on one dead token */
     }
   }
   for (const c of candles) c.symbol = symbol;

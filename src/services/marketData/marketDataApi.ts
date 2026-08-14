@@ -176,7 +176,7 @@ export async function fetchLiveCandles(
   });
   if (beforeMs && beforeMs > 0) q.set('before', String(Math.floor(beforeMs)));
   const data = await json<LiveCandlesResponse>(`/api/market-data/candles?${q}`);
-  if (!beforeMs && data?.candles?.length) {
+  if (!beforeMs && data?.candles && data.candles.length >= 20) {
     const prev = candleMem.get(key);
     if (!prev || data.candles.length >= prev.data.candles.length || Date.now() - prev.at > CANDLE_MEM_TTL_MS) {
       candleMem.set(key, { at: Date.now(), barsWanted: want, data });
