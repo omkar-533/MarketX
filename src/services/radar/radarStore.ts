@@ -1,5 +1,6 @@
 import { istCalendarDay } from '../../utils/marketHours';
 import type { RadarResult, UserSetup, UserSetupCondition, WatchlistItem } from './radarTypes';
+import { keepFirstSetupTime } from './barTime';
 
 const WATCH_KEY = 'wolf_radar_watchlist_v1';
 const SETUPS_KEY = 'wolf_radar_setups_v1';
@@ -65,21 +66,12 @@ export function clearRadarDayBoard() {
 export function mergeRadarResultKeepFirstSeen(prev: RadarResult[], row: RadarResult): RadarResult[] {
   const existing = prev.find((r) => r.symbol === row.symbol);
   if (existing) {
-    const a = existing.detectedAt || 0;
-    const b = row.detectedAt || 0;
-    const now = Date.now();
-    const aScan = !a || Math.abs(now - a) < 90_000;
-    const bScan = !b || Math.abs(now - b) < 90_000;
-    let detectedAt = b || a;
-    if (aScan && !bScan) detectedAt = b;
-    else if (!aScan && bScan) detectedAt = a;
-    else if (!aScan && !bScan) detectedAt = Math.min(a, b);
     return prev.map((r) =>
       r.symbol === row.symbol
         ? {
             ...row,
             id: existing.id,
-            detectedAt,
+            detectedAt: keepFirstSetupTime(existing.detectedAt, row.detectedAt),
           }
         : r,
     );

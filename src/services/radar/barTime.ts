@@ -1,5 +1,7 @@
 /** Candle timestamp → setup/trade time from the last CLOSED bar — never the scan clock. */
 
+import { istCalendarDay } from '../../utils/marketHours';
+
 export const BAR_MS: Record<string, number> = {
   '1m': 60_000,
   '3m': 180_000,
@@ -90,4 +92,48 @@ export function firstConsecutiveHitTime(
     first = i;
   }
   return setupCreatedAtMs(candles[first].timestamp, timeframe, now);
+}
+
+/** NSE cash/F&O session open for that IST calendar day (09:15). */
+export function istSessionStartMs(now = Date.now()): number {
+  const day = istCalendarDay(new Date(now));
+  const open = Date.parse(`${day}T09:15:00+05:30`);
+  return Number.isFinite(open) ? open : 0;
+}
+
+/**
+ * First time this setup printed today — even if it later failed and printed again.
+ * Walks forward from the IST session open; never uses the scan clock.
+ */
+export function firstHitTimeOfIstDay(
+  candles: { timestamp: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): number {
+  const end = closedBarIndex(candles, timeframe, now);
+  if (end < 0) return 0;
+  const session = istSessionStartMs(now);
+  let start = 0;
+  if (session > 0) {
+    start = end;
+    for (let i = 0; i <= end; i += 1) {
+      if (candleTimeMs(candles[i].timestamp) >= session) {
+        start = i;
+        break;
+      }
+    }
+  }
+  for (let i = start; i <= end; i += 1) {
+    if (hitsAt(i)) return setupCreatedAtMs(candles[i].timestamp, timeframe, now);
+  }
+  return setupCreatedAtMs(candles[end].timestamp, timeframe, now);
+}
+
+/** Keep the earliest real setup time when the same name reprints later in the IST day. */
+export function keepFirstSetupTime(prev: number, next: number): number {
+  const a = Number(prev) || 0;
+  const b = Number(next) || 0;
+  if (a > 0 && b > 0) return Math.min(a, b);
+  return a || b;
 }

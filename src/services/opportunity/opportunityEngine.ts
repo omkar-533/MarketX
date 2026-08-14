@@ -5,7 +5,7 @@
 import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import { firstConsecutiveHitTime } from '../radar/barTime';
+import { firstHitTimeOfIstDay } from '../radar/barTime';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -218,7 +218,7 @@ export async function runOpportunityScan(
           return snap;
         };
         const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number =>
-          firstConsecutiveHitTime(candles, tf, (i) => {
+          firstHitTimeOfIstDay(candles, tf, (i) => {
             const snap = snapshotAt(i);
             if (!snap) return false;
             return !!scan({ f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last });

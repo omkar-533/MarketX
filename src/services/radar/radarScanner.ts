@@ -11,7 +11,7 @@ import { detectVolume } from './VolumeEngine';
 import { classifySetup, buildWatchSetup } from './SetupEngine';
 import { computeWolfScore } from './WolfScoringEngine';
 import { cacheLastResults } from './radarStore';
-import { setupCreatedAtFromCandles } from './barTime';
+import { firstHitTimeOfIstDay, setupCreatedAtFromCandles } from './barTime';
 import { evaluateStrategy } from '../strategy/conditionEvaluator';
 import type { StrategyDefinition } from '../strategy/strategyTypes';
 import type {
@@ -407,8 +407,33 @@ export async function runRadarScanFull(
           keyLevels: setup.keyLevels,
           invalidation: setup.invalidation,
           explanation: setup.explanation,
-          detectedAt: setupCreatedAtFromCandles(ltf, req.timeframe),
+          detectedAt: 0,
           dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
+        };
+
+        const stampFirstSeen = () => {
+          if (!classified) {
+            row.detectedAt = setupCreatedAtFromCandles(ltf, req.timeframe);
+            return;
+          }
+          row.detectedAt = firstHitTimeOfIstDay(ltf, req.timeframe, (idx) => {
+            if (idx < 24) return false;
+            const bars = ltf.slice(0, idx + 1);
+            const t = analyzeTechnical(bars);
+            const st = detectStructure(bars, req.timeframe);
+            const liq = detectLiquidity(bars, req.timeframe);
+            const vol = detectVolume(bars);
+            const c = classifySetup({
+              timeframe: req.timeframe,
+              tech: t,
+              structure: st,
+              liquidity: liq,
+              volume: vol,
+              htfTrend,
+            });
+            if (!c) return false;
+            return c.setupType === setup.setupType && c.direction === setup.direction;
+          });
         };
 
         if (strategy) {
@@ -426,6 +451,7 @@ export async function runRadarScanFull(
           row.matchedConditions = reportMatch.matched;
           row.strategyId = strategy.id;
           row.strategyName = strategy.name;
+          stampFirstSeen();
           pushMatch(row);
           continue;
         }
@@ -441,6 +467,7 @@ export async function runRadarScanFull(
           });
           continue;
         }
+        stampFirstSeen();
         pushMatch(row);
       } catch (err) {
         errorsSoFar += 1;

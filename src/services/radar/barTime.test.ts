@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   closedBarIndex,
   firstConsecutiveHitTime,
+  firstHitTimeOfIstDay,
   setupCreatedAtFromCandles,
   setupCreatedAtMs,
 } from './barTime';
@@ -42,6 +43,21 @@ describe('barTime', () => {
       now,
     );
     assert.equal(created, start + hitFrom * FIVE + FIVE);
+  });
+
+  it('stamps the first hit of the IST session even if the setup reprints later', () => {
+    const now = Date.parse('2026-08-14T14:32:00+05:30');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 64 }, (_, i) => bar(start + i * FIVE));
+    const firstHit = 6;
+    const secondHit = 50;
+    const created = firstHitTimeOfIstDay(
+      candles,
+      '5m',
+      (i) => (i >= firstHit && i <= 12) || i >= secondHit,
+      now,
+    );
+    assert.equal(created, start + firstHit * FIVE + FIVE);
   });
 
   it('never uses Date.now as a fallback', () => {
