@@ -579,7 +579,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const oiSnap = useMemo(() => {
     const niftyIx = indices.find((i) => i.symbol === 'NIFTY');
-    const spot = niftyIx?.price ?? 24580;
+    const spot = niftyIx?.price && niftyIx.price > 0 ? niftyIx.price : 0;
     const chain = getOptionChain('NIFTY', spot);
     const maxPain = calculateMaxPain(chain);
     const ceOi = chain.reduce((s, r) => s + r.ceOi, 0);

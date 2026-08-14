@@ -135,7 +135,7 @@ export default function TradeXOptionChain() {
             : 51;
 
   const inst = getFnoInstrument(symbol);
-  const interval = getStrikeIntervalForSpot(spotPrice || (inst?.basePrice ?? 24580), inst);
+  const interval = getStrikeIntervalForSpot(spotPrice, inst);
 
   const refresh = useCallback(
     (opts?: { force?: boolean }) => {
@@ -147,7 +147,7 @@ export default function TradeXOptionChain() {
       })
         .then((snap) => {
           const quote = getLiveQuote(symbol);
-          const spot = snap?.spot || quote?.price || inst?.basePrice || 0;
+          const spot = snap?.spot || quote?.price || 0;
           setSpotPrice(spot);
           setSpotChangePct(quote?.changePercent ?? 0);
           if (snap?.expiries?.length) {

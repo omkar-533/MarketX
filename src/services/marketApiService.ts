@@ -1,6 +1,6 @@
 import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { apiFetch } from '../config/api';
-import { fetchLiveCandles } from './marketData/marketDataApi';
+import { fetchLiveCandles, fetchLiveQuotesBatch } from './marketData/marketDataApi';
 
 export type MarketQuoteDto = {
   symbol: string;
@@ -84,39 +84,52 @@ export async function fetchMarketHealth(): Promise<{
 }
 
 export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDto[] | null> {
-  if (!isMarketLiveEnabled()) return [];
-  try {
-    const q = symbols?.length ? `?symbols=${encodeURIComponent(symbols.join(','))}` : '';
-    const res = await apiFetch(`/api/market/ticks${q}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.quotes ?? null;
-  } catch {
-    return null;
-  }
+  const list = symbols?.length ? symbols : [];
+  if (!list.length) return [];
+  const res = await fetchMarketQuotes(list);
+  return res?.quotes ?? [];
 }
 
 export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotesResponse | null> {
   if (!symbols.length) return null;
-  if (!isMarketLiveEnabled()) {
+  try {
+    const data = await fetchLiveQuotesBatch(symbols);
+    const quotes: MarketQuoteDto[] = [];
+    for (const q of data.quotes || []) {
+      const price = Number(q.price || q.lastPrice || 0);
+      if (!(price > 0)) continue;
+      const prevClose = Number(q.previousClose || 0);
+      quotes.push({
+        symbol: String(q.symbol || '').toUpperCase(),
+        price,
+        change: Number(q.change) || (prevClose > 0 ? price - prevClose : 0),
+        changePercent: Number(q.changePercent || 0),
+        open: Number(q.dayOpen || 0),
+        high: Number(q.dayHigh || 0),
+        low: Number(q.dayLow || 0),
+        prevClose,
+        volume: Number(q.volume || 0),
+        source: data.source || 'indstocks',
+        lastUpdated: q.timestamp ? new Date(q.timestamp).toISOString() : new Date().toISOString(),
+      });
+    }
+    const got = new Set(quotes.map((q) => q.symbol));
     return {
-      quotes: [],
-      errors: symbols.map((symbol) => ({ symbol, error: 'live market disabled' })),
-      source: 'disabled',
+      quotes,
+      errors: symbols
+        .map((s) => String(s || '').toUpperCase())
+        .filter((symbol) => symbol && !got.has(symbol))
+        .map((symbol) => ({ symbol, error: 'unavailable' })),
+      source: data.source || 'indstocks',
       fetchedAt: new Date().toISOString(),
     };
-  }
-  try {
-    // Large batch + cold TV can exceed default 18s; prefer ticks snapshot on server now.
-    const res = await apiFetch(
-      `/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`,
-      undefined,
-      { retries: 1, timeoutMs: 35_000 },
-    );
-    if (!res.ok) return null;
-    return res.json();
   } catch {
-    return null;
+    return {
+      quotes: [],
+      errors: symbols.map((symbol) => ({ symbol, error: 'Market data not connected' })),
+      source: 'indstocks',
+      fetchedAt: new Date().toISOString(),
+    };
   }
 }
 
