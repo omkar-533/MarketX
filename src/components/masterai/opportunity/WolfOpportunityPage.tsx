@@ -236,21 +236,22 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
 
   const refreshIndices = useCallback(async (provider: MarketDataProvider) => {
     const syms = ['NIFTY', 'BANKNIFTY', 'SENSEX'] as const;
-    const next: IndexPulse[] = [];
-    for (const symbol of syms) {
-      try {
-        const q = await provider.getQuote(symbol);
-        const price = Number(q.price) || Number((q as { lastPrice?: number }).lastPrice) || 0;
-        next.push({
-          symbol,
-          price: price > 0 ? price : null,
-          changePercent: Number.isFinite(q.changePercent) ? q.changePercent : null,
-          available: price > 0,
-        });
-      } catch {
-        next.push({ symbol, price: null, changePercent: null, available: false });
-      }
-    }
+    const next = await Promise.all(
+      syms.map(async (symbol) => {
+        try {
+          const q = await provider.getQuote(symbol);
+          const price = Number(q.price) || Number((q as { lastPrice?: number }).lastPrice) || 0;
+          return {
+            symbol,
+            price: price > 0 ? price : null,
+            changePercent: Number.isFinite(q.changePercent) ? q.changePercent : null,
+            available: price > 0,
+          } satisfies IndexPulse;
+        } catch {
+          return { symbol, price: null, changePercent: null, available: false } satisfies IndexPulse;
+        }
+      }),
+    );
     setIndices(next);
   }, []);
 

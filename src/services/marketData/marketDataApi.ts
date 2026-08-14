@@ -109,7 +109,7 @@ type LiveCandlesResponse = {
 };
 
 /** Short TTL so chart + LIVE analysis share one INDstocks history pull. */
-const CANDLE_MEM_TTL_MS = 25_000;
+const CANDLE_MEM_TTL_MS = 45_000;
 const candleMem = new Map<string, { at: number; barsWanted: number; data: LiveCandlesResponse }>();
 
 function candleMemKey(symbol: string, timeframe: string): string {
@@ -150,13 +150,66 @@ export async function fetchLiveCandles(
     const prev = candleMem.get(key);
     if (!prev || data.candles.length >= prev.data.candles.length || Date.now() - prev.at > CANDLE_MEM_TTL_MS) {
       candleMem.set(key, { at: Date.now(), barsWanted: want, data });
-      if (candleMem.size > 80) {
+      if (candleMem.size > 400) {
         const oldest = [...candleMem.entries()].sort((a, b) => a[1].at - b[1].at)[0];
         if (oldest) candleMem.delete(oldest[0]);
       }
     }
   }
   return data;
+}
+
+type LiveCandlesBatchResponse = {
+  candlesBySymbol: Record<string, import('../radar/radarTypes').Candle[]>;
+  mode: string;
+  timeframe: string;
+};
+
+export async function fetchLiveCandlesBatch(
+  symbols: string[],
+  timeframe: string,
+  bars = 80,
+): Promise<LiveCandlesBatchResponse> {
+  const want = Math.min(120, Math.max(20, Math.floor(bars) || 80));
+  const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 40);
+  const cached: Record<string, import('../radar/radarTypes').Candle[]> = {};
+  const missing: string[] = [];
+  for (const symbol of list) {
+    const hit = candleMem.get(candleMemKey(symbol, timeframe));
+    if (
+      hit &&
+      Date.now() - hit.at < CANDLE_MEM_TTL_MS &&
+      Array.isArray(hit.data.candles) &&
+      hit.data.candles.length >= Math.min(want, 50)
+    ) {
+      cached[symbol] =
+        hit.data.candles.length > want ? hit.data.candles.slice(-want) : hit.data.candles;
+    } else {
+      missing.push(symbol);
+    }
+  }
+  if (!missing.length) {
+    return { candlesBySymbol: cached, mode: 'LIVE', timeframe };
+  }
+  const data = await json<LiveCandlesBatchResponse>('/api/market-data/candles-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbols: missing, timeframe, bars: want }),
+  });
+  const candlesBySymbol = { ...cached, ...(data.candlesBySymbol || {}) };
+  for (const [symbol, candles] of Object.entries(candlesBySymbol)) {
+    if (!candles?.length) continue;
+    candleMem.set(candleMemKey(symbol, timeframe), {
+      at: Date.now(),
+      barsWanted: want,
+      data: { candles, mode: 'LIVE' },
+    });
+  }
+  if (candleMem.size > 400) {
+    const oldest = [...candleMem.entries()].sort((a, b) => a[1].at - b[1].at).slice(0, candleMem.size - 400);
+    for (const [k] of oldest) candleMem.delete(k);
+  }
+  return { ...data, candlesBySymbol };
 }
 
 export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scannable' = 'scannable') {

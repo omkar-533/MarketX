@@ -101,7 +101,29 @@ function authHeaders(accessToken) {
   };
 }
 
+const IND_MAX_INFLIGHT = 10;
+let indInflight = 0;
+const indWaiters = [];
+
+function acquireIndSlot() {
+  if (indInflight < IND_MAX_INFLIGHT) {
+    indInflight += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    indWaiters.push(resolve);
+  });
+}
+
+function releaseIndSlot() {
+  const next = indWaiters.shift();
+  if (next) next();
+  else indInflight = Math.max(0, indInflight - 1);
+}
+
 async function indFetch(path, accessToken, { searchParams, accept } = {}) {
+  await acquireIndSlot();
+  try {
   const url = new URL(path.startsWith('http') ? path : `${BASE}${path}`);
   if (searchParams) {
     for (const [k, v] of Object.entries(searchParams)) {
@@ -131,6 +153,9 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
     throw err;
   }
   return { json, text, status: res.status };
+  } finally {
+    releaseIndSlot();
+  }
 }
 
 /** Validate token without exposing it. Uses profile only. */
@@ -180,11 +205,12 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   // Daily: aim for multi-year; intraday: fill requested depth within chunk budget.
   const hardCap = interval === '1day' ? 3200 : 2500;
   const wantBars = Math.max(20, Math.min(hardCap, Number(bars) || 120));
-  // First-paint / shallow requests must not wait for a 14-window stitch.
-  const shallow = wantBars <= 220;
-  const maxChunks = shallow
-    ? Math.min(2, MAX_HISTORY_CHUNKS[interval] || 4)
-    : MAX_HISTORY_CHUNKS[interval] || 4;
+  // Scan / first-paint: one window is enough for ≤90 bars (5m–1D).
+  const maxChunks = wantBars <= 90
+    ? 1
+    : wantBars <= 220
+      ? Math.min(2, MAX_HISTORY_CHUNKS[interval] || 4)
+      : MAX_HISTORY_CHUNKS[interval] || 4;
   const beforeMs = Number(opts.beforeMs);
   let end = Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now();
 
@@ -428,15 +454,18 @@ export function resolveScripCodeCandidates(symbol) {
   const forced = FALLBACK_SCRIP_BY_SYMBOL[key];
   if (forced && !out.includes(forced)) out.push(forced);
   if (!out.length) return [];
-  for (const code of [...out]) {
-    const m = String(code).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);
-    if (!m) continue;
-    const seg = m[1].toUpperCase();
-    const id = m[2];
-    if (seg === 'NIDX') out.push(`NSE_${id}`);
-    if (seg === 'NSE') out.push(`NIDX_${id}`);
-    if (seg === 'BIDX') out.push(`BSE_${id}`);
-    if (seg === 'BSE') out.push(`BIDX_${id}`);
+  // Segment swaps only for indices — NSE_2885 → NIDX_2885 is a wasted historical call.
+  if (INDEX_SCRIP_ALTERNATES[key] || key === 'NIFTY50') {
+    for (const code of [...out]) {
+      const m = String(code).match(/^(NIDX|BIDX|NSE|BSE)_(\d+)$/i);
+      if (!m) continue;
+      const seg = m[1].toUpperCase();
+      const id = m[2];
+      if (seg === 'NIDX') out.push(`NSE_${id}`);
+      if (seg === 'NSE') out.push(`NIDX_${id}`);
+      if (seg === 'BIDX') out.push(`BSE_${id}`);
+      if (seg === 'BSE') out.push(`BIDX_${id}`);
+    }
   }
   return [...new Set(out)];
 }

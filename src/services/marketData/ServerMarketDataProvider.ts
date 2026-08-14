@@ -13,7 +13,7 @@ import type {
 } from './types';
 import { ALL_WOLF_TIMEFRAMES } from './types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from '../radar/radarTypes';
-import { fetchLiveCandles, fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
+import { fetchLiveCandles, fetchLiveCandlesBatch, fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
 
 export class ServerMarketDataProvider implements MarketDataProvider {
   readonly id = 'indstocks-live';
@@ -147,14 +147,39 @@ export class ServerMarketDataProvider implements MarketDataProvider {
 
   async getCandles(symbol: string, timeframe: RadarTimeframe, bars = 80): Promise<Candle[]> {
     try {
-      // Uses marketDataApi cache (shared with chart OHLC path).
-      const { candles } = await fetchLiveCandles(symbol, timeframe, Math.max(bars, 120));
+      const { candles } = await fetchLiveCandles(symbol, timeframe, Math.max(25, bars));
       return Array.isArray(candles) ? candles : [];
     } catch (err) {
-      // Soft-fail — scanner marks unavailable; LIVE session retries / seeds from quote
       console.warn('[ServerMarketDataProvider] candles', symbol, err instanceof Error ? err.message : err);
       return [];
     }
+  }
+
+  async getCandlesMany(
+    symbols: string[],
+    timeframe: RadarTimeframe,
+    bars = 80,
+  ): Promise<Record<string, Candle[]>> {
+    const unique = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
+    const out: Record<string, Candle[]> = {};
+    const CHUNK = 32;
+    for (let i = 0; i < unique.length; i += CHUNK) {
+      const chunk = unique.slice(i, i + CHUNK);
+      try {
+        const { candlesBySymbol } = await fetchLiveCandlesBatch(chunk, timeframe, Math.max(25, bars));
+        for (const symbol of chunk) {
+          const rows = candlesBySymbol?.[symbol];
+          out[symbol] = Array.isArray(rows) ? rows : [];
+        }
+      } catch {
+        await Promise.all(
+          chunk.map(async (symbol) => {
+            out[symbol] = await this.getCandles(symbol, timeframe, bars);
+          }),
+        );
+      }
+    }
+    return out;
   }
 
   async getHistoricalCandles(

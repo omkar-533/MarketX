@@ -34,8 +34,74 @@ import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
+const CANDLE_CACHE_TTL_MS = 45_000;
+const candleCache = new Map();
 
 router.use(attachOptionalAppUser);
+
+function candleCacheKey(symbol, timeframe, bars) {
+  const bucket = bars <= 90 ? 80 : bars <= 160 ? 120 : Math.min(3200, bars);
+  return `${String(symbol || '').toUpperCase()}|${String(timeframe || '')}|${bucket}`;
+}
+
+function readCandleCache(symbol, timeframe, bars) {
+  const hit = candleCache.get(candleCacheKey(symbol, timeframe, bars));
+  if (!hit) return null;
+  if (Date.now() - hit.at > CANDLE_CACHE_TTL_MS) {
+    candleCache.delete(candleCacheKey(symbol, timeframe, bars));
+    return null;
+  }
+  return Array.isArray(hit.candles) ? hit.candles : null;
+}
+
+function writeCandleCache(symbol, timeframe, bars, candles) {
+  if (!candles?.length) return;
+  candleCache.set(candleCacheKey(symbol, timeframe, bars), { at: Date.now(), candles });
+  if (candleCache.size > 800) {
+    const oldest = [...candleCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) candleCache.delete(oldest[0]);
+  }
+}
+
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx], idx);
+    }
+  }
+  const n = Math.max(1, Math.min(limit, items.length || 1));
+  await Promise.all(Array.from({ length: n }, () => worker()));
+  return out;
+}
+
+async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
+  const cached = !beforeMs ? readCandleCache(symbol, timeframe, bars) : null;
+  if (cached) return { candles: cached, scrip: 'cache' };
+  const candidates = resolveScripCodeCandidates(symbol);
+  if (!candidates.length) {
+    const err = new Error(`Unknown symbol: ${symbol}`);
+    err.status = 404;
+    throw err;
+  }
+  const tryN = bars <= 90 ? Math.min(2, candidates.length) : Math.min(4, candidates.length);
+  const tryList = candidates.slice(0, tryN);
+  let candles = [];
+  let used = tryList[0];
+  for (const scrip of tryList) {
+    const chunk = await fetchIndstocksCandles(accessToken, scrip, timeframe, bars, { beforeMs });
+    if (chunk?.length) {
+      candles = chunk;
+      used = scrip;
+      break;
+    }
+  }
+  for (const c of candles) c.symbol = symbol;
+  if (!beforeMs) writeCandleCache(symbol, timeframe, bars, candles);
+  return { candles, scrip: used };
+}
 
 function userKeyFrom(req, res) {
   const authUser = req.appUser?.id;
@@ -283,44 +349,63 @@ router.get('/candles', async (req, res) => {
   const beforeRaw = Number(req.query.before);
   const beforeMs = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : undefined;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const candidates = resolveScripCodeCandidates(symbol);
-  if (!candidates.length) {
-    return res.status(404).json({
-      error: `Unknown symbol: ${symbol}`,
-      hint: 'Index symbols need NIDX scrips. Reconnect market data after API redeploy.',
-    });
-  }
   try {
-    let candles = [];
-    let used = candidates[0];
-    // Prefer known-good index/equity scrips first; abort a dead token quickly (client-side).
-    const tryList = bars <= 220 ? candidates.slice(0, 4) : candidates;
-    for (const scrip of tryList) {
-      const chunk = await fetchIndstocksCandles(live.accessToken, scrip, timeframe, bars, {
-        beforeMs,
-      });
-      if (chunk?.length) {
-        candles = chunk;
-        used = scrip;
-        break;
-      }
-    }
-    for (const c of candles) c.symbol = symbol;
+    const { candles, scrip } = await loadLiveCandles(live.accessToken, symbol, timeframe, bars, beforeMs);
     res.json({
       symbol,
       timeframe,
       candles,
-      scrip: used,
+      scrip,
+      mode: 'LIVE',
+      source: 'indstocks',
+      orderExecution: false,
+    });
+  } catch (e) {
+    const status = e?.status === 401 ? 401 : e?.status === 404 ? 404 : 502;
+    if (status === 401) live.record.status = 'EXPIRED';
+    res.status(status).json({
+      error: status === 401
+        ? 'Market data connection expired. Reconnect your broker.'
+        : e?.status === 404
+          ? e.message
+          : 'Failed to fetch candles',
+    });
+  }
+});
+
+router.post('/candles-batch', async (req, res) => {
+  const live = requireLiveToken(req, res);
+  if (!live) return;
+  const timeframe = String(req.body?.timeframe || '15m').trim();
+  const bars = Math.min(120, Math.max(20, Number(req.body?.bars) || 80));
+  const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
+  const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 40);
+  if (!symbols.length) return res.status(400).json({ error: 'symbols required' });
+  try {
+    const rows = await mapPool(symbols, 8, async (symbol) => {
+      try {
+        const { candles } = await loadLiveCandles(live.accessToken, symbol, timeframe, bars);
+        return [symbol, Array.isArray(candles) ? candles : []];
+      } catch {
+        return [symbol, []];
+      }
+    });
+    const candlesBySymbol = Object.fromEntries(rows);
+    res.json({
+      timeframe,
+      bars,
+      candlesBySymbol,
       mode: 'LIVE',
       source: 'indstocks',
       orderExecution: false,
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
+    if (status === 401) live.record.status = 'EXPIRED';
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
-        : 'Failed to fetch candles',
+        : 'Failed to fetch candle batch',
     });
   }
 });

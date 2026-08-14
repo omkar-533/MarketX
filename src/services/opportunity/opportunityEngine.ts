@@ -1,10 +1,10 @@
 /**
  * Wolf Opportunity scan orchestrator.
- * One candle fetch per symbol → all OHLC scanners. No fabricated hits.
+ * One batched candle fetch per symbol group → all OHLC scanners. No fabricated hits.
  */
+import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import type { RadarUniverse } from '../radar/radarTypes';
 import { buildFeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -40,6 +40,43 @@ export type RunOpportunityOptions = {
   onHit?: (hit: OpportunityHit) => void;
   topN?: number;
 };
+
+type CandleBatchProvider = MarketDataProvider & {
+  getCandlesMany?: (
+    symbols: string[],
+    timeframe: OpportunityTimeframe,
+    bars?: number,
+  ) => Promise<Record<string, Candle[]>>;
+};
+
+async function loadCandleMap(
+  provider: CandleBatchProvider,
+  symbols: string[],
+  tf: OpportunityTimeframe,
+  bars: number,
+  signal?: AbortSignal,
+): Promise<Record<string, Candle[]>> {
+  if (signal?.aborted) return {};
+  if (typeof provider.getCandlesMany === 'function') {
+    return provider.getCandlesMany(symbols, tf, bars);
+  }
+  const out: Record<string, Candle[]> = {};
+  const conc = provider.isDemo ? 12 : 8;
+  for (let i = 0; i < symbols.length; i += conc) {
+    if (signal?.aborted) break;
+    const slice = symbols.slice(i, i + conc);
+    await Promise.all(
+      slice.map(async (symbol) => {
+        try {
+          out[symbol] = await provider.getCandles(symbol, tf, bars);
+        } catch {
+          out[symbol] = [];
+        }
+      }),
+    );
+  }
+  return out;
+}
 
 function toRadarUniverse(u: OpportunityFilters['universe']): RadarUniverse {
   if (u === 'F&O') return 'F&O';
@@ -133,7 +170,7 @@ export async function runOpportunityScan(
     };
   }
 
-  const CONCURRENCY = provider.isDemo ? 12 : symbols.length > 400 ? 5 : 3;
+  const FETCH_BATCH = provider.isDemo ? 24 : 32;
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -145,69 +182,61 @@ export async function runOpportunityScan(
     phase: 'UNIVERSE',
   });
 
-  for (let start = 0; start < symbols.length; start += CONCURRENCY) {
+  for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
     if (opts.signal?.aborted) break;
-    const batch = symbols.slice(start, start + CONCURRENCY);
-    await Promise.all(
-      batch.map(async (symbol) => {
-        if (opts.signal?.aborted) return;
-        try {
-          const candles = await provider.getCandles(symbol, tf, 80);
-          const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
-          if (!f) return;
+    const batch = symbols.slice(start, start + FETCH_BATCH);
+    const candleMap = await loadCandleMap(provider, batch, tf, 80, opts.signal);
+    for (const symbol of batch) {
+      if (opts.signal?.aborted) break;
+      try {
+        const candles = candleMap[symbol] || [];
+        const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
+        if (!f) continue;
 
-          let quotePrice = f.tech.last;
-          try {
-            const q = await provider.getQuote(symbol);
-            if (q.price > 0) quotePrice = q.price;
-          } catch {
-            /* optional */
+        const quotePrice = f.tech.last;
+        const ctx = { f, timeframe: tf, dataMode, quotePrice };
+        const sibling: Partial<Record<OpportunityScannerId, number>> = {};
+
+        const runners: Array<[OpportunityScannerId, () => OpportunityHit | null]> = [
+          ['momentum_surge', () => scanMomentumSurge(ctx)],
+          ['flow_shift', () => scanFlowShift(ctx)],
+          ['liquidity_hunt', () => scanLiquidityHunt(ctx)],
+          ['compression_break', () => scanCompressionBreak(ctx)],
+          ['momentum_fade', () => scanMomentumFade(ctx)],
+          ['breakout_radar', () => scanBreakoutRadar(ctx)],
+          ['reversal_hunter', () => scanReversalHunter(ctx)],
+          ['delivery_flow', () => scanDeliveryFlow(ctx)],
+          ['trend_rider', () => scanTrendRider(ctx)],
+          ['options_flow', () => scanOptionsFlow(ctx)],
+        ];
+
+        for (const [, fn] of runners) {
+          const hit = fn();
+          if (hit) {
+            sibling[hit.scannerId] = hit.score;
+            emitHit(hit);
           }
-
-          const ctx = { f, timeframe: tf, dataMode, quotePrice };
-          const sibling: Partial<Record<OpportunityScannerId, number>> = {};
-
-          const runners: Array<[OpportunityScannerId, () => OpportunityHit | null]> = [
-            ['momentum_surge', () => scanMomentumSurge(ctx)],
-            ['flow_shift', () => scanFlowShift(ctx)],
-            ['liquidity_hunt', () => scanLiquidityHunt(ctx)],
-            ['compression_break', () => scanCompressionBreak(ctx)],
-            ['momentum_fade', () => scanMomentumFade(ctx)],
-            ['breakout_radar', () => scanBreakoutRadar(ctx)],
-            ['reversal_hunter', () => scanReversalHunter(ctx)],
-            ['delivery_flow', () => scanDeliveryFlow(ctx)],
-            ['trend_rider', () => scanTrendRider(ctx)],
-            ['options_flow', () => scanOptionsFlow(ctx)],
-          ];
-
-          for (const [, fn] of runners) {
-            const hit = fn();
-            if (hit) {
-              sibling[hit.scannerId] = hit.score;
-              emitHit(hit);
-            }
-          }
-
-          emitHit(scanWolfPrime(ctx, sibling));
-
-          const sec = sectorOf(symbol);
-          const bag = sectorBag.get(sec) || [];
-          bag.push({ symbol, changePercent: f.changePercent, f });
-          sectorBag.set(sec, bag);
-        } catch {
-          /* skip symbol */
-        } finally {
-          checked += 1;
-          opts.onProgress?.({
-            status: 'scanning',
-            symbolsChecked: checked,
-            symbolsTotal: total,
-            phase: 'EVALUATING',
-            currentSymbol: symbol,
-          });
         }
-      }),
-    );
+
+        emitHit(scanWolfPrime(ctx, sibling));
+
+        const sec = sectorOf(symbol);
+        const bag = sectorBag.get(sec) || [];
+        bag.push({ symbol, changePercent: f.changePercent, f });
+        sectorBag.set(sec, bag);
+      } catch {
+        /* skip symbol */
+      } finally {
+        checked += 1;
+        opts.onProgress?.({
+          status: 'scanning',
+          symbolsChecked: checked,
+          symbolsTotal: total,
+          phase: 'EVALUATING',
+          currentSymbol: symbol,
+        });
+      }
+    }
   }
 
   // Sector Leaders — one hit per strong sector, anchored on top peer
