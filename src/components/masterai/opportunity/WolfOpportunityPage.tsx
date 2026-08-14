@@ -520,14 +520,6 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         </p>
       </motion.nav>
 
-      {!liveOk ? (
-        <p className="wolf-opp__note">
-          {feedStatus === 'DEMO'
-            ? 'Demo feed is off — connect INDstocks for real quotes.'
-            : 'Connect INDstocks for a live scan. Fake demo prices are disabled.'}
-        </p>
-      ) : null}
-
       <section className="wolf-opp__desk" aria-label="Scanners">
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
