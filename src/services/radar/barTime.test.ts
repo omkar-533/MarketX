@@ -99,4 +99,13 @@ describe('barTime', () => {
     assert.equal(keepFirstSetupTime(yesterday, morning, now), morning);
     assert.equal(keepFirstSetupTime(yesterday, 0, now), 0);
   });
+
+  it('1h last bar stamps 3:30pm, never 4:15pm after the close', () => {
+    const now = Date.parse('2026-08-14T21:25:00+05:30');
+    const open = Date.parse('2026-08-14T15:15:00+05:30');
+    const closeBell = Date.parse('2026-08-14T15:30:00+05:30');
+    assert.equal(setupCreatedAtMs(open, '1h', now), closeBell);
+    const fake415 = Date.parse('2026-08-14T16:15:00+05:30');
+    assert.equal(keepFirstSetupTime(fake415, 0, now), closeBell);
+  });
 });

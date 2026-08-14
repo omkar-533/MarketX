@@ -28,7 +28,9 @@ export function closedBarIndex(
 ): number {
   if (!candles.length) return -1;
   const dur = barDurationMs(timeframe);
+  const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   let i = candles.length - 1;
+  while (i > 0 && sessionEnd && candleTimeMs(candles[i].timestamp) >= sessionEnd) i -= 1;
   const minKeep = Math.max(0, i - 4);
   while (i > minKeep) {
     const open = candleTimeMs(candles[i].timestamp);
@@ -54,9 +56,16 @@ export function setupCreatedAtMs(
   const open = candleTimeMs(timestamp);
   if (!open) return 0;
   const dur = barDurationMs(timeframe);
-  if (!dur) return open > now ? 0 : open;
-  const close = open + dur;
+  const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
+  if (!dur) {
+    const t = open > now ? 0 : open;
+    if (t && sessionEnd && t > sessionEnd) return sessionEnd;
+    return t;
+  }
+  let close = open + dur;
+  if (sessionEnd && open < sessionEnd && close > sessionEnd) close = sessionEnd;
   if (close > now + 2_000) return open <= now ? open : 0;
+  if (sessionEnd && close > sessionEnd) return sessionEnd;
   return close;
 }
 
@@ -99,6 +108,13 @@ export function istSessionStartMs(now = Date.now()): number {
   const day = istCalendarDay(new Date(now));
   const open = Date.parse(`${day}T09:15:00+05:30`);
   return Number.isFinite(open) ? open : 0;
+}
+
+/** NSE cash/F&O session close (15:30). 1h bars must not stamp 4:15pm. */
+export function istSessionEndMs(now = Date.now()): number {
+  const day = istCalendarDay(new Date(now));
+  const close = Date.parse(`${day}T15:30:00+05:30`);
+  return Number.isFinite(close) ? close : 0;
 }
 
 const NSE_SESSION_MS = 375 * 60_000; // 09:15–15:30
@@ -149,7 +165,10 @@ export function firstHitTimeOfIstDay(
   }
   if (start < 0) return 0;
 
+  const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   for (let i = start; i <= end; i += 1) {
+    const open = candleTimeMs(candles[i].timestamp);
+    if (sessionEnd && open >= sessionEnd) continue;
     if (!hitsAt(i)) continue;
     const t = setupCreatedAtMs(candles[i].timestamp, timeframe, now);
     if (t > 0 && t <= now + 2_000 && istCalendarDay(new Date(t)) === today) return t;
@@ -161,6 +180,8 @@ function onIstDay(ms: number, now: number): number {
   const t = Number(ms) || 0;
   if (t <= 0 || t > now + 2_000) return 0;
   if (istCalendarDay(new Date(t)) !== istCalendarDay(new Date(now))) return 0;
+  const end = istSessionEndMs(now);
+  if (end && t > end) return end;
   return t;
 }
 
