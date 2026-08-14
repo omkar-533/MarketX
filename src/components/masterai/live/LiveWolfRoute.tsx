@@ -6,10 +6,10 @@ import LiveWolfPage from './LiveWolfPage';
 import ConnectMarketDataModal from '../radar/ConnectMarketDataModal';
 import {
   fetchMarketDataStatus,
+  isIndstocksLive,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 
 type Props = {
@@ -24,10 +24,8 @@ export default function LiveWolfRoute({ onAskWolf }: Props) {
     void fetchMarketDataStatus()
       .then(async (s) => {
         setMdStatus(s);
-        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+        if (isIndstocksLive(s)) {
           await initMarketDataService(serverMarketDataProvider).connect();
-        } else if (s.status === 'CONNECTED') {
-          await initMarketDataService(mockMarketDataProvider).connect();
         }
       })
       .catch(() => undefined);
@@ -38,7 +36,7 @@ export default function LiveWolfRoute({ onAskWolf }: Props) {
       <LiveWolfPage
         onAskWolf={onAskWolf}
         onConnectData={() => setConnectOpen(true)}
-        dataConnected={mdStatus ? mdStatus.status === 'CONNECTED' : undefined}
+        dataConnected={mdStatus ? isIndstocksLive(mdStatus) : undefined}
       />
       <ConnectMarketDataModal
         open={connectOpen}
@@ -46,10 +44,8 @@ export default function LiveWolfRoute({ onAskWolf }: Props) {
         status={mdStatus}
         onStatusChange={(s) => {
           setMdStatus(s);
-          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+          if (isIndstocksLive(s)) {
             void initMarketDataService(serverMarketDataProvider).connect();
-          } else if (s.status === 'CONNECTED') {
-            void initMarketDataService(mockMarketDataProvider).connect();
           }
         }}
       />

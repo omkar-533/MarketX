@@ -19,12 +19,10 @@ import type {
   MarketEvent,
 } from '../../../services/live/liveTypes';
 import type { RadarResult, RadarTimeframe } from '../../../services/radar/radarTypes';
-import { getMarketDataService, initMarketDataService } from '../../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
+import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/marketData/marketDataApi';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
-import { fetchMarketDataStatus } from '../../../services/marketData/marketDataApi';
-import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
+import { setPendingRadarAnalyze } from '../../../services/radar/radarBridge';
 import {
   narrateEvent,
   narrateSnapshot,
@@ -77,14 +75,9 @@ function textOrDash(v: unknown): string {
   return '—';
 }
 
-function resolveProvider(mode: 'DEMO' | 'LIVE' | null): MarketDataProvider {
-  if (mode === 'LIVE') return serverMarketDataProvider;
-  try {
-    return getMarketDataService().getProvider();
-  } catch {
-    initMarketDataService(mockMarketDataProvider);
-    return mockMarketDataProvider;
-  }
+function resolveProvider(live: boolean): MarketDataProvider | null {
+  if (live) return serverMarketDataProvider;
+  return null;
 }
 
 function tvFromPayload(p: LiveWolfOpenPayload): string {
@@ -166,7 +159,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
 
   useEffect(() => {
     void fetchMarketDataStatus()
-      .then((s) => setConnected(s.status === 'CONNECTED'))
+      .then((s) => setConnected(isIndstocksLive(s)))
       .catch(() => setConnected(false));
   }, []);
 
@@ -188,28 +181,26 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
     await sessionRef.current?.stop();
     sessionRef.current = null;
 
-    let mode: 'DEMO' | 'LIVE' | null = null;
+    let live = false;
     try {
       const s = await fetchMarketDataStatus();
-      setConnected(s.status === 'CONNECTED');
-      if (s.status !== 'CONNECTED') {
-        setError('Connect market data to activate LIVE WOLF analysis.');
+      live = isIndstocksLive(s);
+      setConnected(live);
+      if (!live) {
+        setError('Connect INDstocks for LIVE WOLF — demo feed is off.');
         return;
       }
-      mode = s.mode;
     } catch {
-      try {
-        const p = getMarketDataService().getProvider();
-        mode = p.isDemo ? 'DEMO' : 'LIVE';
-        setConnected(true);
-      } catch {
-        setError('Connect market data to activate LIVE WOLF analysis.');
-        setConnected(false);
-        return;
-      }
+      setError('Connect INDstocks for LIVE WOLF analysis.');
+      setConnected(false);
+      return;
     }
 
-    const provider = resolveProvider(mode);
+    const provider = resolveProvider(live);
+    if (!provider) {
+      setError('Connect INDstocks for LIVE WOLF analysis.');
+      return;
+    }
     const session = new LiveWolfSession({
       symbol: bareSymbol,
       exchange,
@@ -452,6 +443,7 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
             onStudyChange={setStudy}
             needsLiveDataConnect={!connected}
             onConnectLiveData={onConnectData}
+            wolfLiveFeed
           />
         </section>
 

@@ -34,13 +34,12 @@ import { WOLF_SCORE_WEIGHTS } from '../../../services/radar/WolfScoringEngine';
 import {
   fetchMarketDataStatus,
   fetchUniversesMeta,
+  isIndstocksLive,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
-import { initMarketDataService, getMarketDataService } from '../../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
+import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
-import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
 import {
   STRATEGY_SCAN_EVENT,
   consumePendingStrategyScan,
@@ -173,15 +172,11 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
   }, []);
 
   useEffect(() => {
-    initMarketDataService(mockMarketDataProvider);
     void fetchMarketDataStatus()
       .then(async (s) => {
         setMdStatus(s);
-        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+        if (isIndstocksLive(s)) {
           const svc = initMarketDataService(serverMarketDataProvider);
-          await svc.connect();
-        } else if (s.status === 'CONNECTED' && s.mode === 'DEMO') {
-          const svc = initMarketDataService(mockMarketDataProvider);
           await svc.connect();
         }
       })
@@ -199,20 +194,16 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       });
   }, []);
 
-  function resolveScanProvider(s: ServerConnectionStatus | null): MarketDataProvider {
-    if (s?.status === 'CONNECTED' && s.mode === 'LIVE') return serverMarketDataProvider;
-    try {
-      return getMarketDataService().getProvider();
-    } catch {
-      return mockMarketDataProvider;
-    }
+  function resolveScanProvider(s: ServerConnectionStatus | null) {
+    if (isIndstocksLive(s)) return serverMarketDataProvider;
+    return null;
   }
-  const dataConnected = mdStatus?.status === 'CONNECTED';
+  const dataConnected = isIndstocksLive(mdStatus);
   const dataLabel = dataConnected
-    ? mdStatus?.mode === 'DEMO'
-      ? '● DEMO MARKET DATA'
-      : '● MARKET DATA CONNECTED'
-    : '○ MARKET DATA DISCONNECTED';
+    ? '● LIVE INDstocks'
+    : mdStatus?.mode === 'DEMO'
+      ? '○ DEMO OFF — connect INDstocks'
+      : '○ MARKET DATA DISCONNECTED';
 
   const statusLabel = useMemo(() => {
     if (progress.status === 'scanning') return 'SCANNING…';
@@ -231,7 +222,8 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       // Restart: drop the in-flight scan so a click always feels alive
       abortRef.current?.abort();
     }
-    if (!dataConnected) {
+    const liveProvider = resolveScanProvider(mdStatus);
+    if (!liveProvider) {
       setConnectOpen(true);
       return;
     }
@@ -305,7 +297,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
           strategy,
           displayLimit: DEFAULT_DISPLAY_LIMIT,
         },
-        resolveScanProvider(mdStatus),
+        liveProvider,
       );
 
       if (isStale()) return;
@@ -429,15 +421,21 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    void resolveScanProvider(mdStatus)
+    const provider = resolveScanProvider(mdStatus);
+    if (!provider) {
+      const m = catalogUniverseMeta(universe);
+      setUniverseLoaded(m.count);
+      setUniverseCatalogCount(m.count);
+      setUniverseUnavailable(0);
+      setUniverseNote(m.note);
+      setUniverseSource('connect-indstocks');
+      return;
+    }
+    void provider
       .getSymbols(universe, market)
       .then((syms) => {
         if (cancelled) return;
-        const provider = resolveScanProvider(mdStatus);
-        const meta =
-          'lastUniverseMeta' in provider
-            ? (provider as typeof serverMarketDataProvider).lastUniverseMeta
-            : null;
+        const meta = provider.lastUniverseMeta ?? null;
         if (meta) {
           setUniverseCatalogCount(meta.universeLoaded);
           setUniverseLoaded(meta.dataAvailable || syms.length);
@@ -647,11 +645,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
             <i /> {statusLabel}
           </span>
           <span className="wolf-radar-desk__demo" title="Data mode">
-            {dataConnected
-              ? mdStatus?.mode === 'DEMO'
-                ? mockMarketDataProvider.label
-                : mdStatus?.providerName || 'MARKET DATA'
-              : 'Connect market data to scan'}
+            {dataConnected ? mdStatus?.providerName || 'INDstocks LIVE' : 'Connect INDstocks to scan'}
           </span>
         </div>
         {progress.status === 'scanning' && (
@@ -1029,10 +1023,8 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
         status={mdStatus}
         onStatusChange={(s) => {
           setMdStatus(s);
-          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+          if (isIndstocksLive(s)) {
             void initMarketDataService(serverMarketDataProvider).connect();
-          } else if (s.status === 'CONNECTED') {
-            void initMarketDataService(mockMarketDataProvider).connect();
           }
         }}
       />

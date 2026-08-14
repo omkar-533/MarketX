@@ -30,11 +30,15 @@ function readRadarDayBoard(): RadarDayBoard | null {
   }
 }
 
+function liveOnly(rows: RadarResult[]): RadarResult[] {
+  return rows.filter((r) => r.dataMode === 'LIVE');
+}
+
 export function loadRadarDayBoard(key?: string): RadarResult[] {
   const stored = readRadarDayBoard();
   if (!stored || stored.day !== istCalendarDay()) return [];
-  if (key) return Array.isArray(stored.byKey[key]) ? stored.byKey[key] : [];
-  return Object.values(stored.byKey).flat();
+  if (key) return liveOnly(Array.isArray(stored.byKey[key]) ? stored.byKey[key] : []);
+  return liveOnly(Object.values(stored.byKey).flat());
 }
 
 export function saveRadarDayBoard(key: string, results: RadarResult[]) {
@@ -171,7 +175,7 @@ export function cacheLastResults(results: RadarResult[]) {
 export function loadLastResults(): RadarResult[] {
   const day = loadRadarDayBoard();
   if (day.length) return day;
-  return readJson<RadarResult[]>(LAST_RESULTS_KEY, []);
+  return liveOnly(readJson<RadarResult[]>(LAST_RESULTS_KEY, []));
 }
 
 export const CONDITION_LABELS: Record<UserSetupCondition, string> = {

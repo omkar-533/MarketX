@@ -1,6 +1,6 @@
 import { LIVE_MARKET_DATA } from '../constants/liveMarket';
 import { apiFetch } from '../config/api';
-import { fetchLiveCandles, fetchLiveQuotesBatch } from './marketData/marketDataApi';
+import { fetchLiveCandles } from './marketData/marketDataApi';
 
 export type MarketQuoteDto = {
   symbol: string;
@@ -84,53 +84,21 @@ export async function fetchMarketHealth(): Promise<{
 }
 
 export async function fetchMarketTicks(symbols?: string[]): Promise<MarketTickDto[] | null> {
-  const list = symbols?.length ? symbols : [];
-  if (!list.length) return [];
-  const res = await fetchMarketQuotes(list);
-  return res?.quotes ?? [];
+  void symbols;
+  return [];
 }
 
 export async function fetchMarketQuotes(symbols: string[]): Promise<MarketQuotesResponse | null> {
   if (!symbols.length) return null;
-  try {
-    const data = await fetchLiveQuotesBatch(symbols);
-    const quotes: MarketQuoteDto[] = [];
-    for (const q of data.quotes || []) {
-      const price = Number(q.price || q.lastPrice || 0);
-      if (!(price > 0)) continue;
-      const prevClose = Number(q.previousClose || 0);
-      quotes.push({
-        symbol: String(q.symbol || '').toUpperCase(),
-        price,
-        change: Number(q.change) || (prevClose > 0 ? price - prevClose : 0),
-        changePercent: Number(q.changePercent || 0),
-        open: Number(q.dayOpen || 0),
-        high: Number(q.dayHigh || 0),
-        low: Number(q.dayLow || 0),
-        prevClose,
-        volume: Number(q.volume || 0),
-        source: data.source || 'indstocks',
-        lastUpdated: q.timestamp ? new Date(q.timestamp).toISOString() : new Date().toISOString(),
-      });
-    }
-    const got = new Set(quotes.map((q) => q.symbol));
-    return {
-      quotes,
-      errors: symbols
-        .map((s) => String(s || '').toUpperCase())
-        .filter((symbol) => symbol && !got.has(symbol))
-        .map((symbol) => ({ symbol, error: 'unavailable' })),
-      source: data.source || 'indstocks',
-      fetchedAt: new Date().toISOString(),
-    };
-  } catch {
-    return {
-      quotes: [],
-      errors: symbols.map((symbol) => ({ symbol, error: 'Market data not connected' })),
-      source: 'indstocks',
-      fetchedAt: new Date().toISOString(),
-    };
-  }
+  return {
+    quotes: [],
+    errors: symbols.map((symbol) => ({
+      symbol,
+      error: 'Live quotes are limited to Wolf Opportunity, Radar, LIVE WOLF, and Strategy Lab',
+    })),
+    source: 'wolf-desk-only',
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 /** Short in-memory OHLC cache — chart reopen / LIVE WOLF / resync share one fetch. */
@@ -194,7 +162,18 @@ export async function fetchMarketOhlc(
   range?: string,
   bars?: number,
   beforeMs?: number,
+  liveDesk = false,
 ): Promise<MarketOhlcResponse | null> {
+  if (!liveDesk) {
+    return {
+      symbol,
+      timeframe: interval,
+      bars: [],
+      source: 'wolf-desk-only',
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
   const wantBars = barsForOhlcRange(range, bars, interval);
 
   // Scroll-back (`before`) must hit the network; live tip/resync can reuse cache.

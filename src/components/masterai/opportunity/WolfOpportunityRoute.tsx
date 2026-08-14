@@ -3,10 +3,10 @@ import WolfOpportunityPage from './WolfOpportunityPage';
 import ConnectMarketDataModal from '../radar/ConnectMarketDataModal';
 import {
   fetchMarketDataStatus,
+  isIndstocksLive,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 
 type Props = {
@@ -23,10 +23,8 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
     void fetchMarketDataStatus()
       .then(async (s) => {
         setMdStatus(s);
-        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+        if (isIndstocksLive(s)) {
           await initMarketDataService(serverMarketDataProvider).connect();
-        } else if (s.status === 'CONNECTED') {
-          await initMarketDataService(mockMarketDataProvider).connect();
         }
       })
       .catch(() => undefined);
@@ -46,10 +44,8 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
         status={mdStatus}
         onStatusChange={(s) => {
           setMdStatus(s);
-          if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
+          if (isIndstocksLive(s)) {
             void initMarketDataService(serverMarketDataProvider).connect();
-          } else if (s.status === 'CONNECTED') {
-            void initMarketDataService(mockMarketDataProvider).connect();
           }
           setTick((n) => n + 1);
         }}

@@ -25,6 +25,8 @@ export type TerminalChartHostProps = {
   onNavigate?: (tab: string) => void;
   needsLiveDataConnect?: boolean;
   onConnectLiveData?: () => void;
+  /** INDstocks candles + LTP — only Wolf Opportunity / Radar / LIVE WOLF / Strategy Lab. */
+  wolfLiveFeed?: boolean;
 };
 
 /**
@@ -50,6 +52,7 @@ export default function TerminalChartHost({
   onNavigate,
   needsLiveDataConnect,
   onConnectLiveData,
+  wolfLiveFeed = false,
 }: TerminalChartHostProps) {
   const preferNative = usesNativeChart(symbol);
 
@@ -82,6 +85,7 @@ export default function TerminalChartHost({
         onNavigate={onNavigate}
         needsLiveDataConnect={needsLiveDataConnect}
         onConnectLiveData={onConnectLiveData}
+        wolfLiveFeed={wolfLiveFeed}
       />
     );
   }

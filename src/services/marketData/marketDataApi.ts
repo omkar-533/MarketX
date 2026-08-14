@@ -37,6 +37,11 @@ export type ServerConnectionStatus = {
   message: string;
 };
 
+/** Wolf Opportunity / Radar / LIVE WOLF / Strategy Lab — INDstocks LIVE only, never DEMO. */
+export function isIndstocksLive(s: ServerConnectionStatus | null | undefined): boolean {
+  return Boolean(s && s.status === 'CONNECTED' && s.mode === 'LIVE' && s.liveQuotes);
+}
+
 function base() {
   return getApiBaseUrl().replace(/\/$/, '');
 }

@@ -124,6 +124,21 @@ async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
   return { candles, scrip: used };
 }
 
+function cookieOpts() {
+  const frontendHttps = String(process.env.FRONTEND_URL || '').startsWith('https://');
+  const secure =
+    process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production' || frontendHttps;
+  return {
+    httpOnly: true,
+    // Cross-origin (Vercel → API) needs None+Secure or the session never round-trips
+    // and every /quote|/candles call looks disconnected → Wolf pages used to fall back to DEMO.
+    sameSite: secure ? 'none' : 'lax',
+    secure,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/',
+  };
+}
+
 function userKeyFrom(req, res) {
   const authUser = req.appUser?.id;
   if (authUser) return `user:${authUser}`;
@@ -131,14 +146,7 @@ function userKeyFrom(req, res) {
   let sid = req.cookies?.[SESSION_COOKIE];
   if (!sid) {
     sid = randomUUID();
-    const secure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
-    res.cookie(SESSION_COOKIE, sid, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    res.cookie(SESSION_COOKIE, sid, cookieOpts());
   }
   return `session:${sid}`;
 }

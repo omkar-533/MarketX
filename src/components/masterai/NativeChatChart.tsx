@@ -73,22 +73,14 @@ import {
   tvZoomPrice,
 } from '../../services/chart/chartNavActions';
 import { Eye, EyeOff, Settings2, X } from 'lucide-react';
-import { fetchMarketOhlc, fetchMarketQuotes } from '../../services/marketApiService';
-import { fetchLiveQuote, fetchMarketDataStatus } from '../../services/marketData/marketDataApi';
+import { fetchMarketOhlc } from '../../services/marketApiService';
+import { fetchLiveQuote, fetchMarketDataStatus, isIndstocksLive } from '../../services/marketData/marketDataApi';
 import {
   applyLivePriceToBars,
   barTimeSec,
   mergeLiveTipIntoHistory,
   normalizeMarketSymbol,
-  quoteMatchesSymbol,
 } from '../../services/chart/liveCandleMerge';
-import {
-  getFyersCachedQuote,
-  onFyersMarketTicks,
-  startFyersSocketClient,
-  subscribeFyersMarketSymbols,
-  unsubscribeFyersMarketSymbols,
-} from '../../services/fyersSocketClient';
 import { getMarketSession } from '../../utils/marketHours';
 import type { ChartBar } from '../../types/chart';
 import {
@@ -134,10 +126,8 @@ const CHART_INITIAL_BARS = 160;
 /** Background deepen after first paint (pan-left still loads older via scroll). */
 const CHART_DEEP_BARS = 1200;
 const CHART_RESYNC_BARS = 200;
-/** Market-data LIVE quote poll (INDstocks). Keep gentle — tip still updates every tick. */
+/** Market-data LIVE quote poll (INDstocks) — LIVE WOLF / Wolf desks only. */
 const LIVE_QUOTE_POLL_MS = 1_250;
-/** Legacy Fyers cache/WS poll — only when market-data feed is offline. */
-const QUOTE_POLL_MS = 100;
 /** Soft-expand locked price scale at most this often (ms). */
 const PRICE_ENSURE_MS = 180;
 
@@ -309,6 +299,8 @@ export type NativeChatChartProps = {
   needsLiveDataConnect?: boolean;
   /** Opens the CONNECT MARKET DATA flow. */
   onConnectLiveData?: () => void;
+  /** INDstocks candles + LTP. Only LIVE WOLF / Wolf desks — keeps the rest of the site smooth. */
+  wolfLiveFeed?: boolean;
 };
 
 const LEVEL_COLOR: Record<ChartLevel['kind'], string> = {
@@ -393,6 +385,7 @@ export default function NativeChatChart({
   onNavigate,
   needsLiveDataConnect = false,
   onConnectLiveData,
+  wolfLiveFeed = false,
 }: NativeChatChartProps) {
   const { isDark } = useTheme();
   const areaRef = useRef<HTMLDivElement>(null);
@@ -565,27 +558,21 @@ export default function NativeChatChart({
             : CHART_INITIAL_BARS;
 
       // Quote must not block first paint — merge tip when it arrives.
-      const cachedQuote = getFyersCachedQuote(apiSymbol);
-      const quotePromise =
-        !cachedQuote?.price && !background
-          ? fetchLiveQuote(apiSymbol).catch(() => null)
-          : Promise.resolve(null);
+      const quotePromise = wolfLiveFeed && !background
+        ? fetchLiveQuote(apiSymbol).catch(() => null)
+        : Promise.resolve(null);
 
-      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars);
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars, undefined, wolfLiveFeed);
       if (token !== requestRef.current) return;
       let next = res?.bars ?? [];
       // Index history can fail on wrong scrip while LTP/quote is live — seed one bar
       // so the chart + live tip path stay usable until history resolves.
-      if (!next.length && !background) {
+      if (!next.length && !background && wolfLiveFeed) {
         try {
-          let px = Number(cachedQuote?.price) || 0;
-          let vol = Number(cachedQuote?.volume) || 0;
-          if (!(px > 0)) {
-            const qRes = await quotePromise;
-            const quote = qRes && 'quote' in qRes ? qRes.quote : null;
-            px = Number(quote?.lastPrice || quote?.price) || 0;
-            vol = Number((quote as { volume?: number } | null)?.volume) || 0;
-          }
+          const qRes = await quotePromise;
+          const quote = qRes && 'quote' in qRes ? qRes.quote : null;
+          const px = Number(quote?.lastPrice || quote?.price) || 0;
+          const vol = Number((quote as { volume?: number } | null)?.volume) || 0;
           if (px > 0) {
             const t = barTimeSec(Date.now());
             next = [{ time: t, open: px, high: px, low: px, close: px, volume: vol }];
@@ -610,12 +597,6 @@ export default function NativeChatChart({
       }
       // Background deepen/resync must keep the live tip (history often lags LTP).
       let preserved = background ? mergeLiveTipIntoHistory(next, barsRef.current) : next;
-      if (cachedQuote?.price) {
-        const tip = applyLivePriceToBars(preserved, cachedQuote.price, apiInterval, {
-          volume: cachedQuote.volume,
-        });
-        if (tip) preserved = tip.bars;
-      }
       if (token !== requestRef.current) return;
       barsRef.current = preserved;
       setBars(preserved);
@@ -623,7 +604,7 @@ export default function NativeChatChart({
       setStatus('ready');
 
       // Apply live tip after paint when quote was in flight.
-      if (!cachedQuote?.price) {
+      if (wolfLiveFeed) {
         void quotePromise.then((qRes) => {
           if (token !== requestRef.current) return;
           const quote = qRes && 'quote' in qRes ? qRes.quote : null;
@@ -636,11 +617,17 @@ export default function NativeChatChart({
         });
       }
     },
-    [apiSymbol, apiInterval, symbol],
+    [apiSymbol, apiInterval, symbol, wolfLiveFeed],
   );
 
   // Symbol / interval / manual reload — NOT `load` identity (parent click handlers used to recreate it).
   useEffect(() => {
+    if (!wolfLiveFeed) {
+      barsRef.current = [];
+      setBars([]);
+      setStatus('empty');
+      return;
+    }
     // Hard reset only when the instrument or timeframe actually changes.
     barsRef.current = [];
     setBars([]);
@@ -659,7 +646,7 @@ export default function NativeChatChart({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [apiSymbol, apiInterval, reloadKey, load]);
+  }, [apiSymbol, apiInterval, reloadKey, load, wolfLiveFeed]);
 
   const paintLiveTip = useCallback(
     (bar: ChartBar) => {
@@ -826,7 +813,7 @@ export default function NativeChatChart({
           : apiInterval === '1h' || apiInterval === '2h' || apiInterval === '4h'
             ? '1y'
             : '6mo';
-      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, batch, beforeMs);
+      const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, batch, beforeMs, wolfLiveFeed);
       const fetched = res?.bars ?? [];
       if (!fetched.length) {
         historyExhaustedRef.current = true;
@@ -851,7 +838,7 @@ export default function NativeChatChart({
       historyBusyRef.current = false;
       setLoadingOlder(false);
     }
-  }, [enableHistoryScroll, apiInterval, apiSymbol]);
+  }, [enableHistoryScroll, apiInterval, apiSymbol, wolfLiveFeed]);
 
   useEffect(() => {
     loadOlderRef.current = () => {
@@ -871,13 +858,11 @@ export default function NativeChatChart({
     return () => window.clearInterval(timer);
   }, [symbol]);
 
-  // Real-time tip: prefer connected market-data quotes; Fyers path is legacy fallback.
+  // Real-time tip — INDstocks only on Wolf desks (LIVE WOLF). Never Fyers/demo, never site-wide.
   useEffect(() => {
-    if (!apiSymbol || !apiInterval) return;
+    if (!wolfLiveFeed || !apiSymbol || !apiInterval) return;
     let cancelled = false;
     let livePoll: ReturnType<typeof setInterval> | null = null;
-    let legacyPoll: ReturnType<typeof setInterval> | null = null;
-    let unsub = () => undefined;
 
     const paintFromLiveQuote = async () => {
       try {
@@ -892,42 +877,9 @@ export default function NativeChatChart({
 
     void fetchMarketDataStatus()
       .then((s) => {
-        if (cancelled) return;
-        if (s.status === 'CONNECTED' && s.mode === 'LIVE' && s.liveQuotes) {
-          void paintFromLiveQuote();
-          livePoll = window.setInterval(() => void paintFromLiveQuote(), LIVE_QUOTE_POLL_MS);
-          return;
-        }
-        // Legacy / disabled feed path
-        startFyersSocketClient();
-        subscribeFyersMarketSymbols([apiSymbol]);
-        const cached = getFyersCachedQuote(apiSymbol);
-        if (cached?.price) applyLivePrice(cached.price, cached.volume);
-        unsub = onFyersMarketTicks((payload) => {
-          // Handler receives a quote array (legacy Fyers path is a no-op stub today).
-          const rows = Array.isArray(payload) ? payload : [];
-          const q = rows.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
-          if (!q) return;
-          let px = Number(q.price) || 0;
-          if (Number(q.bid) > 0 && Number(q.ask) > 0) {
-            const mid = (Number(q.bid) + Number(q.ask)) / 2;
-            if (!(px > 0) || Math.abs(mid - px) / px < 0.002) px = mid;
-          }
-          if (px > 0) applyLivePrice(px, q.volume);
-        });
-        legacyPoll = window.setInterval(() => {
-          const quietMs = Date.now() - lastLiveAtRef.current;
-          const cachedNow = getFyersCachedQuote(apiSymbol);
-          if (cachedNow?.price) {
-            applyLivePrice(cachedNow.price, cachedNow.volume);
-            if (quietMs < 2_000) return;
-          }
-          void fetchMarketQuotes([apiSymbol]).then((res) => {
-            const list = Array.isArray(res) ? res : res?.quotes;
-            const q = list?.find((row) => quoteMatchesSymbol(row.symbol, apiSymbol));
-            if (q?.price) applyLivePrice(q.price, q.volume);
-          });
-        }, QUOTE_POLL_MS);
+        if (cancelled || !isIndstocksLive(s)) return;
+        void paintFromLiveQuote();
+        livePoll = window.setInterval(() => void paintFromLiveQuote(), LIVE_QUOTE_POLL_MS);
       })
       .catch(() => undefined);
 
@@ -940,17 +892,14 @@ export default function NativeChatChart({
 
     return () => {
       cancelled = true;
-      unsub();
-      unsubscribeFyersMarketSymbols([apiSymbol]);
       if (livePoll) window.clearInterval(livePoll);
-      if (legacyPoll) window.clearInterval(legacyPoll);
       window.clearInterval(stale);
       if (liveRafRef.current) {
         cancelAnimationFrame(liveRafRef.current);
         liveRafRef.current = 0;
       }
     };
-  }, [apiSymbol, apiInterval, applyLivePrice, reloadKey]);
+  }, [wolfLiveFeed, apiSymbol, apiInterval, applyLivePrice, reloadKey]);
 
   const view = useMemo<ChartView | null>(() => {
     if (!bars.length) return null;

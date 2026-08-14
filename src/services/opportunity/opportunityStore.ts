@@ -50,8 +50,8 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
     return {
       ...blank,
       ...prev,
-      hits: Array.isArray(prev.hits) ? prev.hits : [],
-      status: prev.hits?.length ? 'ready' : 'idle',
+      hits: Array.isArray(prev.hits) ? prev.hits.filter((h) => h.dataMode === 'LIVE') : [],
+      status: prev.hits?.some((h) => h.dataMode === 'LIVE') ? 'ready' : 'idle',
     };
   });
 }

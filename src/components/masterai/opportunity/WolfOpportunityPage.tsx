@@ -14,9 +14,8 @@ import {
   Minus,
 } from 'lucide-react';
 import { getMarketSession } from '../../../utils/marketHours';
-import { fetchMarketDataStatus } from '../../../services/marketData/marketDataApi';
-import { initMarketDataService, getMarketDataService } from '../../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../../services/radar/MockMarketDataProvider';
+import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/marketData/marketDataApi';
+import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
 import { runOpportunityScan } from '../../../services/opportunity/opportunityEngine';
@@ -100,14 +99,8 @@ type Props = {
   onConnectData?: () => void;
 };
 
-function resolveProvider(mode: 'DEMO' | 'LIVE' | null): MarketDataProvider {
-  if (mode === 'LIVE') return serverMarketDataProvider;
-  try {
-    return getMarketDataService().getProvider();
-  } catch {
-    initMarketDataService(mockMarketDataProvider);
-    return mockMarketDataProvider;
-  }
+function resolveLiveProvider(): typeof serverMarketDataProvider | null {
+  return serverMarketDataProvider;
 }
 
 function Seg({
@@ -270,31 +263,32 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         }
       }
 
-      let mode: 'DEMO' | 'LIVE' | null = null;
+      let live = false;
       try {
         const s = await fetchMarketDataStatus();
-        if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
-          mode = 'LIVE';
+        live = isIndstocksLive(s);
+        if (live) {
           setFeedStatus('LIVE');
           await initMarketDataService(serverMarketDataProvider).connect();
-        } else if (s.status === 'CONNECTED') {
-          mode = 'DEMO';
-          setFeedStatus('DEMO');
-          await initMarketDataService(mockMarketDataProvider).connect();
         } else {
-          mode = 'DEMO';
-          setFeedStatus('OFFLINE');
-          initMarketDataService(mockMarketDataProvider);
+          setFeedStatus(s.status === 'CONNECTED' && s.mode === 'DEMO' ? 'DEMO' : 'OFFLINE');
         }
       } catch {
-        mode = 'DEMO';
         setFeedStatus('OFFLINE');
-        initMarketDataService(mockMarketDataProvider);
       }
 
-      const provider = resolveProvider(mode);
-      setDataMode(provider.isDemo ? 'DEMO' : 'LIVE');
-      if (provider.isDemo && feedStatus !== 'OFFLINE') setFeedStatus('DEMO');
+      if (!live) {
+        setDataMode('DEMO');
+        setScanning(false);
+        setBgBusy(false);
+        scanningRef.current = false;
+        setProgress('Connect INDstocks for live scan — demo prices are off');
+        if (!quiet) onConnectData?.();
+        return;
+      }
+
+      const provider = resolveLiveProvider();
+      setDataMode('LIVE');
       void refreshIndices(provider);
 
       try {
@@ -528,8 +522,8 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
       {!liveOk ? (
         <p className="wolf-opp__note">
           {feedStatus === 'DEMO'
-            ? 'Demo feed — connect live data for real quotes.'
-            : 'Live data offline — showing historical / demo results.'}
+            ? 'Demo feed is off — connect INDstocks for real quotes.'
+            : 'Connect INDstocks for a live scan. Fake demo prices are disabled.'}
         </p>
       ) : null}
 

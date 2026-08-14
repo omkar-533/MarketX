@@ -7,7 +7,6 @@ import {
   type ServerConnectionStatus,
 } from '../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../services/marketData/MarketDataService';
-import { mockMarketDataProvider } from '../../services/radar/MockMarketDataProvider';
 import { serverMarketDataProvider } from '../../services/marketData/ServerMarketDataProvider';
 
 const SESSION_KEY_PREFIX = 'wolf_live_connect_nudge_';
@@ -158,8 +157,6 @@ export default function ConnectLiveNudgePopup({ userId, enabled }: Props) {
           if (s.status === 'CONNECTED' && s.mode === 'LIVE') {
             void initMarketDataService(serverMarketDataProvider).connect();
             setConnectOpen(false);
-          } else if (s.status === 'CONNECTED') {
-            void initMarketDataService(mockMarketDataProvider).connect();
           }
         }}
       />
