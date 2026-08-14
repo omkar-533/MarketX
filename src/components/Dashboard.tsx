@@ -38,7 +38,7 @@ import {
   type SectorHeatmapItem,
   type StockData,
 } from '../data/marketData';
-import { fetchMarketQuotes, type MarketQuoteDto } from '../services/marketApiService';
+import { type MarketQuoteDto } from '../services/marketApiService';
 import { startFyersSocketClient } from '../services/fyersSocketClient';
 import { subscribeLiveSymbols } from '../services/marketTickStream';
 import { subscribeMarketLive } from '../services/marketLiveStore';
@@ -518,47 +518,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const seedRestQuotes = useCallback(async () => {
     subscribeLiveSymbols(DASHBOARD_LIVE_SYMBOLS);
-    const res = await fetchMarketQuotes(DASHBOARD_LIVE_SYMBOLS);
-    if (!res?.quotes?.length) return;
-    // Seed live store so websocket LTP ticks keep prevClose / day change
-    const { applyStreamQuotes } = await import('../services/symbolLiveService');
-    applyStreamQuotes(
-      res.quotes.map((q) => ({
-        symbol: q.symbol,
-        price: q.price,
-        change: q.change,
-        changePercent: q.changePercent,
-        open: q.open,
-        high: q.high,
-        low: q.low,
-        prevClose: q.prevClose,
-        volume: q.volume,
-        lastUpdated: q.lastUpdated || new Date().toISOString(),
-        source: q.source || 'rest',
-      })),
-    );
-    const next = new Map<string, MarketQuoteDto>();
-    for (const q of res.quotes) {
-      if (q?.symbol) next.set(q.symbol.toUpperCase(), q);
-    }
-    setGlobalQuotes((prev) => {
-      const merged = new Map(prev);
-      for (const [k, v] of next) {
-        const resolved = resolveQuoteFields(k, v);
-        merged.set(k, {
-          ...v,
-          price: resolved.price || v.price,
-          change: resolved.change,
-          changePercent: resolved.changePercent,
-          high: resolved.high,
-          low: resolved.low,
-          prevClose: resolved.prevClose,
-          open: resolved.open,
-        });
-      }
-      return merged;
-    });
-  }, []);
+    await refreshFnoLiveQuotesAsync(true);
+    paintGlobalFromLive();
+    paintIndia();
+  }, [paintGlobalFromLive, paintIndia]);
 
   // Boot live feed + keep Socket.IO warm
   useEffect(() => {

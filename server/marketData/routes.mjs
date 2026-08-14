@@ -26,6 +26,7 @@ import {
   listUniverseSymbols,
   listScannableUniverseSymbols,
   fetchIndstocksQuote,
+  fetchIndstocksQuotesMany,
   fetchIndstocksCandles,
   INDSTOCKS_CAPABILITIES,
   INDSTOCKS_PERMISSION_NOTE,
@@ -326,6 +327,49 @@ router.get('/universes', (_req, res) => {
       BANKNIFTY: mk('BANKNIFTY'),
     },
   });
+});
+
+router.post('/quotes-batch', async (req, res) => {
+  const live = requireLiveToken(req, res);
+  if (!live) return;
+  const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
+  const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 80);
+  if (!symbols.length) return res.status(400).json({ error: 'symbols required' });
+  try {
+    const pairs = [];
+    for (const symbol of symbols) {
+      const candidates = await resolveCandidates(live.accessToken, symbol);
+      if (candidates[0]) pairs.push([symbol, candidates[0]]);
+    }
+    const byScrip = await fetchIndstocksQuotesMany(
+      live.accessToken,
+      pairs.map(([, scrip]) => scrip),
+    );
+    const quotes = [];
+    for (const [symbol, scrip] of pairs) {
+      const row = byScrip.get(scrip);
+      if (!row || !(row.price > 0)) continue;
+      quotes.push({
+        ...row,
+        symbol,
+        scrip,
+      });
+    }
+    res.json({
+      quotes,
+      mode: 'LIVE',
+      source: 'indstocks',
+      orderExecution: false,
+    });
+  } catch (e) {
+    const status = e?.status === 401 ? 401 : 502;
+    if (status === 401) live.record.status = 'EXPIRED';
+    res.status(status).json({
+      error: status === 401
+        ? 'Market data connection expired. Reconnect your broker.'
+        : 'Failed to fetch quotes',
+    });
+  }
 });
 
 router.get('/quote', async (req, res) => {

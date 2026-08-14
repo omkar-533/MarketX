@@ -103,6 +103,31 @@ export async function fetchLiveQuote(symbol: string) {
   );
 }
 
+export type LiveQuoteRow = {
+  symbol: string;
+  price: number;
+  lastPrice?: number;
+  change?: number;
+  changePercent: number;
+  volume?: number;
+  dayOpen?: number;
+  dayHigh?: number;
+  dayLow?: number;
+  previousClose?: number;
+  timestamp?: number;
+  exchange?: string;
+};
+
+export async function fetchLiveQuotesBatch(symbols: string[]): Promise<{ quotes: LiveQuoteRow[]; mode: string; source: string }> {
+  const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 80);
+  if (!list.length) return { quotes: [], mode: 'LIVE', source: 'indstocks' };
+  return json('/api/market-data/quotes-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbols: list }),
+  });
+}
+
 type LiveCandlesResponse = {
   candles: import('../radar/radarTypes').Candle[];
   mode: string;

@@ -4,6 +4,7 @@ import {
   FNO_STOCKS,
   FNO_UNIVERSE,
   ALL_CORE_LIVE_SYMBOLS,
+  CORE_GLOBAL_LIVE_SYMBOLS,
   getDefaultIv,
   getFnoInstrument,
   getStrikeIntervalForSpot,
@@ -17,12 +18,17 @@ import {
   type MarketTickDto,
 } from './marketApiService';
 import {
+  fetchLiveQuotesBatch,
+  fetchMarketDataStatus,
+  type LiveQuoteRow,
+} from './marketData/marketDataApi';
+import {
   getMarketConnectionState,
   isMarketStreamActive,
   refreshMarketConnection,
   resetMarketConnectionCache,
 } from './marketConnection';
-import { serverOfflineMessage, serverUnreachableMessage } from '../constants/brandLabels';
+import { serverUnreachableMessage } from '../constants/brandLabels';
 import { API_SERVER_READY_EVENT, FYERS_MARKET_LIVE_EVENT } from './apiAutoConnect';
 import { setMarketLiveError, setMarketLiveSnapshot, setMarketProvider } from './marketLiveStore';
 
@@ -66,6 +72,7 @@ const extraLiveCache = new Map<string, LiveSymbolQuote>();
 let refreshInFlight: Promise<LiveSymbolQuote[]> | null = null;
 
 const PRIORITY_SYMBOLS = ALL_CORE_LIVE_SYMBOLS;
+const CORE_GLOBAL = new Set(CORE_GLOBAL_LIVE_SYMBOLS.map((s) => s.toUpperCase()));
 
 function changeEpsilon(price: number): number {
   const p = Math.abs(Number(price) || 0);
@@ -304,6 +311,47 @@ export function applyStreamQuotes(quotes: MarketTickDto[]): void {
   schedulePublishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
 }
 
+function indRowToTick(q: LiveQuoteRow): MarketTickDto | null {
+  const price = Number(q.price || q.lastPrice || 0);
+  if (!(price > 0)) return null;
+  const prevClose = Number(q.previousClose || 0);
+  const change =
+    Number(q.change) ||
+    (prevClose > 0 ? price - prevClose : 0);
+  return {
+    symbol: String(q.symbol || '').toUpperCase(),
+    price,
+    change,
+    changePercent: Number(q.changePercent || 0),
+    open: Number(q.dayOpen || 0),
+    high: Number(q.dayHigh || 0),
+    low: Number(q.dayLow || 0),
+    prevClose,
+    volume: Number(q.volume || 0),
+    source: 'indstocks',
+    lastUpdated: q.timestamp ? new Date(q.timestamp).toISOString() : new Date().toISOString(),
+  };
+}
+
+async function refreshFromIndstocks(): Promise<Map<string, MarketTickDto> | null> {
+  try {
+    const status = await fetchMarketDataStatus();
+    if (status.status !== 'CONNECTED' || status.mode !== 'LIVE' || !status.liveQuotes) {
+      return null;
+    }
+    const india = PRIORITY_SYMBOLS.filter((s) => !CORE_GLOBAL.has(s));
+    const data = await fetchLiveQuotesBatch(india);
+    const map = new Map<string, MarketTickDto>();
+    for (const row of data.quotes || []) {
+      const tick = indRowToTick(row);
+      if (tick) map.set(tick.symbol, tick);
+    }
+    return map;
+  } catch {
+    return null;
+  }
+}
+
 async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   const unique = [...new Set(PRIORITY_SYMBOLS)];
 
@@ -315,7 +363,15 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
     if (extras.length) applyStreamQuotes(extras);
   };
 
-  // Always merge ticks + REST quotes — never skip because streamActive is sticky.
+  const ind = await refreshFromIndstocks();
+  if (ind && ind.size) {
+    liveCache = buildCacheFromQuoteMap(ind);
+    hydrateExtras(ind);
+    setMarketProvider('indstocks');
+    publishLiveSnapshot([...liveCache, ...extraLiveCache.values()]);
+    return liveCache;
+  }
+
   const ticks = await fetchMarketTicks(unique);
   const res = await fetchMarketQuotes(unique);
   const merged = mergeQuoteMap(ticks, res?.quotes);
@@ -323,7 +379,11 @@ async function refreshFromLiveApi(): Promise<LiveSymbolQuote[]> {
   hydrateExtras(merged);
   publishLiveSnapshot(
     [...liveCache, ...extraLiveCache.values()],
-    res?.errors?.length ? `${res.errors.length} symbols delayed` : '',
+    liveCache.length
+      ? res?.errors?.length
+        ? `${res.errors.length} symbols delayed`
+        : ''
+      : 'Connect INDstocks for live prices',
   );
   return liveCache;
 }
@@ -340,13 +400,18 @@ export async function refreshFnoLiveQuotesAsync(force = false): Promise<LiveSymb
 
   const run = async () => {
     try {
+      const indFirst = await refreshFromLiveApi();
+      if (indFirst.length) return indFirst;
+
       await refreshMarketConnection();
       const health = await fetchMarketHealth();
       if (!health?.status) {
-        setMarketLiveError(serverOfflineMessage());
+        setMarketLiveError(
+          liveCache.length ? '' : 'Connect INDstocks for live prices',
+        );
         return liveCache;
       }
-      setMarketProvider(health.provider || 'tradingview');
+      setMarketProvider(health.provider || 'indstocks');
       const hasLive = liveCache.length > 0;
       const streamFresh =
         isLiveFeedActive() &&
@@ -354,7 +419,6 @@ export async function refreshFnoLiveQuotesAsync(force = false): Promise<LiveSymb
         hasLive &&
         lastStreamTickAt > 0 &&
         Date.now() - lastStreamTickAt < 8_000;
-      // Only skip REST when ticks are actually arriving — not when stream flag is stale.
       if (!force && streamFresh) {
         publishLiveSnapshot(liveCache);
         return liveCache;

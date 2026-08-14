@@ -2,8 +2,6 @@ import { FNO_INDICES, FNO_STOCKS_ALL, getFnoInstrument, getStrikeIntervalForSpot
 import { buildOptionChain, buildOptionExpiries } from '../services/optionChainEngine';
 import { getCachedOptionChain } from '../services/optionChainLiveService';
 import { getFnoLiveQuotes, getLiveQuote } from '../services/symbolLiveService';
-import { isMarketLiveEnabled } from '../services/marketApiService';
-import { getMarketConnectionState } from '../services/marketConnection';
 import {
   getLiveFiiDiiData,
   getLiveHistoricalPCR,
@@ -107,7 +105,7 @@ export interface EarningsData { symbol: string; name: string; date: string; time
 export interface IpoData { name: string; priceRange: string; lotSize: number; openDate: string; closeDate: string; status: string; }
 
 function isLiveFeedActive(): boolean {
-  return isMarketLiveEnabled() && getMarketConnectionState().serverOk;
+  return getMarketLiveState().liveCount > 0;
 }
 
 function indexFromQuote(idx: IndexData, q: NonNullable<ReturnType<typeof getLiveQuote>>): IndexData {
@@ -130,20 +128,20 @@ export function getIndices(): IndexData[] {
 
   return FNO_INDICES.map((inst) => {
     const q = getLiveQuote(inst.symbol);
-    const base: IndexData = {
+    const empty: IndexData = {
       symbol: inst.symbol,
       name: inst.name,
-      price: inst.basePrice,
+      price: 0,
       change: 0,
       changePercent: 0,
-      open: inst.basePrice,
-      high: inst.basePrice,
-      low: inst.basePrice,
-      prevClose: inst.basePrice,
+      open: 0,
+      high: 0,
+      low: 0,
+      prevClose: 0,
       volume: 0,
       value: 0,
     };
-    return q?.price ? indexFromQuote(base, q) : base;
+    return q?.price ? indexFromQuote(empty, q) : empty;
   });
 }
 
@@ -317,13 +315,12 @@ export function getOIHeatmapData(symbol: string = 'NIFTY'): OIHeatmapSnapshot {
   const indices = getIndices();
   const index = indices.find((i) => i.symbol === symbol) ?? indices[0];
   const liveQ = getLiveQuote(symbol);
-  const fallbackSpot = getFnoInstrument(symbol)?.basePrice ?? 24500;
   const spotPrice =
     liveQ?.price && liveQ.price > 0
       ? liveQ.price
       : index?.price && index.price > 0
         ? index.price
-        : fallbackSpot;
+        : 0;
   const cached = getCachedOptionChain(symbol, undefined, 0);
   const chain = cached.length ? cached : buildOptionChain(symbol, spotPrice, undefined, 0);
   const interval = symbol === 'BANKNIFTY' ? 100 : 50;
@@ -905,9 +902,7 @@ function resolveSpotForSymbol(symbol: string): { price: number; changePercent: n
   if (index) return { price: index.price, changePercent: index.changePercent };
   const stock = getStocks().find((s) => s.symbol === sym);
   if (stock) return { price: stock.price, changePercent: stock.changePercent };
-  if (isLiveFeedActive()) return { price: 0, changePercent: 0 };
-  const inst = getFnoInstrument(sym);
-  return { price: inst?.basePrice ?? 24580, changePercent: 0 };
+  return { price: 0, changePercent: 0 };
 }
 
 function buildFuturesOIRow(symbol: string): FuturesOIData {

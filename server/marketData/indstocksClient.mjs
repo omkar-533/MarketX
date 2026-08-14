@@ -172,14 +172,19 @@ export function wolfTfToIndInterval(tf) {
   return TF_MAP[tf] || null;
 }
 
-export async function fetchIndstocksQuote(accessToken, scripCode) {
-  const { json } = await indFetch('/market/quotes/full', accessToken, {
-    searchParams: { 'scrip-codes': scripCode },
-  });
-  const data = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
-  if (!data) throw new Error('Quote unavailable for symbol');
-  const lastPrice = Number(data.live_price ?? data.ltp ?? data.last_price ?? 0);
-  const changePercent = Number(data.day_change_percentage ?? data.change_percent ?? 0);
+function parseIndstocksQuote(scripCode, data) {
+  if (!data || typeof data !== 'object') return null;
+  const lastPrice = Number(data.live_price ?? data.ltp ?? data.last_price ?? data.close ?? 0);
+  if (!(lastPrice > 0)) return null;
+  const prevClose = Number(data.prev_close ?? data.previous_close ?? data.close_price ?? 0);
+  const changePercentRaw = Number(data.day_change_percentage ?? data.change_percent ?? data.pChange ?? 0);
+  const changeAbs = Number(data.day_change ?? data.change ?? 0);
+  const changePercent =
+    Number.isFinite(changePercentRaw) && changePercentRaw !== 0
+      ? changePercentRaw
+      : prevClose > 0
+        ? ((lastPrice - prevClose) / prevClose) * 100
+        : 0;
   return {
     symbol: scripCode,
     exchange: String(scripCode).split('_')[0] || 'NSE',
@@ -188,14 +193,60 @@ export async function fetchIndstocksQuote(accessToken, scripCode) {
     lastPrice,
     price: lastPrice,
     changePercent,
+    change: Number.isFinite(changeAbs) && changeAbs !== 0 ? changeAbs : prevClose > 0 ? lastPrice - prevClose : 0,
     volume: data.volume != null ? Number(data.volume) : undefined,
     dayOpen: data.open != null ? Number(data.open) : undefined,
     dayHigh: data.high != null ? Number(data.high) : undefined,
     dayLow: data.low != null ? Number(data.low) : undefined,
-    previousClose: data.prev_close != null ? Number(data.prev_close) : undefined,
+    previousClose: prevClose > 0 ? prevClose : undefined,
     bid: data.bid != null ? Number(data.bid) : undefined,
     ask: data.ask != null ? Number(data.ask) : undefined,
   };
+}
+
+export async function fetchIndstocksQuote(accessToken, scripCode) {
+  const { json } = await indFetch('/market/quotes/full', accessToken, {
+    searchParams: { 'scrip-codes': scripCode },
+  });
+  const data = json?.data?.[scripCode] || json?.data?.[Object.keys(json?.data || {})[0]];
+  const row = parseIndstocksQuote(scripCode, data);
+  if (!row) throw new Error('Quote unavailable for symbol');
+  return row;
+}
+
+/** Batch LTP from INDstocks. Missing scrips are omitted — never invented. */
+export async function fetchIndstocksQuotesMany(accessToken, scripCodes) {
+  const unique = [...new Set((scripCodes || []).map((s) => String(s || '').trim()).filter(Boolean))];
+  const out = new Map();
+  const CHUNK = 20;
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const chunk = unique.slice(i, i + CHUNK);
+    try {
+      const { json } = await indFetch('/market/quotes/full', accessToken, {
+        searchParams: { 'scrip-codes': chunk.join(',') },
+      });
+      const data = json?.data && typeof json.data === 'object' ? json.data : {};
+      for (const code of chunk) {
+        const row = parseIndstocksQuote(code, data[code]);
+        if (row) out.set(code, row);
+      }
+    } catch {
+      /* fall through to per-scrip */
+    }
+    const missing = chunk.filter((c) => !out.has(c));
+    if (!missing.length) continue;
+    await Promise.all(
+      missing.map(async (code) => {
+        try {
+          const q = await fetchIndstocksQuote(accessToken, code);
+          if (q?.price > 0) out.set(code, q);
+        } catch {
+          /* skip — never invent LTP */
+        }
+      }),
+    );
+  }
+  return out;
 }
 
 export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars = 80, opts = {}) {
