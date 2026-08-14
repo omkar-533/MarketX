@@ -144,10 +144,9 @@ function userKeyFrom(req, res) {
   if (authUser) return `user:${authUser}`;
 
   let sid = req.cookies?.[SESSION_COOKIE];
-  if (!sid) {
-    sid = randomUUID();
-    res.cookie(SESSION_COOKIE, sid, cookieOpts());
-  }
+  if (!sid) sid = randomUUID();
+  // Always refresh attrs so a leftover Lax cookie upgrades to None+Secure.
+  res.cookie(SESSION_COOKIE, sid, cookieOpts());
   return `session:${sid}`;
 }
 

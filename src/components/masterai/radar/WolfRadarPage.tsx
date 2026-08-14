@@ -222,7 +222,14 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       // Restart: drop the in-flight scan so a click always feels alive
       abortRef.current?.abort();
     }
-    const liveProvider = resolveScanProvider(mdStatus);
+    let status = mdStatus;
+    try {
+      status = await fetchMarketDataStatus();
+      setMdStatus(status);
+    } catch {
+      /* keep last known status */
+    }
+    const liveProvider = resolveScanProvider(status);
     if (!liveProvider) {
       setConnectOpen(true);
       return;
