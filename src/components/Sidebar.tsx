@@ -16,6 +16,7 @@ import {
   SHOW_TERMINAL,
 } from '../constants/featureFlags';
 import BrandMark from './BrandMark';
+import AppLink from './AppLink';
 
 interface SidebarProps {
   activeTab: string;
@@ -79,10 +80,9 @@ function NavLink({
   const Icon = item.icon;
   const isActive = activeTab === item.id;
   return (
-    <button
-      key={item.id}
-      type="button"
-      onClick={() => {
+    <AppLink
+      to={item.id}
+      onActivate={() => {
         onTabChange(item.id);
         onMobileClose?.();
       }}
@@ -122,7 +122,7 @@ function NavLink({
           {item.label}
         </motion.div>
       )}
-    </button>
+    </AppLink>
   );
 }
 
@@ -190,9 +190,9 @@ export default function Sidebar({
           {collapsed ? '·' : 'Account'}
         </div>
         {(user?.role === 'admin' || user?.role === 'subadmin') && (
-          <button
-            type="button"
-            onClick={() => {
+          <AppLink
+            to="admin"
+            onActivate={() => {
               onTabChange('admin');
               onMobileClose?.();
             }}
@@ -208,11 +208,11 @@ export default function Sidebar({
                 </motion.span>
               )}
             </AnimatePresence>
-          </button>
+          </AppLink>
         )}
-        <button
-          type="button"
-          onClick={() => {
+        <AppLink
+          to="subscription"
+          onActivate={() => {
             onTabChange('subscription');
             onMobileClose?.();
           }}
@@ -228,7 +228,7 @@ export default function Sidebar({
               </motion.span>
             )}
           </AnimatePresence>
-        </button>
+        </AppLink>
         {user && (
           <button
             type="button"

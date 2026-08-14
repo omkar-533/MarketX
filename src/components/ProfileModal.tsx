@@ -15,6 +15,7 @@ import {
 } from '../services/openRouterKey';
 import { fileToEditorSrc } from '../services/profileAvatar';
 import ProfileAvatarEditor from './ProfileAvatarEditor';
+import AppLink from './AppLink';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -313,16 +314,16 @@ export default function ProfileModal({
 
             <div className="flex flex-col gap-2">
               {onUpgrade && user.plan !== 'premium' && (
-                <button
-                  type="button"
-                  onClick={() => {
+                <AppLink
+                  to="subscription"
+                  onActivate={() => {
                     onUpgrade();
                     onClose();
                   }}
-                  className="w-full py-2.5 rounded-xl bg-gold text-dark-surface font-bold text-sm hover:bg-gold-light transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-gold text-dark-surface font-bold text-sm hover:bg-gold-light transition-colors text-center"
                 >
                   Upgrade plan
-                </button>
+                </AppLink>
               )}
               <button
                 type="button"

@@ -41,6 +41,8 @@ import {
   OPPORTUNITY_CARD_POOL,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
+import AppLink from '../../AppLink';
+import { liveWolfQuery } from '../../../utils/appNav';
 
 function mergeHitIntoCards(
   prev: ScannerCardState[],
@@ -131,9 +133,10 @@ function HitTile({
   onChart: () => void;
 }) {
   const bias = biasOf(hit);
+  const q = liveWolfQuery(hit);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
-      <button type="button" className="wolf-opp__tile-main" onClick={onOpen}>
+      <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
         <span className="wolf-opp__tile-sym">{hit.symbol}</span>
         <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
           {hit.changePercent >= 0 ? '+' : ''}
@@ -145,7 +148,7 @@ function HitTile({
           <BiasBadge dir={bias} size="sm" />
           <em>Created {formatHitClock(hit.detectedAt)} IST</em>
         </span>
-      </button>
+      </AppLink>
       <div className="wolf-opp__tile-actions">
         <button
           type="button"
@@ -157,16 +160,14 @@ function HitTile({
         >
           Why
         </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onChart();
-          }}
+        <AppLink
+          to="live-wolf"
+          query={q}
+          onActivate={onChart}
+          onClick={(e) => e.stopPropagation()}
         >
           <Crosshair size={12} /> Chart
-        </button>
+        </AppLink>
       </div>
     </article>
   );
@@ -759,12 +760,22 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                 <b>Invalidation</b> {selected.invalidation}
               </p>
               <div className="wolf-opp__drawer-cta">
-                <button type="button" className="wolf-opp__cta" onClick={() => openChart(selected)}>
+                <AppLink
+                  to="live-wolf"
+                  query={liveWolfQuery(selected)}
+                  className="wolf-opp__cta"
+                  onActivate={() => openChart(selected)}
+                >
                   <Crosshair size={14} /> Open chart
-                </button>
-                <button type="button" className="wolf-opp__cta wolf-opp__cta--ghost" onClick={() => openAnalyze(selected)}>
+                </AppLink>
+                <AppLink
+                  to="live-wolf"
+                  query={liveWolfQuery(selected)}
+                  className="wolf-opp__cta wolf-opp__cta--ghost"
+                  onActivate={() => openAnalyze(selected)}
+                >
                   Ask Wolf
-                </button>
+                </AppLink>
               </div>
             </motion.div>
           </motion.div>

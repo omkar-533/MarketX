@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   loadTerminalState,
+  openTerminalWithSymbol,
   saveTerminalState,
   TERMINAL_OPEN_SYMBOL_EVENT,
   type TerminalState,
@@ -10,6 +11,7 @@ import {
   type TerminalChartCount,
 } from '../../services/terminalChartLayouts';
 import { type TvChartStyle, type TvInterval } from '../../utils/tradingViewSymbols';
+import { parseHashQuery } from '../../utils/appNav';
 import TerminalTopBar from './TerminalTopBar';
 import TerminalChartGrid from './TerminalChartGrid';
 import TerminalRightDock, { type RightPanel } from './TerminalRightDock';
@@ -23,7 +25,11 @@ export type TerminalPageProps = {
  * Wolf Terminal — TradingView-style desk chrome over native / widget chart kernels.
  */
 export default function TerminalPage({ onNavigate }: TerminalPageProps) {
-  const [state, setState] = useState<TerminalState>(() => loadTerminalState());
+  const [state, setState] = useState<TerminalState>(() => {
+    const fromHash = parseHashQuery().get('symbol');
+    if (fromHash) openTerminalWithSymbol(fromHash);
+    return loadTerminalState();
+  });
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {

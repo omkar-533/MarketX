@@ -19,6 +19,8 @@ import {
   mergeRadarResultKeepFirstSeen,
 } from '../../../services/radar/radarStore';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
+import AppLink from '../../AppLink';
+import { liveWolfQuery } from '../../../utils/appNav';
 import type {
   RadarResult,
   RadarScanIssue,
@@ -862,10 +864,11 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
               key={r.symbol}
               className="wolf-radar-desk__card"
             >
-              <button
-                type="button"
+              <AppLink
+                to="live-wolf"
+                query={liveWolfQuery(r)}
                 className="wolf-radar-desk__card-main"
-                onClick={() => onOpenLiveClick(r)}
+                onActivate={() => onOpenLiveClick(r)}
               >
                 <div className="wolf-radar-desk__card-top">
                   <div>
@@ -897,17 +900,27 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                 )}
                 <div className={`state ${statusClass(r.status)}`}>{r.status}</div>
                 <time>Created {formatTime(r.detectedAt)} IST</time>
-              </button>
+              </AppLink>
               <div className="wolf-radar-desk__card-actions">
-                <button type="button" className="primary" onClick={() => onOpenLiveClick(r)}>
+                <AppLink
+                  to="live-wolf"
+                  query={liveWolfQuery(r)}
+                  className="primary"
+                  onActivate={() => onOpenLiveClick(r)}
+                >
                   LIVE WOLF
-                </button>
+                </AppLink>
                 <button type="button" className="ghost" onClick={() => setSelected(r)}>
                   DETAILS
                 </button>
-                <button type="button" className="ghost" onClick={() => onAnalyzeClick(r)}>
+                <AppLink
+                  to="live-wolf"
+                  query={liveWolfQuery(r)}
+                  className="ghost"
+                  onActivate={() => onAnalyzeClick(r)}
+                >
                   ANALYZE
-                </button>
+                </AppLink>
                 <button
                   type="button"
                   className="ghost"
@@ -1013,9 +1026,14 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
             </div>
 
             <div className="wolf-radar-desk__card-actions">
-              <button type="button" className="primary" onClick={() => onAnalyzeClick(selected)}>
+              <AppLink
+                to="live-wolf"
+                query={liveWolfQuery(selected)}
+                className="primary"
+                onActivate={() => onAnalyzeClick(selected)}
+              >
                 ANALYZE IN LIVE WOLF
-              </button>
+              </AppLink>
               <button type="button" className="ghost" onClick={() => onAddWatch(selected)}>
                 ADD TO WATCHLIST
               </button>

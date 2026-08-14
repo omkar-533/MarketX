@@ -17,6 +17,7 @@ import { LIVE_WOLF_OPEN_EVENT } from './services/live/liveBridge';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { clearOpportunityDayBoard } from './services/opportunity/opportunityStore';
 import { clearRadarDayBoard } from './services/radar/radarStore';
+import AppLink from './components/AppLink';
 
 const AuthPage = lazyWithRetry(() => import('./components/auth/AuthPage'));
 const Sidebar = lazyWithRetry(() => import('./components/Sidebar'));
@@ -545,9 +546,9 @@ function AppWorkspace() {
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>
-                    <button type="button" onClick={() => handleTabChange('wolf-opportunity')}>
+                    <AppLink to="wolf-opportunity" onActivate={() => handleTabChange('wolf-opportunity')}>
                       Unlock access
-                    </button>
+                    </AppLink>
                   </div>
                 ) : null}
                 <Suspense fallback={<PageLoader />}>{renderLoggedInContent()}</Suspense>

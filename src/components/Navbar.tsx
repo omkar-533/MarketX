@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import BrandMark from './BrandMark';
+import AppLink from './AppLink';
 import { BRAND_SHORT } from '../constants/brandLabels';
 import { SHOW_DASHBOARD, SHOW_OPTION_CHAIN } from '../constants/featureFlags';
 
@@ -51,9 +52,10 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <AppLink
                   key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
+                  to={tab.id}
+                  onActivate={() => onTabChange(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive 
                       ? 'bg-gold-15 text-gold border border-gold-30' 
@@ -62,7 +64,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
-                </button>
+                </AppLink>
               );
             })}
           </div>
@@ -89,9 +91,10 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <AppLink
                   key={tab.id}
-                  onClick={() => { onTabChange(tab.id); setMobileOpen(false); }}
+                  to={tab.id}
+                  onActivate={() => { onTabChange(tab.id); setMobileOpen(false); }}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isActive 
                       ? 'bg-gold-15 text-gold border border-gold-30' 
@@ -100,7 +103,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
-                </button>
+                </AppLink>
               );
             })}
           </div>

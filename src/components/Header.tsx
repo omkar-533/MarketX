@@ -4,6 +4,7 @@ import ThemeToggle from './ThemeToggle';
 import type { User } from '../hooks/useAuth';
 import { BRAND } from '../constants/brandLabels';
 import BrandMark from './BrandMark';
+import AppLink from './AppLink';
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -70,12 +71,12 @@ export default function Header({ user, onProfile, onMenuClick, onBack, className
         </button>
       ) : null}
 
-      <div className="shrink-0 min-w-0 mr-auto" title={BRAND}>
+      <AppLink to="wolf-opportunity" className="shrink-0 min-w-0 mr-auto" title={BRAND}>
         <BrandMark
           size="sm"
           nameClassName="inline-block truncate text-[0.95rem] sm:text-[1.2rem] max-w-[7.5rem] sm:max-w-none"
         />
-      </div>
+      </AppLink>
 
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
         <div className="hidden sm:block">

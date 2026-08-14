@@ -12,6 +12,12 @@ body {
   overflow-x: hidden;
 }
 
+a.app-nav-link {
+  text-decoration: none;
+  color: inherit;
+  box-sizing: border-box;
+}
+
 /* ??? App design system ??? */
 .app-shell {
   min-height: 100vh;
@@ -27395,6 +27401,10 @@ body:has(.app-main--terminal-immersive) #root {
   padding: 0.85rem 0.9rem 0.65rem;
   color: inherit;
   width: 100%;
+  display: block;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 .wolf-radar-desk__card-top {
   display: flex;
@@ -29505,7 +29515,8 @@ body:has(.app-main--terminal-immersive) #root {
   gap: 0.25rem;
   padding: 0.5rem 0.55rem 0.5rem 0.15rem;
 }
-.wolf-opp__tile-actions button {
+.wolf-opp__tile-actions button,
+.wolf-opp__tile-actions a {
   border: 0;
   background: rgba(255, 255, 255, 0.06);
   color: var(--opp-muted);
@@ -29521,7 +29532,8 @@ body:has(.app-main--terminal-immersive) #root {
   white-space: nowrap;
   transition: color 0.18s ease, background 0.18s ease;
 }
-.wolf-opp__tile-actions button:hover {
+.wolf-opp__tile-actions button:hover,
+.wolf-opp__tile-actions a:hover {
   color: var(--opp-text);
   background: rgba(255, 255, 255, 0.12);
 }

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, MessageCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 import AccessUnlockPanel from './AccessUnlockPanel';
+import AppLink from '../AppLink';
 import type { AccessPopup, AccessState } from '../../services/appInviteAuth';
 
 type AccessGateProps = {
@@ -96,9 +97,9 @@ export default function AccessGate({
                 <RefreshCw className="w-3.5 h-3.5" />
                 Check again
               </button>
-              <button type="button" className="access-gate__ghost" onClick={goSeePlans}>
+              <AppLink to="subscription" className="access-gate__ghost" onActivate={goSeePlans}>
                 See plans
-              </button>
+              </AppLink>
               {whatsapp ? (
                 <a
                   className="access-gate__ghost access-gate__ghost--wa"

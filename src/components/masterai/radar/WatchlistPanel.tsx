@@ -3,6 +3,8 @@ import { Bookmark, Sparkles, Trash2 } from 'lucide-react';
 import { loadLastResults, loadWatchlist, removeFromWatchlist } from '../../../services/radar/radarStore';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type { WatchlistItem } from '../../../services/radar/radarTypes';
+import AppLink from '../../AppLink';
+import { liveWolfQuery } from '../../../utils/appNav';
 
 type Props = {
   onAnalyze: () => void;
@@ -37,9 +39,9 @@ export default function WatchlistPanel({ onAnalyze, onOpenRadar }: Props) {
         <div className="wolf-radar-desk__empty">
           <p>Watchlist is empty</p>
           <span>Scan the market, then add only the charts worth your attention.</span>
-          <button type="button" className="wolf-radar-desk__scan-btn" onClick={onOpenRadar}>
+          <AppLink to="wolf-radar" className="wolf-radar-desk__scan-btn" onActivate={onOpenRadar}>
             OPEN WOLF RADAR
-          </button>
+          </AppLink>
         </div>
       </div>
     );
@@ -83,9 +85,14 @@ export default function WatchlistPanel({ onAnalyze, onOpenRadar }: Props) {
               </time>
             </div>
             <div className="wolf-radar-desk__card-actions">
-              <button type="button" className="primary" onClick={() => analyze(item)}>
+              <AppLink
+                to="live-wolf"
+                query={liveWolfQuery({ symbol: item.symbol })}
+                className="primary"
+                onActivate={() => analyze(item)}
+              >
                 <Sparkles size={14} /> ANALYZE
-              </button>
+              </AppLink>
               <button
                 type="button"
                 className="ghost"

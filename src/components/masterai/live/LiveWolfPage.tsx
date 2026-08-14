@@ -39,6 +39,7 @@ import {
   tradingViewSymbolLabel,
   type TvInterval,
 } from '../../../utils/tradingViewSymbols';
+import { parseHashQuery } from '../../../utils/appNav';
 
 type Props = {
   onAskWolf?: () => void;
@@ -90,6 +91,19 @@ function tvFromPayload(p: LiveWolfOpenPayload): string {
 }
 
 function bootLiveWolf(): { tv: string; tf: RadarTimeframe } {
+  const q = parseHashQuery();
+  const hashSymbol = q.get('symbol');
+  if (hashSymbol) {
+    consumePendingLiveWolf();
+    const exchange = q.get('exchange') || 'NSE';
+    const rawTf = q.get('tf') || '5m';
+    const tf = (TFS.includes(rawTf as RadarTimeframe) ? rawTf : '5m') as RadarTimeframe;
+    const tv = parseTradingViewInput(
+      hashSymbol.includes(':') ? hashSymbol : `${exchange}:${hashSymbol}`,
+    );
+    rememberLiveWolfDesk(tv, tf);
+    return { tv, tf };
+  }
   const pending = consumePendingLiveWolf();
   if (pending?.symbol) {
     const tv = tvFromPayload(pending);

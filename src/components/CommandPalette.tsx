@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Command, ArrowRight } from 'lucide-react';
+import { ArrowRight, Command, Search } from 'lucide-react';
+import AppLink from './AppLink';
 import {
   SHOW_DASHBOARD,
   SHOW_INDICATORS,
@@ -81,9 +82,10 @@ export default function CommandPalette({ isOpen, onClose, onNavigate }: CommandP
         </div>
         <div className="max-h-[300px] overflow-y-auto p-2">
           {filtered.map((cmd, idx) => (
-            <button
+            <AppLink
               key={cmd.id}
-              onClick={() => { onNavigate(cmd.id); onClose(); }}
+              to={cmd.id}
+              onActivate={() => { onNavigate(cmd.id); onClose(); }}
               className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition-colors ${idx === selectedIndex ? 'bg-[#d4af37]/10 text-[#d4af37]' : 'text-slate-400 hover:bg-[#121520]'}`}
             >
               <span>{cmd.label}</span>
@@ -91,7 +93,7 @@ export default function CommandPalette({ isOpen, onClose, onNavigate }: CommandP
                 <span className="text-[10px] bg-[#1a1f2e] px-1.5 py-0.5 rounded text-slate-500">{cmd.shortcut}</span>
                 {idx === selectedIndex && <ArrowRight className="w-4 h-4" />}
               </div>
-            </button>
+            </AppLink>
           ))}
           {filtered.length === 0 && <div className="p-4 text-center text-xs text-slate-600">No results found</div>}
         </div>

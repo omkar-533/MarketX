@@ -14,6 +14,7 @@ import {
   Trash2,
   Wand2,
 } from 'lucide-react';
+import AppLink from '../../AppLink';
 import {
   CONDITION_CATEGORIES,
   CONDITION_REGISTRY,
@@ -545,9 +546,9 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                         {s.description && <p className="wolf-lab__desc">{s.description}</p>}
                       </div>
                       <div className="wolf-radar-desk__card-actions">
-                        <button type="button" className="primary" onClick={() => onScan(s)}>
+                        <AppLink to="wolf-radar" className="primary" onActivate={() => onScan(s)}>
                           <ScanSearch size={14} /> SCAN
-                        </button>
+                        </AppLink>
                         <button
                           type="button"
                           className="ghost"
