@@ -4,6 +4,7 @@ import {
   closedBarIndex,
   firstConsecutiveHitTime,
   firstHitTimeOfIstDay,
+  keepFirstSetupTime,
   sessionBarsNeeded,
   setupCreatedAtFromCandles,
   setupCreatedAtMs,
@@ -69,12 +70,11 @@ describe('barTime', () => {
     assert.equal(t, ts + FIVE);
   });
 
-  it('walks the whole window when 09:15 is not in the series', () => {
+  it('returns 0 when today\'s IST session is not in the series', () => {
     const now = Date.parse('2026-08-14T14:32:00+05:30');
     const start = Date.parse('2026-08-13T14:00:00+05:30');
     const candles = Array.from({ length: 10 }, (_, i) => bar(start + i * FIVE));
-    const created = firstHitTimeOfIstDay(candles, '5m', (i) => i >= 2, now);
-    assert.equal(created, start + 2 * FIVE + FIVE);
+    assert.equal(firstHitTimeOfIstDay(candles, '5m', (i) => i >= 2, now), 0);
   });
 
   it('returns 0 when the setup never printed in the window', () => {
@@ -88,5 +88,15 @@ describe('barTime', () => {
     const afterClose = Date.parse('2026-08-14T16:00:00+05:30');
     assert.ok(sessionBarsNeeded('5m', afterClose) >= 115);
     assert.ok(sessionBarsNeeded('1m', afterClose) >= 400);
+  });
+
+  it('keeps the earlier print today and drops yesterday', () => {
+    const now = Date.parse('2026-08-14T16:00:00+05:30');
+    const morning = Date.parse('2026-08-14T10:20:00+05:30');
+    const afternoon = Date.parse('2026-08-14T14:35:00+05:30');
+    const yesterday = Date.parse('2026-08-13T14:35:00+05:30');
+    assert.equal(keepFirstSetupTime(afternoon, morning, now), morning);
+    assert.equal(keepFirstSetupTime(yesterday, morning, now), morning);
+    assert.equal(keepFirstSetupTime(yesterday, 0, now), 0);
   });
 });

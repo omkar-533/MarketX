@@ -13,7 +13,7 @@ import {
   TrendingDown,
   Minus,
 } from 'lucide-react';
-import { getMarketSession } from '../../../utils/marketHours';
+import { getMarketSession, istCalendarDay } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
@@ -76,6 +76,7 @@ function formatHitPrice(price: number): string {
 
 function formatHitClock(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return '—';
+  if (istCalendarDay(new Date(ms)) !== istCalendarDay()) return '—';
   return new Date(ms).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',

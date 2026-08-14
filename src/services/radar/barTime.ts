@@ -121,8 +121,9 @@ export function sessionBarsNeeded(timeframe: string, now = Date.now()): number {
 }
 
 /**
- * First time this setup printed today — even if it later failed and printed again.
- * Walks forward from the IST session open; never uses the scan clock.
+ * First time this setup printed on the current IST calendar day.
+ * Walks forward from the IST session open. Does not stamp yesterday,
+ * the scan clock, or the last candle unless that bar was the first print today.
  */
 export function firstHitTimeOfIstDay(
   candles: { timestamp: number }[],
@@ -132,26 +133,41 @@ export function firstHitTimeOfIstDay(
 ): number {
   const end = closedBarIndex(candles, timeframe, now);
   if (end < 0) return 0;
-  const session = istSessionStartMs(now);
-  let start = 0;
-  if (session > 0) {
-    for (let i = 0; i <= end; i += 1) {
-      if (candleTimeMs(candles[i].timestamp) >= session) {
-        start = i;
-        break;
-      }
+  const today = istCalendarDay(new Date(now));
+  const session =
+    timeframe === '1D' || timeframe === '4h'
+      ? Date.parse(`${today}T00:00:00+05:30`)
+      : istSessionStartMs(now);
+  if (!(session > 0) || session > now + 2_000) return 0;
+
+  let start = -1;
+  for (let i = 0; i <= end; i += 1) {
+    if (candleTimeMs(candles[i].timestamp) >= session) {
+      start = i;
+      break;
     }
   }
+  if (start < 0) return 0;
+
   for (let i = start; i <= end; i += 1) {
-    if (hitsAt(i)) return setupCreatedAtMs(candles[i].timestamp, timeframe, now);
+    if (!hitsAt(i)) continue;
+    const t = setupCreatedAtMs(candles[i].timestamp, timeframe, now);
+    if (t > 0 && t <= now + 2_000 && istCalendarDay(new Date(t)) === today) return t;
   }
   return 0;
 }
 
+function onIstDay(ms: number, now: number): number {
+  const t = Number(ms) || 0;
+  if (t <= 0 || t > now + 2_000) return 0;
+  if (istCalendarDay(new Date(t)) !== istCalendarDay(new Date(now))) return 0;
+  return t;
+}
+
 /** Keep the earliest real setup time when the same name reprints later in the IST day. */
-export function keepFirstSetupTime(prev: number, next: number): number {
-  const a = Number(prev) || 0;
-  const b = Number(next) || 0;
+export function keepFirstSetupTime(prev: number, next: number, now = Date.now()): number {
+  const a = onIstDay(prev, now);
+  const b = onIstDay(next, now);
   if (a > 0 && b > 0) return Math.min(a, b);
   return a || b;
 }

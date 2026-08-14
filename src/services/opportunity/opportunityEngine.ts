@@ -5,7 +5,7 @@
 import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import { firstHitTimeOfIstDay, sessionBarsNeeded } from '../radar/barTime';
+import { firstHitTimeOfIstDay, keepFirstSetupTime, sessionBarsNeeded } from '../radar/barTime';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -135,6 +135,7 @@ export async function runOpportunityScan(
 
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
+    hit.detectedAt = keepFirstSetupTime(0, hit.detectedAt);
     if (hit.score < filters.minScore) return;
     if (
       filters.direction !== 'all' &&
