@@ -101,7 +101,7 @@ function authHeaders(accessToken) {
   };
 }
 
-const IND_MAX_INFLIGHT = 10;
+const IND_MAX_INFLIGHT = 12;
 let indInflight = 0;
 const indWaiters = [];
 

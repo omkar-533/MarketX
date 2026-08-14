@@ -14,6 +14,7 @@ import { cacheLastResults } from './radarStore';
 import { evaluateStrategy } from '../strategy/conditionEvaluator';
 import type { StrategyDefinition } from '../strategy/strategyTypes';
 import type {
+  Candle,
   MarketPulseItem,
   RadarBias,
   RadarResult,
@@ -22,6 +23,7 @@ import type {
   RadarScanProgress,
   RadarScanRequest,
   RadarScanSummary,
+  RadarTimeframe,
 } from './radarTypes';
 
 export type ScanActivityRow = {
@@ -50,6 +52,61 @@ export type RunRadarScanOptions = ScanCallbacks & {
 const MIN_SCORE = 62;
 /** Display only — full universe still scanned */
 export const DEFAULT_DISPLAY_LIMIT = 20;
+
+type CandleBatchProvider = MarketDataProvider & {
+  getCandlesMany?: (
+    symbols: string[],
+    timeframe: RadarTimeframe,
+    bars?: number,
+  ) => Promise<Record<string, Candle[]>>;
+};
+
+async function loadCandleMap(
+  provider: CandleBatchProvider,
+  symbols: string[],
+  timeframe: RadarTimeframe,
+  bars: number,
+  signal?: AbortSignal,
+): Promise<Record<string, Candle[]>> {
+  if (signal?.aborted) return {};
+  if (typeof provider.getCandlesMany === 'function') {
+    return provider.getCandlesMany(symbols, timeframe, bars);
+  }
+  const out: Record<string, Candle[]> = {};
+  const conc = provider.isDemo ? 12 : 8;
+  for (let i = 0; i < symbols.length; i += conc) {
+    if (signal?.aborted) break;
+    const slice = symbols.slice(i, i + conc);
+    await Promise.all(
+      slice.map(async (symbol) => {
+        try {
+          out[symbol] = await provider.getCandles(symbol, timeframe, bars);
+        } catch {
+          out[symbol] = [];
+        }
+      }),
+    );
+  }
+  return out;
+}
+
+async function loadLtfHtf(
+  provider: CandleBatchProvider,
+  symbols: string[],
+  ltf: RadarTimeframe,
+  htf: RadarTimeframe,
+  signal?: AbortSignal,
+): Promise<{ ltfMap: Record<string, Candle[]>; htfMap: Record<string, Candle[]> }> {
+  if (ltf === htf) {
+    const ltfMap = await loadCandleMap(provider, symbols, ltf, 80, signal);
+    return { ltfMap, htfMap: ltfMap };
+  }
+  const [ltfMap, htfMap] = await Promise.all([
+    loadCandleMap(provider, symbols, ltf, 80, signal),
+    loadCandleMap(provider, symbols, htf, 80, signal),
+  ]);
+  return { ltfMap, htfMap };
+}
 
 function htfFromTrend(t: 'up' | 'down' | 'range'): RadarBias {
   if (t === 'up') return 'bullish';
@@ -191,9 +248,9 @@ export async function runRadarScanFull(
   );
   const signal = opts.signal;
 
-  // Process entire universe — batched concurrency for data fetch only
-  const CONCURRENCY = provider.isDemo ? 8 : 1;
+  const FETCH_BATCH = provider.isDemo ? 24 : 40;
   const started = Date.now();
+  const batchProvider = provider as CandleBatchProvider;
 
   let symbols: string[] = [];
   try {
@@ -261,41 +318,64 @@ export async function runRadarScanFull(
   };
 
   report(0, 'UNIVERSE');
-  await new Promise((r) => setTimeout(r, 40));
 
-  const htfTf = req.timeframe === '1D' || req.timeframe === '4h' ? '1D' : '1h';
+  const htfTf: RadarTimeframe = req.timeframe === '1D' || req.timeframe === '4h' ? '1D' : '1h';
 
-  for (let start = 0; start < symbols.length; start += CONCURRENCY) {
+  let pendingPair: Promise<{ ltfMap: Record<string, Candle[]>; htfMap: Record<string, Candle[]> }> | null =
+    symbols.length
+      ? loadLtfHtf(batchProvider, symbols.slice(0, FETCH_BATCH), req.timeframe, htfTf, signal)
+      : null;
+
+  for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
     if (signal?.aborted) break;
-    const batch = symbols.slice(start, start + CONCURRENCY);
-    await Promise.all(
-      batch.map(async (symbol, bi) => {
-        if (signal?.aborted) return;
-        const i = start + bi;
-        report(i, 'EVALUATING', symbol);
-        try {
-          const [ltf, htf] = await Promise.all([
-            provider.getCandles(symbol, req.timeframe, 80),
-            provider.getCandles(symbol, htfTf, 80),
-          ]);
-          if (ltf.length < 25) {
-            unavailableSoFar += 1;
-            issues.push({ symbol, reason: 'Insufficient historical candles' });
-            opts.onActivity?.({
-              symbol,
-              status: 'DATA_UNAVAILABLE',
-              reason: 'Insufficient historical candles',
-              at: Date.now(),
-            });
-            return;
-          }
+    const batch = symbols.slice(start, start + FETCH_BATCH);
+    const nextBatch =
+      start + FETCH_BATCH < symbols.length
+        ? symbols.slice(start + FETCH_BATCH, start + FETCH_BATCH * 2)
+        : null;
+    const { ltfMap, htfMap } = pendingPair
+      ? await pendingPair
+      : await loadLtfHtf(batchProvider, batch, req.timeframe, htfTf, signal);
+    pendingPair = nextBatch
+      ? loadLtfHtf(batchProvider, nextBatch, req.timeframe, htfTf, signal)
+      : null;
 
-          const tech = analyzeTechnical(ltf);
-          const structure = detectStructure(ltf, req.timeframe);
-          const liquidity = detectLiquidity(ltf, req.timeframe);
-          const volume = detectVolume(ltf);
-          const htfTrend = trendDirection(htf);
-          const classified = classifySetup({
+    for (let bi = 0; bi < batch.length; bi += 1) {
+      if (signal?.aborted) break;
+      const symbol = batch[bi];
+      const i = start + bi;
+      report(i, 'EVALUATING', symbol);
+      try {
+        const ltf = ltfMap[symbol] || ltfMap[String(symbol).toUpperCase()] || [];
+        const htf = htfMap[symbol] || htfMap[String(symbol).toUpperCase()] || ltf;
+        if (ltf.length < 25) {
+          unavailableSoFar += 1;
+          issues.push({ symbol, reason: 'Insufficient historical candles' });
+          opts.onActivity?.({
+            symbol,
+            status: 'DATA_UNAVAILABLE',
+            reason: 'Insufficient historical candles',
+            at: Date.now(),
+          });
+          continue;
+        }
+
+        const tech = analyzeTechnical(ltf);
+        const structure = detectStructure(ltf, req.timeframe);
+        const liquidity = detectLiquidity(ltf, req.timeframe);
+        const volume = detectVolume(ltf);
+        const htfTrend = trendDirection(htf);
+        const classified = classifySetup({
+          timeframe: req.timeframe,
+          tech,
+          structure,
+          liquidity,
+          volume,
+          htfTrend,
+        });
+        const setup =
+          classified ||
+          buildWatchSetup({
             timeframe: req.timeframe,
             tech,
             structure,
@@ -303,93 +383,73 @@ export async function runRadarScanFull(
             volume,
             htfTrend,
           });
-          // Always score — strategy matches previously showed fake 0/100 when classifySetup returned null
-          const setup =
-            classified ||
-            buildWatchSetup({
-              timeframe: req.timeframe,
-              tech,
-              structure,
-              liquidity,
-              volume,
-              htfTrend,
-            });
-          const scored = computeWolfScore({ structure, liquidity, volume, tech, setup });
+        const scored = computeWolfScore({ structure, liquidity, volume, tech, setup });
+        const quotePrice = tech.last;
 
-          let quotePrice = tech.last;
-          try {
-            const quote = await provider.getQuote(symbol);
-            quotePrice = quote.price || tech.last;
-          } catch {
-            /* quote optional */
-          }
+        const row: RadarResult = {
+          id: `radar-${symbol}-${req.timeframe}-${Date.now()}-${i}`,
+          symbol,
+          exchange: req.market,
+          price: quotePrice,
+          timeframe: req.timeframe,
+          setupType: setup.setupType,
+          direction: setup.direction,
+          score: scored.score,
+          scoreBreakdown: scored.breakdown,
+          status: setup.status,
+          confirmations: setup.confirmations,
+          structure: setup.structureLabel || structure.note || '—',
+          liquidity: setup.liquidityLabel || liquidity.note || '—',
+          volume: setup.volumeLabel || volume.note || '—',
+          momentum: setup.momentumLabel || '—',
+          htfAlignment: setup.htfAlignment,
+          keyLevels: setup.keyLevels,
+          invalidation: setup.invalidation,
+          explanation: setup.explanation,
+          detectedAt: Date.now(),
+          dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
+        };
 
-          const row: RadarResult = {
-            id: `radar-${symbol}-${req.timeframe}-${Date.now()}-${i}`,
-            symbol,
-            exchange: req.market,
-            price: quotePrice,
-            timeframe: req.timeframe,
-            setupType: setup.setupType,
-            direction: setup.direction,
-            score: scored.score,
-            scoreBreakdown: scored.breakdown,
-            status: setup.status,
-            confirmations: setup.confirmations,
-            structure: setup.structureLabel || structure.note || '—',
-            liquidity: setup.liquidityLabel || liquidity.note || '—',
-            volume: setup.volumeLabel || volume.note || '—',
-            momentum: setup.momentumLabel || '—',
-            htfAlignment: setup.htfAlignment,
-            keyLevels: setup.keyLevels,
-            invalidation: setup.invalidation,
-            explanation: setup.explanation,
-            detectedAt: Date.now(),
-            dataMode: provider.isDemo ? 'DEMO' : 'LIVE',
-          };
-
-          if (strategy) {
-            const reportMatch = evaluateStrategy(strategy, row);
-            if (!reportMatch.ok) {
-              noMatchSoFar += 1;
-              opts.onActivity?.({
-                symbol,
-                status: 'NO_MATCH',
-                reason: 'Strategy conditions not met',
-                at: Date.now(),
-              });
-              return;
-            }
-            row.matchedConditions = reportMatch.matched;
-            row.strategyId = strategy.id;
-            row.strategyName = strategy.name;
-            pushMatch(row);
-            return;
-          }
-
-          if (!classified || scored.score < MIN_SCORE) {
+        if (strategy) {
+          const reportMatch = evaluateStrategy(strategy, row);
+          if (!reportMatch.ok) {
             noMatchSoFar += 1;
             opts.onActivity?.({
               symbol,
               status: 'NO_MATCH',
-              reason: !classified ? 'No setup classified' : `Score ${scored.score} < ${MIN_SCORE}`,
-              score: scored.score,
+              reason: 'Strategy conditions not met',
               at: Date.now(),
             });
-            return;
+            continue;
           }
+          row.matchedConditions = reportMatch.matched;
+          row.strategyId = strategy.id;
+          row.strategyName = strategy.name;
           pushMatch(row);
-        } catch (err) {
-          errorsSoFar += 1;
-          const reason = err instanceof Error ? err.message : 'Evaluation error';
-          issues.push({ symbol, reason });
-          opts.onActivity?.({ symbol, status: 'ERROR', reason, at: Date.now() });
+          continue;
         }
-      }),
-    );
+
+        if (!classified || scored.score < MIN_SCORE) {
+          noMatchSoFar += 1;
+          opts.onActivity?.({
+            symbol,
+            status: 'NO_MATCH',
+            reason: !classified ? 'No setup classified' : `Score ${scored.score} < ${MIN_SCORE}`,
+            score: scored.score,
+            at: Date.now(),
+          });
+          continue;
+        }
+        pushMatch(row);
+      } catch (err) {
+        errorsSoFar += 1;
+        const reason = err instanceof Error ? err.message : 'Evaluation error';
+        issues.push({ symbol, reason });
+        opts.onActivity?.({ symbol, status: 'ERROR', reason, at: Date.now() });
+      }
+    }
     report(Math.min(total, start + batch.length), 'BATCH', batch[batch.length - 1]);
-    // Yield between batches so UI can paint + respect LIVE rate limits
-    await new Promise((r) => setTimeout(r, provider.isDemo ? 8 : 120));
+    await new Promise((r) => setTimeout(r, 0));
   }
 
   const ranked = matches.sort((a, b) => b.score - a.score);

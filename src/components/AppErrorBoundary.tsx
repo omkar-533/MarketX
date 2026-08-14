@@ -11,7 +11,8 @@ type State = { error: Error | null; recoverKey: number; attempts: number };
 const MAX_SOFT_RECOVERIES = 1;
 
 /**
- * Soft recovery boundary — navigates home, then remounts once.
+ * Soft recovery boundary — remounts the current page once.
+ * Does not bounce the user to Wolf Opportunity.
  * Stale deploy chunks auto-reload once (no "Workspace hiccup" for that case).
  */
 export default class AppErrorBoundary extends Component<Props, State> {
@@ -39,12 +40,6 @@ export default class AppErrorBoundary extends Component<Props, State> {
 
     if (this.recoverTimer) clearTimeout(this.recoverTimer);
     const nextAttempts = this.state.attempts + 1;
-
-    try {
-      this.props.onReset?.();
-    } catch {
-      /* ignore */
-    }
 
     if (nextAttempts > MAX_SOFT_RECOVERIES) {
       this.setState({ attempts: nextAttempts });
@@ -81,8 +76,14 @@ export default class AppErrorBoundary extends Component<Props, State> {
           <p>Workspace hiccup — refresh once to continue.</p>
           {detail ? <p className="wolf-desk-recover__detail">{detail}</p> : null}
           <div className="wolf-desk-recover__actions">
-            <button type="button" onClick={() => this.props.onReset?.()}>
-              Open home
+            <button
+              type="button"
+              onClick={() => {
+                this.props.onReset?.();
+                this.setState((s) => ({ error: null, recoverKey: s.recoverKey + 1, attempts: 0 }));
+              }}
+            >
+              Try again
             </button>
             <button type="button" onClick={() => window.location.reload()}>
               Refresh

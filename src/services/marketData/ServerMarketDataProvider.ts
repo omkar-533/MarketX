@@ -162,7 +162,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   ): Promise<Record<string, Candle[]>> {
     const unique = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
     const out: Record<string, Candle[]> = {};
-    const CHUNK = 32;
+    const CHUNK = 40;
     for (let i = 0; i < unique.length; i += CHUNK) {
       const chunk = unique.slice(i, i + CHUNK);
       try {

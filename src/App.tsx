@@ -159,8 +159,15 @@ function clearPersistedTab() {
   }
 }
 
-/** Fresh visits and full reloads always land on Wolf Opportunity — not the last page. */
+/** Honor #hash so Refresh / stale-chunk reload stays on the page the user opened. */
 function initialActiveTab() {
+  try {
+    if (shouldForceHome()) return DEFAULT_TAB;
+    const fromHash = tabFromHash();
+    if (fromHash) return fromHash;
+  } catch {
+    /* ignore */
+  }
   return DEFAULT_TAB;
 }
 
@@ -223,7 +230,7 @@ function AppWorkspace() {
     }
   }, [auth.isLoggedIn, activeTab]);
 
-  /** Persist in-session navigation to hash/localStorage. Reload still lands on Wolf Opportunity. */
+  /** Persist in-session navigation to hash/localStorage. Reload keeps the hash page. */
   useEffect(() => {
     if (!auth.isLoggedIn) return;
     if (shouldForceHome()) {
@@ -530,7 +537,7 @@ function AppWorkspace() {
                 />
               </Suspense>
             ) : (
-              <AppErrorBoundary onReset={() => handleTabChange(DEFAULT_TAB)}>
+              <AppErrorBoundary onReset={() => handleTabChange(activeTabRef.current || DEFAULT_TAB)}>
                 {planPeek ? (
                   <div className="access-peek-bar">
                     <span>Your access is locked — only pricing is visible right now.</span>

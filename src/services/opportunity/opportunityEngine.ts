@@ -61,7 +61,7 @@ async function loadCandleMap(
     return provider.getCandlesMany(symbols, tf, bars);
   }
   const out: Record<string, Candle[]> = {};
-  const conc = provider.isDemo ? 12 : 8;
+  const conc = provider.isDemo ? 12 : 10;
   for (let i = 0; i < symbols.length; i += conc) {
     if (signal?.aborted) break;
     const slice = symbols.slice(i, i + conc);
@@ -170,7 +170,7 @@ export async function runOpportunityScan(
     };
   }
 
-  const FETCH_BATCH = provider.isDemo ? 24 : 32;
+  const FETCH_BATCH = provider.isDemo ? 24 : 40;
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -182,14 +182,27 @@ export async function runOpportunityScan(
     phase: 'UNIVERSE',
   });
 
+  let pendingCandles: Promise<Record<string, Candle[]>> | null = symbols.length
+    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, 80, opts.signal)
+    : null;
+
   for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
     if (opts.signal?.aborted) break;
     const batch = symbols.slice(start, start + FETCH_BATCH);
-    const candleMap = await loadCandleMap(provider, batch, tf, 80, opts.signal);
+    const nextBatch =
+      start + FETCH_BATCH < symbols.length
+        ? symbols.slice(start + FETCH_BATCH, start + FETCH_BATCH * 2)
+        : null;
+    const candleMap = pendingCandles
+      ? await pendingCandles
+      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, 80, opts.signal);
+    pendingCandles = nextBatch
+      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, 80, opts.signal)
+      : null;
     for (const symbol of batch) {
       if (opts.signal?.aborted) break;
       try {
-        const candles = candleMap[symbol] || [];
+        const candles = candleMap[symbol] || candleMap[String(symbol).toUpperCase()] || [];
         const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
         if (!f) continue;
 

@@ -402,7 +402,7 @@ router.post('/candles-batch', async (req, res) => {
   const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 40);
   if (!symbols.length) return res.status(400).json({ error: 'symbols required' });
   try {
-    const rows = await mapPool(symbols, 8, async (symbol) => {
+    const rows = await mapPool(symbols, 12, async (symbol) => {
       try {
         const { candles } = await loadLiveCandles(live.accessToken, symbol, timeframe, bars);
         return [symbol, Array.isArray(candles) ? candles : []];
