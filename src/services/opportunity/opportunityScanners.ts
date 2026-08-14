@@ -28,7 +28,7 @@ function baseHit(
 ): OpportunityHit {
   const price = ctx.quotePrice && ctx.quotePrice > 0 ? ctx.quotePrice : ctx.f.tech.last;
   return {
-    id: `opp-${scannerId}-${ctx.f.symbol}-${ctx.timeframe}-${Date.now()}`,
+    id: `opp-${scannerId}-${String(ctx.f.symbol || '').toUpperCase()}-${ctx.timeframe}`,
     scannerId,
     symbol: ctx.f.symbol,
     exchange: (ctx.f.exchange as 'NSE' | 'BSE') || 'NSE',

@@ -13,6 +13,10 @@ import {
   addToWatchlist,
   loadLastResults,
   loadWatchlist,
+  loadRadarDayBoard,
+  saveRadarDayBoard,
+  radarDayBoardKey,
+  mergeRadarResultKeepFirstSeen,
 } from '../../../services/radar/radarStore';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import type {
@@ -77,6 +81,8 @@ function formatTime(ts: number | null) {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata',
   });
 }
 
@@ -93,7 +99,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
   });
   const [myScreeners, setMyScreeners] = useState(() => loadStrategies());
   const [results, setResults] = useState<RadarResult[]>(() => loadLastResults());
-  const [allMatches, setAllMatches] = useState<RadarResult[]>([]);
+  const [allMatches, setAllMatches] = useState<RadarResult[]>(() => loadLastResults());
   const [scanSummary, setScanSummary] = useState<RadarScanSummary | null>(null);
   const [scanIssues, setScanIssues] = useState<RadarScanIssue[]>([]);
   const [showAllMatches, setShowAllMatches] = useState(false);
@@ -133,6 +139,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
   const abortRef = useRef<AbortController | null>(null);
   const scanGenRef = useRef(0);
   const inFlightRef = useRef(false);
+  const lastProgAtRef = useRef(0);
 
   useEffect(() => {
     const pending = consumePendingStrategyScan();
@@ -258,10 +265,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
     setSelected(null);
     setShowAllMatches(false);
     setShowIssues(false);
-    setScanSummary(null);
     setScanIssues([]);
-    setAllMatches([]);
-    setResults([]);
     setProgress({
       status: 'scanning',
       symbolsChecked: 0,
@@ -285,15 +289,17 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
           signal: ac.signal,
           onProgress: (p) => {
             if (isStale()) return;
+            const now = Date.now();
+            if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
+            lastProgAtRef.current = now;
             setProgress((prev) => ({ ...prev, ...p }));
           },
           onMatch: (row) => {
             if (isStale()) return;
             setAllMatches((prev) => {
-              const next = [...prev.filter((x) => x.symbol !== row.symbol), row].sort(
-                (a, b) => b.score - a.score,
-              );
-              setResults(next.slice(0, DEFAULT_DISPLAY_LIMIT));
+              const next = mergeRadarResultKeepFirstSeen(prev, row);
+              setResults(next);
+              saveRadarDayBoard(radarDayBoardKey(universe, timeframe, screenerKey), next);
               return next;
             });
           },
@@ -305,8 +311,15 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
 
       if (isStale()) return;
 
-      setAllMatches(outcome.allMatches);
-      setResults(outcome.results);
+      setAllMatches((prev) => {
+        let next = prev;
+        for (const row of outcome.allMatches) {
+          next = mergeRadarResultKeepFirstSeen(next, row);
+        }
+        saveRadarDayBoard(radarDayBoardKey(universe, timeframe, screenerKey), next);
+        setResults(next);
+        return next;
+      });
       setScanSummary(outcome.summary);
       setScanIssues(outcome.issues);
       setUniverseCatalogCount(outcome.summary.universeLoaded);
@@ -468,6 +481,12 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       cancelled = true;
     };
   }, [universe, market, mdStatus]);
+
+  useEffect(() => {
+    const rows = loadRadarDayBoard(radarDayBoardKey(universe, timeframe, screenerKey));
+    setResults(rows);
+    setAllMatches(rows);
+  }, [universe, timeframe, screenerKey]);
 
   const visibleResults = showAllMatches && allMatches.length ? allMatches : results;
   const countFor = (id: RadarUniverse) => optionCounts[id] ?? catalogUniverseMeta(id).count;
@@ -838,13 +857,10 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
         )}
 
         <div className="wolf-radar-desk__cards">
-          {visibleResults.map((r, idx) => (
-            <motion.article
-              key={r.id}
+          {visibleResults.map((r) => (
+            <article
+              key={r.symbol}
               className="wolf-radar-desk__card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(idx, 12) * 0.03 }}
             >
               <button
                 type="button"
@@ -867,15 +883,20 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                   {r.setupType} · <span className={biasClass(r.direction)}>{r.direction}</span>
                 </p>
                 <ul className="tags">
-                  {(r.matchedConditions?.length ? r.matchedConditions : r.confirmations).map((c) => (
-                    <li key={c}>{r.matchedConditions?.length ? `✓ ${c}` : c}</li>
+                  {(Array.isArray(r.matchedConditions) && r.matchedConditions.length
+                    ? r.matchedConditions
+                    : Array.isArray(r.confirmations)
+                      ? r.confirmations
+                      : []
+                  ).map((c) => (
+                    <li key={String(c)}>{r.matchedConditions?.length ? `✓ ${c}` : String(c)}</li>
                   ))}
                 </ul>
                 {r.strategyName && (
                   <p className="setup wolf-radar-desk__strategy-tag">SETUP: {r.strategyName}</p>
                 )}
                 <div className={`state ${statusClass(r.status)}`}>{r.status}</div>
-                <time>Detected {formatTime(r.detectedAt)}</time>
+                <time>Screened {formatTime(r.detectedAt)}</time>
               </button>
               <div className="wolf-radar-desk__card-actions">
                 <button type="button" className="primary" onClick={() => onOpenLiveClick(r)}>
@@ -897,7 +918,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                   {watchSymbols.has(r.symbol) ? 'WATCHING' : 'WATCHLIST'}
                 </button>
               </div>
-            </motion.article>
+            </article>
           ))}
         </div>
       </section>

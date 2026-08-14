@@ -64,6 +64,16 @@ export function getIstParts(at: Date = new Date()): ClockParts {
   return partsInZone(IST, at);
 }
 
+/** Calendar day in IST as YYYY-MM-DD — scan boards reset on this boundary. */
+export function istCalendarDay(at: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: IST,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+}
+
 /** @deprecated Prefer getIstParts — kept for callers that still expect a Date. */
 export function getIstNow(): Date {
   const { hours, minutes } = getIstParts();

@@ -387,7 +387,7 @@ export async function runRadarScanFull(
         const quotePrice = tech.last;
 
         const row: RadarResult = {
-          id: `radar-${symbol}-${req.timeframe}-${Date.now()}-${i}`,
+          id: `radar-${symbol}-${req.timeframe}`,
           symbol,
           exchange: req.market,
           price: quotePrice,

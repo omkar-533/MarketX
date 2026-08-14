@@ -15,6 +15,8 @@ import {
 import { RADAR_OPEN_EVENT } from './services/radar/radarBridge';
 import { LIVE_WOLF_OPEN_EVENT } from './services/live/liveBridge';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { clearOpportunityDayBoard } from './services/opportunity/opportunityStore';
+import { clearRadarDayBoard } from './services/radar/radarStore';
 
 const AuthPage = lazyWithRetry(() => import('./components/auth/AuthPage'));
 const Sidebar = lazyWithRetry(() => import('./components/Sidebar'));
@@ -326,6 +328,8 @@ function AppWorkspace() {
       /* ignore */
     }
     clearPersistedTab();
+    clearOpportunityDayBoard();
+    clearRadarDayBoard();
     markForceHome();
     setActiveTab(DEFAULT_TAB);
     void auth.logout();

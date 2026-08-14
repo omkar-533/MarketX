@@ -24,6 +24,10 @@ import { opportunityToRadarResult } from '../../../services/opportunity/opportun
 import {
   loadOpportunityFilters,
   saveOpportunityFilters,
+  loadOpportunityDayBoard,
+  saveOpportunityDayBoard,
+  mergeOpportunityHitIntoCards,
+  mergeOpportunityCardSets,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -35,7 +39,6 @@ import type {
 } from '../../../services/opportunity/opportunityTypes';
 import {
   OPPORTUNITY_CARD_POOL,
-  OPPORTUNITY_SCANNERS,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 
@@ -44,19 +47,7 @@ function mergeHitIntoCards(
   hit: OpportunityHit,
   topN = OPPORTUNITY_CARD_POOL,
 ): ScannerCardState[] {
-  return prev.map((card) => {
-    if (card.scannerId !== hit.scannerId) return card;
-    if (card.status === 'unavailable') return card;
-    const without = card.hits.filter((h) => h.symbol !== hit.symbol);
-    const nextHits = [...without, hit].sort((a, b) => b.score - a.score).slice(0, topN);
-    return {
-      ...card,
-      status: 'ready',
-      hits: nextHits,
-      updatedAt: Date.now(),
-      unavailableReason: undefined,
-    };
-  });
+  return mergeOpportunityHitIntoCards(prev, hit, Math.max(topN, 80));
 }
 
 function prettyTitle(raw: string): string {
@@ -148,16 +139,7 @@ function HitTile({
 }) {
   const bias = biasOf(hit);
   return (
-    <motion.article
-      layout
-      className={`wolf-opp__tile is-${bias}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 6 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 500, damping: 28 } }}
-      whileTap={{ scale: 0.985 }}
-    >
+    <article className={`wolf-opp__tile is-${bias}`}>
       <button type="button" className="wolf-opp__tile-main" onClick={onOpen}>
         <span className="wolf-opp__tile-sym">{hit.symbol}</span>
         <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
@@ -193,22 +175,13 @@ function HitTile({
           <Crosshair size={12} /> Chart
         </button>
       </div>
-    </motion.article>
+    </article>
   );
 }
 
 export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnectData }: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
-  const [cards, setCards] = useState<ScannerCardState[]>(() =>
-    OPPORTUNITY_SCANNERS.map((s) => ({
-      scannerId: s.id,
-      title: s.title,
-      tagline: s.tagline,
-      status: 'idle',
-      hits: [],
-      updatedAt: null,
-    })),
-  );
+  const [cards, setCards] = useState<ScannerCardState[]>(() => loadOpportunityDayBoard());
   const [feedStatus, setFeedStatus] = useState<DataFeedStatus>('OFFLINE');
   const [dataMode, setDataMode] = useState<'LIVE' | 'DEMO'>('DEMO');
   const [scanning, setScanning] = useState(false);
@@ -224,7 +197,14 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
+  const lastProgAtRef = useRef(0);
+  const persistTimerRef = useRef<number | null>(null);
   const marketOpen = getMarketSession('NSE:NIFTY').open;
+
+  const persistCards = useCallback((next: ScannerCardState[]) => {
+    if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = window.setTimeout(() => saveOpportunityDayBoard(next), 400);
+  }, []);
 
   const patchFilters = useCallback((patch: Partial<OpportunityFilters>) => {
     setFilters((prev) => {
@@ -277,7 +257,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         if (opts?.reset) {
           setCards((prev) =>
             prev.map((c) =>
-              c.status === 'unavailable' ? c : { ...c, hits: [], status: 'scanning' as const },
+              c.status === 'unavailable' ? c : { ...c, status: 'scanning' as const },
             ),
           );
         }
@@ -318,6 +298,9 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
             topN: OPPORTUNITY_CARD_POOL,
             onProgress: (p) => {
               if (quiet) return;
+              const now = Date.now();
+              if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
+              lastProgAtRef.current = now;
               setProgress(
                 p.status === 'scanning'
                   ? `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
@@ -325,7 +308,11 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               );
             },
             onHit: (hit) => {
-              setCards((prev) => mergeHitIntoCards(prev, hit, OPPORTUNITY_CARD_POOL));
+              setCards((prev) => {
+                const next = mergeHitIntoCards(prev, hit, OPPORTUNITY_CARD_POOL);
+                persistCards(next);
+                return next;
+              });
             },
             onCard: (card) => {
               if (card.status !== 'unavailable') return;
@@ -335,7 +322,11 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           provider,
         );
         if (!ac.signal.aborted) {
-          setCards(out.cards);
+          setCards((prev) => {
+            const next = mergeOpportunityCardSets(prev, out.cards);
+            saveOpportunityDayBoard(next);
+            return next;
+          });
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
@@ -353,12 +344,15 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         }
       }
     },
-    [filters, refreshIndices, feedStatus],
+    [filters, refreshIndices, feedStatus, persistCards],
   );
 
   useEffect(() => {
     void runScan({ reset: true });
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -533,7 +527,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
               <motion.article
                 key={card.scannerId}
                 className="wolf-opp__sheet"
-                initial={{ opacity: 0, y: 14 }}
+                initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
                   delay: 0.03 * Math.min(idx, 11),
@@ -565,7 +559,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                               {scanning || bgBusy ? 'Hunting…' : 'No longs'}
                             </p>
                           ) : (
-                            <AnimatePresence initial={false}>
+                            <>
                               {longs.map((hit) => (
                                 <HitTile
                                   key={hit.id}
@@ -575,7 +569,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                                   onChart={() => openChart(hit)}
                                 />
                               ))}
-                            </AnimatePresence>
+                            </>
                           )}
                         </div>
                       </div>
@@ -593,7 +587,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                               {scanning || bgBusy ? 'Hunting…' : 'No shorts'}
                             </p>
                           ) : (
-                            <AnimatePresence initial={false}>
+                            <>
                               {shorts.map((hit) => (
                                 <HitTile
                                   key={hit.id}
@@ -603,7 +597,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
                                   onChart={() => openChart(hit)}
                                 />
                               ))}
-                            </AnimatePresence>
+                            </>
                           )}
                         </div>
                       </div>

@@ -1,8 +1,79 @@
+import { istCalendarDay } from '../../utils/marketHours';
 import type { RadarResult, UserSetup, UserSetupCondition, WatchlistItem } from './radarTypes';
 
 const WATCH_KEY = 'wolf_radar_watchlist_v1';
 const SETUPS_KEY = 'wolf_radar_setups_v1';
 const LAST_RESULTS_KEY = 'wolf_radar_last_results_v1';
+const DAY_BOARD_KEY = 'wolf_radar_day_board_v1';
+const DAY_RESULT_CAP = 120;
+
+type RadarDayBoard = {
+  day: string;
+  byKey: Record<string, RadarResult[]>;
+};
+
+export function radarDayBoardKey(universe: string, timeframe: string, screenerKey: string): string {
+  return `${universe}|${timeframe}|${screenerKey || 'default'}`;
+}
+
+function readRadarDayBoard(): RadarDayBoard | null {
+  try {
+    const raw = localStorage.getItem(DAY_BOARD_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RadarDayBoard;
+    if (!parsed || typeof parsed.day !== 'string' || !parsed.byKey || typeof parsed.byKey !== 'object') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function loadRadarDayBoard(key?: string): RadarResult[] {
+  const stored = readRadarDayBoard();
+  if (!stored || stored.day !== istCalendarDay()) return [];
+  if (key) return Array.isArray(stored.byKey[key]) ? stored.byKey[key] : [];
+  return Object.values(stored.byKey).flat();
+}
+
+export function saveRadarDayBoard(key: string, results: RadarResult[]) {
+  try {
+    const day = istCalendarDay();
+    const stored = readRadarDayBoard();
+    const byKey = stored && stored.day === day ? { ...stored.byKey } : {};
+    byKey[key] = results.slice(0, DAY_RESULT_CAP);
+    localStorage.setItem(DAY_BOARD_KEY, JSON.stringify({ day, byKey } satisfies RadarDayBoard));
+  } catch {
+    /* quota */
+  }
+}
+
+export function clearRadarDayBoard() {
+  try {
+    localStorage.removeItem(DAY_BOARD_KEY);
+    localStorage.removeItem(LAST_RESULTS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function mergeRadarResultKeepFirstSeen(prev: RadarResult[], row: RadarResult): RadarResult[] {
+  const existing = prev.find((r) => r.symbol === row.symbol);
+  if (existing) {
+    return prev.map((r) =>
+      r.symbol === row.symbol
+        ? {
+            ...row,
+            id: existing.id,
+            detectedAt: existing.detectedAt,
+          }
+        : r,
+    );
+  }
+  if (prev.length >= DAY_RESULT_CAP) return prev;
+  return [...prev, row];
+}
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof localStorage === 'undefined') return fallback;
@@ -89,6 +160,8 @@ export function cacheLastResults(results: RadarResult[]) {
 }
 
 export function loadLastResults(): RadarResult[] {
+  const day = loadRadarDayBoard();
+  if (day.length) return day;
   return readJson<RadarResult[]>(LAST_RESULTS_KEY, []);
 }
 
