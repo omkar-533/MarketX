@@ -5,7 +5,7 @@
 import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import { firstHitTimeOfIstDay } from '../radar/barTime';
+import { firstHitTimeOfIstDay, sessionBarsNeeded } from '../radar/barTime';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -172,6 +172,7 @@ export async function runOpportunityScan(
   }
 
   const FETCH_BATCH = provider.isDemo ? 24 : 40;
+  const bars = sessionBarsNeeded(tf);
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -184,7 +185,7 @@ export async function runOpportunityScan(
   });
 
   let pendingCandles: Promise<Record<string, Candle[]>> | null = symbols.length
-    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, 80, opts.signal)
+    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, bars, opts.signal)
     : null;
 
   for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
@@ -196,9 +197,9 @@ export async function runOpportunityScan(
         : null;
     const candleMap = pendingCandles
       ? await pendingCandles
-      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, 80, opts.signal);
+      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, bars, opts.signal);
     pendingCandles = nextBatch
-      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, 80, opts.signal)
+      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, bars, opts.signal)
       : null;
     for (const symbol of batch) {
       if (opts.signal?.aborted) break;
@@ -221,7 +222,13 @@ export async function runOpportunityScan(
           firstHitTimeOfIstDay(candles, tf, (i) => {
             const snap = snapshotAt(i);
             if (!snap) return false;
-            return !!scan({ f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last });
+            return !!scan({
+              f: snap,
+              timeframe: tf,
+              dataMode,
+              quotePrice: snap.tech.last,
+              forTimeWalk: true,
+            });
           });
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [

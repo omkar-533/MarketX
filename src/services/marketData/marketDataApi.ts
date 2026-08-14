@@ -160,8 +160,8 @@ export async function fetchLiveCandles(
       hit &&
       Date.now() - hit.at < CANDLE_MEM_TTL_MS &&
       Array.isArray(hit.data.candles) &&
-      hit.data.candles.length >= Math.min(want, 80) &&
-      (want <= 220 || hit.barsWanted >= want * 0.85 || hit.data.candles.length >= want * 0.85)
+      hit.data.candles.length >= want &&
+      (hit.barsWanted >= want || hit.data.candles.length >= want)
     ) {
       const slice =
         hit.data.candles.length > want ? hit.data.candles.slice(-want) : hit.data.candles;
@@ -200,7 +200,7 @@ export async function fetchLiveCandlesBatch(
   timeframe: string,
   bars = 80,
 ): Promise<LiveCandlesBatchResponse> {
-  const want = Math.min(120, Math.max(20, Math.floor(bars) || 80));
+  const want = Math.min(500, Math.max(20, Math.floor(bars) || 80));
   const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 40);
   const cached: Record<string, import('../radar/radarTypes').Candle[]> = {};
   const missing: string[] = [];
@@ -210,7 +210,7 @@ export async function fetchLiveCandlesBatch(
       hit &&
       Date.now() - hit.at < CANDLE_MEM_TTL_MS &&
       Array.isArray(hit.data.candles) &&
-      hit.data.candles.length >= Math.min(want, 50)
+      hit.data.candles.length >= want
     ) {
       cached[symbol] =
         hit.data.candles.length > want ? hit.data.candles.slice(-want) : hit.data.candles;

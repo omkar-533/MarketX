@@ -16,7 +16,13 @@ type Ctx = {
   timeframe: OpportunityTimeframe;
   dataMode: 'LIVE' | 'DEMO';
   quotePrice?: number;
+  /** Skip score cutoff so Created time is the first print, not when quality crossed the gate. */
+  forTimeWalk?: boolean;
 };
+
+function scoreGate(ctx: Ctx, score: number, min: number): boolean {
+  return Boolean(ctx.forTimeWalk) || score >= min;
+}
 
 function baseHit(
   scannerId: OpportunityScannerId,
@@ -65,7 +71,7 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
     confirmation: f.volume.state === 'UNUSUAL' ? 12 : f.volume.state === 'EXPANDING' ? 8 : 4,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 55) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   const bullish = f.changePercent >= 0;
   const evidence: EvidenceItem[] = [
@@ -121,7 +127,7 @@ export function scanFlowShift(ctx: Ctx): OpportunityHit | null {
     confirmation: f.volume.state === 'UNUSUAL' || f.volume.state === 'EXPANDING' ? 12 : 6,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 55) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   return baseHit('flow_shift', ctx, {
     direction,
@@ -167,7 +173,7 @@ export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
     distance: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 50) return null;
+  if (!scoreGate(ctx, score, 50)) return null;
 
   let stateLabel = 'LIQUIDITY RESTING';
   if (liq.type === 'LIQUIDITY_SWEEP' && confirmed) stateLabel = buySide ? 'BUY-SIDE SWEEP' : 'SELL-SIDE SWEEP';
@@ -223,7 +229,7 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
     proximity: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 52) return null;
+  if (!scoreGate(ctx, score, 52)) return null;
 
   const bullish = breaking ? f.tech.last >= (f.high20 ?? f.tech.last) : f.tech.trend !== 'down';
 
@@ -320,7 +326,7 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
     retest: 8,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 55) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   return baseHit('breakout_radar', ctx, {
     direction: up ? 'bullish' : 'bearish',
@@ -367,7 +373,7 @@ export function scanReversalHunter(ctx: Ctx): OpportunityHit | null {
     structure: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 52) return null;
+  if (!scoreGate(ctx, score, 52)) return null;
 
   return baseHit('reversal_hunter', ctx, {
     direction: bullishRev ? 'bullish' : 'bearish',
@@ -410,7 +416,7 @@ export function scanSectorLeaders(
     consistency: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 50) return null;
+  if (!scoreGate(ctx, score, 50)) return null;
 
   return baseHit('sector_leaders', ctx, {
     direction: strength >= 0 ? 'bullish' : 'bearish',
@@ -464,7 +470,7 @@ export function scanDeliveryFlow(ctx: Ctx): OpportunityHit | null {
     confirmation: f.volume.state === 'EXPANDING' || f.volume.state === 'UNUSUAL' ? 12 : 6,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 55) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   return baseHit('delivery_flow', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
@@ -509,7 +515,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
     volume: f.volume.ratio >= 1 ? 10 : 6,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 58) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('trend_rider', ctx, {
     direction: align,
@@ -555,7 +561,7 @@ export function scanOptionsFlow(ctx: Ctx): OpportunityHit | null {
     confirmation: Math.abs(rsi - 50) >= 8 ? 12 : 6,
   };
   const score = sumBreakdown(breakdown);
-  if (score < 55) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   return baseHit('options_flow', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
@@ -609,7 +615,7 @@ export function scanWolfPrime(
     flow: clampScore((flow / 100) * 10, 10),
   };
   const score = sumBreakdown(breakdown);
-  if (score < 70) return null;
+  if (!scoreGate(ctx, score, 70)) return null;
 
   return baseHit('wolf_prime', ctx, {
     direction: ctx.f.changePercent >= 0 ? 'bullish' : 'bearish',

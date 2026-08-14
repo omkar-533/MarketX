@@ -5,7 +5,7 @@ import { keepFirstSetupTime } from './barTime';
 const WATCH_KEY = 'wolf_radar_watchlist_v1';
 const SETUPS_KEY = 'wolf_radar_setups_v1';
 const LAST_RESULTS_KEY = 'wolf_radar_last_results_v1';
-const DAY_BOARD_KEY = 'wolf_radar_day_board_v2';
+const DAY_BOARD_KEY = 'wolf_radar_day_board_v3';
 const DAY_RESULT_CAP = 120;
 
 type RadarDayBoard = {

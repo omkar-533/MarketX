@@ -101,6 +101,25 @@ export function istSessionStartMs(now = Date.now()): number {
   return Number.isFinite(open) ? open : 0;
 }
 
+const NSE_SESSION_MS = 375 * 60_000; // 09:15–15:30
+const TIMEWALK_LOOKBACK_BARS = 40;
+
+/**
+ * Bars needed so a time-walk can see the first IST print (session + indicator lookback).
+ * Never the scan clock; never a short 80-bar tail that drops the morning.
+ */
+export function sessionBarsNeeded(timeframe: string, now = Date.now()): number {
+  if (timeframe === '1D' || timeframe === '4h') return 80;
+  const dur = barDurationMs(timeframe);
+  if (!dur) return 80;
+  const session = istSessionStartMs(now);
+  const elapsed =
+    session > 0 && now >= session
+      ? Math.min(now - session + dur, NSE_SESSION_MS)
+      : NSE_SESSION_MS;
+  return Math.min(500, Math.max(80, Math.ceil(elapsed / dur) + TIMEWALK_LOOKBACK_BARS + 4));
+}
+
 /**
  * First time this setup printed today — even if it later failed and printed again.
  * Walks forward from the IST session open; never uses the scan clock.
@@ -116,7 +135,6 @@ export function firstHitTimeOfIstDay(
   const session = istSessionStartMs(now);
   let start = 0;
   if (session > 0) {
-    start = end;
     for (let i = 0; i <= end; i += 1) {
       if (candleTimeMs(candles[i].timestamp) >= session) {
         start = i;
@@ -127,7 +145,7 @@ export function firstHitTimeOfIstDay(
   for (let i = start; i <= end; i += 1) {
     if (hitsAt(i)) return setupCreatedAtMs(candles[i].timestamp, timeframe, now);
   }
-  return setupCreatedAtMs(candles[end].timestamp, timeframe, now);
+  return 0;
 }
 
 /** Keep the earliest real setup time when the same name reprints later in the IST day. */

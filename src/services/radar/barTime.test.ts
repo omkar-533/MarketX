@@ -4,6 +4,7 @@ import {
   closedBarIndex,
   firstConsecutiveHitTime,
   firstHitTimeOfIstDay,
+  sessionBarsNeeded,
   setupCreatedAtFromCandles,
   setupCreatedAtMs,
 } from './barTime';
@@ -66,5 +67,26 @@ describe('barTime', () => {
     const t = setupCreatedAtMs(ts, '5m', now);
     assert.ok(Math.abs(t - now) > 60_000);
     assert.equal(t, ts + FIVE);
+  });
+
+  it('walks the whole window when 09:15 is not in the series', () => {
+    const now = Date.parse('2026-08-14T14:32:00+05:30');
+    const start = Date.parse('2026-08-13T14:00:00+05:30');
+    const candles = Array.from({ length: 10 }, (_, i) => bar(start + i * FIVE));
+    const created = firstHitTimeOfIstDay(candles, '5m', (i) => i >= 2, now);
+    assert.equal(created, start + 2 * FIVE + FIVE);
+  });
+
+  it('returns 0 when the setup never printed in the window', () => {
+    const now = Date.parse('2026-08-14T14:32:00+05:30');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 20 }, (_, i) => bar(start + i * FIVE));
+    assert.equal(firstHitTimeOfIstDay(candles, '5m', () => false, now), 0);
+  });
+
+  it('fetches a full NSE 5m session plus lookback, not an 80-bar tail', () => {
+    const afterClose = Date.parse('2026-08-14T16:00:00+05:30');
+    assert.ok(sessionBarsNeeded('5m', afterClose) >= 115);
+    assert.ok(sessionBarsNeeded('1m', afterClose) >= 400);
   });
 });

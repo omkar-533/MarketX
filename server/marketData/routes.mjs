@@ -448,7 +448,7 @@ router.post('/candles-batch', async (req, res) => {
   const live = requireLiveToken(req, res);
   if (!live) return;
   const timeframe = String(req.body?.timeframe || '15m').trim();
-  const bars = Math.min(120, Math.max(20, Number(req.body?.bars) || 80));
+  const bars = Math.min(500, Math.max(20, Number(req.body?.bars) || 80));
   const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
   const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 40);
   if (!symbols.length) return res.status(400).json({ error: 'symbols required' });

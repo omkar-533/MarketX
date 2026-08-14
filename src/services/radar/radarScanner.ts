@@ -11,7 +11,7 @@ import { detectVolume } from './VolumeEngine';
 import { classifySetup, buildWatchSetup } from './SetupEngine';
 import { computeWolfScore } from './WolfScoringEngine';
 import { cacheLastResults } from './radarStore';
-import { firstHitTimeOfIstDay, setupCreatedAtFromCandles } from './barTime';
+import { firstHitTimeOfIstDay, sessionBarsNeeded, setupCreatedAtFromCandles } from './barTime';
 import { evaluateStrategy } from '../strategy/conditionEvaluator';
 import type { StrategyDefinition } from '../strategy/strategyTypes';
 import type {
@@ -98,13 +98,15 @@ async function loadLtfHtf(
   htf: RadarTimeframe,
   signal?: AbortSignal,
 ): Promise<{ ltfMap: Record<string, Candle[]>; htfMap: Record<string, Candle[]> }> {
+  const ltfBars = sessionBarsNeeded(ltf);
+  const htfBars = sessionBarsNeeded(htf);
   if (ltf === htf) {
-    const ltfMap = await loadCandleMap(provider, symbols, ltf, 80, signal);
+    const ltfMap = await loadCandleMap(provider, symbols, ltf, ltfBars, signal);
     return { ltfMap, htfMap: ltfMap };
   }
   const [ltfMap, htfMap] = await Promise.all([
-    loadCandleMap(provider, symbols, ltf, 80, signal),
-    loadCandleMap(provider, symbols, htf, 80, signal),
+    loadCandleMap(provider, symbols, ltf, ltfBars, signal),
+    loadCandleMap(provider, symbols, htf, htfBars, signal),
   ]);
   return { ltfMap, htfMap };
 }
