@@ -309,7 +309,7 @@ export default function ConnectMarketDataModal({
                 </button>
                 {plan.canAuthorize && (
                   <button type="button" className="primary" onClick={() => void runAuthorize()} disabled={busy}>
-                    {busy ? 'Authorizing…' : 'Authorize market data'}
+                    {busy ? 'Connecting…' : 'CONNECT NOW'}
                   </button>
                 )}
               </div>
