@@ -40,7 +40,28 @@ const BASE_PRICES: Record<string, number> = {
   HINDALCO: 688.4,
   JSWSTEEL: 978.0,
   ITC: 468.2,
+  GOLD: 98000,
+  GOLDM: 9800,
+  SILVER: 112000,
+  SILVERM: 112000,
+  CRUDEOIL: 5850,
+  CRUDEOILM: 5850,
+  NATURALGAS: 280,
+  COPPER: 850,
+  ZINC: 270,
+  ALUMINIUM: 240,
+  NICKEL: 1500,
+  LEAD: 185,
 };
+
+function demoBase(symbol: string): number {
+  const key = String(symbol || '')
+    .toUpperCase()
+    .replace(/^MCX:/, '')
+    .replace(/^NSE:/, '')
+    .replace(/^BSE:/, '');
+  return BASE_PRICES[key] ?? BASE_PRICES[String(symbol || '').toUpperCase()] ?? 1000;
+}
 
 function hashSeed(s: string): number {
   let h = 2166136261;
@@ -141,7 +162,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
   }
 
   async getQuote(symbol: string): Promise<NormalizedQuote> {
-    const base = BASE_PRICES[symbol] ?? 1000;
+    const base = demoBase(symbol);
     const rnd = mulberry32(hashSeed(symbol + ':q'));
     // Time wobble so DEMO LIVE chart visibly updates without claiming licensed live feed
     const wobble = Math.sin(Date.now() / 4000 + hashSeed(symbol) / 1e9) * 0.0012;
@@ -178,7 +199,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
     const tf = timeframe as RadarTimeframe;
     const step = stepMsFor(tf);
     const bars = Math.max(2, Math.min(500, Math.floor((to - from) / step) + 1));
-    const base = BASE_PRICES[symbol] ?? 1000;
+    const base = demoBase(symbol);
     const rnd = mulberry32(hashSeed(`${symbol}:${tf}`));
     const out: Candle[] = [];
     let price = base * (0.97 + rnd() * 0.04);

@@ -77,10 +77,30 @@ async function mapPool(items, limit, fn) {
   return out;
 }
 
+function looksLikeMcx(symbol) {
+  const s = String(symbol || '').toUpperCase();
+  if (s.startsWith('MCX:') || s.startsWith('MCX_') || s.startsWith('NCDEX:')) return true;
+  const key = s.replace(/^MCX:/, '').replace(/^NCDEX:/, '');
+  return /^(GOLD|GOLDM|GOLDGUINEA|GOLDPETAL|SILVER|SILVERM|SILVERMIC|CRUDEOIL|CRUDEOILM|NATURALGAS|NATGASMINI|COPPER|COPPERM|ZINC|ZINCMINI|LEAD|ALUMINIUM|NICKEL|MENTHAOIL|COTTON)$/.test(key);
+}
+
+async function resolveCandidates(accessToken, symbol) {
+  let candidates = resolveScripCodeCandidates(symbol);
+  if (!candidates.length && looksLikeMcx(symbol)) {
+    try {
+      await refreshIndstocksInstrumentMap(accessToken);
+    } catch {
+      /* keep empty */
+    }
+    candidates = resolveScripCodeCandidates(symbol);
+  }
+  return candidates;
+}
+
 async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
   const cached = !beforeMs ? readCandleCache(symbol, timeframe, bars) : null;
   if (cached) return { candles: cached, scrip: 'cache' };
-  const candidates = resolveScripCodeCandidates(symbol);
+  const candidates = await resolveCandidates(accessToken, symbol);
   if (!candidates.length) {
     const err = new Error(`Unknown symbol: ${symbol}`);
     err.status = 404;
@@ -313,7 +333,7 @@ router.get('/quote', async (req, res) => {
   if (!live) return;
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
-  const candidates = resolveScripCodeCandidates(symbol);
+  const candidates = await resolveCandidates(live.accessToken, symbol);
   if (!candidates.length) return res.status(404).json({ error: `Unknown symbol: ${symbol}` });
   try {
     let lastErr = null;

@@ -45,14 +45,20 @@ const GLOBAL_TV: Record<string, string> = {
   VIX: 'NSE:INDIAVIX',
   INDIAVIX: 'NSE:INDIAVIX',
   XAUUSD: 'OANDA:XAUUSD',
-  GOLD: 'OANDA:XAUUSD',
-  SONA: 'OANDA:XAUUSD',
   XAGUSD: 'OANDA:XAGUSD',
-  SILVER: 'OANDA:XAGUSD',
-  CHANDI: 'OANDA:XAGUSD',
-  CRUDE: 'TVC:USOIL',
-  CRUDEOIL: 'TVC:USOIL',
+  CRUDE: 'MCX:CRUDEOIL',
+  CRUDEOIL: 'MCX:CRUDEOIL',
+  GOLD: 'MCX:GOLD',
+  SONA: 'MCX:GOLD',
+  SILVER: 'MCX:SILVER',
+  CHANDI: 'MCX:SILVER',
   USOIL: 'TVC:USOIL',
+  NATURALGAS: 'MCX:NATURALGAS',
+  COPPER: 'MCX:COPPER',
+  ZINC: 'MCX:ZINC',
+  ALUMINIUM: 'MCX:ALUMINIUM',
+  NICKEL: 'MCX:NICKEL',
+  LEAD: 'MCX:LEAD',
 };
 
 export type TvChartStyle = '0' | '1' | '2' | '3' | '8' | '9' | '10';
@@ -185,9 +191,39 @@ export function usesNativeChart(tvSymbol: string): boolean {
   return NATIVE_EXCHANGES.has(exchange.toUpperCase());
 }
 
-/** TV symbol → market API ticker (NSE:NIFTY → NIFTY, BINANCE:BTCUSDT → BTC). */
+const MCX_UNDERLYINGS = new Set([
+  'GOLD',
+  'GOLDM',
+  'GOLDGUINEA',
+  'GOLDPETAL',
+  'SILVER',
+  'SILVERM',
+  'SILVERMIC',
+  'CRUDEOIL',
+  'CRUDEOILM',
+  'NATURALGAS',
+  'NATGASMINI',
+  'COPPER',
+  'COPPERM',
+  'ZINC',
+  'ZINCMINI',
+  'LEAD',
+  'ALUMINIUM',
+  'NICKEL',
+  'MENTHAOIL',
+  'COTTON',
+]);
+
+/** TV symbol → market API ticker (NSE:NIFTY → NIFTY, MCX:GOLD stays MCX:GOLD). */
 export function apiSymbolFromTv(tvSymbol: string): string {
-  const label = tradingViewSymbolLabel(tvSymbol).toUpperCase();
+  const resolved = String(tvSymbol || '').includes(':')
+    ? String(tvSymbol).toUpperCase()
+    : parseTradingViewInput(String(tvSymbol || ''));
+  const exchange = resolved.includes(':') ? resolved.split(':')[0].toUpperCase() : '';
+  const label = tradingViewSymbolLabel(resolved).toUpperCase();
+  if (exchange === 'MCX' || exchange === 'NCDEX' || MCX_UNDERLYINGS.has(label)) {
+    return `${exchange === 'NCDEX' ? 'NCDEX' : 'MCX'}:${label}`;
+  }
   // Crypto/forex aliases: BTCUSDT/ETHUSDT → BTC/ETH (live tape + OHLC keys).
   const global = toGlobalLiveSymbol(label);
   return (global || label).toUpperCase();

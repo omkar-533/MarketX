@@ -308,11 +308,20 @@ function parseCsv(text) {
   });
 }
 
+function parseExpiryMs(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return Number.MAX_SAFE_INTEGER;
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+}
+
 /** Refresh equity + index + F&O instrument map and classified universes. */
 export async function refreshIndstocksInstrumentMap(accessToken) {
   const map = new Map();
   /** @type {{ equity: object[], index: object[], fno: object[] }} */
   const packs = { equity: [], index: [], fno: [] };
+  /** Front-month MCX futures: SYMBOL_NAME → { exp, scrip } */
+  const mcxFront = new Map();
 
   const ingest = (rows, source) => {
     packs[source] = rows;
@@ -324,11 +333,13 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
       if (source === 'index') {
         if (exch === 'BSE' || exch === 'BIDX') scrip = `BIDX_${sid}`;
         else scrip = `NIDX_${sid}`;
-      } else if (source === 'fno') {
-        // F&O contracts live on NFO/BFO; equity underlyings still map via equity CSV.
-        // Keep SYMBOL_NAME → NFO contract only when no equity mapping exists yet.
-        const seg = exch === 'BSE' || exch === 'BFO' ? 'BFO' : 'NFO';
-        scrip = `${seg}_${sid}`;
+      } else if (source === 'fno' || source === 'commodity') {
+        if (exch === 'MCX' || exch === 'MCDX') scrip = `MCX_${sid}`;
+        else if (exch === 'NCDEX') scrip = `NCDEX_${sid}`;
+        else {
+          const seg = exch === 'BSE' || exch === 'BFO' ? 'BFO' : 'NFO';
+          scrip = `${seg}_${sid}`;
+        }
       } else {
         scrip = `${exch}_${sid}`;
       }
@@ -348,27 +359,56 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
         // Prefer equity SCRIP for underlying names; don't overwrite NSE_ with NFO_
         if (!map.has(n)) map.set(n, scrip);
         else if (source === 'index') {
-          // Index master wins over equity/FNO aliases (NIFTY must stay NIDX_*)
           map.set(n, scrip);
         } else if (source === 'equity' && String(map.get(n) || '').startsWith('NFO_')) {
           map.set(n, scrip);
         } else if (source === 'equity' && String(map.get(n) || '').startsWith('BFO_')) {
           map.set(n, scrip);
+        } else if (String(scrip).startsWith('MCX_') && !String(map.get(n) || '').startsWith('MCX_')) {
+          map.set(n, scrip);
+        }
+      }
+
+      if (String(scrip).startsWith('MCX_')) {
+        const opt = String(row.OPTION_TYPE || '').toUpperCase();
+        const inst = String(row.INSTRUMENT_NAME || row.SEM_EXCH_INSTRUMENT_TYPE || '').toUpperCase();
+        const tsym = String(row.TRADING_SYMBOL || '').toUpperCase();
+        const isOpt = opt === 'CE' || opt === 'PE' || /OPT/.test(inst) || /\d+CE$|\d+PE$/.test(tsym);
+        if (!isOpt) {
+          const base = String(row.SYMBOL_NAME || '')
+            .toUpperCase()
+            .replace(/\s+/g, '')
+            .trim();
+          if (base && base.length <= 20 && !/\d{2}[A-Z]{3}/.test(base)) {
+            const exp = parseExpiryMs(row.EXPIRY_DATE);
+            const floor = Date.now() - 2 * 86_400_000;
+            if (exp >= floor) {
+              const prev = mcxFront.get(base);
+              if (!prev || exp < prev.exp) mcxFront.set(base, { exp, scrip });
+            }
+          }
         }
       }
     }
   };
 
-  for (const source of ['equity', 'index', 'fno']) {
+  for (const source of ['equity', 'index', 'fno', 'commodity']) {
     try {
       const { text } = await indFetch('/market/instruments', accessToken, {
         searchParams: { source },
         accept: 'text/csv,*/*',
       });
-      ingest(parseCsv(text), source);
+      ingest(parseCsv(text), source === 'commodity' ? 'fno' : source);
     } catch (e) {
-      console.warn(`[indstocks] instruments source=${source} failed`, e?.message || e);
+      if (source !== 'commodity') {
+        console.warn(`[indstocks] instruments source=${source} failed`, e?.message || e);
+      }
     }
+  }
+
+  for (const [name, row] of mcxFront) {
+    map.set(name, row.scrip);
+    map.set(`MCX:${name}`, row.scrip);
   }
 
   // Seed fallbacks only when instrument master omitted the symbol.
@@ -411,6 +451,8 @@ export function normalizeIndSymbolKey(symbol) {
     .replace(/^BSE:/, '')
     .replace(/^NIDX:/, '')
     .replace(/^BIDX:/, '')
+    .replace(/^MCX:/, '')
+    .replace(/^NCDEX:/, '')
     .replace(/-EQ$/, '')
     .replace(/\s+/g, '')
     .trim();
@@ -419,6 +461,9 @@ export function normalizeIndSymbolKey(symbol) {
 export function resolveScripCode(symbol, exchange = 'NSE') {
   const key = normalizeIndSymbolKey(symbol);
   if (!key) return null;
+  const wantMcx = /^MCX:/i.test(String(symbol || '')) || String(exchange || '').toUpperCase() === 'MCX';
+  const mcxHit = instrumentCache.bySymbol.get(`MCX:${key}`);
+  if (wantMcx && mcxHit) return mcxHit;
   if (instrumentCache.bySymbol.has(key)) {
     const hit = instrumentCache.bySymbol.get(key);
     // Never serve classic NSE NIFTY token — historical candles come back empty.

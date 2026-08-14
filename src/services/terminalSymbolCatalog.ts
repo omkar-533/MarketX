@@ -45,9 +45,18 @@ const GLOBAL_HITS: TerminalSymbolHit[] = [
   { tvSymbol: 'TVC:UKOIL', label: 'UKOIL', name: 'Brent Crude Oil', group: 'forex', typeLabel: 'commodity', exchange: 'TVC' },
   { tvSymbol: 'TVC:PLATINUM', label: 'XPTUSD', name: 'Platinum', group: 'forex', typeLabel: 'commodity', exchange: 'TVC' },
   { tvSymbol: 'TVC:COPPER', label: 'COPPER', name: 'Copper', group: 'forex', typeLabel: 'commodity', exchange: 'TVC' },
-  { tvSymbol: 'MCX:GOLD', label: 'GOLD', name: 'Gold MCX', group: 'forex', typeLabel: 'commodity', exchange: 'MCX' },
-  { tvSymbol: 'MCX:SILVER', label: 'SILVER', name: 'Silver MCX', group: 'forex', typeLabel: 'commodity', exchange: 'MCX' },
-  { tvSymbol: 'MCX:CRUDEOIL', label: 'CRUDEOIL', name: 'Crude Oil MCX', group: 'forex', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:GOLD', label: 'GOLD', name: 'Gold MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:GOLDM', label: 'GOLDM', name: 'Gold Mini MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:SILVER', label: 'SILVER', name: 'Silver MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:SILVERM', label: 'SILVERM', name: 'Silver Mini MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:CRUDEOIL', label: 'CRUDEOIL', name: 'Crude Oil MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:CRUDEOILM', label: 'CRUDEOILM', name: 'Crude Oil Mini MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:NATURALGAS', label: 'NATURALGAS', name: 'Natural Gas MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:COPPER', label: 'COPPER', name: 'Copper MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:ZINC', label: 'ZINC', name: 'Zinc MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:ALUMINIUM', label: 'ALUMINIUM', name: 'Aluminium MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:NICKEL', label: 'NICKEL', name: 'Nickel MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
+  { tvSymbol: 'MCX:LEAD', label: 'LEAD', name: 'Lead MCX', group: 'commodity', typeLabel: 'commodity', exchange: 'MCX' },
 
   /* Forex */
   { tvSymbol: 'FX_IDC:EURUSD', label: 'EURUSD', name: 'Euro / U.S. Dollar', group: 'forex', typeLabel: 'forex', exchange: 'FX_IDC' },
@@ -211,7 +220,7 @@ function categoryMatch(hit: TerminalSymbolHit, category: TerminalSymbolCategory)
   if (category === 'indices') return hit.group === 'indices' || hit.group === 'index';
   if (category === 'forex') return hit.group === 'forex' || hit.group === 'fx' || hit.group === 'commodity';
   if (category === 'crypto') return hit.group === 'crypto';
-  if (category === 'futures') return hit.group === 'futures';
+  if (category === 'futures') return hit.group === 'futures' || hit.exchange === 'MCX' || hit.group === 'commodity';
   if (category === 'options') return hit.group === 'options';
   if (category === 'bonds' || category === 'economy') return false;
   return true;
@@ -279,8 +288,8 @@ export function terminalCategoryCounts(): Record<TerminalSymbolCategory, number>
   };
   for (const h of all) {
     if (h.group === 'stocks' || h.group === 'stock') counts.stocks += 1;
-    else if (h.group === 'futures') counts.futures += 1;
-    else if (h.group === 'forex' || h.group === 'fx' || h.group === 'commodity') counts.forex += 1;
+    else if (h.group === 'futures' || h.exchange === 'MCX' || h.group === 'commodity') counts.futures += 1;
+    else if (h.group === 'forex' || h.group === 'fx') counts.forex += 1;
     else if (h.group === 'crypto') counts.crypto += 1;
     else if (h.group === 'indices' || h.group === 'index') counts.indices += 1;
     else if (h.group === 'options') counts.options += 1;
