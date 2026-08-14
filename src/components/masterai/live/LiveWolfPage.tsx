@@ -150,17 +150,28 @@ function levelsFromAnalysis(
   enabled: boolean,
 ): ChartLevel[] | undefined {
   if (!enabled || !levels?.length) return undefined;
-  const drawn = levels.filter((lv) => !/invalid/i.test(lv.label)).slice(0, 8);
+  const drawn = levels.filter((lv) => {
+    const label = String(lv.label || '');
+    if (/invalid/i.test(label) || /^spot$/i.test(label)) return false;
+    return Number(lv.price) > 0;
+  }).slice(0, 8);
   if (!drawn.length) return undefined;
   return drawn.map((lv) => {
     const lower = lv.label.toLowerCase();
     const kind: ChartLevel['kind'] = lower.includes('res') || lower.includes('high')
       ? 'resistance'
-      : lower.includes('sup') || lower.includes('low')
+      : lower.includes('sup') || lower.includes('low') || /liquidity|ssl|bsl/i.test(lower)
         ? 'support'
         : 'pivot';
     return { price: lv.price, label: lv.label, kind };
   });
+}
+
+function keyLevelsSignature(levels: { label: string; price: number }[] | undefined): string {
+  return (levels || [])
+    .filter((lv) => lv && Number(lv.price) > 0 && !/invalid/i.test(lv.label || '') && !/^spot$/i.test(lv.label || ''))
+    .map((lv) => `${lv.label}:${Number(lv.price).toFixed(2)}`)
+    .join('|');
 }
 
 export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }: Props) {
@@ -288,7 +299,30 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
       provider,
       onBars: () => undefined,
       onAnalysis: (snap) => {
-        setAnalysis(snap);
+        setAnalysis((prev) => {
+          if (
+            prev &&
+            prev.structure === snap.structure &&
+            prev.liquidity === snap.liquidity &&
+            prev.volume === snap.volume &&
+            prev.momentum === snap.momentum &&
+            prev.htfTrend === snap.htfTrend &&
+            prev.htfAlignment === snap.htfAlignment &&
+            prev.status === snap.status &&
+            prev.score === snap.score &&
+            prev.explanation === snap.explanation &&
+            keyLevelsSignature(prev.keyLevels) === keyLevelsSignature(snap.keyLevels)
+          ) {
+            if (prev.price === snap.price && prev.changePercent === snap.changePercent) return prev;
+            return {
+              ...prev,
+              price: snap.price,
+              changePercent: snap.changePercent,
+              analyzedAt: snap.analyzedAt,
+            };
+          }
+          return snap;
+        });
         if (snap.waiting === false && snap.setupType) {
           const line = narrateSnapshot(snap);
           setNarration((prev) => {
@@ -346,7 +380,9 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
 
   const chartLevels = useMemo(
     () => levelsFromAnalysis(analysis?.keyLevels, showLevels),
-    [analysis?.keyLevels, showLevels],
+    // Signature, not array identity — live ticks were rebuilding the Liquidity line.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [keyLevelsSignature(analysis?.keyLevels), showLevels],
   );
 
   const onPickSymbol = (next: string) => {

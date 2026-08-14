@@ -2027,18 +2027,41 @@ export default function NativeChatChart({
     chart.timeScale().setVisibleLogicalRange({ from, to: bars + 4 });
   }, [rangePreset, chartEpoch, view]);
 
+  const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
+  const levelsRef = useRef(levels);
+  levelsRef.current = levels;
+  const levelPaintKey = (levels ?? [])
+    .filter((lvl) => !/^(support|resistance|spot)$/i.test(lvl.label || ''))
+    .map((lvl) => `${lvl.kind}:${lvl.label}:${Number(lvl.price).toFixed(2)}`)
+    .join('|');
+  const levelEnvelopeKey = (() => {
+    const prices: number[] = [];
+    for (const s of shapes ?? []) {
+      if (typeof s.p1 === 'number' && s.p1 > 0) prices.push(s.p1);
+      if (typeof s.p2 === 'number' && s.p2 > 0) prices.push(s.p2);
+    }
+    for (const l of levels ?? []) {
+      if (/^(spot)$/i.test(l.label || '')) continue;
+      if (typeof l.price === 'number' && l.price > 0) prices.push(l.price);
+    }
+    if (!prices.length) return '';
+    return `${Math.min(...prices).toFixed(2)}:${Math.max(...prices).toFixed(2)}`;
+  })();
+
   // Areas of interest Wolf AI called out, drawn as labelled price lines.
+  // Do not depend on `view` — live bar updates were deleting/recreating Liquidity every tick.
   useEffect(() => {
     const series = priceSeriesRef.current;
     if (!series) return;
 
     levelLinesRef.current.forEach((lineApi) => series.removePriceLine(lineApi));
     levelLinesRef.current = [];
-    if (!levels?.length || !view) return;
+    if (!levelsRef.current?.length || !levelPaintKey) return;
+    const currentLevels = levelsRef.current;
+    const refPx = viewRef.current?.source[viewRef.current.source.length - 1]?.close ?? 0;
 
-    // Skip SUPPORT/RESISTANCE price-lines — those are canvas rays (TV style).
-    levelLinesRef.current = levelsNearPrice(levels, view.source[view.source.length - 1]?.close ?? 0)
-      .filter((lvl) => !/^(support|resistance)$/i.test(lvl.label || ''))
+    levelLinesRef.current = levelsNearPrice(currentLevels, refPx)
+      .filter((lvl) => !/^(support|resistance|spot)$/i.test(lvl.label || ''))
       .map((lvl) =>
         series.createPriceLine({
           price: lvl.price,
@@ -2049,27 +2072,21 @@ export default function NativeChatChart({
           title: lvl.label || lvl.kind,
         }),
       );
-  }, [levels, view, chartEpoch]);
+  }, [levelPaintKey, chartEpoch]);
 
   // Keep AI drawings inside the visible price scale — otherwise priceToCoordinate
   // returns null and trend/OB/liq marks silently vanish off-canvas.
   useEffect(() => {
     const series = priceSeriesRef.current;
     if (!series) return;
-    const prices: number[] = [];
-    for (const s of shapes ?? []) {
-      if (typeof s.p1 === 'number' && s.p1 > 0) prices.push(s.p1);
-      if (typeof s.p2 === 'number' && s.p2 > 0) prices.push(s.p2);
-    }
-    for (const l of levels ?? []) {
-      if (typeof l.price === 'number' && l.price > 0) prices.push(l.price);
-    }
-    if (!prices.length) {
+    if (!levelEnvelopeKey) {
       series.applyOptions({ autoscaleInfoProvider: undefined });
       return;
     }
-    const lo = Math.min(...prices);
-    const hi = Math.max(...prices);
+    const [loS, hiS] = levelEnvelopeKey.split(':');
+    const lo = Number(loS);
+    const hi = Number(hiS);
+    if (!(lo > 0 && hi > 0)) return;
     series.applyOptions({
       autoscaleInfoProvider: (original: () => { priceRange: { minValue: number; maxValue: number } } | null) => {
         const base = original();
@@ -2084,9 +2101,7 @@ export default function NativeChatChart({
         };
       },
     });
-  }, [shapes, levels, chartEpoch]);
-
-  const lastClose = view?.source[view.source.length - 1]?.close ?? 0;
+  }, [levelEnvelopeKey, chartEpoch]);
   const aiShapes = useMemo(() => {
     // Chat/Mentor annotations get a near-price sanity filter.
     // Study/Pine drawings are intentional — never drop them (was hiding all SMC overlays).
