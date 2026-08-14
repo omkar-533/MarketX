@@ -17,6 +17,7 @@ export type LiveWolfOpenPayload = {
 };
 
 const PENDING_KEY = 'wolf_live_pending_v1';
+const LAST_KEY = 'wolf_live_last_v1';
 
 export function requestOpenLiveWolf(payload: LiveWolfOpenPayload) {
   localStorage.setItem(PENDING_KEY, JSON.stringify(payload));
@@ -31,6 +32,28 @@ export function consumePendingLiveWolf(): LiveWolfOpenPayload | null {
     return JSON.parse(raw) as LiveWolfOpenPayload;
   } catch {
     localStorage.removeItem(PENDING_KEY);
+    return null;
+  }
+}
+
+export function rememberLiveWolfDesk(tvSymbol: string, timeframe: RadarTimeframe) {
+  const tv = String(tvSymbol || '').trim();
+  if (!tv) return;
+  try {
+    sessionStorage.setItem(LAST_KEY, JSON.stringify({ tvSymbol: tv, timeframe }));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadLastLiveWolfDesk(): { tvSymbol: string; timeframe: RadarTimeframe } | null {
+  try {
+    const raw = sessionStorage.getItem(LAST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { tvSymbol?: string; timeframe?: RadarTimeframe };
+    if (!parsed?.tvSymbol) return null;
+    return { tvSymbol: parsed.tvSymbol, timeframe: parsed.timeframe || '5m' };
+  } catch {
     return null;
   }
 }

@@ -233,11 +233,13 @@ export function roc(closes: number[], period = 12): number[] {
 }
 
 export function toHeikinAshi(bars: ChartBar[]): ChartBar[] {
+  if (!bars[0] || !Number.isFinite(bars[0].open)) return [];
   const out: ChartBar[] = [];
   let prevHaOpen = bars[0].open;
   let prevHaClose = (bars[0].open + bars[0].high + bars[0].low + bars[0].close) / 4;
 
   bars.forEach((b, i) => {
+    if (!b || !Number.isFinite(b.open)) return;
     const haClose = (b.open + b.high + b.low + b.close) / 4;
     const haOpen = i === 0 ? (b.open + b.close) / 2 : (prevHaOpen + prevHaClose) / 2;
     const haHigh = Math.max(b.high, haOpen, haClose);

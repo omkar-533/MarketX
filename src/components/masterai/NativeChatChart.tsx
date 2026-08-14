@@ -250,15 +250,28 @@ function priceDecimals(bars: ChartBar[]): number {
 
 const ts = (t: number) => t as UTCTimestamp;
 
+function isValidBar(b: ChartBar | undefined | null): b is ChartBar {
+  return Boolean(
+    b &&
+      Number.isFinite(b.time) &&
+      Number.isFinite(b.open) &&
+      Number.isFinite(b.high) &&
+      Number.isFinite(b.low) &&
+      Number.isFinite(b.close),
+  );
+}
+
 /** TradingView compares each bar against the previous close, not its own open. */
-function legendAt(bars: ChartBar[], index: number): Legend {
+function legendAt(bars: ChartBar[], index: number): Legend | null {
   const bar = bars[index];
+  if (!isValidBar(bar)) return null;
+  const prev = index > 0 ? bars[index - 1] : undefined;
   return {
     o: bar.open,
     h: bar.high,
     l: bar.low,
     c: bar.close,
-    prevClose: index > 0 ? bars[index - 1].close : bar.open,
+    prevClose: isValidBar(prev) ? prev.close : bar.open,
   };
 }
 
@@ -564,7 +577,7 @@ export default function NativeChatChart({
 
       const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars, undefined, wolfLiveFeed);
       if (token !== requestRef.current) return;
-      let next = res?.bars ?? [];
+      let next = (res?.bars ?? []).filter(isValidBar);
       // Index history can fail on wrong scrip while LTP/quote is live — seed one bar
       // so the chart + live tip path stay usable until history resolves.
       if (!next.length && !background && wolfLiveFeed) {
@@ -597,6 +610,7 @@ export default function NativeChatChart({
       }
       // Background deepen/resync must keep the live tip (history often lags LTP).
       let preserved = background ? mergeLiveTipIntoHistory(next, barsRef.current) : next;
+      preserved = preserved.filter(isValidBar);
       if (token !== requestRef.current) return;
       barsRef.current = preserved;
       setBars(preserved);
@@ -620,7 +634,11 @@ export default function NativeChatChart({
     [apiSymbol, apiInterval, symbol, wolfLiveFeed],
   );
 
-  // Symbol / interval / manual reload — NOT `load` identity (parent click handlers used to recreate it).
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const instrKeyRef = useRef('');
+
+  // Symbol / interval / manual reload — NOT `load` identity (that remounted the chart → hiccup / NIFTY reset).
   useEffect(() => {
     if (!wolfLiveFeed) {
       barsRef.current = [];
@@ -628,25 +646,28 @@ export default function NativeChatChart({
       setStatus('empty');
       return;
     }
-    // Hard reset only when the instrument or timeframe actually changes.
-    barsRef.current = [];
-    setBars([]);
-    setStatus('loading');
+    const key = `${apiSymbol}|${apiInterval}`;
+    const instrumentChanged = instrKeyRef.current !== key;
+    instrKeyRef.current = key;
+    if (instrumentChanged) {
+      barsRef.current = [];
+      setBars([]);
+      setStatus('loading');
+    }
     let cancelled = false;
     void (async () => {
-      await load(false, 'shallow');
+      await loadRef.current(false, 'shallow');
       if (cancelled) return;
-      // Deepen after first paint so pan-left has history without delaying open.
-      void load(true, 'deep');
+      void loadRef.current(true, 'deep');
     })();
     const timer = window.setInterval(() => {
-      void load(true, 'shallow');
+      void loadRef.current(true, 'shallow');
     }, OHLC_RESYNC_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [apiSymbol, apiInterval, reloadKey, load, wolfLiveFeed]);
+  }, [apiSymbol, apiInterval, reloadKey, wolfLiveFeed]);
 
   const paintLiveTip = useCallback(
     (bar: ChartBar) => {
@@ -902,8 +923,10 @@ export default function NativeChatChart({
   }, [wolfLiveFeed, apiSymbol, apiInterval, applyLivePrice, reloadKey]);
 
   const view = useMemo<ChartView | null>(() => {
-    if (!bars.length) return null;
-    const source = chartStyle === '8' ? toHeikinAshi(bars) : bars;
+    const clean = bars.filter(isValidBar);
+    if (!clean.length) return null;
+    const source = chartStyle === '8' ? toHeikinAshi(clean) : clean;
+    if (!source.length) return null;
     return { source, closes: source.map((b) => b.close), decimals: priceDecimals(source) };
   }, [bars, chartStyle]);
   viewRef.current = view;
@@ -1750,11 +1773,13 @@ export default function NativeChatChart({
       priceSeries.applyOptions({ priceFormat });
       priceFormatted.forEach((s) => s.applyOptions({ priceFormat }));
 
+      const ohlc = source.filter(isValidBar);
+      if (!ohlc.length) return;
       if (isLineLike) {
-        priceSeries.setData(source.map((b) => ({ time: ts(b.time), value: b.close })));
+        priceSeries.setData(ohlc.map((b) => ({ time: ts(b.time), value: b.close })));
       } else {
         priceSeries.setData(
-          source.map((b) => ({
+          ohlc.map((b) => ({
             time: ts(b.time),
             open: b.open,
             high: b.high,
@@ -1766,7 +1791,7 @@ export default function NativeChatChart({
 
       if (volume) {
         volume.setData(
-          source.map((b) => ({
+          ohlc.map((b) => ({
             time: ts(b.time),
             value: b.volume,
             color: b.close >= b.open ? UP_FILL : DOWN_FILL,
@@ -1805,9 +1830,10 @@ export default function NativeChatChart({
       indicatorRef.current = feeds.flatMap((feed) => feed({ source, closes, decimals }));
       setStudyLegend(indicatorRef.current);
 
-      legendMapRef.current = new Map(source.map((b, i) => [b.time, i]));
+      legendMapRef.current = new Map(source.filter(isValidBar).map((b, i) => [b.time, i]));
       setHoverIndex(null);
-      setLegend(legendAt(source, source.length - 1));
+      const nextLegend = legendAt(source, source.length - 1);
+      if (nextLegend) setLegend(nextLegend);
       if (fit) {
         chart.timeScale().fitContent();
         // The card animates in, so the first layout pass can be narrower than final.
@@ -1838,7 +1864,8 @@ export default function NativeChatChart({
       if (!source?.length) return;
       const hovered = param.time ? legendMapRef.current.get(Number(param.time)) : undefined;
       setHoverIndex(hovered ?? null);
-      setLegend(legendAt(source, hovered ?? source.length - 1));
+      const nextLegend = legendAt(source, hovered ?? source.length - 1);
+      if (nextLegend) setLegend(nextLegend);
 
       // Track pointer for context actions — do NOT edge-pan the price scale on hover
       // (that was fighting autoScale / live tip and bouncing the chart).

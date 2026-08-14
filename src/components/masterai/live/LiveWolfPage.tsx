@@ -11,6 +11,8 @@ import { LiveWolfSession } from '../../../services/live/LiveWolfSession';
 import {
   consumePendingLiveWolf,
   LIVE_WOLF_OPEN_EVENT,
+  loadLastLiveWolfDesk,
+  rememberLiveWolfDesk,
   type LiveWolfOpenPayload,
 } from '../../../services/live/liveBridge';
 import type {
@@ -37,7 +39,6 @@ import {
   tradingViewSymbolLabel,
   type TvInterval,
 } from '../../../utils/tradingViewSymbols';
-import { defaultTerminalState } from '../../../services/terminalState';
 
 type Props = {
   onAskWolf?: () => void;
@@ -83,9 +84,24 @@ function resolveProvider(live: boolean): MarketDataProvider | null {
 function tvFromPayload(p: LiveWolfOpenPayload): string {
   const ex = String(p.exchange || 'NSE').toUpperCase();
   const sym = String(p.symbol || '').toUpperCase();
-  if (!sym) return defaultTerminalState().symbol;
+  if (!sym) return '';
   if (sym.includes(':')) return parseTradingViewInput(sym);
   return parseTradingViewInput(`${ex}:${sym}`);
+}
+
+function bootLiveWolf(): { tv: string; tf: RadarTimeframe } {
+  const pending = consumePendingLiveWolf();
+  if (pending?.symbol) {
+    const tv = tvFromPayload(pending);
+    const tf = pending.timeframe || '5m';
+    if (tv) {
+      rememberLiveWolfDesk(tv, tf);
+      return { tv, tf };
+    }
+  }
+  const last = loadLastLiveWolfDesk();
+  if (last?.tvSymbol) return { tv: last.tvSymbol, tf: last.timeframe || '5m' };
+  return { tv: 'NSE:NIFTY', tf: '5m' };
 }
 
 function exchangeFromTv(tv: string): string {
@@ -112,13 +128,11 @@ function levelsFromAnalysis(
 }
 
 export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }: Props) {
-  const [boot] = useState(() => consumePendingLiveWolf());
-  const [tvSymbol, setTvSymbol] = useState(() =>
-    boot ? tvFromPayload(boot) : defaultTerminalState().symbol,
-  );
-  const [timeframe, setTimeframe] = useState<RadarTimeframe>(() => boot?.timeframe || '5m');
+  const [boot] = useState(() => bootLiveWolf());
+  const [tvSymbol, setTvSymbol] = useState(() => boot.tv);
+  const [timeframe, setTimeframe] = useState<RadarTimeframe>(() => boot.tf);
   const [tvInterval, setTvInterval] = useState<TvInterval>(() =>
-    RADAR_TO_TV[boot?.timeframe || '5m'] || '5',
+    RADAR_TO_TV[boot.tf] || '5',
   );
   const [study, setStudy] = useState('none');
   const [reloadKey, setReloadKey] = useState(0);
@@ -143,14 +157,21 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
   }, [analysis]);
 
   useEffect(() => {
+    rememberLiveWolfDesk(tvSymbol, timeframe);
+  }, [tvSymbol, timeframe]);
+
+  useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<LiveWolfOpenPayload>).detail;
-      const pending = detail || consumePendingLiveWolf();
-      if (!pending) return;
-      setTvSymbol(tvFromPayload(pending));
+      const pending = detail?.symbol ? detail : consumePendingLiveWolf();
+      if (!pending?.symbol) return;
+      const tv = tvFromPayload(pending);
+      if (!tv) return;
+      setTvSymbol(tv);
       const tf = pending.timeframe || '5m';
       setTimeframe(tf);
       setTvInterval(RADAR_TO_TV[tf] || '5');
+      rememberLiveWolfDesk(tv, tf);
       setEvents([]);
       setNarration([]);
       resetNarrationCooldown();
@@ -235,9 +256,6 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
     setConnected(dataConnected);
     if (dataConnected) {
       setError(null);
-      setReloadKey((k) => k + 1);
-      // Fresh connect — restart analysis without depending on startSession identity
-      // (that churn was remounting the chart in a loop → Workspace hiccup).
       void startSession();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when connect flag flips
@@ -276,7 +294,9 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
 
   const onPickSymbol = (next: string) => {
     const tv = parseTradingViewInput(next);
+    if (!tv) return;
     setTvSymbol(tv);
+    rememberLiveWolfDesk(tv, timeframe);
     setEvents([]);
     setNarration([]);
     setAnalysis(null);

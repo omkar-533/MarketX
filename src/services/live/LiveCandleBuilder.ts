@@ -6,7 +6,8 @@ import { applyLivePriceToBars, intervalToMs } from '../chart/liveCandleMerge';
 import type { ChartBar } from '../../types/chart';
 import type { Candle, RadarTimeframe } from '../radar/radarTypes';
 
-function candleToBar(c: Candle): ChartBar {
+function candleToBar(c: Candle): ChartBar | null {
+  if (!c || !Number.isFinite(c.open) || !Number.isFinite(c.close)) return null;
   return {
     time: c.timestamp > 1e12 ? Math.floor(c.timestamp / 1000) : Math.floor(c.timestamp),
     open: c.open,
@@ -57,7 +58,7 @@ export class LiveCandleBuilder {
       timeframe,
       instrumentToken: historical[0]?.instrumentToken,
     };
-    this.bars = historical.map(candleToBar);
+    this.bars = historical.map(candleToBar).filter((b): b is ChartBar => Boolean(b));
   }
 
   getCandles(): Candle[] {
@@ -70,7 +71,7 @@ export class LiveCandleBuilder {
 
   replaceHistory(historical: Candle[]) {
     this.meta.instrumentToken = historical[0]?.instrumentToken ?? this.meta.instrumentToken;
-    this.bars = historical.map(candleToBar);
+    this.bars = historical.map(candleToBar).filter((b): b is ChartBar => Boolean(b));
   }
 
   /**
