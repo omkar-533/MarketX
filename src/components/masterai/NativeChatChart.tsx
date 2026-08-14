@@ -426,6 +426,7 @@ export default function NativeChatChart({
   >({});
   const [chartEpoch, setChartEpoch] = useState(0);
   const needFitRef = useRef(true);
+  const lastPaintedCountRef = useRef(0);
   /** Set once the user pans or zooms, after which we stop auto-fitting. */
   const touchedRef = useRef(false);
   /** After first layout / user price zoom, freeze Y so live ticks do not bounce the scale. */
@@ -578,6 +579,15 @@ export default function NativeChatChart({
       const res = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars, undefined, wolfLiveFeed);
       if (token !== requestRef.current) return;
       let next = (res?.bars ?? []).filter(isValidBar);
+      // LIVE desks: first OHLC can race auth / weekend window — retry before painting a 1-bar quote stub.
+      if (next.length < 12 && !background && wolfLiveFeed) {
+        await new Promise((r) => setTimeout(r, 400));
+        if (token !== requestRef.current) return;
+        const retry = await fetchMarketOhlc(apiSymbol, apiInterval, range, wantBars, undefined, wolfLiveFeed);
+        if (token !== requestRef.current) return;
+        const retryBars = (retry?.bars ?? []).filter(isValidBar);
+        if (retryBars.length > next.length) next = retryBars;
+      }
       // Index history can fail on wrong scrip while LTP/quote is live — seed one bar
       // so the chart + live tip path stay usable until history resolves.
       if (!next.length && !background && wolfLiveFeed) {
@@ -612,6 +622,12 @@ export default function NativeChatChart({
       let preserved = background ? mergeLiveTipIntoHistory(next, barsRef.current) : next;
       preserved = preserved.filter(isValidBar);
       if (token !== requestRef.current) return;
+      // Quote-stub (1 bar) then real history: unlock viewport or candles stay off-screen.
+      if (preserved.length >= 12 && barsRef.current.length < 12) {
+        needFitRef.current = true;
+        priceLockedRef.current = false;
+        touchedRef.current = false;
+      }
       barsRef.current = preserved;
       setBars(preserved);
       setFetchedAt(res?.fetchedAt ?? new Date().toISOString());
@@ -624,7 +640,9 @@ export default function NativeChatChart({
           const quote = qRes && 'quote' in qRes ? qRes.quote : null;
           const px = Number(quote?.lastPrice || quote?.price) || 0;
           if (!(px > 0)) return;
-          const tip = applyLivePriceToBars(barsRef.current, px, apiInterval);
+          const tip = applyLivePriceToBars(barsRef.current, px, apiInterval, {
+            allowNewBar: getMarketSession(symbol).open,
+          });
           if (!tip) return;
           barsRef.current = tip.bars;
           setBars(tip.bars);
@@ -713,6 +731,7 @@ export default function NativeChatChart({
         volume,
         high: extremes?.high,
         low: extremes?.low,
+        allowNewBar: getMarketSession(symbol).open,
       });
       if (!merged) return;
       barsRef.current = merged.bars;
@@ -788,7 +807,7 @@ export default function NativeChatChart({
         setFetchedAt(new Date(now).toISOString());
       }
     },
-    [apiInterval, chartStyle, paintLiveTip],
+    [apiInterval, chartStyle, paintLiveTip, symbol],
   );
 
   // Drop hide flags for studies that were removed from the desk.
@@ -803,6 +822,7 @@ export default function NativeChatChart({
   // Refit the viewport only when the user actually switches instrument/timeframe.
   useEffect(() => {
     needFitRef.current = true;
+    lastPaintedCountRef.current = 0;
     touchedRef.current = false;
     priceLockedRef.current = false;
     historyBusyRef.current = false;
@@ -1835,6 +1855,12 @@ export default function NativeChatChart({
       const nextLegend = legendAt(source, source.length - 1);
       if (nextLegend) setLegend(nextLegend);
       if (fit) {
+        try {
+          chart.priceScale('right').setAutoScale(true);
+          priceLockedRef.current = false;
+        } catch {
+          /* ignore */
+        }
         chart.timeScale().fitContent();
         // The card animates in, so the first layout pass can be narrower than final.
         requestAnimationFrame(() => {
@@ -1988,8 +2014,19 @@ export default function NativeChatChart({
     const chart = chartRef.current;
     const shift = prependShiftRef.current;
     const range = shift > 0 ? chart?.timeScale().getVisibleLogicalRange() : null;
-    applyRef.current(view, needFitRef.current);
+    const nextLen = view.source.length;
+    const grewFromStub =
+      lastPaintedCountRef.current > 0 &&
+      lastPaintedCountRef.current < 12 &&
+      nextLen >= 12;
+    const shouldFit = needFitRef.current || grewFromStub;
+    if (grewFromStub) {
+      priceLockedRef.current = false;
+      touchedRef.current = false;
+    }
+    applyRef.current(view, shouldFit);
     needFitRef.current = false;
+    lastPaintedCountRef.current = nextLen;
     if (shift > 0 && range && chart) {
       prependShiftRef.current = 0;
       chart.timeScale().setVisibleLogicalRange({

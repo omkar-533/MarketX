@@ -88,7 +88,14 @@ export function applyLivePriceToBars(
   bars: ChartBar[],
   price: number,
   apiInterval: string,
-  opts?: { nowMs?: number; volume?: number; high?: number; low?: number },
+  opts?: {
+    nowMs?: number;
+    volume?: number;
+    high?: number;
+    low?: number;
+    /** When false (session closed), only amend the last real bar — never invent after-hours candles. */
+    allowNewBar?: boolean;
+  },
 ): { bars: ChartBar[]; updated: ChartBar; isNewBar: boolean } | null {
   if (!Array.isArray(bars) || !bars.length || !(price > 0)) return null;
 
@@ -110,7 +117,7 @@ export function applyLivePriceToBars(
   }
 
   const intervalMs = intervalToMs(apiInterval);
-  if (!(intervalMs > 0)) {
+  if (!(intervalMs > 0) || opts?.allowNewBar === false) {
     const tip = amendTip(last, price, vol, extremes);
     next[next.length - 1] = tip;
     return { bars: next, updated: tip, isNewBar: false };

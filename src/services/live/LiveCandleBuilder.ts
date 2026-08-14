@@ -5,6 +5,7 @@
 import { applyLivePriceToBars, intervalToMs } from '../chart/liveCandleMerge';
 import type { ChartBar } from '../../types/chart';
 import type { Candle, RadarTimeframe } from '../radar/radarTypes';
+import { getMarketSession } from '../../utils/marketHours';
 
 function candleToBar(c: Candle): ChartBar | null {
   if (!c || !Number.isFinite(c.open) || !Number.isFinite(c.close)) return null;
@@ -78,7 +79,11 @@ export class LiveCandleBuilder {
    * Apply live LTP. Returns null if price rejected / no bars.
    */
   applyQuote(price: number, opts?: { volume?: number; high?: number; low?: number; nowMs?: number }) {
-    const result = applyLivePriceToBars(this.bars, price, this.meta.timeframe, opts);
+    const sessionOpen = getMarketSession(`${this.meta.exchange}:${this.meta.symbol}`).open;
+    const result = applyLivePriceToBars(this.bars, price, this.meta.timeframe, {
+      ...opts,
+      allowNewBar: sessionOpen,
+    });
     if (!result) return null;
     this.bars = result.bars;
     return {
