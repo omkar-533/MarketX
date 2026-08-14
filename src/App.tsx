@@ -13,7 +13,8 @@ import {
   SHOW_TERMINAL,
 } from './constants/featureFlags';
 import { RADAR_OPEN_EVENT } from './services/radar/radarBridge';
-import { LIVE_WOLF_OPEN_EVENT } from './services/live/liveBridge';
+import { LIVE_WOLF_OPEN_EVENT, peekPendingLiveWolf } from './services/live/liveBridge';
+import { parseHashQuery } from './utils/appNav';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { clearOpportunityDayBoard } from './services/opportunity/opportunityStore';
 import { clearRadarDayBoard } from './services/radar/radarStore';
@@ -181,7 +182,22 @@ function persistTab(tab: string, mode: 'push' | 'replace' = 'replace') {
     /* ignore */
   }
   const search = window.location.search || '';
-  const next = `/${search}#${tab}`;
+  const currentRaw = window.location.hash.replace(/^#\/?/, '');
+  const currentTab = currentRaw.split(/[?&]/)[0] || '';
+  const qAt = currentRaw.search(/[?&]/);
+  let query = currentTab === tab && qAt >= 0 ? currentRaw.slice(qAt).replace(/^&/, '?') : '';
+  if (query && !query.startsWith('?')) query = `?${query}`;
+  if (tab === 'live-wolf' && !parseHashQuery(`#${tab}${query}`).get('symbol')) {
+    const pending = peekPendingLiveWolf();
+    if (pending?.symbol && pending.queuedAt && Date.now() - pending.queuedAt < 15_000) {
+      const params = new URLSearchParams();
+      params.set('symbol', pending.symbol);
+      params.set('exchange', pending.exchange || 'NSE');
+      params.set('tf', pending.timeframe || '5m');
+      query = `?${params.toString()}`;
+    }
+  }
+  const next = `/${search}#${tab}${query}`;
   if (`${window.location.pathname}${window.location.search}${window.location.hash}` === next) {
     return;
   }

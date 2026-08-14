@@ -14,26 +14,37 @@ export type LiveWolfOpenPayload = {
   strategyId?: string;
   strategyName?: string;
   matchedConditions?: string[];
+  queuedAt?: number;
 };
 
 const PENDING_KEY = 'wolf_live_pending_v1';
 const LAST_KEY = 'wolf_live_last_v1';
 
 export function requestOpenLiveWolf(payload: LiveWolfOpenPayload) {
-  localStorage.setItem(PENDING_KEY, JSON.stringify(payload));
+  localStorage.setItem(PENDING_KEY, JSON.stringify({ ...payload, queuedAt: Date.now() }));
   window.dispatchEvent(new CustomEvent(LIVE_WOLF_OPEN_EVENT, { detail: payload }));
 }
 
-export function consumePendingLiveWolf(): LiveWolfOpenPayload | null {
+export function peekPendingLiveWolf(): LiveWolfOpenPayload | null {
   try {
     const raw = localStorage.getItem(PENDING_KEY);
     if (!raw) return null;
-    localStorage.removeItem(PENDING_KEY);
-    return JSON.parse(raw) as LiveWolfOpenPayload;
+    const parsed = JSON.parse(raw) as LiveWolfOpenPayload;
+    if (!parsed?.symbol) return null;
+    return parsed;
   } catch {
-    localStorage.removeItem(PENDING_KEY);
     return null;
   }
+}
+
+export function consumePendingLiveWolf(): LiveWolfOpenPayload | null {
+  const pending = peekPendingLiveWolf();
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* ignore */
+  }
+  return pending;
 }
 
 export function rememberLiveWolfDesk(tvSymbol: string, timeframe: RadarTimeframe) {

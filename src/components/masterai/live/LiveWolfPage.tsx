@@ -39,7 +39,7 @@ import {
   tradingViewSymbolLabel,
   type TvInterval,
 } from '../../../utils/tradingViewSymbols';
-import { parseHashQuery } from '../../../utils/appNav';
+import { parseHashQuery, tabHref } from '../../../utils/appNav';
 
 type Props = {
   onAskWolf?: () => void;
@@ -90,19 +90,37 @@ function tvFromPayload(p: LiveWolfOpenPayload): string {
   return parseTradingViewInput(`${ex}:${sym}`);
 }
 
-function bootLiveWolf(): { tv: string; tf: RadarTimeframe } {
+function deskFromHash(): { tv: string; tf: RadarTimeframe } | null {
   const q = parseHashQuery();
   const hashSymbol = q.get('symbol');
-  if (hashSymbol) {
+  if (!hashSymbol) return null;
+  const exchange = q.get('exchange') || 'NSE';
+  const rawTf = q.get('tf') || '5m';
+  const tf = (TFS.includes(rawTf as RadarTimeframe) ? rawTf : '5m') as RadarTimeframe;
+  const tv = parseTradingViewInput(
+    hashSymbol.includes(':') ? hashSymbol : `${exchange}:${hashSymbol}`,
+  );
+  return tv ? { tv, tf } : null;
+}
+
+function writeLiveWolfHash(tv: string, tf: RadarTimeframe) {
+  const href = tabHref('live-wolf', {
+    symbol: apiSymbolFromTv(tv),
+    exchange: exchangeFromTv(tv),
+    tf,
+  });
+  const next = `${window.location.pathname}${window.location.search}${href}`;
+  const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (here === next) return;
+  window.history.replaceState({ tab: 'live-wolf' }, '', next);
+}
+
+function bootLiveWolf(): { tv: string; tf: RadarTimeframe } {
+  const fromHash = deskFromHash();
+  if (fromHash) {
     consumePendingLiveWolf();
-    const exchange = q.get('exchange') || 'NSE';
-    const rawTf = q.get('tf') || '5m';
-    const tf = (TFS.includes(rawTf as RadarTimeframe) ? rawTf : '5m') as RadarTimeframe;
-    const tv = parseTradingViewInput(
-      hashSymbol.includes(':') ? hashSymbol : `${exchange}:${hashSymbol}`,
-    );
-    rememberLiveWolfDesk(tv, tf);
-    return { tv, tf };
+    rememberLiveWolfDesk(fromHash.tv, fromHash.tf);
+    return fromHash;
   }
   const pending = consumePendingLiveWolf();
   if (pending?.symbol) {
@@ -110,11 +128,15 @@ function bootLiveWolf(): { tv: string; tf: RadarTimeframe } {
     const tf = pending.timeframe || '5m';
     if (tv) {
       rememberLiveWolfDesk(tv, tf);
+      writeLiveWolfHash(tv, tf);
       return { tv, tf };
     }
   }
   const last = loadLastLiveWolfDesk();
-  if (last?.tvSymbol) return { tv: last.tvSymbol, tf: last.timeframe || '5m' };
+  if (last?.tvSymbol) {
+    writeLiveWolfHash(last.tvSymbol, last.timeframe || '5m');
+    return { tv: last.tvSymbol, tf: last.timeframe || '5m' };
+  }
   return { tv: 'NSE:NIFTY', tf: '5m' };
 }
 
@@ -174,24 +196,45 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
     rememberLiveWolfDesk(tvSymbol, timeframe);
   }, [tvSymbol, timeframe]);
 
+  const applyDesk = useCallback((tv: string, tf: RadarTimeframe, writeHash = true) => {
+    if (!tv) return;
+    setTvSymbol(tv);
+    setTimeframe(tf);
+    setTvInterval(RADAR_TO_TV[tf] || '5');
+    rememberLiveWolfDesk(tv, tf);
+    if (writeHash) writeLiveWolfHash(tv, tf);
+    setEvents([]);
+    setNarration([]);
+    resetNarrationCooldown();
+  }, []);
+
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent<LiveWolfOpenPayload>).detail;
-      const pending = detail?.symbol ? detail : consumePendingLiveWolf();
-      if (!pending?.symbol) return;
-      const tv = tvFromPayload(pending);
+      if (!detail?.symbol) return;
+      const tv = tvFromPayload(detail);
       if (!tv) return;
-      setTvSymbol(tv);
-      const tf = pending.timeframe || '5m';
-      setTimeframe(tf);
-      setTvInterval(RADAR_TO_TV[tf] || '5');
-      rememberLiveWolfDesk(tv, tf);
-      setEvents([]);
-      setNarration([]);
-      resetNarrationCooldown();
+      applyDesk(tv, detail.timeframe || '5m');
     };
     window.addEventListener(LIVE_WOLF_OPEN_EVENT, onOpen);
     return () => window.removeEventListener(LIVE_WOLF_OPEN_EVENT, onOpen);
+  }, [applyDesk]);
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const desk = deskFromHash();
+      if (!desk) return;
+      setTvSymbol((prev) => (prev === desk.tv ? prev : desk.tv));
+      setTimeframe((prev) => (prev === desk.tf ? prev : desk.tf));
+      setTvInterval(RADAR_TO_TV[desk.tf] || '5');
+      rememberLiveWolfDesk(desk.tv, desk.tf);
+    };
+    window.addEventListener('hashchange', syncFromHash);
+    window.addEventListener('popstate', syncFromHash);
+    return () => {
+      window.removeEventListener('hashchange', syncFromHash);
+      window.removeEventListener('popstate', syncFromHash);
+    };
   }, []);
 
   useEffect(() => {
@@ -309,17 +352,14 @@ export default function LiveWolfPage({ onAskWolf, onConnectData, dataConnected }
   const onPickSymbol = (next: string) => {
     const tv = parseTradingViewInput(next);
     if (!tv) return;
-    setTvSymbol(tv);
-    rememberLiveWolfDesk(tv, timeframe);
-    setEvents([]);
-    setNarration([]);
+    applyDesk(tv, timeframe);
     setAnalysis(null);
-    resetNarrationCooldown();
   };
 
   const onTfClick = (tf: RadarTimeframe) => {
     setTimeframe(tf);
     setTvInterval(RADAR_TO_TV[tf] || '5');
+    writeLiveWolfHash(tvSymbol, tf);
   };
 
   const onAsk = () => {

@@ -23,10 +23,17 @@ export default function AppLink({
     onClick?.(e);
     if (e.defaultPrevented) return;
     if (!isPlainLeftClick(e)) return;
-    onActivate?.();
-    // Same-tab SPA handlers already change the hash. Native click is kept when
-    // there is no handler so right-click AND left-click both use the href.
-    if (onActivate) e.preventDefault();
+    if (!onActivate) return;
+    e.preventDefault();
+    // Apply the real hash first so LIVE WOLF / Radar boot from ?symbol= instead of NIFTY.
+    if (href.startsWith('#')) {
+      const next = `${window.location.pathname}${window.location.search}${href}`;
+      const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (here !== next) {
+        window.history.pushState({ tab: to }, '', next);
+      }
+    }
+    onActivate();
   };
 
   return (
