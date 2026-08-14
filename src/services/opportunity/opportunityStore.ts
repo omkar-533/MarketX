@@ -6,7 +6,7 @@ import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunity
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v4';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v5';
 const DAY_HIT_CAP = 80;
 
 type OpportunityDayBoard = {

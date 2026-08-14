@@ -441,60 +441,6 @@ export function scanSectorLeaders(
   });
 }
 
-/** 09 — DELIVERY FLOW — accumulation proxy when official delivery % feed is offline */
-export function scanDeliveryFlow(ctx: Ctx): OpportunityHit | null {
-  const { f } = ctx;
-  const bars = f.candles.slice(-12);
-  if (bars.length < 8) return null;
-
-  let accum = 0;
-  let totalVol = 0;
-  for (const b of bars) {
-    const range = Math.max(b.high - b.low, 1e-6);
-    const closePos = (b.close - b.low) / range; // 0–1
-    const signed = (closePos - 0.5) * 2; // -1..1
-    accum += signed * (b.volume || 0);
-    totalVol += b.volume || 0;
-  }
-  if (!(totalVol > 0)) return null;
-  const accumScore = accum / totalVol; // -1..1
-  const rvol = f.volume.ratio;
-  if (Math.abs(accumScore) < 0.12 || rvol < 1.1) return null;
-
-  const bullish = accumScore > 0;
-  const breakdown: ScoreBreakdown = {
-    deliveryProxy: clampScore(Math.abs(accumScore) * 40, 30),
-    volume: clampScore(Math.min(22, (rvol - 1) * 12), 22),
-    persistence: Math.abs(f.changePercent) >= 0.4 ? 16 : 8,
-    trend: (bullish && f.changePercent >= 0) || (!bullish && f.changePercent <= 0) ? 18 : 8,
-    confirmation: f.volume.state === 'EXPANDING' || f.volume.state === 'UNUSUAL' ? 12 : 6,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 55)) return null;
-
-  return baseHit('delivery_flow', ctx, {
-    direction: bullish ? 'bullish' : 'bearish',
-    status: score >= 78 ? 'ACTIVE' : 'WATCH',
-    score,
-    breakdown,
-    stateLabel: bullish ? 'ACCUMULATION PROXY' : 'DISTRIBUTION PROXY',
-    why: `Close location × volume over last ${bars.length} bars suggests ${
-      bullish ? 'buying' : 'selling'
-    } pressure (official delivery % feed unavailable).`,
-    keyLevel: f.tech.vwap ?? f.tech.ema21,
-    trigger: bullish ? f.high10 : f.low10,
-    invalidation: bullish
-      ? 'Closes start pinning session lows on rising volume.'
-      : 'Closes start pinning session highs on rising volume.',
-    confirmationNeeded: 'Treat as participation hint until delivery % feed is live.',
-    evidence: [
-      { label: bullish ? 'Accumulation bias' : 'Distribution bias', ok: true },
-      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.2 },
-      { label: 'Delivery % feed offline', ok: false, detail: 'Using volume accumulation proxy' },
-    ],
-  });
-}
-
 /** 10 — TREND RIDER */
 export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -643,7 +589,6 @@ export const OHLC_SCANNERS: OpportunityScannerId[] = [
   'momentum_fade',
   'breakout_radar',
   'reversal_hunter',
-  'delivery_flow',
   'trend_rider',
   'options_flow',
 ];

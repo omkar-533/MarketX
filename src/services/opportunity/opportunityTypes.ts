@@ -12,7 +12,6 @@ export type OpportunityScannerId =
   | 'breakout_radar'
   | 'reversal_hunter'
   | 'sector_leaders'
-  | 'delivery_flow'
   | 'trend_rider'
   | 'options_flow'
   | 'wolf_prime';
@@ -108,7 +107,7 @@ export const OPPORTUNITY_SCANNERS: {
   id: OpportunityScannerId;
   title: string;
   tagline: string;
-  requires: 'ohlc' | 'oi' | 'delivery' | 'options' | 'sector';
+  requires: 'ohlc' | 'oi' | 'options' | 'sector';
 }[] = [
   {
     id: 'breakout_radar',
@@ -163,12 +162,6 @@ export const OPPORTUNITY_SCANNERS: {
     title: 'SECTOR LEADERS',
     tagline: 'Stocks leading or lagging their sector versus peers on the same scan (relative strength).',
     requires: 'sector',
-  },
-  {
-    id: 'delivery_flow',
-    title: 'DELIVERY FLOW',
-    tagline: 'Where the candle closes inside its range × volume. Proxy only — not official NSE delivery %.',
-    requires: 'ohlc',
   },
   {
     id: 'flow_shift',

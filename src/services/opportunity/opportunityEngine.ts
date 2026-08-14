@@ -12,7 +12,6 @@ import {
   OHLC_SCANNERS,
   scanBreakoutRadar,
   scanCompressionBreak,
-  scanDeliveryFlow,
   scanFlowShift,
   scanLiquidityHunt,
   scanMomentumFade,
@@ -239,7 +238,6 @@ export async function runOpportunityScan(
           ['momentum_fade', scanMomentumFade],
           ['breakout_radar', scanBreakoutRadar],
           ['reversal_hunter', scanReversalHunter],
-          ['delivery_flow', scanDeliveryFlow],
           ['trend_rider', scanTrendRider],
           ['options_flow', scanOptionsFlow],
         ];
