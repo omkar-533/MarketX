@@ -162,22 +162,34 @@ export class ServerMarketDataProvider implements MarketDataProvider {
   ): Promise<Record<string, Candle[]>> {
     const unique = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
     const out: Record<string, Candle[]> = {};
-    const CHUNK = 40;
-    for (let i = 0; i < unique.length; i += CHUNK) {
-      const chunk = unique.slice(i, i + CHUNK);
-      try {
-        const { candlesBySymbol } = await fetchLiveCandlesBatch(chunk, timeframe, Math.max(25, bars));
+    const CHUNK = 80;
+    const chunks: string[][] = [];
+    for (let i = 0; i < unique.length; i += CHUNK) chunks.push(unique.slice(i, i + CHUNK));
+    const WAVE = 2;
+    for (let i = 0; i < chunks.length; i += WAVE) {
+      const wave = chunks.slice(i, i + WAVE);
+      const results = await Promise.all(
+        wave.map(async (chunk) => {
+          try {
+            return await fetchLiveCandlesBatch(chunk, timeframe, Math.max(25, bars));
+          } catch {
+            const fallback: Record<string, Candle[]> = {};
+            await Promise.all(
+              chunk.map(async (symbol) => {
+                fallback[symbol] = await this.getCandles(symbol, timeframe, bars);
+              }),
+            );
+            return { candlesBySymbol: fallback };
+          }
+        }),
+      );
+      wave.forEach((chunk, idx) => {
+        const rows = results[idx]?.candlesBySymbol || {};
         for (const symbol of chunk) {
-          const rows = candlesBySymbol?.[symbol];
-          out[symbol] = Array.isArray(rows) ? rows : [];
+          const list = rows[symbol];
+          out[symbol] = Array.isArray(list) ? list : [];
         }
-      } catch {
-        await Promise.all(
-          chunk.map(async (symbol) => {
-            out[symbol] = await this.getCandles(symbol, timeframe, bars);
-          }),
-        );
-      }
+      });
     }
     return out;
   }

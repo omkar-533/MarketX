@@ -332,8 +332,8 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   // Daily: aim for multi-year; intraday: fill requested depth within chunk budget.
   const hardCap = interval === '1day' ? 3200 : 2500;
   const wantBars = Math.max(20, Math.min(hardCap, Number(bars) || 120));
-  // After-hours first window can be empty — walk back a few sessions, but don't stampede INDstocks.
-  const maxChunks = Math.max(4, wantBars <= 220 ? 4 : Math.min(8, MAX_HISTORY_CHUNKS[interval] || 8));
+  // Session-clamped window usually fills a scan/chart in 1 call. Extra chunks only if empty.
+  const maxChunks = wantBars <= 180 ? 2 : Math.min(6, MAX_HISTORY_CHUNKS[interval] || 6);
   const beforeMs = Number(opts.beforeMs);
   let end = historicalEndMs(interval, Number.isFinite(beforeMs) && beforeMs > 0 ? beforeMs : Date.now());
 
@@ -422,6 +422,86 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   const deduped = [...byTs.values()].sort((a, b) => a.timestamp - b.timestamp);
   if (deduped.length <= wantBars) return deduped;
   return deduped.slice(-wantBars);
+}
+
+function rowsFromIndCandles(raw, scripCode, wolfTf, wantBars) {
+  const byTs = new Map();
+  for (const c of raw || []) {
+    const tsSec = Number(c.ts);
+    const timestamp = tsSec > 1e12 ? tsSec : tsSec * 1000;
+    if (!Number.isFinite(timestamp)) continue;
+    const open = Number(c.o);
+    const high = Number(c.h);
+    const low = Number(c.l);
+    const close = Number(c.c);
+    if (!(open > 0 && high > 0 && close > 0)) continue;
+    byTs.set(timestamp, {
+      symbol: scripCode,
+      exchange: String(scripCode).split('_')[0] || 'NSE',
+      instrumentToken: scripCode,
+      timeframe: wolfTf,
+      timestamp,
+      open,
+      high,
+      low,
+      close,
+      volume: Number(c.v || 0),
+    });
+  }
+  const deduped = [...byTs.values()].sort((a, b) => a.timestamp - b.timestamp);
+  return deduped.length > wantBars ? deduped.slice(-wantBars) : deduped;
+}
+
+/** One INDstocks historical call per scrip group — Opportunity / Radar scan path. */
+export async function fetchIndstocksCandlesMany(accessToken, scripCodes, wolfTf, bars = 80) {
+  const interval = wolfTfToIndInterval(wolfTf);
+  if (!interval) throw new Error(`Unsupported timeframe: ${wolfTf}`);
+  const unique = [...new Set((scripCodes || []).map((c) => String(c || '').trim()).filter(Boolean))];
+  /** @type {Map<string, object[]>} */
+  const out = new Map();
+  if (!unique.length) return out;
+
+  const wantBars = Math.max(20, Math.min(500, Number(bars) || 80));
+  const maxSpan = MAX_SPAN_MS[interval] || 7 * 86_400_000;
+  const end = historicalEndMs(interval, Date.now());
+  const useStart = end - maxSpan + 60_000;
+  const GROUP = 15;
+  const groups = [];
+  for (let i = 0; i < unique.length; i += GROUP) groups.push(unique.slice(i, i + GROUP));
+
+  const pullGroup = async (group) => {
+    try {
+      const { json } = await indFetch(`/market/historical/${interval}`, accessToken, {
+        searchParams: {
+          'scrip-codes': group.join(','),
+          start_time: String(Math.floor(useStart)),
+          end_time: String(Math.floor(end)),
+        },
+      });
+      const data = json?.data && typeof json.data === 'object' ? json.data : {};
+      for (const code of group) {
+        const mine = data[code];
+        const rows = Array.isArray(mine?.candles) ? mine.candles : [];
+        out.set(code, rowsFromIndCandles(rows, code, wolfTf, wantBars));
+      }
+    } catch {
+      await Promise.all(
+        group.map(async (code) => {
+          try {
+            out.set(code, await fetchIndstocksCandles(accessToken, code, wolfTf, bars));
+          } catch {
+            out.set(code, []);
+          }
+        }),
+      );
+    }
+  };
+
+  const WAVE = 3;
+  for (let i = 0; i < groups.length; i += WAVE) {
+    await Promise.all(groups.slice(i, i + WAVE).map(pullGroup));
+  }
+  return out;
 }
 
 function parseCsv(text) {

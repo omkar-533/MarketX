@@ -201,7 +201,7 @@ export async function fetchLiveCandlesBatch(
   bars = 80,
 ): Promise<LiveCandlesBatchResponse> {
   const want = Math.min(500, Math.max(20, Math.floor(bars) || 80));
-  const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 40);
+  const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 80);
   const cached: Record<string, import('../radar/radarTypes').Candle[]> = {};
   const missing: string[] = [];
   for (const symbol of list) {

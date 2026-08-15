@@ -29,6 +29,7 @@ import {
   fetchIndstocksQuote,
   fetchIndstocksQuotesMany,
   fetchIndstocksCandles,
+  fetchIndstocksCandlesMany,
   INDSTOCKS_CAPABILITIES,
   INDSTOCKS_PERMISSION_NOTE,
 } from './indstocksClient.mjs';
@@ -126,6 +127,50 @@ async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
   for (const c of candles) c.symbol = symbol;
   if (!beforeMs) writeCandleCache(symbol, timeframe, bars, candles);
   return { candles, scrip: used };
+}
+
+async function loadLiveCandlesMany(accessToken, symbols, timeframe, bars) {
+  await ensureInstrumentMap(accessToken);
+  /** @type {Record<string, object[]>} */
+  const result = {};
+  /** @type {{ symbol: string, scrip: string }[]} */
+  const need = [];
+  for (const symbol of symbols) {
+    const cached = readCandleCache(symbol, timeframe, bars);
+    if (cached?.length) {
+      result[symbol] = cached;
+      continue;
+    }
+    const candidates = resolveScripCodeCandidates(symbol);
+    if (!candidates[0]) {
+      result[symbol] = [];
+      continue;
+    }
+    need.push({ symbol, scrip: candidates[0] });
+  }
+  if (!need.length) return result;
+
+  const scrips = [...new Set(need.map((n) => n.scrip))];
+  const byScrip = await fetchIndstocksCandlesMany(accessToken, scrips, timeframe, bars);
+  for (const { symbol, scrip } of need) {
+    let candles = byScrip.get(scrip) || [];
+    if (candles.length < 20) {
+      const alts = resolveScripCodeCandidates(symbol).filter((c) => c !== scrip).slice(0, 2);
+      for (const alt of alts) {
+        try {
+          const chunk = await fetchIndstocksCandles(accessToken, alt, timeframe, bars);
+          if (chunk.length > candles.length) candles = chunk;
+          if (candles.length >= 20) break;
+        } catch {
+          /* next alt */
+        }
+      }
+    }
+    for (const c of candles) c.symbol = symbol;
+    writeCandleCache(symbol, timeframe, bars, candles);
+    result[symbol] = candles;
+  }
+  return result;
 }
 
 function cookieOpts() {
@@ -454,18 +499,10 @@ router.post('/candles-batch', async (req, res) => {
   const timeframe = String(req.body?.timeframe || '15m').trim();
   const bars = Math.min(500, Math.max(20, Number(req.body?.bars) || 80));
   const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
-  const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 40);
+  const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 80);
   if (!symbols.length) return res.status(400).json({ error: 'symbols required' });
   try {
-    const rows = await mapPool(symbols, 12, async (symbol) => {
-      try {
-        const { candles } = await loadLiveCandles(live.accessToken, symbol, timeframe, bars);
-        return [symbol, Array.isArray(candles) ? candles : []];
-      } catch {
-        return [symbol, []];
-      }
-    });
-    const candlesBySymbol = Object.fromEntries(rows);
+    const candlesBySymbol = await loadLiveCandlesMany(live.accessToken, symbols, timeframe, bars);
     res.json({
       timeframe,
       bars,

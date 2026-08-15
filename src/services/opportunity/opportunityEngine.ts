@@ -176,7 +176,7 @@ export async function runOpportunityScan(
     };
   }
 
-  const FETCH_BATCH = provider.isDemo ? 24 : 40;
+  const FETCH_BATCH = provider.isDemo ? 24 : 80;
   const bars = sessionBarsNeeded(tf);
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
