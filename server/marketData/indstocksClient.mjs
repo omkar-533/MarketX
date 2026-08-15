@@ -379,9 +379,8 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
     let oldestMs = end;
     let added = 0;
     for (const c of raw) {
-      const tsSec = Number(c.ts);
-      const timestamp = tsSec > 1e12 ? tsSec : tsSec * 1000;
-      if (!Number.isFinite(timestamp)) continue;
+      const timestamp = indCandleTimeMs(c);
+      if (!(timestamp > 0)) continue;
       const open = Number(c.o);
       const high = Number(c.h);
       const low = Number(c.l);
@@ -424,12 +423,23 @@ export async function fetchIndstocksCandles(accessToken, scripCode, wolfTf, bars
   return deduped.slice(-wantBars);
 }
 
+function indCandleTimeMs(c) {
+  if (c == null) return 0;
+  if (Array.isArray(c)) return indCandleTimeMs(c[0]);
+  if (typeof c === 'number' || typeof c === 'string') {
+    const n = Number(c);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return n > 1e12 ? n : n * 1000;
+  }
+  const raw = c.ts ?? c.time ?? c.timestamp ?? c.t;
+  return indCandleTimeMs(raw);
+}
+
 function rowsFromIndCandles(raw, scripCode, wolfTf, wantBars) {
   const byTs = new Map();
   for (const c of raw || []) {
-    const tsSec = Number(c.ts);
-    const timestamp = tsSec > 1e12 ? tsSec : tsSec * 1000;
-    if (!Number.isFinite(timestamp)) continue;
+    const timestamp = indCandleTimeMs(c);
+    if (!(timestamp > 0)) continue;
     const open = Number(c.o);
     const high = Number(c.h);
     const low = Number(c.l);

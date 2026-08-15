@@ -76,13 +76,14 @@ function formatHitPrice(price: number): string {
 }
 
 function formatHitClock(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return '—';
-  if (ms > Date.now() + 2_000) return '—';
-  const day = istCalendarDay(new Date(ms));
+  const t0 = ms > 0 && ms < 1e11 ? ms * 1000 : ms;
+  if (!Number.isFinite(t0) || t0 <= 0) return '—';
+  if (t0 > Date.now() + 2_000) return '—';
+  const day = istCalendarDay(new Date(t0));
   const open = Date.parse(`${day}T09:15:00+05:30`);
   const close = Date.parse(`${day}T15:30:00+05:30`);
   if (!Number.isFinite(open) || !Number.isFinite(close)) return '—';
-  const t = ms > close ? close : ms < open ? open : ms;
+  const t = t0 > close ? close : t0 < open ? open : t0;
   if (Date.now() - t > 10 * 86_400_000) return '—';
   return new Date(t).toLocaleTimeString('en-IN', {
     hour: 'numeric',

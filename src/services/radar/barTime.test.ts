@@ -5,7 +5,9 @@ import {
   firstConsecutiveHitTime,
   firstHitTimeOfIstDay,
   keepFirstSetupTime,
+  lastBarStamp,
   nseTradingDay,
+  readCandleTimeMs,
   sessionBarsNeeded,
   setupCreatedAtFromCandles,
   setupCreatedAtMs,
@@ -127,5 +129,26 @@ describe('barTime', () => {
     const thursday = Date.parse('2026-08-13T14:35:00+05:30');
     assert.equal(keepFirstSetupTime(0, fridayMorning, sat), fridayMorning);
     assert.equal(keepFirstSetupTime(thursday, 0, sat), 0);
+  });
+
+  it('reads ChartBar time (sec) when timestamp is 0', () => {
+    const open = Date.parse('2026-08-14T10:20:00+05:30');
+    const sec = Math.floor(open / 1000);
+    assert.equal(readCandleTimeMs({ timestamp: 0, time: sec }), open);
+    assert.equal(readCandleTimeMs({ timestamp: 0, ts: sec }), open);
+    const now = Date.parse('2026-08-15T15:14:00+05:30');
+    const candles = [
+      { timestamp: 0, time: sec - 300 },
+      { timestamp: 0, time: sec },
+    ];
+    assert.equal(setupCreatedAtFromCandles(candles, '5m', now), open + FIVE);
+    assert.ok(lastBarStamp(candles, '5m', now) > 0);
+  });
+
+  it('keeps Friday seconds-epoch stamps on Saturday', () => {
+    const sat = Date.parse('2026-08-15T15:14:00+05:30');
+    const fridayMorning = Date.parse('2026-08-14T10:20:00+05:30');
+    const sec = Math.floor(fridayMorning / 1000);
+    assert.equal(keepFirstSetupTime(0, sec, sat), fridayMorning);
   });
 });

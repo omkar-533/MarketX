@@ -8,6 +8,8 @@ import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import {
   firstHitTimeOfIstDay,
   keepFirstSetupTime,
+  lastBarStamp,
+  readCandleTimeMs,
   sessionBarsNeeded,
   setupCreatedAtFromCandles,
 } from '../radar/barTime';
@@ -209,7 +211,11 @@ export async function runOpportunityScan(
     for (const symbol of batch) {
       if (opts.signal?.aborted) break;
       try {
-        const candles = candleMap[symbol] || candleMap[String(symbol).toUpperCase()] || [];
+        const rawBars = candleMap[symbol] || candleMap[String(symbol).toUpperCase()] || [];
+        const candles = rawBars.map((c) => ({
+          ...c,
+          timestamp: readCandleTimeMs(c) || Number(c.timestamp) || 0,
+        }));
         const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
         if (!f) continue;
 
@@ -235,7 +241,13 @@ export async function runOpportunityScan(
               forTimeWalk: true,
             });
           });
-          return walked || setupCreatedAtFromCandles(candles, tf) || f.setupAt || 0;
+          return (
+            walked ||
+            setupCreatedAtFromCandles(candles, tf) ||
+            f.setupAt ||
+            lastBarStamp(candles, tf) ||
+            0
+          );
         };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [

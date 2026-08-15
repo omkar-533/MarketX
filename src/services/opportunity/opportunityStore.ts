@@ -107,7 +107,10 @@ function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: Opportunit
   return {
     ...hit,
     id: prev.id,
-    detectedAt: keepFirstSetupTime(prev.detectedAt, hit.detectedAt),
+    detectedAt:
+      keepFirstSetupTime(prev.detectedAt, hit.detectedAt) ||
+      prev.detectedAt ||
+      hit.detectedAt,
   };
 }
 

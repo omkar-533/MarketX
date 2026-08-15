@@ -17,12 +17,48 @@ export function candleTimeMs(timestamp: number): number {
   return timestamp > 1e12 ? timestamp : timestamp * 1000;
 }
 
+/** Accept `timestamp` (ms), ChartBar `time` (sec), or INDstocks `ts`. */
+export function readCandleTimeMs(c: {
+  timestamp?: number;
+  time?: number;
+  ts?: number;
+} | number): number {
+  if (typeof c === 'number') return candleTimeMs(c);
+  const raw = [c?.timestamp, c?.time, c?.ts]
+    .map((n) => Number(n))
+    .find((n) => Number.isFinite(n) && n > 0);
+  return raw ? candleTimeMs(raw) : 0;
+}
+
+export function lastBarStamp(
+  candles: { timestamp?: number; time?: number; ts?: number }[] | undefined,
+  timeframe: string,
+  now = Date.now(),
+): number {
+  if (!candles?.length) return 0;
+  let fallback = 0;
+  for (let i = candles.length - 1; i >= 0; i -= 1) {
+    const raw = readCandleTimeMs(candles[i]);
+    if (!raw) continue;
+    const t = setupCreatedAtMs(raw, timeframe, now);
+    if (!(t > 0)) continue;
+    if (!fallback) fallback = t;
+    const kept = keepFirstSetupTime(0, t, now);
+    if (kept) return kept;
+  }
+  return fallback;
+}
+
 function barDurationMs(timeframe: string): number {
   return BAR_MS[timeframe] || 0;
 }
 
+function barOpenMs(c: { timestamp?: number; time?: number; ts?: number }): number {
+  return readCandleTimeMs(c);
+}
+
 export function closedBarIndex(
-  candles: { timestamp: number }[],
+  candles: { timestamp?: number; time?: number; ts?: number }[],
   timeframe: string,
   now = Date.now(),
 ): number {
@@ -30,10 +66,10 @@ export function closedBarIndex(
   const dur = barDurationMs(timeframe);
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   let i = candles.length - 1;
-  while (i > 0 && sessionEnd && candleTimeMs(candles[i].timestamp) >= sessionEnd) i -= 1;
+  while (i > 0 && sessionEnd && barOpenMs(candles[i]) >= sessionEnd) i -= 1;
   const minKeep = Math.max(0, i - 4);
   while (i > minKeep) {
-    const open = candleTimeMs(candles[i].timestamp);
+    const open = barOpenMs(candles[i]);
     const unclosed =
       open > now + 2_000 ||
       (dur > 0 && open + dur > now + 2_000 && now - open < dur + 8_000) ||
@@ -70,14 +106,14 @@ export function setupCreatedAtMs(
 }
 
 export function setupCreatedAtFromCandles(
-  candles: { timestamp: number }[] | undefined,
+  candles: { timestamp?: number; time?: number; ts?: number }[] | undefined,
   timeframe: string,
   now = Date.now(),
 ): number {
   if (!candles?.length) return 0;
   const idx = closedBarIndex(candles, timeframe, now);
   if (idx < 0) return 0;
-  return setupCreatedAtMs(candles[idx].timestamp, timeframe, now);
+  return setupCreatedAtMs(barOpenMs(candles[idx]), timeframe, now);
 }
 
 /**
@@ -160,7 +196,7 @@ export function sessionBarsNeeded(timeframe: string, now = Date.now()): number {
  * Weekend / before the bell uses Friday's session — never a blank Saturday stamp.
  */
 export function firstHitTimeOfIstDay(
-  candles: { timestamp: number }[],
+  candles: { timestamp?: number; time?: number; ts?: number }[],
   timeframe: string,
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
@@ -176,7 +212,7 @@ export function firstHitTimeOfIstDay(
 
   let start = -1;
   for (let i = 0; i <= end; i += 1) {
-    if (candleTimeMs(candles[i].timestamp) >= session) {
+    if (barOpenMs(candles[i]) >= session) {
       start = i;
       break;
     }
@@ -185,12 +221,12 @@ export function firstHitTimeOfIstDay(
 
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   const inSession = (i: number) => {
-    const open = candleTimeMs(candles[i].timestamp);
+    const open = barOpenMs(candles[i]);
     return !(sessionEnd && open >= sessionEnd);
   };
   const stamp = (i: number) => {
-    const t = setupCreatedAtMs(candles[i].timestamp, timeframe, now);
-    if (t > 0 && t <= now + 2_000 && istCalendarDay(new Date(t)) === today) return t;
+    const t = setupCreatedAtMs(barOpenMs(candles[i]), timeframe, now);
+    if (t > 0 && t <= now + 2_000) return t;
     return 0;
   };
 
@@ -216,7 +252,7 @@ export function firstHitTimeOfIstDay(
 }
 
 function onTradingDay(ms: number, now: number): number {
-  const t = Number(ms) || 0;
+  const t = candleTimeMs(Number(ms)) || 0;
   if (t <= 0 || t > now + 2_000) return 0;
   if (istCalendarDay(new Date(t)) !== nseTradingDay(now)) return 0;
   const end = istSessionEndMs(now);
