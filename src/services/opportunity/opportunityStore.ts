@@ -1,3 +1,4 @@
+import { istCalendarDay } from '../../utils/marketHours';
 import { keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunityTypes';
@@ -6,6 +7,7 @@ const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
 const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v7';
+const LEGACY_BOARD_KEYS = ['wolf_opportunity_day_board_v6', 'wolf_opportunity_day_board_v5'];
 const DAY_HIT_CAP = 80;
 
 type OpportunityDayBoard = {
@@ -28,10 +30,9 @@ export function emptyOpportunityCards(): ScannerCardState[] {
   }));
 }
 
-function readDayBoard(): OpportunityDayBoard | null {
+function parseBoard(raw: string | null): OpportunityDayBoard | null {
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(DAY_BOARD_KEY);
-    if (!raw) return null;
     const parsed = JSON.parse(raw) as OpportunityDayBoard;
     if (!parsed || typeof parsed.day !== 'string' || !parsed.byKey || typeof parsed.byKey !== 'object') {
       return null;
@@ -40,6 +41,20 @@ function readDayBoard(): OpportunityDayBoard | null {
   } catch {
     return null;
   }
+}
+
+function boardDayOk(day: string): boolean {
+  return day === nseTradingDay() || day === istCalendarDay();
+}
+
+function readDayBoard(): OpportunityDayBoard | null {
+  const current = parseBoard(localStorage.getItem(DAY_BOARD_KEY));
+  if (current && boardDayOk(current.day)) return current;
+  for (const key of LEGACY_BOARD_KEYS) {
+    const legacy = parseBoard(localStorage.getItem(key));
+    if (legacy && boardDayOk(legacy.day)) return legacy;
+  }
+  return current;
 }
 
 function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[] {
@@ -63,7 +78,7 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
 /** Today's IST board for this universe + timeframe. Empty after logout or a new IST day. */
 export function loadOpportunityDayBoard(key: string): ScannerCardState[] {
   const stored = readDayBoard();
-  if (!stored || stored.day !== nseTradingDay()) return emptyOpportunityCards();
+  if (!stored || !boardDayOk(stored.day)) return emptyOpportunityCards();
   return hydrateCards(stored.byKey[key]);
 }
 
@@ -166,7 +181,9 @@ export function loadOpportunityFilters(): OpportunityFilters {
     if (next.universe === 'NIFTY50' || next.universe === 'NIFTY500') {
       next.universe = 'CASH';
     }
-    next.timeframe = '5m';
+    if (!['1m', '3m', '5m', '15m', '30m', '1h'].includes(String(next.timeframe))) {
+      next.timeframe = '5m';
+    }
     return next;
   } catch {
     return { ...DEFAULT_OPPORTUNITY_FILTERS };

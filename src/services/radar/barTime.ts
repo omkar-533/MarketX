@@ -184,14 +184,35 @@ export function firstHitTimeOfIstDay(
   if (start < 0) return 0;
 
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
-  for (let i = start; i <= end; i += 1) {
+  const inSession = (i: number) => {
     const open = candleTimeMs(candles[i].timestamp);
-    if (sessionEnd && open >= sessionEnd) continue;
-    if (!hitsAt(i)) continue;
+    return !(sessionEnd && open >= sessionEnd);
+  };
+  const stamp = (i: number) => {
     const t = setupCreatedAtMs(candles[i].timestamp, timeframe, now);
     if (t > 0 && t <= now + 2_000 && istCalendarDay(new Date(t)) === today) return t;
+    return 0;
+  };
+
+  // Coarse probe then walk back — full per-bar snapshots were freezing Opportunity.
+  const span = end - start;
+  const step = span <= 8 ? 1 : Math.max(3, Math.ceil(span / 12));
+  let found = -1;
+  for (let i = start; i <= end; i += step) {
+    if (!inSession(i)) continue;
+    if (hitsAt(i)) {
+      found = i;
+      break;
+    }
   }
-  return 0;
+  if (found < 0 && inSession(end) && hitsAt(end)) found = end;
+  if (found < 0) return 0;
+  for (let i = found - 1; i >= start; i -= 1) {
+    if (!inSession(i)) continue;
+    if (!hitsAt(i)) break;
+    found = i;
+  }
+  return stamp(found);
 }
 
 function onTradingDay(ms: number, now: number): number {

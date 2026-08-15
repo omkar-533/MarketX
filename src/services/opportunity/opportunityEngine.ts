@@ -5,7 +5,12 @@
 import type { Candle, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
-import { firstHitTimeOfIstDay, keepFirstSetupTime, sessionBarsNeeded } from '../radar/barTime';
+import {
+  firstHitTimeOfIstDay,
+  keepFirstSetupTime,
+  sessionBarsNeeded,
+  setupCreatedAtFromCandles,
+} from '../radar/barTime';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -218,8 +223,8 @@ export async function runOpportunityScan(
           featAt.set(i, snap);
           return snap;
         };
-        const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number =>
-          firstHitTimeOfIstDay(candles, tf, (i) => {
+        const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number => {
+          const walked = firstHitTimeOfIstDay(candles, tf, (i) => {
             const snap = snapshotAt(i);
             if (!snap) return false;
             return !!scan({
@@ -230,6 +235,8 @@ export async function runOpportunityScan(
               forTimeWalk: true,
             });
           });
+          return walked || setupCreatedAtFromCandles(candles, tf) || f.setupAt || 0;
+        };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
           ['momentum_surge', scanMomentumSurge],
@@ -277,6 +284,8 @@ export async function runOpportunityScan(
         });
       }
     }
+    // Let the UI paint tiles between batches — don't freeze the tab on a 600-name walk.
+    await new Promise((r) => setTimeout(r, 0));
   }
 
   // Sector Leaders — one hit per strong sector, anchored on top peer

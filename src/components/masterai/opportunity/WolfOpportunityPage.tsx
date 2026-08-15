@@ -14,7 +14,6 @@ import {
   Minus,
 } from 'lucide-react';
 import { getMarketSession, istCalendarDay } from '../../../utils/marketHours';
-import { istSessionEndMs, nseTradingDay } from '../../../services/radar/barTime';
 import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
@@ -78,9 +77,13 @@ function formatHitPrice(price: number): string {
 
 function formatHitClock(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return '—';
-  if (istCalendarDay(new Date(ms)) !== nseTradingDay()) return '—';
-  const end = istSessionEndMs();
-  const t = end && ms > end ? end : ms;
+  if (ms > Date.now() + 2_000) return '—';
+  const day = istCalendarDay(new Date(ms));
+  const open = Date.parse(`${day}T09:15:00+05:30`);
+  const close = Date.parse(`${day}T15:30:00+05:30`);
+  if (!Number.isFinite(open) || !Number.isFinite(close)) return '—';
+  const t = ms > close ? close : ms < open ? open : ms;
+  if (Date.now() - t > 10 * 86_400_000) return '—';
   return new Date(t).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
