@@ -1,6 +1,6 @@
 /** Candle timestamp → setup/trade time from the last CLOSED bar — never the scan clock. */
 
-import { istCalendarDay } from '../../utils/marketHours';
+import { getIstParts, istCalendarDay } from '../../utils/marketHours';
 
 export const BAR_MS: Record<string, number> = {
   '1m': 60_000,
@@ -103,16 +103,35 @@ export function firstConsecutiveHitTime(
   return setupCreatedAtMs(candles[first].timestamp, timeframe, now);
 }
 
-/** NSE cash/F&O session open for that IST calendar day (09:15). */
+function shiftIstYmd(ymd: string, days: number): string {
+  const t = Date.parse(`${ymd}T12:00:00+05:30`) + days * 86_400_000;
+  return istCalendarDay(new Date(t));
+}
+
+/**
+ * NSE cash session day we stamp Created against.
+ * Weekend / before 09:15 IST → last completed weekday (Fri on Sat/Sun/Mon morning).
+ */
+export function nseTradingDay(now = Date.now()): string {
+  const ymd = istCalendarDay(new Date(now));
+  const p = getIstParts(new Date(now));
+  const open = Date.parse(`${ymd}T09:15:00+05:30`);
+  if (p.day === 0) return shiftIstYmd(ymd, -2);
+  if (p.day === 6) return shiftIstYmd(ymd, -1);
+  if (Number.isFinite(open) && now < open) return shiftIstYmd(ymd, p.day === 1 ? -3 : -1);
+  return ymd;
+}
+
+/** NSE cash/F&O session open for the active trading day (09:15). */
 export function istSessionStartMs(now = Date.now()): number {
-  const day = istCalendarDay(new Date(now));
+  const day = nseTradingDay(now);
   const open = Date.parse(`${day}T09:15:00+05:30`);
   return Number.isFinite(open) ? open : 0;
 }
 
 /** NSE cash/F&O session close (15:30). 1h bars must not stamp 4:15pm. */
 export function istSessionEndMs(now = Date.now()): number {
-  const day = istCalendarDay(new Date(now));
+  const day = nseTradingDay(now);
   const close = Date.parse(`${day}T15:30:00+05:30`);
   return Number.isFinite(close) ? close : 0;
 }
@@ -137,9 +156,8 @@ export function sessionBarsNeeded(timeframe: string, now = Date.now()): number {
 }
 
 /**
- * First time this setup printed on the current IST calendar day.
- * Walks forward from the IST session open. Does not stamp yesterday,
- * the scan clock, or the last candle unless that bar was the first print today.
+ * First time this setup printed on the active NSE trading day.
+ * Weekend / before the bell uses Friday's session — never a blank Saturday stamp.
  */
 export function firstHitTimeOfIstDay(
   candles: { timestamp: number }[],
@@ -149,7 +167,7 @@ export function firstHitTimeOfIstDay(
 ): number {
   const end = closedBarIndex(candles, timeframe, now);
   if (end < 0) return 0;
-  const today = istCalendarDay(new Date(now));
+  const today = nseTradingDay(now);
   const session =
     timeframe === '1D' || timeframe === '4h'
       ? Date.parse(`${today}T00:00:00+05:30`)
@@ -176,10 +194,10 @@ export function firstHitTimeOfIstDay(
   return 0;
 }
 
-function onIstDay(ms: number, now: number): number {
+function onTradingDay(ms: number, now: number): number {
   const t = Number(ms) || 0;
   if (t <= 0 || t > now + 2_000) return 0;
-  if (istCalendarDay(new Date(t)) !== istCalendarDay(new Date(now))) return 0;
+  if (istCalendarDay(new Date(t)) !== nseTradingDay(now)) return 0;
   const end = istSessionEndMs(now);
   if (end && t > end) return end;
   return t;
@@ -187,8 +205,8 @@ function onIstDay(ms: number, now: number): number {
 
 /** Keep the earliest real setup time when the same name reprints later in the IST day. */
 export function keepFirstSetupTime(prev: number, next: number, now = Date.now()): number {
-  const a = onIstDay(prev, now);
-  const b = onIstDay(next, now);
+  const a = onTradingDay(prev, now);
+  const b = onTradingDay(next, now);
   if (a > 0 && b > 0) return Math.min(a, b);
   return a || b;
 }

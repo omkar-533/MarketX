@@ -1,12 +1,11 @@
-import { istCalendarDay } from '../../utils/marketHours';
-import { keepFirstSetupTime } from '../radar/barTime';
+import { keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v6';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v7';
 const DAY_HIT_CAP = 80;
 
 type OpportunityDayBoard = {
@@ -64,13 +63,13 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
 /** Today's IST board for this universe + timeframe. Empty after logout or a new IST day. */
 export function loadOpportunityDayBoard(key: string): ScannerCardState[] {
   const stored = readDayBoard();
-  if (!stored || stored.day !== istCalendarDay()) return emptyOpportunityCards();
+  if (!stored || stored.day !== nseTradingDay()) return emptyOpportunityCards();
   return hydrateCards(stored.byKey[key]);
 }
 
 export function saveOpportunityDayBoard(key: string, cards: ScannerCardState[]) {
   try {
-    const day = istCalendarDay();
+    const day = nseTradingDay();
     const stored = readDayBoard();
     const byKey = stored && stored.day === day ? { ...stored.byKey } : {};
     byKey[key] = cards;

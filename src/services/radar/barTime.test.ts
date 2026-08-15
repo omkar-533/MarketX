@@ -5,6 +5,7 @@ import {
   firstConsecutiveHitTime,
   firstHitTimeOfIstDay,
   keepFirstSetupTime,
+  nseTradingDay,
   sessionBarsNeeded,
   setupCreatedAtFromCandles,
   setupCreatedAtMs,
@@ -107,5 +108,24 @@ describe('barTime', () => {
     assert.equal(setupCreatedAtMs(open, '1h', now), closeBell);
     const fake415 = Date.parse('2026-08-14T16:15:00+05:30');
     assert.equal(keepFirstSetupTime(fake415, 0, now), closeBell);
+  });
+
+  it('weekend Created uses Friday\'s first print, not a blank Saturday', () => {
+    const sat = Date.parse('2026-08-15T13:56:00+05:30');
+    assert.equal(nseTradingDay(sat), '2026-08-14');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 64 }, (_, i) => bar(start + i * FIVE));
+    const firstHit = 6;
+    const created = firstHitTimeOfIstDay(
+      candles,
+      '5m',
+      (i) => i >= firstHit,
+      sat,
+    );
+    assert.equal(created, start + firstHit * FIVE + FIVE);
+    const fridayMorning = Date.parse('2026-08-14T10:20:00+05:30');
+    const thursday = Date.parse('2026-08-13T14:35:00+05:30');
+    assert.equal(keepFirstSetupTime(0, fridayMorning, sat), fridayMorning);
+    assert.equal(keepFirstSetupTime(thursday, 0, sat), 0);
   });
 });
