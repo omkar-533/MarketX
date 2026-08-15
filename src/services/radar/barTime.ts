@@ -241,7 +241,7 @@ export function firstHitTimeOfIstDay(
       break;
     }
   }
-  if (found < 0 && inSession(end) && hitsAt(end)) found = end;
+  if (found < 0 && hitsAt(end)) found = end;
   if (found < 0) return 0;
   for (let i = found - 1; i >= start; i -= 1) {
     if (!inSession(i)) continue;
@@ -266,4 +266,23 @@ export function keepFirstSetupTime(prev: number, next: number, now = Date.now())
   const b = onTradingDay(next, now);
   if (a > 0 && b > 0) return Math.min(a, b);
   return a || b;
+}
+
+/**
+ * Display stamp when the print is a weekday session time in the last 10 days.
+ * Weekend / scan-clock values stay blank — never invent a Saturday 3pm.
+ */
+export function keepDisplaySetupTime(ms: number, now = Date.now()): number {
+  const t = candleTimeMs(Number(ms)) || 0;
+  if (t <= 0 || t > now + 2_000) return 0;
+  if (now - t > 10 * 86_400_000) return 0;
+  const p = getIstParts(new Date(t));
+  if (p.day === 0 || p.day === 6) return 0;
+  const day = istCalendarDay(new Date(t));
+  const open = Date.parse(`${day}T09:15:00+05:30`);
+  const close = Date.parse(`${day}T15:30:00+05:30`);
+  if (!Number.isFinite(open) || !Number.isFinite(close)) return 0;
+  if (t > close) return close;
+  if (t < open) return open;
+  return t;
 }

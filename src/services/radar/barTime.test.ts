@@ -4,6 +4,7 @@ import {
   closedBarIndex,
   firstConsecutiveHitTime,
   firstHitTimeOfIstDay,
+  keepDisplaySetupTime,
   keepFirstSetupTime,
   lastBarStamp,
   nseTradingDay,
@@ -150,5 +151,14 @@ describe('barTime', () => {
     const fridayMorning = Date.parse('2026-08-14T10:20:00+05:30');
     const sec = Math.floor(fridayMorning / 1000);
     assert.equal(keepFirstSetupTime(0, sec, sat), fridayMorning);
+  });
+
+  it('displays a weekday session stamp when it is not the active trading day', () => {
+    const sat = Date.parse('2026-08-15T16:16:00+05:30');
+    const thursday = Date.parse('2026-08-13T14:35:00+05:30');
+    const saturdayNow = sat;
+    assert.equal(keepDisplaySetupTime(thursday, sat), thursday);
+    assert.equal(keepDisplaySetupTime(saturdayNow, sat), 0);
+    assert.equal(keepFirstSetupTime(0, thursday, sat) || keepDisplaySetupTime(thursday, sat), thursday);
   });
 });

@@ -1,5 +1,5 @@
 import { istCalendarDay } from '../../utils/marketHours';
-import { keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
+import { keepDisplaySetupTime, keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
@@ -109,6 +109,8 @@ function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: Opportunit
     id: prev.id,
     detectedAt:
       keepFirstSetupTime(prev.detectedAt, hit.detectedAt) ||
+      keepDisplaySetupTime(prev.detectedAt) ||
+      keepDisplaySetupTime(hit.detectedAt) ||
       prev.detectedAt ||
       hit.detectedAt,
   };

@@ -7,6 +7,7 @@ import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import {
   firstHitTimeOfIstDay,
+  keepDisplaySetupTime,
   keepFirstSetupTime,
   lastBarStamp,
   readCandleTimeMs,
@@ -142,7 +143,8 @@ export async function runOpportunityScan(
 
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
-    hit.detectedAt = keepFirstSetupTime(0, hit.detectedAt);
+    hit.detectedAt =
+      keepFirstSetupTime(0, hit.detectedAt) || keepDisplaySetupTime(hit.detectedAt);
     if (hit.score < filters.minScore) return;
     if (
       filters.direction !== 'all' &&
@@ -230,24 +232,24 @@ export async function runOpportunityScan(
           return snap;
         };
         const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number => {
-          const walked = firstHitTimeOfIstDay(candles, tf, (i) => {
-            const snap = snapshotAt(i);
-            if (!snap) return false;
-            return !!scan({
-              f: snap,
-              timeframe: tf,
-              dataMode,
-              quotePrice: snap.tech.last,
-              forTimeWalk: true,
+          const fallback =
+            setupCreatedAtFromCandles(candles, tf) || f.setupAt || lastBarStamp(candles, tf) || 0;
+          try {
+            const walked = firstHitTimeOfIstDay(candles, tf, (i) => {
+              const snap = snapshotAt(i);
+              if (!snap) return false;
+              return !!scan({
+                f: snap,
+                timeframe: tf,
+                dataMode,
+                quotePrice: snap.tech.last,
+                forTimeWalk: true,
+              });
             });
-          });
-          return (
-            walked ||
-            setupCreatedAtFromCandles(candles, tf) ||
-            f.setupAt ||
-            lastBarStamp(candles, tf) ||
-            0
-          );
+            return walked || fallback;
+          } catch {
+            return fallback;
+          }
         };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [

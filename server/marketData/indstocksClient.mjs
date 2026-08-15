@@ -489,11 +489,21 @@ export async function fetchIndstocksCandlesMany(accessToken, scripCodes, wolfTf,
         },
       });
       const data = json?.data && typeof json.data === 'object' ? json.data : {};
-      for (const code of group) {
-        const mine = data[code];
-        const rows = Array.isArray(mine?.candles) ? mine.candles : [];
-        out.set(code, rowsFromIndCandles(rows, code, wolfTf, wantBars));
-      }
+      await Promise.all(
+        group.map(async (code) => {
+          const mine = data[code] || data[Object.keys(data).find((k) => k === code) || ''];
+          const raw = Array.isArray(mine?.candles) ? mine.candles : Array.isArray(mine) ? mine : [];
+          let rows = rowsFromIndCandles(raw, code, wolfTf, wantBars);
+          if (!rows.length) {
+            try {
+              rows = await fetchIndstocksCandles(accessToken, code, wolfTf, bars);
+            } catch {
+              /* keep whatever batch returned */
+            }
+          }
+          out.set(code, rows);
+        }),
+      );
     } catch {
       await Promise.all(
         group.map(async (code) => {
