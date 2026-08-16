@@ -32,6 +32,15 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     note?: string;
   } | null = null;
 
+  /** Opportunity only — fixed catalog, identical on every login / every Render instance. */
+  async getOpportunitySymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
+    const data = await fetchLiveSymbols(universe, 'static');
+    const list = data.symbols?.length ? data.symbols : data.static || [];
+    return [...new Set(list.map((s) => String(s || '').toUpperCase()).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b),
+    );
+  }
+
   async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
     try {
       const data = await fetchLiveSymbols(universe, 'scannable');

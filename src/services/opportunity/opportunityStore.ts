@@ -6,8 +6,9 @@ import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v7';
-const LEGACY_BOARD_KEYS = ['wolf_opportunity_day_board_v6', 'wolf_opportunity_day_board_v5'];
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v8';
+/** Do not hydrate v7 first-come boards — those names differed per browser. */
+const LEGACY_BOARD_KEYS: string[] = [];
 const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
 
 type OpportunityDayBoard = {

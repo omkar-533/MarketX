@@ -242,11 +242,15 @@ export async function fetchLiveCandlesBatch(
   return { ...data, candlesBySymbol };
 }
 
-export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scannable' = 'scannable') {
+export async function fetchLiveSymbols(
+  universe: string,
+  mode: 'catalog' | 'scannable' | 'static' = 'scannable',
+) {
   return json<{
     symbols: string[];
     catalog?: string[];
     scannable?: string[];
+    static?: string[];
     universe?: string;
     universeLoaded?: number;
     dataAvailable?: number;
@@ -262,7 +266,7 @@ export async function fetchLiveSymbols(universe: string, mode: 'catalog' | 'scan
       source: string;
     };
   }>(
-    `/api/market-data/symbols?universe=${encodeURIComponent(universe)}&mode=${mode === 'scannable' ? 'scannable' : 'catalog'}`,
+    `/api/market-data/symbols?universe=${encodeURIComponent(universe)}&mode=${mode === 'scannable' ? 'scannable' : mode === 'static' ? 'static' : 'catalog'}`,
   );
 }
 

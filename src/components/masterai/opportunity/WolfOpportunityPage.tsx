@@ -18,7 +18,7 @@ import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/market
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
-import { runOpportunityScan } from '../../../services/opportunity/opportunityEngine';
+import { runOpportunityScan, type RunOpportunityOptions } from '../../../services/opportunity/opportunityEngine';
 import { opportunityToRadarResult } from '../../../services/opportunity/opportunityBridge';
 import {
   loadOpportunityFilters,
@@ -28,6 +28,7 @@ import {
   applyScanCardsKeepingFirstSeen,
   opportunityBoardKey,
   rankHitsByScore,
+  emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -185,10 +186,7 @@ export default function WolfOpportunityPage({
   rescanToken = 0,
 }: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
-  const [cards, setCards] = useState<ScannerCardState[]>(() => {
-    const f = loadOpportunityFilters();
-    return loadOpportunityDayBoard(opportunityBoardKey(f.universe, f.timeframe));
-  });
+  const [cards, setCards] = useState<ScannerCardState[]>(() => emptyOpportunityCards());
   const [feedStatus, setFeedStatus] = useState<DataFeedStatus>('OFFLINE');
   const [dataMode, setDataMode] = useState<'LIVE' | 'DEMO'>('DEMO');
   const [scanning, setScanning] = useState(false);
@@ -262,7 +260,7 @@ export default function WolfOpportunityPage({
         setScanning(true);
         setProgress('Scanning market…');
         if (opts?.reset) {
-          setCards(loadOpportunityDayBoard(boardKey));
+          setCards(emptyOpportunityCards());
         }
       }
 
@@ -300,32 +298,34 @@ export default function WolfOpportunityPage({
       void refreshIndices(provider);
 
       try {
-        const out = await runOpportunityScan(
-          activeFilters,
-          {
-            signal: ac.signal,
-            topN: OPPORTUNITY_SCAN_CAP,
-            onProgress: (p) => {
-              if (quiet) return;
-              const now = Date.now();
-              if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
-              lastProgAtRef.current = now;
-              setProgress(
-                p.status === 'scanning'
-                  ? `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
-                  : p.phase,
-              );
-            },
-            onCard: (card) => {
-              if (isStale() || card.status !== 'unavailable') return;
-              setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
-            },
+        const scanOpts: RunOpportunityOptions = {
+          signal: ac.signal,
+          topN: OPPORTUNITY_SCAN_CAP,
+          onProgress: (p) => {
+            if (quiet) return;
+            const now = Date.now();
+            if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
+            lastProgAtRef.current = now;
+            setProgress(
+              p.status === 'scanning'
+                ? `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
+                : p.phase,
+            );
           },
-          provider,
-        );
-        if (!isStale()) {
-          setCards((prev) => {
-            const next = applyScanCardsKeepingFirstSeen(prev, out.cards).map((card) => ({
+          onCard: (card) => {
+            if (isStale() || card.status !== 'unavailable') return;
+            setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
+          },
+        };
+        let out = await runOpportunityScan(activeFilters, scanOpts, provider);
+        if (!isStale() && !out.complete && !ac.signal.aborted) {
+          if (!quiet) setProgress('Full scan needed — hunting again…');
+          out = await runOpportunityScan(activeFilters, scanOpts, provider);
+        }
+        if (!isStale() && out.complete) {
+          const prevBoard = loadOpportunityDayBoard(boardKey);
+          setCards(() => {
+            const next = applyScanCardsKeepingFirstSeen(prevBoard, out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
             }));
@@ -335,6 +335,8 @@ export default function WolfOpportunityPage({
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
+        } else if (!isStale() && !out.complete && !quiet) {
+          setProgress('Waiting for a full universe scan…');
         }
       } catch (e) {
         if (!isStale()) {

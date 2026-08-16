@@ -80,4 +80,28 @@ describe('opportunityStore ranking', () => {
     assert.equal(hits.find((h) => h.symbol === 'RELIANCE')?.detectedAt, 111);
     assert.equal(hits.find((h) => h.symbol === 'TCS')?.detectedAt, 222);
   });
+
+  it('does not keep leftover names from a previous browser board', () => {
+    const prev = emptyOpportunityCards().map((c) =>
+      c.scannerId === 'breakout_radar'
+        ? {
+            ...c,
+            hits: [hit({ scannerId: 'breakout_radar', symbol: 'OLDPC', score: 99, detectedAt: 1 })],
+            status: 'ready' as const,
+          }
+        : c,
+    );
+    const incoming = emptyOpportunityCards().map((c) =>
+      c.scannerId === 'breakout_radar'
+        ? {
+            ...c,
+            hits: [hit({ scannerId: 'breakout_radar', symbol: 'TCS', score: 80, detectedAt: 2 })],
+            status: 'ready' as const,
+          }
+        : c,
+    );
+    const next = applyScanCardsKeepingFirstSeen(prev, incoming);
+    const names = next.find((c) => c.scannerId === 'breakout_radar')?.hits.map((h) => h.symbol) || [];
+    assert.deepEqual(names, ['TCS']);
+  });
 });

@@ -36,6 +36,7 @@ import {
   INDSTOCKS_PERMISSION_NOTE,
 } from './indstocksClient.mjs';
 import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
+import { resolveServerUniverse } from './universeLists.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -352,24 +353,40 @@ router.post('/disconnect', async (req, res) => {
 
 router.get('/symbols', (req, res) => {
   const universe = String(req.query.universe || 'F&O');
+  const mode = String(req.query.mode || '');
+  const staticList = [
+    ...new Set(
+      resolveServerUniverse(universe)
+        .map((s) => String(s || '').toUpperCase())
+        .filter(Boolean),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
   const catalog = listUniverseSymbols(universe);
   const scannable = listScannableUniverseSymbols(universe);
-  const preferScannable = String(req.query.mode || '') === 'scannable';
+  const preferScannable = mode === 'scannable';
+  const preferStatic = mode === 'static';
   const stats = getInstrumentUniverseStats();
   const fromLive = Boolean(stats.refreshedAt);
   res.json({
-    symbols: preferScannable ? scannable : catalog,
+    symbols: preferStatic ? staticList : preferScannable ? scannable : catalog,
     catalog,
     scannable,
+    static: staticList,
     universe,
-    universeLoaded: catalog.length,
-    dataAvailable: scannable.length,
-    dataUnavailable: Math.max(0, catalog.length - scannable.length),
+    universeLoaded: preferStatic ? staticList.length : catalog.length,
+    dataAvailable: preferStatic ? staticList.length : scannable.length,
+    dataUnavailable: preferStatic ? 0 : Math.max(0, catalog.length - scannable.length),
     instrumentMaster: stats,
-    source: fromLive ? 'indstocks-instrument-master' : 'static-catalog-fallback',
-    note: fromLive
-      ? 'Universe derived from connected INDstocks instrument master (equity / index / F&O CSVs). Scannable = resolvable scrips only.'
-      : 'Static WOLF catalog fallback (connect INDstocks to load the full instrument master). Scannable = resolvable scrips only.',
+    source: preferStatic
+      ? 'static-wolf-catalog'
+      : fromLive
+        ? 'indstocks-instrument-master'
+        : 'static-catalog-fallback',
+    note: preferStatic
+      ? 'Fixed WOLF catalog — same names on every server instance and every login.'
+      : fromLive
+        ? 'Universe derived from connected INDstocks instrument master (equity / index / F&O CSVs). Scannable = resolvable scrips only.'
+        : 'Static WOLF catalog fallback (connect INDstocks to load the full instrument master). Scannable = resolvable scrips only.',
   });
 });
 

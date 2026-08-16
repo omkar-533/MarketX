@@ -2,9 +2,10 @@
  * Wolf Opportunity scan orchestrator.
  * One batched candle fetch per symbol group → all OHLC scanners. No fabricated hits.
  */
-import type { Candle, RadarUniverse } from '../radar/radarTypes';
+import type { Candle, RadarMarket, RadarUniverse } from '../radar/radarTypes';
 import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
+import { resolveCatalogUniverse } from '../radar/universeCatalog';
 import {
   firstHitTimeOfIstDay,
   keepDisplaySetupTime,
@@ -55,7 +56,44 @@ type CandleBatchProvider = MarketDataProvider & {
     timeframe: OpportunityTimeframe,
     bars?: number,
   ) => Promise<Record<string, Candle[]>>;
+  getOpportunitySymbols?: (universe: RadarUniverse, market?: RadarMarket) => Promise<string[]>;
 };
+
+const MIN_SCAN_BARS = 25;
+
+function uniqueSortedSymbols(symbols: string[]): string[] {
+  return [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+}
+
+async function retryThinCandles(
+  provider: CandleBatchProvider,
+  map: Record<string, Candle[]>,
+  symbols: string[],
+  tf: OpportunityTimeframe,
+  bars: number,
+  signal?: AbortSignal,
+): Promise<Record<string, Candle[]>> {
+  const missing = symbols.filter((s) => (map[s]?.length || 0) < MIN_SCAN_BARS);
+  if (!missing.length || signal?.aborted) return map;
+  const conc = 8;
+  for (let i = 0; i < missing.length; i += conc) {
+    if (signal?.aborted) break;
+    const slice = missing.slice(i, i + conc);
+    await Promise.all(
+      slice.map(async (symbol) => {
+        try {
+          const rows = await provider.getCandles(symbol, tf, bars);
+          if ((rows?.length || 0) > (map[symbol]?.length || 0)) map[symbol] = rows;
+        } catch {
+          /* keep whatever we have */
+        }
+      }),
+    );
+  }
+  return map;
+}
 
 async function loadCandleMap(
   provider: CandleBatchProvider,
@@ -65,25 +103,44 @@ async function loadCandleMap(
   signal?: AbortSignal,
 ): Promise<Record<string, Candle[]>> {
   if (signal?.aborted) return {};
+  let map: Record<string, Candle[]> = {};
   if (typeof provider.getCandlesMany === 'function') {
-    return provider.getCandlesMany(symbols, tf, bars);
+    map = await provider.getCandlesMany(symbols, tf, bars);
+  } else {
+    const conc = provider.isDemo ? 12 : 10;
+    for (let i = 0; i < symbols.length; i += conc) {
+      if (signal?.aborted) break;
+      const slice = symbols.slice(i, i + conc);
+      await Promise.all(
+        slice.map(async (symbol) => {
+          try {
+            map[symbol] = await provider.getCandles(symbol, tf, bars);
+          } catch {
+            map[symbol] = [];
+          }
+        }),
+      );
+    }
   }
-  const out: Record<string, Candle[]> = {};
-  const conc = provider.isDemo ? 12 : 10;
-  for (let i = 0; i < symbols.length; i += conc) {
-    if (signal?.aborted) break;
-    const slice = symbols.slice(i, i + conc);
-    await Promise.all(
-      slice.map(async (symbol) => {
-        try {
-          out[symbol] = await provider.getCandles(symbol, tf, bars);
-        } catch {
-          out[symbol] = [];
-        }
-      }),
-    );
+  return retryThinCandles(provider, map, symbols, tf, bars, signal);
+}
+
+async function loadOpportunityUniverse(
+  provider: CandleBatchProvider,
+  filters: OpportunityFilters,
+): Promise<string[]> {
+  const fallback = uniqueSortedSymbols(resolveCatalogUniverse(toRadarUniverse(filters.universe)));
+  if (typeof provider.getOpportunitySymbols === 'function') {
+    try {
+      const live = uniqueSortedSymbols(
+        await provider.getOpportunitySymbols(toRadarUniverse(filters.universe), filters.market),
+      );
+      if (live.length) return live;
+    } catch {
+      /* bundled catalog is identical on every client of this deploy */
+    }
   }
-  return out;
+  return fallback;
 }
 
 function toRadarUniverse(u: OpportunityFilters['universe']): RadarUniverse {
@@ -134,12 +191,23 @@ export async function runOpportunityScan(
   filters: OpportunityFilters,
   opts: RunOpportunityOptions = {},
   provider: MarketDataProvider = mockMarketDataProvider,
-): Promise<{ cards: ScannerCardState[]; hits: OpportunityHit[]; dataMode: 'LIVE' | 'DEMO' }> {
+): Promise<{
+  cards: ScannerCardState[];
+  hits: OpportunityHit[];
+  dataMode: 'LIVE' | 'DEMO';
+  complete: boolean;
+}> {
   const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const dataMode: 'LIVE' | 'DEMO' = provider.isDemo ? 'DEMO' : 'LIVE';
   const tf = filters.timeframe as OpportunityTimeframe;
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
   for (const s of OPPORTUNITY_SCANNERS) buckets.set(s.id, []);
+  const failed = (message: string, cards = emptyCards(message)) => ({
+    cards,
+    hits: [] as OpportunityHit[],
+    dataMode,
+    complete: false,
+  });
 
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
@@ -159,7 +227,7 @@ export async function runOpportunityScan(
 
   let symbols: string[] = [];
   try {
-    symbols = await provider.getSymbols(toRadarUniverse(filters.universe), filters.market);
+    symbols = await loadOpportunityUniverse(provider as CandleBatchProvider, filters);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to load universe';
     opts.onProgress?.({
@@ -169,15 +237,11 @@ export async function runOpportunityScan(
       phase: 'ERROR',
       error: message,
     });
-    return { cards: emptyCards(message), hits: [], dataMode };
+    return failed(message);
   }
 
   if (!symbols.length) {
-    return {
-      cards: emptyCards('Universe returned no symbols.'),
-      hits: [],
-      dataMode,
-    };
+    return failed('Universe returned no symbols.');
   }
 
   const FETCH_BATCH = provider.isDemo ? 24 : 80;
@@ -185,6 +249,7 @@ export async function runOpportunityScan(
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
+  let barsOk = 0;
 
   opts.onProgress?.({
     status: 'scanning',
@@ -218,6 +283,7 @@ export async function runOpportunityScan(
           ...c,
           timestamp: readCandleTimeMs(c) || Number(c.timestamp) || 0,
         }));
+        if (candles.length >= MIN_SCAN_BARS) barsOk += 1;
         const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
         if (!f) continue;
 
@@ -334,15 +400,20 @@ export async function runOpportunityScan(
 
   for (const card of cards) opts.onCard?.(card);
 
+  const aborted = Boolean(opts.signal?.aborted);
+  const coverageOk = total === 0 || barsOk >= Math.max(15, Math.floor(total * 0.3));
+  const complete = !aborted && checked >= total && coverageOk;
+
   opts.onProgress?.({
-    status: 'complete',
-    symbolsChecked: total,
+    status: complete ? 'complete' : 'failed',
+    symbolsChecked: checked,
     symbolsTotal: total,
-    phase: 'DONE',
+    phase: complete ? 'DONE' : aborted ? 'ABORTED' : 'INCOMPLETE',
+    error: complete ? undefined : aborted ? 'Scan aborted' : 'Incomplete candle coverage',
   });
 
   const hits = cards.flatMap((c) => c.hits);
-  return { cards, hits, dataMode };
+  return { cards, hits, dataMode, complete };
 }
 
 export { OHLC_SCANNERS };
