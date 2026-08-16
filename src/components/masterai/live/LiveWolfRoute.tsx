@@ -45,6 +45,7 @@ export default function LiveWolfRoute({ onAskWolf }: Props) {
         onStatusChange={(s) => {
           setMdStatus(s);
           if (isIndstocksLive(s)) {
+            setConnectOpen(false);
             void initMarketDataService(serverMarketDataProvider).connect();
           }
         }}

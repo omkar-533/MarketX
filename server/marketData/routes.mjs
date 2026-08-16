@@ -12,8 +12,10 @@ import {
 } from './providersCatalog.mjs';
 import {
   storeCredential,
-  deleteCredential,
-  getCredential,
+  persistStoredCredential,
+  deleteCredentialPersist,
+  resolveCredential,
+  adoptCredential,
   publicView,
   readDecryptedCredential,
 } from './credentialStore.mjs';
@@ -188,20 +190,26 @@ function cookieOpts() {
   };
 }
 
-function userKeyFrom(req, res) {
-  const authUser = req.appUser?.id;
-  if (authUser) return `user:${authUser}`;
-
+function identityFrom(req, res) {
+  const authUser = req.appUser?.id ? String(req.appUser.id) : '';
   let sid = req.cookies?.[SESSION_COOKIE];
   if (!sid) sid = randomUUID();
   // Always refresh attrs so a leftover Lax cookie upgrades to None+Secure.
   res.cookie(SESSION_COOKIE, sid, cookieOpts());
-  return `session:${sid}`;
+  const userKey = authUser ? `user:${authUser}` : '';
+  const sessionKey = `session:${sid}`;
+  const keys = [...new Set([userKey, sessionKey].filter(Boolean))];
+  return { primary: keys[0], userKey, sessionKey, keys };
 }
 
-function requireLiveToken(req, res) {
-  const key = userKeyFrom(req, res);
-  const record = getCredential(key);
+async function requireLiveToken(req, res) {
+  const ident = identityFrom(req, res);
+  let found = await resolveCredential(ident.keys);
+  if (ident.userKey && found.record && found.key === ident.sessionKey) {
+    const moved = await adoptCredential(ident.sessionKey, ident.userKey);
+    if (moved) found = { key: ident.userKey, record: moved };
+  }
+  const { key, record } = found;
   if (!record || record.status !== 'CONNECTED') {
     res.status(401).json({ error: 'Market data not connected' });
     return null;
@@ -242,14 +250,18 @@ router.get('/providers/:providerId/capabilities', (req, res) => {
   });
 });
 
-router.get('/status', (req, res) => {
-  const key = userKeyFrom(req, res);
-  const record = getCredential(key);
-  res.json(publicView(record));
+router.get('/status', async (req, res) => {
+  const ident = identityFrom(req, res);
+  let found = await resolveCredential(ident.keys);
+  if (ident.userKey && found.record && found.key === ident.sessionKey) {
+    const moved = await adoptCredential(ident.sessionKey, ident.userKey);
+    if (moved) found = { key: ident.userKey, record: moved };
+  }
+  res.json(publicView(found.record));
 });
 
 router.post('/connect', async (req, res) => {
-  const key = userKeyFrom(req, res);
+  const key = identityFrom(req, res).primary;
   const providerId = String(req.body?.providerId || '').trim();
   const provider = getProvider(providerId);
   if (!provider) {
@@ -274,6 +286,7 @@ router.post('/connect', async (req, res) => {
       status: 'CONNECTED',
       permissionNote: null,
     });
+    await persistStoredCredential(key);
     console.log('[market-data] demo connected', { keyType: key.split(':')[0] });
     return res.json(view);
   }
@@ -313,6 +326,7 @@ router.post('/connect', async (req, res) => {
       status: 'CONNECTED',
       permissionNote: INDSTOCKS_PERMISSION_NOTE,
     });
+    await persistStoredCredential(key);
     console.log('[market-data] indstocks connected', { keyType: key.split(':')[0] });
     return res.json(view);
   }
@@ -329,10 +343,10 @@ router.post('/callback', (_req, res) => {
   });
 });
 
-router.post('/disconnect', (req, res) => {
-  const key = userKeyFrom(req, res);
-  deleteCredential(key);
-  console.log('[market-data] disconnected', { keyType: key.split(':')[0] });
+router.post('/disconnect', async (req, res) => {
+  const ident = identityFrom(req, res);
+  await Promise.all(ident.keys.map((k) => deleteCredentialPersist(k)));
+  console.log('[market-data] disconnected', { keyType: ident.primary.split(':')[0] });
   res.json(publicView(null));
 });
 
@@ -386,7 +400,7 @@ router.get('/universes', (_req, res) => {
 });
 
 router.post('/quotes-batch', async (req, res) => {
-  const live = requireLiveToken(req, res);
+  const live = await requireLiveToken(req, res);
   if (!live) return;
   const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
   const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 80);
@@ -429,7 +443,7 @@ router.post('/quotes-batch', async (req, res) => {
 });
 
 router.get('/quote', async (req, res) => {
-  const live = requireLiveToken(req, res);
+  const live = await requireLiveToken(req, res);
   if (!live) return;
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
@@ -461,7 +475,7 @@ router.get('/quote', async (req, res) => {
 });
 
 router.get('/candles', async (req, res) => {
-  const live = requireLiveToken(req, res);
+  const live = await requireLiveToken(req, res);
   if (!live) return;
   const symbol = String(req.query.symbol || '').trim().toUpperCase();
   const timeframe = String(req.query.timeframe || '5m').trim();
@@ -494,7 +508,7 @@ router.get('/candles', async (req, res) => {
 });
 
 router.post('/candles-batch', async (req, res) => {
-  const live = requireLiveToken(req, res);
+  const live = await requireLiveToken(req, res);
   if (!live) return;
   const timeframe = String(req.body?.timeframe || '15m').trim();
   const bars = Math.min(500, Math.max(20, Number(req.body?.bars) || 80));

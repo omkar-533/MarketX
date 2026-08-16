@@ -108,6 +108,10 @@ type Props = {
   onOpenWolfAi: () => void;
   onOpenLive?: () => void;
   onConnectData?: () => void;
+  /** Parent already has a LIVE INDstocks session — do not reopen the connect modal. */
+  liveHint?: boolean;
+  /** Bump after a successful connect so the desk rescans without remounting. */
+  rescanToken?: number;
 };
 
 function resolveLiveProvider(): typeof serverMarketDataProvider | null {
@@ -182,7 +186,13 @@ function HitTile({
   );
 }
 
-export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnectData }: Props) {
+export default function WolfOpportunityPage({
+  onOpenWolfAi,
+  onOpenLive,
+  onConnectData,
+  liveHint = false,
+  rescanToken = 0,
+}: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
   const [cards, setCards] = useState<ScannerCardState[]>(() => {
     const f = loadOpportunityFilters();
@@ -273,10 +283,10 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         }
       }
 
-      let live = false;
+      let live = liveHint;
       try {
         const s = await fetchMarketDataStatus();
-        live = isIndstocksLive(s);
+        live = isIndstocksLive(s) || liveHint;
         if (live) {
           setFeedStatus('LIVE');
           await initMarketDataService(serverMarketDataProvider).connect();
@@ -284,7 +294,12 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
           setFeedStatus(s.status === 'CONNECTED' && s.mode === 'DEMO' ? 'DEMO' : 'OFFLINE');
         }
       } catch {
-        setFeedStatus('OFFLINE');
+        if (liveHint) {
+          live = true;
+          setFeedStatus('LIVE');
+        } else {
+          setFeedStatus('OFFLINE');
+        }
       }
 
       if (!live) {
@@ -293,7 +308,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         setBgBusy(false);
         scanningRef.current = false;
         setProgress('Connect INDstocks for live scan — demo prices are off');
-        if (!quiet) onConnectData?.();
+        if (!quiet && !liveHint) onConnectData?.();
         return;
       }
 
@@ -360,7 +375,7 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
         }
       }
     },
-    [filters, refreshIndices, feedStatus, persistCards],
+    [filters, refreshIndices, feedStatus, persistCards, liveHint],
   );
 
   useEffect(() => {
@@ -371,6 +386,12 @@ export default function WolfOpportunityPage({ onOpenWolfAi, onOpenLive, onConnec
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!rescanToken) return;
+    void runScan({ reset: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescanToken]);
 
   useEffect(() => {
     if (!filters.autoRefresh) return;

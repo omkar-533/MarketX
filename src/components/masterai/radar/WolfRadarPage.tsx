@@ -1049,6 +1049,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
         onStatusChange={(s) => {
           setMdStatus(s);
           if (isIndstocksLive(s)) {
+            setConnectOpen(false);
             void initMarketDataService(serverMarketDataProvider).connect();
           }
         }}

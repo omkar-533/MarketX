@@ -17,7 +17,7 @@ type Props = {
 export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props) {
   const [connectOpen, setConnectOpen] = useState(false);
   const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
-  const [tick, setTick] = useState(0);
+  const [rescanToken, setRescanToken] = useState(0);
 
   useEffect(() => {
     void fetchMarketDataStatus()
@@ -28,15 +28,16 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
         }
       })
       .catch(() => undefined);
-  }, [tick]);
+  }, []);
 
   return (
     <>
       <WolfOpportunityPage
-        key={tick}
         onOpenWolfAi={onOpenWolfAi}
         onOpenLive={onOpenLive}
         onConnectData={() => setConnectOpen(true)}
+        liveHint={isIndstocksLive(mdStatus)}
+        rescanToken={rescanToken}
       />
       <ConnectMarketDataModal
         open={connectOpen}
@@ -45,9 +46,10 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
         onStatusChange={(s) => {
           setMdStatus(s);
           if (isIndstocksLive(s)) {
+            setConnectOpen(false);
             void initMarketDataService(serverMarketDataProvider).connect();
+            setRescanToken((n) => n + 1);
           }
-          setTick((n) => n + 1);
         }}
       />
     </>

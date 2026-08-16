@@ -13,7 +13,7 @@ export function loadAppSession(): AppSession | null {
     const raw = localStorage.getItem(APP_SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AppSession;
-    if (!parsed?.token || !parsed?.user?.email) return null;
+    if (!parsed?.token || !parsed?.user?.id) return null;
     return parsed;
   } catch {
     return null;

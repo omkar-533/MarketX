@@ -2,9 +2,20 @@
  * BrokerCredentialService — encrypted at-rest credential shell.
  * Never stores passwords / OTP / TOTP secrets.
  * Never returns raw tokens to API clients.
+ *
+ * Memory first (fast path). Supabase when configured so Render restarts
+ * and user/session key switches still see the same LIVE connection.
  */
 import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { encryptPineSource, decryptPineSource } from '../auth/pineCrypto.mjs';
+import { getAdminClient } from '../auth/supabaseAdmin.mjs';
+
+const TABLE = 'market_data_connections';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const filePath = resolve(root, 'data', 'market-data-connections.json');
 
 /** @typedef {{
  *  id: string,
@@ -15,6 +26,7 @@ import { encryptPineSource, decryptPineSource } from '../auth/pineCrypto.mjs';
  *  expiresAt: number|null,
  *  capabilities: object,
  *  mode: 'DEMO'|'LIVE',
+ *  permissionNote?: string|null,
  *  createdAt: number,
  *  updatedAt: number,
  * }} MarketDataConnectionRecord */
@@ -24,6 +36,135 @@ const byUser = new Map();
 
 function now() {
   return Date.now();
+}
+
+function markExpired(record) {
+  if (record?.expiresAt && record.expiresAt < now()) {
+    record.status = 'EXPIRED';
+  }
+  return record;
+}
+
+function fromRow(row) {
+  if (!row) return null;
+  const caps = row.capabilities && typeof row.capabilities === 'object' ? row.capabilities : {};
+  const expiresAt = row.expires_at ? Date.parse(row.expires_at) : null;
+  return markExpired({
+    id: row.id,
+    userKey: row.user_id,
+    provider: row.provider,
+    status: row.status || 'DISCONNECTED',
+    encryptedCredential: row.encrypted_credential || '',
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : null,
+    capabilities: { ...caps, orderExecution: false },
+    mode: row.mode === 'LIVE' ? 'LIVE' : 'DEMO',
+    permissionNote: caps.permissionNote || null,
+    createdAt: row.created_at ? Date.parse(row.created_at) || now() : now(),
+    updatedAt: row.updated_at ? Date.parse(row.updated_at) || now() : now(),
+  });
+}
+
+function toRow(record) {
+  return {
+    id: record.id,
+    user_id: record.userKey,
+    provider: record.provider,
+    status: record.status,
+    encrypted_credential: record.encryptedCredential,
+    expires_at: record.expiresAt ? new Date(record.expiresAt).toISOString() : null,
+    capabilities: {
+      ...record.capabilities,
+      orderExecution: false,
+      permissionNote: record.permissionNote || null,
+    },
+    mode: record.mode,
+    created_at: new Date(record.createdAt).toISOString(),
+    updated_at: new Date(record.updatedAt).toISOString(),
+  };
+}
+
+function readFileStore() {
+  try {
+    if (!existsSync(filePath)) return {};
+    const raw = JSON.parse(readFileSync(filePath, 'utf8'));
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeFileStore(map) {
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify(map), 'utf8');
+  } catch (err) {
+    console.warn('[market-data] file persist skipped', err?.message || err);
+  }
+}
+
+function persistFileRecord(record) {
+  if (!record?.userKey) return;
+  const map = readFileStore();
+  map[record.userKey] = toRow(record);
+  writeFileStore(map);
+}
+
+function loadFileRecord(userKey) {
+  const row = readFileStore()[userKey];
+  return row ? fromRow(row) : null;
+}
+
+function deleteFileRecord(userKey) {
+  const map = readFileStore();
+  if (!map[userKey]) return;
+  delete map[userKey];
+  writeFileStore(map);
+}
+
+async function persistRecord(record) {
+  if (!record) return;
+  persistFileRecord(record);
+  const db = getAdminClient();
+  if (!db) return;
+  const { error } = await db.from(TABLE).upsert(toRow(record), { onConflict: 'user_id,provider' });
+  if (error) console.warn('[market-data] persist skipped', error.message);
+}
+
+async function loadRowsForKey(userKey) {
+  const rows = [];
+  const fileRow = loadFileRecord(userKey);
+  if (fileRow) rows.push(fileRow);
+  const db = getAdminClient();
+  if (!db || !userKey) return rows;
+  const { data, error } = await db
+    .from(TABLE)
+    .select('*')
+    .eq('user_id', userKey)
+    .order('updated_at', { ascending: false })
+    .limit(4);
+  if (error) {
+    if (!String(error.message || '').includes('does not exist')) {
+      console.warn('[market-data] hydrate skipped', error.message);
+    }
+    return rows;
+  }
+  return [...rows, ...(data || []).map(fromRow).filter(Boolean)];
+}
+
+async function deleteRowsForKey(userKey) {
+  deleteFileRecord(userKey);
+  const db = getAdminClient();
+  if (!db || !userKey) return;
+  const { error } = await db.from(TABLE).delete().eq('user_id', userKey);
+  if (error && !String(error.message || '').includes('does not exist')) {
+    console.warn('[market-data] delete skipped', error.message);
+  }
+}
+
+function cacheRecord(record) {
+  if (!record?.userKey) return record;
+  byUser.set(record.userKey, record);
+  return record;
 }
 
 export function storeCredential({
@@ -36,8 +177,6 @@ export function storeCredential({
   status = 'CONNECTED',
   permissionNote = null,
 }) {
-  // Credential payload is opaque JSON — typically { kind:'demo' } or { kind:'indstocks', accessToken }.
-  // Never log credentialPayload.
   const encryptedCredential = encryptPineSource(
     typeof credentialPayload === 'string'
       ? credentialPayload
@@ -60,17 +199,56 @@ export function storeCredential({
     createdAt: existing?.createdAt || now(),
     updatedAt: now(),
   };
-  byUser.set(userKey, record);
+  cacheRecord(record);
   return publicView(record);
+}
+
+export async function persistStoredCredential(userKey) {
+  const record = byUser.get(userKey);
+  if (record) await persistRecord(record);
 }
 
 export function getCredential(userKey) {
   const record = byUser.get(userKey);
   if (!record) return null;
-  if (record.expiresAt && record.expiresAt < now()) {
-    record.status = 'EXPIRED';
-    byUser.set(userKey, record);
+  markExpired(record);
+  byUser.set(userKey, record);
+  return record;
+}
+
+/** Memory first, then Supabase. Checks every identity key (user + session). */
+export async function resolveCredential(keys) {
+  const list = [...new Set((keys || []).map((k) => String(k || '').trim()).filter(Boolean))];
+  for (const key of list) {
+    const mem = getCredential(key);
+    if (mem && mem.status === 'CONNECTED') return { key, record: mem };
   }
+  for (const key of list) {
+    const rows = await loadRowsForKey(key);
+    for (const row of rows) cacheRecord(row);
+    const mem = getCredential(key);
+    if (mem && (mem.status === 'CONNECTED' || mem.status === 'EXPIRED')) {
+      return { key, record: mem };
+    }
+  }
+  for (const key of list) {
+    const mem = getCredential(key);
+    if (mem) return { key, record: mem };
+  }
+  return { key: list[0] || '', record: null };
+}
+
+/** Move a session-cookie connection onto the logged-in user key. */
+export async function adoptCredential(fromKey, toKey) {
+  if (!fromKey || !toKey || fromKey === toKey) return getCredential(toKey);
+  const record = getCredential(fromKey);
+  if (!record) return getCredential(toKey);
+  record.userKey = toKey;
+  record.updatedAt = now();
+  cacheRecord(record);
+  byUser.delete(fromKey);
+  await persistRecord(record);
+  await deleteRowsForKey(fromKey);
   return record;
 }
 
@@ -97,15 +275,22 @@ export function isCredentialValid(userKey) {
 export function refreshCredential(userKey) {
   const record = getCredential(userKey);
   if (!record) return null;
-  // Real brokers: refresh token exchange happens here. Demo: bump updatedAt.
   record.updatedAt = now();
   record.status = 'CONNECTED';
   byUser.set(userKey, record);
+  void persistRecord(record);
   return publicView(record);
 }
 
 export function deleteCredential(userKey) {
   byUser.delete(userKey);
+  void deleteRowsForKey(userKey);
+  return true;
+}
+
+export async function deleteCredentialPersist(userKey) {
+  byUser.delete(userKey);
+  await deleteRowsForKey(userKey);
   return true;
 }
 
@@ -146,6 +331,5 @@ export function publicView(record) {
       : record.status === 'EXPIRED'
         ? 'Market data connection expired. Reconnect your broker.'
         : 'MARKET DATA DISCONNECTED',
-    // Intentionally omit encryptedCredential / tokens
   };
 }
