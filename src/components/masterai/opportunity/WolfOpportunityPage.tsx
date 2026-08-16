@@ -506,7 +506,6 @@ export default function WolfOpportunityPage({
               onClick={() => {
                 if (filters.direction === id) return;
                 patchFilters({ direction: id });
-                void runScan({ reset: true, filtersOverride: { direction: id } });
               }}
             >
               {label}

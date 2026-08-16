@@ -39,7 +39,7 @@ import type {
   OpportunityTimeframe,
   ScannerCardState,
 } from './opportunityTypes';
-import { OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS } from './opportunityTypes';
+import { OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS, DEFAULT_OPPORTUNITY_FILTERS } from './opportunityTypes';
 
 export type RunOpportunityOptions = {
   signal?: AbortSignal;
@@ -70,6 +70,8 @@ type CandleBatchProvider = MarketDataProvider & {
   ) => Promise<{
     symbols: string[];
     candlesBySymbol: Record<string, Candle[]>;
+    builtAt?: number;
+    asOf?: number;
   }>;
 };
 
@@ -235,6 +237,7 @@ export async function runOpportunityScan(
   const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const dataMode: 'LIVE' | 'DEMO' = provider.isDemo ? 'DEMO' : 'LIVE';
   const tf = filters.timeframe as OpportunityTimeframe;
+  let asOf = Date.now();
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
   for (const s of OPPORTUNITY_SCANNERS) buckets.set(s.id, []);
   const failed = (message: string, cards = emptyCards(message)) => ({
@@ -247,15 +250,8 @@ export async function runOpportunityScan(
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
     hit.detectedAt =
-      keepFirstSetupTime(0, hit.detectedAt) || keepDisplaySetupTime(hit.detectedAt);
-    if (hit.score < filters.minScore) return;
-    if (
-      filters.direction !== 'all' &&
-      hit.direction !== filters.direction &&
-      hit.direction !== 'neutral'
-    ) {
-      return;
-    }
+      keepFirstSetupTime(0, hit.detectedAt, asOf) || keepDisplaySetupTime(hit.detectedAt, asOf);
+    if (hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) return;
     pushHit(buckets, hit);
     opts.onHit?.(hit);
   };
@@ -287,6 +283,7 @@ export async function runOpportunityScan(
       );
       symbols = uniqueSortedSymbols(snap.symbols);
       candleMapAll = snap.candlesBySymbol || {};
+      asOf = Number(snap.asOf || snap.builtAt) || asOf;
     } else {
       symbols = await loadOpportunityUniverse(batchProvider, filters);
     }
@@ -368,19 +365,24 @@ export async function runOpportunityScan(
         };
         const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number => {
           const fallback =
-            setupCreatedAtFromCandles(candles, tf) || f.setupAt || lastBarStamp(candles, tf) || 0;
+            setupCreatedAtFromCandles(candles, tf, asOf) || f.setupAt || lastBarStamp(candles, tf, asOf) || 0;
           try {
-            const walked = firstHitTimeOfIstDay(candles, tf, (i) => {
-              const snap = snapshotAt(i);
-              if (!snap) return false;
-              return !!scan({
-                f: snap,
-                timeframe: tf,
-                dataMode,
-                quotePrice: snap.tech.last,
-                forTimeWalk: true,
-              });
-            });
+            const walked = firstHitTimeOfIstDay(
+              candles,
+              tf,
+              (i) => {
+                const snap = snapshotAt(i);
+                if (!snap) return false;
+                return !!scan({
+                  f: snap,
+                  timeframe: tf,
+                  dataMode,
+                  quotePrice: snap.tech.last,
+                  forTimeWalk: true,
+                });
+              },
+              asOf,
+            );
             return walked || fallback;
           } catch {
             return fallback;
@@ -453,8 +455,7 @@ export async function runOpportunityScan(
     emitHit(hit);
   }
 
-  const ranked = rankTrim(buckets, filters.minScore, filters.direction, topN);
-  const now = Date.now();
+  const ranked = rankTrim(buckets, DEFAULT_OPPORTUNITY_FILTERS.minScore, 'all', topN);
   const cards: ScannerCardState[] = OPPORTUNITY_SCANNERS.map((s) => {
     const hits = ranked.get(s.id) || [];
     return {
@@ -463,7 +464,7 @@ export async function runOpportunityScan(
       tagline: s.tagline,
       status: 'ready',
       hits,
-      updatedAt: now,
+      updatedAt: asOf,
     };
   });
 

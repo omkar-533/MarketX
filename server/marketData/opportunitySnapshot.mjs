@@ -2,6 +2,9 @@
  * One INDstocks candle snapshot per universe + timeframe + bar bucket.
  * Every login / every PC reads this same map so Opportunity ranks the same names.
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import {
   ensureInstrumentMap,
   fetchIndstocksCandles,
@@ -24,12 +27,17 @@ const SNAP_BARS = {
   '1D': 80,
 };
 
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const filePath = resolve(root, 'data', 'opportunity-snapshots.json');
+
 /** @type {Map<string, object>} */
 const cache = new Map();
 /** @type {Map<string, Promise<object>>} */
 const inflight = new Map();
 /** @type {Map<string, { at: number, error: string }>} */
 const lastFail = new Map();
+/** @type {Map<string, { loaded: number, total: number }>} */
+const progress = new Map();
 
 function normTf(timeframe) {
   const tf = String(timeframe || '5m');
@@ -40,6 +48,32 @@ function uniqueSorted(symbols) {
   return [...new Set((symbols || []).map((s) => String(s || '').toUpperCase()).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
+}
+
+function readDisk() {
+  try {
+    if (!existsSync(filePath)) return {};
+    const raw = JSON.parse(readFileSync(filePath, 'utf8'));
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDisk(key, payload) {
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify({ [key]: payload }), 'utf8');
+  } catch (err) {
+    console.warn('[opportunity-snapshot] disk skip', err?.message || err);
+  }
+}
+
+function hydrateDisk(key) {
+  const row = readDisk()[key];
+  if (!row || !row.ready || !row.candlesBySymbol) return null;
+  cache.set(key, row);
+  return row;
 }
 
 export function snapshotCacheKey(universe, timeframe, now = Date.now()) {
@@ -113,6 +147,7 @@ async function buildSnapshot(accessToken, universe, timeframe, key) {
   const bars = SNAP_BARS[timeframe] || 120;
   progress.set(key, { loaded: 0, total: symbols.length });
   const candlesBySymbol = await fillCandles(accessToken, symbols, timeframe, bars, key);
+  const asOf = Date.now();
   return {
     ready: true,
     universe,
@@ -120,7 +155,8 @@ async function buildSnapshot(accessToken, universe, timeframe, key) {
     bars,
     symbols,
     candlesBySymbol,
-    builtAt: Date.now(),
+    builtAt: asOf,
+    asOf,
     source: 'shared-indstocks',
     cacheKey: key,
   };
@@ -130,7 +166,7 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
-  const hit = cache.get(key);
+  const hit = cache.get(key) || hydrateDisk(key);
   if (hit) {
     return { ready: true, ...hit };
   }
@@ -151,6 +187,7 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
     const job = buildSnapshot(accessToken, u, tf, key)
       .then((payload) => {
         cache.set(key, payload);
+        writeDisk(key, payload);
         for (const k of [...cache.keys()]) {
           if (k !== key && k.startsWith(`${u}|${tf}|`)) cache.delete(k);
         }

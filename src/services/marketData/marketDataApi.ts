@@ -294,6 +294,7 @@ export async function fetchOpportunitySnapshot(
   universe: string;
   bars: number;
   builtAt: number;
+  asOf: number;
   source: string;
   cacheKey: string;
 }> {
@@ -312,6 +313,7 @@ export async function fetchOpportunitySnapshot(
       universe?: string;
       bars?: number;
       builtAt?: number;
+      asOf?: number;
       source?: string;
       cacheKey?: string;
     }>(`/api/market-data/opportunity-snapshot?${q}`);
@@ -324,6 +326,7 @@ export async function fetchOpportunitySnapshot(
         universe: data.universe || universe,
         bars: data.bars || 80,
         builtAt: data.builtAt || Date.now(),
+        asOf: data.asOf || data.builtAt || Date.now(),
         source: data.source || 'shared-indstocks',
         cacheKey: data.cacheKey || '',
       };
