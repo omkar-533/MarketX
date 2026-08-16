@@ -38,7 +38,7 @@ import type {
   OpportunityTimeframe,
   ScannerCardState,
 } from './opportunityTypes';
-import { OPPORTUNITY_CARD_POOL, OPPORTUNITY_SCANNERS } from './opportunityTypes';
+import { OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
 export type RunOpportunityOptions = {
   signal?: AbortSignal;
@@ -123,7 +123,7 @@ function rankTrim(
     const filtered = hits
       .filter((h) => h.score >= minScore)
       .filter((h) => direction === 'all' || h.direction === direction || h.direction === 'neutral')
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || a.symbol.localeCompare(b.symbol))
       .slice(0, topN);
     out.set(id, filtered);
   }
@@ -135,7 +135,7 @@ export async function runOpportunityScan(
   opts: RunOpportunityOptions = {},
   provider: MarketDataProvider = mockMarketDataProvider,
 ): Promise<{ cards: ScannerCardState[]; hits: OpportunityHit[]; dataMode: 'LIVE' | 'DEMO' }> {
-  const topN = opts.topN ?? OPPORTUNITY_CARD_POOL;
+  const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const dataMode: 'LIVE' | 'DEMO' = provider.isDemo ? 'DEMO' : 'LIVE';
   const tf = filters.timeframe as OpportunityTimeframe;
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();

@@ -25,8 +25,7 @@ import {
   saveOpportunityFilters,
   loadOpportunityDayBoard,
   saveOpportunityDayBoard,
-  mergeOpportunityHitIntoCards,
-  mergeOpportunityCardSets,
+  applyScanCardsKeepingFirstSeen,
   opportunityBoardKey,
   rankHitsByScore,
 } from '../../../services/opportunity/opportunityStore';
@@ -39,19 +38,11 @@ import type {
   ScannerCardState,
 } from '../../../services/opportunity/opportunityTypes';
 import {
-  OPPORTUNITY_CARD_POOL,
+  OPPORTUNITY_SCAN_CAP,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import AppLink from '../../AppLink';
 import { liveWolfQuery } from '../../../utils/appNav';
-
-function mergeHitIntoCards(
-  prev: ScannerCardState[],
-  hit: OpportunityHit,
-  topN = OPPORTUNITY_CARD_POOL,
-): ScannerCardState[] {
-  return mergeOpportunityHitIntoCards(prev, hit, Math.max(topN, 80));
-}
 
 function prettyTitle(raw: string): string {
   return raw
@@ -215,17 +206,9 @@ export default function WolfOpportunityPage({
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
   const lastProgAtRef = useRef(0);
-  const persistTimerRef = useRef<number | null>(null);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const marketOpen = getMarketSession('NSE:NIFTY').open;
-
-  const persistCards = useCallback((next: ScannerCardState[], key?: string) => {
-    const f = filtersRef.current;
-    const boardKey = key || opportunityBoardKey(f.universe, f.timeframe);
-    if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = window.setTimeout(() => saveOpportunityDayBoard(boardKey, next), 400);
-  }, []);
 
   const patchFilters = useCallback((patch: Partial<OpportunityFilters>) => {
     setFilters((prev) => {
@@ -321,7 +304,7 @@ export default function WolfOpportunityPage({
           activeFilters,
           {
             signal: ac.signal,
-            topN: OPPORTUNITY_CARD_POOL,
+            topN: OPPORTUNITY_SCAN_CAP,
             onProgress: (p) => {
               if (quiet) return;
               const now = Date.now();
@@ -333,15 +316,6 @@ export default function WolfOpportunityPage({
                   : p.phase,
               );
             },
-            onHit: (hit) => {
-              if (isStale()) return;
-              if (hit.timeframe !== activeFilters.timeframe) return;
-              setCards((prev) => {
-                const next = mergeHitIntoCards(prev, hit, OPPORTUNITY_CARD_POOL);
-                persistCards(next, boardKey);
-                return next;
-              });
-            },
             onCard: (card) => {
               if (isStale() || card.status !== 'unavailable') return;
               setCards((prev) => prev.map((c) => (c.scannerId === card.scannerId ? card : c)));
@@ -351,7 +325,7 @@ export default function WolfOpportunityPage({
         );
         if (!isStale()) {
           setCards((prev) => {
-            const next = mergeOpportunityCardSets(prev, out.cards).map((card) => ({
+            const next = applyScanCardsKeepingFirstSeen(prev, out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
             }));
@@ -375,14 +349,13 @@ export default function WolfOpportunityPage({
         }
       }
     },
-    [filters, refreshIndices, feedStatus, persistCards, liveHint],
+    [filters, refreshIndices, feedStatus, liveHint],
   );
 
   useEffect(() => {
     void runScan({ reset: true });
     return () => {
       abortRef.current?.abort();
-      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

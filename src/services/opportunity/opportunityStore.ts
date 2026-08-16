@@ -1,14 +1,14 @@
 import { istCalendarDay } from '../../utils/marketHours';
 import { keepDisplaySetupTime, keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
-import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCANNERS } from './opportunityTypes';
+import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
 const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v7';
 const LEGACY_BOARD_KEYS = ['wolf_opportunity_day_board_v6', 'wolf_opportunity_day_board_v5'];
-const DAY_HIT_CAP = 80;
+const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
 
 type OpportunityDayBoard = {
   day: string;
@@ -120,7 +120,34 @@ export function rankHitsByScore(hits: OpportunityHit[]): OpportunityHit[] {
   return [...hits].sort((a, b) => b.score - a.score || a.symbol.localeCompare(b.symbol));
 }
 
-/** Append new names; update price/score in place; never drop a name during the IST day. */
+/**
+ * After a full scan: this run's ranked hits are the board.
+ * Keep Created time for names that were already on the board. Do not freeze first-arrived names.
+ */
+export function applyScanCardsKeepingFirstSeen(
+  prev: ScannerCardState[],
+  incoming: ScannerCardState[],
+): ScannerCardState[] {
+  const prevBy = new Map(prev.map((c) => [c.scannerId, c]));
+  const inBy = new Map(incoming.map((c) => [c.scannerId, c]));
+  return emptyOpportunityCards().map((blank) => {
+    const nextCard = inBy.get(blank.scannerId);
+    const prevCard = prevBy.get(blank.scannerId);
+    const prevHits = new Map((prevCard?.hits || []).map((h) => [h.symbol, h]));
+    const hits = rankHitsByScore(
+      (nextCard?.hits || []).map((h) => mergeHitKeepFirstSeen(prevHits.get(h.symbol), h)),
+    );
+    return {
+      ...blank,
+      status: hits.length ? 'ready' : nextCard?.status || prevCard?.status || 'idle',
+      hits,
+      updatedAt: nextCard?.updatedAt ?? Date.now(),
+      unavailableReason: nextCard?.unavailableReason,
+    };
+  });
+}
+
+/** Update price/score; keep earliest Created. Rank by score and trim — never lock the first arrivals. */
 export function mergeOpportunityHitIntoCards(
   prev: ScannerCardState[],
   hit: OpportunityHit,
@@ -130,22 +157,15 @@ export function mergeOpportunityHitIntoCards(
     if (card.scannerId !== hit.scannerId) return card;
     if (card.status === 'unavailable') return card;
     const existing = card.hits.find((h) => h.symbol === hit.symbol);
-    if (existing) {
-      return {
-        ...card,
-        status: 'ready',
-        hits: rankHitsByScore(
-          card.hits.map((h) => (h.symbol === hit.symbol ? mergeHitKeepFirstSeen(h, hit) : h)),
-        ),
-        updatedAt: Date.now(),
-        unavailableReason: undefined,
-      };
-    }
-    if (card.hits.length >= cap) return card;
+    const merged = existing ? mergeHitKeepFirstSeen(existing, hit) : hit;
+    const hits = rankHitsByScore([
+      ...card.hits.filter((h) => h.symbol !== hit.symbol),
+      merged,
+    ]).slice(0, cap);
     return {
       ...card,
       status: 'ready',
-      hits: rankHitsByScore([...card.hits, hit]),
+      hits,
       updatedAt: Date.now(),
       unavailableReason: undefined,
     };
