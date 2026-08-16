@@ -142,6 +142,10 @@ type LiveCandlesResponse = {
 const CANDLE_MEM_TTL_MS = 45_000;
 const candleMem = new Map<string, { at: number; barsWanted: number; data: LiveCandlesResponse }>();
 
+export function clearLiveCandleCache() {
+  candleMem.clear();
+}
+
 function candleMemKey(symbol: string, timeframe: string): string {
   return `${String(symbol || '').toUpperCase()}|${String(timeframe || '').toLowerCase()}`;
 }
@@ -151,10 +155,11 @@ export async function fetchLiveCandles(
   timeframe: string,
   bars = 80,
   beforeMs?: number,
+  fresh = false,
 ): Promise<LiveCandlesResponse> {
   const want = Math.min(3200, Math.max(10, Math.floor(bars) || 80));
   const key = candleMemKey(symbol, timeframe);
-  if (!beforeMs) {
+  if (!beforeMs && !fresh) {
     const hit = candleMem.get(key);
     if (
       hit &&
@@ -175,6 +180,7 @@ export async function fetchLiveCandles(
     bars: String(want),
   });
   if (beforeMs && beforeMs > 0) q.set('before', String(Math.floor(beforeMs)));
+  if (fresh) q.set('fresh', '1');
   const data = await json<LiveCandlesResponse>(`/api/market-data/candles?${q}`);
   if (!beforeMs && data?.candles && data.candles.length >= 20) {
     const prev = candleMem.get(key);
@@ -199,12 +205,17 @@ export async function fetchLiveCandlesBatch(
   symbols: string[],
   timeframe: string,
   bars = 80,
+  fresh = false,
 ): Promise<LiveCandlesBatchResponse> {
   const want = Math.min(500, Math.max(20, Math.floor(bars) || 80));
   const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].slice(0, 80);
   const cached: Record<string, import('../radar/radarTypes').Candle[]> = {};
   const missing: string[] = [];
   for (const symbol of list) {
+    if (fresh) {
+      missing.push(symbol);
+      continue;
+    }
     const hit = candleMem.get(candleMemKey(symbol, timeframe));
     if (
       hit &&
@@ -224,7 +235,7 @@ export async function fetchLiveCandlesBatch(
   const data = await json<LiveCandlesBatchResponse>('/api/market-data/candles-batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ symbols: missing, timeframe, bars: want }),
+    body: JSON.stringify({ symbols: missing, timeframe, bars: want, fresh: fresh || undefined }),
   });
   const candlesBySymbol = { ...cached, ...(data.candlesBySymbol || {}) };
   for (const [symbol, candles] of Object.entries(candlesBySymbol)) {

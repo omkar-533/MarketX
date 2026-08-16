@@ -14,7 +14,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { getMarketSession, istCalendarDay } from '../../../utils/marketHours';
-import { fetchMarketDataStatus, isIndstocksLive } from '../../../services/marketData/marketDataApi';
+import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
@@ -23,10 +23,8 @@ import { opportunityToRadarResult } from '../../../services/opportunity/opportun
 import {
   loadOpportunityFilters,
   saveOpportunityFilters,
-  loadOpportunityDayBoard,
-  saveOpportunityDayBoard,
-  applyScanCardsKeepingFirstSeen,
-  opportunityBoardKey,
+  clearOpportunityDayBoard,
+  applyLiveScanCards,
   rankHitsByScore,
   emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
@@ -104,6 +102,8 @@ type Props = {
   liveHint?: boolean;
   /** Bump after a successful connect so the desk rescans without remounting. */
   rescanToken?: number;
+  /** Wait until the route has read INDstocks status once. */
+  sessionKnown?: boolean;
 };
 
 function resolveLiveProvider(): typeof serverMarketDataProvider | null {
@@ -184,6 +184,7 @@ export default function WolfOpportunityPage({
   onConnectData,
   liveHint = false,
   rescanToken = 0,
+  sessionKnown = true,
 }: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
   const [cards, setCards] = useState<ScannerCardState[]>(() => emptyOpportunityCards());
@@ -244,8 +245,8 @@ export default function WolfOpportunityPage({
       filtersOverride?: Partial<OpportunityFilters>;
     }) => {
       const quiet = Boolean(opts?.quiet);
+      const fresh = !quiet;
       const activeFilters = { ...filters, ...opts?.filtersOverride };
-      const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
       if (quiet && scanningRef.current) return;
       if (!quiet) abortRef.current?.abort();
       else if (scanningRef.current) return;
@@ -258,10 +259,11 @@ export default function WolfOpportunityPage({
       if (quiet) setBgBusy(true);
       else {
         setScanning(true);
-        setProgress('Scanning market…');
-        if (opts?.reset) {
-          setCards(emptyOpportunityCards());
-        }
+        setProgress('Fetching live market…');
+        clearOpportunityDayBoard();
+        clearLiveCandleCache();
+        setCards(emptyOpportunityCards());
+        setLastUpdated(null);
       }
 
       let live = liveHint;
@@ -301,6 +303,7 @@ export default function WolfOpportunityPage({
         const scanOpts: RunOpportunityOptions = {
           signal: ac.signal,
           topN: OPPORTUNITY_SCAN_CAP,
+          freshCandles: fresh,
           onProgress: (p) => {
             if (quiet) return;
             const now = Date.now();
@@ -323,20 +326,17 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          const prevBoard = loadOpportunityDayBoard(boardKey);
-          setCards(() => {
-            const next = applyScanCardsKeepingFirstSeen(prevBoard, out.cards).map((card) => ({
+          setCards(
+            applyLiveScanCards(out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            }));
-            saveOpportunityDayBoard(boardKey, next);
-            return next;
-          });
+            })),
+          );
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
         } else if (!isStale() && !out.complete && !quiet) {
-          setProgress('Waiting for a full universe scan…');
+          setProgress('Waiting for a full live scan…');
         }
       } catch (e) {
         if (!isStale()) {
@@ -355,18 +355,13 @@ export default function WolfOpportunityPage({
   );
 
   useEffect(() => {
-    void runScan({ reset: true });
+    if (!sessionKnown) return;
+    void runScan({ reset: true, fresh: true });
     return () => {
       abortRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!rescanToken) return;
-    void runScan({ reset: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rescanToken]);
+  }, [sessionKnown, liveHint, rescanToken]);
 
   useEffect(() => {
     if (!filters.autoRefresh) return;

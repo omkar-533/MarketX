@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  applyLiveScanCards,
   applyScanCardsKeepingFirstSeen,
   emptyOpportunityCards,
   mergeOpportunityHitIntoCards,
@@ -103,5 +104,21 @@ describe('opportunityStore ranking', () => {
     const next = applyScanCardsKeepingFirstSeen(prev, incoming);
     const names = next.find((c) => c.scannerId === 'breakout_radar')?.hits.map((h) => h.symbol) || [];
     assert.deepEqual(names, ['TCS']);
+  });
+
+  it('live apply uses this scan only, never a saved board', () => {
+    const incoming = emptyOpportunityCards().map((c) =>
+      c.scannerId === 'breakout_radar'
+        ? {
+            ...c,
+            hits: [hit({ scannerId: 'breakout_radar', symbol: 'INFY', score: 77, detectedAt: 9 })],
+            status: 'ready' as const,
+          }
+        : c,
+    );
+    const next = applyLiveScanCards(incoming);
+    const hits = next.find((c) => c.scannerId === 'breakout_radar')?.hits || [];
+    assert.deepEqual(hits.map((h) => h.symbol), ['INFY']);
+    assert.equal(hits[0]?.detectedAt, 9);
   });
 });

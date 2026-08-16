@@ -98,8 +98,8 @@ async function resolveCandidates(accessToken, symbol) {
   return candidates;
 }
 
-async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
-  const cached = !beforeMs ? readCandleCache(symbol, timeframe, bars) : null;
+async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs, skipCache = false) {
+  const cached = !beforeMs && !skipCache ? readCandleCache(symbol, timeframe, bars) : null;
   if (cached) return { candles: cached, scrip: 'cache' };
   const candidates = await resolveCandidates(accessToken, symbol);
   if (!candidates.length) {
@@ -132,14 +132,14 @@ async function loadLiveCandles(accessToken, symbol, timeframe, bars, beforeMs) {
   return { candles, scrip: used };
 }
 
-async function loadLiveCandlesMany(accessToken, symbols, timeframe, bars) {
+async function loadLiveCandlesMany(accessToken, symbols, timeframe, bars, skipCache = false) {
   await ensureInstrumentMap(accessToken);
   /** @type {Record<string, object[]>} */
   const result = {};
   /** @type {{ symbol: string, scrip: string }[]} */
   const need = [];
   for (const symbol of symbols) {
-    const cached = readCandleCache(symbol, timeframe, bars);
+    const cached = skipCache ? null : readCandleCache(symbol, timeframe, bars);
     if (cached?.length) {
       result[symbol] = cached;
       continue;
@@ -499,9 +499,17 @@ router.get('/candles', async (req, res) => {
   const bars = Math.min(3200, Math.max(10, Number(req.query.bars) || 80));
   const beforeRaw = Number(req.query.before);
   const beforeMs = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : undefined;
+  const skipCache = String(req.query.fresh || '') === '1' || String(req.query.fresh || '') === 'true';
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
   try {
-    const { candles, scrip } = await loadLiveCandles(live.accessToken, symbol, timeframe, bars, beforeMs);
+    const { candles, scrip } = await loadLiveCandles(
+      live.accessToken,
+      symbol,
+      timeframe,
+      bars,
+      beforeMs,
+      skipCache,
+    );
     res.json({
       symbol,
       timeframe,
@@ -531,9 +539,16 @@ router.post('/candles-batch', async (req, res) => {
   const bars = Math.min(500, Math.max(20, Number(req.body?.bars) || 80));
   const raw = Array.isArray(req.body?.symbols) ? req.body.symbols : [];
   const symbols = [...new Set(raw.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))].slice(0, 80);
+  const skipCache = Boolean(req.body?.fresh);
   if (!symbols.length) return res.status(400).json({ error: 'symbols required' });
   try {
-    const candlesBySymbol = await loadLiveCandlesMany(live.accessToken, symbols, timeframe, bars);
+    const candlesBySymbol = await loadLiveCandlesMany(
+      live.accessToken,
+      symbols,
+      timeframe,
+      bars,
+      skipCache,
+    );
     res.json({
       timeframe,
       bars,

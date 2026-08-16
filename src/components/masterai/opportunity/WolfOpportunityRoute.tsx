@@ -4,10 +4,12 @@ import ConnectMarketDataModal from '../radar/ConnectMarketDataModal';
 import {
   fetchMarketDataStatus,
   isIndstocksLive,
+  clearLiveCandleCache,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
+import { clearOpportunityDayBoard } from '../../../services/opportunity/opportunityStore';
 
 type Props = {
   onOpenWolfAi: () => void;
@@ -18,6 +20,7 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
   const [connectOpen, setConnectOpen] = useState(false);
   const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
   const [rescanToken, setRescanToken] = useState(0);
+  const [sessionKnown, setSessionKnown] = useState(false);
 
   useEffect(() => {
     void fetchMarketDataStatus()
@@ -27,7 +30,8 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
           await initMarketDataService(serverMarketDataProvider).connect();
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setSessionKnown(true));
   }, []);
 
   return (
@@ -38,6 +42,7 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
         onConnectData={() => setConnectOpen(true)}
         liveHint={isIndstocksLive(mdStatus)}
         rescanToken={rescanToken}
+        sessionKnown={sessionKnown}
       />
       <ConnectMarketDataModal
         open={connectOpen}
@@ -47,6 +52,8 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
           setMdStatus(s);
           if (isIndstocksLive(s)) {
             setConnectOpen(false);
+            clearOpportunityDayBoard();
+            clearLiveCandleCache();
             void initMarketDataService(serverMarketDataProvider).connect();
             setRescanToken((n) => n + 1);
           }

@@ -168,6 +168,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     symbols: string[],
     timeframe: RadarTimeframe,
     bars = 80,
+    opts?: { fresh?: boolean },
   ): Promise<Record<string, Candle[]>> {
     const unique = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
     const out: Record<string, Candle[]> = {};
@@ -175,17 +176,25 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     const chunks: string[][] = [];
     for (let i = 0; i < unique.length; i += CHUNK) chunks.push(unique.slice(i, i + CHUNK));
     const WAVE = 2;
+    const fresh = Boolean(opts?.fresh);
     for (let i = 0; i < chunks.length; i += WAVE) {
       const wave = chunks.slice(i, i + WAVE);
       const results = await Promise.all(
         wave.map(async (chunk) => {
           try {
-            return await fetchLiveCandlesBatch(chunk, timeframe, Math.max(25, bars));
+            return await fetchLiveCandlesBatch(chunk, timeframe, Math.max(25, bars), fresh);
           } catch {
             const fallback: Record<string, Candle[]> = {};
             await Promise.all(
               chunk.map(async (symbol) => {
-                fallback[symbol] = await this.getCandles(symbol, timeframe, bars);
+                const { candles } = await fetchLiveCandles(
+                  symbol,
+                  timeframe,
+                  Math.max(25, bars),
+                  undefined,
+                  fresh,
+                );
+                fallback[symbol] = Array.isArray(candles) ? candles : [];
               }),
             );
             return { candlesBySymbol: fallback };

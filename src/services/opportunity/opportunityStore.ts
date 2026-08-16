@@ -98,6 +98,9 @@ export function saveOpportunityDayBoard(key: string, cards: ScannerCardState[]) 
 export function clearOpportunityDayBoard() {
   try {
     localStorage.removeItem(DAY_BOARD_KEY);
+    localStorage.removeItem('wolf_opportunity_day_board_v7');
+    localStorage.removeItem('wolf_opportunity_day_board_v6');
+    localStorage.removeItem('wolf_opportunity_day_board_v5');
   } catch {
     /* ignore */
   }
@@ -141,6 +144,22 @@ export function applyScanCardsKeepingFirstSeen(
     return {
       ...blank,
       status: hits.length ? 'ready' : nextCard?.status || prevCard?.status || 'idle',
+      hits,
+      updatedAt: nextCard?.updatedAt ?? Date.now(),
+      unavailableReason: nextCard?.unavailableReason,
+    };
+  });
+}
+
+/** Live desk: this scan only. Never merge a browser-saved board. */
+export function applyLiveScanCards(incoming: ScannerCardState[]): ScannerCardState[] {
+  const inBy = new Map(incoming.map((c) => [c.scannerId, c]));
+  return emptyOpportunityCards().map((blank) => {
+    const nextCard = inBy.get(blank.scannerId);
+    const hits = rankHitsByScore(nextCard?.hits || []);
+    return {
+      ...blank,
+      status: hits.length ? 'ready' : nextCard?.status || 'idle',
       hits,
       updatedAt: nextCard?.updatedAt ?? Date.now(),
       unavailableReason: nextCard?.unavailableReason,

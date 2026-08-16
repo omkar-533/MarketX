@@ -48,13 +48,18 @@ export type RunOpportunityOptions = {
   /** Fired as each opportunity is discovered so UI can append live. */
   onHit?: (hit: OpportunityHit) => void;
   topN?: number;
+  /** Skip candle caches and pull INDstocks again (connect / manual scan). */
+  freshCandles?: boolean;
 };
+
+type CandleFetchOpts = { fresh?: boolean };
 
 type CandleBatchProvider = MarketDataProvider & {
   getCandlesMany?: (
     symbols: string[],
     timeframe: OpportunityTimeframe,
     bars?: number,
+    opts?: CandleFetchOpts,
   ) => Promise<Record<string, Candle[]>>;
   getOpportunitySymbols?: (universe: RadarUniverse, market?: RadarMarket) => Promise<string[]>;
 };
@@ -74,9 +79,18 @@ async function retryThinCandles(
   tf: OpportunityTimeframe,
   bars: number,
   signal?: AbortSignal,
+  fresh = false,
 ): Promise<Record<string, Candle[]>> {
   const missing = symbols.filter((s) => (map[s]?.length || 0) < MIN_SCAN_BARS);
   if (!missing.length || signal?.aborted) return map;
+  if (typeof provider.getCandlesMany === 'function') {
+    const extra = await provider.getCandlesMany(missing, tf, bars, { fresh });
+    for (const symbol of missing) {
+      const rows = extra[symbol] || extra[String(symbol).toUpperCase()] || [];
+      if (rows.length > (map[symbol]?.length || 0)) map[symbol] = rows;
+    }
+    return map;
+  }
   const conc = 8;
   for (let i = 0; i < missing.length; i += conc) {
     if (signal?.aborted) break;
@@ -101,11 +115,12 @@ async function loadCandleMap(
   tf: OpportunityTimeframe,
   bars: number,
   signal?: AbortSignal,
+  fresh = false,
 ): Promise<Record<string, Candle[]>> {
   if (signal?.aborted) return {};
   let map: Record<string, Candle[]> = {};
   if (typeof provider.getCandlesMany === 'function') {
-    map = await provider.getCandlesMany(symbols, tf, bars);
+    map = await provider.getCandlesMany(symbols, tf, bars, { fresh });
   } else {
     const conc = provider.isDemo ? 12 : 10;
     for (let i = 0; i < symbols.length; i += conc) {
@@ -122,7 +137,7 @@ async function loadCandleMap(
       );
     }
   }
-  return retryThinCandles(provider, map, symbols, tf, bars, signal);
+  return retryThinCandles(provider, map, symbols, tf, bars, signal, fresh);
 }
 
 async function loadOpportunityUniverse(
@@ -246,6 +261,7 @@ export async function runOpportunityScan(
 
   const FETCH_BATCH = provider.isDemo ? 24 : 80;
   const bars = sessionBarsNeeded(tf);
+  const fresh = Boolean(opts.freshCandles);
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -259,7 +275,7 @@ export async function runOpportunityScan(
   });
 
   let pendingCandles: Promise<Record<string, Candle[]>> | null = symbols.length
-    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, bars, opts.signal)
+    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, bars, opts.signal, fresh)
     : null;
 
   for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
@@ -271,9 +287,9 @@ export async function runOpportunityScan(
         : null;
     const candleMap = pendingCandles
       ? await pendingCandles
-      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, bars, opts.signal);
+      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, bars, opts.signal, fresh);
     pendingCandles = nextBatch
-      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, bars, opts.signal)
+      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, bars, opts.signal, fresh)
       : null;
     for (const symbol of batch) {
       if (opts.signal?.aborted) break;
