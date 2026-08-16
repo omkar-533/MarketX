@@ -281,6 +281,63 @@ export async function fetchLiveSymbols(
   );
 }
 
+export async function fetchOpportunitySnapshot(
+  universe: string,
+  timeframe: string,
+  signal?: AbortSignal,
+  onWait?: (p: { loaded: number; total: number }) => void,
+): Promise<{
+  ready: true;
+  symbols: string[];
+  candlesBySymbol: Record<string, import('../radar/radarTypes').Candle[]>;
+  timeframe: string;
+  universe: string;
+  bars: number;
+  builtAt: number;
+  source: string;
+  cacheKey: string;
+}> {
+  const q = `universe=${encodeURIComponent(universe)}&timeframe=${encodeURIComponent(timeframe)}`;
+  const started = Date.now();
+  while (!signal?.aborted) {
+    const data = await json<{
+      ready?: boolean;
+      error?: string;
+      building?: boolean;
+      symbolsLoaded?: number;
+      symbolsTotal?: number;
+      symbols?: string[];
+      candlesBySymbol?: Record<string, import('../radar/radarTypes').Candle[]>;
+      timeframe?: string;
+      universe?: string;
+      bars?: number;
+      builtAt?: number;
+      source?: string;
+      cacheKey?: string;
+    }>(`/api/market-data/opportunity-snapshot?${q}`);
+    if (data.ready && data.symbols && data.candlesBySymbol) {
+      return {
+        ready: true,
+        symbols: data.symbols,
+        candlesBySymbol: data.candlesBySymbol,
+        timeframe: data.timeframe || timeframe,
+        universe: data.universe || universe,
+        bars: data.bars || 80,
+        builtAt: data.builtAt || Date.now(),
+        source: data.source || 'shared-indstocks',
+        cacheKey: data.cacheKey || '',
+      };
+    }
+    if (data.error) throw new Error(data.error);
+    onWait?.({ loaded: data.symbolsLoaded || 0, total: data.symbolsTotal || 0 });
+    if (Date.now() - started > 180_000) {
+      throw new Error('Shared opportunity board timed out');
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error('Scan aborted');
+}
+
 export async function fetchUniversesMeta() {
   return json<{
     source: string;

@@ -245,7 +245,6 @@ export default function WolfOpportunityPage({
       filtersOverride?: Partial<OpportunityFilters>;
     }) => {
       const quiet = Boolean(opts?.quiet);
-      const fresh = !quiet;
       const activeFilters = { ...filters, ...opts?.filtersOverride };
       if (quiet && scanningRef.current) return;
       if (!quiet) abortRef.current?.abort();
@@ -303,17 +302,19 @@ export default function WolfOpportunityPage({
         const scanOpts: RunOpportunityOptions = {
           signal: ac.signal,
           topN: OPPORTUNITY_SCAN_CAP,
-          freshCandles: fresh,
+          freshCandles: false,
           onProgress: (p) => {
             if (quiet) return;
             const now = Date.now();
             if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
             lastProgAtRef.current = now;
-            setProgress(
-              p.status === 'scanning'
-                ? `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
-                : p.phase,
-            );
+              setProgress(
+                p.status === 'scanning'
+                  ? p.phase === 'SHARED'
+                    ? `Shared board ${p.symbolsChecked}/${p.symbolsTotal || '?'}`
+                    : `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
+                  : p.phase,
+              );
           },
           onCard: (card) => {
             if (isStale() || card.status !== 'unavailable') return;

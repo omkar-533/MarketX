@@ -13,7 +13,7 @@ import type {
 } from './types';
 import { ALL_WOLF_TIMEFRAMES } from './types';
 import type { Candle, RadarMarket, RadarTimeframe, RadarUniverse } from '../radar/radarTypes';
-import { fetchLiveCandles, fetchLiveCandlesBatch, fetchLiveQuote, fetchLiveSymbols } from './marketDataApi';
+import { fetchLiveCandles, fetchLiveCandlesBatch, fetchLiveQuote, fetchLiveSymbols, fetchOpportunitySnapshot } from './marketDataApi';
 
 export class ServerMarketDataProvider implements MarketDataProvider {
   readonly id = 'indstocks-live';
@@ -31,6 +31,16 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     source?: string;
     note?: string;
   } | null = null;
+
+  /** Shared Opportunity candle map — same payload for every login in this bar bucket. */
+  async getOpportunitySnapshot(
+    universe: RadarUniverse,
+    timeframe: RadarTimeframe,
+    signal?: AbortSignal,
+    onWait?: (p: { loaded: number; total: number }) => void,
+  ) {
+    return fetchOpportunitySnapshot(universe, timeframe, signal, onWait);
+  }
 
   /** Opportunity only — fixed catalog, identical on every login / every Render instance. */
   async getOpportunitySymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {

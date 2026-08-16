@@ -62,6 +62,15 @@ type CandleBatchProvider = MarketDataProvider & {
     opts?: CandleFetchOpts,
   ) => Promise<Record<string, Candle[]>>;
   getOpportunitySymbols?: (universe: RadarUniverse, market?: RadarMarket) => Promise<string[]>;
+  getOpportunitySnapshot?: (
+    universe: RadarUniverse,
+    timeframe: OpportunityTimeframe,
+    signal?: AbortSignal,
+    onWait?: (p: { loaded: number; total: number }) => void,
+  ) => Promise<{
+    symbols: string[];
+    candlesBySymbol: Record<string, Candle[]>;
+  }>;
 };
 
 const MIN_SCAN_BARS = 25;
@@ -70,6 +79,17 @@ function uniqueSortedSymbols(symbols: string[]): string[] {
   return [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
+}
+
+function sliceCandleMap(
+  all: Record<string, Candle[]>,
+  symbols: string[],
+): Record<string, Candle[]> {
+  const out: Record<string, Candle[]> = {};
+  for (const symbol of symbols) {
+    out[symbol] = all[symbol] || all[String(symbol).toUpperCase()] || [];
+  }
+  return out;
 }
 
 async function retryThinCandles(
@@ -241,8 +261,35 @@ export async function runOpportunityScan(
   };
 
   let symbols: string[] = [];
+  const batchProvider = provider as CandleBatchProvider;
+  const shared = Boolean(!provider.isDemo && typeof batchProvider.getOpportunitySnapshot === 'function');
+  let candleMapAll: Record<string, Candle[]> | null = null;
   try {
-    symbols = await loadOpportunityUniverse(provider as CandleBatchProvider, filters);
+    if (shared) {
+      opts.onProgress?.({
+        status: 'scanning',
+        symbolsChecked: 0,
+        symbolsTotal: 0,
+        phase: 'SHARED',
+      });
+      const snap = await batchProvider.getOpportunitySnapshot!(
+        toRadarUniverse(filters.universe),
+        tf,
+        opts.signal,
+        (p) => {
+          opts.onProgress?.({
+            status: 'scanning',
+            symbolsChecked: p.loaded,
+            symbolsTotal: p.total,
+            phase: 'SHARED',
+          });
+        },
+      );
+      symbols = uniqueSortedSymbols(snap.symbols);
+      candleMapAll = snap.candlesBySymbol || {};
+    } else {
+      symbols = await loadOpportunityUniverse(batchProvider, filters);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to load universe';
     opts.onProgress?.({
@@ -261,7 +308,7 @@ export async function runOpportunityScan(
 
   const FETCH_BATCH = provider.isDemo ? 24 : 80;
   const bars = sessionBarsNeeded(tf);
-  const fresh = Boolean(opts.freshCandles);
+  const fresh = Boolean(opts.freshCandles) && !shared;
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -275,7 +322,9 @@ export async function runOpportunityScan(
   });
 
   let pendingCandles: Promise<Record<string, Candle[]>> | null = symbols.length
-    ? loadCandleMap(provider as CandleBatchProvider, symbols.slice(0, FETCH_BATCH), tf, bars, opts.signal, fresh)
+    ? candleMapAll
+      ? Promise.resolve(sliceCandleMap(candleMapAll, symbols.slice(0, FETCH_BATCH)))
+      : loadCandleMap(batchProvider, symbols.slice(0, FETCH_BATCH), tf, bars, opts.signal, fresh)
     : null;
 
   for (let start = 0; start < symbols.length; start += FETCH_BATCH) {
@@ -287,9 +336,13 @@ export async function runOpportunityScan(
         : null;
     const candleMap = pendingCandles
       ? await pendingCandles
-      : await loadCandleMap(provider as CandleBatchProvider, batch, tf, bars, opts.signal, fresh);
+      : candleMapAll
+        ? sliceCandleMap(candleMapAll, batch)
+        : await loadCandleMap(batchProvider, batch, tf, bars, opts.signal, fresh);
     pendingCandles = nextBatch
-      ? loadCandleMap(provider as CandleBatchProvider, nextBatch, tf, bars, opts.signal, fresh)
+      ? candleMapAll
+        ? Promise.resolve(sliceCandleMap(candleMapAll, nextBatch))
+        : loadCandleMap(batchProvider, nextBatch, tf, bars, opts.signal, fresh)
       : null;
     for (const symbol of batch) {
       if (opts.signal?.aborted) break;
@@ -418,7 +471,7 @@ export async function runOpportunityScan(
 
   const aborted = Boolean(opts.signal?.aborted);
   const coverageOk = total === 0 || barsOk >= Math.max(15, Math.floor(total * 0.3));
-  const complete = !aborted && checked >= total && coverageOk;
+  const complete = !aborted && checked >= total && (shared || coverageOk);
 
   opts.onProgress?.({
     status: complete ? 'complete' : 'failed',

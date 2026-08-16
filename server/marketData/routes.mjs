@@ -37,6 +37,7 @@ import {
 } from './indstocksClient.mjs';
 import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
+import { peekOpportunitySnapshot } from './opportunitySnapshot.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -568,7 +569,31 @@ router.post('/candles-batch', async (req, res) => {
   }
 });
 
-/** Stub — client scanner still runs; live provider feeds candles via /candles. */
+/** Shared Opportunity candle map — same names for every login in this bar. */
+router.get('/opportunity-snapshot', async (req, res) => {
+  const live = await requireLiveToken(req, res);
+  if (!live) return;
+  const universe = String(req.query.universe || 'F&O');
+  const timeframe = String(req.query.timeframe || '5m');
+  try {
+    const payload = peekOpportunitySnapshot(live.accessToken, universe, timeframe);
+    res.json({
+      ...payload,
+      mode: 'LIVE',
+      orderExecution: false,
+    });
+  } catch (e) {
+    const status = e?.status === 401 ? 401 : 502;
+    if (status === 401) live.record.status = 'EXPIRED';
+    res.status(status).json({
+      error:
+        status === 401
+          ? 'Market data connection expired. Reconnect your broker.'
+          : 'Failed to load shared opportunity board',
+    });
+  }
+});
+
 router.post('/radar/scan', (_req, res) => {
   res.status(501).json({
     error: 'Server-side radar job coming later. Use client scanner with connected LIVE provider.',
