@@ -53,7 +53,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
 
   async getSymbols(universe: RadarUniverse, _market: RadarMarket = 'NSE'): Promise<string[]> {
     try {
-      const data = await fetchLiveSymbols(universe, 'scannable');
+      const data = await fetchLiveSymbols(universe, 'catalog');
       const loaded = data.universeLoaded ?? data.catalog?.length ?? data.symbols?.length ?? 0;
       const available = data.dataAvailable ?? data.scannable?.length ?? data.symbols?.length ?? 0;
       this.lastUniverseMeta = {
@@ -63,16 +63,17 @@ export class ServerMarketDataProvider implements MarketDataProvider {
         source: data.source,
         note: data.note,
       };
-      if (data.symbols?.length) return data.symbols;
-      const catalog = await fetchLiveSymbols(universe, 'catalog');
+      const list = data.catalog?.length ? data.catalog : data.symbols || [];
+      if (list.length) return [...new Set(list.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
+      const fallback = await fetchLiveSymbols(universe, 'static');
       this.lastUniverseMeta = {
-        universeLoaded: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
-        dataAvailable: 0,
-        dataUnavailable: catalog.universeLoaded ?? catalog.symbols?.length ?? 0,
-        source: catalog.source,
-        note: catalog.note,
+        universeLoaded: fallback.universeLoaded ?? fallback.symbols?.length ?? 0,
+        dataAvailable: fallback.symbols?.length ?? 0,
+        dataUnavailable: 0,
+        source: fallback.source,
+        note: fallback.note,
       };
-      return catalog.symbols || [];
+      return fallback.symbols || [];
     } catch (err) {
       console.warn('[ServerMarketDataProvider] getSymbols failed', err);
       this.lastUniverseMeta = null;

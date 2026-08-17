@@ -80,6 +80,11 @@ export function getCashUniverse(): string[] {
   return [...new Set(rows.map((r) => String(r.s || '').toUpperCase()).filter(Boolean))];
 }
 
+/** Full NSE cash book — Radar "NSE Equity" scans this, not the F&O snapshot. */
+export function getNseEquityUniverse(): string[] {
+  return getCashUniverse();
+}
+
 export type CatalogUniverseId =
   | 'F&O'
   | 'NSE'
@@ -95,10 +100,10 @@ export function resolveCatalogUniverse(id: string): string[] {
     case 'NIFTY':
       return getNifty50Universe();
     case 'CASH':
-      return getCashUniverse();
     case 'NSE':
+      return getNseEquityUniverse();
     case 'BSE':
-      // DEMO / offline: honest snapshot only — full lists come from LIVE instrument master.
+      // Offline snapshot until LIVE instrument master fills BSE equity.
       return getFnoUniverse();
     case 'BANKNIFTY':
       return [
@@ -125,7 +130,7 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
   const symbols = resolveCatalogUniverse(id);
   const labels: Record<string, string> = {
     'F&O': 'F&O underlyings',
-    NSE: 'NSE equity (DEMO snapshot)',
+    NSE: 'NSE equity (all EQ)',
     BSE: 'BSE equity (DEMO snapshot)',
     NIFTY50: 'NIFTY 50',
     CASH: 'NSE cash (all EQ)',
@@ -139,8 +144,10 @@ export function catalogUniverseMeta(id: string): { id: string; label: string; co
     note:
       id === 'F&O'
         ? 'NSE F&O equity underlyings from the live FO master (not every futures/options contract).'
-        : id === 'NSE' || id === 'BSE'
-          ? 'Connect INDstocks to load the complete equity universe from the official instrument master. DEMO shows a snapshot only.'
-          : 'Constituent snapshot from WOLF instrument master.',
+        : id === 'NSE' || id === 'CASH'
+          ? 'Full NSE cash equity book. LIVE uses the INDstocks instrument master when it is loaded.'
+          : id === 'BSE'
+            ? 'Connect INDstocks to load complete BSE equity from the official instrument master.'
+            : 'Constituent snapshot from WOLF instrument master.',
   };
 }

@@ -222,6 +222,15 @@ async function expireBrokerSession(req, res, liveKey) {
   await Promise.all(keys.map((k) => expireCredentialPersist(k)));
 }
 
+async function optionalLiveToken(req, res) {
+  const ident = identityFrom(req, res);
+  const found = await hydrateIdentity(ident);
+  if (!found.record || found.record.status !== 'CONNECTED') return null;
+  if (found.record.mode === 'DEMO' || found.record.provider === 'mock-demo') return null;
+  const cred = readDecryptedCredential(found.key);
+  return cred?.accessToken || null;
+}
+
 async function requireLiveToken(req, res) {
   const ident = identityFrom(req, res);
   const found = await hydrateIdentity(ident);
@@ -358,7 +367,9 @@ router.post('/disconnect', async (req, res) => {
   res.json(publicView(null));
 });
 
-router.get('/symbols', (req, res) => {
+router.get('/symbols', async (req, res) => {
+  const token = await optionalLiveToken(req, res);
+  if (token) await ensureInstrumentMap(token);
   const universe = String(req.query.universe || 'F&O');
   const mode = String(req.query.mode || '');
   const staticList = [
@@ -397,7 +408,9 @@ router.get('/symbols', (req, res) => {
   });
 });
 
-router.get('/universes', (_req, res) => {
+router.get('/universes', async (req, res) => {
+  const token = await optionalLiveToken(req, res);
+  if (token) await ensureInstrumentMap(token);
   const stats = getInstrumentUniverseStats();
   const mk = (id) => {
     const catalog = listUniverseSymbols(id);

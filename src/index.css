@@ -17811,6 +17811,30 @@ html.dark .mai-chat__shot-paths span {
   color: var(--tj-gold-strong);
   box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.22);
 }
+.lux-select__option.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+.lux-select__group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lux-select__group-label {
+  padding: 0.45rem 0.55rem 0.2rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tj-gold);
+  opacity: 0.85;
+}
+.lux-select__group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 .lux-select__check { color: var(--tj-gold); flex-shrink: 0; }
 
 /* Soft entrance for trade form fields */

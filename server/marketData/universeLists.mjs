@@ -1,7 +1,11 @@
 /**
- * Server-side universe lists (inlined — no filesystem read at boot).
- * Keep in sync with src/services/radar/universeCatalog.ts
+ * Server-side universe lists.
+ * Keep F&O / Nifty lists in sync with src/services/radar/universeCatalog.ts.
+ * NSE / CASH cash book is loaded from src/data/nseEquity.json (same file the client uses).
  */
+import { readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 export const NIFTY_50_SYMBOLS = [
   "ADANIENT",
   "ADANIPORTS",
@@ -273,10 +277,27 @@ export function getFnoUniverse() {
   return [...new Set(FNO_EXTRA_UNDERLYINGS)];
 }
 
+let nseCashCache = null;
+export function getNseCashUniverse() {
+  if (nseCashCache) return nseCashCache;
+  try {
+    const p = resolve(dirname(fileURLToPath(import.meta.url)), '../../src/data/nseEquity.json');
+    const rows = JSON.parse(readFileSync(p, 'utf8'));
+    nseCashCache = [
+      ...new Set(
+        (Array.isArray(rows) ? rows : []).map((r) => String(r?.s || '').toUpperCase()).filter(Boolean),
+      ),
+    ];
+  } catch {
+    nseCashCache = getNifty50Universe();
+  }
+  return nseCashCache;
+}
+
 export function resolveServerUniverse(universe) {
   const id = String(universe || 'F&O');
   if (id === 'NIFTY50' || id === 'NIFTY') return getNifty50Universe();
-  if (id === 'CASH') return getNifty50Universe();
+  if (id === 'CASH' || id === 'NSE') return getNseCashUniverse();
   if (id === 'BANKNIFTY') {
     return [
       'HDFCBANK',

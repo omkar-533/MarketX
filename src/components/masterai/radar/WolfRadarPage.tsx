@@ -41,6 +41,7 @@ import {
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
+import LuxSelect from '../../ui/LuxSelect';
 import {
   STRATEGY_SCAN_EVENT,
   consumePendingStrategyScan,
@@ -498,7 +499,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
           if (cancelled || !meta?.universes) return;
           const next: Record<string, number> = {};
           for (const [id, row] of Object.entries(meta.universes)) {
-            next[id] = row.scannableCount || row.catalogCount;
+            next[id] = row.catalogCount || row.scannableCount;
           }
           setOptionCounts((prev) => ({ ...prev, ...next }));
           if (meta.source) setUniverseSource(meta.source);
@@ -582,64 +583,54 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
               {dataLabel}
             </button>
           </label>
-          <label className="wolf-radar-desk__screener">
-            <span>SCREENER</span>
-            <select
-              value={screenerKey}
-              onChange={(e) => applyScreenerKey(e.target.value)}
-              onFocus={() => setMyScreeners(loadStrategies())}
-            >
-              <option value="">Select a screener…</option>
-              <option value="__default__">WOLF default engines (unfiltered)</option>
-              <optgroup label="WOLF PREDEFINED">
-                {STRATEGY_TEMPLATES.map((t) => (
-                  <option key={t.id} value={`tpl:${t.id}`}>
-                    {t.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="MY SCREENERS">
-                {myScreeners.length ? (
-                  myScreeners.map((s) => (
-                    <option key={s.id} value={`mine:${s.id}`}>
-                      {s.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="__none_mine" disabled>
-                    No saved screeners yet
-                  </option>
-                )}
-              </optgroup>
-            </select>
-          </label>
-          <label className="wolf-radar-desk__universe">
-            <span>UNIVERSE</span>
-            <select
-              value={universe}
-              onChange={(e) => setUniverse(e.target.value as RadarUniverse)}
-            >
-              <option value="NSE">NSE Equity ({countFor('NSE').toLocaleString('en-IN')})</option>
-              <option value="BSE">BSE Equity ({countFor('BSE').toLocaleString('en-IN')})</option>
-              <option value="F&O">F&O ({countFor('F&O').toLocaleString('en-IN')})</option>
-              <option value="NIFTY50">NIFTY 50 ({countFor('NIFTY50')})</option>
-              <option value="BANKNIFTY">BANKNIFTY ({countFor('BANKNIFTY')})</option>
-              <option value="CASH">Cash snapshot ({countFor('CASH')})</option>
-            </select>
-          </label>
-          <label>
-            <span>TIMEFRAME</span>
-            <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as RadarTimeframe)}
-            >
-              {TIMEFRAMES.map((tf) => (
-                <option key={tf} value={tf}>
-                  {tf.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </label>
+          <LuxSelect
+            className="wolf-radar-desk__screener"
+            label="SCREENER"
+            placeholder="Select a screener…"
+            value={screenerKey}
+            onOpen={() => setMyScreeners(loadStrategies())}
+            onChange={applyScreenerKey}
+            groups={[
+              {
+                label: '',
+                options: [
+                  { value: '', label: 'Select a screener…' },
+                  { value: '__default__', label: 'WOLF default engines (unfiltered)' },
+                ],
+              },
+              {
+                label: 'WOLF PREDEFINED',
+                options: STRATEGY_TEMPLATES.map((t) => ({ value: `tpl:${t.id}`, label: t.name })),
+              },
+              {
+                label: 'MY SCREENERS',
+                options: myScreeners.length
+                  ? myScreeners.map((s) => ({ value: `mine:${s.id}`, label: s.name }))
+                  : [{ value: '__none_mine', label: 'No saved screeners yet', disabled: true }],
+              },
+            ]}
+          />
+          <LuxSelect
+            className="wolf-radar-desk__universe"
+            label="UNIVERSE"
+            value={universe}
+            onChange={(v) => setUniverse(v as RadarUniverse)}
+            options={[
+              { value: 'NSE', label: `NSE Equity (${countFor('NSE').toLocaleString('en-IN')})` },
+              { value: 'BSE', label: `BSE Equity (${countFor('BSE').toLocaleString('en-IN')})` },
+              { value: 'F&O', label: `F&O (${countFor('F&O').toLocaleString('en-IN')})` },
+              { value: 'NIFTY50', label: `NIFTY 50 (${countFor('NIFTY50')})` },
+              { value: 'BANKNIFTY', label: `BANKNIFTY (${countFor('BANKNIFTY')})` },
+              { value: 'CASH', label: `Cash snapshot (${countFor('CASH').toLocaleString('en-IN')})` },
+            ]}
+          />
+          <LuxSelect
+            className="wolf-radar-desk__timeframe"
+            label="TIMEFRAME"
+            value={timeframe}
+            onChange={(v) => setTimeframe(v as RadarTimeframe)}
+            options={TIMEFRAMES.map((tf) => ({ value: tf, label: tf.toUpperCase() }))}
+          />
           {progress.status === 'scanning' ? (
             <button type="button" className="wolf-radar-desk__stop-btn" onClick={stopScan}>
               STOP SCAN

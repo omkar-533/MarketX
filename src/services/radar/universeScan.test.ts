@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from './radarScanner';
 import { mockMarketDataProvider } from './MockMarketDataProvider';
-import { getFnoUniverse, getNifty50Universe } from './universeCatalog';
+import { getFnoUniverse, getNifty50Universe, getNseEquityUniverse } from './universeCatalog';
 
 describe('universe catalog', () => {
   it('NIFTY 50 has 50 symbols', () => {
@@ -9,6 +9,9 @@ describe('universe catalog', () => {
   });
   it('F&O underlyings are far larger than 10', () => {
     expect(getFnoUniverse().length).toBeGreaterThan(100);
+  });
+  it('NSE equity catalog is the full cash book, not a 19-name fallback', () => {
+    expect(getNseEquityUniverse().length).toBeGreaterThan(1000);
   });
 });
 
