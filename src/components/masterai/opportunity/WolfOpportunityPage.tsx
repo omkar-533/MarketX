@@ -196,6 +196,8 @@ export default function WolfOpportunityPage({
   const scanGenRef = useRef(0);
   const lastProgAtRef = useRef(0);
   const closedBoardFrozenRef = useRef(false);
+  const contributeRef = useRef(false);
+  const lastContributeAtRef = useRef(0);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const marketOpen = getMarketSession('NSE:NIFTY').open;
@@ -251,9 +253,7 @@ export default function WolfOpportunityPage({
       scanningRef.current = true;
       if (quiet) setBgBusy(true);
       else {
-        setScanning(true);
-        setProgress('Fetching live market…');
-        clearLiveCandleCache();
+        setProgress('Loading shared day board…');
         if (opts?.reset) {
           setCards(emptyOpportunityCards());
           setLastUpdated(null);
@@ -300,6 +300,7 @@ export default function WolfOpportunityPage({
 
       try {
         if (!quiet) setProgress('Loading shared day board…');
+        let hadBoard = false;
         try {
           const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
           if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
@@ -308,14 +309,67 @@ export default function WolfOpportunityPage({
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
             }));
             paintBoard(incoming, Boolean(opts?.reset));
-            if (!quiet) setProgress(`${shared.hits} setups · shared day board`);
+            hadBoard = true;
+            if (!quiet) setProgress(`${shared.hits} setups`);
             if (!isNseFnoMarketOpen()) {
               closedBoardFrozenRef.current = true;
               return;
             }
           }
         } catch {
-          /* scan the shared candle snapshot locally, then upload */
+          /* first user of the day still scans once */
+        }
+
+        const canContribute =
+          isNseFnoMarketOpen() &&
+          !contributeRef.current &&
+          Date.now() - lastContributeAtRef.current > 45_000;
+
+        if (hadBoard && !opts?.reset) {
+          if (canContribute) {
+            contributeRef.current = true;
+            lastContributeAtRef.current = Date.now();
+            void (async () => {
+              setBgBusy(true);
+              try {
+                const out = await runOpportunityScan(
+                  activeFilters,
+                  { signal: ac.signal, topN: OPPORTUNITY_SCAN_CAP, freshCandles: false },
+                  provider,
+                );
+                if (!out.complete) return;
+                const incoming = applyLiveScanCards(out.cards).map((card) => ({
+                  ...card,
+                  hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+                }));
+                const saved = await postOpportunityDayBoard(
+                  activeFilters.universe,
+                  activeFilters.timeframe,
+                  incoming,
+                );
+                const cards = saved.cards?.length ? saved.cards : incoming;
+                paintBoard(
+                  applyLiveScanCards(cards).map((card) => ({
+                    ...card,
+                    hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+                  })),
+                  false,
+                );
+              } catch {
+                /* keep the saved board on screen */
+              } finally {
+                contributeRef.current = false;
+                setBgBusy(false);
+              }
+            })();
+          }
+          return;
+        }
+
+        if (!quiet) {
+          setScanning(true);
+          setProgress('Fetching live market…');
+          clearLiveCandleCache();
         }
 
         const scanOpts: RunOpportunityOptions = {

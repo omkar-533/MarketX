@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { mergeScannerHits, istCalendarDay } from './opportunityDayBoard.mjs';
+import { mergeScannerHits, istCalendarDay, nseBoardDay, msUntilNextSessionOpen, retainBoardsForDay } from './opportunityDayBoard.mjs';
 
 describe('opportunity day board merge', () => {
   it('keeps the morning print when a later scan posts a 2nd signal', () => {
@@ -40,5 +40,22 @@ describe('opportunity day board merge', () => {
     assert.equal(merged.length, 1);
     assert.equal(merged[0].detectedAt, t);
     assert.equal(merged[0].score, 90);
+  });
+
+  it('keeps Monday after the bell and drops it when Tuesday session opens', () => {
+    const afterClose = Date.parse('2026-08-17T18:05:00+05:30');
+    const nextOpen = Date.parse('2026-08-18T09:16:00+05:30');
+    assert.equal(nseBoardDay(afterClose), '2026-08-17');
+    assert.equal(nseBoardDay(nextOpen), '2026-08-18');
+    const kept = retainBoardsForDay(
+      { boards: { '2026-08-17|F&O|5m': { day: '2026-08-17' }, '2026-08-18|F&O|5m': { day: '2026-08-18' } } },
+      nseBoardDay(nextOpen),
+    );
+    assert.deepEqual(Object.keys(kept.boards), ['2026-08-18|F&O|5m']);
+  });
+
+  it('waits until the next 09:15 instead of wiping overnight', () => {
+    const afterClose = Date.parse('2026-08-17T18:05:00+05:30');
+    assert.ok(msUntilNextSessionOpen(afterClose) > 12 * 60 * 60_000);
   });
 });

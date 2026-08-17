@@ -2,6 +2,7 @@
  * Shared Opportunity day log — one IST-day board for every login.
  * Morning prints stay. Later reprints append. Market close does not wipe.
  */
+import { lastCompletedNseSessionEndMs } from './indstocksClient.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -34,10 +35,60 @@ export function istCalendarDay(ms = Date.now()) {
   }).format(new Date(ms));
 }
 
+export function nseBoardDay(now = Date.now()) {
+  const end = lastCompletedNseSessionEndMs(now);
+  return istCalendarDay(end > 0 ? end : now);
+}
+
 export function boardSlot(universe, timeframe, now = Date.now()) {
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
-  return `${istCalendarDay(now)}|${u}|${tf}`;
+  return `${nseBoardDay(now)}|${u}|${tf}`;
+}
+
+export function msUntilNextSessionOpen(now = Date.now()) {
+  const ymd = istCalendarDay(now);
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date(now));
+  const open = Date.parse(`${ymd}T09:15:00+05:30`);
+  if (wd !== 'Sat' && wd !== 'Sun' && now < open) return Math.max(5_000, open - now);
+  const skip = wd === 'Fri' ? 3 : wd === 'Sat' ? 2 : 1;
+  const nx = Date.parse(`${ymd}T09:15:00+05:30`) + skip * 86_400_000;
+  return Math.max(5_000, (Number.isFinite(nx) ? nx : now + 86_400_000) - now);
+}
+
+export function retainBoardsForDay(all, day) {
+  const boards = {};
+  for (const [k, v] of Object.entries(all?.boards || {})) {
+    if (String(k).startsWith(`${day}|`)) boards[k] = v;
+  }
+  return { day, boards };
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let rolloverTimer = null;
+
+export function dropExpiredOpportunityBoards(now = Date.now()) {
+  const day = nseBoardDay(now);
+  const all = readAll();
+  if (all.day === day) {
+    armDayRollover(now);
+    return day;
+  }
+  const next = retainBoardsForDay(all, day);
+  mem.clear();
+  for (const [k, v] of Object.entries(next.boards)) mem.set(k, v);
+  writeAll(next);
+  armDayRollover(now);
+  return day;
+}
+
+export function armDayRollover(now = Date.now()) {
+  if (rolloverTimer) return;
+  const wait = msUntilNextSessionOpen(now);
+  rolloverTimer = setTimeout(() => {
+    rolloverTimer = null;
+    dropExpiredOpportunityBoards();
+  }, wait);
 }
 
 function emptyHits() {
@@ -160,7 +211,7 @@ function hydrate(slot) {
 }
 
 export function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
-  const day = istCalendarDay(now);
+  const day = dropExpiredOpportunityBoards(now);
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
   const slot = `${day}|${u}|${tf}`;
@@ -192,7 +243,7 @@ export function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
 }
 
 export function mergeOpportunityDayBoard(universe, timeframe, incomingCards, cacheKey, now = Date.now()) {
-  const day = istCalendarDay(now);
+  const day = dropExpiredOpportunityBoards(now);
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
   const slot = `${day}|${u}|${tf}`;
@@ -213,11 +264,6 @@ export function mergeOpportunityDayBoard(universe, timeframe, incomingCards, cac
   };
   mem.set(slot, row);
   const all = readAll();
-  const boards = {};
-  for (const [k, v] of Object.entries(all.boards || {})) {
-    if (String(k).startsWith(`${day}|`)) boards[k] = v;
-  }
-  boards[slot] = row;
-  writeAll({ day, boards });
+  writeAll(retainBoardsForDay({ boards: { ...(all.boards || {}), [slot]: row } }, day));
   return peekOpportunityDayBoard(u, tf, now);
 }

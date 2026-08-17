@@ -13,6 +13,7 @@ import {
   resolveScripCodeCandidates,
 } from './indstocksClient.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
+import { dropExpiredOpportunityBoards } from './opportunityDayBoard.mjs';
 
 const BAR_MS = {
   '5m': 300_000,
@@ -251,7 +252,6 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
 
 function armAutoFetch(universe, timeframe, accessToken) {
   if (!accessToken) return;
-  if (!nseCashSessionIsOpen()) return;
   lastAccessToken = accessToken;
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
@@ -262,6 +262,7 @@ function armAutoFetch(universe, timeframe, accessToken) {
     refreshTimers.delete(id);
     const token = lastAccessToken;
     if (!token) return;
+    dropExpiredOpportunityBoards();
     for (const k of [...cache.keys()]) {
       if (k.startsWith(`${id}|`)) cache.delete(k);
     }
@@ -292,6 +293,7 @@ async function buildSnapshot(accessToken, universe, timeframe, key) {
 }
 
 export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
+  dropExpiredOpportunityBoards();
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
