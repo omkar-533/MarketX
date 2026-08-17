@@ -121,6 +121,7 @@ export function PlanContactModal({
       setVerifiedCode(code);
       setPromoCode(code);
       const planNames: Record<string, string> = {
+        '1day': '1-day',
         trial: '3-day trial',
         monthly: 'Monthly',
         quarterly: '3 Months',
