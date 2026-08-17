@@ -50,7 +50,6 @@ const FootprintChart = lazyWithRetry(() => import('./components/FootprintChart')
 const WolfRadarPage = lazyWithRetry(() => import('./components/masterai/radar/WolfRadarPage'));
 const WolfOpportunityRoute = lazyWithRetry(() => import('./components/masterai/opportunity/WolfOpportunityRoute'));
 const LiveWolfRoute = lazyWithRetry(() => import('./components/masterai/live/LiveWolfRoute'));
-const MySetupsPanel = lazyWithRetry(() => import('./components/masterai/radar/MySetupsPanel'));
 const WatchlistPanel = lazyWithRetry(() => import('./components/masterai/radar/WatchlistPanel'));
 const MentorAI = lazyWithRetry(() => import('./components/MentorAI'));
 const WolfArenaPage = lazyWithRetry(() => import('./components/WolfArenaPage'));
@@ -402,15 +401,19 @@ function AppWorkspace() {
       case 'wolf-ai':
         return <LiveWolfRoute />;
       case 'wolf-radar':
+      case 'strategy-lab':
         return (
-          <WolfRadarPage onOpenLive={liveWolf} />
+          <WolfRadarPage
+            desk={activeTab === 'strategy-lab' ? 'lab' : 'hunt'}
+            onOpenLive={liveWolf}
+            onOpenHunt={() => handleTabChange('wolf-radar')}
+            onOpenLab={() => handleTabChange('strategy-lab')}
+          />
         );
       case 'wolf-opportunity':
         return opportunity;
       case 'live-wolf':
         return <LiveWolfRoute />;
-      case 'strategy-lab':
-        return <MySetupsPanel onScanSetup={() => handleTabChange('wolf-radar')} />;
       case 'mentor-ai':
         return <MentorAI onNavigate={handleTabChange} />;
       case 'arena':

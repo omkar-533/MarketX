@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BookMarked,
   Eye,
   Plus,
   Radar,
@@ -41,6 +42,7 @@ import {
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
+import MySetupsPanel from './MySetupsPanel';
 import LuxSelect from '../../ui/LuxSelect';
 import {
   STRATEGY_SCAN_EVENT,
@@ -55,8 +57,13 @@ import {
 } from '../../../services/strategy/strategyDisplay';
 import { catalogUniverseMeta } from '../../../services/radar/universeCatalog';
 
+type RadarDesk = 'hunt' | 'lab';
+
 type Props = {
   onOpenLive?: () => void;
+  desk?: RadarDesk;
+  onOpenHunt?: () => void;
+  onOpenLab?: () => void;
 };
 
 const TIMEFRAMES: RadarTimeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
@@ -110,7 +117,12 @@ function RadarStage({ scanning }: { scanning: boolean }) {
   );
 }
 
-export default function WolfRadarPage({ onOpenLive }: Props) {
+export default function WolfRadarPage({
+  onOpenLive,
+  desk = 'hunt',
+  onOpenHunt,
+  onOpenLab,
+}: Props) {
   const [universe, setUniverse] = useState<RadarUniverse>('F&O');
   const [timeframe, setTimeframe] = useState<RadarTimeframe>('5m');
   const market = useMemo(() => marketFromUniverse(universe), [universe]);
@@ -530,6 +542,29 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       className={`wolf-radar-desk wolf-radar-lux ${progress.status === 'scanning' ? 'is-scanning' : ''} ${dataConnected ? 'is-live' : ''}`}
     >
       <RadarStage scanning={progress.status === 'scanning'} />
+      <div className="wolf-radar-lux__tabs" role="tablist" aria-label="Radar desk">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={desk === 'hunt'}
+          className={desk === 'hunt' ? 'is-on' : ''}
+          onClick={() => onOpenHunt?.()}
+        >
+          <Radar size={14} />
+          HUNT
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={desk === 'lab'}
+          className={desk === 'lab' ? 'is-on' : ''}
+          onClick={() => onOpenLab?.()}
+        >
+          <BookMarked size={14} />
+          STRATEGY LAB
+        </button>
+      </div>
+      <div className={`wolf-radar-lux__pane ${desk === 'hunt' ? 'is-on' : ''}`}>
       <header className="wolf-radar-desk__header">
         <div className="wolf-radar-desk__brand">
           <p className="wolf-radar-lux__eyebrow">Hunt desk · live universe</p>
@@ -1085,6 +1120,11 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
             </motion.aside>
         ) : null}
       </AnimatePresence>
+      </div>
+
+      <div className={`wolf-radar-lux__pane ${desk === 'lab' ? 'is-on' : ''}`}>
+        <MySetupsPanel embedded onScanSetup={() => onOpenHunt?.()} />
+      </div>
 
       <ConnectMarketDataModal
         open={connectOpen}

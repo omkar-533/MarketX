@@ -28,8 +28,135 @@
   position: relative;
   z-index: 1;
 }
-.wolf-radar-lux > .wolf-radar-desk__header {
-  z-index: 30;
+.wolf-radar-lux > .wolf-radar-lux__tabs {
+  z-index: 40;
+}
+.wolf-radar-lux > .wolf-radar-lux__pane.is-on {
+  z-index: 12;
+}
+.wolf-radar-lux__pane > .wolf-radar-desk__header {
+  position: relative;
+  z-index: 20;
+}
+.wolf-radar-lux__tabs {
+  display: inline-flex;
+  align-self: start;
+  gap: 0.35rem;
+  padding: 0.28rem;
+  border-radius: 999px;
+  border: 1px solid var(--rd-line);
+  background: rgba(8, 10, 16, 0.72);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  margin: 0 0 0.85rem;
+}
+.wolf-radar-lux__tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rd-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.wolf-radar-lux__tabs button.is-on {
+  color: #1a1406;
+  background: linear-gradient(180deg, #f3dd8a, #d4af37);
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.32);
+}
+.wolf-radar-lux__tabs button:not(.is-on):hover {
+  color: var(--rd-gold-soft);
+  background: rgba(212, 175, 55, 0.08);
+}
+.wolf-radar-lux__pane {
+  display: none;
+}
+.wolf-radar-lux__pane.is-on {
+  display: block;
+  animation: wolf-rd-pane-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes wolf-rd-pane-in {
+  from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+.wolf-radar-lux .wolf-lab--embedded {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+.wolf-radar-lux .wolf-lab--embedded > .wolf-radar-desk__header {
+  position: relative;
+  z-index: 20;
+}
+.wolf-radar-lux .wolf-lab__empty-hero,
+.wolf-radar-lux .wolf-lab__create,
+.wolf-radar-lux .wolf-lab__templates,
+.wolf-radar-lux .wolf-setups__form,
+.wolf-radar-lux .wolf-lab__teach {
+  border: 1px solid var(--rd-line);
+  border-radius: 1.15rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  background: linear-gradient(180deg, rgba(16, 20, 32, 0.82), rgba(8, 10, 16, 0.55));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+.wolf-radar-lux .wolf-lab__empty-hero h2,
+.wolf-radar-lux .wolf-lab__create h2,
+.wolf-radar-lux .wolf-lab__templates h2 {
+  letter-spacing: 0.16em;
+  color: var(--rd-gold);
+}
+.wolf-radar-lux .wolf-lab__method-grid button {
+  border: 1px solid var(--rd-hair);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.28);
+  text-align: left;
+  transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+  animation: wolf-rd-pane-in 0.5s both;
+}
+.wolf-radar-lux .wolf-lab__method-grid button:nth-child(2) { animation-delay: 0.06s; }
+.wolf-radar-lux .wolf-lab__method-grid button:nth-child(3) { animation-delay: 0.12s; }
+.wolf-radar-lux .wolf-lab__method-grid button:hover {
+  transform: translateY(-4px);
+  border-color: var(--rd-line);
+  box-shadow: 0 14px 32px rgba(212, 175, 55, 0.12);
+}
+.wolf-radar-lux .wolf-lab__method-grid strong {
+  color: var(--rd-gold-soft);
+}
+.wolf-radar-lux .wolf-lab__tpl-cats button.is-on,
+.wolf-radar-lux .wolf-lab__filters button.is-on {
+  background: linear-gradient(180deg, #f3dd8a, #d4af37);
+  color: #1a1406;
+  border-color: transparent;
+}
+.wolf-radar-lux .lux-select--compact {
+  min-width: 7.5rem;
+  flex: 1 1 7.5rem;
+}
+.wolf-radar-lux .wolf-lab__cond-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: flex-end;
+}
+.wolf-radar-lux .wolf-lab__mtf-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wolf-radar-lux__pane.is-on,
+  .wolf-radar-lux .wolf-lab__method-grid button {
+    animation: none;
+  }
 }
 
 /* —— Stage —— */
@@ -724,6 +851,17 @@ html[data-theme="light"] .wolf-radar-lux__eyebrow {
 html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__subtitle,
 html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__meta {
   color: #6b6254;
+}
+html[data-theme="light"] .wolf-radar-lux__tabs {
+  background: rgba(255, 252, 246, 0.9);
+  border-color: rgba(146, 64, 14, 0.22);
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-lab__empty-hero,
+html[data-theme="light"] .wolf-radar-lux .wolf-lab__create,
+html[data-theme="light"] .wolf-radar-lux .wolf-lab__templates,
+html[data-theme="light"] .wolf-radar-lux .wolf-lab__teach {
+  background: rgba(255, 252, 246, 0.86);
+  border-color: rgba(146, 64, 14, 0.18);
 }
 html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__card-top h3 {
   color: #14110c;

@@ -15,6 +15,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import AppLink from '../../AppLink';
+import LuxSelect from '../../ui/LuxSelect';
 import {
   CONDITION_CATEGORIES,
   CONDITION_REGISTRY,
@@ -48,6 +49,7 @@ import type { RadarTimeframe } from '../../../services/radar/radarTypes';
 
 type Props = {
   onScanSetup: () => void;
+  embedded?: boolean;
 };
 
 type LabTab = 'list' | 'create' | 'manual' | 'teach' | 'templates';
@@ -63,7 +65,7 @@ function emptyCondition(tf: RadarTimeframe): StrategyCondition {
   };
 }
 
-export default function MySetupsPanel({ onScanSetup }: Props) {
+export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) {
   const [tab, setTab] = useState<LabTab>('list');
   const [strategies, setStrategies] = useState(() => loadStrategies());
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'PAUSED'>('ALL');
@@ -366,7 +368,7 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
   };
 
   return (
-    <div className="wolf-radar-desk wolf-radar-desk--panel wolf-lab">
+    <div className={`wolf-radar-desk wolf-radar-desk--panel wolf-lab ${embedded ? 'wolf-lab--embedded' : ''}`}>
       <header className="wolf-radar-desk__header">
         <div className="wolf-radar-desk__brand">
           <div className="wolf-radar-desk__title-row">
@@ -922,16 +924,13 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             </div>
 
             {tfMode === 'SINGLE' ? (
-              <label className="wolf-setups__field">
-                <span>TIMEFRAME</span>
-                <select value={timeframe} onChange={(e) => setTimeframe(e.target.value as RadarTimeframe)}>
-                  {ALL_TFS.map((tf) => (
-                    <option key={tf} value={tf}>
-                      {tf.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <LuxSelect
+                className="wolf-setups__field"
+                label="TIMEFRAME"
+                value={timeframe}
+                onChange={(v) => setTimeframe(v as RadarTimeframe)}
+                options={ALL_TFS.map((tf) => ({ value: tf, label: tf.toUpperCase() }))}
+              />
             ) : (
               <div className="wolf-lab__mtf">
                 <div className="wolf-lab__mtf-flow">
@@ -941,20 +940,17 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                     ['setup', 'SETUP'],
                     ['confirmation', 'CONFIRM'],
                   ].map(([key, label]) => (
-                    <label key={key}>
-                      <span>{label}</span>
-                      <select
-                        value={(mtf as Record<string, string>)[key]}
-                        onChange={(e) => setMtf((m) => ({ ...m, [key]: e.target.value }))}
-                      >
-                        <option value="">—</option>
-                        {ALL_TFS.map((tf) => (
-                          <option key={tf} value={tf}>
-                            {tf.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <LuxSelect
+                      key={key}
+                      className="lux-select--compact"
+                      label={label}
+                      value={(mtf as Record<string, string>)[key]}
+                      onChange={(v) => setMtf((m) => ({ ...m, [key]: v }))}
+                      options={[
+                        { value: '', label: '—' },
+                        ...ALL_TFS.map((tf) => ({ value: tf, label: tf.toUpperCase() })),
+                      ]}
+                    />
                   ))}
                 </div>
                 <p className="wolf-lab__mtf-viz">
@@ -969,16 +965,12 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
             <div className="wolf-setups__conditions">
               <div className="wolf-lab__cond-head">
                 <span>CONDITIONS (AND)</span>
-                <select
+                <LuxSelect
+                  className="lux-select--compact"
                   value={addCategory}
-                  onChange={(e) => setAddCategory(e.target.value as ConditionCategory)}
-                >
-                  {CONDITION_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setAddCategory(v as ConditionCategory)}
+                  options={CONDITION_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                />
                 <button type="button" className="ghost" onClick={addCondition}>
                   + ADD CONDITION
                 </button>
@@ -990,10 +982,10 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                   const catDefs = CONDITION_REGISTRY.filter((d) => d.category === (def?.category || 'LIQUIDITY'));
                   return (
                     <div key={c.id} className="wolf-lab__cond-row">
-                      <select
+                      <LuxSelect
+                        className="lux-select--compact"
                         value={c.type}
-                        onChange={(e) => {
-                          const nextType = e.target.value;
+                        onChange={(nextType) => {
                           const d = getConditionDef(nextType);
                           setConditions((prev) =>
                             prev.map((x, i) =>
@@ -1009,49 +1001,43 @@ export default function MySetupsPanel({ onScanSetup }: Props) {
                             ),
                           );
                         }}
-                      >
-                        {(catDefs.length ? catDefs : CONDITION_REGISTRY).map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                        {!catDefs.find((d) => d.id === c.type) && (
-                          <option value={c.type}>{def?.name || c.type}</option>
-                        )}
-                      </select>
-                      <select
+                        options={(catDefs.length ? catDefs : CONDITION_REGISTRY)
+                          .map((d) => ({ value: d.id, label: d.name }))
+                          .concat(
+                            !catDefs.find((d) => d.id === c.type)
+                              ? [{ value: c.type, label: def?.name || c.type }]
+                              : [],
+                          )}
+                      />
+                      <LuxSelect
+                        className="lux-select--compact"
                         value={c.timeframe}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setConditions((prev) =>
                             prev.map((x, i) =>
-                              i === idx ? { ...x, timeframe: e.target.value as RadarTimeframe } : x,
+                              i === idx ? { ...x, timeframe: v as RadarTimeframe } : x,
                             ),
                           )
                         }
-                      >
-                        {ALL_TFS.map((tf) => (
-                          <option key={tf} value={tf}>
-                            {tf.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
+                        options={ALL_TFS.map((tf) => ({ value: tf, label: tf.toUpperCase() }))}
+                      />
                       {def?.needsDirection && (
-                        <select
+                        <LuxSelect
+                          className="lux-select--compact"
                           value={c.direction || 'ANY'}
-                          onChange={(e) =>
+                          onChange={(v) =>
                             setConditions((prev) =>
                               prev.map((x, i) =>
-                                i === idx
-                                  ? { ...x, direction: e.target.value as ConditionDirection }
-                                  : x,
+                                i === idx ? { ...x, direction: v as ConditionDirection } : x,
                               ),
                             )
                           }
-                        >
-                          <option value="ANY">Any</option>
-                          <option value="BULLISH">Bullish</option>
-                          <option value="BEARISH">Bearish</option>
-                        </select>
+                          options={[
+                            { value: 'ANY', label: 'Any' },
+                            { value: 'BULLISH', label: 'Bullish' },
+                            { value: 'BEARISH', label: 'Bearish' },
+                          ]}
+                        />
                       )}
                       {def?.needsValue && (
                         <input
