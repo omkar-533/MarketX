@@ -67,6 +67,21 @@ describe('barTime', () => {
     assert.equal(created, start + firstHit * FIVE + FIVE);
   });
 
+  it('does not skip an isolated morning print when a later run is on the board', () => {
+    const now = Date.parse('2026-08-14T14:32:00+05:30');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 64 }, (_, i) => bar(start + i * FIVE));
+    const morning = 7;
+    const afternoon = 50;
+    const created = firstHitTimeOfIstDay(
+      candles,
+      '5m',
+      (i) => i === morning || i >= afternoon,
+      now,
+    );
+    assert.equal(created, start + morning * FIVE + FIVE);
+  });
+
   it('never uses Date.now as a fallback', () => {
     const now = Date.parse('2026-08-14T15:17:00+05:30');
     const ts = Date.parse('2026-08-14T10:20:00+05:30');

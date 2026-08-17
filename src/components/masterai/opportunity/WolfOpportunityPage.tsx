@@ -23,10 +23,7 @@ import { opportunityToRadarResult } from '../../../services/opportunity/opportun
 import {
   loadOpportunityFilters,
   saveOpportunityFilters,
-  loadOpportunityDayBoard,
-  saveOpportunityDayBoard,
-  applyScanCardsKeepingFirstSeen,
-  opportunityBoardKey,
+  applyLiveScanCards,
   rankHitsByScore,
   emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
@@ -323,16 +320,12 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
-          const prevBoard = loadOpportunityDayBoard(boardKey);
-          setCards(() => {
-            const next = applyScanCardsKeepingFirstSeen(prevBoard, out.cards).map((card) => ({
+          setCards(
+            applyLiveScanCards(out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            }));
-            saveOpportunityDayBoard(boardKey, next);
-            return next;
-          });
+            })),
+          );
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);

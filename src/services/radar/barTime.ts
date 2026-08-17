@@ -247,25 +247,12 @@ export function firstHitTimeOfIstDay(
     return 0;
   };
 
-  // Coarse probe then walk back — full per-bar snapshots were freezing Opportunity.
-  const span = end - start;
-  const step = span <= 8 ? 1 : Math.max(3, Math.ceil(span / 12));
-  let found = -1;
-  for (let i = start; i <= end; i += step) {
+  // First closed bar of the IST session that qualifies — not scan clock, not the latest reprint.
+  for (let i = start; i <= end; i += 1) {
     if (!inSession(i)) continue;
-    if (hitsAt(i)) {
-      found = i;
-      break;
-    }
+    if (hitsAt(i)) return stamp(i);
   }
-  if (found < 0 && hitsAt(end)) found = end;
-  if (found < 0) return 0;
-  for (let i = found - 1; i >= start; i -= 1) {
-    if (!inSession(i)) continue;
-    if (!hitsAt(i)) break;
-    found = i;
-  }
-  return stamp(found);
+  return 0;
 }
 
 function onTradingDay(ms: number, now: number): number {
