@@ -1,0 +1,675 @@
+/* WOLF RADAR — luxury cinematic desk. Scoped to .wolf-radar-lux so My Setups stays unchanged. */
+
+.wolf-radar-desk.wolf-radar-lux {
+  --rd-bg: #05070c;
+  --rd-panel: rgba(10, 14, 22, 0.72);
+  --rd-gold: #d4af37;
+  --rd-gold-soft: #f0d78c;
+  --rd-muted: #8b93a7;
+  --rd-text: #eef2f8;
+  --rd-line: rgba(212, 175, 55, 0.28);
+  --rd-hair: rgba(255, 255, 255, 0.08);
+  position: relative;
+  isolation: isolate;
+  min-height: calc(100vh - 3.5rem);
+  max-width: none;
+  margin: 0;
+  padding: 1.05rem 1.2rem 2.6rem;
+  overflow: visible;
+  color: var(--rd-text);
+  font-family: "Modern Era", "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  background:
+    radial-gradient(120% 80% at 8% -12%, rgba(212, 175, 55, 0.1), transparent 44%),
+    radial-gradient(90% 55% at 96% 0%, rgba(56, 90, 170, 0.14), transparent 46%),
+    linear-gradient(180deg, #070a12 0%, var(--rd-bg) 52%, #04060a 100%);
+}
+
+.wolf-radar-lux > *:not(.wolf-radar-lux__stage) {
+  position: relative;
+  z-index: 1;
+}
+
+/* —— Stage —— */
+.wolf-radar-lux__stage {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.wolf-radar-lux__fog {
+  position: absolute;
+  inset: -22%;
+  background:
+    radial-gradient(ellipse 48% 38% at 50% 0%, rgba(212, 175, 55, 0.1), transparent 62%),
+    radial-gradient(ellipse 38% 32% at 82% 62%, rgba(80, 110, 200, 0.1), transparent 58%);
+  animation: wolf-rd-fog 16s ease-in-out infinite alternate;
+}
+.wolf-radar-lux__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(42px);
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+.wolf-radar-lux__orb--a {
+  width: 22rem;
+  height: 22rem;
+  top: -7rem;
+  right: -5rem;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.5), transparent 68%);
+  animation: wolf-rd-orb-a 18s ease-in-out infinite;
+}
+.wolf-radar-lux__orb--b {
+  width: 16rem;
+  height: 16rem;
+  bottom: 8%;
+  left: -4rem;
+  background: radial-gradient(circle, rgba(90, 130, 255, 0.32), transparent 70%);
+  animation: wolf-rd-orb-b 22s ease-in-out infinite;
+}
+.wolf-radar-lux__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(212, 175, 55, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 70% 18%, #000 20%, transparent 72%);
+  opacity: 0.55;
+}
+
+.wolf-radar-lux__dish {
+  position: absolute;
+  top: 1.4rem;
+  right: clamp(0.5rem, 4vw, 3.2rem);
+  width: min(34vw, 17.5rem);
+  height: min(34vw, 17.5rem);
+  border-radius: 50%;
+  transform: rotateX(58deg) rotateZ(-12deg);
+  transform-style: preserve-3d;
+  opacity: 0.85;
+}
+.wolf-radar-lux__dish i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: inset 0 0 28px rgba(212, 175, 55, 0.08), 0 0 22px rgba(212, 175, 55, 0.1);
+}
+.wolf-radar-lux__dish i:nth-child(2) { inset: 16%; border-color: rgba(240, 215, 140, 0.22); }
+.wolf-radar-lux__dish i:nth-child(3) { inset: 32%; border-color: rgba(212, 175, 55, 0.18); }
+.wolf-radar-lux__dish i:nth-child(4) {
+  inset: 46%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.55), rgba(212, 175, 55, 0.05) 55%, transparent 70%);
+  border: 0;
+  animation: wolf-rd-core 2.4s ease-in-out infinite;
+}
+.wolf-radar-lux__sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(212, 175, 55, 0.42) 38deg, transparent 70deg);
+  animation: wolf-rd-spin 4.8s linear infinite;
+  mix-blend-mode: screen;
+}
+.wolf-radar-desk.wolf-radar-lux.is-scanning .wolf-radar-lux__sweep {
+  animation-duration: 1.15s;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(240, 215, 140, 0.7) 28deg, transparent 62deg);
+}
+.wolf-radar-lux__blips {
+  position: absolute;
+  inset: 0;
+}
+.wolf-radar-lux__blips b {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f0d78c;
+  box-shadow: 0 0 10px #d4af37;
+  animation: wolf-rd-blip 2.8s ease-in-out infinite;
+}
+.wolf-radar-lux__blips b:nth-child(1) { top: 28%; left: 62%; animation-delay: 0s; }
+.wolf-radar-lux__blips b:nth-child(2) { top: 58%; left: 30%; animation-delay: 0.7s; }
+.wolf-radar-lux__blips b:nth-child(3) { top: 42%; left: 48%; animation-delay: 1.3s; }
+.wolf-radar-lux__blips b:nth-child(4) { top: 70%; left: 64%; animation-delay: 1.9s; }
+
+@keyframes wolf-rd-fog {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-2%, 1.6%, 0) scale(1.07); }
+}
+@keyframes wolf-rd-orb-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-8%, 12%, 0); }
+}
+@keyframes wolf-rd-orb-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(12%, -10%, 0); }
+}
+@keyframes wolf-rd-spin { to { transform: rotate(360deg); } }
+@keyframes wolf-rd-core {
+  0%, 100% { transform: scale(0.86); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes wolf-rd-blip {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  45% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes wolf-rd-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes wolf-rd-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(212, 175, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+@keyframes wolf-rd-scanline {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+
+/* —— Hero —— */
+.wolf-radar-lux .wolf-radar-desk__header {
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+.wolf-radar-lux .wolf-radar-desk__brand {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 42rem;
+}
+.wolf-radar-lux__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rd-gold);
+  font-weight: 700;
+}
+.wolf-radar-lux .wolf-radar-desk__title-row {
+  gap: 0.7rem;
+}
+.wolf-radar-lux .wolf-radar-desk__title-row h1 {
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  letter-spacing: 0.16em;
+  background: linear-gradient(100deg, #fff7d6 10%, var(--rd-gold) 42%, #fff 58%, var(--rd-gold-soft) 88%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wolf-rd-shimmer 7s linear infinite;
+}
+.wolf-radar-lux__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 50%;
+  color: var(--rd-gold);
+  background: radial-gradient(circle at 35% 30%, rgba(240, 215, 140, 0.28), rgba(12, 14, 20, 0.7));
+  border: 1px solid var(--rd-line);
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.22);
+  animation: wolf-rd-pulse 2.4s ease-out infinite;
+}
+.wolf-radar-desk.wolf-radar-lux.is-scanning .wolf-radar-lux__mark {
+  animation-duration: 1s;
+}
+.wolf-radar-lux .wolf-radar-desk__subtitle {
+  font-size: 0.92rem;
+  color: var(--rd-muted);
+  max-width: 34rem;
+  line-height: 1.45;
+}
+
+/* —— Console —— */
+.wolf-radar-lux .wolf-radar-desk__controls {
+  padding: 0.85rem 0.9rem 0.95rem;
+  border-radius: 1.15rem;
+  border: 1px solid var(--rd-line);
+  background: linear-gradient(180deg, rgba(18, 22, 34, 0.78), rgba(8, 10, 16, 0.62));
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 0.7rem;
+}
+.wolf-radar-lux .wolf-radar-desk__controls label span {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--rd-gold-soft);
+  font-weight: 700;
+}
+.wolf-radar-lux .wolf-radar-desk__controls select,
+.wolf-radar-lux .wolf-radar-desk__source-btn {
+  min-height: 2.45rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--rd-hair);
+  background: rgba(0, 0, 0, 0.38);
+  color: var(--rd-text);
+  font-size: 0.82rem;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.wolf-radar-lux .wolf-radar-desk__controls select:focus,
+.wolf-radar-lux .wolf-radar-desk__source-btn:hover {
+  outline: none;
+  border-color: var(--rd-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
+}
+.wolf-radar-lux .wolf-radar-desk__source-btn.is-on {
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.45);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.16), rgba(0, 0, 0, 0.35));
+}
+.wolf-radar-lux .wolf-radar-desk__scan-btn,
+.wolf-radar-lux .wolf-radar-desk__empty .wolf-radar-desk__scan-btn {
+  position: relative;
+  overflow: hidden;
+  min-height: 2.55rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(240, 215, 140, 0.55);
+  background: linear-gradient(180deg, #f3dd8a 0%, #d4af37 48%, #b8922a 100%);
+  color: #1a1406;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.28);
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.wolf-radar-lux .wolf-radar-desk__scan-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: wolf-rd-scanline 2.6s ease-in-out infinite;
+}
+.wolf-radar-lux .wolf-radar-desk__scan-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(212, 175, 55, 0.4);
+}
+.wolf-radar-lux .wolf-radar-desk__stop-btn {
+  min-height: 2.55rem;
+  border-radius: 0.85rem;
+  animation: wolf-rd-pulse 1.4s ease-out infinite;
+}
+
+.wolf-radar-lux .wolf-radar-desk__meta {
+  gap: 0.55rem 0.85rem;
+  padding: 0.15rem 0.2rem;
+  font-size: 0.72rem;
+  color: var(--rd-muted);
+}
+.wolf-radar-lux .wolf-radar-desk__status {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--rd-hair);
+  background: rgba(0, 0, 0, 0.28);
+}
+.wolf-radar-lux .wolf-radar-desk__status.is-scanning {
+  color: var(--rd-gold);
+  border-color: var(--rd-line);
+}
+.wolf-radar-lux .wolf-radar-desk__status.is-complete {
+  color: #6ee7b7;
+}
+.wolf-radar-lux .wolf-radar-desk__demo {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* —— Panels —— */
+.wolf-radar-lux .wolf-radar-desk__strategy-banner,
+.wolf-radar-lux .wolf-radar-desk__logic,
+.wolf-radar-lux .wolf-radar-desk__connect-banner,
+.wolf-radar-lux .wolf-radar-desk__summary,
+.wolf-radar-lux .wolf-radar-desk__loading {
+  border: 1px solid var(--rd-line);
+  background: linear-gradient(180deg, rgba(16, 20, 32, 0.78), rgba(8, 10, 16, 0.55));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+.wolf-radar-lux .wolf-radar-desk__logic {
+  border-radius: 1rem;
+}
+.wolf-radar-lux .wolf-radar-desk__logic-toggle {
+  letter-spacing: 0.14em;
+}
+.wolf-radar-lux .wolf-radar-desk__connect-banner {
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+}
+.wolf-radar-lux .wolf-radar-desk__connect-banner button {
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #f3dd8a, #d4af37);
+  color: #1a1406;
+  border: 0;
+  font-weight: 800;
+}
+
+/* Scan HUD */
+.wolf-radar-lux .wolf-radar-desk__loading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.15rem;
+  align-items: center;
+  padding: 1.05rem 1.15rem 1.15rem;
+  border-radius: 1.15rem;
+  overflow: hidden;
+}
+.wolf-radar-lux__hud {
+  position: relative;
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--rd-line);
+  box-shadow: 0 0 24px rgba(212, 175, 55, 0.18);
+}
+.wolf-radar-lux__hud span {
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0.35);
+  animation: wolf-rd-spin 8s linear infinite;
+}
+.wolf-radar-lux__hud b {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, rgba(240, 215, 140, 0.85), transparent 42%);
+  animation: wolf-rd-spin 1.05s linear infinite;
+  mask-image: radial-gradient(circle, transparent 42%, #000 43%);
+}
+.wolf-radar-lux__hud em {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--rd-gold-soft);
+  letter-spacing: 0.04em;
+}
+.wolf-radar-lux .wolf-radar-desk__loading h3 {
+  margin: 0;
+  letter-spacing: 0.16em;
+  font-size: 0.82rem;
+  color: var(--rd-gold);
+}
+.wolf-radar-lux .wolf-radar-desk__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.wolf-radar-lux .wolf-radar-desk__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.25), #f0d78c 55%, #d4af37);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.55);
+}
+
+.wolf-radar-lux .wolf-radar-desk__summary {
+  border-radius: 1.05rem;
+}
+.wolf-radar-lux .wolf-radar-desk__summary-grid div {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: var(--rd-hair);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.wolf-radar-lux .wolf-radar-desk__summary-grid div:hover {
+  transform: translateY(-2px);
+  border-color: var(--rd-line);
+}
+
+/* Results */
+.wolf-radar-lux .wolf-radar-desk__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.7rem;
+  margin-bottom: 0.85rem;
+  color: var(--rd-gold);
+}
+.wolf-radar-lux .wolf-radar-desk__section-head h2 {
+  margin: 0;
+  letter-spacing: 0.16em;
+  font-size: 0.92rem;
+}
+.wolf-radar-lux .wolf-radar-desk__section-head small {
+  color: var(--rd-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.wolf-radar-lux .wolf-radar-desk__empty {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: 1.25rem;
+  padding: 2.1rem 1.2rem 1.7rem;
+  background:
+    radial-gradient(ellipse 50% 80% at 50% 0%, rgba(212, 175, 55, 0.1), transparent 60%),
+    rgba(8, 10, 16, 0.45);
+}
+.wolf-radar-lux__empty-radar {
+  width: 7.2rem;
+  height: 7.2rem;
+  margin: 0 auto 0.85rem;
+  border-radius: 50%;
+  border: 1px solid var(--rd-line);
+  position: relative;
+  box-shadow: 0 0 40px rgba(212, 175, 55, 0.12);
+}
+.wolf-radar-lux__empty-radar::before {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0.3);
+}
+.wolf-radar-lux__empty-radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 200deg, transparent, rgba(240, 215, 140, 0.55), transparent 50%);
+  animation: wolf-rd-spin 3.2s linear infinite;
+  mask-image: radial-gradient(circle, transparent 38%, #000 39%);
+}
+.wolf-radar-lux .wolf-radar-desk__empty p {
+  letter-spacing: 0.08em;
+  font-size: 0.95rem;
+  color: var(--rd-gold-soft);
+}
+
+.wolf-radar-lux .wolf-radar-desk__cards {
+  gap: 0.9rem;
+}
+.wolf-radar-lux .wolf-radar-desk__card {
+  position: relative;
+  border: 1px solid var(--rd-hair);
+  background: linear-gradient(180deg, rgba(16, 20, 32, 0.88), rgba(8, 10, 16, 0.78));
+  border-radius: 1.1rem;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  transition: transform 0.22s ease, border-color 0.22s, box-shadow 0.22s;
+}
+.wolf-radar-lux .wolf-radar-desk__card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rd-gold), transparent);
+  opacity: 0.7;
+}
+.wolf-radar-lux .wolf-radar-desk__card:hover {
+  transform: translateY(-4px);
+  border-color: var(--rd-line);
+  box-shadow: 0 18px 44px rgba(212, 175, 55, 0.12), 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.wolf-radar-lux .wolf-radar-desk__card-top .score {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 50%;
+  line-height: 1;
+  background: conic-gradient(var(--rd-gold) calc(var(--rd-score, 62) * 1%), rgba(255, 255, 255, 0.08) 0);
+  color: var(--rd-gold-soft);
+}
+.wolf-radar-lux .wolf-radar-desk__card-top .score b,
+.wolf-radar-lux .wolf-radar-desk__card-top .score small {
+  position: relative;
+  z-index: 1;
+}
+.wolf-radar-lux .wolf-radar-desk__card-top .score b {
+  font-size: 0.95rem;
+}
+.wolf-radar-lux .wolf-radar-desk__card-top .score small {
+  display: block;
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+}
+.wolf-radar-lux .wolf-radar-desk__card-top .score::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #0b0e14;
+}
+.wolf-radar-lux .wolf-radar-desk__card .tags li {
+  border-color: var(--rd-hair);
+  background: rgba(255, 255, 255, 0.03);
+}
+.wolf-radar-lux .wolf-radar-desk__card-actions {
+  border-top-color: var(--rd-hair);
+  flex-wrap: wrap;
+}
+.wolf-radar-lux .wolf-radar-desk__card-actions .ghost {
+  border-color: var(--rd-hair);
+  color: var(--rd-muted);
+}
+.wolf-radar-lux .wolf-radar-desk__card-actions .ghost:hover {
+  color: var(--rd-gold-soft);
+  border-color: var(--rd-line);
+}
+.wolf-radar-lux .wolf-radar-desk__card-actions .primary {
+  background: linear-gradient(180deg, #f3dd8a, #d4af37);
+  color: #1a1406;
+  border: 0;
+}
+
+/* Drawer */
+.wolf-radar-lux__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(4, 6, 12, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.wolf-radar-lux .wolf-radar-desk__drawer {
+  z-index: 61;
+  background:
+    radial-gradient(80% 40% at 100% 0%, rgba(212, 175, 55, 0.1), transparent 50%),
+    #0a0e16;
+  border-left: 1px solid var(--rd-line);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 860px) {
+  .wolf-radar-lux__dish { opacity: 0.35; width: 9.5rem; height: 9.5rem; }
+  .wolf-radar-lux .wolf-radar-desk__controls { padding: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wolf-radar-lux__fog,
+  .wolf-radar-lux__orb,
+  .wolf-radar-lux__sweep,
+  .wolf-radar-lux__blips b,
+  .wolf-radar-lux__dish i:nth-child(4),
+  .wolf-radar-lux .wolf-radar-desk__title-row h1,
+  .wolf-radar-lux__mark,
+  .wolf-radar-lux .wolf-radar-desk__scan-btn::after,
+  .wolf-radar-lux__hud span,
+  .wolf-radar-lux__hud b,
+  .wolf-radar-lux__empty-radar::after {
+    animation: none !important;
+  }
+}
+
+/* Light theme — champagne glass, still luxury */
+html[data-theme="light"] .wolf-radar-desk.wolf-radar-lux {
+  --rd-bg: #f6f1e6;
+  --rd-panel: rgba(255, 252, 246, 0.78);
+  --rd-text: #14110c;
+  --rd-muted: #6b6254;
+  --rd-line: rgba(146, 64, 14, 0.28);
+  --rd-hair: rgba(120, 80, 20, 0.14);
+  background:
+    radial-gradient(120% 80% at 8% -12%, rgba(212, 175, 55, 0.18), transparent 44%),
+    radial-gradient(90% 55% at 96% 0%, rgba(180, 140, 80, 0.12), transparent 46%),
+    linear-gradient(180deg, #fbf6ec 0%, #f4eee2 55%, #efe6d4 100%);
+  color: var(--rd-text);
+}
+html[data-theme="light"] .wolf-radar-lux__orb { mix-blend-mode: multiply; opacity: 0.35; }
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__title-row h1 {
+  background: linear-gradient(100deg, #78350f 10%, #b45309 45%, #92400e 88%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__controls,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__logic,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__summary,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__loading,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__connect-banner,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__empty,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__card {
+  background: rgba(255, 252, 246, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(146, 64, 14, 0.18);
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__controls select,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__source-btn {
+  background: #fff;
+  color: #1c1914;
+  border-color: #e4d9c4;
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__source-btn.is-on {
+  color: #047857;
+  background: rgba(4, 120, 87, 0.08);
+  border-color: rgba(4, 120, 87, 0.35);
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__card-top .score::after {
+  background: #fffaf0;
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__drawer {
+  background: #fffaf2;
+  border-left-color: rgba(146, 64, 14, 0.22);
+}
+html[data-theme="light"] .wolf-radar-lux__veil {
+  background: rgba(40, 28, 12, 0.28);
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__empty p,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__section-head h2,
+html[data-theme="light"] .wolf-radar-lux__eyebrow {
+  color: #92400e;
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__subtitle,
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__meta {
+  color: #6b6254;
+}
+html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__card-top h3 {
+  color: #14110c;
+}

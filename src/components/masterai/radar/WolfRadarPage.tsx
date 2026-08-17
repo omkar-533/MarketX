@@ -5,7 +5,6 @@ import {
   Plus,
   Radar,
   ScanSearch,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { runRadarScanFull, DEFAULT_DISPLAY_LIMIT } from '../../../services/radar/radarScanner';
@@ -84,6 +83,30 @@ function formatTime(ts: number | null) {
     hour12: true,
     timeZone: 'Asia/Kolkata',
   });
+}
+
+function RadarStage({ scanning }: { scanning: boolean }) {
+  return (
+    <div className={`wolf-radar-lux__stage ${scanning ? 'is-hot' : ''}`} aria-hidden>
+      <div className="wolf-radar-lux__fog" />
+      <div className="wolf-radar-lux__orb wolf-radar-lux__orb--a" />
+      <div className="wolf-radar-lux__orb wolf-radar-lux__orb--b" />
+      <div className="wolf-radar-lux__grid" />
+      <div className="wolf-radar-lux__dish">
+        <i />
+        <i />
+        <i />
+        <i />
+        <div className="wolf-radar-lux__sweep" />
+        <span className="wolf-radar-lux__blips">
+          <b />
+          <b />
+          <b />
+          <b />
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function WolfRadarPage({ onOpenLive }: Props) {
@@ -502,11 +525,17 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
       : 0;
 
   return (
-    <div className="wolf-radar-desk">
+    <div
+      className={`wolf-radar-desk wolf-radar-lux ${progress.status === 'scanning' ? 'is-scanning' : ''} ${dataConnected ? 'is-live' : ''}`}
+    >
+      <RadarStage scanning={progress.status === 'scanning'} />
       <header className="wolf-radar-desk__header">
         <div className="wolf-radar-desk__brand">
+          <p className="wolf-radar-lux__eyebrow">Hunt desk · live universe</p>
           <div className="wolf-radar-desk__title-row">
-            <Radar size={18} className="text-gold" />
+            <span className="wolf-radar-lux__mark">
+              <Radar size={18} />
+            </span>
             <h1>WOLF RADAR</h1>
           </div>
           <p className="wolf-radar-desk__subtitle">
@@ -731,9 +760,13 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
         </section>
       )}
 
-      {progress.status === 'scanning' && !allMatches.length ? (
+      {progress.status === 'scanning' ? (
         <section className="wolf-radar-desk__loading" aria-live="polite">
-          <Sparkles size={16} className="text-gold" />
+          <div className="wolf-radar-lux__hud" aria-hidden>
+            <span />
+            <b />
+            <em>{Math.max(4, Math.round(scanPct))}%</em>
+          </div>
           <div>
             <h3>WOLF IS SCANNING</h3>
             <p>
@@ -844,6 +877,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
 
         {progress.status !== 'scanning' && visibleResults.length === 0 && (
           <div className="wolf-radar-desk__empty">
+            <div className="wolf-radar-lux__empty-radar" aria-hidden />
             <p>{scanSummary ? 'No matches after full scan' : 'No setups detected yet'}</p>
             <span>
               {dataConnected
@@ -859,10 +893,13 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
         )}
 
         <div className="wolf-radar-desk__cards">
-          {visibleResults.map((r) => (
-            <article
+          {visibleResults.map((r, idx) => (
+            <motion.article
               key={r.symbol}
               className="wolf-radar-desk__card"
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: Math.min(idx * 0.045, 0.45), duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             >
               <AppLink
                 to="live-wolf"
@@ -877,7 +914,7 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                       ₹{r.price.toLocaleString('en-IN')} · {r.timeframe.toUpperCase()}
                     </span>
                   </div>
-                  <div className="score">
+                  <div className="score" style={{ ['--rd-score' as string]: r.score }}>
                     <b>{r.score}</b>
                     <small>/100</small>
                   </div>
@@ -931,18 +968,34 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                   {watchSymbols.has(r.symbol) ? 'WATCHING' : 'WATCHLIST'}
                 </button>
               </div>
-            </article>
+            </motion.article>
           ))}
         </div>
       </section>
 
       <AnimatePresence>
-        {selected && (
+        {selected ? (
+          <motion.button
+            key="radar-veil"
+            type="button"
+            className="wolf-radar-lux__veil"
+            aria-label="Close details"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelected(null)}
+          />
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selected ? (
           <motion.aside
+            key="radar-drawer"
             className="wolf-radar-desk__drawer"
-            initial={{ opacity: 0, x: 24 }}
+            initial={{ opacity: 0, x: 36 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 24 }}
+            exit={{ opacity: 0, x: 36 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
             role="dialog"
             aria-label={`${selected.symbol} detail`}
           >
@@ -1038,8 +1091,8 @@ export default function WolfRadarPage({ onOpenLive }: Props) {
                 ADD TO WATCHLIST
               </button>
             </div>
-          </motion.aside>
-        )}
+            </motion.aside>
+        ) : null}
       </AnimatePresence>
 
       <ConnectMarketDataModal

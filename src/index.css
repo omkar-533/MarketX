@@ -2,6 +2,7 @@
 @import "./styles/theme.css";
 @import "./styles/theme-light-overrides.css";
 @import "./styles/screener-chartink.css";
+@import "./styles/wolf-radar-luxury.css";
 
 body {
   background-color: var(--tf-bg);
