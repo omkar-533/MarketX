@@ -7,16 +7,10 @@ import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import { resolveCatalogUniverse } from '../radar/universeCatalog';
 import {
-  firstHitTimeOfIstDay,
-  keepDisplaySetupTime,
-  keepFirstSetupTime,
-  lastBarStamp,
   readCandleTimeMs,
   sessionBarsNeeded,
-  setupCreatedAtFromCandles,
-  lastClosedBarCloseMs,
 } from '../radar/barTime';
-import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
+import { buildFeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
   OHLC_SCANNERS,
@@ -250,11 +244,7 @@ export async function runOpportunityScan(
 
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
-    hit.detectedAt =
-      keepFirstSetupTime(0, hit.detectedAt, asOf) || keepDisplaySetupTime(hit.detectedAt, asOf);
-    if (hit.detectedAt > Date.now() + 2_000) {
-      hit.detectedAt = lastClosedBarCloseMs(tf, Date.now());
-    }
+    hit.detectedAt = Date.now();
     if (hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) return;
     pushHit(buckets, hit);
     opts.onHit?.(hit);
@@ -360,38 +350,6 @@ export async function runOpportunityScan(
         const quotePrice = f.tech.last;
         const ctx = { f, timeframe: tf, dataMode, quotePrice };
         const sibling: Partial<Record<OpportunityScannerId, number>> = {};
-        const featAt = new Map<number, FeatureSnapshot | null>();
-        const snapshotAt = (i: number): FeatureSnapshot | null => {
-          if (featAt.has(i)) return featAt.get(i) ?? null;
-          const snap = buildFeatureSnapshot(symbol, filters.market, tf, candles.slice(0, i + 1));
-          featAt.set(i, snap);
-          return snap;
-        };
-        const createdAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number => {
-          const fallback =
-            setupCreatedAtFromCandles(candles, tf, asOf) || f.setupAt || lastBarStamp(candles, tf, asOf) || 0;
-          try {
-            const walked = firstHitTimeOfIstDay(
-              candles,
-              tf,
-              (i) => {
-                const snap = snapshotAt(i);
-                if (!snap) return false;
-                return !!scan({
-                  f: snap,
-                  timeframe: tf,
-                  dataMode,
-                  quotePrice: snap.tech.last,
-                  forTimeWalk: true,
-                });
-              },
-              asOf,
-            );
-            return walked || fallback;
-          } catch {
-            return fallback;
-          }
-        };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
           ['momentum_surge', scanMomentumSurge],
@@ -405,22 +363,16 @@ export async function runOpportunityScan(
           ['options_flow', scanOptionsFlow],
         ];
 
-        const siblingTimes: number[] = [];
         for (const [, scan] of runners) {
           const hit = scan(ctx);
           if (hit) {
-            hit.detectedAt = createdAtFor(scan);
             sibling[hit.scannerId] = hit.score;
-            if (hit.detectedAt) siblingTimes.push(hit.detectedAt);
             emitHit(hit);
           }
         }
 
         const prime = scanWolfPrime(ctx, sibling);
-        if (prime) {
-          prime.detectedAt = siblingTimes.length ? Math.min(...siblingTimes) : createdAtFor((c) => scanWolfPrime(c, sibling));
-          emitHit(prime);
-        }
+        if (prime) emitHit(prime);
 
         const sec = sectorOf(symbol);
         const bag = sectorBag.get(sec) || [];

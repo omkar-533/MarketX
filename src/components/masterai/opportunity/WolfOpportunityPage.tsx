@@ -13,8 +13,7 @@ import {
   TrendingDown,
   Minus,
 } from 'lucide-react';
-import { getMarketSession, istCalendarDay } from '../../../utils/marketHours';
-import { lastClosedBarCloseMs } from '../../../services/radar/barTime';
+import { getMarketSession } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
@@ -24,8 +23,10 @@ import { opportunityToRadarResult } from '../../../services/opportunity/opportun
 import {
   loadOpportunityFilters,
   saveOpportunityFilters,
-  clearOpportunityDayBoard,
-  applyLiveScanCards,
+  loadOpportunityDayBoard,
+  saveOpportunityDayBoard,
+  applyScanCardsKeepingFirstSeen,
+  opportunityBoardKey,
   rankHitsByScore,
   emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
@@ -66,21 +67,12 @@ function formatHitPrice(price: number): string {
   });
 }
 
-function formatHitClock(ms: number, timeframe?: string): string {
-  let t0 = ms > 0 && ms < 1e11 ? ms * 1000 : ms;
+function formatHitClock(ms: number): string {
+  const t0 = ms > 0 && ms < 1e11 ? ms * 1000 : ms;
   const now = Date.now();
   if (!Number.isFinite(t0) || t0 <= 0) return '—';
-  if (t0 > now + 2_000) {
-    t0 = timeframe ? lastClosedBarCloseMs(timeframe, now) : 0;
-  }
-  if (!Number.isFinite(t0) || t0 <= 0) return '—';
-  const day = istCalendarDay(new Date(t0));
-  const open = Date.parse(`${day}T09:15:00+05:30`);
-  const close = Date.parse(`${day}T15:30:00+05:30`);
-  if (!Number.isFinite(open) || !Number.isFinite(close)) return '—';
-  const t = t0 > close ? close : t0 < open ? open : t0;
-  if (now - t > 10 * 86_400_000) return '—';
-  return new Date(t).toLocaleTimeString('en-IN', {
+  if (t0 > now + 2_000) return '—';
+  return new Date(t0).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
@@ -156,7 +148,7 @@ function HitTile({
         <span className="wolf-opp__tile-score">{hit.score}</span>
         <span className="wolf-opp__tile-meta">
           <BiasBadge dir={bias} size="sm" />
-          <em>Created {formatHitClock(hit.detectedAt, hit.timeframe)} IST</em>
+          <em>Created {formatHitClock(hit.detectedAt)} IST</em>
         </span>
       </AppLink>
       <div className="wolf-opp__tile-actions">
@@ -264,7 +256,6 @@ export default function WolfOpportunityPage({
       else {
         setScanning(true);
         setProgress('Fetching live market…');
-        clearOpportunityDayBoard();
         clearLiveCandleCache();
         setCards(emptyOpportunityCards());
         setLastUpdated(null);
@@ -332,12 +323,16 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          setCards(
-            applyLiveScanCards(out.cards).map((card) => ({
+          const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
+          const prevBoard = loadOpportunityDayBoard(boardKey);
+          setCards(() => {
+            const next = applyScanCardsKeepingFirstSeen(prevBoard, out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            })),
-          );
+            }));
+            saveOpportunityDayBoard(boardKey, next);
+            return next;
+          });
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
@@ -656,7 +651,7 @@ export default function WolfOpportunityPage({
                         <p className="wolf-opp__modal-kicker">{prettyTitle(whyHit.scannerId)}</p>
                         <h3 id="wolf-opp-why-title">Why {whyHit.symbol}?</h3>
                         <p className="wolf-opp__setup-at">
-                          Created at {formatHitClock(whyHit.detectedAt, whyHit.timeframe)} IST
+                          Created at {formatHitClock(whyHit.detectedAt)} IST
                         </p>
                       </div>
                       <button type="button" onClick={() => setWhyHit(null)} aria-label="Close">
@@ -718,7 +713,7 @@ export default function WolfOpportunityPage({
                     {prettyTitle(selected.scannerId)} · {selected.score}/100
                   </p>
                   <p className="wolf-opp__setup-at">
-                    Created at {formatHitClock(selected.detectedAt, selected.timeframe)} IST
+                    Created at {formatHitClock(selected.detectedAt)} IST
                   </p>
                   <div className="wolf-opp__drawer-bias">
                     <BiasBadge dir={biasOf(selected)} />
@@ -741,7 +736,7 @@ export default function WolfOpportunityPage({
                 </div>
                 <div>
                   <dt>Created at</dt>
-                  <dd>{formatHitClock(selected.detectedAt, selected.timeframe)} IST</dd>
+                  <dd>{formatHitClock(selected.detectedAt)} IST</dd>
                 </div>
                 <div>
                   <dt>Timeframe</dt>

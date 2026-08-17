@@ -53,7 +53,7 @@ describe('opportunityStore ranking', () => {
     assert.deepEqual(names, ['CCC', 'BBB']);
   });
 
-  it('replaces the board with the completed scan, keeping Created on repeats', () => {
+  it('replaces the board with the completed scan, keeping listing time on repeats', () => {
     const prev = emptyOpportunityCards().map((c) =>
       c.scannerId === 'breakout_radar'
         ? {

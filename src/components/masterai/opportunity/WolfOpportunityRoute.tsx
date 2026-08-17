@@ -4,12 +4,10 @@ import ConnectMarketDataModal from '../radar/ConnectMarketDataModal';
 import {
   fetchMarketDataStatus,
   isIndstocksLive,
-  clearLiveCandleCache,
   type ServerConnectionStatus,
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
-import { clearOpportunityDayBoard } from '../../../services/opportunity/opportunityStore';
 
 type Props = {
   onOpenWolfAi: () => void;
@@ -52,8 +50,6 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
           setMdStatus(s);
           if (isIndstocksLive(s)) {
             setConnectOpen(false);
-            clearOpportunityDayBoard();
-            clearLiveCandleCache();
             void initMarketDataService(serverMarketDataProvider).connect();
             setRescanToken((n) => n + 1);
           }

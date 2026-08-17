@@ -1,13 +1,13 @@
 import { istCalendarDay } from '../../utils/marketHours';
-import { keepDisplaySetupTime, keepFirstSetupTime, nseTradingDay } from '../radar/barTime';
+import { nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v8';
-/** Do not hydrate v7 first-come boards — those names differed per browser. */
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v9';
+/** Candle-close stamps from v8 are not listing times. */
 const LEGACY_BOARD_KEYS: string[] = [];
 const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
 
@@ -106,17 +106,18 @@ export function clearOpportunityDayBoard() {
   }
 }
 
+function listingTime(ms: number, now = Date.now()): number {
+  if (!Number.isFinite(ms) || ms <= 0 || ms > now + 2_000) return 0;
+  return ms;
+}
+
 function mergeHitKeepFirstSeen(prev: OpportunityHit | undefined, hit: OpportunityHit): OpportunityHit {
   if (!prev) return hit;
+  const firstListed = listingTime(prev.detectedAt) || listingTime(hit.detectedAt);
   return {
     ...hit,
     id: prev.id,
-    detectedAt:
-      keepFirstSetupTime(prev.detectedAt, hit.detectedAt) ||
-      keepDisplaySetupTime(prev.detectedAt) ||
-      keepDisplaySetupTime(hit.detectedAt) ||
-      prev.detectedAt ||
-      hit.detectedAt,
+    detectedAt: firstListed || hit.detectedAt,
   };
 }
 
@@ -126,7 +127,7 @@ export function rankHitsByScore(hits: OpportunityHit[]): OpportunityHit[] {
 
 /**
  * After a full scan: this run's ranked hits are the board.
- * Keep Created time for names that were already on the board. Do not freeze first-arrived names.
+ * Keep first listing time for names that stay on the board. Do not freeze first-arrived names.
  */
 export function applyScanCardsKeepingFirstSeen(
   prev: ScannerCardState[],
