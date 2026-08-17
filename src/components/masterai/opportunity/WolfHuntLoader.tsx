@@ -15,7 +15,7 @@ function huntRatio(caption: string): number | null {
 }
 
 /**
- * Opportunity live-scan overlay — wolf pounces and strikes with claws.
+ * Opportunity live-scan overlay — a red-hot claw rips a candle through the middle.
  * Cosmetic only. Does not invent prices or scanner hits.
  */
 export default function WolfHuntLoader({ caption = 'Scanning…' }: Props) {
@@ -35,143 +35,174 @@ export default function WolfHuntLoader({ caption = 'Scanning…' }: Props) {
     >
       <div className="wolf-opp__hunt-veil" aria-hidden />
       <div className="wolf-opp__hunt-motes" aria-hidden>
-        {Array.from({ length: 9 }, (_, i) => (
+        {Array.from({ length: 10 }, (_, i) => (
           <i key={i} className={`wolf-opp__hunt-mote wolf-opp__hunt-mote--${i + 1}`} />
         ))}
       </div>
 
       <div className="wolf-opp__hunt-stage">
-        <svg className="wolf-opp__hunt-svg" viewBox="0 0 720 380" aria-hidden>
+        <svg className="wolf-opp__hunt-svg" viewBox="0 0 720 420" aria-hidden>
           <defs>
-            <linearGradient id={`${uid}-fur`} x1="120" y1="80" x2="540" y2="300" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#fff6da" />
-              <stop offset="0.38" stopColor="#f0d78c" />
-              <stop offset="0.72" stopColor="#d4af37" />
-              <stop offset="1" stopColor="#8a6a18" />
+            <linearGradient id={`${uid}-ker`} x1="120" y1="80" x2="430" y2="280" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#2a1a16" />
+              <stop offset="0.38" stopColor="#4a2a22" />
+              <stop offset="0.72" stopColor="#1a100e" />
+              <stop offset="1" stopColor="#0b0706" />
             </linearGradient>
-            <linearGradient id={`${uid}-shade`} x1="200" y1="120" x2="280" y2="320" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#c9a227" />
-              <stop offset="1" stopColor="#5c4810" />
+            <linearGradient id={`${uid}-ridge`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#6b4338" />
+              <stop offset="0.55" stopColor="#2a1814" />
+              <stop offset="1" stopColor="#140c0a" />
             </linearGradient>
-            <linearGradient id={`${uid}-claw`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fff8e4" />
-              <stop offset="0.45" stopColor="#f0d78c" />
-              <stop offset="1" stopColor="#b45309" />
+            <linearGradient id={`${uid}-hot`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#7f1d1d" stopOpacity="0" />
+              <stop offset="0.45" stopColor="#ef4444" />
+              <stop offset="0.78" stopColor="#ff2d2d" />
+              <stop offset="1" stopColor="#ffe4e6" />
             </linearGradient>
-            <linearGradient id={`${uid}-slash`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fff8e4" />
-              <stop offset="0.5" stopColor="#f0d78c" />
-              <stop offset="1" stopColor="#ef4444" stopOpacity="0.15" />
+            <linearGradient id={`${uid}-bull`} x1="360" y1="90" x2="440" y2="330" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#4ade80" />
+              <stop offset="0.18" stopColor="#22c55e" />
+              <stop offset="0.62" stopColor="#15803d" />
+              <stop offset="1" stopColor="#14532d" />
             </linearGradient>
-            <radialGradient id={`${uid}-eye`} cx="50%" cy="50%" r="50%">
-              <stop offset="0" stopColor="#ffe4e6" />
-              <stop offset="0.35" stopColor="#ff2d2d" />
+            <linearGradient id={`${uid}-bull-l`} x1="360" y1="0" x2="388" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#052e16" />
+              <stop offset="1" stopColor="#166534" />
+            </linearGradient>
+            <linearGradient id={`${uid}-core`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#7f1d1d" />
+              <stop offset="0.45" stopColor="#ff2d2d" />
+              <stop offset="1" stopColor="#450a0a" />
+            </linearGradient>
+            <radialGradient id={`${uid}-bloom`} cx="58%" cy="50%" r="42%">
+              <stop offset="0" stopColor="#ff2d2d" stopOpacity="0.55" />
+              <stop offset="0.45" stopColor="#b91c1c" stopOpacity="0.22" />
               <stop offset="1" stopColor="#7f1d1d" stopOpacity="0" />
             </radialGradient>
-            <radialGradient id={`${uid}-ground`} cx="50%" cy="50%" r="50%">
-              <stop offset="0" stopColor="rgba(212,175,55,0.22)" />
-              <stop offset="1" stopColor="rgba(212,175,55,0)" />
-            </radialGradient>
-            <filter id={`${uid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="2.4" result="b" />
+            <filter id={`${uid}-red`} x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="4.2" result="b" />
               <feMerge>
                 <feMergeNode in="b" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id={`${uid}-slash-glow`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3.2" result="b" />
+            <filter id={`${uid}-hotglow`} x="-60%" y="-80%" width="220%" height="260%">
+              <feGaussianBlur stdDeviation="2.1" result="b" />
               <feMerge>
                 <feMergeNode in="b" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id={`${uid}-drop`} x="-20%" y="-10%" width="140%" height="150%">
-              <feDropShadow dx="0" dy="14" stdDeviation="10" floodColor="#000" floodOpacity="0.55" />
+            <filter id={`${uid}-crack`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="0.45" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
+            <clipPath id={`${uid}-top`}>
+              <path d="M360 92 H440 V198 L428 190 416 206 404 188 392 204 380 186 368 200 360 192 Z" />
+            </clipPath>
+            <clipPath id={`${uid}-bot`}>
+              <path d="M360 328 H440 V214 L428 222 416 206 404 224 392 208 380 226 368 212 360 220 Z" />
+            </clipPath>
           </defs>
 
-          <ellipse className="woh__ground" cx="360" cy="328" rx="250" ry="26" fill={`url(#${uid}-ground)`} />
+          <ellipse className="woh__bloom" cx="400" cy="210" rx="210" ry="120" fill={`url(#${uid}-bloom)`} />
 
-          <g className="woh__wolf" filter={`url(#${uid}-drop)`}>
+          {/* Bottom candle half */}
+          <g className="woh__candle-bot">
+            <line x1="400" y1="328" x2="400" y2="378" stroke="#94a3b8" strokeWidth="3.2" strokeLinecap="round" />
             <path
-              className="woh__tail"
-              fill={`url(#${uid}-shade)`}
-              d="M132 198 C 78 214, 42 188, 48 150 C 40 128, 62 118, 78 138 C 92 162, 108 178, 148 190 Z"
+              fill={`url(#${uid}-bull)`}
+              d="M360 328 V214 L368 212 380 226 392 208 404 224 416 206 428 222 440 214 V328 Z"
             />
-
+            <path fill={`url(#${uid}-bull-l)`} d="M360 328 V220 L368 212 380 226 392 216 V328 Z" opacity="0.72" />
             <path
-              className="woh__hind"
-              fill={`url(#${uid}-shade)`}
-              d="M168 214 C 148 236, 136 268, 142 302 C 146 322, 172 326, 180 306 C 188 282, 196 254, 214 232 Z"
+              className="woh__inner"
+              fill={`url(#${uid}-core)`}
+              d="M360 220 L368 212 380 226 392 208 404 224 416 206 428 222 440 214 L440 228 428 234 416 220 404 236 392 222 380 238 368 226 360 232 Z"
             />
-            <path
-              fill={`url(#${uid}-shade)`}
-              d="M214 228 C 228 256, 236 288, 228 316 C 224 332, 250 336, 258 316 C 266 290, 262 258, 248 232 Z"
-            />
-
-            <path
-              fill={`url(#${uid}-fur)`}
-              d="M148 196 C 156 142, 228 108, 312 122 C 372 132, 428 158, 458 192 C 430 236, 338 258, 248 252 C 188 248, 152 226, 148 196 Z"
-            />
-
-            <path
-              fill={`url(#${uid}-fur)`}
-              d="M430 168 C 448 128, 478 112, 508 128 C 492 148, 478 158, 458 168 Z"
-            />
-            <path
-              fill={`url(#${uid}-shade)`}
-              d="M456 164 C 478 118, 508 108, 528 132 C 510 148, 490 158, 468 170 Z"
-            />
-
-            <path
-              fill={`url(#${uid}-fur)`}
-              d="M430 156 C 458 132, 508 128, 548 154 C 572 170, 580 190, 568 204 C 552 222, 520 226, 492 216 C 468 228, 448 214, 430 186 Z"
-            />
-            <path
-              fill="#5c4810"
-              d="M548 168 C 568 174, 578 186, 572 198 C 560 194, 548 188, 540 180 Z"
-            />
-            <path fill="#fff6da" d="M538 196 L 552 204 L 536 208 Z" />
-            <path fill="#fff6da" d="M544 200 L 558 210 L 540 212 Z" />
-
-            <circle cx="492" cy="164" r="10" fill={`url(#${uid}-eye)`} filter={`url(#${uid}-glow)`} />
-            <circle className="woh__eye" cx="492" cy="164" r="3.2" fill="#fff1f2" />
-
-            <g className="woh__fore">
-              <path
-                fill={`url(#${uid}-fur)`}
-                d="M412 198 C 448 206, 486 198, 522 188 C 538 184, 552 196, 540 210 C 522 222, 488 228, 452 224 C 428 222, 408 214, 412 198 Z"
-              />
-              <g className="woh__paw" filter={`url(#${uid}-glow)`}>
-                <ellipse cx="536" cy="204" rx="18" ry="12" fill="#c9a227" />
-                <path className="woh__claw" fill={`url(#${uid}-claw)`} d="M546 190 L 612 154 L 558 204 Z" />
-                <path className="woh__claw" fill={`url(#${uid}-claw)`} d="M552 202 L 628 196 L 558 214 Z" />
-                <path className="woh__claw" fill={`url(#${uid}-claw)`} d="M546 214 L 616 236 L 550 224 Z" />
-                <path className="woh__claw" fill={`url(#${uid}-claw)`} d="M532 220 L 586 258 L 540 230 Z" />
-              </g>
+            <g clipPath={`url(#${uid}-bot)`} fill="none" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}-crack)`}>
+              <path className="woh__crack woh__crack--a" stroke="#1c1917" strokeWidth="2.3" d="M400 214 L422 236 432 258 438 292" />
+              <path className="woh__crack" stroke="#1c1917" strokeWidth="1.45" d="M422 236 L436 240 438 252" />
+              <path className="woh__crack woh__crack--a" stroke="#1c1917" strokeWidth="2.1" d="M400 214 L376 238 368 262 364 298" />
+              <path className="woh__crack" stroke="#1c1917" strokeWidth="1.3" d="M376 238 L366 242 362 256" />
+              <path className="woh__crack woh__crack--a" stroke="#ff4d4d" strokeWidth="0.85" d="M400 214 L422 236 432 258 438 292" />
+              <path className="woh__crack woh__crack--a" stroke="#ff4d4d" strokeWidth="0.8" d="M400 214 L376 238 368 262 364 298" />
             </g>
           </g>
 
-          <g className="woh__prey">
-            <line x1="628" y1="138" x2="628" y2="168" stroke="#9aa6bc" strokeWidth="3" strokeLinecap="round" />
-            <rect x="614" y="168" width="28" height="78" rx="4" fill="#1b2433" stroke="rgba(212,175,55,0.35)" />
-            <rect x="614" y="188" width="28" height="42" rx="3" fill="#16a34a" />
-            <line x1="628" y1="246" x2="628" y2="272" stroke="#9aa6bc" strokeWidth="3" strokeLinecap="round" />
+          {/* Top candle half */}
+          <g className="woh__candle-top">
+            <line x1="400" y1="48" x2="400" y2="92" stroke="#94a3b8" strokeWidth="3.2" strokeLinecap="round" />
+            <path
+              fill={`url(#${uid}-bull)`}
+              d="M360 92 H440 V198 L428 190 416 206 404 188 392 204 380 186 368 200 360 192 Z"
+            />
+            <path fill={`url(#${uid}-bull-l)`} d="M360 92 V192 L368 200 380 186 392 198 V92 Z" opacity="0.72" />
+            <rect x="360" y="92" width="80" height="7" fill="#86efac" opacity="0.55" />
+            <path
+              className="woh__inner"
+              fill={`url(#${uid}-core)`}
+              d="M360 192 L368 200 380 186 392 204 404 188 416 206 428 190 440 198 L440 186 428 178 416 192 404 176 392 190 380 174 368 186 360 180 Z"
+            />
+            <g clipPath={`url(#${uid}-top)`} fill="none" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}-crack)`}>
+              <path className="woh__crack woh__crack--a" stroke="#1c1917" strokeWidth="2.4" d="M400 198 L418 176 426 154 422 128 434 108" />
+              <path className="woh__crack" stroke="#1c1917" strokeWidth="1.5" d="M418 176 L432 170 438 158" />
+              <path className="woh__crack" stroke="#1c1917" strokeWidth="1.25" d="M426 154 L436 148 438 136" />
+              <path className="woh__crack woh__crack--a" stroke="#1c1917" strokeWidth="2.2" d="M400 198 L378 174 368 150 362 118" />
+              <path className="woh__crack" stroke="#1c1917" strokeWidth="1.35" d="M378 174 L366 178 362 166" />
+              <path className="woh__crack woh__crack--a" stroke="#ff4d4d" strokeWidth="0.9" d="M400 198 L418 176 426 154 422 128 434 108" />
+              <path className="woh__crack woh__crack--a" stroke="#ff4d4d" strokeWidth="0.85" d="M400 198 L378 174 368 150 362 118" />
+            </g>
           </g>
 
-          <g className="woh__slashes" filter={`url(#${uid}-slash-glow)`} fill="none" stroke={`url(#${uid}-slash)`} strokeLinecap="round">
-            <path className="woh__slash woh__slash--1" strokeWidth="5" d="M500 168 C 548 152, 596 148, 650 142" />
-            <path className="woh__slash woh__slash--2" strokeWidth="4.2" d="M508 196 C 560 190, 608 188, 662 186" />
-            <path className="woh__slash woh__slash--3" strokeWidth="4.6" d="M498 226 C 552 236, 604 246, 654 258" />
+          <g className="woh__shards">
+            <path fill="#22c55e" d="M392 206 L408 198 L404 214 Z" />
+            <path fill="#166534" d="M414 218 L428 214 L422 232 Z" />
+            <path fill="#4ade80" d="M378 198 L368 210 L386 208 Z" />
+            <path fill="#14532d" d="M420 188 L434 178 L428 198 Z" />
+            <path fill="#16a34a" d="M370 226 L358 220 L366 240 Z" />
           </g>
 
-          <g className="woh__burst" fill="none" stroke="#f0d78c" strokeLinecap="round">
-            <path d="M628 196 L 668 176" />
-            <path d="M628 196 L 672 196" />
-            <path d="M628 196 L 664 220" />
-            <path d="M628 196 L 598 168" />
-            <path d="M628 196 L 590 210" />
+          {/* Claw — keratin + red-hot edges, no full wolf */}
+          <g className="woh__claw" filter={`url(#${uid}-red)`}>
+            <ellipse cx="168" cy="208" rx="78" ry="52" fill="#0a0706" opacity="0.55" />
+
+            <path
+              fill={`url(#${uid}-ker)`}
+              d="M168 132 C 248 108, 332 112, 412 142 C 428 148, 434 158, 418 160 C 338 132, 252 140, 172 154 C 158 144, 156 134, 168 132 Z"
+            />
+            <path
+              fill={`url(#${uid}-ker)`}
+              d="M158 172 C 250 150, 348 156, 448 186 C 468 194, 472 208, 448 210 C 348 180, 250 186, 160 198 C 146 186, 146 176, 158 172 Z"
+            />
+            <path
+              fill={`url(#${uid}-ker)`}
+              d="M164 214 C 252 200, 350 208, 442 236 C 460 244, 456 258, 436 258 C 348 228, 250 228, 166 240 C 152 228, 152 218, 164 214 Z"
+            />
+            <path
+              fill={`url(#${uid}-ker)`}
+              d="M176 254 C 258 248, 342 262, 418 292 C 434 300, 428 312, 410 308 C 338 278, 256 272, 178 278 C 164 266, 164 256, 176 254 Z"
+            />
+
+            <path fill={`url(#${uid}-ridge)`} opacity="0.55" d="M190 146 C 270 128, 350 134, 408 152 C 350 140, 270 144, 188 158 Z" />
+            <path fill={`url(#${uid}-ridge)`} opacity="0.5" d="M182 184 C 280 168, 370 176, 440 198 C 370 182, 280 184, 180 196 Z" />
+
+            <g className="woh__edge" filter={`url(#${uid}-hotglow)`} fill="none" stroke={`url(#${uid}-hot)`} strokeLinecap="round">
+              <path strokeWidth="3.1" d="M172 154 C 252 138, 338 134, 418 160" />
+              <path strokeWidth="3.6" d="M160 198 C 250 184, 348 180, 448 210" />
+              <path strokeWidth="3.3" d="M166 240 C 250 226, 348 228, 436 258" />
+              <path strokeWidth="2.8" d="M178 278 C 256 270, 338 278, 410 308" />
+            </g>
+            <g className="woh__tips" fill="#ffe4e6" filter={`url(#${uid}-hotglow)`}>
+              <path d="M412 142 L 428 148 L 418 160 Z" />
+              <path d="M448 186 L 472 200 L 448 210 Z" />
+              <path d="M442 236 L 460 250 L 436 258 Z" />
+              <path d="M418 292 L 434 304 L 410 308 Z" />
+            </g>
           </g>
         </svg>
 

@@ -29827,7 +29827,7 @@ body:has(.app-main--terminal-immersive) #root {
   margin-top: 1.1rem;
 }
 
-/* Live-scan hunt overlay — wolf striking with claws */
+/* Live-scan hunt overlay — red claw ripping a candle through the middle */
 .wolf-opp__hunt {
   position: absolute;
   inset: 0;
@@ -29844,9 +29844,9 @@ body:has(.app-main--terminal-immersive) #root {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 55% 48% at 48% 46%, rgba(212, 175, 55, 0.14), transparent 62%),
-    radial-gradient(ellipse 40% 36% at 62% 52%, rgba(185, 28, 28, 0.16), transparent 70%),
-    linear-gradient(180deg, rgba(5, 7, 12, 0.42), rgba(5, 7, 12, 0.78));
+    radial-gradient(ellipse 48% 42% at 52% 46%, rgba(185, 28, 28, 0.28), transparent 64%),
+    radial-gradient(ellipse 32% 28% at 40% 50%, rgba(127, 29, 29, 0.18), transparent 70%),
+    linear-gradient(180deg, rgba(5, 7, 12, 0.5), rgba(5, 7, 12, 0.84));
 }
 .wolf-opp__hunt-motes {
   position: absolute;
@@ -29855,23 +29855,24 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__hunt-mote {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
-  background: #f0d78c;
-  box-shadow: 0 0 10px rgba(240, 215, 140, 0.7);
+  background: #ff2d2d;
+  box-shadow: 0 0 10px rgba(255, 45, 45, 0.85);
   opacity: 0;
-  animation: woh-mote 1.85s ease-out infinite;
+  animation: woh-mote 2.15s ease-out infinite;
 }
-.wolf-opp__hunt-mote--1 { left: 28%; top: 58%; animation-delay: 0.32s; }
-.wolf-opp__hunt-mote--2 { left: 46%; top: 42%; animation-delay: 0.38s; width: 3px; height: 3px; }
-.wolf-opp__hunt-mote--3 { left: 62%; top: 48%; animation-delay: 0.36s; }
-.wolf-opp__hunt-mote--4 { left: 70%; top: 38%; animation-delay: 0.4s; width: 5px; height: 5px; }
-.wolf-opp__hunt-mote--5 { left: 58%; top: 62%; animation-delay: 0.44s; }
-.wolf-opp__hunt-mote--6 { left: 38%; top: 36%; animation-delay: 0.28s; width: 2px; height: 2px; }
-.wolf-opp__hunt-mote--7 { left: 74%; top: 56%; animation-delay: 0.42s; }
-.wolf-opp__hunt-mote--8 { left: 52%; top: 28%; animation-delay: 0.34s; }
-.wolf-opp__hunt-mote--9 { left: 22%; top: 48%; animation-delay: 0.5s; width: 3px; height: 3px; }
+.wolf-opp__hunt-mote--1 { left: 42%; top: 48%; animation-delay: 0.34s; }
+.wolf-opp__hunt-mote--2 { left: 54%; top: 44%; animation-delay: 0.4s; width: 4px; height: 4px; }
+.wolf-opp__hunt-mote--3 { left: 58%; top: 52%; animation-delay: 0.38s; }
+.wolf-opp__hunt-mote--4 { left: 48%; top: 40%; animation-delay: 0.42s; width: 2px; height: 2px; }
+.wolf-opp__hunt-mote--5 { left: 52%; top: 58%; animation-delay: 0.46s; }
+.wolf-opp__hunt-mote--6 { left: 38%; top: 42%; animation-delay: 0.36s; }
+.wolf-opp__hunt-mote--7 { left: 62%; top: 46%; animation-delay: 0.44s; }
+.wolf-opp__hunt-mote--8 { left: 46%; top: 36%; animation-delay: 0.5s; width: 2px; height: 2px; }
+.wolf-opp__hunt-mote--9 { left: 56%; top: 38%; animation-delay: 0.48s; }
+.wolf-opp__hunt-mote--10 { left: 50%; top: 62%; animation-delay: 0.52s; }
 .wolf-opp__hunt-stage {
   position: relative;
   z-index: 1;
@@ -29887,54 +29888,52 @@ body:has(.app-main--terminal-immersive) #root {
   display: block;
   overflow: visible;
 }
-.woh__wolf {
+.woh__bloom {
   transform-box: view-box;
-  transform-origin: 190px 280px;
-  animation: woh-pounce 1.85s cubic-bezier(0.45, 0.05, 0.22, 1) infinite;
+  transform-origin: 400px 210px;
+  animation: woh-bloom 2.15s ease-in-out infinite;
 }
-.woh__tail {
+.woh__claw {
   transform-box: view-box;
-  transform-origin: 148px 196px;
-  animation: woh-tail 1.85s ease-in-out infinite;
+  transform-origin: 170px 210px;
+  animation: woh-rip 2.15s cubic-bezier(0.18, 0.7, 0.2, 1) infinite;
 }
-.woh__fore {
+.woh__edge,
+.woh__tips {
+  animation: woh-hot 2.15s ease-in-out infinite;
+}
+.woh__candle-top {
   transform-box: view-box;
-  transform-origin: 420px 210px;
-  animation: woh-swipe 1.85s cubic-bezier(0.2, 0.7, 0.2, 1) infinite;
+  transform-origin: 400px 140px;
+  animation: woh-split-top 2.15s cubic-bezier(0.2, 0.75, 0.25, 1) infinite;
 }
-.woh__paw {
+.woh__candle-bot {
   transform-box: view-box;
-  transform-origin: 536px 204px;
-  animation: woh-claws 1.85s cubic-bezier(0.15, 0.8, 0.2, 1) infinite;
+  transform-origin: 400px 280px;
+  animation: woh-split-bot 2.15s cubic-bezier(0.2, 0.75, 0.25, 1) infinite;
 }
-.woh__eye {
-  animation: woh-eye 1.85s ease-in-out infinite;
+.woh__inner {
+  animation: woh-ember 2.15s ease-in-out infinite;
 }
-.woh__ground {
-  transform-box: view-box;
-  transform-origin: 360px 328px;
-  animation: woh-ground 1.85s ease-out infinite;
+.woh__crack {
+  stroke-dasharray: 90;
+  stroke-dashoffset: 90;
+  animation: woh-crack 2.15s ease-out infinite;
 }
-.woh__prey {
-  transform-box: view-box;
-  transform-origin: 628px 210px;
-  animation: woh-prey 1.85s ease-in-out infinite;
+.woh__crack--a { stroke-dasharray: 140; stroke-dashoffset: 140; }
+.woh__cracks--ember .woh__crack {
+  animation-name: woh-crack-ember;
 }
-.woh__slash {
-  stroke-dasharray: 170;
-  stroke-dashoffset: 170;
+.woh__shards path {
+  transform-box: fill-box;
+  transform-origin: center;
   opacity: 0;
-  animation: woh-slash 1.85s ease-out infinite;
+  animation: woh-shard 2.15s ease-out infinite;
 }
-.woh__slash--2 { animation-delay: 0.05s; }
-.woh__slash--3 { animation-delay: 0.1s; }
-.woh__burst {
-  stroke-width: 2.2;
-  opacity: 0;
-  transform-box: view-box;
-  transform-origin: 628px 196px;
-  animation: woh-burst 1.85s ease-out infinite;
-}
+.woh__shards path:nth-child(2) { animation-delay: 0.03s; }
+.woh__shards path:nth-child(3) { animation-delay: 0.05s; }
+.woh__shards path:nth-child(4) { animation-delay: 0.02s; }
+.woh__shards path:nth-child(5) { animation-delay: 0.06s; }
 .wolf-opp__hunt-kicker {
   margin: 0.15rem 0 0;
   font-size: 0.68rem;
@@ -29942,8 +29941,8 @@ body:has(.app-main--terminal-immersive) #root {
   letter-spacing: 0.38em;
   text-indent: 0.38em;
   text-transform: uppercase;
-  color: var(--opp-gold-soft);
-  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+  color: #fecaca;
+  text-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
   animation: woh-pulse 1.6s ease-in-out infinite;
 }
 .wolf-opp__hunt-caption {
@@ -29967,8 +29966,8 @@ body:has(.app-main--terminal-immersive) #root {
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, #8a6a18, #f0d78c, #fff6da);
-  box-shadow: 0 0 10px rgba(240, 215, 140, 0.45);
+  background: linear-gradient(90deg, #7f1d1d, #ef4444, #f0d78c);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);
   transition: width 0.22s ease;
 }
 .wolf-opp__hunt-bar > span.is-indeterminate {
@@ -29976,60 +29975,63 @@ body:has(.app-main--terminal-immersive) #root {
   animation: woh-bar 1.25s ease-in-out infinite;
 }
 
-@keyframes woh-pounce {
-  0% { transform: translate3d(-38px, 16px, 0) rotate(-11deg); }
-  24% { transform: translate3d(-6px, 2px, 0) rotate(-3deg); }
-  38% { transform: translate3d(46px, -24px, 0) rotate(7deg); }
-  52% { transform: translate3d(22px, 8px, 0) rotate(1deg); }
-  100% { transform: translate3d(-38px, 16px, 0) rotate(-11deg); }
+@keyframes woh-rip {
+  0% { transform: translate3d(-72px, 18px, 0) rotate(-22deg); }
+  22% { transform: translate3d(-18px, 6px, 0) rotate(-10deg); }
+  34% { transform: translate3d(28px, -4px, 0) rotate(2deg); }
+  46% { transform: translate3d(22px, 2px, 0) rotate(1deg); }
+  62% { transform: translate3d(8px, 6px, 0) rotate(-4deg); }
+  100% { transform: translate3d(-72px, 18px, 0) rotate(-22deg); }
 }
-@keyframes woh-tail {
-  0%, 100% { transform: rotate(8deg); }
-  38% { transform: rotate(-16deg); }
-  58% { transform: rotate(4deg); }
+@keyframes woh-split-top {
+  0%, 24% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  36% { transform: translate3d(-7px, -16px, 0) rotate(-4.5deg); }
+  52% { transform: translate3d(-4px, -10px, 0) rotate(-2.5deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
 }
-@keyframes woh-swipe {
-  0%, 18% { transform: rotate(-28deg); }
-  36% { transform: rotate(32deg); }
-  50% { transform: rotate(8deg); }
-  100% { transform: rotate(-28deg); }
+@keyframes woh-split-bot {
+  0%, 24% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  36% { transform: translate3d(8px, 18px, 0) rotate(3.8deg); }
+  52% { transform: translate3d(5px, 11px, 0) rotate(2deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
 }
-@keyframes woh-claws {
-  0%, 20% { transform: rotate(-8deg) scale(0.92); }
-  36% { transform: rotate(18deg) scale(1.12); }
-  48% { transform: rotate(6deg) scale(1); }
-  100% { transform: rotate(-8deg) scale(0.92); }
+@keyframes woh-crack {
+  0%, 28% { stroke-dashoffset: 140; opacity: 0; }
+  38% { stroke-dashoffset: 0; opacity: 1; }
+  70% { opacity: 0.85; }
+  100% { stroke-dashoffset: 0; opacity: 0.15; }
 }
-@keyframes woh-slash {
-  0%, 28% { opacity: 0; stroke-dashoffset: 170; }
-  36% { opacity: 1; stroke-dashoffset: 0; }
-  52% { opacity: 0.7; }
-  64%, 100% { opacity: 0; }
-}
-@keyframes woh-burst {
-  0%, 34% { opacity: 0; transform: scale(0.4); }
-  40% { opacity: 1; transform: scale(1); }
-  58%, 100% { opacity: 0; transform: scale(1.35); }
-}
-@keyframes woh-prey {
-  0%, 32% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0.95; }
-  40% { transform: translate3d(10px, 4px, 0) rotate(8deg); opacity: 0.35; }
-  52% { transform: translate3d(4px, 2px, 0) rotate(2deg); opacity: 0.7; }
-  100% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0.95; }
-}
-@keyframes woh-ground {
-  0%, 30% { transform: scaleX(1); opacity: 0.7; }
-  40% { transform: scaleX(1.18); opacity: 1; }
-  100% { transform: scaleX(1); opacity: 0.7; }
-}
-@keyframes woh-eye {
-  0%, 100% { opacity: 0.75; }
+@keyframes woh-crack-ember {
+  0%, 30% { opacity: 0; }
   38% { opacity: 1; }
+  55% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+@keyframes woh-ember {
+  0%, 26% { opacity: 0.15; }
+  36% { opacity: 1; }
+  58% { opacity: 0.55; }
+  100% { opacity: 0.15; }
+}
+@keyframes woh-hot {
+  0%, 100% { opacity: 0.65; }
+  34% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+@keyframes woh-bloom {
+  0%, 24% { opacity: 0.25; transform: scale(0.86); }
+  38% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.25; transform: scale(0.86); }
+}
+@keyframes woh-shard {
+  0%, 30% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4) rotate(0deg); }
+  38% { opacity: 1; transform: translate3d(8px, -6px, 0) scale(1) rotate(12deg); }
+  100% { opacity: 0; transform: translate3d(28px, 22px, 0) scale(0.3) rotate(40deg); }
 }
 @keyframes woh-mote {
   0%, 30% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
-  40% { opacity: 1; transform: translate3d(12px, -18px, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(28px, -48px, 0) scale(0.2); }
+  40% { opacity: 1; transform: translate3d(10px, -16px, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(22px, -44px, 0) scale(0.2); }
 }
 @keyframes woh-pulse {
   0%, 100% { opacity: 0.62; }
@@ -30064,21 +30066,24 @@ body:has(.app-main--terminal-immersive) #root {
   .wolf-opp__ring,
   .wolf-opp__prime-glow,
   .wolf-opp__title span,
-  .woh__wolf,
-  .woh__tail,
-  .woh__fore,
-  .woh__paw,
-  .woh__eye,
-  .woh__ground,
-  .woh__prey,
-  .woh__slash,
-  .woh__burst,
+  .woh__claw,
+  .woh__edge,
+  .woh__tips,
+  .woh__candle-top,
+  .woh__candle-bot,
+  .woh__inner,
+  .woh__crack,
+  .woh__bloom,
+  .woh__shards path,
   .wolf-opp__hunt-mote,
   .wolf-opp__hunt-kicker,
   .wolf-opp__hunt-bar > span.is-indeterminate {
     animation: none !important;
   }
-  .woh__slash { opacity: 0.55; stroke-dashoffset: 0; }
+  .woh__crack { stroke-dashoffset: 0; opacity: 0.8; }
+  .woh__candle-top { transform: translate3d(-4px, -8px, 0) rotate(-2deg); }
+  .woh__candle-bot { transform: translate3d(5px, 10px, 0) rotate(2deg); }
+  .woh__claw { transform: translate3d(10px, 0, 0) rotate(-4deg); }
   .wolf-opp__desk.is-hunting .wolf-opp__sheets {
     filter: none;
     opacity: 0.35;
