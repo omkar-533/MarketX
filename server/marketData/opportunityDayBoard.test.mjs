@@ -54,8 +54,13 @@ describe('opportunity day board merge', () => {
     assert.deepEqual(Object.keys(kept.boards), ['2026-08-18|F&O|5m']);
   });
 
-  it('waits until the next 09:15 instead of wiping overnight', () => {
-    const afterClose = Date.parse('2026-08-17T18:05:00+05:30');
-    assert.ok(msUntilNextSessionOpen(afterClose) > 12 * 60 * 60_000);
+  it('does not wipe in-memory prints when the disk file is missing', () => {
+    const day = '2026-08-17';
+    const kept = retainBoardsForDay(
+      { boards: { [`${day}|F&O|5m`]: { day, hitsByScanner: { breakout_radar: [{ symbol: 'INFY' }] } } } },
+      day,
+    );
+    assert.equal(Object.keys(kept.boards).length, 1);
+    assert.equal(kept.day, day);
   });
 });

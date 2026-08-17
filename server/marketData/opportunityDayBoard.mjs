@@ -6,6 +6,7 @@ import { lastCompletedNseSessionEndMs } from './indstocksClient.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
   ['breakout_radar', 'BREAKOUT RADAR', 'Price closed above a recent high or below a recent low, with volume confirming the break.'],
@@ -23,6 +24,7 @@ const SCANNER_META = [
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
 const CAP = 80;
+const SETTINGS_KEY = 'opportunity_day_board';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const filePath = resolve(root, 'data', 'opportunity-day-board.json');
 
@@ -69,15 +71,14 @@ let rolloverTimer = null;
 
 export function dropExpiredOpportunityBoards(now = Date.now()) {
   const day = nseBoardDay(now);
-  const all = readAll();
-  if (all.day === day) {
-    armDayRollover(now);
-    return day;
+  let dropped = false;
+  for (const k of [...mem.keys()]) {
+    if (!String(k).startsWith(`${day}|`)) {
+      mem.delete(k);
+      dropped = true;
+    }
   }
-  const next = retainBoardsForDay(all, day);
-  mem.clear();
-  for (const [k, v] of Object.entries(next.boards)) mem.set(k, v);
-  writeAll(next);
+  if (dropped) writeAll({ day, boards: Object.fromEntries(mem) });
   armDayRollover(now);
   return day;
 }
@@ -198,6 +199,9 @@ function hitCount(hitsByScanner) {
 
 /** @type {Map<string, object>} */
 const mem = new Map();
+let durableReady = false;
+/** @type {Promise<void> | null} */
+let durableWait = null;
 
 function hydrate(slot) {
   if (mem.has(slot)) return mem.get(slot);
@@ -210,7 +214,59 @@ function hydrate(slot) {
   return null;
 }
 
-export function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
+function snapshotBoards(day) {
+  return retainBoardsForDay({ boards: Object.fromEntries(mem) }, day);
+}
+
+async function ensureDurable(now = Date.now()) {
+  if (durableReady) {
+    dropExpiredOpportunityBoards(now);
+    return;
+  }
+  if (!durableWait) {
+    durableWait = (async () => {
+      const day = nseBoardDay(now);
+      const file = retainBoardsForDay(readAll(), day);
+      let remote = { day, boards: {} };
+      try {
+        const stored = await readSetting(SETTINGS_KEY);
+        if (stored && typeof stored === 'object') remote = retainBoardsForDay(stored, day);
+      } catch (err) {
+        console.warn('[opportunity-day-board] supabase read skip', err?.message || err);
+      }
+      const fileN = Object.keys(file.boards || {}).length;
+      const remoteN = Object.keys(remote.boards || {}).length;
+      const next = remoteN >= fileN ? remote : file;
+      mem.clear();
+      for (const [k, v] of Object.entries(next.boards || {})) mem.set(k, v);
+      writeAll({ day, boards: Object.fromEntries(mem) });
+      durableReady = true;
+      armDayRollover(now);
+      if (remoteN < fileN && fileN > 0) {
+        try {
+          await writeSetting(SETTINGS_KEY, { day, boards: Object.fromEntries(mem) });
+        } catch {
+          /* next merge retries */
+        }
+      }
+    })().finally(() => {
+      durableWait = null;
+    });
+  }
+  await durableWait;
+}
+
+async function persistDurable(now = Date.now()) {
+  const payload = snapshotBoards(nseBoardDay(now));
+  writeAll(payload);
+  try {
+    await writeSetting(SETTINGS_KEY, payload);
+  } catch (err) {
+    console.warn('[opportunity-day-board] supabase write skip', err?.message || err);
+  }
+}
+
+function peekSync(universe, timeframe, now = Date.now()) {
   const day = dropExpiredOpportunityBoards(now);
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
@@ -242,7 +298,13 @@ export function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
   };
 }
 
-export function mergeOpportunityDayBoard(universe, timeframe, incomingCards, cacheKey, now = Date.now()) {
+export async function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
+  await ensureDurable(now);
+  return peekSync(universe, timeframe, now);
+}
+
+export async function mergeOpportunityDayBoard(universe, timeframe, incomingCards, cacheKey, now = Date.now()) {
+  await ensureDurable(now);
   const day = dropExpiredOpportunityBoards(now);
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
@@ -263,7 +325,6 @@ export function mergeOpportunityDayBoard(universe, timeframe, incomingCards, cac
     hitsByScanner: next,
   };
   mem.set(slot, row);
-  const all = readAll();
-  writeAll(retainBoardsForDay({ boards: { ...(all.boards || {}), [slot]: row } }, day));
-  return peekOpportunityDayBoard(u, tf, now);
+  await persistDurable(now);
+  return peekSync(u, tf, now);
 }

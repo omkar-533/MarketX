@@ -28,6 +28,9 @@ import {
   applyDaySignalCards,
   rankHitsByScore,
   emptyOpportunityCards,
+  loadOpportunityDayBoard,
+  saveOpportunityDayBoard,
+  opportunityBoardKey,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -253,13 +256,7 @@ export default function WolfOpportunityPage({
       const isStale = () => scanGenRef.current !== gen || ac.signal.aborted;
       scanningRef.current = true;
       if (quiet) setBgBusy(true);
-      else {
-        setProgress('Loading shared day board…');
-        if (opts?.reset) {
-          setCards(emptyOpportunityCards());
-          setLastUpdated(null);
-        }
-      }
+      else setProgress('Loading shared day board…');
 
       let live = liveHint;
       try {
@@ -293,40 +290,48 @@ export default function WolfOpportunityPage({
       const provider = resolveLiveProvider();
       setDataMode('LIVE');
       void refreshIndices(provider);
-
+      const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
+      const tfHits = (cards: ScannerCardState[]) =>
+        applyLiveScanCards(cards).map((card) => ({
+          ...card,
+          hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+        }));
       const paintBoard = (incoming: ScannerCardState[], reset: boolean) => {
         setCards((prev) => (reset ? incoming : applyDaySignalCards(prev, incoming)));
         setLastUpdated(Date.now());
       };
+      const adoptBoard = (cards: ScannerCardState[], reset: boolean) => {
+        const incoming = tfHits(cards);
+        saveOpportunityDayBoard(boardKey, incoming);
+        paintBoard(incoming, reset);
+        return incoming;
+      };
+      const localBoard = () => loadOpportunityDayBoard(boardKey);
 
       try {
         if (!quiet) setProgress('Loading shared day board…');
-        let hadBoard = false;
+        const cached = localBoard();
+        if (!quiet && cached.some((c) => c.hits.length)) paintBoard(cached, false);
+
+        let hadBoard = cached.some((c) => c.hits.length);
         try {
           const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
           if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
-            const incoming = applyLiveScanCards(shared.cards).map((card) => ({
-              ...card,
-              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            }));
-            paintBoard(incoming, Boolean(opts?.reset));
+            adoptBoard(shared.cards, false);
             hadBoard = true;
             if (!quiet) setProgress(`${shared.hits} setups`);
-            if (!isNseFnoMarketOpen()) {
-              closedBoardFrozenRef.current = true;
-              return;
-            }
           }
         } catch {
-          /* first user of the day still scans once */
+          /* keep local board; first user of the day still scans once */
         }
 
-        const canContribute =
-          isNseFnoMarketOpen() &&
-          !contributeRef.current &&
-          Date.now() - lastContributeAtRef.current > 45_000;
-
-        if (hadBoard && !opts?.reset) {
+        if (hadBoard) {
+          if (!isNseFnoMarketOpen()) {
+            closedBoardFrozenRef.current = true;
+            return;
+          }
+          const canContribute =
+            !contributeRef.current && Date.now() - lastContributeAtRef.current > 45_000;
           if (canContribute) {
             contributeRef.current = true;
             lastContributeAtRef.current = Date.now();
@@ -339,23 +344,12 @@ export default function WolfOpportunityPage({
                   provider,
                 );
                 if (!out.complete) return;
-                const incoming = applyLiveScanCards(out.cards).map((card) => ({
-                  ...card,
-                  hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-                }));
                 const saved = await postOpportunityDayBoard(
                   activeFilters.universe,
                   activeFilters.timeframe,
-                  incoming,
+                  tfHits(out.cards),
                 );
-                const cards = saved.cards?.length ? saved.cards : incoming;
-                paintBoard(
-                  applyLiveScanCards(cards).map((card) => ({
-                    ...card,
-                    hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-                  })),
-                  false,
-                );
+                if (saved.cards?.length) adoptBoard(saved.cards, false);
               } catch {
                 /* keep the saved board on screen */
               } finally {
@@ -370,7 +364,7 @@ export default function WolfOpportunityPage({
         if (!quiet) {
           setScanning(true);
           setProgress('Fetching live market…');
-          clearLiveCandleCache();
+          if (opts?.fresh) clearLiveCandleCache();
         }
 
         const scanOpts: RunOpportunityOptions = {
@@ -401,35 +395,26 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          let incoming = applyLiveScanCards(out.cards).map((card) => ({
-            ...card,
-            hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-          }));
+          let incoming = tfHits(out.cards);
           try {
             const saved = await postOpportunityDayBoard(
               activeFilters.universe,
               activeFilters.timeframe,
               incoming,
             );
-            if (saved.cards?.length) {
-              incoming = applyLiveScanCards(saved.cards).map((card) => ({
-                ...card,
-                hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-              }));
-            }
+            if (saved.cards?.length) incoming = tfHits(saved.cards);
           } catch {
             /* keep local incoming */
           }
-          paintBoard(incoming, Boolean(opts?.reset));
+          saveOpportunityDayBoard(boardKey, incoming);
+          paintBoard(incoming, false);
           setDataMode(out.dataMode);
           if (!isNseFnoMarketOpen()) closedBoardFrozenRef.current = true;
           if (!quiet) setProgress(`${incoming.reduce((n, c) => n + c.hits.length, 0)} setups ready`);
         } else if (!isStale() && !out.complete) {
           if (out.hits.length) {
-            const incoming = applyLiveScanCards(out.cards).map((card) => ({
-              ...card,
-              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            }));
+            const incoming = tfHits(out.cards);
+            saveOpportunityDayBoard(boardKey, incoming);
             paintBoard(incoming, false);
           }
           if (!quiet) {

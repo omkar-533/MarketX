@@ -618,7 +618,7 @@ router.get('/opportunity-board', async (req, res) => {
   const universe = String(req.query.universe || 'F&O');
   const timeframe = String(req.query.timeframe || '5m');
   res.json({
-    ...peekOpportunityDayBoard(universe, timeframe),
+    ...(await peekOpportunityDayBoard(universe, timeframe)),
     mode: 'LIVE',
     orderExecution: false,
   });
@@ -632,7 +632,7 @@ router.post('/opportunity-board', async (req, res) => {
   const cards = Array.isArray(req.body?.cards) ? req.body.cards : [];
   const cacheKey = String(req.body?.cacheKey || '');
   res.json({
-    ...mergeOpportunityDayBoard(universe, timeframe, cards, cacheKey),
+    ...(await mergeOpportunityDayBoard(universe, timeframe, cards, cacheKey)),
     mode: 'LIVE',
     orderExecution: false,
   });
