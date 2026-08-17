@@ -3,6 +3,7 @@
 @import "./styles/theme-light-overrides.css";
 @import "./styles/screener-chartink.css";
 @import "./styles/wolf-radar-luxury.css";
+@import "./styles/wolf-sidebar-luxury.css";
 
 body {
   background-color: var(--tf-bg);
@@ -29153,7 +29154,12 @@ body:has(.app-main--terminal-immersive) #root {
   font-size: 0.72rem;
   font-weight: 650;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+}
+span.wolf-opp__seg {
+  cursor: default;
 }
 .wolf-opp__seg.is-on {
   background: linear-gradient(180deg, rgba(212, 175, 55, 0.28), rgba(212, 175, 55, 0.12));

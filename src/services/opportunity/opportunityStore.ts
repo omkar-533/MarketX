@@ -252,9 +252,8 @@ export function loadOpportunityFilters(): OpportunityFilters {
     const raw = localStorage.getItem(FILTERS_KEY);
     const parsed = raw ? (JSON.parse(raw) as Partial<OpportunityFilters>) : {};
     const next = { ...DEFAULT_OPPORTUNITY_FILTERS, ...parsed };
-    if (next.universe === 'NIFTY50' || next.universe === 'NIFTY500') {
-      next.universe = 'CASH';
-    }
+    next.universe = 'F&O';
+    next.direction = 'all';
     if (!['1m', '3m', '5m', '15m', '30m', '1h'].includes(String(next.timeframe))) {
       next.timeframe = '5m';
     }

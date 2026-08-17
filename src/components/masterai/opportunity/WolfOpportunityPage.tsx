@@ -484,8 +484,8 @@ export default function WolfOpportunityPage({
     (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
     0,
   );
-  const showLong = filters.direction !== 'bearish';
-  const showShort = filters.direction !== 'bullish';
+  const showLong = true;
+  const showShort = true;
 
   return (
     <div className="wolf-opp wolf-opp--sheets">
@@ -552,26 +552,7 @@ export default function WolfOpportunityPage({
         transition={{ delay: 0.08, duration: 0.45 }}
       >
         <div className="wolf-opp__seg-row" role="group" aria-label="Universe">
-          {(['F&O', 'CASH'] as const).map((u) => (
-            <Seg
-              key={u}
-              on={
-                u === 'CASH'
-                  ? filters.universe === 'CASH' ||
-                    filters.universe === 'NIFTY50' ||
-                    filters.universe === 'NIFTY500'
-                  : filters.universe === u
-              }
-              onClick={() => {
-                patchFilters({ universe: u });
-                setSelected(null);
-                setWhyHit(null);
-                void runScan({ reset: true, filtersOverride: { universe: u } });
-              }}
-            >
-              {u === 'F&O' ? 'F&O' : 'Cash'}
-            </Seg>
-          ))}
+          <span className="wolf-opp__seg is-on">F&O</span>
         </div>
         <div className="wolf-opp__seg-row" role="group" aria-label="Timeframe">
           {(['5m', '15m', '1h', '1D'] as const).map((t) => (
@@ -587,26 +568,6 @@ export default function WolfOpportunityPage({
               }}
             >
               {t}
-            </Seg>
-          ))}
-        </div>
-        <div className="wolf-opp__seg-row" role="group" aria-label="Direction">
-          {(
-            [
-              ['all', 'All'],
-              ['bullish', 'Bullish'],
-              ['bearish', 'Bearish'],
-            ] as const
-          ).map(([id, label]) => (
-            <Seg
-              key={id}
-              on={filters.direction === id}
-              onClick={() => {
-                if (filters.direction === id) return;
-                patchFilters({ direction: id });
-              }}
-            >
-              {label}
             </Seg>
           ))}
         </div>
