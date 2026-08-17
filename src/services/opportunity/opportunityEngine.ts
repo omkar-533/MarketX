@@ -13,7 +13,7 @@ import {
   readCandleTimeMs,
   sessionBarsNeeded,
 } from '../radar/barTime';
-import { opportunityCreatedAtMs } from './opportunityCreated';
+import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -215,10 +215,32 @@ function rankTrim(
   for (const [id, hits] of map) {
     const filtered = hits
       .filter((h) => h.score >= minScore)
-      .filter((h) => direction === 'all' || h.direction === direction || h.direction === 'neutral')
-      .sort((a, b) => b.score - a.score || a.symbol.localeCompare(b.symbol))
-      .slice(0, topN);
-    out.set(id, filtered);
+      .filter((h) => direction === 'all' || h.direction === direction || h.direction === 'neutral');
+    const groups = new Map<string, OpportunityHit[]>();
+    for (const h of filtered) {
+      const g = groups.get(h.symbol) || [];
+      g.push(h);
+      groups.set(h.symbol, g);
+    }
+    const rankedSymbols = [...groups.entries()].sort((a, b) => {
+      const sa = Math.max(...a[1].map((h) => h.score));
+      const sb = Math.max(...b[1].map((h) => h.score));
+      return sb - sa || a[0].localeCompare(b[0]);
+    });
+    const flat: OpportunityHit[] = [];
+    for (const [, g] of rankedSymbols) {
+      const runs = [...g]
+        .sort((a, b) => a.detectedAt - b.detectedAt)
+        .filter((h, i, arr) => i === 0 || h.detectedAt !== arr[i - 1].detectedAt)
+        .slice(0, 4)
+        .map((h, i, arr) => ({
+          ...h,
+          meta: { ...h.meta, signalN: i + 1, signalCount: arr.length },
+        }));
+      flat.push(...runs);
+      if (flat.length >= topN) break;
+    }
+    out.set(id, flat.slice(0, topN));
   }
   return out;
 }
@@ -378,32 +400,30 @@ export async function runOpportunityScan(
           featAt.set(i, snap);
           return snap;
         };
-        const listedAtFor = (
+        const windowsFor = (
           scan: (c: typeof ctx) => OpportunityHit | null,
           direction?: OpportunityHit['direction'],
-        ): number => {
+        ) => {
           try {
-            return (
-              opportunityCreatedAtMs(
-                series,
-                tf,
-                (i) => {
-                  const snap = snapshotAt(i);
-                  if (!snap) return false;
-                  const h = scan({
-                    f: snap,
-                    timeframe: tf,
-                    dataMode,
-                    quotePrice: snap.tech.last,
-                    forTimeWalk: true,
-                  });
-                  return !!h && (direction == null || h.direction === direction);
-                },
-                asOf,
-              ) || 0
+            return opportunityCreatedWindows(
+              series,
+              tf,
+              (i) => {
+                const snap = snapshotAt(i);
+                if (!snap) return false;
+                const h = scan({
+                  f: snap,
+                  timeframe: tf,
+                  dataMode,
+                  quotePrice: snap.tech.last,
+                  forTimeWalk: true,
+                });
+                return !!h && (direction == null || h.direction === direction);
+              },
+              asOf,
             );
           } catch {
-            return 0;
+            return [];
           }
         };
 
@@ -421,26 +441,32 @@ export async function runOpportunityScan(
 
         const listedTimes: number[] = [];
         for (const [, scan] of runners) {
-          const hit = scan(ctx);
-          if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          const listed = listedAtFor(scan, hit.direction);
-          if (!listed) continue;
-          hit.detectedAt = listed;
-          sibling[hit.scannerId] = hit.score;
-          listedTimes.push(listed);
-          emitHit(hit);
+          const wins = windowsFor(scan);
+          if (!wins.length) continue;
+          for (const win of wins) {
+            const snap = snapshotAt(win.endIndex);
+            if (!snap) continue;
+            const hit = scan({
+              f: snap,
+              timeframe: tf,
+              dataMode,
+              quotePrice: snap.tech.last,
+            });
+            if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
+            hit.detectedAt = win.createdAt;
+            hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.createdAt}`;
+            sibling[hit.scannerId] = Math.max(sibling[hit.scannerId] || 0, hit.score);
+            listedTimes.push(win.createdAt);
+            emitHit(hit);
+          }
         }
 
         const prime = scanWolfPrime(ctx, sibling);
-        if (prime) {
-          const listed =
-            listedTimes.length
-              ? Math.min(...listedTimes)
-              : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction);
-          if (listed) {
-            prime.detectedAt = listed;
-            emitHit(prime);
-          }
+        if (prime && listedTimes.length) {
+          const first = Math.min(...listedTimes);
+          prime.detectedAt = first;
+          prime.id = `opp-${prime.scannerId}-${prime.symbol}-${prime.timeframe}-${first}`;
+          emitHit(prime);
         }
 
         const sec = sectorOf(symbol);
@@ -480,7 +506,7 @@ export async function runOpportunityScan(
     );
     if (hit && hit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
       const candles = anchor.f.candles || [];
-      const listed = opportunityCreatedAtMs(
+      const listed = opportunityCreatedWindows(
         candles,
         tf,
         (i) => {
@@ -496,9 +522,10 @@ export async function runOpportunityScan(
         },
         asOf,
       );
-      if (listed) {
-        hit.detectedAt = listed;
-        emitHit(hit);
+      for (const win of listed) {
+        hit.detectedAt = win.createdAt;
+        hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.createdAt}`;
+        emitHit({ ...hit });
       }
     }
   }

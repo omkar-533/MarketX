@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { formatOpportunityCreatedClock, opportunityCreatedAtMs } from './opportunityCreated';
+import { formatOpportunityCreatedClock, opportunityCreatedAtMs, opportunityCreatedTimesMs } from './opportunityCreated';
 import {
-  applyScanCardsKeepingFirstSeen,
+  applyDaySignalCards,
   emptyOpportunityCards,
 } from './opportunityStore';
 import type { OpportunityHit } from './opportunityTypes';
@@ -70,6 +70,36 @@ describe('Opportunity Created clock', () => {
     assert.equal(formatOpportunityCreatedClock(created, now), '2:10 pm');
   });
 
+  it('keeps the first print of a run that is still on at 3:30, not 3:30 itself', () => {
+    const now = Date.parse('2026-08-17T16:22:00+05:30');
+    const start = Date.parse('2026-08-17T09:15:00+05:30');
+    const candles = session(start, 75);
+    const first = 13;
+    const times = opportunityCreatedTimesMs(candles, '5m', (i) => i >= first, now);
+    assert.deepEqual(times, [Date.parse('2026-08-17T10:25:00+05:30')]);
+    assert.equal(formatOpportunityCreatedClock(times[0], now), '10:25 am');
+  });
+
+  it('lists a 2nd print with its own clock when the same name signals again', () => {
+    const now = Date.parse('2026-08-17T14:32:00+05:30');
+    const start = Date.parse('2026-08-17T09:15:00+05:30');
+    const candles = session(start, 64);
+    const morning = 13;
+    const afternoon = 58;
+    const times = opportunityCreatedTimesMs(
+      candles,
+      '5m',
+      (i) => (i >= morning && i <= 20) || i >= afternoon,
+      now,
+    );
+    assert.deepEqual(times, [
+      Date.parse('2026-08-17T10:25:00+05:30'),
+      Date.parse('2026-08-17T14:10:00+05:30'),
+    ]);
+    assert.equal(formatOpportunityCreatedClock(times[0], now), '10:25 am');
+    assert.equal(formatOpportunityCreatedClock(times[1], now), '2:10 pm');
+  });
+
   it('after the bell still shows first-create time, not 3:30 for every name', () => {
     const now = Date.parse('2026-08-17T16:22:00+05:30');
     const start = Date.parse('2026-08-17T09:15:00+05:30');
@@ -110,9 +140,13 @@ describe('Opportunity Created clock', () => {
           }
         : c,
     );
-    const next = applyScanCardsKeepingFirstSeen(prev, incoming);
-    const row = next.find((c) => c.scannerId === 'breakout_radar')?.hits[0];
-    assert.equal(row?.detectedAt, first);
-    assert.equal(formatOpportunityCreatedClock(row?.detectedAt || 0, later), '10:25 am');
+    const next = applyDaySignalCards(prev, incoming);
+    const hits = next.find((c) => c.scannerId === 'breakout_radar')?.hits || [];
+    assert.deepEqual(
+      hits.map((h) => h.detectedAt).sort((a, b) => a - b),
+      [first, later],
+    );
+    assert.equal(formatOpportunityCreatedClock(first, later), '10:25 am');
+    assert.equal(formatOpportunityCreatedClock(later, later), '3:30 pm');
   });
 });

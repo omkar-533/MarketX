@@ -25,7 +25,7 @@ import {
   loadOpportunityFilters,
   saveOpportunityFilters,
   applyLiveScanCards,
-  applyScanCardsKeepingFirstSeen,
+  applyDaySignalCards,
   rankHitsByScore,
   emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
@@ -138,7 +138,10 @@ function HitTile({
         <span className="wolf-opp__tile-score">{hit.score}</span>
         <span className="wolf-opp__tile-meta">
           <BiasBadge dir={bias} size="sm" />
-          <em>Created {formatHitClock(hit.detectedAt)} IST</em>
+          <em>
+            Created {formatHitClock(hit.detectedAt)} IST
+            {Number(hit.meta?.signalN) > 1 ? ` · #${hit.meta?.signalN}` : ''}
+          </em>
         </span>
       </AppLink>
       <div className="wolf-opp__tile-actions">
@@ -324,9 +327,8 @@ export default function WolfOpportunityPage({
             hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
           }));
           setCards((prev) => {
-            const hasBoard = prev.some((c) => c.hits.length);
-            if (quiet && hasBoard) return applyScanCardsKeepingFirstSeen(prev, incoming);
-            return incoming;
+            if (opts?.reset) return incoming;
+            return applyDaySignalCards(prev, incoming);
           });
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
@@ -338,7 +340,7 @@ export default function WolfOpportunityPage({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
             }));
-            setCards(incoming);
+            setCards((prev) => applyDaySignalCards(prev, incoming));
             setLastUpdated(Date.now());
           }
           if (!quiet) {

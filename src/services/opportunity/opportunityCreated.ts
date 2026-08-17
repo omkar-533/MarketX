@@ -1,22 +1,46 @@
 /**
- * Opportunity Created clock — when this setup first printed on the current run.
- * Never the scan clock, never the last bar of the day for every name.
+ * Opportunity Created clock — each signal episode today, not the scan clock.
+ * First print of a run stays. A later reprint is a 2nd listing with its own time.
  */
-import {
-  currentRunStartOfIstDay,
-  firstHitTimeOfIstDay,
-  keepDisplaySetupTime,
-} from '../radar/barTime';
+import { keepDisplaySetupTime, runWindowsOfIstDay } from '../radar/barTime';
 
+export type OpportunityCreatedWindow = { createdAt: number; endIndex: number };
+
+export function opportunityCreatedWindows(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): OpportunityCreatedWindow[] {
+  const seen = new Set<number>();
+  const out: OpportunityCreatedWindow[] = [];
+  for (const w of runWindowsOfIstDay(candles, timeframe, hitsAt, now)) {
+    const createdAt = keepDisplaySetupTime(w.startMs, now);
+    if (!(createdAt > 0) || seen.has(createdAt)) continue;
+    seen.add(createdAt);
+    out.push({ createdAt, endIndex: w.endIndex });
+  }
+  return out;
+}
+
+export function opportunityCreatedTimesMs(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): number[] {
+  return opportunityCreatedWindows(candles, timeframe, hitsAt, now).map((w) => w.createdAt);
+}
+
+/** Latest still-active run, else 0. */
 export function opportunityCreatedAtMs(
   candles: { timestamp?: number; time?: number; ts?: number }[],
   timeframe: string,
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
 ): number {
-  const run = currentRunStartOfIstDay(candles, timeframe, hitsAt, now);
-  if (run > 0) return keepDisplaySetupTime(run, now);
-  return keepDisplaySetupTime(firstHitTimeOfIstDay(candles, timeframe, hitsAt, now), now);
+  const times = opportunityCreatedTimesMs(candles, timeframe, hitsAt, now);
+  return times.length ? times[times.length - 1] : 0;
 }
 
 export function formatOpportunityCreatedClock(ms: number, now = Date.now()): string {

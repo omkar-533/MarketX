@@ -279,18 +279,56 @@ export function currentRunStartOfIstDay(
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
 ): number {
+  const windows = runWindowsOfIstDay(candles, timeframe, hitsAt, now);
+  if (!windows.length) return 0;
   const w = istSessionWalk(candles, timeframe, now);
-  if (!w) return 0;
+  if (!w || !w.inSession(w.end) || !hitsAt(w.end)) return 0;
+  return windows[windows.length - 1]?.startMs || 0;
+}
+
+export type IstRunWindow = { startMs: number; endIndex: number };
+
+/**
+ * Every qualifying run today — start clock + last bar of that episode.
+ * A 10:20 signal that died, then a 14:05 reprint, returns both.
+ * A run still on at the close keeps the start of that run, not 3:30.
+ */
+export function runWindowsOfIstDay(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): IstRunWindow[] {
+  const w = istSessionWalk(candles, timeframe, now);
+  if (!w) return [];
   const floor =
     timeframe === '1D' || timeframe === '4h' ? w.start : Math.min(w.end, w.start + 1);
-  if (!w.inSession(w.end) || !hitsAt(w.end)) return 0;
-  let first = w.end;
-  for (let i = w.end - 1; i >= floor; i -= 1) {
-    if (!w.inSession(i)) continue;
-    if (!hitsAt(i)) break;
-    first = i;
+  const out: IstRunWindow[] = [];
+  let i = floor;
+  while (i <= w.end) {
+    if (!w.inSession(i) || !hitsAt(i)) {
+      i += 1;
+      continue;
+    }
+    const startMs = w.stamp(i);
+    let endIndex = i;
+    i += 1;
+    while (i <= w.end && w.inSession(i) && hitsAt(i)) {
+      endIndex = i;
+      i += 1;
+    }
+    if (startMs > 0) out.push({ startMs, endIndex });
   }
-  return w.stamp(first);
+  return out;
+}
+
+export function runStartsOfIstDay(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): number[] {
+  return runWindowsOfIstDay(candles, timeframe, hitsAt, now).map((r) => r.startMs);
 }
 
 function onTradingDay(ms: number, now: number): number {

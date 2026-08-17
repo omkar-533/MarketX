@@ -152,7 +152,35 @@ export function applyScanCardsKeepingFirstSeen(
   });
 }
 
-/** Live desk: this scan only. Never merge a browser-saved board. */
+/** Same IST day: keep every signal print. New reprint adds a row; first print never restamps. */
+export function applyDaySignalCards(
+  prev: ScannerCardState[],
+  incoming: ScannerCardState[],
+): ScannerCardState[] {
+  const prevBy = new Map(prev.map((c) => [c.scannerId, c]));
+  const inBy = new Map(incoming.map((c) => [c.scannerId, c]));
+  return emptyOpportunityCards().map((blank) => {
+    const nextCard = inBy.get(blank.scannerId);
+    const prevCard = prevBy.get(blank.scannerId);
+    const byKey = new Map<string, OpportunityHit>();
+    for (const h of prevCard?.hits || []) {
+      if (listingTime(h.detectedAt)) byKey.set(`${h.symbol}|${h.detectedAt}`, h);
+    }
+    for (const h of nextCard?.hits || []) {
+      const k = `${h.symbol}|${h.detectedAt}`;
+      const old = byKey.get(k);
+      byKey.set(k, old ? mergeHitKeepFirstSeen(old, h) : h);
+    }
+    const hits = rankHitsByScore([...byKey.values()]);
+    return {
+      ...blank,
+      status: hits.length ? 'ready' : nextCard?.status || prevCard?.status || 'idle',
+      hits,
+      updatedAt: nextCard?.updatedAt ?? Date.now(),
+      unavailableReason: nextCard?.unavailableReason,
+    };
+  });
+}
 export function applyLiveScanCards(incoming: ScannerCardState[]): ScannerCardState[] {
   const inBy = new Map(incoming.map((c) => [c.scannerId, c]));
   return emptyOpportunityCards().map((blank) => {
