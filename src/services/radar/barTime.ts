@@ -172,6 +172,23 @@ export function istSessionEndMs(now = Date.now()): number {
   return Number.isFinite(close) ? close : 0;
 }
 
+/**
+ * Close time of the last fully finished bar on the NSE 09:15 grid.
+ * Never the forming candle's projected close (that is why 11:42 was showing 11:45).
+ */
+export function lastClosedBarCloseMs(timeframe: string, now = Date.now()): number {
+  const dur = barDurationMs(timeframe);
+  const start = istSessionStartMs(now);
+  if (!(start > 0) || now < start) return 0;
+  const sessionEnd = istSessionEndMs(now);
+  const cap = sessionEnd ? Math.min(now, sessionEnd) : now;
+  if (!dur) return cap <= now ? cap : 0;
+  const closed = Math.floor((cap - start) / dur);
+  if (closed <= 0) return 0;
+  const close = start + closed * dur;
+  return close > now + 2_000 ? close - dur : close;
+}
+
 const NSE_SESSION_MS = 375 * 60_000; // 09:15–15:30
 const TIMEWALK_LOOKBACK_BARS = 40;
 

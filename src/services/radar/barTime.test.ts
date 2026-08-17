@@ -6,6 +6,7 @@ import {
   firstHitTimeOfIstDay,
   keepDisplaySetupTime,
   keepFirstSetupTime,
+  lastClosedBarCloseMs,
   lastBarStamp,
   nseTradingDay,
   readCandleTimeMs,
@@ -160,5 +161,14 @@ describe('barTime', () => {
     assert.equal(keepDisplaySetupTime(thursday, sat), thursday);
     assert.equal(keepDisplaySetupTime(saturdayNow, sat), 0);
     assert.equal(keepFirstSetupTime(0, thursday, sat) || keepDisplaySetupTime(thursday, sat), thursday);
+  });
+
+  it('does not stamp the forming 5m bar close while that candle is still open', () => {
+    const now = Date.parse('2026-08-17T11:42:47+05:30');
+    const lastClose = Date.parse('2026-08-17T11:40:00+05:30');
+    const formingClose = Date.parse('2026-08-17T11:45:00+05:30');
+    assert.equal(lastClosedBarCloseMs('5m', now), lastClose);
+    assert.ok(lastClosedBarCloseMs('5m', now) < formingClose);
+    assert.ok(lastClosedBarCloseMs('5m', now) <= now);
   });
 });

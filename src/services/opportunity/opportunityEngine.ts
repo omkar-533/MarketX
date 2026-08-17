@@ -14,6 +14,7 @@ import {
   readCandleTimeMs,
   sessionBarsNeeded,
   setupCreatedAtFromCandles,
+  lastClosedBarCloseMs,
 } from '../radar/barTime';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
@@ -251,6 +252,9 @@ export async function runOpportunityScan(
     if (!hit) return;
     hit.detectedAt =
       keepFirstSetupTime(0, hit.detectedAt, asOf) || keepDisplaySetupTime(hit.detectedAt, asOf);
+    if (hit.detectedAt > Date.now() + 2_000) {
+      hit.detectedAt = lastClosedBarCloseMs(tf, Date.now());
+    }
     if (hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) return;
     pushHit(buckets, hit);
     opts.onHit?.(hit);
@@ -283,7 +287,7 @@ export async function runOpportunityScan(
       );
       symbols = uniqueSortedSymbols(snap.symbols);
       candleMapAll = snap.candlesBySymbol || {};
-      asOf = Number(snap.asOf || snap.builtAt) || asOf;
+      asOf = Math.min(Number(snap.asOf || snap.builtAt) || Date.now(), Date.now());
     } else {
       symbols = await loadOpportunityUniverse(batchProvider, filters);
     }
