@@ -6,7 +6,7 @@ export type PromoCodeRow = {
   code: string;
   label: string;
   grantDays: number;
-  planId: 'monthly' | 'quarterly' | 'yearly' | null;
+  planId: 'trial' | 'monthly' | 'quarterly' | 'yearly' | null;
   /** 0–100 — percent off the tagged plan (desk / signup display). */
   discountPercent: number;
   maxRedemptions: number | null;

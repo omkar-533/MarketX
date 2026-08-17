@@ -8,10 +8,11 @@ import { randomUUID } from 'crypto';
 
 export const PROMO_CODES_KEY = 'promo_codes';
 
-const PLAN_IDS = new Set(['monthly', 'quarterly', 'yearly']);
+const PLAN_IDS = new Set(['trial', 'monthly', 'quarterly', 'yearly']);
 
 /** Access length follows the tagged plan — no separate “days” knob needed. */
 export const PLAN_ACCESS_DAYS = {
+  trial: 3,
   monthly: 30,
   quarterly: 90,
   yearly: 365,
@@ -44,7 +45,7 @@ function sanitizePromoCode(input, { preserveId = true } = {}) {
   const planRaw = String(src.planId || '').trim().toLowerCase();
   const planId = PLAN_IDS.has(planRaw) ? planRaw : null;
 
-  // Plan wins: Monthly=30, 3 Months=90, Yearly=365. No plan → lifetime (0).
+  // Plan wins: 3-day trial=3, Monthly=30, 3 Months=90, Yearly=365. No plan → lifetime (0).
   let grantDays = 0;
   if (planId) {
     grantDays = PLAN_ACCESS_DAYS[planId];

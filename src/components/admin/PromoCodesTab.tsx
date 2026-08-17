@@ -7,6 +7,7 @@ import {
   adminUpdatePromoCode,
   type PromoCodeRow,
 } from '../../services/promoCodes';
+import { TRIAL_DAYS } from '../../constants/plans';
 
 type PromoCodesTabProps = {
   adminEmail: string | null;
@@ -18,12 +19,14 @@ const FIELD =
 const LABEL = 'block text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 font-bold';
 
 const PLAN_LABELS: Record<string, string> = {
+  trial: '3-day trial',
   monthly: 'Monthly',
   quarterly: '3 Months',
   yearly: 'Yearly',
 };
 
 const PLAN_ACCESS_DAYS: Record<string, number> = {
+  trial: TRIAL_DAYS,
   monthly: 30,
   quarterly: 90,
   yearly: 365,
@@ -180,8 +183,8 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
         </h3>
         <p className="text-[11px] text-slate-500">
           Choose a plan and set % off (0–100). Access length comes from the plan automatically
-          (Monthly 30d · 3 Months 90d · Yearly 365d). No plan = signup unlock only (lifetime until
-          desk changes it).
+          (3-day trial · Monthly 30d · 3 Months 90d · Yearly 365d). No plan = signup unlock only
+          (lifetime until desk changes it).
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
@@ -210,6 +213,7 @@ export default function PromoCodesTab({ adminEmail, adminPassword }: PromoCodesT
             <label className={LABEL}>Plan</label>
             <select className={FIELD} value={planId} onChange={(e) => setPlanId(e.target.value)}>
               <option value="">Any / none</option>
+              <option value="trial">3-day trial ({TRIAL_DAYS} days)</option>
               <option value="monthly">Monthly (30 days)</option>
               <option value="quarterly">3 Months (90 days)</option>
               <option value="yearly">Yearly (365 days)</option>
