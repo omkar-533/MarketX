@@ -333,7 +333,7 @@ export async function fetchOpportunitySnapshot(
     }
     if (data.error) throw new Error(data.error);
     onWait?.({ loaded: data.symbolsLoaded || 0, total: data.symbolsTotal || 0 });
-    if (Date.now() - started > 180_000) {
+    if (Date.now() - started > 480_000) {
       throw new Error('Shared opportunity board timed out');
     }
     await new Promise((r) => setTimeout(r, 1000));

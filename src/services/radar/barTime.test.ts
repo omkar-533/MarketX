@@ -215,4 +215,12 @@ describe('barTime', () => {
     assert.ok(lastClosedBarCloseMs('5m', now) < formingClose);
     assert.ok(lastClosedBarCloseMs('5m', now) <= now);
   });
+
+  it('after 15:30 still stamps the last session bar, not blank', () => {
+    const now = Date.parse('2026-08-17T16:22:00+05:30');
+    const open = Date.parse('2026-08-17T15:25:00+05:30');
+    const candles = [bar(open - FIVE), bar(open)];
+    assert.equal(lastBarStamp(candles, '5m', now), Date.parse('2026-08-17T15:30:00+05:30'));
+    assert.equal(keepDisplaySetupTime(lastBarStamp(candles, '5m', now), now), Date.parse('2026-08-17T15:30:00+05:30'));
+  });
 });

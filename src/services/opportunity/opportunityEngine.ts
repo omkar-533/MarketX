@@ -10,6 +10,7 @@ import {
   closedBarIndex,
   currentRunStartOfIstDay,
   keepDisplaySetupTime,
+  lastBarStamp,
   readCandleTimeMs,
   sessionBarsNeeded,
 } from '../radar/barTime';
@@ -424,7 +425,7 @@ export async function runOpportunityScan(
         for (const [, scan] of runners) {
           const hit = scan(ctx);
           if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          const listed = listedAtFor(scan, hit.direction);
+          const listed = listedAtFor(scan, hit.direction) || lastBarStamp(series, tf, asOf);
           if (!listed) continue;
           hit.detectedAt = listed;
           sibling[hit.scannerId] = hit.score;
@@ -434,9 +435,10 @@ export async function runOpportunityScan(
 
         const prime = scanWolfPrime(ctx, sibling);
         if (prime) {
-          const listed = listedTimes.length
-            ? Math.min(...listedTimes)
-            : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction);
+          const listed =
+            listedTimes.length
+              ? Math.min(...listedTimes)
+              : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction) || lastBarStamp(series, tf, asOf);
           if (listed) {
             prime.detectedAt = listed;
             emitHit(prime);
@@ -519,7 +521,9 @@ export async function runOpportunityScan(
   for (const card of cards) opts.onCard?.(card);
 
   const aborted = Boolean(opts.signal?.aborted);
-  const coverageOk = total === 0 || barsOk >= Math.max(15, Math.floor(total * 0.3));
+  const coverageOk = shared
+    ? checked >= total
+    : total === 0 || barsOk >= Math.max(15, Math.floor(total * 0.3));
   const complete = !aborted && checked >= total && coverageOk;
 
   opts.onProgress?.({

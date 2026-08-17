@@ -77,6 +77,33 @@ function hydrateDisk(key) {
   return row;
 }
 
+function hydrateAllDisk() {
+  const all = readDisk();
+  for (const [k, v] of Object.entries(all)) {
+    if (v?.ready && v?.candlesBySymbol) cache.set(k, v);
+  }
+}
+
+/** Last ready map for this universe+tf — used while the new NSE bar is still building. */
+export function pickStaleSnapshot(universe, timeframe, exactKey) {
+  hydrateAllDisk();
+  const exact = cache.get(exactKey);
+  if (exact?.ready && exact.candlesBySymbol) return exact;
+  const tf = normTf(timeframe);
+  const p = `${String(universe || 'F&O')}|${tf}|`;
+  let bestBucket = -1;
+  let best = null;
+  for (const [k, v] of cache.entries()) {
+    if (!k.startsWith(p) || !v?.ready || !v.candlesBySymbol) continue;
+    const bucket = Number(k.slice(p.length)) || 0;
+    if (bucket >= bestBucket) {
+      bestBucket = bucket;
+      best = v;
+    }
+  }
+  return best;
+}
+
 /** @type {Map<string, ReturnType<typeof setTimeout>>} */
 const refreshTimers = new Map();
 /** @type {string} */
@@ -248,13 +275,13 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
   if (accessToken) lastAccessToken = accessToken;
-  const hit = cache.get(key) || hydrateDisk(key);
-  if (hit) {
+  const hit = pickStaleSnapshot(u, tf, key);
+  if (hit && hit.cacheKey === key) {
     armAutoFetch(u, tf, accessToken || lastAccessToken);
     return { ready: true, ...hit };
   }
   const fail = lastFail.get(key);
-  if (fail && Date.now() - fail.at < 20_000 && !inflight.has(key)) {
+  if (fail && !hit && Date.now() - fail.at < 20_000 && !inflight.has(key)) {
     return {
       ready: false,
       building: false,
@@ -286,8 +313,11 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
       const message = err instanceof Error ? err.message : 'Shared board failed';
       console.warn('[opportunity-snapshot] build failed', message);
       lastFail.set(key, { at: Date.now(), error: message });
-      cache.delete(key);
     });
+  }
+  if (hit?.ready && hit.candlesBySymbol) {
+    armAutoFetch(u, tf, accessToken || lastAccessToken);
+    return { ready: true, ...hit, building: inflight.has(key), serving: 'previous-bar' };
   }
   const prog = progress.get(key) || { loaded: 0, total: 0 };
   return {

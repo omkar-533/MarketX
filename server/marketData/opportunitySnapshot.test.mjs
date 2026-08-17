@@ -19,4 +19,9 @@ describe('opportunity snapshot key', () => {
     const now = Date.parse('2026-08-17T12:11:45+05:30');
     assert.equal(nseLastClosedBarCloseMs('5m', now), Date.parse('2026-08-17T12:10:00+05:30'));
   });
+
+  it('after the bell still keys the 15:30 close', () => {
+    const now = Date.parse('2026-08-17T16:22:00+05:30');
+    assert.equal(nseLastClosedBarCloseMs('5m', now), Date.parse('2026-08-17T15:30:00+05:30'));
+  });
 });

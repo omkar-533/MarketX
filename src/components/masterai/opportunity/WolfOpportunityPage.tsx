@@ -256,7 +256,7 @@ export default function WolfOpportunityPage({
         setScanning(true);
         setProgress('Fetching live market…');
         clearLiveCandleCache();
-        if (opts?.reset !== false) {
+        if (opts?.reset) {
           setCards(emptyOpportunityCards());
           setLastUpdated(null);
         }
@@ -336,8 +336,18 @@ export default function WolfOpportunityPage({
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
-        } else if (!isStale() && !out.complete && !quiet) {
-          setProgress('Waiting for a full live scan…');
+        } else if (!isStale() && !out.complete) {
+          if (out.hits.length) {
+            const incoming = applyLiveScanCards(out.cards).map((card) => ({
+              ...card,
+              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+            }));
+            setCards(incoming);
+            setLastUpdated(Date.now());
+          }
+          if (!quiet) {
+            setProgress(out.hits.length ? `${out.hits.length} setups (partial)` : 'Waiting for a full live scan…');
+          }
         }
       } catch (e) {
         if (!isStale()) {
@@ -357,7 +367,7 @@ export default function WolfOpportunityPage({
 
   useEffect(() => {
     if (!sessionKnown) return;
-    void runScan({ reset: true, fresh: true });
+    void runScan({ reset: false, fresh: true });
     return () => {
       abortRef.current?.abort();
     };
@@ -513,7 +523,7 @@ export default function WolfOpportunityPage({
           ))}
         </div>
         <p className="wolf-opp__status-line">
-          {scanning ? progress || 'Scanning…' : `${hitCount} setups`}
+          {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated
             ? ` · ${new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
             : ''}
