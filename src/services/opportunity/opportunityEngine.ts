@@ -11,6 +11,7 @@ import {
   currentRunStartOfIstDay,
   keepDisplaySetupTime,
   lastBarStamp,
+  lastClosedBarCloseMs,
   readCandleTimeMs,
   sessionBarsNeeded,
 } from '../radar/barTime';
@@ -284,7 +285,8 @@ export async function runOpportunityScan(
       );
       symbols = uniqueSortedSymbols(snap.symbols);
       candleMapAll = snap.candlesBySymbol || {};
-      asOf = Math.min(Number(snap.asOf || snap.builtAt) || Date.now(), Date.now());
+      const barClose = lastClosedBarCloseMs(tf);
+      asOf = barClose || Math.min(Number(snap.asOf || snap.builtAt) || Date.now(), Date.now());
     } else {
       symbols = await loadOpportunityUniverse(batchProvider, filters);
     }

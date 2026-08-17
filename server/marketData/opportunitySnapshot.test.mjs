@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { nseLastClosedBarCloseMs, snapshotCacheKey } from './opportunitySnapshot.mjs';
+import { nseCashSessionIsOpen, nseLastClosedBarCloseMs, msUntilNextNseBar, snapshotCacheKey } from './opportunitySnapshot.mjs';
 
 describe('opportunity snapshot key', () => {
   it('is identical for two clients in the same NSE 5m bar', () => {
@@ -23,5 +23,17 @@ describe('opportunity snapshot key', () => {
   it('after the bell still keys the 15:30 close', () => {
     const now = Date.parse('2026-08-17T16:22:00+05:30');
     assert.equal(nseLastClosedBarCloseMs('5m', now), Date.parse('2026-08-17T15:30:00+05:30'));
+  });
+
+  it('does not schedule an 8s rebuild after the cash session', () => {
+    const now = Date.parse('2026-08-17T16:22:00+05:30');
+    assert.equal(nseCashSessionIsOpen(now), false);
+    assert.ok(msUntilNextNseBar('5m', now) > 60 * 60_000);
+  });
+
+  it('keeps the same cache key across after-hours minutes', () => {
+    const a = Date.parse('2026-08-17T16:22:00+05:30');
+    const b = Date.parse('2026-08-17T16:37:00+05:30');
+    assert.equal(snapshotCacheKey('F&O', '5m', a), snapshotCacheKey('F&O', '5m', b));
   });
 });

@@ -13,7 +13,7 @@ import {
   TrendingDown,
   Minus,
 } from 'lucide-react';
-import { getMarketSession } from '../../../utils/marketHours';
+import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
@@ -200,6 +200,7 @@ export default function WolfOpportunityPage({
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
   const lastProgAtRef = useRef(0);
+  const closedBoardFrozenRef = useRef(false);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const marketOpen = getMarketSession('NSE:NIFTY').open;
@@ -242,6 +243,8 @@ export default function WolfOpportunityPage({
     }) => {
       const quiet = Boolean(opts?.quiet);
       const activeFilters = { ...filters, ...opts?.filtersOverride };
+      if (opts?.reset) closedBoardFrozenRef.current = false;
+      if (!opts?.reset && closedBoardFrozenRef.current && !isNseFnoMarketOpen()) return;
       if (quiet && scanningRef.current) return;
       if (!quiet) abortRef.current?.abort();
       else if (scanningRef.current) return;
@@ -335,6 +338,7 @@ export default function WolfOpportunityPage({
           });
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
+          if (!isNseFnoMarketOpen()) closedBoardFrozenRef.current = true;
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
         } else if (!isStale() && !out.complete) {
           if (out.hits.length) {
@@ -376,6 +380,7 @@ export default function WolfOpportunityPage({
 
   useEffect(() => {
     if (!filters.autoRefresh) return;
+    if (!isNseFnoMarketOpen()) return;
     const id = window.setInterval(() => void runScan({ quiet: true }), filters.refreshSec * 1000);
     return () => window.clearInterval(id);
   }, [filters.autoRefresh, filters.refreshSec, runScan]);

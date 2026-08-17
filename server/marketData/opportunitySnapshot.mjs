@@ -118,6 +118,15 @@ function istCalendarDay(ms) {
   }).format(new Date(ms));
 }
 
+export function nseCashSessionIsOpen(now = Date.now()) {
+  const ymd = istCalendarDay(now);
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date(now));
+  if (wd === 'Sat' || wd === 'Sun') return false;
+  const open = Date.parse(`${ymd}T09:15:00+05:30`);
+  const close = Date.parse(`${ymd}T15:30:00+05:30`);
+  return Number.isFinite(open) && Number.isFinite(close) && now >= open && now < close;
+}
+
 function nseSessionOpenMs(now) {
   const ymd = istCalendarDay(lastCompletedNseSessionEndMs(now));
   const open = Date.parse(`${ymd}T09:15:00+05:30`);
@@ -140,9 +149,18 @@ export function nseLastClosedBarCloseMs(timeframe, now = Date.now()) {
   return close > now + 2_000 ? close - dur : close;
 }
 
-function msUntilNextNseBar(timeframe, now = Date.now()) {
+export function msUntilNextNseBar(timeframe, now = Date.now()) {
   const tf = normTf(timeframe);
   const dur = BAR_MS[tf] || BAR_MS['5m'];
+  if (!nseCashSessionIsOpen(now)) {
+    const ymd = istCalendarDay(lastCompletedNseSessionEndMs(now));
+    const p = new Date(`${ymd}T12:00:00+05:30`);
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(p);
+    const skip = wd === 'Fri' ? 3 : 1;
+    const nx = Date.parse(`${ymd}T09:15:00+05:30`) + skip * 86_400_000 + dur;
+    const wait = (Number.isFinite(nx) ? nx : now + dur) - now + 4_000;
+    return Math.max(60_000, wait);
+  }
   const last = nseLastClosedBarCloseMs(tf, now);
   const sessionEnd = lastCompletedNseSessionEndMs(now);
   let next = last > 0 ? last + dur : nseSessionOpenMs(now) + dur;
@@ -160,7 +178,8 @@ function msUntilNextNseBar(timeframe, now = Date.now()) {
 export function snapshotCacheKey(universe, timeframe, now = Date.now()) {
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
-  const bucket = nseLastClosedBarCloseMs(tf, now) || Math.floor(now / (BAR_MS[tf] || 300_000));
+  const bucket =
+    nseLastClosedBarCloseMs(tf, now) || lastCompletedNseSessionEndMs(now) || Math.floor(now / (BAR_MS[tf] || 300_000));
   return `${u}|${tf}|${bucket}`;
 }
 
@@ -232,6 +251,7 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
 
 function armAutoFetch(universe, timeframe, accessToken) {
   if (!accessToken) return;
+  if (!nseCashSessionIsOpen()) return;
   lastAccessToken = accessToken;
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
@@ -255,7 +275,8 @@ async function buildSnapshot(accessToken, universe, timeframe, key) {
   const bars = SNAP_BARS[timeframe] || 120;
   progress.set(key, { loaded: 0, total: symbols.length });
   const candlesBySymbol = await fillCandles(accessToken, symbols, timeframe, bars, key);
-  const asOf = Date.now();
+  const barClose = nseLastClosedBarCloseMs(timeframe);
+  const asOf = barClose || Date.now();
   return {
     ready: true,
     universe,
@@ -276,9 +297,10 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
   const key = snapshotCacheKey(u, tf);
   if (accessToken) lastAccessToken = accessToken;
   const hit = pickStaleSnapshot(u, tf, key);
-  if (hit && hit.cacheKey === key) {
-    armAutoFetch(u, tf, accessToken || lastAccessToken);
-    return { ready: true, ...hit };
+  const sessionOpen = nseCashSessionIsOpen();
+  if (hit?.ready && hit.candlesBySymbol && (!sessionOpen || hit.cacheKey === key)) {
+    if (sessionOpen) armAutoFetch(u, tf, accessToken || lastAccessToken);
+    return { ready: true, ...hit, frozen: !sessionOpen };
   }
   const fail = lastFail.get(key);
   if (fail && !hit && Date.now() - fail.at < 20_000 && !inflight.has(key)) {
