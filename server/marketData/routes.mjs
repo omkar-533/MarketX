@@ -38,6 +38,7 @@ import {
 import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
 import { peekOpportunitySnapshot } from './opportunitySnapshot.mjs';
+import { peekOpportunityDayBoard, mergeOpportunityDayBoard } from './opportunityDayBoard.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -592,6 +593,33 @@ router.get('/opportunity-snapshot', async (req, res) => {
           : 'Failed to load shared opportunity board',
     });
   }
+});
+
+/** Shared IST-day Opportunity list — same names/times for every login. */
+router.get('/opportunity-board', async (req, res) => {
+  const live = await requireLiveToken(req, res);
+  if (!live) return;
+  const universe = String(req.query.universe || 'F&O');
+  const timeframe = String(req.query.timeframe || '5m');
+  res.json({
+    ...peekOpportunityDayBoard(universe, timeframe),
+    mode: 'LIVE',
+    orderExecution: false,
+  });
+});
+
+router.post('/opportunity-board', async (req, res) => {
+  const live = await requireLiveToken(req, res);
+  if (!live) return;
+  const universe = String(req.body?.universe || req.query.universe || 'F&O');
+  const timeframe = String(req.body?.timeframe || req.query.timeframe || '5m');
+  const cards = Array.isArray(req.body?.cards) ? req.body.cards : [];
+  const cacheKey = String(req.body?.cacheKey || '');
+  res.json({
+    ...mergeOpportunityDayBoard(universe, timeframe, cards, cacheKey),
+    mode: 'LIVE',
+    orderExecution: false,
+  });
 });
 
 router.post('/radar/scan', (_req, res) => {

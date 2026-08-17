@@ -15,6 +15,7 @@ data/app-indicators.json
 data/app-master-ai-knowledge.json
 data/market-data-connections.json
 data/opportunity-snapshots.json
+data/opportunity-day-board.json
 *.log
 .DS_Store
 tmptest.txt

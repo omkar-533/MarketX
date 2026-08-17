@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
-import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache } from '../../../services/marketData/marketDataApi';
+import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
@@ -293,7 +293,31 @@ export default function WolfOpportunityPage({
       setDataMode('LIVE');
       void refreshIndices(provider);
 
+      const paintBoard = (incoming: ScannerCardState[], reset: boolean) => {
+        setCards((prev) => (reset ? incoming : applyDaySignalCards(prev, incoming)));
+        setLastUpdated(Date.now());
+      };
+
       try {
+        if (!quiet) setProgress('Loading shared day board…');
+        try {
+          const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
+          if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
+            const incoming = applyLiveScanCards(shared.cards).map((card) => ({
+              ...card,
+              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+            }));
+            paintBoard(incoming, Boolean(opts?.reset));
+            if (!quiet) setProgress(`${shared.hits} setups · shared day board`);
+            if (!isNseFnoMarketOpen()) {
+              closedBoardFrozenRef.current = true;
+              return;
+            }
+          }
+        } catch {
+          /* scan the shared candle snapshot locally, then upload */
+        }
+
         const scanOpts: RunOpportunityOptions = {
           signal: ac.signal,
           topN: OPPORTUNITY_SCAN_CAP,
@@ -303,13 +327,13 @@ export default function WolfOpportunityPage({
             const now = Date.now();
             if (p.status === 'scanning' && now - lastProgAtRef.current < 220) return;
             lastProgAtRef.current = now;
-              setProgress(
-                p.status === 'scanning'
-                  ? p.phase === 'SHARED'
-                    ? `Shared board ${p.symbolsChecked}/${p.symbolsTotal || '?'}`
-                    : `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
-                  : p.phase,
-              );
+            setProgress(
+              p.status === 'scanning'
+                ? p.phase === 'SHARED'
+                  ? `Shared board ${p.symbolsChecked}/${p.symbolsTotal || '?'}`
+                  : `Hunting ${p.symbolsChecked}/${p.symbolsTotal}`
+                : p.phase,
+            );
           },
           onCard: (card) => {
             if (isStale() || card.status !== 'unavailable') return;
@@ -322,26 +346,36 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          const incoming = applyLiveScanCards(out.cards).map((card) => ({
+          let incoming = applyLiveScanCards(out.cards).map((card) => ({
             ...card,
             hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
           }));
-          setCards((prev) => {
-            if (opts?.reset) return incoming;
-            return applyDaySignalCards(prev, incoming);
-          });
+          try {
+            const saved = await postOpportunityDayBoard(
+              activeFilters.universe,
+              activeFilters.timeframe,
+              incoming,
+            );
+            if (saved.cards?.length) {
+              incoming = applyLiveScanCards(saved.cards).map((card) => ({
+                ...card,
+                hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+              }));
+            }
+          } catch {
+            /* keep local incoming */
+          }
+          paintBoard(incoming, Boolean(opts?.reset));
           setDataMode(out.dataMode);
-          setLastUpdated(Date.now());
           if (!isNseFnoMarketOpen()) closedBoardFrozenRef.current = true;
-          if (!quiet) setProgress(`${out.hits.length} setups ready`);
+          if (!quiet) setProgress(`${incoming.reduce((n, c) => n + c.hits.length, 0)} setups ready`);
         } else if (!isStale() && !out.complete) {
           if (out.hits.length) {
             const incoming = applyLiveScanCards(out.cards).map((card) => ({
               ...card,
               hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
             }));
-            setCards((prev) => applyDaySignalCards(prev, incoming));
-            setLastUpdated(Date.now());
+            paintBoard(incoming, false);
           }
           if (!quiet) {
             setProgress(out.hits.length ? `${out.hits.length} setups (partial)` : 'Waiting for a full live scan…');

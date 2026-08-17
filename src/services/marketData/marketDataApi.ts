@@ -338,7 +338,48 @@ export async function fetchOpportunitySnapshot(
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error('Scan aborted');
+    throw new Error('Scan aborted');
+}
+
+export async function fetchOpportunityDayBoard(universe: string, timeframe: string) {
+  return json<{
+    ready: boolean;
+    day: string;
+    universe: string;
+    timeframe: string;
+    cacheKey: string;
+    updatedAt?: number;
+    asOf?: number;
+    cards: import('../opportunity/opportunityTypes').ScannerCardState[];
+    hits: number;
+    source: string;
+  }>(
+    `/api/market-data/opportunity-board?universe=${encodeURIComponent(universe)}&timeframe=${encodeURIComponent(timeframe)}`,
+  );
+}
+
+export async function postOpportunityDayBoard(
+  universe: string,
+  timeframe: string,
+  cards: import('../opportunity/opportunityTypes').ScannerCardState[],
+  cacheKey = '',
+) {
+  return json<{
+    ready: boolean;
+    day: string;
+    universe: string;
+    timeframe: string;
+    cacheKey: string;
+    updatedAt?: number;
+    asOf?: number;
+    cards: import('../opportunity/opportunityTypes').ScannerCardState[];
+    hits: number;
+    source: string;
+  }>('/api/market-data/opportunity-board', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ universe, timeframe, cards, cacheKey }),
+  });
 }
 
 export async function fetchUniversesMeta() {
