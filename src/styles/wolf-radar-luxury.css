@@ -28,6 +28,9 @@
   position: relative;
   z-index: 1;
 }
+.wolf-radar-lux > .wolf-radar-desk__header {
+  z-index: 30;
+}
 
 /* —— Stage —— */
 .wolf-radar-lux__stage {
@@ -614,13 +617,15 @@
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
 }
 .wolf-radar-lux .lux-select__menu {
+  z-index: 40;
   max-height: min(22rem, 58vh);
   border-color: var(--rd-line);
-  background:
-    linear-gradient(165deg, rgba(22, 26, 38, 0.98) 0%, rgba(8, 10, 16, 0.98) 100%);
+  background: #0d111a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.12) inset,
-    0 22px 56px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(212, 175, 55, 0.18) inset,
+    0 22px 56px rgba(0, 0, 0, 0.72),
     0 0 40px rgba(212, 175, 55, 0.12);
 }
 .wolf-radar-lux .lux-select__option:hover {
@@ -693,6 +698,8 @@ html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__source-btn {
 html[data-theme="light"] .wolf-radar-lux .lux-select__menu {
   background: #fffaf2;
   border-color: rgba(146, 64, 14, 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 html[data-theme="light"] .wolf-radar-lux .wolf-radar-desk__source-btn.is-on {
   color: #047857;
