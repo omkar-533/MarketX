@@ -43,6 +43,7 @@ import {
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import AppLink from '../../AppLink';
 import { liveWolfQuery } from '../../../utils/appNav';
+import WolfHuntLoader from './WolfHuntLoader';
 
 function prettyTitle(raw: string): string {
   return raw
@@ -617,7 +618,14 @@ export default function WolfOpportunityPage({
         </p>
       </motion.nav>
 
-      <section className="wolf-opp__desk" aria-label="Scanners">
+      <section
+        className={`wolf-opp__desk${scanning ? ' is-hunting' : ''}`}
+        aria-label="Scanners"
+        aria-busy={scanning}
+      >
+        <AnimatePresence>
+          {scanning ? <WolfHuntLoader key="hunt" caption={progress || 'Scanning live setups…'} /> : null}
+        </AnimatePresence>
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
             const tfHits = rankHitsByScore(card.hits.filter((h) => h.timeframe === filters.timeframe));
