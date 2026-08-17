@@ -236,6 +236,7 @@ export default function WolfOpportunityPage({
     async (opts?: {
       quiet?: boolean;
       reset?: boolean;
+      fresh?: boolean;
       filtersOverride?: Partial<OpportunityFilters>;
     }) => {
       const quiet = Boolean(opts?.quiet);
@@ -254,8 +255,10 @@ export default function WolfOpportunityPage({
         setScanning(true);
         setProgress('Fetching live market…');
         clearLiveCandleCache();
-        setCards(emptyOpportunityCards());
-        setLastUpdated(null);
+        if (opts?.reset !== false) {
+          setCards(emptyOpportunityCards());
+          setLastUpdated(null);
+        }
       }
 
       let live = liveHint;
@@ -295,7 +298,7 @@ export default function WolfOpportunityPage({
         const scanOpts: RunOpportunityOptions = {
           signal: ac.signal,
           topN: OPPORTUNITY_SCAN_CAP,
-          freshCandles: false,
+          freshCandles: Boolean(opts?.fresh),
           onProgress: (p) => {
             if (quiet) return;
             const now = Date.now();

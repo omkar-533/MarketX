@@ -21,7 +21,7 @@ const BAR_MS = {
 };
 
 const SNAP_BARS = {
-  '5m': 120,
+  '5m': 130,
   '15m': 80,
   '1h': 80,
   '1D': 80,
@@ -82,10 +82,16 @@ export function snapshotCacheKey(universe, timeframe, now = Date.now()) {
   return `${u}|${tf}|${Math.floor(now / BAR_MS[tf])}`;
 }
 
+function candleTimeMs(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x <= 0) return 0;
+  return x > 1e12 ? x : x * 1000;
+}
+
 function slimCandles(symbol, candles) {
   return (candles || []).map((c) => ({
     symbol,
-    timestamp: Number(c.timestamp) || Number(c.time) || Number(c.ts) || 0,
+    timestamp: candleTimeMs(c.timestamp) || candleTimeMs(c.time) || candleTimeMs(c.ts),
     open: Number(c.open) || 0,
     high: Number(c.high) || 0,
     low: Number(c.low) || 0,

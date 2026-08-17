@@ -7,6 +7,7 @@ import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import { resolveCatalogUniverse } from '../radar/universeCatalog';
 import {
+  closedBarIndex,
   currentRunStartOfIstDay,
   keepDisplaySetupTime,
   readCandleTimeMs,
@@ -246,8 +247,8 @@ export async function runOpportunityScan(
 
   const emitHit = (hit: OpportunityHit | null) => {
     if (!hit) return;
-    // Listing time = first qualify today. Never Date.now() / last-bar close (those stamp every name the same minute).
-    const listed = keepDisplaySetupTime(hit.detectedAt, asOf);
+    // Current-run listing time. Never Date.now() / last-bar close for every name.
+    const listed = keepDisplaySetupTime(hit.detectedAt);
     if (!(listed > 0)) return;
     hit.detectedAt = listed;
     if (hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) return;
@@ -304,7 +305,18 @@ export async function runOpportunityScan(
 
   const FETCH_BATCH = provider.isDemo ? 24 : 80;
   const bars = sessionBarsNeeded(tf);
-  const fresh = Boolean(opts.freshCandles) && !shared;
+  const fresh = Boolean(opts.freshCandles);
+  if (candleMapAll) {
+    candleMapAll = await retryThinCandles(
+      batchProvider,
+      candleMapAll,
+      symbols,
+      tf,
+      bars,
+      opts.signal,
+      fresh,
+    );
+  }
   const sectorBag = new Map<string, { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]>();
   const total = symbols.length;
   let checked = 0;
@@ -348,8 +360,10 @@ export async function runOpportunityScan(
           ...c,
           timestamp: readCandleTimeMs(c) || Number(c.timestamp) || 0,
         }));
-        if (candles.length >= MIN_SCAN_BARS) barsOk += 1;
-        const f = buildFeatureSnapshot(symbol, filters.market, tf, candles);
+        const closedEnd = closedBarIndex(candles, tf, asOf);
+        const series = closedEnd >= 0 ? candles.slice(0, closedEnd + 1) : [];
+        if (series.length >= MIN_SCAN_BARS) barsOk += 1;
+        const f = buildFeatureSnapshot(symbol, filters.market, tf, series);
         if (!f) continue;
 
         const quotePrice = f.tech.last;
@@ -358,7 +372,7 @@ export async function runOpportunityScan(
         const featAt = new Map<number, FeatureSnapshot | null>();
         const snapshotAt = (i: number): FeatureSnapshot | null => {
           if (featAt.has(i)) return featAt.get(i) ?? null;
-          const snap = buildFeatureSnapshot(symbol, filters.market, tf, candles.slice(0, i + 1));
+          const snap = buildFeatureSnapshot(symbol, filters.market, tf, series.slice(0, i + 1));
           featAt.set(i, snap);
           return snap;
         };
@@ -369,7 +383,7 @@ export async function runOpportunityScan(
           try {
             return (
               currentRunStartOfIstDay(
-                candles,
+                series,
                 tf,
                 (i) => {
                   const snap = snapshotAt(i);
@@ -506,7 +520,7 @@ export async function runOpportunityScan(
 
   const aborted = Boolean(opts.signal?.aborted);
   const coverageOk = total === 0 || barsOk >= Math.max(15, Math.floor(total * 0.3));
-  const complete = !aborted && checked >= total && (shared || coverageOk);
+  const complete = !aborted && checked >= total && coverageOk;
 
   opts.onProgress?.({
     status: complete ? 'complete' : 'failed',

@@ -214,12 +214,10 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   const breaking =
     (f.high20 != null && f.tech.last > f.high20) || (f.low20 != null && f.tech.last < f.low20);
 
-  if (!compressing && !breaking) return null;
+  // Tagline is a break out of the coil — compressing-only flooded Created at 9:20.
+  if (!breaking) return null;
 
-  let stateLabel = 'COMPRESSING';
-  if (breaking && f.volume.ratio >= 1.4) stateLabel = 'BREAKOUT ACTIVE';
-  else if (breaking) stateLabel = 'BREAKOUT WATCH';
-  else if (compressing) stateLabel = 'COMPRESSING';
+  let stateLabel = f.volume.ratio >= 1.4 ? 'BREAKOUT ACTIVE' : 'BREAKOUT WATCH';
 
   const breakdown: ScoreBreakdown = {
     compression: compressing ? 28 : 10,
@@ -240,19 +238,19 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
     breakdown,
     stateLabel,
     why: compressing
-      ? 'Range/ATR compressed — expansion risk elevated.'
-      : 'Price left compression zone; volume decides quality.',
+      ? 'Left a compressed range — expansion is on; volume decides quality.'
+      : 'Price left the prior 20-bar range; volume decides quality.',
     keyLevel: f.high20 ?? f.dayHigh,
     trigger: f.high20,
     invalidation: `Return inside prior range below ₹${(f.tech.sma20 ?? f.tech.last).toFixed(2)}`,
     confirmationNeeded:
       stateLabel === 'BREAKOUT ACTIVE'
         ? 'Hold outside range on pullback.'
-        : 'Wait for range break with volume.',
+        : 'Need volume confirmation on the break.',
     evidence: [
       { label: compressing ? 'ATR/range compressed' : 'Not compressed', ok: compressing },
       { label: volQuiet ? 'Volume quiet' : 'Volume active', ok: volQuiet || breaking },
-      { label: breaking ? 'Outside range' : 'Inside range', ok: breaking },
+      { label: 'Outside range', ok: true },
     ],
   });
 }
