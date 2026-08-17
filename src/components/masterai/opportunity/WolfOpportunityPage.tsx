@@ -24,6 +24,7 @@ import {
   loadOpportunityFilters,
   saveOpportunityFilters,
   applyLiveScanCards,
+  applyScanCardsKeepingFirstSeen,
   rankHitsByScore,
   emptyOpportunityCards,
 } from '../../../services/opportunity/opportunityStore';
@@ -323,12 +324,15 @@ export default function WolfOpportunityPage({
           out = await runOpportunityScan(activeFilters, scanOpts, provider);
         }
         if (!isStale() && out.complete) {
-          setCards(
-            applyLiveScanCards(out.cards).map((card) => ({
-              ...card,
-              hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-            })),
-          );
+          const incoming = applyLiveScanCards(out.cards).map((card) => ({
+            ...card,
+            hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+          }));
+          setCards((prev) => {
+            const hasBoard = prev.some((c) => c.hits.length);
+            if (quiet && hasBoard) return applyScanCardsKeepingFirstSeen(prev, incoming);
+            return incoming;
+          });
           setDataMode(out.dataMode);
           setLastUpdated(Date.now());
           if (!quiet) setProgress(`${out.hits.length} setups ready`);
@@ -348,7 +352,7 @@ export default function WolfOpportunityPage({
         }
       }
     },
-    [filters, refreshIndices, feedStatus, liveHint],
+    [filters, refreshIndices, liveHint],
   );
 
   useEffect(() => {

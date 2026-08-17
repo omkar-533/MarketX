@@ -305,8 +305,8 @@ export async function runOpportunityScan(
 
   const FETCH_BATCH = provider.isDemo ? 24 : 80;
   const bars = sessionBarsNeeded(tf);
-  const fresh = Boolean(opts.freshCandles);
-  if (candleMapAll) {
+  const fresh = Boolean(opts.freshCandles) && !shared;
+  if (candleMapAll && !shared) {
     candleMapAll = await retryThinCandles(
       batchProvider,
       candleMapAll,

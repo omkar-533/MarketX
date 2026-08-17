@@ -9,6 +9,7 @@ import {
   ensureInstrumentMap,
   fetchIndstocksCandles,
   fetchIndstocksCandlesMany,
+  lastCompletedNseSessionEndMs,
   resolveScripCodeCandidates,
 } from './indstocksClient.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
@@ -76,10 +77,64 @@ function hydrateDisk(key) {
   return row;
 }
 
+/** @type {Map<string, ReturnType<typeof setTimeout>>} */
+const refreshTimers = new Map();
+/** @type {string} */
+let lastAccessToken = '';
+
+function istCalendarDay(ms) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
+}
+
+function nseSessionOpenMs(now) {
+  const ymd = istCalendarDay(lastCompletedNseSessionEndMs(now));
+  const open = Date.parse(`${ymd}T09:15:00+05:30`);
+  return Number.isFinite(open) ? open : 0;
+}
+
+/** Close time of the last finished NSE bar — same board for every login in that bar. */
+export function nseLastClosedBarCloseMs(timeframe, now = Date.now()) {
+  const tf = normTf(timeframe);
+  const dur = BAR_MS[tf] || BAR_MS['5m'];
+  const sessionEnd = lastCompletedNseSessionEndMs(now);
+  if (tf === '1D') return sessionEnd || 0;
+  const start = nseSessionOpenMs(now);
+  if (!(start > 0)) return 0;
+  const cap = Math.min(now, sessionEnd || now);
+  if (cap < start) return 0;
+  const closed = Math.floor((cap - start) / dur);
+  if (closed <= 0) return 0;
+  const close = start + closed * dur;
+  return close > now + 2_000 ? close - dur : close;
+}
+
+function msUntilNextNseBar(timeframe, now = Date.now()) {
+  const tf = normTf(timeframe);
+  const dur = BAR_MS[tf] || BAR_MS['5m'];
+  const last = nseLastClosedBarCloseMs(tf, now);
+  const sessionEnd = lastCompletedNseSessionEndMs(now);
+  let next = last > 0 ? last + dur : nseSessionOpenMs(now) + dur;
+  if (sessionEnd && next > sessionEnd + 2_000) {
+    const ymd = istCalendarDay(sessionEnd);
+    const p = new Date(`${ymd}T12:00:00+05:30`);
+    const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(p);
+    const skip = wd === 'Fri' ? 3 : 1;
+    const nx = Date.parse(`${ymd}T09:15:00+05:30`) + skip * 86_400_000 + dur;
+    next = Number.isFinite(nx) ? nx : now + dur;
+  }
+  return Math.max(8_000, next - now + 4_000);
+}
+
 export function snapshotCacheKey(universe, timeframe, now = Date.now()) {
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
-  return `${u}|${tf}|${Math.floor(now / BAR_MS[tf])}`;
+  const bucket = nseLastClosedBarCloseMs(tf, now) || Math.floor(now / (BAR_MS[tf] || 300_000));
+  return `${u}|${tf}|${bucket}`;
 }
 
 function candleTimeMs(n) {
@@ -148,6 +203,26 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
   return result;
 }
 
+function armAutoFetch(universe, timeframe, accessToken) {
+  if (!accessToken) return;
+  lastAccessToken = accessToken;
+  const tf = normTf(timeframe);
+  const u = String(universe || 'F&O');
+  const id = `${u}|${tf}`;
+  if (refreshTimers.has(id)) return;
+  const wait = msUntilNextNseBar(tf);
+  const timer = setTimeout(() => {
+    refreshTimers.delete(id);
+    const token = lastAccessToken;
+    if (!token) return;
+    for (const k of [...cache.keys()]) {
+      if (k.startsWith(`${id}|`)) cache.delete(k);
+    }
+    peekOpportunitySnapshot(token, u, tf);
+  }, wait);
+  refreshTimers.set(id, timer);
+}
+
 async function buildSnapshot(accessToken, universe, timeframe, key) {
   const symbols = uniqueSorted(resolveServerUniverse(universe));
   const bars = SNAP_BARS[timeframe] || 120;
@@ -172,8 +247,10 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
+  if (accessToken) lastAccessToken = accessToken;
   const hit = cache.get(key) || hydrateDisk(key);
   if (hit) {
+    armAutoFetch(u, tf, accessToken || lastAccessToken);
     return { ready: true, ...hit };
   }
   const fail = lastFail.get(key);
@@ -197,6 +274,7 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
         for (const k of [...cache.keys()]) {
           if (k !== key && k.startsWith(`${u}|${tf}|`)) cache.delete(k);
         }
+        armAutoFetch(u, tf, accessToken);
         return payload;
       })
       .finally(() => {

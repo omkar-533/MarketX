@@ -1,16 +1,22 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { snapshotCacheKey } from './opportunitySnapshot.mjs';
+import { nseLastClosedBarCloseMs, snapshotCacheKey } from './opportunitySnapshot.mjs';
 
 describe('opportunity snapshot key', () => {
-  it('is identical for two clients in the same 5m bucket', () => {
-    const now = Date.parse('2026-08-16T16:17:00Z');
-    assert.equal(snapshotCacheKey('F&O', '5m', now), snapshotCacheKey('F&O', '5m', now + 10_000));
+  it('is identical for two clients in the same NSE 5m bar', () => {
+    const a = Date.parse('2026-08-17T12:11:00+05:30');
+    const b = Date.parse('2026-08-17T12:14:00+05:30');
+    assert.equal(snapshotCacheKey('F&O', '5m', a), snapshotCacheKey('F&O', '5m', b));
   });
 
-  it('changes after the 5m bar rolls', () => {
-    const bucket = 300_000;
-    const nearEnd = bucket * 1000 - 1_000;
-    assert.notEqual(snapshotCacheKey('F&O', '5m', nearEnd), snapshotCacheKey('F&O', '5m', nearEnd + 2_000));
+  it('changes when the NSE 5m bar closes', () => {
+    const before = Date.parse('2026-08-17T12:14:00+05:30');
+    const after = Date.parse('2026-08-17T12:16:00+05:30');
+    assert.notEqual(snapshotCacheKey('F&O', '5m', before), snapshotCacheKey('F&O', '5m', after));
+  });
+
+  it('stamps the 12:10 close while the 12:10–12:15 bar is still open', () => {
+    const now = Date.parse('2026-08-17T12:11:45+05:30');
+    assert.equal(nseLastClosedBarCloseMs('5m', now), Date.parse('2026-08-17T12:10:00+05:30'));
   });
 });

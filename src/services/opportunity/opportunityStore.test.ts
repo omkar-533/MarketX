@@ -121,4 +121,30 @@ describe('opportunityStore ranking', () => {
     assert.deepEqual(hits.map((h) => h.symbol), ['INFY']);
     assert.equal(hits[0]?.detectedAt, 9);
   });
+
+  it('quiet refresh keeps listing time when the same names still qualify', () => {
+    const prev = emptyOpportunityCards().map((c) =>
+      c.scannerId === 'breakout_radar'
+        ? {
+            ...c,
+            hits: [hit({ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: 111 })],
+            status: 'ready' as const,
+          }
+        : c,
+    );
+    const incoming = emptyOpportunityCards().map((c) =>
+      c.scannerId === 'breakout_radar'
+        ? {
+            ...c,
+            hits: [hit({ scannerId: 'breakout_radar', symbol: 'INFY', score: 81, detectedAt: 999 })],
+            status: 'ready' as const,
+          }
+        : c,
+    );
+    const next = applyScanCardsKeepingFirstSeen(prev, incoming);
+    const row = next.find((c) => c.scannerId === 'breakout_radar')?.hits[0];
+    assert.equal(row?.symbol, 'INFY');
+    assert.equal(row?.score, 81);
+    assert.equal(row?.detectedAt, 111);
+  });
 });
