@@ -4,7 +4,7 @@
  */
 import { keepDisplaySetupTime, runWindowsOfIstDay } from '../radar/barTime';
 
-export type OpportunityCreatedWindow = { createdAt: number; endIndex: number };
+export type OpportunityCreatedWindow = { createdAt: number; startIndex: number; endIndex: number };
 
 export function opportunityCreatedWindows(
   candles: { timestamp?: number; time?: number; ts?: number }[],
@@ -18,7 +18,7 @@ export function opportunityCreatedWindows(
     const createdAt = keepDisplaySetupTime(w.startMs, now);
     if (!(createdAt > 0) || seen.has(createdAt)) continue;
     seen.add(createdAt);
-    out.push({ createdAt, endIndex: w.endIndex });
+    out.push({ createdAt, startIndex: w.startIndex, endIndex: w.endIndex });
   }
   return out;
 }

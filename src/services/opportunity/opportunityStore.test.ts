@@ -32,25 +32,43 @@ function hit(partial: Partial<OpportunityHit> & Pick<OpportunityHit, 'symbol' | 
 }
 
 describe('opportunityStore ranking', () => {
-  it('keeps highest scores instead of first-arrived names', () => {
+  it('keeps the first names of the day instead of swapping in a hotter late print', () => {
     let cards = emptyOpportunityCards();
     cards = mergeOpportunityHitIntoCards(
       cards,
-      hit({ scannerId: 'breakout_radar', symbol: 'AAA', score: 61 }),
+      hit({ scannerId: 'breakout_radar', symbol: 'AAA', score: 61, detectedAt: 10 }),
       2,
     );
     cards = mergeOpportunityHitIntoCards(
       cards,
-      hit({ scannerId: 'breakout_radar', symbol: 'BBB', score: 62 }),
+      hit({ scannerId: 'breakout_radar', symbol: 'BBB', score: 62, detectedAt: 20 }),
       2,
     );
     cards = mergeOpportunityHitIntoCards(
       cards,
-      hit({ scannerId: 'breakout_radar', symbol: 'CCC', score: 90 }),
+      hit({ scannerId: 'breakout_radar', symbol: 'CCC', score: 90, detectedAt: 30 }),
       2,
     );
     const names = cards.find((c) => c.scannerId === 'breakout_radar')?.hits.map((h) => h.symbol) || [];
-    assert.deepEqual(names, ['CCC', 'BBB']);
+    assert.deepEqual(names, ['AAA', 'BBB']);
+  });
+
+  it('adds a 2nd listing when the same name prints again later', () => {
+    let cards = emptyOpportunityCards();
+    cards = mergeOpportunityHitIntoCards(
+      cards,
+      hit({ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: 111 }),
+    );
+    cards = mergeOpportunityHitIntoCards(
+      cards,
+      hit({ scannerId: 'breakout_radar', symbol: 'INFY', score: 81, detectedAt: 999 }),
+    );
+    const hits = cards.find((c) => c.scannerId === 'breakout_radar')?.hits || [];
+    assert.deepEqual(
+      hits.map((h) => h.detectedAt).sort((a, b) => a - b),
+      [111, 999],
+    );
+    assert.equal(hits.find((h) => h.detectedAt === 111)?.score, 70);
   });
 
   it('replaces the board with the completed scan, keeping listing time on repeats', () => {

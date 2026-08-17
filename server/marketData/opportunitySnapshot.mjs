@@ -292,7 +292,7 @@ async function buildSnapshot(accessToken, universe, timeframe, key) {
   };
 }
 
-export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
+export function peekOpportunitySnapshot(accessToken, universe, timeframe, opts = {}) {
   dropExpiredOpportunityBoards();
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
@@ -300,7 +300,15 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
   if (accessToken) lastAccessToken = accessToken;
   const hit = pickStaleSnapshot(u, tf, key);
   const sessionOpen = nseCashSessionIsOpen();
-  if (hit?.ready && hit.candlesBySymbol && (!sessionOpen || hit.cacheKey === key)) {
+  const force = Boolean(opts.force) && sessionOpen;
+  const builtAt = Number(hit?.builtAt || hit?.asOf || 0);
+  const staleMs = builtAt > 0 ? Date.now() - builtAt : Number.POSITIVE_INFINITY;
+  const serveHot =
+    hit?.ready &&
+    hit.candlesBySymbol &&
+    (!sessionOpen || hit.cacheKey === key) &&
+    !(force && staleMs > 50_000 && !inflight.has(key));
+  if (serveHot) {
     if (sessionOpen) armAutoFetch(u, tf, accessToken || lastAccessToken);
     return { ready: true, ...hit, frozen: !sessionOpen };
   }
@@ -354,4 +362,27 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe) {
     cacheKey: key,
     source: 'shared-indstocks',
   };
+}
+
+/** Wait for the shared INDstocks candle map. Never logs the token. */
+export async function awaitOpportunitySnapshot(
+  accessToken,
+  universe,
+  timeframe,
+  { force = false, timeoutMs = 180_000 } = {},
+) {
+  const tf = normTf(timeframe);
+  const u = String(universe || 'F&O');
+  const key = snapshotCacheKey(u, tf);
+  peekOpportunitySnapshot(accessToken, u, tf, { force });
+  const job = inflight.get(key);
+  if (job) {
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Opportunity snapshot timed out')), timeoutMs);
+    });
+    return Promise.race([job, timeout]);
+  }
+  const hit = pickStaleSnapshot(u, tf, key);
+  if (hit?.ready && hit.candlesBySymbol) return hit;
+  throw new Error('Opportunity snapshot unavailable');
 }

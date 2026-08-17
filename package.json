@@ -11,7 +11,7 @@
     "start": "node scripts/dev-all.mjs",
     "dev:clean": "node scripts/dev-all.mjs",
     "free-port": "node scripts/free-port.mjs 5000",
-    "build": "vite build",
+    "build": "vite build && node scripts/bundle-opportunity-eval.mjs",
     "preview": "vite preview",
     "server": "node server.mjs",
     "pine:smoke": "node server/pine/smoke.mjs",

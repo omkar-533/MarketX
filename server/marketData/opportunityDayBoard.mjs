@@ -298,6 +298,12 @@ function peekSync(universe, timeframe, now = Date.now()) {
   };
 }
 
+export async function persistOpportunityDayBoard(now = Date.now()) {
+  await ensureDurable(now);
+  await persistDurable(now);
+  return peekSync('F&O', '5m', now);
+}
+
 export async function peekOpportunityDayBoard(universe, timeframe, now = Date.now()) {
   await ensureDurable(now);
   return peekSync(universe, timeframe, now);

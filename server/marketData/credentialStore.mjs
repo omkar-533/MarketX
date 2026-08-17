@@ -239,6 +239,49 @@ export async function resolveCredential(keys) {
 }
 
 /**
+ * Internal only — unique LIVE INDstocks tokens for the backend board job.
+ * Never expose this list over HTTP.
+ */
+export async function listLiveIndstocksAccessTokens() {
+  const seenTok = new Set();
+  const out = [];
+
+  const take = (record) => {
+    if (!record) return;
+    markExpired(record);
+    if (record.status !== 'CONNECTED') return;
+    if (record.mode !== 'LIVE') return;
+    if (record.provider !== 'indstocks') return;
+    cacheRecord(record);
+    const cred = readDecryptedCredential(record.userKey);
+    const accessToken = String(cred?.accessToken || '').trim();
+    if (accessToken.length < 12 || seenTok.has(accessToken)) return;
+    seenTok.add(accessToken);
+    out.push({ userKey: record.userKey, accessToken });
+  };
+
+  for (const rec of byUser.values()) take(rec);
+  for (const row of Object.values(readFileStore())) take(fromRow(row));
+
+  const db = getAdminClient();
+  if (db) {
+    const { data, error } = await db
+      .from(TABLE)
+      .select('*')
+      .eq('provider', 'indstocks')
+      .eq('status', 'CONNECTED')
+      .eq('mode', 'LIVE')
+      .order('updated_at', { ascending: false })
+      .limit(50);
+    if (error && !String(error.message || '').includes('does not exist')) {
+      console.warn('[market-data] live-token list skipped', error.message);
+    }
+    for (const row of data || []) take(fromRow(row));
+  }
+  return out;
+}
+
+/**
  * Copy a live connection onto another identity key.
  * Never deletes the source — logout still hits the session cookie copy;
  * the next login still hits user:{id} until expiresAt (24h).

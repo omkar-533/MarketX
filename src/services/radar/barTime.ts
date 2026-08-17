@@ -286,7 +286,7 @@ export function currentRunStartOfIstDay(
   return windows[windows.length - 1]?.startMs || 0;
 }
 
-export type IstRunWindow = { startMs: number; endIndex: number };
+export type IstRunWindow = { startMs: number; startIndex: number; endIndex: number };
 
 /**
  * Every qualifying run today — start clock + last bar of that episode.
@@ -310,6 +310,7 @@ export function runWindowsOfIstDay(
       i += 1;
       continue;
     }
+    const startIndex = i;
     const startMs = w.stamp(i);
     let endIndex = i;
     i += 1;
@@ -317,7 +318,7 @@ export function runWindowsOfIstDay(
       endIndex = i;
       i += 1;
     }
-    if (startMs > 0) out.push({ startMs, endIndex });
+    if (startMs > 0) out.push({ startMs, startIndex, endIndex });
   }
   return out;
 }

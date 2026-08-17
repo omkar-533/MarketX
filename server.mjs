@@ -17,6 +17,7 @@ import marketDataRoutes from './server/marketData/routes.mjs';
 import { initMarketProvider } from './server/market/provider.mjs';
 import { attachMarketWebSocket } from './server/market/liveWebSocket.mjs';
 import { attachSocketIo, TICK_PULSE_MS } from './server/market/socketIoServer.mjs';
+import { startOpportunityBoardJob } from './server/marketData/opportunityBoardJob.mjs';
 import appAuthRoutes from './server/auth/appAuthRoutes.mjs';
 import {
   hasAccessSchema,
@@ -295,6 +296,7 @@ httpServer.on('error', (err) => {
 httpServer.listen(config.port, () => {
   attachMarketWebSocket(httpServer);
   attachSocketIo(httpServer);
+  startOpportunityBoardJob();
   void ensureSeedTeachings()
     .then((r) => console.log(`[Hunter Teach] seed imported=${r.imported} total=${r.total}`))
     .catch((err) => console.warn('[Hunter Teach] seed import failed:', err?.message || err));

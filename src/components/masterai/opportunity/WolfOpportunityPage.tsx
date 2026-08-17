@@ -26,7 +26,7 @@ import {
   saveOpportunityFilters,
   applyLiveScanCards,
   applyDaySignalCards,
-  rankHitsByScore,
+  rankHitsByCreated,
   emptyOpportunityCards,
   loadOpportunityDayBoard,
   saveOpportunityDayBoard,
@@ -72,6 +72,13 @@ function formatHitPrice(price: number): string {
 
 function formatHitClock(ms: number): string {
   return formatOpportunityCreatedClock(ms);
+}
+
+function signalPrintLabel(hit: OpportunityHit): string {
+  const n = Number(hit.meta?.signalN);
+  if (!(n > 1)) return '';
+  const suf = n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+  return ` · ${n}${suf} signal`;
 }
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
@@ -144,7 +151,7 @@ function HitTile({
           <BiasBadge dir={bias} size="sm" />
           <em>
             Created {formatHitClock(hit.detectedAt)} IST
-            {Number(hit.meta?.signalN) > 1 ? ` · #${hit.meta?.signalN}` : ''}
+            {signalPrintLabel(hit)}
           </em>
         </span>
       </AppLink>
@@ -574,7 +581,7 @@ export default function WolfOpportunityPage({
         </AnimatePresence>
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
-            const tfHits = rankHitsByScore(card.hits.filter((h) => h.timeframe === filters.timeframe));
+            const tfHits = rankHitsByCreated(card.hits.filter((h) => h.timeframe === filters.timeframe));
             const longs = showLong ? tfHits.filter((h) => biasOf(h) === 'bullish') : [];
             const shorts = showShort ? tfHits.filter((h) => biasOf(h) === 'bearish') : [];
             const neutrals =

@@ -68,7 +68,7 @@ function hydrateCards(cards: ScannerCardState[] | undefined): ScannerCardState[]
       ...prev,
       title: blank.title,
       tagline: blank.tagline,
-      hits: rankHitsByScore(
+      hits: rankHitsByCreated(
         Array.isArray(prev.hits) ? prev.hits.filter((h) => h.dataMode === 'LIVE') : [],
       ),
       status: prev.hits?.some((h) => h.dataMode === 'LIVE') ? 'ready' : 'idle',
@@ -125,6 +125,16 @@ export function rankHitsByScore(hits: OpportunityHit[]): OpportunityHit[] {
   return [...hits].sort((a, b) => b.score - a.score || a.symbol.localeCompare(b.symbol));
 }
 
+/** Day log: newest episode first. Same name + later Created stays a 2nd row. */
+export function rankHitsByCreated(hits: OpportunityHit[]): OpportunityHit[] {
+  return [...hits].sort(
+    (a, b) =>
+      b.detectedAt - a.detectedAt ||
+      a.symbol.localeCompare(b.symbol) ||
+      Number(a.meta?.signalN || 0) - Number(b.meta?.signalN || 0),
+  );
+}
+
 /**
  * After a full scan: this run's ranked hits are the board.
  * Keep first listing time for names that stay on the board. Do not freeze first-arrived names.
@@ -139,7 +149,7 @@ export function applyScanCardsKeepingFirstSeen(
     const nextCard = inBy.get(blank.scannerId);
     const prevCard = prevBy.get(blank.scannerId);
     const prevHits = new Map((prevCard?.hits || []).map((h) => [h.symbol, h]));
-    const hits = rankHitsByScore(
+    const hits = rankHitsByCreated(
       (nextCard?.hits || []).map((h) => mergeHitKeepFirstSeen(prevHits.get(h.symbol), h)),
     );
     return {
@@ -171,7 +181,7 @@ export function applyDaySignalCards(
       const old = byKey.get(k);
       byKey.set(k, old ? mergeHitKeepFirstSeen(old, h) : h);
     }
-    const hits = rankHitsByScore([...byKey.values()]);
+    const hits = rankHitsByCreated([...byKey.values()]);
     return {
       ...blank,
       status: hits.length ? 'ready' : nextCard?.status || prevCard?.status || 'idle',
@@ -185,7 +195,7 @@ export function applyLiveScanCards(incoming: ScannerCardState[]): ScannerCardSta
   const inBy = new Map(incoming.map((c) => [c.scannerId, c]));
   return emptyOpportunityCards().map((blank) => {
     const nextCard = inBy.get(blank.scannerId);
-    const hits = rankHitsByScore(nextCard?.hits || []);
+    const hits = rankHitsByCreated(nextCard?.hits || []);
     return {
       ...blank,
       status: hits.length ? 'ready' : nextCard?.status || 'idle',
@@ -205,12 +215,13 @@ export function mergeOpportunityHitIntoCards(
   return prev.map((card) => {
     if (card.scannerId !== hit.scannerId) return card;
     if (card.status === 'unavailable') return card;
-    const existing = card.hits.find((h) => h.symbol === hit.symbol);
+    const existing = card.hits.find(
+      (h) => h.symbol === hit.symbol && listingTime(h.detectedAt) === listingTime(hit.detectedAt),
+    );
     const merged = existing ? mergeHitKeepFirstSeen(existing, hit) : hit;
-    const hits = rankHitsByScore([
-      ...card.hits.filter((h) => h.symbol !== hit.symbol),
-      merged,
-    ]).slice(0, cap);
+    const hits = [...card.hits.filter((h) => h !== existing), merged]
+      .sort((a, b) => a.detectedAt - b.detectedAt || a.symbol.localeCompare(b.symbol))
+      .slice(0, cap);
     return {
       ...card,
       status: 'ready',
@@ -233,7 +244,7 @@ export function mergeOpportunityCardSets(
   }
   return next.map((card) => ({
     ...card,
-    hits: rankHitsByScore(card.hits || []),
+    hits: rankHitsByCreated(card.hits || []),
   }));
 }
 
