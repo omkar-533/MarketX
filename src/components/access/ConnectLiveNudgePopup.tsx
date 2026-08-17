@@ -23,7 +23,8 @@ function isLiveConnected(status: ServerConnectionStatus | null | undefined) {
 
 /**
  * After login: nudge members to connect live market data.
- * Shown once per browser session (cleared on logout). Skipped if already LIVE.
+ * Shown once per browser session (cleared on logout). Skipped if already LIVE
+ * (token survives logout until 24h expiry — do not ask for the key again).
  */
 export default function ConnectLiveNudgePopup({ userId, enabled }: Props) {
   const [nudgeOpen, setNudgeOpen] = useState(false);

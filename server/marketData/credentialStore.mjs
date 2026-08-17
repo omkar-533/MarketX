@@ -238,18 +238,58 @@ export async function resolveCredential(keys) {
   return { key: list[0] || '', record: null };
 }
 
-/** Move a session-cookie connection onto the logged-in user key. */
-export async function adoptCredential(fromKey, toKey) {
+/**
+ * Copy a live connection onto another identity key.
+ * Never deletes the source — logout still hits the session cookie copy;
+ * the next login still hits user:{id} until expiresAt (24h).
+ */
+export async function mirrorCredential(fromKey, toKey) {
   if (!fromKey || !toKey || fromKey === toKey) return getCredential(toKey);
-  const record = getCredential(fromKey);
-  if (!record) return getCredential(toKey);
-  record.userKey = toKey;
+  const source = getCredential(fromKey);
+  if (!source) return getCredential(toKey);
+  const destExisting = getCredential(toKey);
+  const clone = {
+    ...source,
+    capabilities: { ...(source.capabilities || {}) },
+    id: destExisting?.id || randomUUID(),
+    userKey: toKey,
+    createdAt: destExisting?.createdAt || source.createdAt,
+    updatedAt: now(),
+  };
+  cacheRecord(clone);
+  await persistRecord(clone);
+  return clone;
+}
+
+/** Kept name — copies, never moves/deletes the source key. */
+export async function adoptCredential(fromKey, toKey) {
+  return mirrorCredential(fromKey, toKey);
+}
+
+/** Write the same encrypted credential onto every identity (user + browser session). */
+export async function storeCredentialOnKeys(keys, spec) {
+  const list = [...new Set((keys || []).map((k) => String(k || '').trim()).filter(Boolean))];
+  let view = null;
+  for (const userKey of list) {
+    view = storeCredential({ ...spec, userKey });
+  }
+  await Promise.all(list.map((k) => persistStoredCredential(k)));
+  return view;
+}
+
+export async function expireCredentialPersist(userKey) {
+  if (!userKey) return;
+  let record = getCredential(userKey);
+  if (!record) {
+    const rows = await loadRowsForKey(userKey);
+    for (const row of rows) cacheRecord(row);
+    record = getCredential(userKey);
+  }
+  if (!record) return;
+  record.status = 'EXPIRED';
   record.updatedAt = now();
   cacheRecord(record);
-  byUser.delete(fromKey);
   await persistRecord(record);
-  await deleteRowsForKey(fromKey);
-  return record;
 }
 
 /** Internal only — never call from HTTP handlers that serialize to clients. */

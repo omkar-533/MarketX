@@ -11,9 +11,9 @@ import {
   INDSTOCKS_PROVIDER,
 } from './providersCatalog.mjs';
 import {
-  storeCredential,
-  persistStoredCredential,
+  storeCredentialOnKeys,
   deleteCredentialPersist,
+  expireCredentialPersist,
   resolveCredential,
   adoptCredential,
   publicView,
@@ -205,13 +205,26 @@ function identityFrom(req, res) {
   return { primary: keys[0], userKey, sessionKey, keys };
 }
 
+/** Keep user:{id} and session cookie copies in sync. Never drop one on login. */
+async function hydrateIdentity(ident) {
+  const found = await resolveCredential(ident.keys);
+  if (!found.record || found.record.status !== 'CONNECTED') return found;
+  if (ident.userKey && ident.sessionKey) {
+    await adoptCredential(found.key, ident.userKey);
+    await adoptCredential(found.key, ident.sessionKey);
+  }
+  return found;
+}
+
+async function expireBrokerSession(req, res, liveKey) {
+  const ident = identityFrom(req, res);
+  const keys = [...new Set([liveKey, ...ident.keys].filter(Boolean))];
+  await Promise.all(keys.map((k) => expireCredentialPersist(k)));
+}
+
 async function requireLiveToken(req, res) {
   const ident = identityFrom(req, res);
-  let found = await resolveCredential(ident.keys);
-  if (ident.userKey && found.record && found.key === ident.sessionKey) {
-    const moved = await adoptCredential(ident.sessionKey, ident.userKey);
-    if (moved) found = { key: ident.userKey, record: moved };
-  }
+  const found = await hydrateIdentity(ident);
   const { key, record } = found;
   if (!record || record.status !== 'CONNECTED') {
     res.status(401).json({ error: 'Market data not connected' });
@@ -255,16 +268,12 @@ router.get('/providers/:providerId/capabilities', (req, res) => {
 
 router.get('/status', async (req, res) => {
   const ident = identityFrom(req, res);
-  let found = await resolveCredential(ident.keys);
-  if (ident.userKey && found.record && found.key === ident.sessionKey) {
-    const moved = await adoptCredential(ident.sessionKey, ident.userKey);
-    if (moved) found = { key: ident.userKey, record: moved };
-  }
+  const found = await hydrateIdentity(ident);
   res.json(publicView(found.record));
 });
 
 router.post('/connect', async (req, res) => {
-  const key = identityFrom(req, res).primary;
+  const ident = identityFrom(req, res);
   const providerId = String(req.body?.providerId || '').trim();
   const provider = getProvider(providerId);
   if (!provider) {
@@ -279,8 +288,7 @@ router.post('/connect', async (req, res) => {
   }
 
   if (provider.isDemo) {
-    const view = storeCredential({
-      userKey: key,
+    const view = await storeCredentialOnKeys(ident.keys, {
       provider: DEMO_PROVIDER.id,
       credentialPayload: { kind: 'demo', v: 1 },
       expiresAt: null,
@@ -289,8 +297,7 @@ router.post('/connect', async (req, res) => {
       status: 'CONNECTED',
       permissionNote: null,
     });
-    await persistStoredCredential(key);
-    console.log('[market-data] demo connected', { keyType: key.split(':')[0] });
+    console.log('[market-data] demo connected', { keyType: ident.primary.split(':')[0] });
     return res.json(view);
   }
 
@@ -319,8 +326,7 @@ router.post('/connect', async (req, res) => {
       console.log('[market-data] instrument refresh skipped');
     }
 
-    const view = storeCredential({
-      userKey: key,
+    const view = await storeCredentialOnKeys(ident.keys, {
       provider: INDSTOCKS_PROVIDER.id,
       credentialPayload: { kind: 'indstocks', accessToken, v: 1 },
       expiresAt: Date.now() + 24 * 60 * 60 * 1000,
@@ -329,8 +335,7 @@ router.post('/connect', async (req, res) => {
       status: 'CONNECTED',
       permissionNote: INDSTOCKS_PERMISSION_NOTE,
     });
-    await persistStoredCredential(key);
-    console.log('[market-data] indstocks connected', { keyType: key.split(':')[0] });
+    console.log('[market-data] indstocks connected', { keyType: ident.primary.split(':')[0] });
     return res.json(view);
   }
 
@@ -452,7 +457,7 @@ router.post('/quotes-batch', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) live.record.status = 'EXPIRED';
+    if (status === 401) await expireBrokerSession(req, res, live.key);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -482,9 +487,7 @@ router.get('/quote', async (req, res) => {
     throw lastErr || new Error('Quote unavailable');
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) {
-      live.record.status = 'EXPIRED';
-    }
+    if (status === 401) await expireBrokerSession(req, res, live.key);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -523,7 +526,7 @@ router.get('/candles', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : e?.status === 404 ? 404 : 502;
-    if (status === 401) live.record.status = 'EXPIRED';
+    if (status === 401) await expireBrokerSession(req, res, live.key);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -561,7 +564,7 @@ router.post('/candles-batch', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) live.record.status = 'EXPIRED';
+    if (status === 401) await expireBrokerSession(req, res, live.key);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -585,7 +588,7 @@ router.get('/opportunity-snapshot', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) live.record.status = 'EXPIRED';
+    if (status === 401) await expireBrokerSession(req, res, live.key);
     res.status(status).json({
       error:
         status === 401
