@@ -8,13 +8,12 @@ import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import { resolveCatalogUniverse } from '../radar/universeCatalog';
 import {
   closedBarIndex,
-  currentRunStartOfIstDay,
   keepDisplaySetupTime,
-  lastBarStamp,
   lastClosedBarCloseMs,
   readCandleTimeMs,
   sessionBarsNeeded,
 } from '../radar/barTime';
+import { opportunityCreatedAtMs } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import { sectorOf } from './sectorMap';
 import {
@@ -385,7 +384,7 @@ export async function runOpportunityScan(
         ): number => {
           try {
             return (
-              currentRunStartOfIstDay(
+              opportunityCreatedAtMs(
                 series,
                 tf,
                 (i) => {
@@ -396,12 +395,9 @@ export async function runOpportunityScan(
                     timeframe: tf,
                     dataMode,
                     quotePrice: snap.tech.last,
+                    forTimeWalk: true,
                   });
-                  return (
-                    !!h &&
-                    h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore &&
-                    (direction == null || h.direction === direction)
-                  );
+                  return !!h && (direction == null || h.direction === direction);
                 },
                 asOf,
               ) || 0
@@ -427,7 +423,7 @@ export async function runOpportunityScan(
         for (const [, scan] of runners) {
           const hit = scan(ctx);
           if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          const listed = listedAtFor(scan, hit.direction) || lastBarStamp(series, tf, asOf);
+          const listed = listedAtFor(scan, hit.direction);
           if (!listed) continue;
           hit.detectedAt = listed;
           sibling[hit.scannerId] = hit.score;
@@ -440,7 +436,7 @@ export async function runOpportunityScan(
           const listed =
             listedTimes.length
               ? Math.min(...listedTimes)
-              : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction) || lastBarStamp(series, tf, asOf);
+              : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction);
           if (listed) {
             prime.detectedAt = listed;
             emitHit(prime);
@@ -484,19 +480,19 @@ export async function runOpportunityScan(
     );
     if (hit && hit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
       const candles = anchor.f.candles || [];
-      const listed = currentRunStartOfIstDay(
+      const listed = opportunityCreatedAtMs(
         candles,
         tf,
         (i) => {
           const snap = buildFeatureSnapshot(anchor.symbol, filters.market, tf, candles.slice(0, i + 1));
           if (!snap) return false;
           const walked = scanSectorLeaders(
-            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last },
+            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, forTimeWalk: true },
             sector,
             peers.map((p) => ({ symbol: p.symbol, changePercent: p.changePercent })),
             avg,
           );
-          return !!walked && walked.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore;
+          return !!walked;
         },
         asOf,
       );

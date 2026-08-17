@@ -13,6 +13,7 @@ import {
   TrendingDown,
   Minus,
 } from 'lucide-react';
+import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
@@ -66,16 +67,7 @@ function formatHitPrice(price: number): string {
 }
 
 function formatHitClock(ms: number): string {
-  const t0 = ms > 0 && ms < 1e11 ? ms * 1000 : ms;
-  const now = Date.now();
-  if (!Number.isFinite(t0) || t0 <= 0) return '—';
-  if (t0 > now + 2_000) return '—';
-  return new Date(t0).toLocaleTimeString('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata',
-  });
+  return formatOpportunityCreatedClock(ms);
 }
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
