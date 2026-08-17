@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   closedBarIndex,
   firstConsecutiveHitTime,
+  currentRunStartOfIstDay,
   firstHitTimeOfIstDay,
   keepDisplaySetupTime,
   keepFirstSetupTime,
@@ -80,6 +81,34 @@ describe('barTime', () => {
       now,
     );
     assert.equal(created, start + morning * FIVE + FIVE);
+  });
+
+  it('Created uses the current run, not a dead 9:20 print', () => {
+    const now = Date.parse('2026-08-14T14:32:00+05:30');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 64 }, (_, i) => bar(start + i * FIVE));
+    const morning = 7;
+    const afternoon = 50;
+    const created = currentRunStartOfIstDay(
+      candles,
+      '5m',
+      (i) => i === morning || i >= afternoon,
+      now,
+    );
+    assert.equal(created, start + afternoon * FIVE + FIVE);
+  });
+
+  it('skips the 9:15 opening print so Created is not stuck at 9:20', () => {
+    const now = Date.parse('2026-08-14T12:28:00+05:30');
+    const start = Date.parse('2026-08-14T09:15:00+05:30');
+    const candles = Array.from({ length: 40 }, (_, i) => bar(start + i * FIVE));
+    const created = currentRunStartOfIstDay(
+      candles,
+      '5m',
+      () => true,
+      now,
+    );
+    assert.equal(created, start + FIVE + FIVE);
   });
 
   it('never uses Date.now as a fallback', () => {

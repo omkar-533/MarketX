@@ -7,7 +7,7 @@ import type { MarketDataProvider } from '../radar/MarketDataProvider';
 import { mockMarketDataProvider } from '../radar/MockMarketDataProvider';
 import { resolveCatalogUniverse } from '../radar/universeCatalog';
 import {
-  firstHitTimeOfIstDay,
+  currentRunStartOfIstDay,
   keepDisplaySetupTime,
   readCandleTimeMs,
   sessionBarsNeeded,
@@ -362,10 +362,13 @@ export async function runOpportunityScan(
           featAt.set(i, snap);
           return snap;
         };
-        const listedAtFor = (scan: (c: typeof ctx) => OpportunityHit | null): number => {
+        const listedAtFor = (
+          scan: (c: typeof ctx) => OpportunityHit | null,
+          direction?: OpportunityHit['direction'],
+        ): number => {
           try {
             return (
-              firstHitTimeOfIstDay(
+              currentRunStartOfIstDay(
                 candles,
                 tf,
                 (i) => {
@@ -377,7 +380,11 @@ export async function runOpportunityScan(
                     dataMode,
                     quotePrice: snap.tech.last,
                   });
-                  return !!h && h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore;
+                  return (
+                    !!h &&
+                    h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore &&
+                    (direction == null || h.direction === direction)
+                  );
                 },
                 asOf,
               ) || 0
@@ -403,7 +410,7 @@ export async function runOpportunityScan(
         for (const [, scan] of runners) {
           const hit = scan(ctx);
           if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          const listed = listedAtFor(scan);
+          const listed = listedAtFor(scan, hit.direction);
           if (!listed) continue;
           hit.detectedAt = listed;
           sibling[hit.scannerId] = hit.score;
@@ -415,7 +422,7 @@ export async function runOpportunityScan(
         if (prime) {
           const listed = listedTimes.length
             ? Math.min(...listedTimes)
-            : listedAtFor((c) => scanWolfPrime(c, sibling));
+            : listedAtFor((c) => scanWolfPrime(c, sibling), prime.direction);
           if (listed) {
             prime.detectedAt = listed;
             emitHit(prime);
@@ -459,7 +466,7 @@ export async function runOpportunityScan(
     );
     if (hit && hit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
       const candles = anchor.f.candles || [];
-      const listed = firstHitTimeOfIstDay(
+      const listed = currentRunStartOfIstDay(
         candles,
         tf,
         (i) => {

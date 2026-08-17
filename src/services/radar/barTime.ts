@@ -208,24 +208,24 @@ export function sessionBarsNeeded(timeframe: string, now = Date.now()): number {
   return Math.min(500, Math.max(80, Math.ceil(elapsed / dur) + TIMEWALK_LOOKBACK_BARS + 4));
 }
 
-/**
- * First time this setup printed on the active NSE trading day.
- * Weekend / before the bell uses Friday's session — never a blank Saturday stamp.
- */
-export function firstHitTimeOfIstDay(
+function istSessionWalk(
   candles: { timestamp?: number; time?: number; ts?: number }[],
   timeframe: string,
-  hitsAt: (endIndex: number) => boolean,
-  now = Date.now(),
-): number {
+  now: number,
+): {
+  start: number;
+  end: number;
+  inSession: (i: number) => boolean;
+  stamp: (i: number) => number;
+} | null {
   const end = closedBarIndex(candles, timeframe, now);
-  if (end < 0) return 0;
+  if (end < 0) return null;
   const today = nseTradingDay(now);
   const session =
     timeframe === '1D' || timeframe === '4h'
       ? Date.parse(`${today}T00:00:00+05:30`)
       : istSessionStartMs(now);
-  if (!(session > 0) || session > now + 2_000) return 0;
+  if (!(session > 0) || session > now + 2_000) return null;
 
   let start = -1;
   for (let i = 0; i <= end; i += 1) {
@@ -234,7 +234,7 @@ export function firstHitTimeOfIstDay(
       break;
     }
   }
-  if (start < 0) return 0;
+  if (start < 0) return null;
 
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   const inSession = (i: number) => {
@@ -246,13 +246,51 @@ export function firstHitTimeOfIstDay(
     if (t > 0 && t <= now + 2_000) return t;
     return 0;
   };
+  return { start, end, inSession, stamp };
+}
 
-  // First closed bar of the IST session that qualifies — not scan clock, not the latest reprint.
-  for (let i = start; i <= end; i += 1) {
-    if (!inSession(i)) continue;
-    if (hitsAt(i)) return stamp(i);
+/**
+ * First time this setup printed on the active NSE trading day.
+ * Weekend / before the bell uses Friday's session — never a blank Saturday stamp.
+ */
+export function firstHitTimeOfIstDay(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): number {
+  const w = istSessionWalk(candles, timeframe, now);
+  if (!w) return 0;
+  for (let i = w.start; i <= w.end; i += 1) {
+    if (!w.inSession(i)) continue;
+    if (hitsAt(i)) return w.stamp(i);
   }
   return 0;
+}
+
+/**
+ * When the card on screen started — start of the current consecutive run today.
+ * A 9:20 false start that died, then a 11:40 reprint, stamps 11:40 (not 9:20, not now).
+ * Intraday skips the 9:15 opening print (prior-day 20-bar range).
+ */
+export function currentRunStartOfIstDay(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  timeframe: string,
+  hitsAt: (endIndex: number) => boolean,
+  now = Date.now(),
+): number {
+  const w = istSessionWalk(candles, timeframe, now);
+  if (!w) return 0;
+  const floor =
+    timeframe === '1D' || timeframe === '4h' ? w.start : Math.min(w.end, w.start + 1);
+  if (!w.inSession(w.end) || !hitsAt(w.end)) return 0;
+  let first = w.end;
+  for (let i = w.end - 1; i >= floor; i -= 1) {
+    if (!w.inSession(i)) continue;
+    if (!hitsAt(i)) break;
+    first = i;
+  }
+  return w.stamp(first);
 }
 
 function onTradingDay(ms: number, now: number): number {
