@@ -3044,10 +3044,20 @@ html[data-theme="light"] .wolf-opp .up { color: #047857; }
 html[data-theme="light"] .wolf-opp .down { color: #be123c; }
 
 html[data-theme="light"] .wolf-opp__pulse,
-html[data-theme="light"] .wolf-opp__seg-row {
+html[data-theme="light"] .wolf-opp__seg-row,
+html[data-theme="light"] .wolf-opp__search {
   background: #ffffff;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
+html[data-theme="light"] .wolf-opp__search input { color: #0a0a0a; }
+html[data-theme="light"] .wolf-opp__finder b { color: #92400e; }
+html[data-theme="light"] .wolf-opp__finder-chip {
+  color: #0a0a0a;
+  background: #fffbeb;
+  box-shadow: inset 0 0 0 1px rgba(146, 64, 14, 0.16);
+}
+html[data-theme="light"] .wolf-opp__finder-chip.is-bullish em { color: #047857; }
+html[data-theme="light"] .wolf-opp__finder-chip.is-bearish em { color: #be123c; }
 
 html[data-theme="light"] .wolf-opp__sheet {
   background: #ffffff;

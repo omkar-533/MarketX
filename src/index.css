@@ -29172,6 +29172,113 @@ span.wolf-opp__seg {
   color: var(--opp-muted);
   font-weight: 600;
 }
+.wolf-opp__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: 1 1 16rem;
+  min-width: 12.5rem;
+  max-width: 22rem;
+  height: 2.2rem;
+  padding: 0 0.45rem 0 0.78rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--opp-hairline);
+  color: var(--opp-muted);
+}
+.wolf-opp__search:focus-within {
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.18);
+}
+.wolf-opp__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--opp-text-soft, #f4efe4);
+  font-size: 0.76rem;
+  font-weight: 650;
+  outline: none;
+}
+.wolf-opp__search input::placeholder {
+  color: var(--opp-muted);
+  font-weight: 550;
+}
+.wolf-opp__search input::-webkit-search-cancel-button {
+  display: none;
+}
+.wolf-opp__search button {
+  border: 0;
+  background: transparent;
+  color: var(--opp-muted);
+  width: 1.55rem;
+  height: 1.55rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.wolf-opp__search button:hover {
+  color: var(--opp-gold-soft, #e8c872);
+}
+.wolf-opp__finder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  padding: 0.05rem 0 0.35rem;
+}
+.wolf-opp__finder p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--opp-muted);
+  font-weight: 600;
+}
+.wolf-opp__finder b {
+  color: var(--opp-gold-soft, #e8c872);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.wolf-opp__finder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wolf-opp__finder-chip {
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--opp-text-soft, #f4efe4);
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.22);
+}
+.wolf-opp__finder-chip em {
+  font-style: normal;
+  font-weight: 750;
+  opacity: 0.85;
+}
+.wolf-opp__finder-chip.is-bullish em { color: #6ee7b7; }
+.wolf-opp__finder-chip.is-bearish em { color: #fda4af; }
+.wolf-opp__finder-chip span {
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.22);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.62rem;
+}
+.wolf-opp__finder-chip:hover {
+  background: rgba(212, 175, 55, 0.18);
+}
 .wolf-opp__note {
   margin: 0;
   font-size: 0.72rem;
@@ -29378,6 +29485,7 @@ span.wolf-opp__seg {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  scroll-margin-top: 5.5rem;
 }
 .wolf-opp__sheet-head {
   display: flex;
@@ -29414,6 +29522,9 @@ span.wolf-opp__seg {
   color: #0b0e17;
   background: linear-gradient(180deg, #f0d78c, #d4af37);
   font-variant-numeric: tabular-nums;
+}
+.wolf-opp__sheet.is-found {
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.38), 0 14px 32px rgba(212, 175, 55, 0.1);
 }
 .wolf-opp__sheet-empty {
   margin: 0.35rem 0 0.15rem;

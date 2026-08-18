@@ -1,12 +1,13 @@
 /**
  * WOLF OPPORTUNITY — every scanner kept; Long / Short split inside each.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Crosshair,
   RefreshCw,
+  Search,
   X,
   Link2,
   TrendingUp,
@@ -80,6 +81,18 @@ function signalPrintLabel(hit: OpportunityHit): string {
   if (!(n > 1)) return '';
   const suf = n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
   return ` · ${n}${suf} signal`;
+}
+
+function symbolNeedle(raw: string): string {
+  return String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+function hitMatchesQuery(hit: OpportunityHit, needle: string): boolean {
+  if (!needle) return true;
+  return symbolNeedle(hit.symbol).includes(needle);
 }
 
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
@@ -203,6 +216,7 @@ export default function WolfOpportunityPage({
   ]);
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
+  const [symbolQuery, setSymbolQuery] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
@@ -475,12 +489,47 @@ export default function WolfOpportunityPage({
   };
 
   const liveOk = feedStatus === 'LIVE';
+  const needle = symbolNeedle(symbolQuery);
   const hitCount = cards.reduce(
     (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
     0,
   );
+  const finder = useMemo(() => {
+    if (!needle) return [] as Array<{ scannerId: string; title: string; side: OpportunityDirection; count: number }>;
+    const byKey = new Map<string, { scannerId: string; title: string; side: OpportunityDirection; count: number }>();
+    for (const card of cards) {
+      for (const hit of card.hits) {
+        if (hit.timeframe !== filters.timeframe) continue;
+        if (!hitMatchesQuery(hit, needle)) continue;
+        const side = biasOf(hit);
+        const key = `${card.scannerId}|${side}`;
+        const prev = byKey.get(key);
+        if (prev) prev.count += 1;
+        else {
+          byKey.set(key, {
+            scannerId: card.scannerId,
+            title: prettyTitle(card.title),
+            side,
+            count: 1,
+          });
+        }
+      }
+    }
+    return [...byKey.values()];
+  }, [cards, filters.timeframe, needle]);
+  const finderScannerCount = useMemo(
+    () => new Set(finder.map((row) => row.scannerId)).size,
+    [finder],
+  );
   const showLong = true;
   const showShort = true;
+
+  const jumpToScanner = (scannerId: string) => {
+    document.getElementById(`wolf-opp-sheet-${scannerId}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
 
   return (
     <div className="wolf-opp wolf-opp--sheets">
@@ -581,6 +630,23 @@ export default function WolfOpportunityPage({
             </Seg>
           ))}
         </div>
+        <label className="wolf-opp__search">
+          <Search size={14} strokeWidth={2.2} />
+          <input
+            type="search"
+            value={symbolQuery}
+            onChange={(e) => setSymbolQuery(e.target.value)}
+            placeholder="Find a stock across scanners"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Search stock across scanners"
+          />
+          {symbolQuery ? (
+            <button type="button" aria-label="Clear search" onClick={() => setSymbolQuery('')}>
+              <X size={13} />
+            </button>
+          ) : null}
+        </label>
         <p className="wolf-opp__status-line">
           {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated
@@ -588,6 +654,36 @@ export default function WolfOpportunityPage({
             : ''}
         </p>
       </motion.nav>
+
+      {needle ? (
+        <div className="wolf-opp__finder" role="status">
+          {finder.length ? (
+            <>
+              <p>
+                <b>{needle}</b> in {finderScannerCount} scanner{finderScannerCount === 1 ? '' : 's'}
+              </p>
+              <div className="wolf-opp__finder-chips">
+                {finder.map((row) => (
+                  <button
+                    key={`${row.scannerId}-${row.side}`}
+                    type="button"
+                    className={`wolf-opp__finder-chip is-${row.side}`}
+                    onClick={() => jumpToScanner(row.scannerId)}
+                  >
+                    {row.title}
+                    <em>{row.side === 'bullish' ? 'Long' : row.side === 'bearish' ? 'Short' : 'Neutral'}</em>
+                    {row.count > 1 ? <span>{row.count}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p>
+              No live setup for <b>{needle}</b> on this {filters.universe === 'CASH' ? 'Cash' : 'F&O'} board
+            </p>
+          )}
+        </div>
+      ) : null}
 
       <section
         className={`wolf-opp__desk${scanning ? ' is-hunting' : ''}`}
@@ -599,7 +695,12 @@ export default function WolfOpportunityPage({
         </AnimatePresence>
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
-            const tfHits = rankHitsByCreated(card.hits.filter((h) => h.timeframe === filters.timeframe));
+            const tfHits = rankHitsByCreated(
+              card.hits.filter(
+                (h) => h.timeframe === filters.timeframe && hitMatchesQuery(h, needle),
+              ),
+            );
+            if (needle && !tfHits.length) return null;
             const longs = showLong ? tfHits.filter((h) => biasOf(h) === 'bullish') : [];
             const shorts = showShort ? tfHits.filter((h) => biasOf(h) === 'bearish') : [];
             const neutrals =
@@ -609,7 +710,8 @@ export default function WolfOpportunityPage({
             return (
               <motion.article
                 key={card.scannerId}
-                className="wolf-opp__sheet"
+                id={`wolf-opp-sheet-${card.scannerId}`}
+                className={`wolf-opp__sheet${needle ? ' is-found' : ''}`}
                 initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
