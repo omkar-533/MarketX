@@ -46,6 +46,8 @@ import {
   adminMarkUsersSeen,
   adminSetUserAccess,
   adminSetUserActive,
+  formatSpentDuration,
+  loginTimesUnit,
   type AdminTvAccessRequest,
   type InviteUserRow,
 } from '../services/appInviteAuth';
@@ -180,6 +182,7 @@ function exportUsersExcel(users: InviteUserRow[], filename: string) {
         'First login': u.firstLoginAt ? new Date(u.firstLoginAt).toLocaleString('en-IN') : '',
         'Last login': u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('en-IN') : '',
         'Login count': u.loginCount ?? 0,
+        'Time spent': formatSpentDuration(u.timeSpentMs),
       };
     });
 
@@ -890,14 +893,15 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                     <th className="py-3 px-4 text-left">Joined</th>
                     <th className="py-3 px-4 text-left">First login</th>
                     <th className="py-3 px-4 text-left">Last login</th>
-                    <th className="py-3 px-4 text-right">Logins</th>
+                    <th className="py-3 px-4 text-right">Times logged in</th>
+                    <th className="py-3 px-4 text-right">Time spent</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                          <td colSpan={9} className="py-8 text-center text-slate-500 text-xs">
+                          <td colSpan={10} className="py-8 text-center text-slate-500 text-xs">
                         {loading
                           ? 'Loading…'
                           : searchActive || rangeFilterActive
@@ -967,10 +971,18 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                           <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                             {formatDateTime(u.lastLoginAt)}
                           </td>
-                          <td className="py-2.5 px-4 text-right">
-                            <span className="text-sm font-black text-[#d4af37] tabular-nums">
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            <div className="text-sm font-black text-[#d4af37] tabular-nums leading-none">
                               {u.loginCount || 0}
-                            </span>
+                            </div>
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
+                              {loginTimesUnit(u.loginCount)}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            <div className="text-[12px] font-black text-white tabular-nums">
+                              {formatSpentDuration(u.timeSpentMs)}
+                            </div>
                           </td>
                           <td
                             className="py-2.5 px-4"

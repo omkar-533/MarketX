@@ -9,6 +9,8 @@ data/app-users.json
 data/app-users.migrated.json
 data/app-otp-codes.json
 data/app-login-events.json
+supabase/.temp/
+supabase/**/.temp/
 data/app-access-requests.json
 data/app-tv-access-requests.json
 data/app-settings.json

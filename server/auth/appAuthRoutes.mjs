@@ -22,7 +22,14 @@ import {
   setUserPhone,
   isDeskStaffRole,
 } from './appUserStore.mjs';
-import { listLoginEvents } from './loginEventStore.mjs';
+import {
+  isSessionLive,
+  listLoginEvents,
+  spentMsNow,
+  stampLoginNumbers,
+  timeSpentByUser,
+  touchLoginSession,
+} from './loginEventStore.mjs';
 import { accessStateFor } from './accessState.mjs';
 import { consumeOtp, issueOtp, pendingOtpPayload } from './otpStore.mjs';
 import { isDevSmsMode, sendOtpSms, smsProviderName } from './smsProvider.mjs';
@@ -174,20 +181,28 @@ function ensureSubAdminOnce() {
 // Seed on boot so the account exists before first login.
 void ensureSubAdminOnce();
 
-function signAppToken(user) {
-  return jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      plan: user.plan,
-      name: user.name,
-      trialEndsAt: user.trialEndsAt ?? null,
-      typ: 'app-invite',
-    },
-    JWT_SECRET,
-    { expiresIn: '30d' },
-  );
+function signAppToken(user, extra = {}) {
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    plan: user.plan,
+    name: user.name,
+    trialEndsAt: user.trialEndsAt ?? null,
+    typ: 'app-invite',
+  };
+  if (extra.loginEventId) payload.loginEventId = extra.loginEventId;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
+}
+
+async function tokenAfterLogin(user) {
+  if (!user?.id) return { user, token: signAppToken(user) };
+  const logged = await recordLogin(user.id);
+  const next = logged?.user || user;
+  return {
+    user: next,
+    token: signAppToken(next, { loginEventId: logged?.loginEventId }),
+  };
 }
 
 function verifyAppToken(token) {
@@ -394,9 +409,9 @@ router.post('/login', async (req, res) => {
     if (authed.active === false) {
       return res.status(403).json({ error: 'This account is disabled. Contact the desk.' });
     }
-    const user = (await recordLogin(authed.id)) || authed;
+    const { user, token } = await tokenAfterLogin(authed);
     return res.json({
-      token: signAppToken(user),
+      token,
       user,
       source: 'invite',
       ...(await accessPayloadFor(user)),
@@ -457,10 +472,10 @@ router.post('/signup/start', async (req, res) => {
       } catch {
         /* access already granted on create */
       }
-      const user = (await recordLogin(created.id)) || created;
+      const { user, token } = await tokenAfterLogin(created);
       return res.status(201).json({
         skippedOtp: true,
-        token: signAppToken(user),
+        token,
         user,
         source: 'promo',
         promo: promoPeek.promo,
@@ -565,9 +580,9 @@ router.post('/signup/verify', async (req, res) => {
       /* access already granted on create */
     }
 
-    const user = (await recordLogin(created.id)) || created;
+    const { user, token } = await tokenAfterLogin(created);
     return res.status(201).json({
-      token: signAppToken(user),
+      token,
       user,
       source: 'promo',
       promo: promoPeek.promo,
@@ -701,9 +716,9 @@ router.post('/password/reset', async (req, res) => {
     }
 
     await setUserPassword(target.id, password);
-    const user = (await recordLogin(target.id)) || publicUser(target);
+    const { user, token } = await tokenAfterLogin(publicUser(target));
     return res.json({
-      token: signAppToken(user),
+      token,
       user,
       source: 'reset',
       ...(await accessPayloadFor(user)),
@@ -721,6 +736,27 @@ router.get('/me', requireUser, async (req, res) => {
     return res.json({ user: req.appUser, ...(await accessPayloadFor(req.appUser)) });
   } catch (err) {
     return failed(res, err, 'Could not load session');
+  }
+});
+
+/** POST /api/app-auth/session/ping — visible-tab heartbeat for time-spent */
+router.post('/session/ping', requireUser, async (req, res) => {
+  try {
+    if (isDeskStaffRole(req.appUser?.role)) return res.json({ ok: true, skipped: true });
+    const payload = bearerPayload(req);
+    const eventId = String(req.body?.eventId || payload?.loginEventId || '').trim();
+    const end = req.body?.end === true;
+    const row = await touchLoginSession(req.appUser.id, {
+      eventId: eventId || null,
+      end,
+    });
+    return res.json({
+      ok: true,
+      durationMs: row ? spentMsNow(row) : 0,
+      live: row ? isSessionLive(row) && !end : false,
+    });
+  } catch (err) {
+    return failed(res, err, 'Could not update session');
   }
 });
 
@@ -1538,8 +1574,14 @@ router.post('/phone/verify', requireUser, async (req, res) => {
 router.get('/admin/users', requireAdmin, async (_req, res) => {
   try {
     const users = await listAppUsers();
+    const now = Date.now();
+    const spent = timeSpentByUser(await listLoginEvents({ limit: 1_000 }), now);
     return res.json({
-      users: users.map((user) => ({ ...user, access: accessStateFor(user) })),
+      users: users.map((user) => ({
+        ...user,
+        access: accessStateFor(user),
+        timeSpentMs: spent.get(user.id) || 0,
+      })),
       pendingRequests: await pendingAccessRequestCount(),
     });
   } catch (err) {
@@ -1554,11 +1596,19 @@ router.get('/admin/logins', requireAdmin, async (req, res) => {
     const limit = Number(req.query.limit) || 400;
     const users = await listAppUsers();
     const byId = new Map(users.map((u) => [u.id, u]));
-    const events = await listLoginEvents({ limit, userId: userId || undefined });
+    const now = Date.now();
+    const events = stampLoginNumbers(
+      await listLoginEvents({ limit, userId: userId || undefined }),
+      new Map(users.map((u) => [u.id, Number(u.loginCount || 0)])),
+    );
+    const spent = timeSpentByUser(events, now);
     const logins = events
       .map((row) => {
         const user = byId.get(row.userId);
         if (!user || isDeskStaffRole(user.role)) return null;
+        const timesLoggedIn = Number(row.timesLoggedIn || user.loginCount || 0);
+        const durationMs = spentMsNow(row, now);
+        const live = isSessionLive(row, now);
         return {
           id: row.id,
           userId: row.userId,
@@ -1566,7 +1616,14 @@ router.get('/admin/logins', requireAdmin, async (req, res) => {
           name: user.name,
           email: user.email,
           phone: user.phone || null,
-          loginCount: user.loginCount || 0,
+          loginN: Number(row.loginN) || null,
+          loginCount: timesLoggedIn,
+          timesLoggedIn,
+          durationMs,
+          live,
+          lastSeenAt: row.lastSeenAt || null,
+          endedAt: row.endedAt || null,
+          timeSpentMs: spent.get(row.userId) || 0,
           firstLoginAt: user.firstLoginAt || null,
           lastLoginAt: user.lastLoginAt || null,
         };

@@ -26,7 +26,6 @@ const Header = lazyWithRetry(() => import('./components/Header'));
 const AuthModal = lazyWithRetry(() => import('./components/AuthModal'));
 const TvAccessGrantedPopup = lazyWithRetry(() => import('./components/access/TvAccessGrantedPopup'));
 const AccessGate = lazyWithRetry(() => import('./components/access/AccessGate'));
-const ConnectLiveNudgePopup = lazyWithRetry(() => import('./components/access/ConnectLiveNudgePopup'));
 const ProfileModal = lazyWithRetry(() => import('./components/ProfileModal'));
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'));
 const TradingJournal = lazyWithRetry(() => import('./components/TradingJournal'));
@@ -617,10 +616,6 @@ function AppWorkspace() {
               auth.user?.role === 'admin' || auth.user?.role === 'subadmin' ? null : auth.user?.id
             }
             onOpenIndicator={openGrantedIndicator}
-          />
-          <ConnectLiveNudgePopup
-            enabled={auth.isLoggedIn && Boolean(auth.user?.id) && !locked}
-            userId={auth.user?.id}
           />
           <AccessGate
             access={planPeek ? null : auth.access}

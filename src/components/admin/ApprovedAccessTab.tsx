@@ -8,7 +8,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import type { InviteUserRow } from '../../services/appInviteAuth';
+import { formatSpentDuration, loginTimesUnit, type InviteUserRow } from '../../services/appInviteAuth';
 
 type ApprovedAccessTabProps = {
   rows: InviteUserRow[];
@@ -74,6 +74,7 @@ function exportApprovedExcel(users: InviteUserRow[]) {
       Joined: u.createdAt ? new Date(u.createdAt).toLocaleString('en-IN') : '',
       'Last login': u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('en-IN') : '',
       'Login count': u.loginCount ?? 0,
+      'Time spent': formatSpentDuration(u.timeSpentMs),
     };
   });
   const sheet = XLSX.utils.json_to_sheet(data);
@@ -224,14 +225,15 @@ export default function ApprovedAccessTab({
                 <th className="py-3 px-4 text-left">Access</th>
                 <th className="py-3 px-4 text-left">Expires</th>
                 <th className="py-3 px-4 text-left">Last login</th>
-                <th className="py-3 px-4 text-right">Logins</th>
+                <th className="py-3 px-4 text-right">Times logged in</th>
+                <th className="py-3 px-4 text-right">Time spent</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={9} className="py-8 text-center text-slate-500 text-xs">
                     {loading
                       ? 'Loading…'
                       : granted.length === 0
@@ -285,8 +287,18 @@ export default function ApprovedAccessTab({
                       <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                         {formatDateTime(u.lastLoginAt)}
                       </td>
-                      <td className="py-2.5 px-4 text-right text-sm font-black text-[#d4af37] tabular-nums">
-                        {u.loginCount || 0}
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <div className="text-sm font-black text-[#d4af37] tabular-nums leading-none">
+                          {u.loginCount || 0}
+                        </div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
+                          {loginTimesUnit(u.loginCount)}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <div className="text-[12px] font-black text-white tabular-nums">
+                          {formatSpentDuration(u.timeSpentMs)}
+                        </div>
                       </td>
                       <td className="py-2.5 px-4">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">

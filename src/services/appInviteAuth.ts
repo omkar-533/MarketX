@@ -1,4 +1,4 @@
-import { apiFetch } from '../config/api';
+import { apiFetch, getApiBaseUrl } from '../config/api';
 import type { User } from '../hooks/useAuth';
 
 const APP_SESSION_KEY = 'tradeflow_app_session';
@@ -393,6 +393,7 @@ export type InviteUserRow = {
   firstLoginAt?: string | null;
   lastLoginAt?: string | null;
   loginCount?: number;
+  timeSpentMs?: number;
   adminSeenAt?: string | null;
   createdBy?: string | null;
   access?: Omit<AccessState, 'trialDays' | 'request'>;
@@ -414,10 +415,83 @@ export type AdminLoginEvent = {
   name: string;
   email: string;
   phone?: string | null;
+  loginN?: number | null;
   loginCount: number;
+  timesLoggedIn?: number;
+  durationMs?: number;
+  live?: boolean;
+  lastSeenAt?: string | null;
+  endedAt?: string | null;
+  timeSpentMs?: number;
   firstLoginAt?: string | null;
   lastLoginAt?: string | null;
 };
+
+export function loginTimesUnit(n?: number | null) {
+  return Math.max(0, Math.round(Number(n) || 0)) === 1 ? 'time' : 'times';
+}
+
+export function loginTimesLabel(n?: number | null) {
+  const c = Math.max(0, Math.round(Number(n) || 0));
+  return `${c} ${loginTimesUnit(c)}`;
+}
+
+export function loginNthLabel(n?: number | null) {
+  const c = Math.max(0, Math.round(Number(n) || 0));
+  const mod100 = c % 100;
+  const mod10 = c % 10;
+  let suffix = 'th';
+  if (mod100 < 11 || mod100 > 13) {
+    if (mod10 === 1) suffix = 'st';
+    else if (mod10 === 2) suffix = 'nd';
+    else if (mod10 === 3) suffix = 'rd';
+  }
+  return `${c}${suffix}`;
+}
+
+export function formatSpentDuration(ms?: number | null, opts?: { live?: boolean }) {
+  const n = Math.max(0, Math.round(Number(ms) || 0));
+  if (!(n > 0) && !opts?.live) return '—';
+  const sec = Math.floor(n / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  let label = `${s}s`;
+  if (h > 0) label = m > 0 ? `${h}h ${m}m` : `${h}h`;
+  else if (m > 0) label = m < 10 && s > 0 ? `${m}m ${s}s` : `${m}m`;
+  return opts?.live ? `${label} · live` : label;
+}
+
+/** Visible-tab heartbeat so admin can see time spent. Never sends passwords or broker tokens. */
+export async function pingAppSession(opts?: { end?: boolean; keepalive?: boolean }) {
+  const session = loadAppSession();
+  if (!session?.token) return;
+  if (session.user.role === 'admin' || session.user.role === 'subadmin') return;
+  const body = JSON.stringify({ end: opts?.end === true });
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.token}`,
+  };
+  try {
+    if (opts?.keepalive) {
+      await fetch(`${getApiBaseUrl()}/api/app-auth/session/ping`, {
+        method: 'POST',
+        headers,
+        body,
+        keepalive: true,
+        credentials: 'include',
+      });
+      return;
+    }
+    await apiFetch(
+      '/api/app-auth/session/ping',
+      { method: 'POST', headers, body },
+      { retries: 0, timeoutMs: 8_000 },
+    );
+  } catch {
+    /* offline / tab closing — next visible beat retries */
+  }
+}
 
 export async function adminListLogins(
   adminEmail?: string | null,

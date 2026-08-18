@@ -32,7 +32,7 @@ export async function evaluateOpportunitySnapshot(snap: {
   const tf = (['5m', '15m', '1h', '1D'].includes(String(snap.timeframe))
     ? snap.timeframe
     : '5m') as OpportunityTimeframe;
-  const universe = snap.universe === 'CASH' ? 'CASH' : 'F&O';
+  const universe = 'F&O';
   const candleMap = snap.candlesBySymbol || {};
   const symbols = [
     ...new Set(

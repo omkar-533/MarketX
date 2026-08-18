@@ -434,25 +434,28 @@ export async function recordLogin(id) {
   const current = await findAppUserById(id);
   if (!current) return null;
 
+  const nextCount = Number(current.loginCount || 0) + 1;
   const updated = await patchUser(
     id,
     {
       first_login_at: current.firstLoginAt || nowIso,
       last_login_at: nowIso,
-      login_count: Number(current.loginCount || 0) + 1,
+      login_count: nextCount,
     },
     {
       firstLoginAt: current.firstLoginAt || nowIso,
       lastLoginAt: nowIso,
-      loginCount: Number(current.loginCount || 0) + 1,
+      loginCount: nextCount,
     },
   );
+  let loginEventId = null;
   try {
-    await appendLoginEvent(id, nowIso);
+    const event = await appendLoginEvent(id, nowIso, nextCount);
+    loginEventId = event?.id || null;
   } catch (err) {
     console.warn('[login-events] append skipped', err?.message || err);
   }
-  return updated;
+  return { user: updated, loginEventId };
 }
 
 /** Clears the "NEW" badge in the admin panel. */

@@ -8,7 +8,7 @@ describe('opportunity board job plan', () => {
     const plan = planOpportunityBoardTick(open, 1);
     assert.equal(plan.hunt, true);
     assert.deepEqual(plan.timeframes, ['5m']);
-    assert.deepEqual(plan.universes, ['F&O', 'CASH']);
+    assert.deepEqual(plan.universes, ['F&O']);
   });
 
   it('also covers slower TFs on cadence ticks', () => {
@@ -19,7 +19,7 @@ describe('opportunity board job plan', () => {
     assert.ok(plan.timeframes.includes('15m'));
     assert.ok(plan.timeframes.includes('1h'));
     assert.ok(plan.timeframes.includes('1D'));
-    assert.deepEqual(plan.universes, ['F&O', 'CASH']);
+    assert.deepEqual(plan.universes, ['F&O']);
   });
 
   it('freezes after the bell and still asks for a persist heartbeat', () => {

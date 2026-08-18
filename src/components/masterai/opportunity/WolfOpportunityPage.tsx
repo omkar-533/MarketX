@@ -305,7 +305,6 @@ export default function WolfOpportunityPage({
         setBgBusy(false);
         scanningRef.current = false;
         setProgress('Connect INDstocks for live scan — demo prices are off');
-        if (!quiet && !liveHint) onConnectData?.();
         return;
       }
 
@@ -595,6 +594,7 @@ export default function WolfOpportunityPage({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08, duration: 0.45 }}
       >
+        {OPPORTUNITY_UNIVERSES.length > 1 ? (
         <div className="wolf-opp__seg-row" role="group" aria-label="Universe">
           {OPPORTUNITY_UNIVERSES.map((u) => (
             <Seg
@@ -609,10 +609,11 @@ export default function WolfOpportunityPage({
                 void runScan({ reset: true, filtersOverride: { universe: u } });
               }}
             >
-              {u === 'CASH' ? 'Cash' : 'F&O'}
+              {u === 'F&O' ? 'F&O' : u}
             </Seg>
           ))}
         </div>
+        ) : null}
         <div className="wolf-opp__seg-row" role="group" aria-label="Timeframe">
           {(['5m', '15m', '1h', '1D'] as const).map((t) => (
             <Seg
@@ -679,7 +680,7 @@ export default function WolfOpportunityPage({
             </>
           ) : (
             <p>
-              No live setup for <b>{needle}</b> on this {filters.universe === 'CASH' ? 'Cash' : 'F&O'} board
+              No live setup for <b>{needle}</b> on this F&O board
             </p>
           )}
         </div>

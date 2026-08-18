@@ -21,7 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { InviteUserRow } from '../../services/appInviteAuth';
+import { formatSpentDuration, type InviteUserRow } from '../../services/appInviteAuth';
 
 type AdminAnalyticsTabProps = {
   rows: InviteUserRow[];
@@ -68,6 +68,7 @@ export default function AdminAnalyticsTab({ rows, loading }: AdminAnalyticsTabPr
     let locked = 0;
     let blocked = 0;
     let loginSum = 0;
+    let timeSpent = 0;
     let everLoggedIn = 0;
     for (const u of members) {
       const bucket = memberAccessBucket(u);
@@ -77,6 +78,7 @@ export default function AdminAnalyticsTab({ rows, loading }: AdminAnalyticsTabPr
       else blocked += 1;
       if (u.access?.unlocked) unlocked += 1;
       loginSum += u.loginCount ?? 0;
+      timeSpent += u.timeSpentMs ?? 0;
       if (u.firstLoginAt || (u.loginCount ?? 0) > 0) everLoggedIn += 1;
     }
     return {
@@ -87,6 +89,7 @@ export default function AdminAnalyticsTab({ rows, loading }: AdminAnalyticsTabPr
       locked,
       blocked,
       loginSum,
+      timeSpent,
       everLoggedIn,
     };
   }, [members]);
@@ -218,7 +221,7 @@ export default function AdminAnalyticsTab({ rows, loading }: AdminAnalyticsTabPr
               <h3 className="text-sm font-bold text-[#d4af37] mb-1">Signups · last 14 days</h3>
               <p className="text-[10px] text-slate-600 mb-3">
                 New members by join date · {stats.everLoggedIn} have logged in at least once ·{' '}
-                {stats.loginSum} total logins
+                {stats.loginSum} times logged in · {formatSpentDuration(stats.timeSpent)} spent
               </p>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={signupSeries}>

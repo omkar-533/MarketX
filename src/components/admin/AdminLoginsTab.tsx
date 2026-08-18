@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { CalendarClock, RefreshCw, Search } from 'lucide-react';
 import {
   adminListLogins,
+  formatSpentDuration,
+  loginNthLabel,
+  loginTimesUnit,
   type AdminLoginEvent,
   type InviteUserRow,
 } from '../../services/appInviteAuth';
@@ -72,12 +75,45 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
     [rows],
   );
 
+  const countsByUser = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of events) {
+      const n = Number(e.timesLoggedIn || e.loginCount || 0);
+      m.set(e.userId, Math.max(m.get(e.userId) || 0, n));
+    }
+    for (const u of members) {
+      m.set(u.id, Math.max(m.get(u.id) || 0, Number(u.loginCount || 0)));
+    }
+    return m;
+  }, [events, members]);
+
+  const spentByUser = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of events) {
+      m.set(e.userId, (m.get(e.userId) || 0) + Number(e.durationMs || 0));
+    }
+    for (const e of events) {
+      const total = Number(e.timeSpentMs || 0);
+      if (total > (m.get(e.userId) || 0)) m.set(e.userId, total);
+    }
+    for (const u of members) {
+      const fromUser = Number(u.timeSpentMs || 0);
+      if (fromUser > (m.get(u.id) || 0)) m.set(u.id, fromUser);
+    }
+    return m;
+  }, [events, members]);
+
   const perUser = useMemo(
     () =>
       [...members]
-        .filter((u) => (u.loginCount || 0) > 0 || u.lastLoginAt)
+        .map((u) => ({
+          ...u,
+          loginCount: countsByUser.get(u.id) || 0,
+          timeSpentMs: spentByUser.get(u.id) || 0,
+        }))
+        .filter((u) => u.loginCount > 0 || u.lastLoginAt)
         .sort((a, b) => Date.parse(b.lastLoginAt || '0') - Date.parse(a.lastLoginAt || '0')),
-    [members],
+    [members, countsByUser, spentByUser],
   );
 
   const filteredEvents = useMemo(() => {
@@ -103,16 +139,19 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
   const todayStart = startOfIstDay();
   const todayEvents = events.filter((e) => Date.parse(e.loggedInAt) >= todayStart);
   const todayUsers = new Set(todayEvents.map((e) => e.userId)).size;
-  const totalLogins = members.reduce((n, u) => n + (u.loginCount || 0), 0);
+  const totalLogins = members.reduce((n, u) => n + (countsByUser.get(u.id) || 0), 0);
+  const todaySpentMs = todayEvents.reduce((n, e) => n + Number(e.durationMs || 0), 0);
+  const allSpentMs = members.reduce((n, u) => n + (spentByUser.get(u.id) || 0), 0);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {[
-          { label: 'Logins today', value: todayEvents.length },
-          { label: 'People today', value: todayUsers },
-          { label: 'Total login count', value: totalLogins },
-          { label: 'Members who logged in', value: perUser.length },
+          { label: 'Logins today', value: String(todayEvents.length) },
+          { label: 'People today', value: String(todayUsers) },
+          { label: 'Times logged in (all)', value: String(totalLogins) },
+          { label: 'Time today', value: formatSpentDuration(todaySpentMs) },
+          { label: 'Total time spent', value: formatSpentDuration(allSpentMs) },
         ].map((card) => (
           <div key={card.label} className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl px-3 py-3">
             <p className="text-2xl font-black text-[#d4af37] tabular-nums">{card.value}</p>
@@ -130,7 +169,7 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
             Login history
           </h3>
           <p className="text-[10px] text-slate-600">
-            Each row is one login · date & time IST
+            Each row is one login · time spent while the app tab is open
           </p>
           <button
             type="button"
@@ -176,17 +215,19 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
                 <th className="py-3 px-4 text-left">Time IST</th>
                 <th className="py-3 px-4 text-left">User</th>
                 <th className="py-3 px-4 text-left">Mobile</th>
-                <th className="py-3 px-4 text-right">Login count</th>
+                <th className="py-3 px-4 text-right">This login</th>
+                <th className="py-3 px-4 text-right">Time spent</th>
+                <th className="py-3 px-4 text-right">Times logged in</th>
               </tr>
             </thead>
             <tbody>
               {filteredEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
                     {loading
                       ? 'Loading…'
                       : events.length === 0
-                        ? 'New logins will appear here with date and time. Per-user totals are below.'
+                        ? 'New logins will appear here with date, time, and how many times they logged in.'
                         : 'No logins match this filter.'}
                   </td>
                 </tr>
@@ -214,8 +255,27 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
                     <td className="py-2.5 px-4 text-xs font-mono text-slate-300 whitespace-nowrap">
                       {e.phone || '—'}
                     </td>
-                    <td className="py-2.5 px-4 text-right text-sm font-black text-[#d4af37] tabular-nums">
-                      {e.loginCount}
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <div className="text-sm font-black text-[#d4af37] tabular-nums">
+                        {loginNthLabel(e.loginN || e.loginCount)} login
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <div
+                        className={`text-sm font-black tabular-nums ${
+                          e.live ? 'text-emerald-400' : 'text-white'
+                        }`}
+                      >
+                        {formatSpentDuration(e.durationMs, { live: Boolean(e.live) })}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <div className="text-sm font-black text-white tabular-nums">
+                        {Number(e.timesLoggedIn || e.loginCount) || 0}
+                      </div>
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                        {loginTimesUnit(e.timesLoggedIn || e.loginCount)}
+                      </div>
                     </td>
                   </motion.tr>
                 ))
@@ -227,8 +287,8 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
 
       <div className="bg-[#0b0e17] border border-[#1a1f2e] rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-[#1a1f2e]">
-          <h3 className="text-sm font-bold text-white">Per user · count, first & last</h3>
-          <p className="text-[10px] text-slate-600">Totals already stored on each account</p>
+          <h3 className="text-sm font-bold text-white">Per user · times & time spent</h3>
+          <p className="text-[10px] text-slate-600">Kitni baar + kitna time app me spend kiya</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -237,7 +297,8 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
                 <th className="py-3 px-3 text-left w-10">#</th>
                 <th className="py-3 px-4 text-left">User</th>
                 <th className="py-3 px-4 text-left">Mobile</th>
-                <th className="py-3 px-4 text-right">Logins</th>
+                <th className="py-3 px-4 text-right">Times logged in</th>
+                <th className="py-3 px-4 text-right">Total time</th>
                 <th className="py-3 px-4 text-left">First login</th>
                 <th className="py-3 px-4 text-left">Last login</th>
               </tr>
@@ -245,7 +306,7 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
             <tbody>
               {perUser.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
                     Nobody has logged in yet.
                   </td>
                 </tr>
@@ -262,8 +323,18 @@ export default function AdminLoginsTab({ rows, adminEmail, adminPassword }: Prop
                     <td className="py-2.5 px-4 text-xs font-mono text-slate-300">
                       {u.phone || '—'}
                     </td>
-                    <td className="py-2.5 px-4 text-right text-sm font-black text-[#d4af37] tabular-nums">
-                      {u.loginCount || 0}
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <div className="text-lg font-black text-[#d4af37] tabular-nums leading-none">
+                        {u.loginCount || 0}
+                      </div>
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
+                        {loginTimesUnit(u.loginCount)}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <div className="text-sm font-black text-white tabular-nums">
+                        {formatSpentDuration(u.timeSpentMs)}
+                      </div>
                     </td>
                     <td className="py-2.5 px-4 text-[12px] text-slate-300 whitespace-nowrap">
                       {formatIstDate(u.firstLoginAt)}{' '}

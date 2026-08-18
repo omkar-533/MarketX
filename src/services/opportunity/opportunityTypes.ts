@@ -183,7 +183,7 @@ export const OPPORTUNITY_CARD_POOL = 12;
 /** Max names kept per scanner after a full scan — always the highest scores, never first-arrived. */
 export const OPPORTUNITY_SCAN_CAP = 80;
 
-export const OPPORTUNITY_UNIVERSES = ['F&O', 'CASH'] as const;
+export const OPPORTUNITY_UNIVERSES = ['F&O'] as const;
 
 export const DEFAULT_OPPORTUNITY_FILTERS: OpportunityFilters = {
   market: 'NSE',

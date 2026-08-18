@@ -1,6 +1,6 @@
 /**
  * Always-on Opportunity day-board job.
- * Every 60s: pick a LIVE INDstocks token, fetch shared F&O + Cash snapshots,
+ * Every 60s: pick a LIVE INDstocks token, fetch the shared F&O snapshot,
  * evaluate with the same scanners as the website, persist to Supabase.
  * Website does not need to stay open. After hours: freeze + heartbeat persist.
  */
@@ -21,7 +21,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const EVAL_PATH = resolve(root, 'server/marketData/generated/opportunityEval.mjs');
 const TICK_MS = 60_000;
-const UNIVERSES = ['F&O', 'CASH'];
+const UNIVERSES = ['F&O'];
 
 /** @type {((snap: object) => Promise<{ cards: object[], hits: object[], complete: boolean }>) | null} */
 let evaluateSnapshot = null;

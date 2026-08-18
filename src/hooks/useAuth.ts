@@ -7,6 +7,7 @@ import {
   fetchAccessState,
   loadAppSession,
   loginWithInvite,
+  pingAppSession,
   resendPasswordResetOtp,
   resendSignupOtp,
   saveAppSession,
@@ -395,6 +396,11 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
+      await pingAppSession({ end: true });
+    } catch {
+      /* still sign out locally */
+    }
+    try {
       await getSupabase()?.auth.signOut();
     } finally {
       clearAdminSession();
@@ -464,6 +470,40 @@ export function useAuth() {
       document.removeEventListener('visibilitychange', onFocus);
     };
   }, [isLoggedIn, refreshAccess]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
+    if (user.role === 'admin' || user.role === 'subadmin') return;
+    if (!loadAppSession()?.token) return;
+
+    let stopped = false;
+    const beat = (end = false, keepalive = false) => {
+      if (stopped && !end && !keepalive) return;
+      void pingAppSession({ end, keepalive });
+    };
+
+    beat();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') beat();
+    }, 30_000);
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') beat();
+      else beat(false, true);
+    };
+    const onHide = () => beat(false, true);
+
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', onHide);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pagehide', onHide);
+      beat(false, true);
+    };
+  }, [isLoggedIn, user?.id, user?.role]);
 
   return {
     user,
