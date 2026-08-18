@@ -3042,6 +3042,27 @@ html[data-theme="light"] .wolf-opp__mkt.is-open { color: #047857; }
 html[data-theme="light"] .wolf-opp__mkt.is-closed { color: #be123c; }
 html[data-theme="light"] .wolf-opp .up { color: #047857; }
 html[data-theme="light"] .wolf-opp .down { color: #be123c; }
+html[data-theme="light"] .wolf-opp__trend {
+  background: #ffffff;
+  border-color: rgba(146, 64, 14, 0.18);
+}
+html[data-theme="light"] .wolf-opp__trend.is-bullish {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: rgba(4, 120, 87, 0.28);
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__trend.is-bearish {
+  color: #be123c;
+  background: #fff1f2;
+  border-color: rgba(190, 18, 60, 0.28);
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__trend.is-neutral {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: rgba(146, 64, 14, 0.22);
+}
 
 html[data-theme="light"] .wolf-opp__pulse,
 html[data-theme="light"] .wolf-opp__seg-row,

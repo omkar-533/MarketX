@@ -41,12 +41,16 @@ import {
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
-  IndexPulse,
   OpportunityDirection,
   OpportunityFilters,
   OpportunityHit,
   ScannerCardState,
 } from '../../../services/opportunity/opportunityTypes';
+import {
+  emptyMarketTrend,
+  loadMarketTrend,
+  type MarketTrendState,
+} from '../../../services/opportunity/marketTrend';
 import {
   OPPORTUNITY_SCAN_CAP,
   OPPORTUNITY_UNIVERSES,
@@ -234,11 +238,7 @@ export default function WolfOpportunityPage({
   const [progress, setProgress] = useState('');
   const [bgBusy, setBgBusy] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
-  const [indices, setIndices] = useState<IndexPulse[]>([
-    { symbol: 'NIFTY', price: null, changePercent: null, available: false },
-    { symbol: 'BANKNIFTY', price: null, changePercent: null, available: false },
-    { symbol: 'SENSEX', price: null, changePercent: null, available: false },
-  ]);
+  const [marketTrend, setMarketTrend] = useState<MarketTrendState>(() => emptyMarketTrend());
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const [symbolQuery, setSymbolQuery] = useState('');
@@ -263,25 +263,12 @@ export default function WolfOpportunityPage({
     });
   }, []);
 
-  const refreshIndices = useCallback(async (provider: MarketDataProvider) => {
-    const syms = ['NIFTY', 'BANKNIFTY', 'SENSEX'] as const;
-    const next = await Promise.all(
-      syms.map(async (symbol) => {
-        try {
-          const q = await provider.getQuote(symbol);
-          const price = Number(q.price) || Number((q as { lastPrice?: number }).lastPrice) || 0;
-          return {
-            symbol,
-            price: price > 0 ? price : null,
-            changePercent: Number.isFinite(q.changePercent) ? q.changePercent : null,
-            available: price > 0,
-          } satisfies IndexPulse;
-        } catch {
-          return { symbol, price: null, changePercent: null, available: false } satisfies IndexPulse;
-        }
-      }),
-    );
-    setIndices(next);
+  const refreshMarketTrend = useCallback(async (provider: MarketDataProvider) => {
+    try {
+      setMarketTrend(await loadMarketTrend(provider));
+    } catch {
+      setMarketTrend(emptyMarketTrend('Market trend unavailable — live index data missing.'));
+    }
   }, []);
 
   const runScan = useCallback(
@@ -331,13 +318,14 @@ export default function WolfOpportunityPage({
         setScanning(false);
         setBgBusy(false);
         scanningRef.current = false;
+        setMarketTrend(emptyMarketTrend());
         setProgress('Connect INDstocks for live scan — demo prices are off');
         return;
       }
 
       const provider = resolveLiveProvider();
       setDataMode('LIVE');
-      void refreshIndices(provider);
+      void refreshMarketTrend(provider);
       const replaceDesk = Boolean(opts?.reset);
       const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
       const tfHits = (cards: ScannerCardState[]) =>
@@ -484,7 +472,7 @@ export default function WolfOpportunityPage({
         }
       }
     },
-    [filters, refreshIndices, liveHint],
+    [filters, refreshMarketTrend, liveHint],
   );
 
   useEffect(() => {
@@ -589,17 +577,16 @@ export default function WolfOpportunityPage({
           <span className={`wolf-opp__mkt ${marketOpen ? 'is-open' : 'is-closed'}`}>
             {marketOpen ? 'Market open' : 'Market closed'}
           </span>
-          {indices.map((ix) => (
-            <div key={ix.symbol} className="wolf-opp__ix">
-              <StockLogoMark symbol={ix.symbol} size={18} />
-              <b>{ix.symbol === 'BANKNIFTY' ? 'BN' : ix.symbol}</b>
-              <em className={(ix.changePercent || 0) >= 0 ? 'up' : 'down'}>
-                {ix.available && ix.changePercent != null
-                  ? `${ix.changePercent >= 0 ? '+' : ''}${ix.changePercent.toFixed(2)}%`
-                  : '—'}
-              </em>
-            </div>
-          ))}
+          <div
+            className={`wolf-opp__trend is-${marketTrend.available ? marketTrend.bias : 'na'}`}
+            title={marketTrend.reason}
+          >
+            <span>Market trend</span>
+            {marketTrend.available && marketTrend.bias === 'bullish' ? <TrendingUp size={13} /> : null}
+            {marketTrend.available && marketTrend.bias === 'bearish' ? <TrendingDown size={13} /> : null}
+            {marketTrend.available && marketTrend.bias === 'neutral' ? <Minus size={13} /> : null}
+            <em>{marketTrend.label}</em>
+          </div>
         </div>
 
         <div className="wolf-opp__hero-actions">

@@ -29078,6 +29078,45 @@ body:has(.app-main--terminal-immersive) #root {
 }
 .wolf-opp__ix b { font-weight: 700; color: var(--opp-text-soft); }
 .wolf-opp__ix em { font-style: normal; font-weight: 800; }
+.wolf-opp__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.22rem 0.55rem 0.22rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid var(--opp-hairline);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--opp-muted);
+}
+.wolf-opp__trend span { font-weight: 700; }
+.wolf-opp__trend em {
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.wolf-opp__trend.is-bullish {
+  color: #86efac;
+  border-color: rgba(52, 211, 153, 0.38);
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.1);
+}
+.wolf-opp__trend.is-bearish {
+  color: #fda4af;
+  border-color: rgba(251, 113, 133, 0.38);
+  background: rgba(244, 63, 94, 0.12);
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.1);
+}
+.wolf-opp__trend.is-neutral {
+  color: #e8d48b;
+  border-color: rgba(212, 175, 55, 0.32);
+  background: rgba(212, 175, 55, 0.08);
+}
+.wolf-opp__trend.is-na {
+  color: var(--opp-muted);
+}
 .wolf-opp .up { color: #34d399; }
 .wolf-opp .down { color: #f87171; }
 
