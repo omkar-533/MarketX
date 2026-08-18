@@ -42,6 +42,28 @@ describe('opportunity day board merge', () => {
     assert.equal(merged[0].score, 90);
   });
 
+  it('keeps an afternoon name after 80 morning names already sit on the board', () => {
+    const day = '2026-08-17';
+    const morning = Date.parse('2026-08-17T10:25:00+05:30');
+    const late = Date.parse('2026-08-17T14:55:00+05:30');
+    const prev = Array.from({ length: 80 }, (_, i) => ({
+      scannerId: 'breakout_radar',
+      symbol: `M${i}`,
+      score: 90,
+      detectedAt: morning,
+      timeframe: '5m',
+    }));
+    const first = mergeScannerHits([], prev, day);
+    const merged = mergeScannerHits(
+      first,
+      [{ scannerId: 'breakout_radar', symbol: 'PREMIERENE', score: 62, detectedAt: late, timeframe: '5m' }],
+      day,
+    );
+    assert.equal(first.length, 80);
+    assert.ok(merged.some((h) => h.symbol === 'PREMIERENE' && h.detectedAt === late));
+    assert.equal(merged.length, 81);
+  });
+
   it('keeps Monday after the bell and drops it when Tuesday session opens', () => {
     const afterClose = Date.parse('2026-08-17T18:05:00+05:30');
     const nextOpen = Date.parse('2026-08-18T09:16:00+05:30');

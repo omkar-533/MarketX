@@ -315,9 +315,9 @@ export function mergeOpportunityHitIntoCards(
       (h) => h.symbol === hit.symbol && listingTime(h.detectedAt) === listingTime(hit.detectedAt),
     );
     const merged = existing ? mergeHitKeepFirstSeen(existing, hit) : hit;
-    const hits = [...card.hits.filter((h) => h !== existing), merged]
-      .sort((a, b) => a.detectedAt - b.detectedAt || a.symbol.localeCompare(b.symbol))
-      .slice(0, cap);
+    const hits = [...card.hits.filter((h) => h !== existing), merged].sort(
+      (a, b) => a.detectedAt - b.detectedAt || a.symbol.localeCompare(b.symbol),
+    );
     return {
       ...card,
       status: 'ready',

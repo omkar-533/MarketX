@@ -105,9 +105,9 @@ function rankTrim(
       groups.set(h.symbol, g);
     }
     const rankedSymbols = [...groups.entries()].sort((a, b) => {
-      const ta = Math.min(...a[1].map((h) => h.detectedAt));
-      const tb = Math.min(...b[1].map((h) => h.detectedAt));
-      return ta - tb || a[0].localeCompare(b[0]);
+      const ta = Math.max(...a[1].map((h) => h.detectedAt));
+      const tb = Math.max(...b[1].map((h) => h.detectedAt));
+      return tb - ta || a[0].localeCompare(b[0]);
     });
     const flat: OpportunityHit[] = [];
     for (const [, g] of rankedSymbols) {
@@ -119,10 +119,9 @@ function rankTrim(
           ...h,
           meta: { ...h.meta, signalN: i + 1, signalCount: arr.length },
         }));
-      if (flat.length + runs.length > topN && flat.length > 0) break;
       flat.push(...runs);
     }
-    out.set(id, flat.slice(0, topN));
+    out.set(id, flat);
   }
   return out;
 }

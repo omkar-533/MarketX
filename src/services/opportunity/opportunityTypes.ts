@@ -180,8 +180,8 @@ export const OPPORTUNITY_SCANNERS: {
 /** Visible rows per card before inner scrollbar. Ranked pool can be larger. */
 export const OPPORTUNITY_CARD_VISIBLE = 6;
 export const OPPORTUNITY_CARD_POOL = 12;
-/** Max names kept per scanner after a full scan — always the highest scores, never first-arrived. */
-export const OPPORTUNITY_SCAN_CAP = 80;
+/** Kept for scan option compatibility — the day board does not drop names. */
+export const OPPORTUNITY_SCAN_CAP = Number.MAX_SAFE_INTEGER;
 
 export const OPPORTUNITY_UNIVERSES = ['F&O'] as const;
 

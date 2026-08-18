@@ -23,7 +23,6 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const CAP = 80;
 const SETTINGS_KEY = 'opportunity_day_board';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const filePath = resolve(root, 'data', 'opportunity-day-board.json');
@@ -174,9 +173,24 @@ export function mergeScannerHits(prev, incoming, day) {
     const old = byKey.get(k);
     byKey.set(k, old ? { ...h, detectedAt: old.detectedAt, id: old.id } : h);
   }
-  return [...byKey.values()]
-    .sort((a, b) => b.score - a.score || a.detectedAt - b.detectedAt || a.symbol.localeCompare(b.symbol))
-    .slice(0, CAP);
+  const all = [...byKey.values()];
+  const groups = new Map();
+  for (const h of all) {
+    const g = groups.get(h.symbol) || [];
+    g.push(h);
+    groups.set(h.symbol, g);
+  }
+  const ranked = [...groups.entries()].sort((a, b) => {
+    const ta = Math.max(...a[1].map((h) => h.detectedAt));
+    const tb = Math.max(...b[1].map((h) => h.detectedAt));
+    return tb - ta || a[0].localeCompare(b[0]);
+  });
+  return ranked.flatMap(([, g]) =>
+    [...g]
+      .sort((a, b) => a.detectedAt - b.detectedAt || a.symbol.localeCompare(b.symbol))
+      .filter((h, i, arr) => i === 0 || h.detectedAt !== arr[i - 1].detectedAt)
+      .slice(0, 4),
+  );
 }
 
 function toCards(hitsByScanner) {
