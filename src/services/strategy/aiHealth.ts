@@ -13,6 +13,7 @@ export type AiHealth = {
     acceptsModernGeminiKeys?: boolean;
   };
   keySource?: 'server' | 'profile' | 'none';
+  serverConfigured?: boolean;
 };
 
 export async function fetchAiHealth(): Promise<AiHealth> {

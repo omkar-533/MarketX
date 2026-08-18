@@ -2182,12 +2182,10 @@ export function createMasterAiRouter(apiKey) {
         throw Object.assign(new Error('message or image required'), { status: 400 });
       }
       if (!client && !gemini) {
-        throw Object.assign(
-          new Error(
-            'Add an AI API key (aistudio.google.com), OpenAI key, or OpenRouter key in Profile / server env.',
-          ),
-          { status: 503 },
-        );
+            throw Object.assign(
+              new Error('Wolf AI is temporarily unavailable. Try again in a moment.'),
+              { status: 503 },
+            );
       }
 
       if (hasImage && imageDataUrl.length > 6_500_000) {

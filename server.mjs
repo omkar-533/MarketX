@@ -63,9 +63,9 @@ app.use('/api/app-auth', appAuthRoutes);
 const envOpenRouterKey = getMasterAiApiKey() || getOpenRouterApiKey();
 
 if (!envOpenRouterKey) {
-  console.warn('[Analyse AI] No GEMINI_API_KEY / OPENAI / OPENROUTER — users can add key in Profile');
+  console.warn('[Analyse AI] No GEMINI_API_KEY — set it on the server so all users get Wolf AI');
 } else {
-  console.log('[Analyse AI] API key loaded from env ✓');
+  console.log('[Analyse AI] Platform Gemini/AI key loaded from env ✓');
 }
 
 app.get('/api/health', (_req, res) => {
@@ -121,11 +121,12 @@ app.get('/api/chat/status', (req, res) => {
   res.json({
     configured: ai.isConfigured,
     message: ai.isConfigured
-      ? `Analyse AI ready (${ai.provider || 'ok'})`
-      : 'Add Gemini API key (aistudio.google.com) or OpenAI / OpenRouter key in Profile',
+      ? `Wolf AI ready (${ai.provider || 'ok'})`
+      : 'Wolf AI is temporarily unavailable',
     models: MASTER_AI_MODELS.length,
     provider: ai.provider || null,
     keySource: key ? (key === envOpenRouterKey ? 'server' : 'profile') : 'none',
+    serverConfigured: Boolean(envOpenRouterKey),
     costMode: GEMINI_COST_MODE,
   });
 });
@@ -158,6 +159,7 @@ app.get('/api/ai/health', (req, res) => {
         ? 'server'
         : 'profile'
       : 'none',
+    serverConfigured: Boolean(serverKey),
     // Never include key material
   });
 });
@@ -170,8 +172,7 @@ app.post('/api/chat', async (req, res) => {
   const keyChain = resolveAiKeyChain(req);
   if (!keyChain.length) {
     return res.status(503).json({
-      error:
-        'Add an AI API key (aistudio.google.com AIza…), OpenAI, or OpenRouter key in Profile / server env.',
+      error: 'Wolf AI is temporarily unavailable. Try again in a moment.',
     });
   }
 
@@ -219,11 +220,16 @@ app.post('/api/chat', async (req, res) => {
 app.post('/api/strategies/parse', async (req, res) => {
   try {
     const description = typeof req.body?.description === 'string' ? req.body.description : '';
+    const youtubeUrl = typeof req.body?.youtubeUrl === 'string' ? req.body.youtubeUrl : '';
     const answers =
       req.body?.answers && typeof req.body.answers === 'object' ? req.body.answers : {};
     const preferLocal = Boolean(req.body?.preferLocal);
     const keyChain = resolveAiKeyChain(req);
     const apiKey = keyChain[0] || null;
+
+    if (!description.trim() && !youtubeUrl.trim()) {
+      return res.status(400).json({ error: 'Paste a setup in words, or a YouTube strategy link.' });
+    }
 
     let lastError = null;
     const keys = apiKey && !preferLocal ? keyChain : [null];
@@ -232,6 +238,7 @@ app.post('/api/strategies/parse', async (req, res) => {
         const out = await parseStrategyDescription({
           apiKey: keys[i],
           description,
+          youtubeUrl,
           answers,
           preferLocal: preferLocal || !keys[i],
         });
@@ -247,6 +254,7 @@ app.post('/api/strategies/parse', async (req, res) => {
         const localOut = await parseStrategyDescription({
           apiKey: null,
           description,
+          youtubeUrl,
           answers,
           preferLocal: true,
         });

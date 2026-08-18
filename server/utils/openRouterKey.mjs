@@ -19,9 +19,9 @@ function readHeader(req, name) {
 }
 
 /**
- * Collect every usable AI key from request + env.
- * Priority: Gemini keys ALWAYS beat OpenRouter/OpenAI keys — Profile may still
- * hold an old free sk-or key while a Gemini key sits in Render env (or vice versa).
+ * Collect every usable AI key from env + request.
+ * Platform (Render) Gemini is first so every user gets the owner's key.
+ * Browser Profile keys are fallback only — users do not need to paste a key.
  */
 export function collectAiKeys(req) {
   const seen = new Set();
@@ -35,15 +35,14 @@ export function collectAiKeys(req) {
     out.push({ key, provider, source });
   };
 
-  add(readHeader(req, 'x-gemini-key'), 'header-gemini');
-  add(readHeader(req, 'x-master-ai-key'), 'header-master');
-  add(readHeader(req, 'x-openrouter-key'), 'header-openrouter');
-
   for (const envKey of listMasterAiKeyCandidates()) {
     add(envKey, 'env');
   }
-  // Backward-compatible single getter (may duplicate; add() dedupes).
   add(getMasterAiApiKey(), 'env');
+
+  add(readHeader(req, 'x-gemini-key'), 'header-gemini');
+  add(readHeader(req, 'x-master-ai-key'), 'header-master');
+  add(readHeader(req, 'x-openrouter-key'), 'header-openrouter');
 
   const gemini = out.filter((k) => k.provider === 'gemini');
   const rest = out.filter((k) => k.provider !== 'gemini');

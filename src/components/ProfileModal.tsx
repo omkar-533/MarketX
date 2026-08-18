@@ -53,16 +53,17 @@ export default function ProfileModal({
     setAvatarMsg('');
     setEditorSrc(null);
     void fetchMasterAiStatus().then((s) => {
-      setServerAiReady(s.configured && s.keySource === 'server');
-      if (!s.configured && !loadOpenRouterApiKey()) setShowKeyOverride(true);
+      const platformReady = Boolean(s.serverConfigured || (s.configured && s.keySource === 'server'));
+      setServerAiReady(platformReady);
+      if (!platformReady && !s.configured && !loadOpenRouterApiKey()) setShowKeyOverride(true);
     });
   }, [isOpen]);
 
   if (!user) return null;
 
   const hasLocalKey = Boolean(openRouterSaved);
-  const showPasteUi = showKeyOverride || (!serverAiReady && !hasLocalKey);
-  const showOpenRouterCard = !serverAiReady || hasLocalKey || showPasteUi;
+  const showPasteUi = !serverAiReady && (showKeyOverride || !hasLocalKey);
+  const showOpenRouterCard = !serverAiReady && (hasLocalKey || showPasteUi);
 
   const planLabel = user.plan === 'premium' ? 'Premium' : user.plan === 'pro' ? 'Pro' : 'Free';
 
@@ -218,6 +219,15 @@ export default function ProfileModal({
             </p>
 
             <div className="space-y-3 mb-6">
+              {serverAiReady ? (
+                <div className="py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-gold" />
+                    <span className="text-sm text-slate-400">Wolf AI</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-400">Included</span>
+                </div>
+              ) : null}
               {showOpenRouterCard ? (
                 <div className="py-3 px-4 rounded-xl bg-dark-elevated border border-dark-border space-y-2">
                   <div className="flex items-center justify-between gap-2">

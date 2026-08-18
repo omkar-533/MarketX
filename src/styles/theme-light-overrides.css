@@ -3100,6 +3100,18 @@ html[data-theme="light"] .wolf-opp__tile.is-bearish {
   box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.14);
 }
 html[data-theme="light"] .wolf-opp__tile-score { color: #78350f; }
+html[data-theme="light"] .wolf-stock-logo {
+  background:
+    radial-gradient(circle at 32% 28%, #fff, transparent 48%),
+    linear-gradient(165deg, #fffdf6, #f4eee0);
+  box-shadow:
+    0 0 0 1px rgba(180, 140, 50, 0.45),
+    0 0 0 3px rgba(180, 140, 50, 0.1),
+    0 6px 14px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .wolf-stock-logo__fallback {
+  color: #7a5b14;
+}
 html[data-theme="light"] .wolf-opp__tile-actions button {
   background: #f1f5f9;
   color: #525252;

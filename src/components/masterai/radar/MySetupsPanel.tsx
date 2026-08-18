@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BookMarked,
   Copy,
+  Link2,
   Pause,
   Play,
   Plus,
@@ -90,6 +91,7 @@ export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) 
 
   // Teach WOLF
   const [teachText, setTeachText] = useState('');
+  const [teachYoutube, setTeachYoutube] = useState('');
   const [teachPhase, setTeachPhase] = useState<
     'idle' | 'understanding' | 'clarify' | 'preview' | 'fail'
   >('idle');
@@ -273,12 +275,20 @@ export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) 
   };
 
   const runTeachParse = async (nextAnswers: Record<string, string> = answers) => {
+    const youtubeUrl = teachYoutube.trim();
+    const fromVideo = Boolean(youtubeUrl) || /youtu(?:\.be|be\.com)/i.test(teachText);
     setTeachPhase('understanding');
-    setTeachMsg('🐺 WOLF IS UNDERSTANDING…');
+    setTeachMsg(
+      fromVideo
+        ? 'Reading captions — if none, transcribing the video audio… then mapping WOLF conditions.'
+        : '🐺 WOLF IS UNDERSTANDING…',
+    );
     setAiDraft(null);
     try {
-      setTeachMsg('Parsing your strategy… Identifying timeframes, conditions, and logic.');
-      const result = await parseStrategyFromText(teachText, nextAnswers);
+      if (!fromVideo) setTeachMsg('Parsing your strategy… Identifying timeframes, conditions, and logic.');
+      const result = await parseStrategyFromText(teachText, nextAnswers, {
+        youtubeUrl: youtubeUrl || undefined,
+      });
       if (result.clarity === 'UNSUPPORTED') {
         setTeachPhase('fail');
         setTeachMsg(result.message);
@@ -691,7 +701,10 @@ export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) 
       {tab === 'teach' && (
         <section className="wolf-lab__teach">
           <h2>TEACH WOLF</h2>
-          <p className="wolf-radar-desk__subtitle">Explain your setup in your own words.</p>
+          <p className="wolf-radar-desk__subtitle">
+            Explain the setup in words, or paste a public YouTube strategy video — WOLF reads captions
+            (or transcribes the audio) and maps only conditions it can hunt.
+          </p>
           <p
             className={`wolf-lab__ai-status ${aiHealth?.available ? 'is-on' : 'is-off'}`}
           >
@@ -699,6 +712,26 @@ export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) 
               ? 'WOLF AI · ● READY'
               : 'WOLF AI · ○ AI BUILDER UNAVAILABLE — try manual or local parse fallback'}
           </p>
+          <label className="wolf-lab__yt">
+            <span>
+              <Link2 size={13} /> YouTube strategy link
+            </span>
+            <input
+              type="url"
+              value={teachYoutube}
+              onChange={(e) => {
+                setTeachYoutube(e.target.value);
+                if (teachPhase !== 'idle' && teachPhase !== 'understanding') {
+                  setTeachPhase('idle');
+                  setAiDraft(null);
+                  setClarifications([]);
+                }
+              }}
+              placeholder="https://www.youtube.com/watch?v=… or youtu.be/…"
+              disabled={teachPhase === 'understanding'}
+              autoComplete="off"
+            />
+          </label>
           <textarea
             rows={6}
             value={teachText}
@@ -713,11 +746,15 @@ export default function MySetupsPanel({ onScanSetup, embedded = false }: Props) 
             placeholder='I want WOLF to hunt for… e.g. "I want stocks where the 15 minute previous low is swept, then the 5 minute structure turns bullish and volume expands. The 1 hour trend should also be bullish."'
             disabled={teachPhase === 'understanding'}
           />
+          <p className="wolf-lab__hint">
+            Public videos work. If captions are off, WOLF transcribes the audio. Order-flow / news / tape-reading cannot be trained —
+            WOLF only hunts price, volume, structure, EMA, RSI.
+          </p>
           <button
             type="button"
             className="wolf-radar-desk__scan-btn"
             onClick={() => void runTeachParse({})}
-            disabled={!teachText.trim() || teachPhase === 'understanding'}
+            disabled={(!teachText.trim() && !teachYoutube.trim()) || teachPhase === 'understanding'}
           >
             <Wand2 size={16} /> BUILD MY SETUP
           </button>

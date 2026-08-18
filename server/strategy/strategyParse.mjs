@@ -4,6 +4,13 @@
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
+import {
+  capTranscript,
+  extractYouTubeUrlFromText,
+  extractYouTubeVideoId,
+  fetchYouTubeTranscript,
+  stripYoutubeUrls,
+} from './youtubeTranscript.mjs';
 
 export const ALLOWED_CONDITION_TYPES = [
   'LIQUIDITY_SWEEP',
@@ -581,6 +588,33 @@ function buildUserPrompt(description, answers) {
     .join('\n\n');
 }
 
+function buildYoutubeUserPrompt(extraNotes) {
+  return [
+    'This is a public YouTube trading-strategy video.',
+    'Extract only the hunt / entry rules the presenter wants scanned.',
+    'Ignore stories, ads, broker pitches, psychology rants, and examples that are not rules.',
+    'If they use a concept WOLF cannot measure, omit it — do not invent order-flow or news filters.',
+    extraNotes ? `Trader extra notes: ${extraNotes}` : '',
+    'Map every understandable piece into allowed conditions. Respond with one ```strategy JSON block only.',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function buildTranscriptUserPrompt(transcript, extraNotes, answers) {
+  return [
+    extraNotes ? `Trader extra notes:\n${extraNotes}` : '',
+    'YouTube strategy video transcript (captions or speech-to-text):',
+    transcript,
+    answers && Object.keys(answers).length
+      ? `Clarification answers: ${JSON.stringify(answers)}`
+      : '',
+    'Extract the hunt / entry rules. Ignore filler. Map only allowed WOLF conditions. One ```strategy JSON block.',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 function isGeminiApiKey(apiKey) {
   const k = String(apiKey || '').trim();
   return k.startsWith('AQ.') || k.startsWith('AIza') || /^AI[a-zA-Z0-9_-]{20,}$/.test(k);
@@ -611,7 +645,7 @@ function friendlyAiError(err) {
     return 'AI is busy right now. Wait a moment and try again.';
   }
   if (/401|403|API[_ ]?key|permission/i.test(msg)) {
-    return 'AI key rejected. Check the Gemini key in Profile, or rely on the server key.';
+    return 'Wolf AI could not authenticate. Try again in a moment.';
   }
   // Never leak raw provider stack traces into the Strategy Lab UI.
   if (msg.length > 180 || /https?:\/\//i.test(msg)) {
@@ -708,10 +742,279 @@ async function completeRaw(apiKey, system, user) {
   throw Object.assign(new Error(friendlyAiError(lastErr)), { status: 502 });
 }
 
+async function transcribeYouTubeWithGemini(apiKey, watchUrl) {
+  const gemini = new GoogleGenerativeAI(apiKey);
+  const prompt = [
+    'Listen to this public YouTube video.',
+    'Transcribe ALL spoken words as a plain transcript.',
+    'Keep English and Hindi as spoken (Hinglish is OK).',
+    'Do not summarize. Do not extract a strategy. Do not add timestamps, titles, or commentary.',
+    'Output transcript text only.',
+  ].join(' ');
+  let lastErr = null;
+  for (const modelId of GEMINI_STRATEGY_MODELS) {
+    try {
+      const model = gemini.getGenerativeModel({
+        model: modelId,
+        generationConfig: { temperature: 0, maxOutputTokens: 8192 },
+      });
+      const result = await model.generateContent([
+        {
+          fileData: {
+            mimeType: 'video/mp4',
+            fileUri: watchUrl,
+          },
+        },
+        { text: prompt },
+      ]);
+      const text = capTranscript(String(result?.response?.text?.() ?? ''));
+      if (text.length < 80) {
+        lastErr = new Error('Transcript too short');
+        continue;
+      }
+      return { text, modelUsed: modelId };
+    } catch (err) {
+      lastErr = err;
+      if (isRetiredOrMissingModelError(err)) continue;
+      throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+        status: err?.status || 502,
+      });
+    }
+  }
+  throw Object.assign(new Error(friendlyAiError(lastErr)), { status: 502 });
+}
+
+async function completeYoutubeGemini(apiKey, watchUrl, extraNotes) {
+  const gemini = new GoogleGenerativeAI(apiKey);
+  let lastErr = null;
+  for (const modelId of GEMINI_STRATEGY_MODELS) {
+    try {
+      const model = gemini.getGenerativeModel({
+        model: modelId,
+        systemInstruction: buildSystemPrompt(),
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1200 },
+      });
+      const result = await model.generateContent([
+        {
+          fileData: {
+            mimeType: 'video/mp4',
+            fileUri: watchUrl,
+          },
+        },
+        { text: buildYoutubeUserPrompt(extraNotes) },
+      ]);
+      return {
+        text: String(result?.response?.text?.() ?? '').trim(),
+        modelUsed: modelId,
+        source: 'gemini-youtube',
+      };
+    } catch (err) {
+      lastErr = err;
+      if (isRetiredOrMissingModelError(err)) continue;
+      throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+        status: err?.status || 502,
+      });
+    }
+  }
+  throw Object.assign(new Error(friendlyAiError(lastErr)), { status: 502 });
+}
+
+function youtubeUnavailable(message) {
+  return {
+    ok: true,
+    status: 200,
+    result: {
+      ok: false,
+      clarity: 'NEEDS_CLARIFICATION',
+      message,
+      clarifications: [],
+      strategy: null,
+      source: 'youtube',
+    },
+  };
+}
+
+async function parseFromYoutube({ apiKey, videoId, extraNotes, answers, preferLocal }) {
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  if (preferLocal || !apiKey) {
+    if (extraNotes) {
+      return parseStrategyDescription({
+        apiKey: null,
+        description: extraNotes,
+        answers,
+        preferLocal: true,
+        fromResolvedYoutube: true,
+      });
+    }
+    return youtubeUnavailable(
+      'This video needs WOLF AI to transcribe the setup. Paste the rules in words if the video cannot be read.',
+    );
+  }
+
+  let transcript = null;
+  try {
+    transcript = await fetchYouTubeTranscript(videoId);
+  } catch {
+    transcript = null;
+  }
+
+  let spoken = false;
+  if (!transcript?.text && isGeminiApiKey(apiKey)) {
+    try {
+      const spokenPack = await transcribeYouTubeWithGemini(apiKey, watchUrl);
+      if (spokenPack?.text) {
+        transcript = { videoId, language: 'spoken', text: spokenPack.text, via: 'speech' };
+        spoken = true;
+      }
+    } catch {
+      spoken = false;
+    }
+  }
+
+  try {
+    let pack;
+    if (transcript?.text) {
+      pack = await completeRaw(
+        apiKey,
+        buildSystemPrompt(),
+        buildTranscriptUserPrompt(transcript.text, extraNotes, answers),
+      );
+    } else if (isGeminiApiKey(apiKey)) {
+      pack = await completeYoutubeGemini(apiKey, watchUrl, extraNotes);
+    } else {
+      return youtubeUnavailable(
+        'No captions on this video and Gemini is not available to transcribe audio. Paste the setup in words.',
+      );
+    }
+
+    const extracted = extractStrategyJson(pack.text);
+    if (extracted?.unsupportedReason) {
+      return {
+        ok: true,
+        status: 200,
+        result: {
+          ok: false,
+          clarity: 'UNSUPPORTED',
+          message: String(extracted.unsupportedReason),
+          clarifications: [],
+          strategy: null,
+          source: pack.source,
+          modelUsed: pack.modelUsed,
+        },
+      };
+    }
+    let sanitized = sanitizeParsedStrategy(extracted);
+    const notesLocal = extraNotes
+      ? sanitizeParsedStrategy(localParseStrategy(normalizeDescription(extraNotes), answers))
+      : { ok: false, strategy: null };
+    if (
+      (!sanitized.ok || !sanitized.strategy?.conditions?.length) &&
+      notesLocal.ok &&
+      notesLocal.strategy?.conditions?.length
+    ) {
+      sanitized = notesLocal;
+    }
+    if (!sanitized.ok) {
+      return {
+        ok: true,
+        status: 200,
+        result: {
+          ok: false,
+          clarity: 'NEEDS_CLARIFICATION',
+          message:
+            spoken
+              ? 'I transcribed the video but could not map a WOLF-supported hunt. Try a clearer strategy video, or paste timeframe + rules (EMA / RSI / sweep / breakout).'
+              : 'Could not map a WOLF-supported hunt from this video. Try a clearer strategy video, or paste timeframe + rules (EMA / RSI / sweep / breakout).',
+          clarifications: [],
+          strategy: null,
+          errors: sanitized.errors,
+          source: pack.source,
+          modelUsed: pack.modelUsed,
+        },
+      };
+    }
+    if (sanitized.strategy && !/youtube/i.test(String(sanitized.strategy.description || ''))) {
+      sanitized.strategy.description = [
+        sanitized.strategy.description,
+        `Source: YouTube ${watchUrl}`,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    }
+    return {
+      ok: true,
+      status: 200,
+      result: {
+        ok: true,
+        clarity: sanitized.strategy.clarity || 'PARTIALLY_CLEAR',
+        message: spoken
+          ? 'Strategy built from video transcription.'
+          : transcript?.via === 'asr' || transcript?.via === 'timedtext'
+            ? 'Strategy built from YouTube auto-captions.'
+            : transcript?.text
+              ? 'Strategy built from YouTube captions.'
+              : 'Strategy built from the YouTube video.',
+        clarifications: [],
+        strategy: sanitized.strategy,
+        source: pack.source,
+        modelUsed: pack.modelUsed,
+      },
+    };
+  } catch (err) {
+    if (extraNotes) {
+      const notes = await parseStrategyDescription({
+        apiKey: null,
+        description: extraNotes,
+        answers,
+        preferLocal: true,
+        fromResolvedYoutube: true,
+      });
+      if (notes?.result?.ok) {
+        return {
+          ...notes,
+          result: {
+            ...notes.result,
+            warning: friendlyAiError(err),
+            source: 'local-fallback',
+          },
+        };
+      }
+    }
+    return youtubeUnavailable(
+      friendlyAiError(err) ||
+        'Could not learn this video. Try another public link, or paste the rules in words.',
+    );
+  }
+}
+
 /**
  * Full parse pipeline for HTTP handler.
  */
-export async function parseStrategyDescription({ apiKey, description, answers = {}, preferLocal = false }) {
+export async function parseStrategyDescription({
+  apiKey,
+  description,
+  youtubeUrl,
+  answers = {},
+  preferLocal = false,
+  fromResolvedYoutube = false,
+}) {
+  if (!fromResolvedYoutube) {
+    const ytId =
+      extractYouTubeVideoId(youtubeUrl) ||
+      extractYouTubeVideoId(extractYouTubeUrlFromText(description) || '') ||
+      extractYouTubeVideoId(String(description || '').trim());
+    if (ytId) {
+      return parseFromYoutube({
+        apiKey,
+        videoId: ytId,
+        extraNotes: stripYoutubeUrls(description),
+        answers,
+        preferLocal,
+      });
+    }
+  }
+
   const text = normalizeDescription(description);
   if (!text) {
     return { ok: false, status: 400, error: 'description required' };

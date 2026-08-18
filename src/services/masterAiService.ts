@@ -503,8 +503,8 @@ export function describeMasterAiFailure(
   }
   if (status === 503) {
     return hindi
-      ? 'AI key abhi set nahi hai. Profile me API key add karke try kijiye.'
-      : 'No AI key is configured yet. Add an API key in Profile and try again.';
+      ? 'Wolf AI abhi available nahi hai. Thodi der baad try kijiye.'
+      : 'Wolf AI is temporarily unavailable. Please try again in a moment.';
   }
   if (status === 429) {
     return hindi
@@ -1195,6 +1195,7 @@ export async function fetchMasterAiStatus(): Promise<{
   configured: boolean;
   message: string;
   keySource: MasterAiKeySource;
+  serverConfigured?: boolean;
 }> {
   try {
     const keyHeaders = openRouterRequestHeaders();
@@ -1209,17 +1210,17 @@ export async function fetchMasterAiStatus(): Promise<{
       return { configured: false, message: masterAiOfflineMessage(), keySource: 'none' };
     }
     const data = await res.json();
+    const serverConfigured = Boolean(data?.serverConfigured);
     const keySource =
       (data?.keySource as MasterAiKeySource) ||
-      (data?.configured ? (keyHeaders['X-OpenRouter-Key'] ? 'profile' : 'server') : 'none');
+      (data?.configured ? (serverConfigured ? 'server' : 'profile') : 'none');
     return {
       configured: Boolean(data?.configured),
+      serverConfigured,
       keySource,
       message: data?.configured
-        ? keySource === 'server'
-          ? 'Wolf AI ready (server key)'
-          : 'Live intelligence ready'
-        : 'Add an AI API key (aistudio.google.com) in Profile',
+        ? 'Wolf AI ready'
+        : 'Wolf AI is temporarily unavailable',
     };
   } catch {
     return {

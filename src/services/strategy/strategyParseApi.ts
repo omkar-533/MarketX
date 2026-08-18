@@ -41,7 +41,10 @@ export type StrategyParseResult = {
 export async function parseStrategyFromText(
   description: string,
   answers: Record<string, string> = {},
+  opts?: { youtubeUrl?: string },
 ): Promise<StrategyParseResult> {
+  const youtubeUrl = String(opts?.youtubeUrl || '').trim();
+  const fromVideo = Boolean(youtubeUrl) || /youtu(?:\.be|be\.com)/i.test(description);
   const res = await apiFetch(
     '/api/strategies/parse',
     {
@@ -50,9 +53,13 @@ export async function parseStrategyFromText(
         'Content-Type': 'application/json',
         ...openRouterRequestHeaders(),
       },
-      body: JSON.stringify({ description, answers }),
+      body: JSON.stringify({
+        description,
+        answers,
+        ...(youtubeUrl ? { youtubeUrl } : {}),
+      }),
     },
-    { timeoutMs: 45_000, retries: 0 },
+    { timeoutMs: fromVideo ? 120_000 : 45_000, retries: 0 },
   );
 
   if (!res.ok) {
@@ -60,7 +67,7 @@ export async function parseStrategyFromText(
     throw new Error(
       typeof err?.error === 'string'
         ? err.error
-        : 'Could not reach Strategy Lab parser. Check AI key / API.',
+        : 'Could not reach Strategy Lab parser. Try again in a moment.',
     );
   }
 

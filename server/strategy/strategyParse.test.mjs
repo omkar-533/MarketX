@@ -87,3 +87,16 @@ describe('sanitize', () => {
     assert.ok(r.errors.some((e) => /Unsupported/.test(e)));
   });
 });
+
+describe('youtube teach', () => {
+  it('does not invent a setup from a youtube link without AI', async () => {
+    const out = await parseStrategyDescription({
+      apiKey: null,
+      youtubeUrl: 'https://youtu.be/dQw4w9wgxcQ',
+      preferLocal: true,
+    });
+    assert.equal(out.result.ok, false);
+    assert.equal(out.result.source, 'youtube');
+    assert.match(out.result.message, /Gemini key|captions|paste/i);
+  });
+});

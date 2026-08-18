@@ -49,6 +49,7 @@ import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import AppLink from '../../AppLink';
 import { liveWolfQuery } from '../../../utils/appNav';
 import WolfHuntLoader from './WolfHuntLoader';
+import StockLogoMark from './StockLogoMark';
 
 function prettyTitle(raw: string): string {
   return raw
@@ -154,6 +155,7 @@ function HitTile({
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
+        <StockLogoMark symbol={hit.symbol} size={40} className="wolf-opp__tile-logo" />
         <span className="wolf-opp__tile-sym">{hit.symbol}</span>
         <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
           {hit.changePercent >= 0 ? '+' : ''}
@@ -556,6 +558,7 @@ export default function WolfOpportunityPage({
           </span>
           {indices.map((ix) => (
             <div key={ix.symbol} className="wolf-opp__ix">
+              <StockLogoMark symbol={ix.symbol} size={18} />
               <b>{ix.symbol === 'BANKNIFTY' ? 'BN' : ix.symbol}</b>
               <em className={(ix.changePercent || 0) >= 0 ? 'up' : 'down'}>
                 {ix.available && ix.changePercent != null
@@ -826,12 +829,15 @@ export default function WolfOpportunityPage({
                     transition={{ type: 'spring', stiffness: 380, damping: 28 }}
                   >
                     <header>
-                      <div>
+                      <div className="wolf-opp__head-id">
+                        <StockLogoMark symbol={whyHit.symbol} size={44} />
+                        <div>
                         <p className="wolf-opp__modal-kicker">{prettyTitle(whyHit.scannerId)}</p>
                         <h3 id="wolf-opp-why-title">Why {whyHit.symbol}?</h3>
                         <p className="wolf-opp__setup-at">
                           Created at {formatHitClock(whyHit.detectedAt)} IST
                         </p>
+                        </div>
                       </div>
                       <button type="button" onClick={() => setWhyHit(null)} aria-label="Close">
                         <X size={18} />
@@ -886,7 +892,9 @@ export default function WolfOpportunityPage({
               exit={{ x: 32, opacity: 0 }}
             >
               <header>
-                <div>
+                <div className="wolf-opp__head-id">
+                  <StockLogoMark symbol={selected.symbol} size={48} />
+                  <div>
                   <h3>{selected.symbol}</h3>
                   <p>
                     {prettyTitle(selected.scannerId)} · {selected.score}/100
@@ -896,6 +904,7 @@ export default function WolfOpportunityPage({
                   </p>
                   <div className="wolf-opp__drawer-bias">
                     <BiasBadge dir={biasOf(selected)} />
+                  </div>
                   </div>
                 </div>
                 <button type="button" onClick={() => setSelected(null)}>
