@@ -65,7 +65,9 @@ function readDisk() {
 function writeDisk(key, payload) {
   try {
     mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, JSON.stringify({ [key]: payload }), 'utf8');
+    const all = readDisk();
+    all[key] = payload;
+    writeFileSync(filePath, JSON.stringify(all), 'utf8');
   } catch (err) {
     console.warn('[opportunity-snapshot] disk skip', err?.message || err);
   }

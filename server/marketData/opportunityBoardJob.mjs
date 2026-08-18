@@ -1,6 +1,6 @@
 /**
  * Always-on Opportunity day-board job.
- * Every 60s: pick a LIVE INDstocks token, fetch the shared F&O snapshot,
+ * Every 60s: pick a LIVE INDstocks token, fetch shared F&O + Cash snapshots,
  * evaluate with the same scanners as the website, persist to Supabase.
  * Website does not need to stay open. After hours: freeze + heartbeat persist.
  */
@@ -21,7 +21,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const EVAL_PATH = resolve(root, 'server/marketData/generated/opportunityEval.mjs');
 const TICK_MS = 60_000;
-const UNIVERSE = 'F&O';
+const UNIVERSES = ['F&O', 'CASH'];
 
 /** @type {((snap: object) => Promise<{ cards: object[], hits: object[], complete: boolean }>) | null} */
 let evaluateSnapshot = null;
@@ -34,12 +34,12 @@ let lastNoTokenLog = 0;
 
 export function planOpportunityBoardTick(now = Date.now(), n = 0) {
   const open = nseCashSessionIsOpen(now);
-  if (!open) return { hunt: false, persist: true, timeframes: [] };
+  if (!open) return { hunt: false, persist: true, timeframes: [], universes: [] };
   const timeframes = ['5m'];
   if (n % 5 === 0) timeframes.push('15m');
   if (n % 15 === 0) timeframes.push('1h');
   if (n % 30 === 0) timeframes.push('1D');
-  return { hunt: true, persist: true, timeframes };
+  return { hunt: true, persist: true, timeframes, universes: [...UNIVERSES] };
 }
 
 function runBundleScript() {
@@ -79,13 +79,13 @@ async function pickLiveToken() {
   return list[start];
 }
 
-async function huntTimeframe(accessToken, timeframe) {
-  const snap = await awaitOpportunitySnapshot(accessToken, UNIVERSE, timeframe, {
+async function huntTimeframe(accessToken, universe, timeframe) {
+  const snap = await awaitOpportunitySnapshot(accessToken, universe, timeframe, {
     force: true,
-    timeoutMs: 180_000,
+    timeoutMs: 480_000,
   });
   if (!snap?.ready || !snap.candlesBySymbol) {
-    throw new Error(`${timeframe} snapshot not ready`);
+    throw new Error(`${universe} ${timeframe} snapshot not ready`);
   }
   const evalFn = await loadEvaluator();
   if (!evalFn) throw new Error('Opportunity eval bundle missing');
@@ -93,11 +93,12 @@ async function huntTimeframe(accessToken, timeframe) {
     symbols: snap.symbols,
     candlesBySymbol: snap.candlesBySymbol,
     timeframe,
+    universe,
     asOf: snap.asOf,
     builtAt: snap.builtAt,
   });
   const board = await mergeOpportunityDayBoard(
-    UNIVERSE,
+    universe,
     timeframe,
     out.cards || [],
     snap.cacheKey,
@@ -128,28 +129,30 @@ async function runTick() {
     console.warn('[opportunity-board-job] eval bundle missing — run npm run build');
     return;
   }
-  for (const tf of plan.timeframes) {
-    try {
-      const result = await huntTimeframe(live.accessToken, tf);
-      console.log(
-        `[opportunity-board-job] saved ${UNIVERSE} ${tf} hits=${result.hits}${result.complete ? '' : ' (partial)'}`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err || 'hunt failed');
-      console.warn(`[opportunity-board-job] ${tf} skip`, message);
+  for (const universe of plan.universes) {
+    for (const tf of plan.timeframes) {
       try {
-        const next = await pickLiveToken();
-        if (next && next.accessToken !== live.accessToken) {
-          const result = await huntTimeframe(next.accessToken, tf);
-          console.log(
-            `[opportunity-board-job] saved ${UNIVERSE} ${tf} hits=${result.hits} (fallback user)`,
+        const result = await huntTimeframe(live.accessToken, universe, tf);
+        console.log(
+          `[opportunity-board-job] saved ${universe} ${tf} hits=${result.hits}${result.complete ? '' : ' (partial)'}`,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err || 'hunt failed');
+        console.warn(`[opportunity-board-job] ${universe} ${tf} skip`, message);
+        try {
+          const next = await pickLiveToken();
+          if (next && next.accessToken !== live.accessToken) {
+            const result = await huntTimeframe(next.accessToken, universe, tf);
+            console.log(
+              `[opportunity-board-job] saved ${universe} ${tf} hits=${result.hits} (fallback user)`,
+            );
+          }
+        } catch (retryErr) {
+          console.warn(
+            `[opportunity-board-job] ${universe} ${tf} fallback skip`,
+            retryErr instanceof Error ? retryErr.message : retryErr,
           );
         }
-      } catch (retryErr) {
-        console.warn(
-          `[opportunity-board-job] ${tf} fallback skip`,
-          retryErr instanceof Error ? retryErr.message : retryErr,
-        );
       }
     }
   }

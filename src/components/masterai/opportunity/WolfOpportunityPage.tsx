@@ -42,6 +42,7 @@ import type {
 } from '../../../services/opportunity/opportunityTypes';
 import {
   OPPORTUNITY_SCAN_CAP,
+  OPPORTUNITY_UNIVERSES,
 } from '../../../services/opportunity/opportunityTypes';
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import AppLink from '../../AppLink';
@@ -297,6 +298,7 @@ export default function WolfOpportunityPage({
       const provider = resolveLiveProvider();
       setDataMode('LIVE');
       void refreshIndices(provider);
+      const replaceDesk = Boolean(opts?.reset);
       const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
       const tfHits = (cards: ScannerCardState[]) =>
         applyLiveScanCards(cards).map((card) => ({
@@ -318,13 +320,14 @@ export default function WolfOpportunityPage({
       try {
         if (!quiet) setProgress('Loading shared day board…');
         const cached = localBoard();
-        if (!quiet && cached.some((c) => c.hits.length)) paintBoard(cached, false);
+        if (replaceDesk) setCards(emptyOpportunityCards());
+        if (!quiet && cached.some((c) => c.hits.length)) paintBoard(cached, replaceDesk);
 
         let hadBoard = cached.some((c) => c.hits.length);
         try {
           const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
           if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
-            adoptBoard(shared.cards, false);
+            adoptBoard(shared.cards, replaceDesk);
             hadBoard = true;
             if (!quiet) setProgress(`${shared.hits} setups`);
           }
@@ -544,7 +547,22 @@ export default function WolfOpportunityPage({
         transition={{ delay: 0.08, duration: 0.45 }}
       >
         <div className="wolf-opp__seg-row" role="group" aria-label="Universe">
-          <span className="wolf-opp__seg is-on">F&O</span>
+          {OPPORTUNITY_UNIVERSES.map((u) => (
+            <Seg
+              key={u}
+              on={filters.universe === u}
+              onClick={() => {
+                if (filters.universe === u) return;
+                patchFilters({ universe: u });
+                setSelected(null);
+                setWhyHit(null);
+                setCards(emptyOpportunityCards());
+                void runScan({ reset: true, filtersOverride: { universe: u } });
+              }}
+            >
+              {u === 'CASH' ? 'Cash' : 'F&O'}
+            </Seg>
+          ))}
         </div>
         <div className="wolf-opp__seg-row" role="group" aria-label="Timeframe">
           {(['5m', '15m', '1h', '1D'] as const).map((t) => (

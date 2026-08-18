@@ -25,12 +25,14 @@ export async function evaluateOpportunitySnapshot(snap: {
   symbols?: string[];
   candlesBySymbol?: Record<string, SnapCandle[]>;
   timeframe?: string;
+  universe?: string;
   asOf?: number;
   builtAt?: number;
 }) {
   const tf = (['5m', '15m', '1h', '1D'].includes(String(snap.timeframe))
     ? snap.timeframe
     : '5m') as OpportunityTimeframe;
+  const universe = snap.universe === 'CASH' ? 'CASH' : 'F&O';
   const candleMap = snap.candlesBySymbol || {};
   const symbols = [
     ...new Set(
@@ -45,7 +47,7 @@ export async function evaluateOpportunitySnapshot(snap: {
   return evaluateOpportunityFromCandleMap({
     filters: {
       ...DEFAULT_OPPORTUNITY_FILTERS,
-      universe: 'F&O',
+      universe,
       timeframe: tf,
       direction: 'all',
     },
