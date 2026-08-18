@@ -155,20 +155,26 @@ function HitTile({
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
-        <StockLogoMark symbol={hit.symbol} size={40} className="wolf-opp__tile-logo" />
-        <span className="wolf-opp__tile-sym">{hit.symbol}</span>
-        <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
-          {hit.changePercent >= 0 ? '+' : ''}
-          {hit.changePercent.toFixed(2)}%
-        </span>
-        <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
-        <span className="wolf-opp__tile-score">{hit.score}</span>
-        <span className="wolf-opp__tile-meta">
-          <BiasBadge dir={bias} size="sm" />
-          <em>
-            Created {formatHitClock(hit.detectedAt)} IST
-            {signalPrintLabel(hit)}
-          </em>
+        <StockLogoMark symbol={hit.symbol} size={42} className="wolf-opp__tile-logo" />
+        <span className="wolf-opp__tile-copy">
+          <span className="wolf-opp__tile-row">
+            <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+            <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
+              {hit.changePercent >= 0 ? '+' : ''}
+              {hit.changePercent.toFixed(2)}%
+            </span>
+          </span>
+          <span className="wolf-opp__tile-row">
+            <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
+            <span className="wolf-opp__tile-score">{hit.score}</span>
+          </span>
+          <span className="wolf-opp__tile-meta">
+            <BiasBadge dir={bias} size="sm" />
+            <em>
+              Created {formatHitClock(hit.detectedAt)} IST
+              {signalPrintLabel(hit)}
+            </em>
+          </span>
         </span>
       </AppLink>
       <div className="wolf-opp__tile-actions">

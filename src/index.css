@@ -29650,14 +29650,15 @@ span.wolf-opp__seg {
 
 .wolf-opp__tile {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   flex: 0 0 auto;
-  min-height: var(--opp-row, 6.55rem);
+  min-height: var(--opp-row, 5.85rem);
+  min-width: 0;
   border-radius: 16px;
   background: rgba(8, 10, 16, 0.45);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  overflow: visible;
+  overflow: hidden;
 }
 .wolf-opp__tile.is-bullish {
   background: rgba(6, 24, 18, 0.55);
@@ -29673,19 +29674,30 @@ span.wolf-opp__seg {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 0.62rem 0.2rem 0.62rem 0.7rem;
+  padding: 0.72rem 0.4rem 0.72rem 0.72rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto auto auto;
-  column-gap: 0.62rem;
-  row-gap: 0.12rem;
+  grid-template-columns: 2.7rem minmax(0, 1fr);
+  column-gap: 0.72rem;
   align-items: center;
+  min-width: 0;
   width: 100%;
 }
 .wolf-opp__tile-logo {
   grid-column: 1;
-  grid-row: 1 / span 3;
   align-self: center;
+}
+.wolf-opp__tile-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+.wolf-opp__tile-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .wolf-stock-logo {
@@ -29695,27 +29707,19 @@ span.wolf-opp__seg {
   place-items: center;
   border-radius: 50%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 248, 220, 0.22), transparent 46%),
-    linear-gradient(165deg, #1c1a16 0%, #0c0d11 58%, #121018 100%);
+  isolation: isolate;
+  background: #111318;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.55),
-    0 0 0 3px rgba(212, 175, 55, 0.12),
-    0 8px 18px rgba(0, 0, 0, 0.38);
-}
-.wolf-stock-logo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 42%, transparent 62%, rgba(212, 175, 55, 0.12));
+    0 0 0 1.5px rgba(212, 175, 55, 0.5),
+    0 6px 14px rgba(0, 0, 0, 0.32);
 }
 .wolf-stock-logo img {
-  width: 68%;
-  height: 68%;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
 }
 .wolf-stock-logo__fallback {
   font-weight: 800;
@@ -29724,46 +29728,52 @@ span.wolf-opp__seg {
   line-height: 1;
 }
 .wolf-opp__tile-sym {
-  grid-column: 2;
-  font-size: 0.88rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 .wolf-opp__tile-chg {
-  grid-column: 3;
-  justify-self: end;
-  font-size: 0.78rem;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 }
 .wolf-opp__tile-px {
-  grid-column: 2;
-  font-size: 0.7rem;
+  min-width: 0;
+  font-size: 0.68rem;
   color: var(--opp-text-soft);
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 }
 .wolf-opp__tile-score {
-  grid-column: 3;
-  justify-self: end;
-  font-size: 0.7rem;
+  flex: 0 0 auto;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--opp-gold-soft);
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 }
 .wolf-opp__tile-meta {
-  grid-column: 2 / -1;
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-top: 0.1rem;
   min-width: 0;
+  margin-top: 0.04rem;
 }
 .wolf-opp__tile-meta em {
   font-style: normal;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   color: var(--opp-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .wolf-opp__tile-actions {
   display: flex;

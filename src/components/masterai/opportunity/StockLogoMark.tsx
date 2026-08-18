@@ -30,8 +30,6 @@ export default function StockLogoMark({ symbol, size = 36, className = '' }: Pro
         <img
           src={src}
           alt=""
-          width={size}
-          height={size}
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
