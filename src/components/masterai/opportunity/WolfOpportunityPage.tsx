@@ -29,6 +29,8 @@ import {
   applyLiveScanCards,
   applyDaySignalCards,
   sortHitsForDesk,
+  scannerPrintLabels,
+  scannerPrintLabelOf,
   nextOpportunityDeskSort,
   emptyOpportunityCards,
   loadOpportunityDayBoard,
@@ -80,13 +82,6 @@ function formatHitPrice(price: number): string {
 
 function formatHitClock(ms: number): string {
   return formatOpportunityCreatedClock(ms);
-}
-
-function signalPrintLabel(hit: OpportunityHit): string {
-  const n = Number(hit.meta?.signalN);
-  if (!(n > 1)) return '';
-  const suf = n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-  return `${n}${suf}`;
 }
 
 const DESK_SORT_LABEL: Record<OpportunityDeskSort, string> = {
@@ -154,18 +149,19 @@ function Seg({
 
 function HitTile({
   hit,
+  printLabel,
   onOpen,
   onWhy,
   onChart,
 }: {
   hit: OpportunityHit;
+  printLabel: string;
   onOpen: () => void;
   onWhy: () => void;
   onChart: () => void;
 }) {
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
-  const nth = signalPrintLabel(hit);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
@@ -185,7 +181,7 @@ function HitTile({
             <span className="wolf-opp__tile-meta">
               <BiasBadge dir={bias} size="sm" />
               <em className="wolf-opp__tile-created">{formatHitClock(hit.detectedAt)} IST</em>
-              {nth ? <span className="wolf-opp__tile-nth">{nth}</span> : null}
+              {printLabel ? <span className="wolf-opp__tile-nth">{printLabel}</span> : null}
             </span>
             <span className="wolf-opp__tile-score">{hit.score}</span>
           </span>
@@ -716,7 +712,7 @@ export default function WolfOpportunityPage({
           {scanning ? <WolfHuntLoader key="hunt" caption={progress || 'Scanning live setups…'} /> : null}
         </AnimatePresence>
         <div className="wolf-opp__sheets">
-          {cards.map((card, idx) => {
+          {cards.map((card) => {
             const deskSort = deskSortByScanner[card.scannerId] || DEFAULT_OPPORTUNITY_DESK_SORT;
             const tfHits = sortHitsForDesk(
               card.hits.filter(
@@ -725,19 +721,13 @@ export default function WolfOpportunityPage({
               deskSort,
             );
             const stockCount = new Set(tfHits.map((h) => h.symbol)).size;
+            const printLabels = scannerPrintLabels(tfHits);
             if (needle && !tfHits.length) return null;
             return (
-              <motion.article
+              <article
                 key={card.scannerId}
                 id={`wolf-opp-sheet-${card.scannerId}`}
                 className={`wolf-opp__sheet${needle ? ' is-found' : ''}`}
-                initial={false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.03 * Math.min(idx, 11),
-                  duration: 0.42,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
               >
                 <header className="wolf-opp__sheet-head">
                   <div>
@@ -779,6 +769,7 @@ export default function WolfOpportunityPage({
                         <HitTile
                           key={hit.id}
                           hit={hit}
+                          printLabel={scannerPrintLabelOf(hit, printLabels)}
                           onOpen={() => setSelected(hit)}
                           onWhy={() => setWhyHit(hit)}
                           onChart={() => openChart(hit)}
@@ -787,7 +778,7 @@ export default function WolfOpportunityPage({
                     )}
                   </WaterStack>
                 )}
-              </motion.article>
+              </article>
             );
           })}
         </div>

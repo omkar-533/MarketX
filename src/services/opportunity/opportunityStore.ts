@@ -135,6 +135,49 @@ export function rankHitsByCreated(hits: OpportunityHit[]): OpportunityHit[] {
   );
 }
 
+export function opportunityPrintOrdinal(n: number): string {
+  if (!(n >= 1) || !Number.isFinite(n)) return '';
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  const d = n % 10;
+  if (d === 1) return `${n}st`;
+  if (d === 2) return `${n}nd`;
+  if (d === 3) return `${n}rd`;
+  return `${n}th`;
+}
+
+function printHitKey(hit: OpportunityHit): string {
+  return `${hit.id}|${hit.detectedAt}`;
+}
+
+/**
+ * 1st / 2nd / 3rd / 4th for the same symbol inside one scanner list only.
+ * A single listing stays unlabeled. Counts do not leak across scanners.
+ */
+export function scannerPrintLabels(hits: OpportunityHit[]): Map<string, string> {
+  const groups = new Map<string, OpportunityHit[]>();
+  for (const h of hits) {
+    const g = groups.get(h.symbol) || [];
+    g.push(h);
+    groups.set(h.symbol, g);
+  }
+  const out = new Map<string, string>();
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const ordered = [...g].sort(
+      (a, b) => a.detectedAt - b.detectedAt || String(a.id).localeCompare(String(b.id)),
+    );
+    ordered.forEach((h, i) => {
+      out.set(printHitKey(h), opportunityPrintOrdinal(i + 1));
+    });
+  }
+  return out;
+}
+
+export function scannerPrintLabelOf(hit: OpportunityHit, labels: Map<string, string>): string {
+  return labels.get(printHitKey(hit)) || '';
+}
+
 export type OpportunityDeskSort = 'default' | 'long' | 'short' | 'created' | 'percent';
 
 export const DEFAULT_OPPORTUNITY_DESK_SORT: OpportunityDeskSort = 'default';

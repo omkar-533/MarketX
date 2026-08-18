@@ -6,6 +6,9 @@ import {
   emptyOpportunityCards,
   mergeOpportunityHitIntoCards,
   nextOpportunityDeskSort,
+  opportunityPrintOrdinal,
+  scannerPrintLabelOf,
+  scannerPrintLabels,
   sortHitsForDesk,
 } from './opportunityStore';
 import type { OpportunityHit } from './opportunityTypes';
@@ -195,5 +198,30 @@ describe('desk sort cycle', () => {
     assert.equal(sortHitsForDesk(rows, 'short')[0].symbol, 'SHORT');
     assert.equal(sortHitsForDesk(rows, 'created')[0].symbol, 'HIGH');
     assert.equal(sortHitsForDesk(rows, 'percent')[0].symbol, 'HIGH');
+  });
+
+  it('numbers 1st–4th per scanner only when the same stock reprints there', () => {
+    assert.equal(opportunityPrintOrdinal(1), '1st');
+    assert.equal(opportunityPrintOrdinal(2), '2nd');
+    assert.equal(opportunityPrintOrdinal(3), '3rd');
+    assert.equal(opportunityPrintOrdinal(4), '4th');
+    const radar = [
+      hit({ id: 'r-infy-1', scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: 10 }),
+      hit({ id: 'r-infy-2', scannerId: 'breakout_radar', symbol: 'INFY', score: 80, detectedAt: 20 }),
+      hit({ id: 'r-infy-3', scannerId: 'breakout_radar', symbol: 'INFY', score: 88, detectedAt: 30 }),
+      hit({ id: 'r-tcs-1', scannerId: 'breakout_radar', symbol: 'TCS', score: 75, detectedAt: 15 }),
+    ];
+    const surge = [
+      hit({ id: 's-infy-1', scannerId: 'momentum_surge', symbol: 'INFY', score: 90, detectedAt: 40 }),
+      hit({ id: 's-infy-2', scannerId: 'momentum_surge', symbol: 'INFY', score: 91, detectedAt: 50 }),
+    ];
+    const radarLabels = scannerPrintLabels(radar);
+    assert.equal(scannerPrintLabelOf(radar[0], radarLabels), '1st');
+    assert.equal(scannerPrintLabelOf(radar[1], radarLabels), '2nd');
+    assert.equal(scannerPrintLabelOf(radar[2], radarLabels), '3rd');
+    assert.equal(scannerPrintLabelOf(radar[3], radarLabels), '');
+    const surgeLabels = scannerPrintLabels(surge);
+    assert.equal(scannerPrintLabelOf(surge[0], surgeLabels), '1st');
+    assert.equal(scannerPrintLabelOf(surge[1], surgeLabels), '2nd');
   });
 });
