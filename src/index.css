@@ -29653,16 +29653,15 @@ span.wolf-opp__seg {
   overflow-x: hidden;
   padding: 0.12rem 0.5rem 0.2rem 0.12rem;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  scroll-snap-type: y proximity;
+  overscroll-behavior: none;
   scrollbar-width: thin;
   scrollbar-color: #d4af37 rgba(255, 255, 255, 0.06);
   transform: translateY(var(--opp-pull, 0px));
-  will-change: transform;
 }
 .wolf-opp__stack-well {
   position: relative;
   min-width: 0;
+  overscroll-behavior: none;
 }
 .wolf-opp__stack-well::before,
 .wolf-opp__stack-well::after {
@@ -29728,7 +29727,6 @@ span.wolf-opp__seg {
   background: rgba(8, 10, 16, 0.45);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   overflow: visible;
-  scroll-snap-align: start;
 }
 .wolf-opp__tile.is-bullish {
   background: rgba(6, 24, 18, 0.55);
@@ -29771,10 +29769,11 @@ span.wolf-opp__seg {
   gap: 0.45rem;
   min-width: 0;
 }
-.wolf-opp__tile-id {
+.wolf-opp__tile-metrics {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.38rem;
+  flex: 0 0 auto;
   min-width: 0;
 }
 

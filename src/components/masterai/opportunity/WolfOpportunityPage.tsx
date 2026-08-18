@@ -172,13 +172,13 @@ function HitTile({
         <StockLogoMark symbol={hit.symbol} size={38} className="wolf-opp__tile-logo" />
         <span className="wolf-opp__tile-copy">
           <span className="wolf-opp__tile-row">
-            <span className="wolf-opp__tile-id">
-              <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+            <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+            <span className="wolf-opp__tile-metrics">
               <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
-            </span>
-            <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
-              {hit.changePercent >= 0 ? '+' : ''}
-              {hit.changePercent.toFixed(2)}%
+              <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
+                {hit.changePercent >= 0 ? '+' : ''}
+                {hit.changePercent.toFixed(2)}%
+              </span>
             </span>
           </span>
           <span className="wolf-opp__tile-row">
@@ -568,7 +568,6 @@ export default function WolfOpportunityPage({
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Every scanner. Long and short in one list — sort inside each box.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -725,6 +724,7 @@ export default function WolfOpportunityPage({
               ),
               deskSort,
             );
+            const stockCount = new Set(tfHits.map((h) => h.symbol)).size;
             if (needle && !tfHits.length) return null;
             return (
               <motion.article
@@ -760,7 +760,9 @@ export default function WolfOpportunityPage({
                       <ArrowUpDown size={13} strokeWidth={2.2} />
                       {DESK_SORT_LABEL[deskSort]}
                     </button>
-                    <span className="wolf-opp__sheet-count">{tfHits.length}</span>
+                    <span className="wolf-opp__sheet-count" title={`${stockCount} stocks`}>
+                      {stockCount}
+                    </span>
                   </div>
                 </header>
 

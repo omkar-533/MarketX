@@ -66,43 +66,17 @@ function readPx(data: Uint8ClampedArray, w: number, x: number, y: number): [numb
 
 /** White / light-gray canvas or fully transparent — not the brand square. */
 export function isLogoCanvasPadding(p: ArrayLike<number>): boolean {
-  if (p[3] < 200) return true;
+  if (p[3] < 168) return true;
   const min = Math.min(p[0], p[1], p[2]);
   const max = Math.max(p[0], p[1], p[2]);
-  return min >= 238 && max - min <= 22;
+  return min >= 228 && max - min <= 28;
 }
 
-function cornerDelta(pixels: ArrayLike<number>[], avg: number[]): number {
-  let max = 0;
-  for (const p of pixels) {
-    const d = Math.abs(p[0] - avg[0]) + Math.abs(p[1] - avg[1]) + Math.abs(p[2] - avg[2]);
-    if (d > max) max = d;
-  }
-  return max;
-}
-
-function averageRgb(pixels: ArrayLike<number>[]): string {
-  const avg = [0, 0, 0];
-  for (const p of pixels) {
-    avg[0] += p[0];
-    avg[1] += p[1];
-    avg[2] += p[2];
-  }
-  const n = pixels.length;
-  return `rgb(${Math.round(avg[0] / n)}, ${Math.round(avg[1] / n)}, ${Math.round(avg[2] / n)})`;
-}
-
-/**
- * Find the inner solid square (ALKEM blue box on a white canvas).
- * Round / transparent marks return null so the disc stays unchanged.
- */
-export function inspectLogoBoxPixels(
+function contentBox(
   data: Uint8ClampedArray,
   w: number,
   h: number,
-): { fill: string; box: { x: number; y: number; w: number; h: number } } | null {
-  if (!(w >= 8 && h >= 8) || data.length < w * h * 4) return null;
-
+): { x: number; y: number; w: number; h: number } | null {
   let minX = w;
   let minY = h;
   let maxX = -1;
@@ -117,40 +91,102 @@ export function inspectLogoBoxPixels(
     }
   }
   if (maxX < minX || maxY < minY) return null;
-
   const bw = maxX - minX + 1;
   const bh = maxY - minY + 1;
   if (bw < 6 || bh < 6) return null;
   const aspect = bw / bh;
   if (aspect < 0.62 || aspect > 1.62) return null;
+  return { x: minX, y: minY, w: bw, h: bh };
+}
 
-  const inset = Math.max(1, Math.round(Math.min(bw, bh) * 0.08));
-  const spots: Array<[number, number]> = [
-    [minX + inset, minY + inset],
-    [maxX - inset, minY + inset],
-    [minX + inset, maxY - inset],
-    [maxX - inset, maxY - inset],
-  ];
-  const pixels = spots.map(([x, y]) => readPx(data, w, x, y));
-  // Circle / irregular mark: bounding-box corners are still canvas padding.
-  if (pixels.some((p) => isLogoCanvasPadding(p))) return null;
-  const avg = [0, 0, 0];
-  for (const p of pixels) {
-    avg[0] += p[0];
-    avg[1] += p[1];
-    avg[2] += p[2];
+function boxCoverage(
+  data: Uint8ClampedArray,
+  w: number,
+  box: { x: number; y: number; w: number; h: number },
+): number {
+  let filled = 0;
+  const x1 = box.x + box.w;
+  const y1 = box.y + box.h;
+  for (let y = box.y; y < y1; y++) {
+    for (let x = box.x; x < x1; x++) {
+      if (!isLogoCanvasPadding(readPx(data, w, x, y))) filled++;
+    }
   }
-  avg[0] /= 4;
-  avg[1] /= 4;
-  avg[2] /= 4;
-  if (cornerDelta(pixels, avg) > 42) return null;
-  // Do not treat a white canvas as the brand square.
-  if (isLogoCanvasPadding([avg[0], avg[1], avg[2], 255])) return null;
+  return filled / (box.w * box.h);
+}
 
-  return {
-    fill: averageRgb(pixels),
-    box: { x: minX, y: minY, w: bw, h: bh },
+/** Solid square (NMDC / ALKEM) fills its bbox; a circle is ~0.785. */
+const SQUARE_COVERAGE = 0.84;
+
+function dominantBorderFill(
+  data: Uint8ClampedArray,
+  w: number,
+  box: { x: number; y: number; w: number; h: number },
+): string | null {
+  const inset = Math.max(1, Math.round(Math.min(box.w, box.h) * 0.08));
+  const x0 = box.x + inset;
+  const y0 = box.y + inset;
+  const x1 = box.x + box.w - 1 - inset;
+  const y1 = box.y + box.h - 1 - inset;
+  if (x1 <= x0 || y1 <= y0) return null;
+
+  const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
+  let total = 0;
+  const add = (x: number, y: number) => {
+    const p = readPx(data, w, x, y);
+    if (isLogoCanvasPadding(p)) return;
+    total++;
+    const key = ((p[0] >> 4) << 8) | ((p[1] >> 4) << 4) | (p[2] >> 4);
+    const cur = buckets.get(key);
+    if (cur) {
+      cur.n++;
+      cur.r += p[0];
+      cur.g += p[1];
+      cur.b += p[2];
+    } else {
+      buckets.set(key, { n: 1, r: p[0], g: p[1], b: p[2] });
+    }
   };
+  for (let x = x0; x <= x1; x++) {
+    add(x, y0);
+    add(x, y1);
+  }
+  for (let y = y0 + 1; y < y1; y++) {
+    add(x0, y);
+    add(x1, y);
+  }
+  if (total < 8) return null;
+  let best: { n: number; r: number; g: number; b: number } | null = null;
+  for (const b of buckets.values()) {
+    if (!best || b.n > best.n) best = b;
+  }
+  if (!best || best.n / total < 0.42) return null;
+  const fill = [
+    Math.round(best.r / best.n),
+    Math.round(best.g / best.n),
+    Math.round(best.b / best.n),
+    255,
+  ];
+  if (isLogoCanvasPadding(fill)) return null;
+  return `rgb(${fill[0]}, ${fill[1]}, ${fill[2]})`;
+}
+
+/**
+ * Find the inner solid square (ALKEM blue box, NMDC rounded square on a white canvas).
+ * Round / transparent marks return null so the disc stays unchanged.
+ */
+export function inspectLogoBoxPixels(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+): { fill: string; box: { x: number; y: number; w: number; h: number } } | null {
+  if (!(w >= 8 && h >= 8) || data.length < w * h * 4) return null;
+  const box = contentBox(data, w, h);
+  if (!box) return null;
+  if (boxCoverage(data, w, box) < SQUARE_COVERAGE) return null;
+  const fill = dominantBorderFill(data, w, box);
+  if (!fill) return null;
+  return { fill, box };
 }
 
 function cropBoxToDataUrl(
@@ -172,7 +208,7 @@ function cropBoxToDataUrl(
 
 export function inspectLogoBox(
   img: { naturalWidth: number; naturalHeight: number } & CanvasImageSource,
-): LogoBoxFill | null {
+): LogoBoxFill | null | undefined {
   try {
     const w = img.naturalWidth;
     const h = img.naturalHeight;
@@ -183,7 +219,13 @@ export function inspectLogoBox(
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0);
-    const found = inspectLogoBoxPixels(ctx.getImageData(0, 0, w, h).data, w, h);
+    let pixels: ImageData;
+    try {
+      pixels = ctx.getImageData(0, 0, w, h);
+    } catch {
+      return undefined;
+    }
+    const found = inspectLogoBoxPixels(pixels.data, w, h);
     if (!found) return null;
     return {
       fill: found.fill,
@@ -191,7 +233,7 @@ export function inspectLogoBox(
       cropSrc: cropBoxToDataUrl(img, found.box),
     };
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -213,6 +255,10 @@ export function probeLogoBoxFill(src: string): Promise<LogoBoxFill | null> {
     probe.referrerPolicy = 'no-referrer';
     probe.onload = () => {
       const found = inspectLogoBox(probe);
+      if (found === undefined) {
+        resolve(null);
+        return;
+      }
       rememberLogoBoxFill(src, found);
       resolve(found);
     };

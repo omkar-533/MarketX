@@ -61,6 +61,35 @@ describe('inspectLogoBoxPixels', () => {
     assert.equal(inspectLogoBoxPixels(data, 24, 24), null);
   });
 
+  it('fills a rounded square whose corners are transparent (NMDC-style)', () => {
+    const data = paint(32, 32, (x, y) => {
+      const inBox = x >= 6 && x <= 25 && y >= 6 && y <= 25;
+      if (!inBox) return [255, 255, 255, 255];
+      const nearTL = x < 8 && y < 8;
+      const nearTR = x > 23 && y < 8;
+      const nearBL = x < 8 && y > 23;
+      const nearBR = x > 23 && y > 23;
+      if (nearTL || nearTR || nearBL || nearBR) return [0, 0, 0, 0];
+      return [12, 92, 64, 255];
+    });
+    const found = inspectLogoBoxPixels(data, 32, 32);
+    assert.ok(found);
+    assert.equal(found.fill, 'rgb(12, 92, 64)');
+  });
+
+  it('uses the square border colour when the centre mark is a different colour', () => {
+    const data = paint(32, 32, (x, y) => {
+      if (x >= 6 && x <= 25 && y >= 6 && y <= 25) {
+        if (x >= 12 && x <= 19 && y >= 12 && y <= 19) return [240, 240, 240, 255];
+        return [178, 34, 34, 255];
+      }
+      return [255, 255, 255, 255];
+    });
+    const found = inspectLogoBoxPixels(data, 32, 32);
+    assert.ok(found);
+    assert.equal(found.fill, 'rgb(178, 34, 34)');
+  });
+
   it('does not treat a white canvas as a brand square', () => {
     const data = paint(16, 16, () => [255, 255, 255, 255]);
     assert.equal(inspectLogoBoxPixels(data, 16, 16), null);
