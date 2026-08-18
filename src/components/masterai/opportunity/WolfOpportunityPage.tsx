@@ -34,6 +34,7 @@ import {
   loadOpportunityDayBoard,
   saveOpportunityDayBoard,
   opportunityBoardKey,
+  DEFAULT_OPPORTUNITY_DESK_SORT,
   type OpportunityDeskSort,
 } from '../../../services/opportunity/opportunityStore';
 import type {
@@ -88,6 +89,7 @@ function signalPrintLabel(hit: OpportunityHit): string {
 }
 
 const DESK_SORT_LABEL: Record<OpportunityDeskSort, string> = {
+  default: 'Default',
   long: 'Long first',
   short: 'Short first',
   created: 'Created time',
@@ -235,7 +237,7 @@ export default function WolfOpportunityPage({
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const [symbolQuery, setSymbolQuery] = useState('');
-  const [deskSort, setDeskSort] = useState<OpportunityDeskSort>('long');
+  const [deskSortByScanner, setDeskSortByScanner] = useState<Partial<Record<string, OpportunityDeskSort>>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
@@ -564,7 +566,7 @@ export default function WolfOpportunityPage({
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Every scanner. Long and short in one list — tap Sort to cycle.</p>
+          <p className="wolf-opp__lead">Every scanner. Long and short in one list — sort inside each box.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -666,15 +668,6 @@ export default function WolfOpportunityPage({
             </button>
           ) : null}
         </label>
-        <button
-          type="button"
-          className="wolf-opp__sort"
-          onClick={() => setDeskSort((s) => nextOpportunityDeskSort(s))}
-          title="Click to cycle: Long first → Short first → Created time → % change. Wolf score always ranks first."
-        >
-          <ArrowUpDown size={14} strokeWidth={2.2} />
-          {DESK_SORT_LABEL[deskSort]}
-        </button>
         <p className="wolf-opp__status-line">
           {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated
@@ -723,6 +716,7 @@ export default function WolfOpportunityPage({
         </AnimatePresence>
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
+            const deskSort = deskSortByScanner[card.scannerId] || DEFAULT_OPPORTUNITY_DESK_SORT;
             const tfHits = sortHitsForDesk(
               card.hits.filter(
                 (h) => h.timeframe === filters.timeframe && hitMatchesQuery(h, needle),
@@ -748,7 +742,25 @@ export default function WolfOpportunityPage({
                     <h3>{prettyTitle(card.title)}</h3>
                     <p>{card.tagline}</p>
                   </div>
-                  <span className="wolf-opp__sheet-count">{tfHits.length}</span>
+                  <div className="wolf-opp__sheet-tools">
+                    <button
+                      type="button"
+                      className="wolf-opp__sort wolf-opp__sort--sheet"
+                      onClick={() =>
+                        setDeskSortByScanner((prev) => ({
+                          ...prev,
+                          [card.scannerId]: nextOpportunityDeskSort(
+                            prev[card.scannerId] || DEFAULT_OPPORTUNITY_DESK_SORT,
+                          ),
+                        }))
+                      }
+                      title="Click to cycle: Default → Long first → Short first → Created time → % change"
+                    >
+                      <ArrowUpDown size={13} strokeWidth={2.2} />
+                      {DESK_SORT_LABEL[deskSort]}
+                    </button>
+                    <span className="wolf-opp__sheet-count">{tfHits.length}</span>
+                  </div>
                 </header>
 
                 {card.status === 'unavailable' ? (

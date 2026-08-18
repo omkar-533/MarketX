@@ -170,19 +170,24 @@ describe('opportunityStore ranking', () => {
 });
 
 describe('desk sort cycle', () => {
-  it('cycles Long → Short → Created → % change', () => {
+  it('starts on Default and cycles Default → Long → Short → Created → % change', () => {
+    assert.equal(nextOpportunityDeskSort('default'), 'long');
     assert.equal(nextOpportunityDeskSort('long'), 'short');
     assert.equal(nextOpportunityDeskSort('short'), 'created');
     assert.equal(nextOpportunityDeskSort('created'), 'percent');
-    assert.equal(nextOpportunityDeskSort('percent'), 'long');
+    assert.equal(nextOpportunityDeskSort('percent'), 'default');
   });
 
-  it('always ranks Wolf score first inside each cycle', () => {
+  it('keeps original Created ranking on Default, and Wolf score first on other cycle steps', () => {
     const rows = [
       hit({ scannerId: 'breakout_radar', symbol: 'LOW', score: 61, direction: 'bullish', changePercent: 3, detectedAt: 40 }),
       hit({ scannerId: 'breakout_radar', symbol: 'HIGH', score: 92, direction: 'bullish', changePercent: 0.4, detectedAt: 10 }),
       hit({ scannerId: 'breakout_radar', symbol: 'SHORT', score: 88, direction: 'bearish', changePercent: -1, detectedAt: 30 }),
     ];
+    assert.deepEqual(
+      sortHitsForDesk(rows, 'default').map((h) => h.symbol),
+      ['LOW', 'SHORT', 'HIGH'],
+    );
     assert.deepEqual(
       sortHitsForDesk(rows, 'long').map((h) => h.symbol),
       ['HIGH', 'LOW', 'SHORT'],

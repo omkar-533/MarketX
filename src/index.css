@@ -29213,6 +29213,10 @@ span.wolf-opp__seg {
   border-color: rgba(212, 175, 55, 0.45);
   background: rgba(212, 175, 55, 0.1);
 }
+.wolf-opp__sort--sheet {
+  padding: 0.28rem 0.58rem;
+  font-size: 0.64rem;
+}
 .wolf-opp__search {
   display: inline-flex;
   align-items: center;
@@ -29534,6 +29538,12 @@ span.wolf-opp__seg {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+}
+.wolf-opp__sheet-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 .wolf-opp__sheet-head h3 {
   margin: 0;

@@ -135,9 +135,17 @@ export function rankHitsByCreated(hits: OpportunityHit[]): OpportunityHit[] {
   );
 }
 
-export type OpportunityDeskSort = 'long' | 'short' | 'created' | 'percent';
+export type OpportunityDeskSort = 'default' | 'long' | 'short' | 'created' | 'percent';
 
-export const OPPORTUNITY_DESK_SORTS: OpportunityDeskSort[] = ['long', 'short', 'created', 'percent'];
+export const DEFAULT_OPPORTUNITY_DESK_SORT: OpportunityDeskSort = 'default';
+
+export const OPPORTUNITY_DESK_SORTS: OpportunityDeskSort[] = [
+  'default',
+  'long',
+  'short',
+  'created',
+  'percent',
+];
 
 export function nextOpportunityDeskSort(current: OpportunityDeskSort): OpportunityDeskSort {
   const i = OPPORTUNITY_DESK_SORTS.indexOf(current);
@@ -151,8 +159,9 @@ function deskBias(hit: OpportunityHit): 'bullish' | 'bearish' | 'neutral' {
   return 'neutral';
 }
 
-/** Combined Long+Short list. Wolf score is always the top rank inside each cycle. */
+/** Combined list. Default = original Created ranking. Other cycle steps keep Wolf score on top. */
 export function sortHitsForDesk(hits: OpportunityHit[], mode: OpportunityDeskSort): OpportunityHit[] {
+  if (mode === 'default') return rankHitsByCreated(hits);
   const list = [...hits];
   const byScore = (a: OpportunityHit, b: OpportunityHit) =>
     b.score - a.score ||
