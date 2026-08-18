@@ -29643,28 +29643,50 @@ span.wolf-opp__seg {
   background: #fda4af;
 }
 .wolf-opp__stack {
-  --opp-row: 5.85rem;
-  --opp-gap: 0.45rem;
+  --opp-row: 5.35rem;
+  --opp-gap: 0.4rem;
   display: flex;
   flex-direction: column;
   gap: var(--opp-gap);
   max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 0.2rem;
+  padding: 0.12rem 0.28rem 0.2rem 0.12rem;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.5) rgba(255, 255, 255, 0.04);
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y proximity;
+  scrollbar-width: none;
+  transform: translateY(var(--opp-pull, 0px));
+  will-change: transform;
+}
+.wolf-opp__stack-well {
+  position: relative;
+  min-width: 0;
+}
+.wolf-opp__stack-well::before,
+.wolf-opp__stack-well::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.12rem;
+  height: 1.15rem;
+  z-index: 2;
+  pointer-events: none;
+}
+.wolf-opp__stack-well::before {
+  top: 0;
+  background: linear-gradient(180deg, rgba(12, 14, 20, 0.72), transparent);
+}
+.wolf-opp__stack-well::after {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(12, 14, 20, 0.72), transparent);
 }
 .wolf-opp__stack--merged {
-  max-height: calc(8 * var(--opp-row) + 7 * var(--opp-gap));
+  max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
 }
 .wolf-opp__stack::-webkit-scrollbar {
-  width: 5px;
-}
-.wolf-opp__stack::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.45);
-  border-radius: 999px;
+  width: 0;
+  height: 0;
 }
 .wolf-opp__side-empty {
   margin: 0;
@@ -29684,12 +29706,15 @@ span.wolf-opp__seg {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   flex: 0 0 auto;
-  min-height: var(--opp-row, 5.85rem);
+  height: var(--opp-row, 5.35rem);
+  min-height: var(--opp-row, 5.35rem);
+  max-height: var(--opp-row, 5.35rem);
   min-width: 0;
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(8, 10, 16, 0.45);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  overflow: hidden;
+  overflow: visible;
+  scroll-snap-align: start;
 }
 .wolf-opp__tile.is-bullish {
   background: rgba(6, 24, 18, 0.55);
@@ -29705,13 +29730,14 @@ span.wolf-opp__seg {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 0.72rem 0.4rem 0.72rem 0.72rem;
+  padding: 0.42rem 0.28rem 0.42rem 0.55rem;
   display: grid;
-  grid-template-columns: 2.7rem minmax(0, 1fr);
-  column-gap: 0.72rem;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  column-gap: 0.55rem;
   align-items: center;
   min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 .wolf-opp__tile-logo {
   grid-column: 1;
@@ -29721,13 +29747,14 @@ span.wolf-opp__seg {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: 0.1rem;
+  overflow: hidden;
 }
 .wolf-opp__tile-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.55rem;
+  gap: 0.45rem;
   min-width: 0;
 }
 
@@ -29736,21 +29763,45 @@ span.wolf-opp__seg {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  overflow: hidden;
-  isolation: isolate;
-  background: #111318;
-  box-shadow:
-    0 0 0 1.5px rgba(212, 175, 55, 0.5),
-    0 6px 14px rgba(0, 0, 0, 0.32);
+  overflow: visible;
 }
-.wolf-stock-logo img {
+.wolf-stock-logo__glow {
+  position: absolute;
+  inset: -22%;
+  width: 144%;
+  height: 144%;
+  object-fit: cover;
+  filter: blur(9px) saturate(1.85);
+  opacity: 0.78;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+}
+.wolf-stock-logo__disc {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
-  display: block;
-  object-fit: cover;
-  object-position: center;
   border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 12, 18, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 4px 10px rgba(0, 0, 0, 0.28);
+}
+.wolf-stock-logo.has-glow .wolf-stock-logo__disc {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 14px rgba(255, 255, 255, 0.06);
+}
+.wolf-stock-logo__mark {
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 .wolf-stock-logo__fallback {
   font-weight: 800;
@@ -29763,28 +29814,31 @@ span.wolf-opp__seg {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
 }
 .wolf-opp__tile-chg {
   flex: 0 0 auto;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
 .wolf-opp__tile-px {
   min-width: 0;
-  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.64rem;
   color: var(--opp-text-soft);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
 .wolf-opp__tile-score {
   flex: 0 0 auto;
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: var(--opp-gold-soft);
   font-variant-numeric: tabular-nums;
@@ -29793,25 +29847,43 @@ span.wolf-opp__seg {
 .wolf-opp__tile-meta {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.32rem;
   min-width: 0;
-  margin-top: 0.04rem;
 }
-.wolf-opp__tile-meta em {
-  font-style: normal;
-  font-size: 0.58rem;
-  color: var(--opp-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.wolf-opp__tile-meta .wolf-opp__bias {
+  flex-shrink: 0;
+}
+.wolf-opp__tile-created {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-size: 0.54rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  color: #f3e2a8;
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(232, 201, 98, 0.42);
+  border-radius: 999px;
+  padding: 0.12rem 0.38rem;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.18);
+}
+.wolf-opp__tile-nth {
+  flex: 0 0 auto;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--opp-muted);
+  letter-spacing: 0.02em;
 }
 .wolf-opp__tile-actions {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.55rem 0.5rem 0.15rem;
+  gap: 0.2rem;
+  padding: 0.38rem 0.45rem 0.38rem 0;
 }
 .wolf-opp__tile-actions button,
 .wolf-opp__tile-actions a {

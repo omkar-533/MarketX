@@ -54,6 +54,7 @@ import AppLink from '../../AppLink';
 import { liveWolfQuery } from '../../../utils/appNav';
 import WolfHuntLoader from './WolfHuntLoader';
 import StockLogoMark from './StockLogoMark';
+import WaterStack from './WaterStack';
 
 function prettyTitle(raw: string): string {
   return raw
@@ -85,7 +86,7 @@ function signalPrintLabel(hit: OpportunityHit): string {
   const n = Number(hit.meta?.signalN);
   if (!(n > 1)) return '';
   const suf = n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-  return ` · ${n}${suf} signal`;
+  return `${n}${suf}`;
 }
 
 const DESK_SORT_LABEL: Record<OpportunityDeskSort, string> = {
@@ -164,10 +165,11 @@ function HitTile({
 }) {
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
+  const nth = signalPrintLabel(hit);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
-        <StockLogoMark symbol={hit.symbol} size={42} className="wolf-opp__tile-logo" />
+        <StockLogoMark symbol={hit.symbol} size={38} className="wolf-opp__tile-logo" />
         <span className="wolf-opp__tile-copy">
           <span className="wolf-opp__tile-row">
             <span className="wolf-opp__tile-sym">{hit.symbol}</span>
@@ -182,10 +184,8 @@ function HitTile({
           </span>
           <span className="wolf-opp__tile-meta">
             <BiasBadge dir={bias} size="sm" />
-            <em>
-              Created {formatHitClock(hit.detectedAt)} IST
-              {signalPrintLabel(hit)}
-            </em>
+            <em className="wolf-opp__tile-created">{formatHitClock(hit.detectedAt)} IST</em>
+            {nth ? <span className="wolf-opp__tile-nth">{nth}</span> : null}
           </span>
         </span>
       </AppLink>
@@ -766,7 +766,7 @@ export default function WolfOpportunityPage({
                 {card.status === 'unavailable' ? (
                   <p className="wolf-opp__sheet-empty">{card.unavailableReason}</p>
                 ) : (
-                  <div className="wolf-opp__stack wolf-opp__stack--merged">
+                  <WaterStack>
                     {!tfHits.length ? (
                       <p className="wolf-opp__side-empty">
                         {scanning || bgBusy ? 'Hunting…' : 'No setups'}
@@ -782,7 +782,7 @@ export default function WolfOpportunityPage({
                         />
                       ))
                     )}
-                  </div>
+                  </WaterStack>
                 )}
               </motion.article>
             );

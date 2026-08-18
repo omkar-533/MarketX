@@ -3105,14 +3105,26 @@ html[data-theme="light"] .wolf-opp__tile.is-bearish {
   box-shadow: inset 0 0 0 1px rgba(190, 18, 60, 0.14);
 }
 html[data-theme="light"] .wolf-opp__tile-score { color: #78350f; }
-html[data-theme="light"] .wolf-stock-logo {
-  background: #f4f1e8;
+html[data-theme="light"] .wolf-stock-logo__disc {
+  background: #fffdf6;
   box-shadow:
-    0 0 0 1.5px rgba(180, 140, 50, 0.42),
+    0 0 0 1px rgba(180, 140, 50, 0.28),
     0 4px 10px rgba(15, 23, 42, 0.08);
 }
 html[data-theme="light"] .wolf-stock-logo__fallback {
   color: #7a5b14;
+}
+html[data-theme="light"] .wolf-opp__tile-created {
+  color: #78350f;
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(180, 140, 50, 0.4);
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__stack-well::before {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), transparent);
+}
+html[data-theme="light"] .wolf-opp__stack-well::after {
+  background: linear-gradient(0deg, rgba(248, 250, 252, 0.92), transparent);
 }
 html[data-theme="light"] .wolf-opp__tile-actions button {
   background: #f1f5f9;
