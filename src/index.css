@@ -29003,6 +29003,10 @@ body:has(.app-main--terminal-immersive) #root {
   0% { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
 }
+@keyframes wolf-opp-hero-edge {
+  from { background-position: -80% 0; }
+  to { background-position: 180% 0; }
+}
 
 .wolf-opp > *:not(.wolf-opp__stage) {
   position: relative;
@@ -29167,6 +29171,8 @@ body:has(.app-main--terminal-immersive) #root {
   border: 1px solid var(--opp-hairline);
 }
 .wolf-opp__seg {
+  position: relative;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--opp-muted);
@@ -29177,15 +29183,39 @@ body:has(.app-main--terminal-immersive) #root {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 span.wolf-opp__seg {
   cursor: default;
 }
+.wolf-opp__seg-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.wolf-opp__seg-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -55%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  transform: skewX(-22deg);
+  opacity: 0;
+}
+.wolf-opp__seg:hover .wolf-opp__seg-shine::after,
+.wolf-opp__seg.is-on .wolf-opp__seg-shine::after {
+  animation: wsl-shine 1.05s ease;
+}
 .wolf-opp__seg.is-on {
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.28), rgba(212, 175, 55, 0.12));
-  color: var(--opp-gold-soft);
-  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.28), 0 6px 16px rgba(212, 175, 55, 0.12);
+  color: #1a1406;
+  background: linear-gradient(180deg, #f3dd8a 0%, #d4af37 100%);
+  box-shadow:
+    0 8px 22px rgba(212, 175, 55, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .wolf-opp__status-line {
   margin: 0 0 0 auto;
@@ -29497,6 +29527,106 @@ span.wolf-opp__seg {
 }
 .wolf-opp__hero--slim {
   gap: 0.75rem 1rem;
+}
+.wolf-opp__hero--lux {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  align-items: center;
+  border-radius: 20px;
+  padding: 0.85rem 1.05rem 0.95rem;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background:
+    linear-gradient(180deg, rgba(8, 10, 16, 0.94) 0%, rgba(5, 7, 12, 0.96) 100%);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset -1px 0 0 rgba(212, 175, 55, 0.08);
+}
+.wolf-opp__hero-stage {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.wolf-opp__hero--lux > *:not(.wolf-opp__hero-stage) {
+  position: relative;
+  z-index: 1;
+}
+.wolf-opp__hero-fog {
+  position: absolute;
+  inset: -40% -20%;
+  background:
+    radial-gradient(ellipse 70% 50% at 8% 0%, rgba(212, 175, 55, 0.16), transparent 62%),
+    radial-gradient(ellipse 45% 40% at 92% 100%, rgba(127, 29, 29, 0.1), transparent 68%);
+  animation: wsl-fog 14s ease-in-out infinite alternate;
+}
+.wolf-opp__hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(26px);
+  opacity: 0.65;
+}
+.wolf-opp__hero-orb--a {
+  width: 8rem;
+  height: 8rem;
+  top: -2.2rem;
+  left: -1.5rem;
+  background: rgba(212, 175, 55, 0.28);
+  animation: wsl-orb 11s ease-in-out infinite;
+}
+.wolf-opp__hero-orb--b {
+  width: 6.5rem;
+  height: 6.5rem;
+  right: 8%;
+  bottom: -2rem;
+  background: rgba(185, 28, 28, 0.16);
+  animation: wsl-orb 15s ease-in-out infinite reverse;
+}
+.wolf-opp__hero-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4.2rem;
+  background: linear-gradient(180deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+  animation: wsl-scan 6.5s ease-in-out infinite;
+}
+.wolf-opp__hero-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.15) 18%,
+    #f0d78c 50%,
+    rgba(212, 175, 55, 0.15) 82%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: wolf-opp-hero-edge 3.8s linear infinite;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.35);
+}
+.wolf-opp__hero--lux .wolf-opp__eyebrow {
+  letter-spacing: 0.22em;
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+  animation: wsl-pulse 2.4s ease-in-out infinite;
+}
+.wolf-opp__hero--lux .wolf-opp__title span {
+  background: linear-gradient(90deg, #f7e7a8 0%, #fff 35%, #d4af37 70%, #f0d78c 100%);
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wolf-opp-shimmer 7s ease-in-out infinite alternate;
+}
+.wolf-opp__hero--lux .wolf-opp__pulse {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: rgba(212, 175, 55, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .wolf-opp__desk {
   position: relative;

@@ -3157,17 +3157,29 @@ html[data-theme="light"] .wolf-opp__stack {
   scrollbar-color: #b8922a rgba(15, 23, 42, 0.08);
 }
 
-html[data-theme="light"] .wolf-opp__title span {
-  color: #0a0a0a;
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
+html[data-theme="light"] .wolf-opp__hero--lux {
+  background: linear-gradient(180deg, #fffaf2 0%, #f7f0e4 100%);
+  border-color: rgba(180, 140, 40, 0.32);
+  box-shadow: 0 14px 32px rgba(80, 60, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
-
+html[data-theme="light"] .wolf-opp__hero-fog {
+  background:
+    radial-gradient(ellipse 70% 50% at 8% 0%, rgba(212, 175, 55, 0.22), transparent 62%),
+    radial-gradient(ellipse 45% 40% at 92% 100%, rgba(212, 175, 55, 0.1), transparent 68%);
+}
+html[data-theme="light"] .wolf-opp__hero--lux .wolf-opp__title span {
+  background: linear-gradient(90deg, #8a6a18 0%, #5c4a12 35%, #d4af37 70%, #8a6a18 100%);
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 html[data-theme="light"] .wolf-opp__seg.is-on {
-  background: linear-gradient(180deg, rgba(146, 64, 14, 0.16), rgba(146, 64, 14, 0.08));
-  color: #78350f;
-  box-shadow: 0 0 0 1px rgba(146, 64, 14, 0.28);
+  color: #1a1406;
+  background: linear-gradient(180deg, #f3dd8a 0%, #d4af37 100%);
+  box-shadow:
+    0 8px 22px rgba(212, 175, 55, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 html[data-theme="light"] .wolf-opp__cta {

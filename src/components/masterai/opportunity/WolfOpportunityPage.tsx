@@ -104,6 +104,12 @@ function hitMatchesQuery(hit: OpportunityHit, needle: string): boolean {
   return symbolNeedle(hit.symbol).includes(needle);
 }
 
+/** Chrome dumps the login mobile here after Connect Market Data. */
+function looksLikeAutofilledPhone(raw: string): boolean {
+  const digits = String(raw || '').replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 12 && !/[A-Za-z]/.test(raw);
+}
+
 function BiasBadge({ dir, size = 'md' }: { dir: OpportunityDirection; size?: 'sm' | 'md' }) {
   const label = dir === 'bullish' ? 'Long' : dir === 'bearish' ? 'Short' : 'Neutral';
   const Icon = dir === 'bullish' ? TrendingUp : dir === 'bearish' ? TrendingDown : Minus;
@@ -142,6 +148,7 @@ function Seg({
 }) {
   return (
     <button type="button" className={`wolf-opp__seg ${on ? 'is-on' : ''}`} onClick={onClick}>
+      <span className="wolf-opp__seg-shine" aria-hidden />
       {children}
     </button>
   );
@@ -235,6 +242,7 @@ export default function WolfOpportunityPage({
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const [symbolQuery, setSymbolQuery] = useState('');
+  const [searchUnlocked, setSearchUnlocked] = useState(false);
   const [deskSortByScanner, setDeskSortByScanner] = useState<Partial<Record<string, OpportunityDeskSort>>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
@@ -489,6 +497,10 @@ export default function WolfOpportunityPage({
   }, [sessionKnown, liveHint, rescanToken]);
 
   useEffect(() => {
+    setSymbolQuery((q) => (looksLikeAutofilledPhone(q) ? '' : q));
+  }, [rescanToken]);
+
+  useEffect(() => {
     if (!filters.autoRefresh) return;
     if (!isNseFnoMarketOpen()) return;
     const id = window.setInterval(() => void runScan({ quiet: true }), filters.refreshSec * 1000);
@@ -554,11 +566,18 @@ export default function WolfOpportunityPage({
       </div>
 
       <motion.header
-        className="wolf-opp__hero wolf-opp__hero--slim"
+        className="wolf-opp__hero wolf-opp__hero--slim wolf-opp__hero--lux"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
+        <div className="wolf-opp__hero-stage" aria-hidden>
+          <div className="wolf-opp__hero-fog" />
+          <i className="wolf-opp__hero-orb wolf-opp__hero-orb--a" />
+          <i className="wolf-opp__hero-orb wolf-opp__hero-orb--b" />
+          <span className="wolf-opp__hero-scan" />
+          <span className="wolf-opp__hero-edge" />
+        </div>
         <div className="wolf-opp__hero-copy">
           <p className="wolf-opp__eyebrow">Wolf Trade AI</p>
           <h1 className="wolf-opp__title">
@@ -648,15 +667,31 @@ export default function WolfOpportunityPage({
             </Seg>
           ))}
         </div>
-        <label className="wolf-opp__search">
+        <form
+          className="wolf-opp__search"
+          autoComplete="off"
+          onSubmit={(e) => e.preventDefault()}
+        >
           <Search size={14} strokeWidth={2.2} />
           <input
-            type="search"
+            type="text"
+            name="wolf_opp_symbol_finder"
+            inputMode="search"
             value={symbolQuery}
-            onChange={(e) => setSymbolQuery(e.target.value)}
+            readOnly={!searchUnlocked}
+            onFocus={() => setSearchUnlocked(true)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSymbolQuery(looksLikeAutofilledPhone(v) ? '' : v);
+            }}
             placeholder="Find a stock across scanners"
             autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             spellCheck={false}
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
             aria-label="Search stock across scanners"
           />
           {symbolQuery ? (
@@ -664,7 +699,7 @@ export default function WolfOpportunityPage({
               <X size={13} />
             </button>
           ) : null}
-        </label>
+        </form>
         <p className="wolf-opp__status-line">
           {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated

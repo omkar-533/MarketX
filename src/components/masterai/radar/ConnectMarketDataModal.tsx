@@ -294,7 +294,8 @@ export default function ConnectMarketDataModal({
                   <span>Official access token (not password / OTP)</span>
                   <input
                     type="password"
-                    autoComplete="off"
+                    name="wolf_md_access_token"
+                    autoComplete="new-password"
                     spellCheck={false}
                     value={tokenDraft}
                     onChange={(e) => setTokenDraft(e.target.value)}
