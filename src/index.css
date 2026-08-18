@@ -29643,7 +29643,7 @@ span.wolf-opp__seg {
   background: #fda4af;
 }
 .wolf-opp__stack {
-  --opp-row: 5.35rem;
+  --opp-row: 4.85rem;
   --opp-gap: 0.4rem;
   display: flex;
   flex-direction: column;
@@ -29651,11 +29651,12 @@ span.wolf-opp__seg {
   max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0.12rem 0.28rem 0.2rem 0.12rem;
+  padding: 0.12rem 0.5rem 0.2rem 0.12rem;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   scroll-snap-type: y proximity;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #d4af37 rgba(255, 255, 255, 0.06);
   transform: translateY(var(--opp-pull, 0px));
   will-change: transform;
 }
@@ -29668,7 +29669,7 @@ span.wolf-opp__seg {
   content: '';
   position: absolute;
   left: 0;
-  right: 0.12rem;
+  right: 0.5rem;
   height: 1.15rem;
   z-index: 2;
   pointer-events: none;
@@ -29685,8 +29686,21 @@ span.wolf-opp__seg {
   max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
 }
 .wolf-opp__stack::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 6px;
+}
+.wolf-opp__stack::-webkit-scrollbar-track {
+  margin: 10px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.14);
+}
+.wolf-opp__stack::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f4e3b2 0%, #d4af37 55%, #b8922a 100%);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+.wolf-opp__stack::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #fff3c4, #e0c15c);
 }
 .wolf-opp__side-empty {
   margin: 0;
@@ -29706,9 +29720,9 @@ span.wolf-opp__seg {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   flex: 0 0 auto;
-  height: var(--opp-row, 5.35rem);
-  min-height: var(--opp-row, 5.35rem);
-  max-height: var(--opp-row, 5.35rem);
+  height: var(--opp-row, 4.85rem);
+  min-height: var(--opp-row, 4.85rem);
+  max-height: var(--opp-row, 4.85rem);
   min-width: 0;
   border-radius: 14px;
   background: rgba(8, 10, 16, 0.45);
@@ -29752,9 +29766,15 @@ span.wolf-opp__seg {
 }
 .wolf-opp__tile-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
+  min-width: 0;
+}
+.wolf-opp__tile-id {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 0;
 }
 
@@ -29786,7 +29806,7 @@ span.wolf-opp__seg {
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: rgba(10, 12, 18, 0.92);
+  background: #fff;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.14),
     0 4px 10px rgba(0, 0, 0, 0.28);
@@ -29796,9 +29816,22 @@ span.wolf-opp__seg {
     0 0 0 1px rgba(255, 255, 255, 0.12),
     0 0 14px rgba(255, 255, 255, 0.06);
 }
+.wolf-stock-logo__fill {
+  position: absolute;
+  inset: -40%;
+  width: 180%;
+  height: 180%;
+  object-fit: cover;
+  filter: blur(18px) saturate(1.15);
+  transform: scale(1.2);
+  z-index: 0;
+  pointer-events: none;
+}
 .wolf-stock-logo__mark {
-  width: 56%;
-  height: 56%;
+  position: relative;
+  z-index: 1;
+  width: 62%;
+  height: 62%;
   object-fit: contain;
   object-position: center;
   display: block;
@@ -29827,14 +29860,30 @@ span.wolf-opp__seg {
   line-height: 1.15;
 }
 .wolf-opp__tile-px {
-  min-width: 0;
+  flex: 0 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.64rem;
-  color: var(--opp-text-soft);
+  max-width: 7.2rem;
+  font-size: 0.6rem;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  color: rgba(238, 242, 248, 0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.wolf-opp__tile.is-bullish .wolf-opp__tile-px {
+  color: #d1fae5;
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.26), rgba(16, 185, 129, 0.1));
+  border-color: rgba(52, 211, 153, 0.34);
+}
+.wolf-opp__tile.is-bearish .wolf-opp__tile-px {
+  color: #fecdd3;
+  background: linear-gradient(180deg, rgba(251, 113, 133, 0.24), rgba(244, 63, 94, 0.1));
+  border-color: rgba(251, 113, 133, 0.32);
 }
 .wolf-opp__tile-score {
   flex: 0 0 auto;

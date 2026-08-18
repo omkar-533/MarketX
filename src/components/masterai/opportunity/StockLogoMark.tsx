@@ -39,15 +39,25 @@ export default function StockLogoMark({ symbol, size = 36, className = '' }: Pro
       ) : null}
       <span className="wolf-stock-logo__disc">
         {src ? (
-          <img
-            className="wolf-stock-logo__mark"
-            src={src}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={() => setSrcIndex((i) => i + 1)}
-          />
+          <>
+            <img
+              className="wolf-stock-logo__fill"
+              src={src}
+              alt=""
+              aria-hidden
+              decoding="async"
+              referrerPolicy="no-referrer"
+            />
+            <img
+              className="wolf-stock-logo__mark"
+              src={src}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={() => setSrcIndex((i) => i + 1)}
+            />
+          </>
         ) : (
           <span className="wolf-stock-logo__fallback">{initials}</span>
         )}

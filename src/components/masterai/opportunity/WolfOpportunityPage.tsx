@@ -172,20 +172,22 @@ function HitTile({
         <StockLogoMark symbol={hit.symbol} size={38} className="wolf-opp__tile-logo" />
         <span className="wolf-opp__tile-copy">
           <span className="wolf-opp__tile-row">
-            <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+            <span className="wolf-opp__tile-id">
+              <span className="wolf-opp__tile-sym">{hit.symbol}</span>
+              <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
+            </span>
             <span className={`wolf-opp__tile-chg ${(hit.changePercent || 0) >= 0 ? 'up' : 'down'}`}>
               {hit.changePercent >= 0 ? '+' : ''}
               {hit.changePercent.toFixed(2)}%
             </span>
           </span>
           <span className="wolf-opp__tile-row">
-            <span className="wolf-opp__tile-px">₹{formatHitPrice(hit.price)}</span>
+            <span className="wolf-opp__tile-meta">
+              <BiasBadge dir={bias} size="sm" />
+              <em className="wolf-opp__tile-created">{formatHitClock(hit.detectedAt)} IST</em>
+              {nth ? <span className="wolf-opp__tile-nth">{nth}</span> : null}
+            </span>
             <span className="wolf-opp__tile-score">{hit.score}</span>
-          </span>
-          <span className="wolf-opp__tile-meta">
-            <BiasBadge dir={bias} size="sm" />
-            <em className="wolf-opp__tile-created">{formatHitClock(hit.detectedAt)} IST</em>
-            {nth ? <span className="wolf-opp__tile-nth">{nth}</span> : null}
           </span>
         </span>
       </AppLink>
@@ -740,7 +742,6 @@ export default function WolfOpportunityPage({
                 <header className="wolf-opp__sheet-head">
                   <div>
                     <h3>{prettyTitle(card.title)}</h3>
-                    <p>{card.tagline}</p>
                   </div>
                   <div className="wolf-opp__sheet-tools">
                     <button
