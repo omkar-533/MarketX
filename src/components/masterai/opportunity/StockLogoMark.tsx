@@ -58,16 +58,19 @@ export default function StockLogoMark({ symbol, size = 36, className = '' }: Pro
       title={label}
       aria-hidden
     >
+      {markSrc && glow ? (
+        <img
+          className="wolf-stock-logo__glow"
+          src={markSrc}
+          alt=""
+          aria-hidden
+          decoding="async"
+          referrerPolicy="no-referrer"
+        />
+      ) : null}
       <span
         className="wolf-stock-logo__disc"
-        style={
-          box
-            ? {
-                backgroundColor: box.fill,
-                boxShadow: `0 0 0 1px rgba(255,255,255,0.12), 0 0 16px ${box.fill}`,
-              }
-            : undefined
-        }
+        style={box ? { backgroundColor: box.fill } : undefined}
       >
         {src ? (
           <img
