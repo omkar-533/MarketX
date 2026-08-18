@@ -29195,6 +29195,24 @@ span.wolf-opp__seg {
   color: var(--opp-muted);
   font-weight: 600;
 }
+.wolf-opp__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--opp-hairline);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--opp-gold-soft);
+  border-radius: 999px;
+  padding: 0.38rem 0.78rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.wolf-opp__sort:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(212, 175, 55, 0.1);
+}
 .wolf-opp__search {
   display: inline-flex;
   align-items: center;
@@ -29615,7 +29633,7 @@ span.wolf-opp__seg {
   background: #fda4af;
 }
 .wolf-opp__stack {
-  --opp-row: 6.55rem;
+  --opp-row: 5.85rem;
   --opp-gap: 0.45rem;
   display: flex;
   flex-direction: column;
@@ -29627,6 +29645,9 @@ span.wolf-opp__seg {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(212, 175, 55, 0.5) rgba(255, 255, 255, 0.04);
+}
+.wolf-opp__stack--merged {
+  max-height: calc(8 * var(--opp-row) + 7 * var(--opp-gap));
 }
 .wolf-opp__stack::-webkit-scrollbar {
   width: 5px;

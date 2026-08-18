@@ -1,5 +1,5 @@
 /**
- * WOLF OPPORTUNITY — every scanner kept; Long / Short split inside each.
+ * WOLF OPPORTUNITY — one list per scanner; click Sort to cycle Long / Short / Created / %.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ArrowUpDown,
 } from 'lucide-react';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
@@ -27,11 +28,13 @@ import {
   saveOpportunityFilters,
   applyLiveScanCards,
   applyDaySignalCards,
-  rankHitsByCreated,
+  sortHitsForDesk,
+  nextOpportunityDeskSort,
   emptyOpportunityCards,
   loadOpportunityDayBoard,
   saveOpportunityDayBoard,
   opportunityBoardKey,
+  type OpportunityDeskSort,
 } from '../../../services/opportunity/opportunityStore';
 import type {
   DataFeedStatus,
@@ -83,6 +86,13 @@ function signalPrintLabel(hit: OpportunityHit): string {
   const suf = n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
   return ` · ${n}${suf} signal`;
 }
+
+const DESK_SORT_LABEL: Record<OpportunityDeskSort, string> = {
+  long: 'Long first',
+  short: 'Short first',
+  created: 'Created time',
+  percent: '% change',
+};
 
 function symbolNeedle(raw: string): string {
   return String(raw || '')
@@ -225,6 +235,7 @@ export default function WolfOpportunityPage({
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [whyHit, setWhyHit] = useState<OpportunityHit | null>(null);
   const [symbolQuery, setSymbolQuery] = useState('');
+  const [deskSort, setDeskSort] = useState<OpportunityDeskSort>('long');
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
@@ -528,8 +539,6 @@ export default function WolfOpportunityPage({
     () => new Set(finder.map((row) => row.scannerId)).size,
     [finder],
   );
-  const showLong = true;
-  const showShort = true;
 
   const jumpToScanner = (scannerId: string) => {
     document.getElementById(`wolf-opp-sheet-${scannerId}`)?.scrollIntoView({
@@ -555,7 +564,7 @@ export default function WolfOpportunityPage({
           <h1 className="wolf-opp__title">
             <span>Opportunity</span>
           </h1>
-          <p className="wolf-opp__lead">Every scanner. Long and short, kept apart.</p>
+          <p className="wolf-opp__lead">Every scanner. Long and short in one list — tap Sort to cycle.</p>
         </div>
 
         <div className="wolf-opp__pulse">
@@ -657,6 +666,15 @@ export default function WolfOpportunityPage({
             </button>
           ) : null}
         </label>
+        <button
+          type="button"
+          className="wolf-opp__sort"
+          onClick={() => setDeskSort((s) => nextOpportunityDeskSort(s))}
+          title="Click to cycle: Long first → Short first → Created time → % change. Wolf score always ranks first."
+        >
+          <ArrowUpDown size={14} strokeWidth={2.2} />
+          {DESK_SORT_LABEL[deskSort]}
+        </button>
         <p className="wolf-opp__status-line">
           {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated
@@ -705,18 +723,13 @@ export default function WolfOpportunityPage({
         </AnimatePresence>
         <div className="wolf-opp__sheets">
           {cards.map((card, idx) => {
-            const tfHits = rankHitsByCreated(
+            const tfHits = sortHitsForDesk(
               card.hits.filter(
                 (h) => h.timeframe === filters.timeframe && hitMatchesQuery(h, needle),
               ),
+              deskSort,
             );
             if (needle && !tfHits.length) return null;
-            const longs = showLong ? tfHits.filter((h) => biasOf(h) === 'bullish') : [];
-            const shorts = showShort ? tfHits.filter((h) => biasOf(h) === 'bearish') : [];
-            const neutrals =
-              filters.direction === 'all'
-                ? tfHits.filter((h) => biasOf(h) === 'neutral')
-                : [];
             return (
               <motion.article
                 key={card.scannerId}
@@ -741,67 +754,24 @@ export default function WolfOpportunityPage({
                 {card.status === 'unavailable' ? (
                   <p className="wolf-opp__sheet-empty">{card.unavailableReason}</p>
                 ) : (
-                  <div className={`wolf-opp__sides${!showLong || !showShort ? ' is-single' : ''}`}>
-                    {showLong ? (
-                      <div className="wolf-opp__side wolf-opp__side--long">
-                        <h4>
-                          <TrendingUp size={14} strokeWidth={2.4} /> Long
-                          <em>{longs.length}</em>
-                        </h4>
-                        <div className="wolf-opp__stack">
-                          {!longs.length ? (
-                            <p className="wolf-opp__side-empty">
-                              {scanning || bgBusy ? 'Hunting…' : 'No longs'}
-                            </p>
-                          ) : (
-                            <>
-                              {longs.map((hit) => (
-                                <HitTile
-                                  key={hit.id}
-                                  hit={hit}
-                                  onOpen={() => setSelected(hit)}
-                                  onWhy={() => setWhyHit(hit)}
-                                  onChart={() => openChart(hit)}
-                                />
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {showShort ? (
-                      <div className="wolf-opp__side wolf-opp__side--short">
-                        <h4>
-                          <TrendingDown size={14} strokeWidth={2.4} /> Short
-                          <em>{shorts.length}</em>
-                        </h4>
-                        <div className="wolf-opp__stack">
-                          {!shorts.length ? (
-                            <p className="wolf-opp__side-empty">
-                              {scanning || bgBusy ? 'Hunting…' : 'No shorts'}
-                            </p>
-                          ) : (
-                            <>
-                              {shorts.map((hit) => (
-                                <HitTile
-                                  key={hit.id}
-                                  hit={hit}
-                                  onOpen={() => setSelected(hit)}
-                                  onWhy={() => setWhyHit(hit)}
-                                  onChart={() => openChart(hit)}
-                                />
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
+                  <div className="wolf-opp__stack wolf-opp__stack--merged">
+                    {!tfHits.length ? (
+                      <p className="wolf-opp__side-empty">
+                        {scanning || bgBusy ? 'Hunting…' : 'No setups'}
+                      </p>
+                    ) : (
+                      tfHits.map((hit) => (
+                        <HitTile
+                          key={hit.id}
+                          hit={hit}
+                          onOpen={() => setSelected(hit)}
+                          onWhy={() => setWhyHit(hit)}
+                          onChart={() => openChart(hit)}
+                        />
+                      ))
+                    )}
                   </div>
                 )}
-                {neutrals.length ? (
-                  <p className="wolf-opp__neutral-note">{neutrals.length} unlabelled</p>
-                ) : null}
               </motion.article>
             );
           })}

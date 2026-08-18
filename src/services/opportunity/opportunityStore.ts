@@ -135,6 +135,50 @@ export function rankHitsByCreated(hits: OpportunityHit[]): OpportunityHit[] {
   );
 }
 
+export type OpportunityDeskSort = 'long' | 'short' | 'created' | 'percent';
+
+export const OPPORTUNITY_DESK_SORTS: OpportunityDeskSort[] = ['long', 'short', 'created', 'percent'];
+
+export function nextOpportunityDeskSort(current: OpportunityDeskSort): OpportunityDeskSort {
+  const i = OPPORTUNITY_DESK_SORTS.indexOf(current);
+  return OPPORTUNITY_DESK_SORTS[(i + 1) % OPPORTUNITY_DESK_SORTS.length];
+}
+
+function deskBias(hit: OpportunityHit): 'bullish' | 'bearish' | 'neutral' {
+  if (hit.direction === 'bullish' || hit.direction === 'bearish') return hit.direction;
+  if ((hit.changePercent || 0) > 0) return 'bullish';
+  if ((hit.changePercent || 0) < 0) return 'bearish';
+  return 'neutral';
+}
+
+/** Combined Long+Short list. Wolf score is always the top rank inside each cycle. */
+export function sortHitsForDesk(hits: OpportunityHit[], mode: OpportunityDeskSort): OpportunityHit[] {
+  const list = [...hits];
+  const byScore = (a: OpportunityHit, b: OpportunityHit) =>
+    b.score - a.score ||
+    b.detectedAt - a.detectedAt ||
+    a.symbol.localeCompare(b.symbol);
+
+  if (mode === 'created') return list.sort(byScore);
+  if (mode === 'percent') {
+    return list.sort(
+      (a, b) =>
+        b.score - a.score ||
+        (b.changePercent || 0) - (a.changePercent || 0) ||
+        b.detectedAt - a.detectedAt ||
+        a.symbol.localeCompare(b.symbol),
+    );
+  }
+  const prefer = mode === 'long' ? 'bullish' : 'bearish';
+  const rank = (h: OpportunityHit) => {
+    const b = deskBias(h);
+    if (b === prefer) return 0;
+    if (b === 'neutral') return 1;
+    return 2;
+  };
+  return list.sort((a, b) => rank(a) - rank(b) || byScore(a, b));
+}
+
 /**
  * After a full scan: this run's ranked hits are the board.
  * Keep first listing time for names that stay on the board. Do not freeze first-arrived names.

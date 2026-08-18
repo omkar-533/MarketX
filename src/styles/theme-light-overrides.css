@@ -3065,9 +3065,14 @@ html[data-theme="light"] .wolf-opp__sheet {
 }
 html[data-theme="light"] .wolf-opp__sheet-head h3 { color: #0a0a0a; }
 html[data-theme="light"] .wolf-opp__sheet-empty,
-html[data-theme="light"] .wolf-opp__side-empty {
-  background: #f8fafc;
-  color: #525252;
+html[data-theme="light"] .wolf-opp__sort {
+  background: #ffffff;
+  border-color: #e8eef5;
+  color: #78350f;
+}
+html[data-theme="light"] .wolf-opp__sort:hover {
+  background: #fffbeb;
+  border-color: rgba(180, 140, 50, 0.4);
 }
 html[data-theme="light"] .wolf-opp__side--long {
   background: linear-gradient(180deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04));
