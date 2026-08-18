@@ -3106,7 +3106,7 @@ html[data-theme="light"] .wolf-opp__tile.is-bearish {
 }
 html[data-theme="light"] .wolf-opp__tile-score { color: #78350f; }
 html[data-theme="light"] .wolf-stock-logo__disc {
-  background: #ffffff;
+  background: #111318;
   box-shadow:
     0 0 0 1px rgba(180, 140, 50, 0.28),
     0 4px 10px rgba(15, 23, 42, 0.08);

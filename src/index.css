@@ -29806,7 +29806,7 @@ span.wolf-opp__seg {
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: #fff;
+  background: rgba(10, 12, 18, 0.92);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.14),
     0 4px 10px rgba(0, 0, 0, 0.28);
@@ -29816,16 +29816,10 @@ span.wolf-opp__seg {
     0 0 0 1px rgba(255, 255, 255, 0.12),
     0 0 14px rgba(255, 255, 255, 0.06);
 }
-.wolf-stock-logo__fill {
-  position: absolute;
-  inset: -40%;
-  width: 180%;
-  height: 180%;
-  object-fit: cover;
-  filter: blur(18px) saturate(1.15);
-  transform: scale(1.2);
-  z-index: 0;
-  pointer-events: none;
+.wolf-stock-logo.is-box .wolf-stock-logo__disc {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 12px rgba(0, 0, 0, 0.18);
 }
 .wolf-stock-logo__mark {
   position: relative;
@@ -29835,6 +29829,10 @@ span.wolf-opp__seg {
   object-fit: contain;
   object-position: center;
   display: block;
+}
+.wolf-stock-logo.is-box .wolf-stock-logo__mark {
+  width: 100%;
+  height: 100%;
 }
 .wolf-stock-logo__fallback {
   font-weight: 800;
