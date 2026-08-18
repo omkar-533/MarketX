@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { getAdminClient, isUniqueViolation, storeError } from './supabaseAdmin.mjs';
+import { appendLoginEvent } from './loginEventStore.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const dataDir = resolve(root, 'data');
@@ -433,7 +434,7 @@ export async function recordLogin(id) {
   const current = await findAppUserById(id);
   if (!current) return null;
 
-  return patchUser(
+  const updated = await patchUser(
     id,
     {
       first_login_at: current.firstLoginAt || nowIso,
@@ -446,6 +447,12 @@ export async function recordLogin(id) {
       loginCount: Number(current.loginCount || 0) + 1,
     },
   );
+  try {
+    await appendLoginEvent(id, nowIso);
+  } catch (err) {
+    console.warn('[login-events] append skipped', err?.message || err);
+  }
+  return updated;
 }
 
 /** Clears the "NEW" badge in the admin panel. */

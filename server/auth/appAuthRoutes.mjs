@@ -22,6 +22,7 @@ import {
   setUserPhone,
   isDeskStaffRole,
 } from './appUserStore.mjs';
+import { listLoginEvents } from './loginEventStore.mjs';
 import { accessStateFor } from './accessState.mjs';
 import { consumeOtp, issueOtp, pendingOtpPayload } from './otpStore.mjs';
 import { isDevSmsMode, sendOtpSms, smsProviderName } from './smsProvider.mjs';
@@ -1543,6 +1544,37 @@ router.get('/admin/users', requireAdmin, async (_req, res) => {
     });
   } catch (err) {
     return failed(res, err, 'Could not load users');
+  }
+});
+
+/** GET /api/app-auth/admin/logins — timestamped login history */
+router.get('/admin/logins', requireAdmin, async (req, res) => {
+  try {
+    const userId = String(req.query.userId || '').trim();
+    const limit = Number(req.query.limit) || 400;
+    const users = await listAppUsers();
+    const byId = new Map(users.map((u) => [u.id, u]));
+    const events = await listLoginEvents({ limit, userId: userId || undefined });
+    const logins = events
+      .map((row) => {
+        const user = byId.get(row.userId);
+        if (!user || isDeskStaffRole(user.role)) return null;
+        return {
+          id: row.id,
+          userId: row.userId,
+          loggedInAt: row.loggedInAt,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || null,
+          loginCount: user.loginCount || 0,
+          firstLoginAt: user.firstLoginAt || null,
+          lastLoginAt: user.lastLoginAt || null,
+        };
+      })
+      .filter(Boolean);
+    return res.json({ logins });
+  } catch (err) {
+    return failed(res, err, 'Could not load logins');
   }
 });
 

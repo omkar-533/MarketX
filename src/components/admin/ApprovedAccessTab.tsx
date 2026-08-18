@@ -224,13 +224,14 @@ export default function ApprovedAccessTab({
                 <th className="py-3 px-4 text-left">Access</th>
                 <th className="py-3 px-4 text-left">Expires</th>
                 <th className="py-3 px-4 text-left">Last login</th>
+                <th className="py-3 px-4 text-right">Logins</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
                     {loading
                       ? 'Loading…'
                       : granted.length === 0
@@ -283,11 +284,9 @@ export default function ApprovedAccessTab({
                       </td>
                       <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                         {formatDateTime(u.lastLoginAt)}
-                        {u.loginCount ? (
-                          <span className="block text-[9px] text-slate-700">
-                            {u.loginCount} logins
-                          </span>
-                        ) : null}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-sm font-black text-[#d4af37] tabular-nums">
+                        {u.loginCount || 0}
                       </td>
                       <td className="py-2.5 px-4">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">

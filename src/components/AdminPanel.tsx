@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Search,
   Ticket,
+  CalendarClock,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -51,6 +52,7 @@ import {
 import AccessRequestsTab from './admin/AccessRequestsTab';
 import AccessSettingsTab from './admin/AccessSettingsTab';
 import AdminAnalyticsTab from './admin/AdminAnalyticsTab';
+import AdminLoginsTab from './admin/AdminLoginsTab';
 import ApprovedAccessTab, { countApprovedAccessUsers } from './admin/ApprovedAccessTab';
 import IndicatorsTab from './admin/IndicatorsTab';
 import KnowledgeTab from './admin/KnowledgeTab';
@@ -79,6 +81,7 @@ type AdminTab =
   | 'plans'
   | 'promos'
   | 'users'
+  | 'logins'
   | 'approved'
   | 'settings'
   | 'overview'
@@ -89,7 +92,7 @@ function isStaffRole(role: User['role'] | undefined) {
   return role === 'admin' || role === 'subadmin';
 }
 
-const SUBADMIN_TABS: AdminTab[] = ['requests', 'tv', 'users', 'approved'];
+const SUBADMIN_TABS: AdminTab[] = ['requests', 'tv', 'users', 'logins', 'approved'];
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -355,6 +358,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
   useEffect(() => {
     if (
       activeTab === 'users' ||
+      activeTab === 'logins' ||
       activeTab === 'approved' ||
       activeTab === 'overview' ||
       activeTab === 'analytics'
@@ -514,6 +518,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               { id: 'requests' as const, label: 'Access requests', icon: FileImage, badge: 0 },
               { id: 'tv' as const, label: 'TV access', icon: Link2, badge: tvPendingCount },
               { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+              { id: 'logins' as const, label: 'Logins', icon: CalendarClock, badge: 0 },
               {
                 id: 'approved' as const,
                 label: 'Approved access',
@@ -533,6 +538,7 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
               { id: 'plans' as const, label: 'Plans', icon: Crown, badge: 0 },
               { id: 'promos' as const, label: 'Promo codes', icon: Ticket, badge: 0 },
               { id: 'users' as const, label: 'Users', icon: Users, badge: newUserCount },
+              { id: 'logins' as const, label: 'Logins', icon: CalendarClock, badge: 0 },
               {
                 id: 'approved' as const,
                 label: 'Approved access',
@@ -600,6 +606,14 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
           adminEmail={adminEmail}
           adminPassword={adminPassword}
           onSaved={(popup) => setDefaultGrantDays(popup.defaultGrantDays)}
+        />
+      )}
+
+      {activeTab === 'logins' && (
+        <AdminLoginsTab
+          rows={rows}
+          adminEmail={adminEmail}
+          adminPassword={adminPassword}
         />
       )}
 
@@ -876,13 +890,14 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                     <th className="py-3 px-4 text-left">Joined</th>
                     <th className="py-3 px-4 text-left">First login</th>
                     <th className="py-3 px-4 text-left">Last login</th>
+                    <th className="py-3 px-4 text-right">Logins</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-500 text-xs">
+                          <td colSpan={9} className="py-8 text-center text-slate-500 text-xs">
                         {loading
                           ? 'Loading…'
                           : searchActive || rangeFilterActive
@@ -951,11 +966,11 @@ export default function AdminPanel({ user, adminPassword }: AdminPanelProps) {
                           </td>
                           <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                             {formatDateTime(u.lastLoginAt)}
-                            {u.loginCount ? (
-                              <span className="block text-[9px] text-slate-700">
-                                {u.loginCount} logins
-                              </span>
-                            ) : null}
+                          </td>
+                          <td className="py-2.5 px-4 text-right">
+                            <span className="text-sm font-black text-[#d4af37] tabular-nums">
+                              {u.loginCount || 0}
+                            </span>
                           </td>
                           <td
                             className="py-2.5 px-4"

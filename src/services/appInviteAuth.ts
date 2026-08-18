@@ -407,6 +407,34 @@ export async function adminListUsers(adminEmail?: string | null, adminPassword?:
   return (data.users || []) as InviteUserRow[];
 }
 
+export type AdminLoginEvent = {
+  id: string;
+  userId: string;
+  loggedInAt: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  loginCount: number;
+  firstLoginAt?: string | null;
+  lastLoginAt?: string | null;
+};
+
+export async function adminListLogins(
+  adminEmail?: string | null,
+  adminPassword?: string | null,
+  opts?: { userId?: string; limit?: number },
+) {
+  const q = new URLSearchParams();
+  if (opts?.userId) q.set('userId', opts.userId);
+  if (opts?.limit) q.set('limit', String(opts.limit));
+  const res = await apiFetch(`/api/app-auth/admin/logins${q.toString() ? `?${q}` : ''}`, {
+    headers: authHeaders(adminEmail, adminPassword),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Could not load logins');
+  return (data.logins || []) as AdminLoginEvent[];
+}
+
 export async function adminCreateUser(
   input: InviteUserInput,
   adminEmail?: string | null,
