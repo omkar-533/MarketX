@@ -284,7 +284,7 @@ export async function listLiveIndstocksAccessTokens() {
 /**
  * Copy a live connection onto another identity key.
  * Never deletes the source — logout still hits the session cookie copy;
- * the next login still hits user:{id} until expiresAt (24h).
+ * the next login still hits user:{id} until the broker token dies.
  */
 export async function mirrorCredential(fromKey, toKey) {
   if (!fromKey || !toKey || fromKey === toKey) return getCredential(toKey);

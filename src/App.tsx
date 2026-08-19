@@ -356,7 +356,7 @@ function AppWorkspace() {
     clearRadarDayBoard();
     markForceHome();
     setActiveTab(DEFAULT_TAB);
-    // App logout must not call disconnectMarketData — INDstocks token stays until 24h expiry.
+    // App logout must not call disconnectMarketData — INDstocks token stays until the broker rejects it.
     void auth.logout();
   };
 

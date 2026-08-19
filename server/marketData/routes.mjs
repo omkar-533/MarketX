@@ -12,6 +12,7 @@ import {
 } from './providersCatalog.mjs';
 import {
   storeCredentialOnKeys,
+  persistStoredCredential,
   deleteCredentialPersist,
   expireCredentialPersist,
   resolveCredential,
@@ -208,7 +209,9 @@ function identityFrom(req, res) {
 /** Keep user:{id} and session cookie copies in sync. Never drop one on login. */
 async function hydrateIdentity(ident) {
   const found = await resolveCredential(ident.keys);
-  if (!found.record || found.record.status !== 'CONNECTED') return found;
+  if (!found.record) return found;
+  await reviveIndstocksIfBrokerStillLive(found);
+  if (found.record.status !== 'CONNECTED') return found;
   if (ident.userKey && ident.sessionKey) {
     await adoptCredential(found.key, ident.userKey);
     await adoptCredential(found.key, ident.sessionKey);
@@ -216,7 +219,40 @@ async function hydrateIdentity(ident) {
   return found;
 }
 
-async function expireBrokerSession(req, res, liveKey) {
+/**
+ * Wolf used to stamp a 24h clock on INDstocks tokens. That forced a reconnect
+ * even when the broker token was still valid. Revive from EXPIRED if profile still works.
+ */
+async function reviveIndstocksIfBrokerStillLive(found) {
+  const record = found?.record;
+  if (!record || record.provider !== 'indstocks' || record.mode !== 'LIVE') return;
+  const cred = readDecryptedCredential(found.key);
+  const token = String(cred?.accessToken || '').trim();
+  if (token.length < 12) return;
+  const clockDead =
+    record.status === 'EXPIRED' ||
+    (record.expiresAt && record.expiresAt < Date.now());
+  if (record.status === 'CONNECTED' && !clockDead) return;
+  try {
+    await validateIndstocksToken(token);
+    record.status = 'CONNECTED';
+    record.expiresAt = null;
+    record.updatedAt = Date.now();
+    await persistStoredCredential(found.key);
+  } catch {
+    /* broker still rejects — leave expired so the user can paste a new token */
+  }
+}
+
+async function expireBrokerSession(req, res, liveKey, accessToken) {
+  if (accessToken) {
+    try {
+      await validateIndstocksToken(accessToken);
+      return;
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) return;
+    }
+  }
   const ident = identityFrom(req, res);
   const keys = [...new Set([liveKey, ...ident.keys].filter(Boolean))];
   await Promise.all(keys.map((k) => expireCredentialPersist(k)));
@@ -338,7 +374,7 @@ router.post('/connect', async (req, res) => {
     const view = await storeCredentialOnKeys(ident.keys, {
       provider: INDSTOCKS_PROVIDER.id,
       credentialPayload: { kind: 'indstocks', accessToken, v: 1 },
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      expiresAt: null,
       capabilities: INDSTOCKS_CAPABILITIES,
       mode: 'LIVE',
       status: 'CONNECTED',
@@ -470,7 +506,7 @@ router.post('/quotes-batch', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key);
+    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -500,7 +536,7 @@ router.get('/quote', async (req, res) => {
     throw lastErr || new Error('Quote unavailable');
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key);
+    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -539,7 +575,7 @@ router.get('/candles', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : e?.status === 404 ? 404 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key);
+    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -577,7 +613,7 @@ router.post('/candles-batch', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key);
+    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
     res.status(status).json({
       error: status === 401
         ? 'Market data connection expired. Reconnect your broker.'
@@ -601,7 +637,7 @@ router.get('/opportunity-snapshot', async (req, res) => {
     });
   } catch (e) {
     const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key);
+    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
     res.status(status).json({
       error:
         status === 401
