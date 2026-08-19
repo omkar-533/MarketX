@@ -217,9 +217,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         const f = buildFeatureSnapshot(symbol, filters.market, tf, series);
         if (!f) continue;
 
-        const quotePrice = f.tech.last;
-        const ctx = { f, timeframe: tf, dataMode, quotePrice };
-        const sibling: Partial<Record<OpportunityScannerId, number>> = {};
+        const ctx = { f, timeframe: tf, dataMode, quotePrice: f.tech.last };
         const featAt = new Map<number, FeatureSnapshot | null>();
         const snapshotAt = (i: number): FeatureSnapshot | null => {
           if (featAt.has(i)) return featAt.get(i) ?? null;
@@ -227,7 +225,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           featAt.set(i, snap);
           return snap;
         };
-        const qualifyAt: Partial<Record<OpportunityScannerId, Record<number, boolean>>> = {};
+        const hitAt: Partial<Record<OpportunityScannerId, Record<number, OpportunityHit | null>>> = {};
         const windowsFor = (
           id: OpportunityScannerId,
           scan: (c: typeof ctx) => OpportunityHit | null,
@@ -245,9 +243,8 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
                   dataMode,
                   quotePrice: snap.tech.last,
                 });
-                const ok = Boolean(h && h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
-                (qualifyAt[id] ||= {})[i] = ok;
-                return ok;
+                (hitAt[id] ||= {})[i] = h;
+                return Boolean(h && h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
               },
               asOf,
             );
@@ -278,7 +275,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               f: snap,
               timeframe: tf,
               dataMode,
-              quotePrice,
+              quotePrice: snap.tech.last,
             });
             if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
             hit.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
@@ -289,21 +286,30 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               signalCount: wins.length,
               barIndex: win.startIndex,
             };
-            sibling[hit.scannerId] = Math.max(sibling[hit.scannerId] || 0, hit.score);
             emitHit(hit);
           }
         }
 
+        const marksAt = (i: number) => {
+          const sibling: Parameters<typeof scanWolfPrime>[1] = {};
+          for (const [id] of runners) {
+            const h = hitAt[id]?.[i];
+            if (!h || h.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
+            sibling[id] = { score: h.score, status: h.status, direction: h.direction };
+          }
+          return sibling;
+        };
         const primeWins = opportunityCreatedWindows(
           series,
           tf,
           (i) => {
-            let n = 0;
-            for (const [id] of runners) {
-              if (qualifyAt[id]?.[i]) n += 1;
-              if (n >= 2) return true;
-            }
-            return false;
+            const snap = snapshotAt(i);
+            if (!snap) return false;
+            const prime = scanWolfPrime(
+              { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last },
+              marksAt(i),
+            );
+            return Boolean(prime && prime.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
           },
           asOf,
         ).slice(0, 4);
@@ -311,8 +317,8 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           const win = primeWins[n];
           const snap = snapshotAt(win.startIndex) || f;
           const prime = scanWolfPrime(
-            { f: snap, timeframe: tf, dataMode, quotePrice },
-            sibling,
+            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last },
+            marksAt(win.startIndex),
           );
           if (!prime || prime.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
           prime.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);

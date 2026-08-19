@@ -193,6 +193,7 @@ const HitTile = memo(function HitTile({
               <em className="wolf-opp__tile-created">
                 {formatHitClock(hit.detectedAt) === '—' ? 'Created —' : `${formatHitClock(hit.detectedAt)} IST`}
               </em>
+              {hit.status === 'WATCH' ? <span className="wolf-opp__tile-nth">Watch</span> : null}
               {printLabel ? <span className="wolf-opp__tile-nth">{printLabel}</span> : null}
             </span>
             <span className="wolf-opp__tile-score">{hit.score}</span>

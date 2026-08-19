@@ -157,6 +157,15 @@ describe('scanMorningSprint', () => {
   it('skips a small move with no gap', () => {
     assert.equal(scanMorningSprint(sprinter({ sessionChangePct: 0.4, gapPct: 0.1 })), null);
   });
+
+  it('watches a gap before the 0.8% blast', () => {
+    const hit = scanMorningSprint(
+      sprinter({ gapPct: 0.7, sessionChangePct: 0.4, sessionMinsFromOpen: 5 }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.status, 'WATCH');
+    assert.equal(hit?.direction, 'bullish');
+  });
 });
 
 describe('scanTopMovers', () => {
@@ -256,16 +265,16 @@ describe('scanOpeningDrive', () => {
     assert.equal(scanOpeningDrive(drive({ sessionMinsFromOpen: 200 })), null);
   });
 
-  it('skips a wick-only poke that closes back inside the range', () => {
-    assert.equal(
-      scanOpeningDrive(
-        drive({
-          candles: [bar({ open: 100.9, high: 101.6, low: 100.85, close: 100.9 })],
-          tech: { last: 100.9, atr14: 0.5 },
-        }),
-      ),
-      null,
+  it('watches a poke that is still inside the opening range', () => {
+    const hit = scanOpeningDrive(
+      drive({
+        candles: [bar({ open: 100.9, high: 101.6, low: 100.85, close: 100.9 })],
+        tech: { last: 100.9, atr14: 0.5 },
+      }),
     );
+    assert.ok(hit);
+    assert.equal(hit?.status, 'WATCH');
+    assert.equal(hit?.direction, 'bullish');
   });
 
   it('skips a range break on dead volume', () => {
@@ -352,11 +361,21 @@ describe('scanBreakoutRadar', () => {
     );
   });
 
-  it('lists a 20-bar close with volume', () => {
-    const hit = scanBreakoutRadar(ctx());
+  it('lists a 20-bar close with volume when the prior box was not coiled', () => {
+    const hit = scanBreakoutRadar(
+      ctx({
+        priorAtrCompression: 1.15,
+        high20: 100.8,
+        low20: 98.2,
+      }),
+    );
     assert.ok(hit);
     assert.equal(hit?.status, 'ACTIVE');
     assert.equal(hit?.stateLabel, 'BREAKOUT + VOLUME');
+  });
+
+  it('does not steal a coiled box from Compression Break', () => {
+    assert.equal(scanBreakoutRadar(ctx()), null);
   });
 });
 
@@ -423,25 +442,44 @@ describe('scanMomentumSurge', () => {
     assert.equal(hit?.direction, 'bullish');
   });
 
-  it('lists a day runner on a quiet last bar when the session moved with volume', () => {
+  it('leaves a quiet day-long move to Top Movers', () => {
+    assert.equal(
+      scanMomentumSurge(
+        ctx({
+          volume: { ratio: 1.1, state: 'NORMAL' },
+          changePercent: 0.3,
+          atrPct: 0.6,
+          roc5: 0.1,
+          sessionChangePct: 2.1,
+          sessionRangePct: 2.4,
+          sessionVolRatio: 1.6,
+          sessionHigh: 103.4,
+          sessionLow: 100.9,
+          candles: [bar({ open: 101.18, high: 101.24, low: 101.14, close: 101.2 })],
+          tech: { last: 101.2, rsi14: 58, atr14: 0.6 },
+        }),
+      ),
+      null,
+    );
+  });
+
+  it('watches volume expansion while price is still inside the 20-bar box', () => {
     const hit = scanMomentumSurge(
       ctx({
-        volume: { ratio: 1.1, state: 'NORMAL' },
-        changePercent: 0.3,
-        atrPct: 0.6,
+        volume: { ratio: 1.7, state: 'EXPANDING' },
+        changePercent: 0.2,
+        atrPct: 0.8,
         roc5: 0.1,
-        sessionChangePct: 2.1,
-        sessionRangePct: 2.4,
-        sessionVolRatio: 1.6,
-        sessionHigh: 103.4,
-        sessionLow: 100.9,
-        candles: [bar({ open: 101.18, high: 101.24, low: 101.14, close: 101.2 })],
-        tech: { last: 101.2, rsi14: 58, atr14: 0.6 },
+        high20: 102.4,
+        low20: 99.5,
+        priorAtrCompression: 1.1,
+        candles: [bar({ open: 101.0, high: 101.15, low: 100.95, close: 101.1 })],
+        tech: { last: 101.1, atr14: 0.8 },
       }),
     );
     assert.ok(hit);
+    assert.equal(hit?.status, 'WATCH');
     assert.equal(hit?.direction, 'bullish');
-    assert.equal(hit?.stateLabel, 'DAY RUNNER');
   });
 
   it('skips a session move on dead volume', () => {
@@ -538,10 +576,33 @@ describe('scanWolfPrime', () => {
     );
   });
 
-  it('lists when two keepers agree and one is volume-based', () => {
-    const hit = scanWolfPrime(ctx(), { momentum_surge: 84, breakout_radar: 82 });
+  it('ignores two late confirms with no early setup', () => {
+    assert.equal(
+      scanWolfPrime(ctx(), {
+        momentum_surge: { score: 84, status: 'ACTIVE', direction: 'bullish' },
+        breakout_radar: { score: 82, status: 'ACTIVE', direction: 'bullish' },
+      }),
+      null,
+    );
+  });
+
+  it('lists when an early watch and a confirmed keeper agree', () => {
+    const hit = scanWolfPrime(ctx(), {
+      compression_break: { score: 80, status: 'WATCH', direction: 'bullish' },
+      momentum_surge: { score: 84, status: 'ACTIVE', direction: 'bullish' },
+    });
     assert.ok(hit);
     assert.equal(hit?.status, 'ACTIVE');
     assert.ok((hit?.score ?? 0) >= 80);
+  });
+
+  it('lists when three keepers agree even if all are confirmed', () => {
+    const hit = scanWolfPrime(ctx(), {
+      momentum_surge: { score: 84, status: 'ACTIVE', direction: 'bullish' },
+      breakout_radar: { score: 82, status: 'ACTIVE', direction: 'bullish' },
+      trend_rider: { score: 78, status: 'ACTIVE', direction: 'bullish' },
+    });
+    assert.ok(hit);
+    assert.equal(hit?.status, 'ACTIVE');
   });
 });

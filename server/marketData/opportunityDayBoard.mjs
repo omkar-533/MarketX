@@ -9,21 +9,21 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['wolf_prime', 'WOLF PRIME', 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.'],
-  ['morning_sprint', 'MORNING SPRINT', '9:20–10:50 ke explosive movers — gap blast ya opening drive, VWAP side confirm, entry paas.'],
-  ['top_movers', 'TOP MOVERS', 'Aaj ke strongest movers — session move + day volume + VWAP control. Buy above day high / sell below day low.'],
-  ['opening_drive', 'OPENING DRIVE', '9:15–9:30 opening range break with early volume — subah ka momentum catch, up ya down.'],
-  ['momentum_surge', 'PRICE RUNNERS', 'Aaj session mein jo actually move kiya — day move with volume, chase allowed.'],
-  ['compression_break', 'COMPRESSION BREAK', 'Prior range/ATR coiled, then a volume close left that box.'],
-  ['breakout_radar', 'BREAKOUT RADAR', 'Close beyond the prior 20-bar high or low, with volume, not a late chase.'],
-  ['liquidity_hunt', 'LIQUIDITY HUNT', 'Stop-hunt wick through a swing, then close back — sweep plus reclaim only.'],
-  ['trend_rider', 'TREND RIDER', 'EMA 21/50 stacked, RSI with the trend, and a pullback hold — not a chase.'],
+  ['wolf_prime', 'WOLF PRIME', 'Early + confirmed keepers on the same side — conviction overlay, not a new setup.'],
+  ['morning_sprint', 'MORNING SPRINT', '9:20–10:50. WATCH on gap/early volume, ACTIVE on the blast.'],
+  ['top_movers', 'TOP MOVERS', 'Accelerating now with live volume — dead day winners drop off.'],
+  ['opening_drive', 'OPENING DRIVE', 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond.'],
+  ['momentum_surge', 'PRICE RUNNERS', 'Volume first, price second — WATCH inside the box, ACTIVE on the burst.'],
+  ['compression_break', 'COMPRESSION BREAK', 'WATCH while the coil presses the box, ACTIVE on the volume close out.'],
+  ['breakout_radar', 'BREAKOUT RADAR', 'No coil. WATCH at the 20-bar level, ACTIVE on the close — not Compression.'],
+  ['liquidity_hunt', 'LIQUIDITY HUNT', 'WATCH on the stop-hunt wick, CONFIRM when it reclaims.'],
+  ['trend_rider', 'TREND RIDER', 'WATCH on first EMA/VWAP touch, ACTIVE on the pullback hold.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v20';
+const SETTINGS_KEY = 'opportunity_day_board_v21';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v20.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v21.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {
