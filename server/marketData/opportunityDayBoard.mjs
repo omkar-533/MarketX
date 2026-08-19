@@ -10,6 +10,7 @@ import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
   ['wolf_prime', 'WOLF PRIME', 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.'],
+  ['morning_sprint', 'MORNING SPRINT', '9:20–10:50 ke explosive movers — gap blast ya opening drive, VWAP side confirm, entry paas.'],
   ['top_movers', 'TOP MOVERS', 'Aaj ke strongest movers — session move + day volume + VWAP control. Buy above day high / sell below day low.'],
   ['opening_drive', 'OPENING DRIVE', '9:15–9:30 opening range break with early volume — subah ka momentum catch, up ya down.'],
   ['momentum_surge', 'PRICE RUNNERS', 'Aaj session mein jo actually move kiya — day move with volume, chase allowed.'],
@@ -20,9 +21,9 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v18';
+const SETTINGS_KEY = 'opportunity_day_board_v19';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v18.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v19.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

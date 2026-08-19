@@ -4,6 +4,7 @@
  */
 
 export type OpportunityScannerId =
+  | 'morning_sprint'
   | 'top_movers'
   | 'momentum_surge'
   | 'opening_drive'
@@ -116,6 +117,12 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'wolf_prime',
     title: 'WOLF PRIME',
     tagline: 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'morning_sprint',
+    title: 'MORNING SPRINT',
+    tagline: '9:20–10:50 ke explosive movers — gap blast ya opening drive, VWAP side confirm, entry paas.',
     requires: 'ohlc',
   },
   {

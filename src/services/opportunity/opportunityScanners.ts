@@ -143,6 +143,94 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   return null;
 }
 
+/**
+ * MORNING SPRINT — 9:20–10:50 ke explosive movers.
+ * Do patterns: GAP BLAST (SHAILY type — gap + first bars mein blast) aur
+ * SPRINT (GREENPANEL type — open se steady drive). VWAP side confirm, entry trigger paas.
+ */
+export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const atr = atrAbs(f);
+  if (atr == null) return null;
+  const mins = f.sessionMinsFromOpen;
+  if (mins == null || mins < 5 || mins > 95) return null;
+  const chg = f.sessionChangePct;
+  const sessOpen = f.sessionOpen;
+  if (chg == null || sessOpen == null || !(sessOpen > 0)) return null;
+
+  const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
+  if (vol < 1.4) return null;
+
+  const last = f.tech.last;
+  const gap = f.gapPct ?? 0;
+  const gapBlastUp = gap >= 0.8 && last > sessOpen;
+  const gapBlastDown = gap <= -0.8 && last < sessOpen;
+  const driveUp = chg >= 0.8;
+  const driveDown = chg <= -0.8;
+  if (!gapBlastUp && !gapBlastDown && !driveUp && !driveDown) return null;
+  const bullish = gapBlastUp || driveUp;
+
+  if (f.vwap != null) {
+    if (bullish && last < f.vwap) return null;
+    if (!bullish && last > f.vwap) return null;
+  }
+
+  const brokeOR = bullish
+    ? f.openingHigh != null && last > f.openingHigh
+    : f.openingLow != null && last < f.openingLow;
+  const brokePD = bullish
+    ? f.prevDayHigh != null && last > f.prevDayHigh
+    : f.prevDayLow != null && last < f.prevDayLow;
+
+  const trigger = bullish ? (f.sessionHigh ?? last) : (f.sessionLow ?? last);
+  if (!notChased(last, trigger, atr, 1.8)) return null;
+
+  const isGapBlast = bullish ? gapBlastUp : gapBlastDown;
+  const breakdown: ScoreBreakdown = {
+    move: clampScore(14 + Math.min(11, Math.abs(chg) * 5), 25),
+    volume: clampScore(12 + Math.min(13, (vol - 1.4) * 16), 25),
+    vwap: f.vwap != null ? 16 : 10,
+    levels: brokePD ? 18 : brokeOR ? 15 : 10,
+    timing: mins <= 20 ? 20 : mins <= 50 ? 16 : 12,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 58)) return null;
+
+  return baseHit('morning_sprint', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: isGapBlast ? '🔥 GAP BLAST' : 'MORNING SPRINT',
+    why: isGapBlast
+      ? `Gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}% + open ke baad ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% in ${Math.round(mins)} min, volume ${vol.toFixed(1)}× — subah ka blast.`
+      : `Open se ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% in ${Math.round(mins)} min, volume ${vol.toFixed(1)}×${f.vwap != null ? `, VWAP ₹${f.vwap.toFixed(2)} ke ${bullish ? 'upar' : 'neeche'}` : ''} — morning drive on.`,
+    keyLevel: f.vwap ?? f.tech.ema21,
+    trigger,
+    invalidation: bullish
+      ? `VWAP ₹${(f.vwap ?? sessOpen).toFixed(2)} ke neeche close — sprint khatam`
+      : `VWAP ₹${(f.vwap ?? sessOpen).toFixed(2)} ke upar close — sprint khatam`,
+    confirmationNeeded: bullish
+      ? `Day high ₹${trigger.toFixed(2)} break pe entry; VWAP ke neeche exit.`
+      : `Day low ₹${trigger.toFixed(2)} break pe entry; VWAP ke upar exit.`,
+    evidence: [
+      { label: `Open se ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% (${Math.round(mins)} min)`, ok: true },
+      { label: `Volume ${vol.toFixed(1)}×`, ok: vol >= 1.4 },
+      {
+        label: f.vwap != null ? `VWAP ${bullish ? 'upar' : 'neeche'} ₹${f.vwap.toFixed(2)}` : 'VWAP n/a',
+        ok: f.vwap != null,
+      },
+      {
+        label: brokePD ? (bullish ? 'PDH break' : 'PDL break') : brokeOR ? 'Opening range break' : 'Range ke andar',
+        ok: brokePD || brokeOR,
+      },
+      ...(Math.abs(gap) >= 0.3
+        ? [{ label: `Gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}%`, ok: isGapBlast }]
+        : []),
+    ],
+  });
+}
+
 /** 01 — TOP MOVERS — aaj ke strongest movers: session move + day volume + VWAP side. */
 export function scanTopMovers(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -514,6 +602,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
 }
 
 const PRIME_KEYS: OpportunityScannerId[] = [
+  'morning_sprint',
   'top_movers',
   'opening_drive',
   'momentum_surge',
@@ -523,6 +612,7 @@ const PRIME_KEYS: OpportunityScannerId[] = [
   'trend_rider',
 ];
 const PRIME_VOLUME_KEYS: OpportunityScannerId[] = [
+  'morning_sprint',
   'top_movers',
   'opening_drive',
   'momentum_surge',

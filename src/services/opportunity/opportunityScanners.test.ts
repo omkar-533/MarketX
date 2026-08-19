@@ -5,6 +5,7 @@ import {
   scanCompressionBreak,
   scanLiquidityHunt,
   scanMomentumSurge,
+  scanMorningSprint,
   scanOpeningDrive,
   scanTopMovers,
   scanTrendRider,
@@ -70,11 +71,85 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('lists eight keepers only', () => {
+  it('lists nine keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['wolf_prime', 'top_movers', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+      ['wolf_prime', 'morning_sprint', 'top_movers', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
     );
+  });
+});
+
+describe('scanMorningSprint', () => {
+  const sprinter = (over: Record<string, unknown> = {}) =>
+    ctx({
+      sessionChangePct: 1.4,
+      sessionVolRatio: 1.8,
+      sessionOpen: 100,
+      sessionHigh: 101.4,
+      sessionLow: 99.8,
+      sessionMinsFromOpen: 30,
+      vwap: 100.6,
+      gapPct: 0.1,
+      openingHigh: 101.0,
+      openingLow: 99.9,
+      prevDayHigh: 101.8,
+      prevDayLow: 99.2,
+      tech: { last: 101.2, atr14: 0.4 },
+      ...over,
+    });
+
+  it('lists a bullish opening drive (GREENPANEL type)', () => {
+    const hit = scanMorningSprint(sprinter());
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, 'MORNING SPRINT');
+    assert.ok((hit?.score ?? 0) >= 58);
+  });
+
+  it('lists a gap blast holding above the open (SHAILY type)', () => {
+    const hit = scanMorningSprint(
+      sprinter({ gapPct: 1.3, sessionChangePct: 0.5, sessionMinsFromOpen: 15 }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, '🔥 GAP BLAST');
+  });
+
+  it('lists a bearish morning sprint below VWAP', () => {
+    const hit = scanMorningSprint(
+      sprinter({
+        sessionChangePct: -1.5,
+        gapPct: -0.2,
+        vwap: 101.6,
+        sessionHigh: 101.5,
+        sessionLow: 101.0,
+        openingHigh: 101.3,
+        openingLow: 101.15,
+        tech: { last: 101.2, atr14: 0.4 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bearish');
+    assert.equal(hit?.trigger, 101.0);
+  });
+
+  it('skips once the morning window is over', () => {
+    assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 120 })), null);
+  });
+
+  it('skips a move on dead volume', () => {
+    assert.equal(
+      scanMorningSprint(sprinter({ volume: { ratio: 1.0, state: 'NORMAL' }, sessionVolRatio: 1.0 })),
+      null,
+    );
+  });
+
+  it('skips a long that lost VWAP', () => {
+    assert.equal(scanMorningSprint(sprinter({ vwap: 102.5 })), null);
+  });
+
+  it('skips a small move with no gap', () => {
+    assert.equal(scanMorningSprint(sprinter({ sessionChangePct: 0.4, gapPct: 0.1 })), null);
   });
 });
 
