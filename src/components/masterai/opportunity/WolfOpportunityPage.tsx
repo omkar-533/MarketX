@@ -531,7 +531,8 @@ export default function WolfOpportunityPage({
     onOpenLive?.();
   }, [onOpenLive]);
 
-  const liveOk = feedStatus === 'LIVE';
+  const brokerOn = dataMode === 'LIVE' && (feedStatus === 'LIVE' || feedStatus === 'DELAYED');
+  const liveStreaming = brokerOn && marketOpen && feedStatus === 'LIVE';
   const needle = symbolNeedle(symbolQuery);
   const hitCount = cards.reduce(
     (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
@@ -615,8 +616,16 @@ export default function WolfOpportunityPage({
         </div>
 
         <div className="wolf-opp__hero-actions">
-          <div className={`wolf-opp__feed ${liveOk ? 'is-live' : ''}`}>
-            {liveOk ? 'Live feed' : dataMode === 'DEMO' ? 'Demo mode' : 'Connect for live'}
+          <div className={`wolf-opp__feed ${liveStreaming ? 'is-live' : ''}`}>
+            {liveStreaming
+              ? 'Live feed'
+              : brokerOn && marketOpen
+                ? 'Delayed'
+                : brokerOn
+                  ? 'Last session'
+                  : dataMode === 'DEMO'
+                    ? 'Demo mode'
+                    : 'Connect for live'}
             {bgBusy ? ' · syncing' : ''}
           </div>
           <button
@@ -628,7 +637,7 @@ export default function WolfOpportunityPage({
           >
             <RefreshCw size={15} className={scanning ? 'is-spin' : ''} />
           </button>
-          {onConnectData && !liveOk ? (
+          {onConnectData && !brokerOn ? (
             <button type="button" className="wolf-opp__cta" onClick={onConnectData}>
               <Link2 size={14} /> Connect live
             </button>
