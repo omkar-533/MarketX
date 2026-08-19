@@ -9,6 +9,7 @@ import {
   scanOpeningDrive,
   scanTopMovers,
   scanTrendRider,
+  scanOptionsFlow,
   scanWolfPrime,
   stampLiveQuote,
 } from './opportunityScanners';
@@ -72,10 +73,10 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('lists nine keepers only', () => {
+  it('lists ten keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['morning_sprint', 'opening_drive', 'wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'top_movers', 'liquidity_hunt', 'trend_rider'],
+      ['morning_sprint', 'opening_drive', 'wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'top_movers', 'liquidity_hunt', 'trend_rider', 'options_flow'],
     );
   });
 });
@@ -631,5 +632,37 @@ describe('scanWolfPrime', () => {
     });
     assert.ok(hit);
     assert.equal(hit?.status, 'ACTIVE');
+  });
+});
+
+describe('scanOptionsFlow', () => {
+  const live = {
+    symbol: 'TCS',
+    expiry: '2026-08-21',
+    fetchedAt: 1,
+    spot: 101.2,
+    ceOi: 200_000,
+    peOi: 120_000,
+    ceOiChg: 20_000,
+    peOiChg: 2_000,
+    ceVol: 5_000,
+    peVol: 2_000,
+    pcr: 0.6,
+    atmStrike: 100,
+    atmBandCeOiChg: 12_000,
+    atmBandPeOiChg: -1_000,
+  };
+
+  it('does not invent a hit without a live chain', () => {
+    assert.equal(scanOptionsFlow(ctx({ prevClose: 100, sessionChangePct: 1.2 })), null);
+  });
+
+  it('lists long buildup from live CE OI add + green day', () => {
+    const hit = scanOptionsFlow(ctx({ prevClose: 100, sessionChangePct: 1.2 }), live);
+    assert.ok(hit);
+    assert.equal(hit?.scannerId, 'options_flow');
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, '🔥 LONG BUILDUP');
+    assert.ok((hit?.score ?? 0) >= 58);
   });
 });

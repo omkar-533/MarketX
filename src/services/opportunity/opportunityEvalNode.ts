@@ -24,6 +24,7 @@ type SnapCandle = {
 export async function evaluateOpportunitySnapshot(snap: {
   symbols?: string[];
   candlesBySymbol?: Record<string, SnapCandle[]>;
+  optionFlowBySymbol?: Record<string, import('./optionFlow').OptionFlowSnap>;
   timeframe?: string;
   universe?: string;
   asOf?: number;
@@ -57,5 +58,6 @@ export async function evaluateOpportunitySnapshot(snap: {
     shared: true,
     fetchBatch: 80,
     candleMapAll: candleMap,
+    optionFlowBySymbol: snap.optionFlowBySymbol || null,
   });
 }

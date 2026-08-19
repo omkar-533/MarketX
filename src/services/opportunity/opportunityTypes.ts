@@ -167,6 +167,12 @@ export const OPPORTUNITY_SCANNERS: {
     tagline: 'First EMA/VWAP touch, then hold. Stretched names hide.',
     requires: 'ohlc',
   },
+  {
+    id: 'options_flow',
+    title: 'OPTIONS FLOW',
+    tagline: 'Live chain OI + day price. Long/short buildup only — no fake ATR proxy.',
+    requires: 'options',
+  },
 ];
 
 /** Visible rows per card before inner scrollbar. Ranked pool can be larger. */

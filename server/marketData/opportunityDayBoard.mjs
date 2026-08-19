@@ -18,12 +18,13 @@ const SCANNER_META = [
   ['top_movers', 'TOP MOVERS', 'Last 3 bars still fast + volume now. Dead day winners out.'],
   ['liquidity_hunt', 'LIQUIDITY HUNT', 'Reclaim only — sweep without close-back does not list.'],
   ['trend_rider', 'TREND RIDER', 'First EMA/VWAP touch, then hold. Stretched names hide.'],
+  ['options_flow', 'OPTIONS FLOW', 'Live chain OI + day price. Long/short buildup only — no fake ATR proxy.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v23';
+const SETTINGS_KEY = 'opportunity_day_board_v24';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v23.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v24.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -158,16 +159,16 @@ function slimHit(raw, day) {
   };
 }
 
-export function mergeScannerHits(prev, incoming, day) {
+export function mergeScannerHits(prev, incoming, day, onePerSymbol = false) {
   const byKey = new Map();
   for (const h of prev || []) {
     if (!listingOk(h.detectedAt, day)) continue;
-    byKey.set(`${h.symbol}|${h.detectedAt}`, h);
+    byKey.set(onePerSymbol ? h.symbol : `${h.symbol}|${h.detectedAt}`, h);
   }
   for (const raw of incoming || []) {
     const h = slimHit(raw, day);
     if (!h) continue;
-    const k = `${h.symbol}|${h.detectedAt}`;
+    const k = onePerSymbol ? h.symbol : `${h.symbol}|${h.detectedAt}`;
     const old = byKey.get(k);
     byKey.set(k, old ? { ...h, detectedAt: old.detectedAt, id: old.id } : h);
   }
@@ -327,10 +328,13 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
   const slot = `${day}|${u}|${tf}`;
+  const prevRow = hydrate(slot);
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
-    next[id] = mergeScannerHits([], inBy.get(id)?.hits || [], day);
+    const incoming = inBy.get(id)?.hits || [];
+    const prev = id === 'options_flow' ? prevRow?.hitsByScanner?.[id] || [] : [];
+    next[id] = mergeScannerHits(prev, incoming, day, id === 'options_flow');
   }
   const row = {
     day,

@@ -20,9 +20,11 @@ import {
   scanOpeningDrive,
   scanTopMovers,
   scanTrendRider,
+  scanOptionsFlow,
   scanWolfPrime,
   stampLiveQuote,
 } from './opportunityScanners';
+import type { OptionFlowSnap } from './optionFlow';
 import type {
   OpportunityFilters,
   OpportunityHit,
@@ -54,6 +56,8 @@ export type EvaluateOpportunityInput = {
   fetchBatch?: number;
   candleMapAll?: Record<string, Candle[]> | null;
   loadBatch?: (symbols: string[]) => Promise<Record<string, Candle[]>>;
+  /** Slim live option-chain features. Missing symbol → Options Flow skips. */
+  optionFlowBySymbol?: Record<string, OptionFlowSnap> | null;
 };
 
 export function emptyOpportunityCards(reason?: string): ScannerCardState[] {
@@ -158,6 +162,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
     loadBatch,
   } = input;
   let candleMapAll = input.candleMapAll || null;
+  const optionFlowBySymbol = input.optionFlowBySymbol || {};
   const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const tf = filters.timeframe as OpportunityTimeframe;
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
@@ -332,6 +337,20 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
             barIndex: win.startIndex,
           };
           emitHit(prime, f);
+        }
+
+        const flow =
+          optionFlowBySymbol[symbol] || optionFlowBySymbol[String(symbol).toUpperCase()] || null;
+        if (flow) {
+          const flowHit = scanOptionsFlow(
+            { f, timeframe: tf, dataMode, quotePrice: f.tech.last },
+            flow,
+          );
+          if (flowHit && flowHit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
+            flowHit.detectedAt = keepDisplaySetupTime(f.setupAt);
+            flowHit.id = `opp-options_flow-${flowHit.symbol}-${tf}`;
+            emitHit(flowHit, f);
+          }
         }
       } catch {
         /* skip symbol */

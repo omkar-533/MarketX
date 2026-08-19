@@ -13,6 +13,7 @@ import {
   nseCashSessionIsOpen,
   awaitOpportunitySnapshot,
 } from './opportunitySnapshot.mjs';
+import { awaitOpportunityOptionFlow, peekOpportunityOptionFlow } from './opportunityOptionFlow.mjs';
 import {
   mergeOpportunityDayBoard,
   persistOpportunityDayBoard,
@@ -91,9 +92,20 @@ async function huntTimeframe(accessToken, universe, timeframe) {
   }
   const evalFn = await loadEvaluator();
   if (!evalFn) throw new Error('Opportunity eval bundle missing');
+  let optionFlowBySymbol = {};
+  try {
+    optionFlowBySymbol =
+      (await Promise.race([
+        awaitOpportunityOptionFlow(accessToken, snap.symbols),
+        new Promise((resolve) => setTimeout(() => resolve(peekOpportunityOptionFlow()), 25_000)),
+      ])) || {};
+  } catch (err) {
+    console.warn('[opportunity-board-job] option flow skip', err?.message || err);
+  }
   const out = await evalFn({
     symbols: snap.symbols,
     candlesBySymbol: snap.candlesBySymbol,
+    optionFlowBySymbol,
     timeframe,
     universe,
     asOf: snap.asOf,

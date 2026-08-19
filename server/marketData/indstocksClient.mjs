@@ -94,6 +94,20 @@ const instrumentCache = {
   bySymbol: /** @type {Map<string, string>} */ (new Map()),
 };
 
+/** SYMBOL → option expiry timestamps (ms) from FNO instrument master. */
+const optionExpiryMsBySymbol = new Map();
+
+const OPTION_CHAIN_INDEX = new Set([
+  'NIFTY',
+  'NIFTY50',
+  'BANKNIFTY',
+  'FINNIFTY',
+  'MIDCPNIFTY',
+  'SENSEX',
+  'BANKEX',
+  'INDIAVIX',
+]);
+
 const INSTRUMENT_MAP_TTL_MS = 6 * 60 * 60 * 1000;
 let mapRefreshInflight = null;
 
@@ -551,8 +565,24 @@ function parseExpiryMs(raw) {
 }
 
 /** Refresh equity + index + F&O instrument map and classified universes. */
+function rememberOptionExpiry(row) {
+  const opt = String(row.OPTION_TYPE || '').toUpperCase();
+  const inst = String(row.INSTRUMENT_NAME || row.SEM_EXCH_INSTRUMENT_TYPE || '').toUpperCase();
+  const tsym = String(row.TRADING_SYMBOL || '').toUpperCase();
+  const isOpt = opt === 'CE' || opt === 'PE' || /OPT/.test(inst) || /\d+CE$|\d+PE$/.test(tsym);
+  if (!isOpt) return;
+  const name = normalizeIndSymbolKey(row.SYMBOL_NAME);
+  if (!name || name.length > 20) return;
+  const ms = parseExpiryMs(row.EXPIRY_DATE);
+  if (!Number.isFinite(ms) || ms === Number.MAX_SAFE_INTEGER) return;
+  const list = optionExpiryMsBySymbol.get(name) || [];
+  if (!list.includes(ms)) list.push(ms);
+  optionExpiryMsBySymbol.set(name, list);
+}
+
 export async function refreshIndstocksInstrumentMap(accessToken) {
   const map = new Map();
+  optionExpiryMsBySymbol.clear();
   /** @type {{ equity: object[], index: object[], fno: object[] }} */
   const packs = { equity: [], index: [], fno: [] };
   /** Front-month MCX futures: SYMBOL_NAME → { exp, scrip } */
@@ -561,6 +591,7 @@ export async function refreshIndstocksInstrumentMap(accessToken) {
   const ingest = (rows, source) => {
     packs[source] = rows;
     for (const row of rows) {
+      if (source === 'fno') rememberOptionExpiry(row);
       const sid = row.SECURITY_ID;
       if (!sid) continue;
       const exch = (row.EXCH || 'NSE').toUpperCase();
@@ -764,6 +795,65 @@ export function listScannableUniverseSymbols(universe) {
     return wanted.filter((s) => Boolean(FALLBACK_SCRIP_BY_SYMBOL[s]));
   }
   return ok;
+}
+
+/** Nearest option expiry YYYY-MM-DD from the FNO master. Null if unknown. */
+export function getNearestOptionExpiryYmd(symbol, now = Date.now()) {
+  const key = normalizeIndSymbolKey(symbol);
+  const aliases = key === 'NIFTY50' ? ['NIFTY50', 'NIFTY'] : [key];
+  let list = [];
+  for (const alias of aliases) {
+    const got = optionExpiryMsBySymbol.get(alias);
+    if (got?.length) {
+      list = got;
+      break;
+    }
+  }
+  if (!list.length) return null;
+  const today = istCalendarDay(now);
+  const todayMs = Date.parse(`${today}T00:00:00+05:30`);
+  const future = list.filter((ms) => ms >= todayMs).sort((a, b) => a - b);
+  const pick = future[0];
+  return pick ? istCalendarDay(pick) : null;
+}
+
+/** Equity/index SECURITY_ID for GET /market/option-chain. Never an NFO contract. */
+export function optionChainUnderlying(symbol) {
+  const key = normalizeIndSymbolKey(symbol);
+  if (!key) return null;
+  const scrip = resolveScripCode(key);
+  if (!scrip) return null;
+  const m = String(scrip).match(/^(NSE|BSE|NIDX|BIDX|NFO|BFO)_(\d+)$/i);
+  if (!m) return null;
+  const seg = m[1].toUpperCase();
+  const id = m[2];
+  if (seg === 'NFO' || seg === 'BFO') return null;
+  const isIndex = OPTION_CHAIN_INDEX.has(key) || seg === 'NIDX' || seg === 'BIDX';
+  return {
+    exchange: seg === 'BSE' || seg === 'BIDX' ? 'BSE' : 'NSE',
+    segment: isIndex ? 'INDEX' : 'EQUITY',
+    underlyingScrip: id,
+  };
+}
+
+/** Live option chain for one underlying + expiry. Never logs the token. */
+export async function fetchIndstocksOptionChain(accessToken, params) {
+  const exchange = String(params?.exchange || 'NSE').toUpperCase();
+  const segment = String(params?.segment || 'EQUITY').toUpperCase();
+  const underlyingScrip = String(params?.underlyingScrip || '').trim();
+  const expiry = String(params?.expiry || '').trim();
+  const strikeCount = Math.max(3, Math.min(15, Number(params?.strikeCount) || 8));
+  if (!underlyingScrip || !expiry) return null;
+  const { json } = await indFetch('/market/option-chain', accessToken, {
+    searchParams: {
+      exchange,
+      segment,
+      'underlying-scrip': underlyingScrip,
+      expiry,
+      strike_count: strikeCount,
+    },
+  });
+  return json && typeof json === 'object' ? json : null;
 }
 
 export const INDSTOCKS_CAPABILITIES = {

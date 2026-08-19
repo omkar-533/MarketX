@@ -13,6 +13,7 @@ import type {
   ScoreBreakdown,
 } from './opportunityTypes';
 import { cardQuote, clampScore, emaAlignment, type FeatureSnapshot } from './featureSnapshot';
+import { optionFlowDayPct, optionFlowSignal, type OptionFlowSnap } from './optionFlow';
 
 type Ctx = {
   f: FeatureSnapshot;
@@ -1047,42 +1048,62 @@ export function scanSectorLeaders(
   });
 }
 
-/** @internal parked — Options Flow proxy. Not on the Opportunity desk. */
-export function scanOptionsFlow(ctx: Ctx): OpportunityHit | null {
+/** OPTIONS FLOW — live INDstocks chain OI + day price. No chain → no hit. */
+export function scanOptionsFlow(ctx: Ctx, flow?: OptionFlowSnap | null): OpportunityHit | null {
+  if (!flow) return null;
   const { f } = ctx;
-  const atrExp = f.atrCompression != null && f.atrCompression >= 1.12;
-  const rangeWide = f.rangePct >= 1.4;
-  const rvol = f.volume.ratio;
-  const rsi = f.tech.rsi14 ?? 50;
-  if (!atrExp && !rangeWide) return null;
-  if (rvol < 1.2) return null;
+  const dayPct = optionFlowDayPct(f.tech.last, f.prevClose, f.sessionChangePct);
+  if (dayPct == null) return null;
+  const signal = optionFlowSignal(flow, dayPct);
+  if (!signal) return null;
 
-  const bullish = f.changePercent >= 0 && rsi >= 48;
+  const totalOi = flow.ceOi + flow.peOi;
+  const pcr = flow.pcr;
+  const chgPct = totalOi > 0 ? ((Math.abs(flow.ceOiChg) + Math.abs(flow.peOiChg)) / totalOi) * 100 : 0;
+  const pcrOk =
+    signal.direction === 'bullish' ? pcr != null && pcr <= 0.85 : pcr != null && pcr >= 1.2;
   const breakdown: ScoreBreakdown = {
-    volExpansion: atrExp ? 26 : 12,
-    range: rangeWide ? 20 : 10,
-    volume: clampScore(Math.min(22, (rvol - 1) * 12), 22),
-    momentum: clampScore(Math.min(18, Math.abs(f.changePercent) * 8), 18),
-    confirmation: Math.abs(rsi - 50) >= 8 ? 12 : 6,
+    buildup: signal.kind.endsWith('buildup') ? 28 : 16,
+    price: clampScore(10 + Math.min(12, Math.abs(dayPct) * 8), 22),
+    atm: Math.abs(flow.atmBandCeOiChg) + Math.abs(flow.atmBandPeOiChg) > 0 ? 20 : 8,
+    pcr: pcrOk ? 16 : 10,
+    volume: flow.ceVol + flow.peVol > 0 ? 14 : 8,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 55)) return null;
+  if (!scoreGate(ctx, score, signal.active ? 58 : 55)) return null;
 
+  const ceChg = flow.ceOiChg >= 0 ? `+${Math.round(flow.ceOiChg)}` : `${Math.round(flow.ceOiChg)}`;
+  const peChg = flow.peOiChg >= 0 ? `+${Math.round(flow.peOiChg)}` : `${Math.round(flow.peOiChg)}`;
   return baseHit('options_flow', ctx, {
-    direction: bullish ? 'bullish' : 'bearish',
-    status: score >= 78 ? 'ACTIVE' : 'WATCH',
+    direction: signal.direction,
+    status: signal.active ? 'ACTIVE' : 'WATCH',
     score,
     breakdown,
-    stateLabel: atrExp ? 'IV/RANGE EXPANSION PROXY' : 'WIDE RANGE PROXY',
-    why: `ATR/range expansion with RVOL ${rvol.toFixed(1)}× (option-chain feed offline — volatility proxy, not strike OI).`,
-    keyLevel: f.tech.last,
-    trigger: bullish ? f.high10 : f.low10,
-    invalidation: 'Volatility compresses back and volume fades.',
-    confirmationNeeded: 'Confirm with live option chain / PCR when feed returns.',
+    stateLabel: signal.label,
+    why: `Live chain ${flow.expiry}: CE OI ${ceChg}, PE OI ${peChg}, day ${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%${pcr != null ? `, PCR ${pcr.toFixed(2)}` : ''} — ${signal.kind.replace(/_/g, ' ')}.`,
+    keyLevel: flow.atmStrike,
+    trigger: flow.atmStrike,
+    invalidation:
+      signal.direction === 'bullish'
+        ? 'OI add flips to puts / price closes red against the buildup'
+        : 'OI add flips to calls / price closes green against the buildup',
+    confirmationNeeded: signal.active
+      ? 'Fresh OI + price aligned. Next chain print reverse = exit.'
+      : 'WATCH — OI building, wait for a clearer day move.',
     evidence: [
-      { label: atrExp ? 'ATR expanding' : 'ATR steady', ok: atrExp },
-      { label: `Range ${f.rangePct.toFixed(1)}%`, ok: rangeWide },
-      { label: 'Option chain feed offline', ok: false, detail: 'Using vol expansion proxy' },
+      { label: signal.label, ok: true },
+      { label: `CE ΔOI ${ceChg}`, ok: flow.ceOiChg !== 0 },
+      { label: `PE ΔOI ${peChg}`, ok: flow.peOiChg !== 0 },
+      {
+        label: pcr != null ? `PCR ${pcr.toFixed(2)}` : 'PCR n/a',
+        ok: pcrOk,
+      },
+      { label: `OI shift ${chgPct.toFixed(1)}%`, ok: chgPct >= 3 },
     ],
+    meta: {
+      expiry: flow.expiry,
+      kind: signal.kind,
+      ...(pcr != null ? { pcr } : {}),
+    },
   });
 }
