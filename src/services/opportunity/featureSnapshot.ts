@@ -3,7 +3,13 @@
  * Deterministic — no fabricated prices when candles missing.
  */
 import type { Candle } from '../radar/radarTypes';
-import { setupCreatedAtFromCandles } from '../radar/barTime';
+import {
+  istSessionEndMs,
+  istSessionStartMs,
+  nseTradingDay,
+  readCandleTimeMs,
+  setupCreatedAtFromCandles,
+} from '../radar/barTime';
 import {
   analyzeTechnical,
   atr,
@@ -12,6 +18,7 @@ import {
   findSwings,
   rsi,
   sma,
+  volumeAverage,
   type TechnicalSnapshot,
 } from '../radar/TechnicalEngine';
 import { detectVolume, type VolumeEvent } from '../radar/VolumeEngine';
@@ -28,6 +35,12 @@ export type FeatureSnapshot = {
   structure: StructureEvent;
   liquidity: LiquidityEvent;
   changePercent: number;
+  /** IST session open → last close. Null when today's session bars are missing. */
+  sessionChangePct: number | null;
+  sessionRangePct: number | null;
+  sessionVolRatio: number | null;
+  sessionHigh: number | null;
+  sessionLow: number | null;
   rangePct: number;
   atrPct: number;
   atrCompression: number | null;
@@ -50,6 +63,26 @@ export type FeatureSnapshot = {
 function pctChange(from: number, to: number): number {
   if (!(from > 0)) return 0;
   return ((to - from) / from) * 100;
+}
+
+function sessionCandles(candles: Candle[], timeframe: string): Candle[] {
+  if (!candles.length) return [];
+  const lastT = readCandleTimeMs(candles[candles.length - 1]);
+  if (!(lastT > 0)) return [];
+  if (timeframe === '1D' || timeframe === '4h') {
+    const day = nseTradingDay(lastT);
+    return candles.filter((c) => {
+      const t = readCandleTimeMs(c);
+      return t > 0 && nseTradingDay(t) === day;
+    });
+  }
+  const start = istSessionStartMs(lastT);
+  const end = istSessionEndMs(lastT);
+  if (!(start > 0) || !(end > 0)) return [];
+  return candles.filter((c) => {
+    const t = readCandleTimeMs(c);
+    return t >= start && t < end;
+  });
 }
 
 export function buildFeatureSnapshot(
@@ -104,6 +137,24 @@ export function buildFeatureSnapshot(
   const low10 = prior10 ? Math.min(...prior10.map((b) => b.low)) : null;
   const low20 = prior20 ? Math.min(...prior20.map((b) => b.low)) : null;
 
+  const sess = sessionCandles(candles, timeframe);
+  const sessionOpen = sess[0] && sess[0].open > 0 ? sess[0].open : null;
+  const sessionLast = sess.length ? sess[sess.length - 1].close : null;
+  const sessionHigh = sess.length ? Math.max(...sess.map((b) => b.high)) : null;
+  const sessionLow = sess.length ? Math.min(...sess.map((b) => b.low)) : null;
+  const sessionChangePct =
+    sessionOpen != null && sessionLast != null ? pctChange(sessionOpen, sessionLast) : null;
+  const sessionRangePct =
+    sessionOpen != null && sessionHigh != null && sessionLow != null && sessionOpen > 0
+      ? ((sessionHigh - sessionLow) / sessionOpen) * 100
+      : null;
+  const sessAvgVol = sess.length
+    ? sess.reduce((a, b) => a + (Number(b.volume) || 0), 0) / sess.length
+    : 0;
+  const recentAvgVol = volumeAverage(candles, 20);
+  const sessionVolRatio =
+    sessAvgVol > 0 && recentAvgVol != null && recentAvgVol > 0 ? sessAvgVol / recentAvgVol : null;
+
   return {
     symbol,
     exchange,
@@ -114,6 +165,11 @@ export function buildFeatureSnapshot(
     structure: detectStructure(candles, timeframe as never),
     liquidity: detectLiquidity(candles, timeframe as never),
     changePercent,
+    sessionChangePct,
+    sessionRangePct,
+    sessionVolRatio,
+    sessionHigh,
+    sessionLow,
     rangePct,
     atrPct,
     atrCompression,

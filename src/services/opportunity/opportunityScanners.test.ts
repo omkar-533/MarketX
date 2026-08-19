@@ -222,6 +222,45 @@ describe('scanMomentumSurge', () => {
     assert.equal(hit?.status, 'ACTIVE');
     assert.equal(hit?.direction, 'bullish');
   });
+
+  it('lists a day runner on a quiet last bar when the session moved with volume', () => {
+    const hit = scanMomentumSurge(
+      ctx({
+        volume: { ratio: 1.1, state: 'NORMAL' },
+        changePercent: 0.3,
+        atrPct: 0.6,
+        roc5: 0.1,
+        sessionChangePct: 2.1,
+        sessionRangePct: 2.4,
+        sessionVolRatio: 1.6,
+        sessionHigh: 103.4,
+        sessionLow: 100.9,
+        candles: [bar({ open: 101.18, high: 101.24, low: 101.14, close: 101.2 })],
+        tech: { last: 101.2, rsi14: 58, atr14: 0.6 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, 'DAY RUNNER');
+  });
+
+  it('skips a session move on dead volume', () => {
+    assert.equal(
+      scanMomentumSurge(
+        ctx({
+          volume: { ratio: 1.0, state: 'NORMAL' },
+          changePercent: 0.3,
+          atrPct: 0.6,
+          sessionChangePct: 2.1,
+          sessionRangePct: 2.4,
+          sessionVolRatio: 1.0,
+          candles: [bar({ open: 101.18, high: 101.24, low: 101.14, close: 101.2 })],
+          tech: { last: 101.2, atr14: 0.6 },
+        }),
+      ),
+      null,
+    );
+  });
 });
 
 describe('scanLiquidityHunt', () => {

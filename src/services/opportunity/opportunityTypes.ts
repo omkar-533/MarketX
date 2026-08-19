@@ -119,7 +119,7 @@ export const OPPORTUNITY_SCANNERS: {
   {
     id: 'momentum_surge',
     title: 'PRICE RUNNERS',
-    tagline: 'Volume plus a real burst on the last bars — stocks that are actually running, even if already extended.',
+    tagline: 'Aaj session mein jo actually move kiya — day move with volume, chase allowed.',
     requires: 'ohlc',
   },
   {

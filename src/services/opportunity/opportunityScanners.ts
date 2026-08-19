@@ -143,14 +143,17 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   return null;
 }
 
-/** PRICE RUNNERS — volume + last-bar / 5-bar burst. Chase is allowed. */
+/** PRICE RUNNERS — aaj session mein jo actually move kiya, volume ke saath. Chase allowed. */
 export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const bar = lastBar(f);
   const atr = atrAbs(f);
-  const rvol = f.volume.ratio;
   if (!bar || atr == null) return null;
-  if (rvol < 1.35) return null;
+
+  const rvol = f.volume.ratio;
+  const sessVol = f.sessionVolRatio ?? 0;
+  const vol = Math.max(rvol, sessVol);
+  if (vol < 1.3) return null;
 
   const range = Math.max(bar.high - bar.low, 1e-9);
   const body = Math.abs(bar.close - (Number.isFinite(bar.open) ? bar.open : bar.close));
@@ -158,45 +161,68 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const exploded = barAtr >= 0.7;
   const burst5 = f.roc5 != null && Math.abs(f.roc5) >= 0.5;
   const burst20 = Math.abs(f.changePercent) >= Math.max(0.7, 0.9 * (f.atrPct || 0));
-  if (!exploded && !burst5 && !burst20) return null;
-  if (body / range < 0.35 && !exploded && !burst5) return null;
+  const sessChg = f.sessionChangePct;
+  const atrFloor = f.atrPct || 0;
+  const sessionMoved =
+    sessChg != null &&
+    (Math.abs(sessChg) >= Math.max(0.9, 1.1 * atrFloor) ||
+      (f.sessionRangePct != null && f.sessionRangePct >= Math.max(1.4, 1.8 * atrFloor)));
+  if (!exploded && !burst5 && !burst20 && !sessionMoved) return null;
+  if (body / range < 0.35 && exploded && !burst5 && !sessionMoved) return null;
 
-  const signed =
-    burst5 && f.roc5 != null
+  const signed = exploded
+    ? bar.close - (Number.isFinite(bar.open) ? bar.open : bar.close)
+    : burst5 && f.roc5 != null
       ? f.roc5
-      : bar.close !== bar.open
-        ? bar.close - bar.open
+      : sessionMoved && sessChg != null
+        ? sessChg
         : f.changePercent;
   const bullish = signed >= 0;
-  const movePct = burst5 && f.roc5 != null ? f.roc5 : f.changePercent;
+  const movePct =
+    burst5 && f.roc5 != null
+      ? f.roc5
+      : sessionMoved && sessChg != null
+        ? sessChg
+        : f.changePercent;
 
   const breakdown: ScoreBreakdown = {
-    momentum: clampScore(18 + Math.min(7, Math.abs(movePct) * 4), 25),
-    volume: clampScore(14 + Math.min(11, (rvol - 1.35) * 12), 25),
+    momentum: clampScore(16 + Math.min(9, Math.abs(movePct) * 4), 25),
+    volume: clampScore(13 + Math.min(12, (vol - 1.3) * 14), 25),
     expansion: exploded ? 20 : burst5 ? 16 : 14,
-    range: exploded ? 18 : barAtr >= 0.5 ? 14 : 12,
-    confirmation: f.volume.state === 'UNUSUAL' ? 12 : rvol >= 1.8 ? 11 : 10,
+    range: exploded ? 18 : f.sessionRangePct != null && f.sessionRangePct >= 1.4 ? 16 : barAtr >= 0.5 ? 14 : 12,
+    confirmation: vol >= 2.2 ? 12 : vol >= 1.6 ? 11 : 10,
   };
   const score = sumBreakdown(breakdown);
   if (!scoreGate(ctx, score, 68)) return null;
 
+  const sessTag = sessionMoved && sessChg != null && !exploded && !burst5;
   return baseHit('momentum_surge', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
     status: 'ACTIVE',
     score,
     breakdown,
-    stateLabel: exploded || rvol >= 2 ? '🔥 RUNNING' : 'RUNNER',
-    why: `Volume ${rvol.toFixed(1)}× with a ${Math.abs(movePct).toFixed(2)}% burst — runner, not a pullback wait.`,
+    stateLabel: exploded || vol >= 2 ? '🔥 RUNNING' : sessionMoved ? 'DAY RUNNER' : 'RUNNER',
+    why: sessTag
+      ? `Aaj ${sessChg! >= 0 ? '+' : ''}${sessChg!.toFixed(2)}% session move, volume ${vol.toFixed(1)}× — day runner, pullback wait nahi.`
+      : `Volume ${vol.toFixed(1)}× with a ${Math.abs(movePct).toFixed(2)}% burst — runner, not a pullback wait.`,
     keyLevel: bullish ? f.high20 : f.low20,
-    trigger: bullish ? f.high10 : f.low10,
+    trigger: bullish ? f.sessionHigh ?? f.high10 : f.sessionLow ?? f.low10,
     invalidation: bullish
       ? `Close back below ₹${(f.tech.sma20 ?? f.tech.last * 0.99).toFixed(2)}`
       : `Close back above ₹${(f.tech.sma20 ?? f.tech.last * 1.01).toFixed(2)}`,
     confirmationNeeded: 'This is a running name — trail or skip if volume dies on the next bars.',
     evidence: [
       { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.35 },
-      { label: exploded ? `Bar ${barAtr.toFixed(1)}× ATR` : 'Bar inside ATR', ok: exploded },
-      { label: burst5 ? `5-bar ${f.roc5! >= 0 ? '+' : ''}${f.roc5!.toFixed(2)}%` : `Move ${movePct >= 0 ? '+' : ''}${movePct.toFixed(2)}%`, ok: burst5 || burst20 },
+      { label: `Day vol ${sessVol.toFixed(1)}×`, ok: sessVol >= 1.3 },
+      {
+        label:
+          sessChg != null
+            ? `Aaj ${sessChg >= 0 ? '+' : ''}${sessChg.toFixed(2)}%`
+            : burst5 && f.roc5 != null
+              ? `5-bar ${f.roc5 >= 0 ? '+' : ''}${f.roc5.toFixed(2)}%`
+              : `Move ${movePct >= 0 ? '+' : ''}${movePct.toFixed(2)}%`,
+        ok: sessionMoved || burst5 || burst20 || exploded,
+      },
       { label: 'Chase allowed', ok: true },
     ],
   });
