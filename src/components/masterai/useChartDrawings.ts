@@ -138,6 +138,7 @@ export function useChartDrawings({
   const openSettingsRef = useRef(onOpenDrawingSettings);
   const aiRevisionRef = useRef(0);
   const drawRevisionRef = useRef(0);
+  const kickPaintRef = useRef<() => void>(() => {});
 
   drawingsRef.current = drawings;
   selectedRef.current = selectedId;
@@ -169,6 +170,7 @@ export function useChartDrawings({
       drawRevisionRef.current += 1;
       setDrawings(next);
       saveDrawings(storageKey, next);
+      kickPaintRef.current();
     },
     [storageKey],
   );
@@ -912,18 +914,23 @@ export function useChartDrawings({
       ctx.restore();
     };
 
-    // The price scale can be dragged without firing any chart event, so the
-    // mapping is re-read every frame and repainted only when it moved.
+    // Paint only when drawings/AI overlay actually need a frame.
     let raf = 0;
     let signature = '';
+    const busy = () =>
+      Boolean(
+        drawingsRef.current.length ||
+          aiRef.current.length ||
+          dragRef.current ||
+          placeRef.current,
+      );
     const tick = () => {
-      // An empty chart should cost nothing per frame.
-      if (!drawingsRef.current.length && !aiRef.current.length) {
+      raf = 0;
+      if (!busy()) {
         if (signature !== 'empty') {
           signature = 'empty';
           paint();
         }
-        raf = requestAnimationFrame(tick);
         return;
       }
       const probe = barsRef.current[0];
@@ -960,9 +967,14 @@ export function useChartDrawings({
       }
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    kickPaintRef.current = kick;
+    kick();
     const repaint = () => {
       signature = '';
+      kick();
     };
 
     const finishShape = (kind: DrawingKind) => {
@@ -1320,6 +1332,7 @@ export function useChartDrawings({
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
+      kickPaintRef.current = () => {};
       cancelAnimationFrame(raf);
       area.removeEventListener('pointerdown', onPointerDown, true);
       area.removeEventListener('dblclick', onDblClick, true);
@@ -1334,6 +1347,10 @@ export function useChartDrawings({
     };
 
   }, [areaRef, hostRef, canvasRef, chartRef, seriesRef, epoch, commit, storageKey, isDark]);
+
+  useEffect(() => {
+    kickPaintRef.current();
+  }, [aiShapes, drawings, hideDrawings, hideIndicators, selectedId]);
 
   return {
     drawings,

@@ -479,6 +479,7 @@ export default function NativeChatChart({
       return;
     }
     const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (!marketOpen) {
         setBarCountdown(null);
         return;
@@ -913,6 +914,7 @@ export default function NativeChatChart({
     let livePoll: ReturnType<typeof setInterval> | null = null;
 
     const paintFromLiveQuote = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const { quote } = await fetchLiveQuote(apiSymbol);
         if (cancelled) return;
@@ -2178,6 +2180,7 @@ export default function NativeChatChart({
     }
 
     const sync = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       const series = priceSeriesRef.current;
       const chart = chartRef.current;
       const host = hostRef.current;

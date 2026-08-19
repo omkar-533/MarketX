@@ -239,6 +239,15 @@ function AppWorkspace() {
   }, [auth.isLoggedIn, activeTab]);
 
   useEffect(() => {
+    const sync = () => {
+      document.documentElement.classList.toggle('wolf-tab-hidden', document.hidden);
+    };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+
+  useEffect(() => {
     const path = window.location.pathname;
     if (path !== '/' && path !== '') {
       const hash = window.location.hash || (auth.isLoggedIn ? `#${activeTab}` : '');

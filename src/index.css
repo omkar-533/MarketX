@@ -28898,7 +28898,6 @@ body:has(.app-main--terminal-immersive) #root {
   filter: blur(40px);
   opacity: 0.55;
   mix-blend-mode: screen;
-  will-change: transform;
 }
 .wolf-opp__orb--a {
   width: 22rem;
@@ -29850,6 +29849,21 @@ span.wolf-opp__seg {
 .wolf-opp__stack--merged {
   max-height: calc(5 * var(--opp-row) + 4 * var(--opp-gap));
 }
+.wolf-opp__stack-spacer {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+}
+.wolf-opp__stack-window {
+  position: absolute;
+  inset: 0 auto auto 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--opp-gap);
+  pointer-events: auto;
+  will-change: transform;
+}
 .wolf-opp__stack::-webkit-scrollbar {
   width: 6px;
 }
@@ -30583,6 +30597,10 @@ span.wolf-opp__seg {
   .wolf-opp__ring,
   .wolf-opp__prime-glow,
   .wolf-opp__title span,
+  .wolf-opp__hero-fog,
+  .wolf-opp__hero-orb,
+  .wolf-opp__hero-scan,
+  .wolf-opp__hero-edge,
   .woh__claw,
   .woh__edge,
   .woh__tips,
@@ -30605,5 +30623,11 @@ span.wolf-opp__seg {
     filter: none;
     opacity: 0.35;
   }
+}
+
+html.wolf-tab-hidden *,
+html.wolf-tab-hidden *::before,
+html.wolf-tab-hidden *::after {
+  animation-play-state: paused !important;
 }
 

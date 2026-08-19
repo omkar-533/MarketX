@@ -236,6 +236,7 @@ export class ServerMarketDataProvider implements MarketDataProvider {
     const id = `poll-${++this.subSeq}`;
     const list = [...new Set(symbols.map((s) => String(s || '').toUpperCase()).filter(Boolean))];
     const tick = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       for (const symbol of list) {
         try {
           callback(await this.getQuote(symbol));

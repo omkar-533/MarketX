@@ -1,7 +1,7 @@
 /**
  * WOLF OPPORTUNITY — one list per scanner; click Sort to cycle Long / Short / Created / %.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -158,7 +158,7 @@ function Seg({
   );
 }
 
-function HitTile({
+const HitTile = memo(function HitTile({
   hit,
   printLabel,
   onOpen,
@@ -167,15 +167,15 @@ function HitTile({
 }: {
   hit: OpportunityHit;
   printLabel: string;
-  onOpen: () => void;
-  onWhy: () => void;
-  onChart: () => void;
+  onOpen: (hit: OpportunityHit) => void;
+  onWhy: (hit: OpportunityHit) => void;
+  onChart: (hit: OpportunityHit) => void;
 }) {
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
-      <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={onOpen}>
+      <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={() => onOpen(hit)}>
         <StockLogoMark symbol={hit.symbol} size={38} className="wolf-opp__tile-logo" />
         <span className="wolf-opp__tile-copy">
           <span className="wolf-opp__tile-row">
@@ -204,7 +204,7 @@ function HitTile({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            onWhy();
+            onWhy(hit);
           }}
         >
           Why
@@ -212,7 +212,7 @@ function HitTile({
         <AppLink
           to="live-wolf"
           query={q}
-          onActivate={onChart}
+          onActivate={() => onChart(hit)}
           onClick={(e) => e.stopPropagation()}
         >
           <Crosshair size={12} /> Chart
@@ -220,7 +220,7 @@ function HitTile({
       </div>
     </article>
   );
-}
+});
 
 export default function WolfOpportunityPage({
   onOpenWolfAi,
@@ -491,7 +491,10 @@ export default function WolfOpportunityPage({
   useEffect(() => {
     if (!filters.autoRefresh) return;
     if (!isNseFnoMarketOpen()) return;
-    const id = window.setInterval(() => void runScan({ quiet: true }), filters.refreshSec * 1000);
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void runScan({ quiet: true });
+    }, filters.refreshSec * 1000);
     return () => window.clearInterval(id);
   }, [filters.autoRefresh, filters.refreshSec, runScan]);
 
@@ -501,10 +504,10 @@ export default function WolfOpportunityPage({
     onOpenWolfAi();
   };
 
-  const openChart = (hit: OpportunityHit) => {
+  const openChart = useCallback((hit: OpportunityHit) => {
     openLiveWolfFromRadarResult(opportunityToRadarResult(hit));
     onOpenLive?.();
-  };
+  }, [onOpenLive]);
 
   const liveOk = feedStatus === 'LIVE';
   const needle = symbolNeedle(symbolQuery);
@@ -792,9 +795,9 @@ export default function WolfOpportunityPage({
                           key={hit.id}
                           hit={hit}
                           printLabel={scannerPrintLabelOf(hit, printLabels)}
-                          onOpen={() => setSelected(hit)}
-                          onWhy={() => setWhyHit(hit)}
-                          onChart={() => openChart(hit)}
+                          onOpen={setSelected}
+                          onWhy={setWhyHit}
+                          onChart={openChart}
                         />
                       ))
                     )}
