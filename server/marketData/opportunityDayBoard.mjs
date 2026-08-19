@@ -9,21 +9,21 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['wolf_prime', 'WOLF PRIME', 'Early + confirmed keepers on the same side — conviction overlay, not a new setup.'],
-  ['morning_sprint', 'MORNING SPRINT', '9:20–10:50. WATCH on gap/early volume, ACTIVE on the blast.'],
-  ['top_movers', 'TOP MOVERS', 'Accelerating now with live volume — dead day winners drop off.'],
-  ['opening_drive', 'OPENING DRIVE', 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond.'],
-  ['momentum_surge', 'PRICE RUNNERS', 'Volume first, price second — WATCH inside the box, ACTIVE on the burst.'],
-  ['compression_break', 'COMPRESSION BREAK', 'WATCH while the coil presses the box, ACTIVE on the volume close out.'],
-  ['breakout_radar', 'BREAKOUT RADAR', 'No coil. WATCH at the 20-bar level, ACTIVE on the close — not Compression.'],
-  ['liquidity_hunt', 'LIQUIDITY HUNT', 'WATCH on the stop-hunt wick, CONFIRM when it reclaims.'],
-  ['trend_rider', 'TREND RIDER', 'WATCH on first EMA/VWAP touch, ACTIVE on the pullback hold.'],
+  ['morning_sprint', 'MORNING SPRINT', 'Best first look — 9:20–10:50 gap/drive. WATCH early, ACTIVE on the blast.'],
+  ['opening_drive', 'OPENING DRIVE', 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond. Wick does not count.'],
+  ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
+  ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
+  ['compression_break', 'COMPRESSION BREAK', 'Tight coil + volume building inside. ACTIVE only on the close out.'],
+  ['breakout_radar', 'BREAKOUT RADAR', 'No coil allowed. WATCH at the 20-bar, ACTIVE on the close.'],
+  ['top_movers', 'TOP MOVERS', 'Last 3 bars still fast + volume now. Dead day winners out.'],
+  ['liquidity_hunt', 'LIQUIDITY HUNT', 'Reclaim only — sweep without close-back does not list.'],
+  ['trend_rider', 'TREND RIDER', 'First EMA/VWAP touch, then hold. Stretched names hide.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v21';
+const SETTINGS_KEY = 'opportunity_day_board_v22';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v21.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v22.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

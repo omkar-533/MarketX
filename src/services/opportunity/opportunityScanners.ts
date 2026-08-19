@@ -174,6 +174,14 @@ function volumeRising(f: FeatureSnapshot): boolean {
   return (avg > 0 && last > avg * 1.15) || f.volume.ratio >= 1.4;
 }
 
+function last2VolumeUp(f: FeatureSnapshot): boolean {
+  const bars = f.candles;
+  if (!bars || bars.length < 2) return f.volume.ratio >= 1.5;
+  const last = Number(bars[bars.length - 1]?.volume) || 0;
+  const prev = Number(bars[bars.length - 2]?.volume) || 0;
+  return last > prev || f.volume.ratio >= 1.5;
+}
+
 function last3AccelPct(f: FeatureSnapshot): number | null {
   const c = f.candles;
   if (!c || c.length < 4) return f.roc5 ?? null;
@@ -224,8 +232,10 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const driveDown = chg <= -0.8;
   const activeUp = gapBlastUp || driveUp;
   const activeDown = gapBlastDown || driveDown;
-  const watchUp = !activeUp && (gapWatchUp || earlyUp);
-  const watchDown = !activeDown && (gapWatchDown || earlyDown);
+  const watchUp =
+    !activeUp && mins <= 20 && volumeRising(f) && (gapWatchUp || earlyUp);
+  const watchDown =
+    !activeDown && mins <= 20 && volumeRising(f) && (gapWatchDown || earlyDown);
   if (!activeUp && !activeDown && !watchUp && !watchDown) return null;
   const bullish = activeUp || watchUp;
   if (!vwapHeld(f, bullish)) return null;
@@ -317,7 +327,7 @@ export function scanTopMovers(ctx: Ctx): OpportunityHit | null {
   const canMeasure = (f.candles?.length || 0) >= 4;
   const liveNow = f.volume.ratio >= 1.35 || volumeRising(f);
   const stillAccel = accel != null && Math.abs(accel) >= 0.35;
-  if (canMeasure && !liveNow && !stillAccel) return null;
+  if (canMeasure && !(liveNow && stillAccel)) return null;
   if (!canMeasure && !liveNow) return null;
 
   const bullish = sessChg >= 0;
@@ -392,7 +402,7 @@ export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
   if (!bar || atr == null) return null;
   if (f.openingHigh == null || f.openingLow == null || !(f.openingHigh > f.openingLow)) return null;
   const mins = f.sessionMinsFromOpen;
-  if (mins == null || mins > 150) return null;
+  if (mins == null || mins > 105) return null;
   if (!volumeLive(f, 1.2)) return null;
 
   const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
@@ -468,7 +478,7 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const recentBurst = exploded || burst5 || (accel != null && Math.abs(accel) >= 0.45);
   const inside20 =
     (f.high20 == null || bar.close <= f.high20) && (f.low20 == null || bar.close >= f.low20);
-  const volLead = rvol >= 1.5 && inside20 && !exploded;
+  const volLead = rvol >= 1.5 && inside20 && !exploded && last2VolumeUp(f);
   if (!recentBurst && !burst20 && !volLead) return null;
   if (body / range < 0.35 && exploded && !burst5) return null;
 
@@ -518,50 +528,38 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** LIQUIDITY HUNT — WATCH on the sweep, CONFIRM on reclaim. */
+/** LIQUIDITY HUNT — reclaim only. Sweep without close-back does not list. */
 export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const event = sweepEvent(f);
-  if (!event) return null;
+  if (!event || !event.reclaimed) return null;
 
-  const active = event.reclaimed;
   const breakdown: ScoreBreakdown = {
     liquidity: 28,
-    confirmation: active ? 22 : 10,
+    confirmation: 22,
     structure: clampScore(f.structure.strength / 5, 20),
     volume: f.volume.ratio >= 1.3 ? 15 : 12,
     distance: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, active ? 58 : 55)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('liquidity_hunt', ctx, {
     direction: event.buySide ? 'bullish' : 'bearish',
-    status: active ? 'CONFIRM' : 'WATCH',
+    status: 'CONFIRM',
     score,
     breakdown,
-    stateLabel: active
-      ? event.buySide
-        ? 'BUY-SIDE SWEEP + RECLAIM'
-        : 'SELL-SIDE SWEEP + RECLAIM'
-      : event.buySide
-        ? 'WATCH SWEEP LOW'
-        : 'WATCH SWEEP HIGH',
-    why: active
-      ? `Swept ₹${event.level.toFixed(2)} then closed back — stop-hunt with reclaim.`
-      : `Swept ₹${event.level.toFixed(2)} — reclaim close ka wait.`,
+    stateLabel: event.buySide ? 'BUY-SIDE SWEEP + RECLAIM' : 'SELL-SIDE SWEEP + RECLAIM',
+    why: `Swept ₹${event.level.toFixed(2)} then closed back — stop-hunt with reclaim.`,
     keyLevel: event.level,
     trigger: event.level,
     invalidation: `Acceptance beyond ₹${event.level.toFixed(2)} without reclaim`,
-    confirmationNeeded: active
-      ? 'Hold reclaim; watch for continuation.'
-      : 'WATCH — close wapas level ke andar aaye tab entry.',
+    confirmationNeeded: 'Hold reclaim; watch for continuation.',
     evidence: [
-      { label: active ? 'Sweep + reclaim' : 'Sweep, no reclaim yet', ok: active },
+      { label: 'Sweep + reclaim', ok: true },
       { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.1 },
       { label: 'Wick ≥ 0.2 ATR', ok: true },
     ],
-    meta: { early: !active },
   });
 }
 
@@ -576,8 +574,18 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
   const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
-  const watchUp = !up && f.high20 != null && bar.close <= f.high20 && nearLevel(f.tech.last, f.high20, atr, 0.35);
-  const watchDown = !down && f.low20 != null && bar.close >= f.low20 && nearLevel(f.tech.last, f.low20, atr, 0.35);
+  const watchUp =
+    !up &&
+    f.high20 != null &&
+    bar.close <= f.high20 &&
+    nearLevel(f.tech.last, f.high20, atr, 0.35) &&
+    volumeRising(f);
+  const watchDown =
+    !down &&
+    f.low20 != null &&
+    bar.close >= f.low20 &&
+    nearLevel(f.tech.last, f.low20, atr, 0.35) &&
+    volumeRising(f);
   if (!up && !down && !watchUp && !watchDown) return null;
   const bullish = up || watchUp;
   const level = bullish ? f.high20! : f.low20!;

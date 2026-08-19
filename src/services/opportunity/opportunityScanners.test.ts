@@ -74,7 +74,7 @@ describe('Opportunity desk scanners', () => {
   it('lists nine keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['wolf_prime', 'morning_sprint', 'top_movers', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+      ['morning_sprint', 'opening_drive', 'wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'top_movers', 'liquidity_hunt', 'trend_rider'],
     );
   });
 });

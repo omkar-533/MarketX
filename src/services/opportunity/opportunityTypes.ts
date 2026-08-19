@@ -114,57 +114,57 @@ export const OPPORTUNITY_SCANNERS: {
   requires: 'ohlc' | 'oi' | 'options' | 'sector';
 }[] = [
   {
-    id: 'wolf_prime',
-    title: 'WOLF PRIME',
-    tagline: 'Early + confirmed keepers on the same side — conviction overlay, not a new setup.',
-    requires: 'ohlc',
-  },
-  {
     id: 'morning_sprint',
     title: 'MORNING SPRINT',
-    tagline: '9:20–10:50. WATCH on gap/early volume, ACTIVE on the blast.',
-    requires: 'ohlc',
-  },
-  {
-    id: 'top_movers',
-    title: 'TOP MOVERS',
-    tagline: 'Accelerating now with live volume — dead day winners drop off.',
+    tagline: 'Best first look — 9:20–10:50 gap/drive. WATCH early, ACTIVE on the blast.',
     requires: 'ohlc',
   },
   {
     id: 'opening_drive',
     title: 'OPENING DRIVE',
-    tagline: 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond.',
+    tagline: 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond. Wick does not count.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'wolf_prime',
+    title: 'WOLF PRIME',
+    tagline: 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.',
     requires: 'ohlc',
   },
   {
     id: 'momentum_surge',
     title: 'PRICE RUNNERS',
-    tagline: 'Volume first, price second — WATCH inside the box, ACTIVE on the burst.',
+    tagline: 'Last 2 candles volume up, price still inside — then the burst.',
     requires: 'ohlc',
   },
   {
     id: 'compression_break',
     title: 'COMPRESSION BREAK',
-    tagline: 'WATCH while the coil presses the box, ACTIVE on the volume close out.',
+    tagline: 'Tight coil + volume building inside. ACTIVE only on the close out.',
     requires: 'ohlc',
   },
   {
     id: 'breakout_radar',
     title: 'BREAKOUT RADAR',
-    tagline: 'No coil. WATCH at the 20-bar level, ACTIVE on the close — not Compression.',
+    tagline: 'No coil allowed. WATCH at the 20-bar, ACTIVE on the close.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'top_movers',
+    title: 'TOP MOVERS',
+    tagline: 'Last 3 bars still fast + volume now. Dead day winners out.',
     requires: 'ohlc',
   },
   {
     id: 'liquidity_hunt',
     title: 'LIQUIDITY HUNT',
-    tagline: 'WATCH on the stop-hunt wick, CONFIRM when it reclaims.',
+    tagline: 'Reclaim only — sweep without close-back does not list.',
     requires: 'ohlc',
   },
   {
     id: 'trend_rider',
     title: 'TREND RIDER',
-    tagline: 'WATCH on first EMA/VWAP touch, ACTIVE on the pullback hold.',
+    tagline: 'First EMA/VWAP touch, then hold. Stretched names hide.',
     requires: 'ohlc',
   },
 ];
