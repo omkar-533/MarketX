@@ -8,8 +8,11 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import {
   ensureInstrumentMap,
+  FALLBACK_SCRIP_BY_SYMBOL,
   fetchIndstocksOptionChain,
   getNearestOptionExpiryYmd,
+  nextNseWeeklyExpiryYmd,
+  nseMonthlyExpiryYmd,
   optionChainUnderlying,
 } from './indstocksClient.mjs';
 import { NIFTY_50_SYMBOLS } from './universeLists.mjs';
@@ -187,29 +190,44 @@ function rankSymbols(symbols) {
   });
 }
 
-async function pullSymbol(accessToken, symbol) {
-  const under = optionChainUnderlying(symbol);
-  const expiry = getNearestOptionExpiryYmd(symbol);
-  if (!under || !expiry) return null;
-  const json = await fetchIndstocksOptionChain(accessToken, {
-    exchange: under.exchange,
-    segment: under.segment,
-    underlyingScrip: under.underlyingScrip,
-    expiry,
-    strikeCount: 8,
-  });
-  if (!json) return null;
-  return summarizeOptionChain(symbol, json, expiry);
+function expiryCandidates(symbol, now = Date.now()) {
+  return [
+    ...new Set(
+      [
+        getNearestOptionExpiryYmd(symbol, now),
+        nextNseWeeklyExpiryYmd(now),
+        nextNseWeeklyExpiryYmd(now + 7 * 86_400_000),
+        nseMonthlyExpiryYmd(now),
+      ].filter(Boolean),
+    ),
+  ];
 }
 
-async function refreshOptionFlow(accessToken, symbols) {
-  hydrateDisk();
-  await ensureInstrumentMap(accessToken);
-  const unique = rankSymbols(symbols);
-  const next = { ...cache.bySymbol };
+async function pullSymbol(accessToken, symbol) {
+  const under = optionChainUnderlying(symbol);
+  if (!under) return null;
+  for (const expiry of expiryCandidates(symbol)) {
+    try {
+      const json = await fetchIndstocksOptionChain(accessToken, {
+        exchange: under.exchange,
+        segment: under.segment,
+        underlyingScrip: under.underlyingScrip,
+        expiry,
+        strikeCount: 8,
+      });
+      const row = json ? summarizeOptionChain(symbol, json, expiry) : null;
+      if (row) return row;
+    } catch {
+      /* wrong expiry / 400 — try the next Thursday */
+    }
+  }
+  return null;
+}
+
+async function pullWave(accessToken, symbols, next) {
   let added = 0;
-  for (let i = 0; i < unique.length; i += WAVE) {
-    const slice = unique.slice(i, i + WAVE);
+  for (let i = 0; i < symbols.length; i += WAVE) {
+    const slice = symbols.slice(i, i + WAVE);
     await Promise.all(
       slice.map(async (symbol) => {
         try {
@@ -225,12 +243,25 @@ async function refreshOptionFlow(accessToken, symbols) {
     );
     cache.bySymbol = next;
     cache.at = Date.now();
-    if (i === 0 || added % 24 === 0) persistDisk();
+    persistDisk();
   }
+  return added;
+}
+
+async function refreshOptionFlow(accessToken, symbols) {
+  hydrateDisk();
+  const unique = rankSymbols(symbols);
+  const first = unique.filter((s) => FALLBACK_SCRIP_BY_SYMBOL[s]).slice(0, 24);
+  const rest = unique.filter((s) => !first.includes(s));
+  const next = { ...cache.bySymbol };
+  const firstN = await pullWave(accessToken, first, next);
+  persistDisk();
+  await ensureInstrumentMap(accessToken);
+  const restN = await pullWave(accessToken, rest, next);
   cache.at = Date.now();
   cache.bySymbol = next;
   persistDisk();
-  console.log(`[opportunity-option-flow] ready n=${Object.keys(next).length} added=${added}`);
+  console.log(`[opportunity-option-flow] ready n=${Object.keys(next).length} first=${firstN} rest=${restN}`);
   return next;
 }
 

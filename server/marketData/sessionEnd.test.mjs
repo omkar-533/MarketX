@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   lastCompletedNseSessionEndMs,
   nextNseWeeklyExpiryYmd,
+  nseMonthlyExpiryYmd,
   parseOptionExpiryMs,
 } from './indstocksClient.mjs';
 
@@ -44,5 +45,6 @@ describe('option expiry helpers', () => {
   it('uses this Thursday before the open as the weekly expiry', () => {
     const now = Date.parse('2026-08-20T04:03:00+05:30');
     assert.equal(nextNseWeeklyExpiryYmd(now), '2026-08-20');
+    assert.equal(nseMonthlyExpiryYmd(now), '2026-08-27');
   });
 });

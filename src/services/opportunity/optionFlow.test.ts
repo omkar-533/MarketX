@@ -80,6 +80,40 @@ describe('optionFlowSignal', () => {
     );
   });
 
+  it('after close uses PCR + day % when ΔOI is flat', () => {
+    const s = optionFlowSignal(
+      flow({
+        ceOiChg: 0,
+        peOiChg: 0,
+        atmBandCeOiChg: 0,
+        atmBandPeOiChg: 0,
+        ceVol: 0,
+        peVol: 0,
+        pcr: 0.62,
+      }),
+      1.1,
+    );
+    assert.ok(s);
+    assert.equal(s?.kind, 'call_heavy');
+    assert.equal(s?.direction, 'bullish');
+  });
+
+  it('skips a flat chain with mid PCR', () => {
+    assert.equal(
+      optionFlowSignal(
+        flow({
+          ceOiChg: 0,
+          peOiChg: 0,
+          atmBandCeOiChg: 0,
+          atmBandPeOiChg: 0,
+          pcr: 1.02,
+        }),
+        1.1,
+      ),
+      null,
+    );
+  });
+
   it('uses prev close for day %, not a 20-bar leftover', () => {
     assert.ok(Math.abs((optionFlowDayPct(370.65, 372.55, 2.4) ?? 0) - ((370.65 - 372.55) / 372.55) * 100) < 1e-9);
   });

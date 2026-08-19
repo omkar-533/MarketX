@@ -1063,7 +1063,7 @@ export function scanOptionsFlow(ctx: Ctx, flow?: OptionFlowSnap | null): Opportu
   const pcrOk =
     signal.direction === 'bullish' ? pcr != null && pcr <= 0.85 : pcr != null && pcr >= 1.2;
   const breakdown: ScoreBreakdown = {
-    buildup: signal.kind.endsWith('buildup') ? 28 : 16,
+    buildup: signal.kind.endsWith('buildup') || signal.kind.endsWith('heavy') ? 28 : 16,
     price: clampScore(10 + Math.min(12, Math.abs(dayPct) * 8), 22),
     atm: Math.abs(flow.atmBandCeOiChg) + Math.abs(flow.atmBandPeOiChg) > 0 ? 20 : 8,
     pcr: pcrOk ? 16 : 10,
@@ -1080,7 +1080,10 @@ export function scanOptionsFlow(ctx: Ctx, flow?: OptionFlowSnap | null): Opportu
     score,
     breakdown,
     stateLabel: signal.label,
-    why: `Live chain ${flow.expiry}: CE OI ${ceChg}, PE OI ${peChg}, day ${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%${pcr != null ? `, PCR ${pcr.toFixed(2)}` : ''} — ${signal.kind.replace(/_/g, ' ')}.`,
+    why:
+      signal.kind === 'call_heavy' || signal.kind === 'put_heavy'
+        ? `Last chain ${flow.expiry}: PCR ${pcr != null ? pcr.toFixed(2) : 'n/a'}, day ${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}% — ΔOI flat after close, ${signal.kind.replace(/_/g, ' ')}.`
+        : `Live chain ${flow.expiry}: CE OI ${ceChg}, PE OI ${peChg}, day ${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%${pcr != null ? `, PCR ${pcr.toFixed(2)}` : ''} — ${signal.kind.replace(/_/g, ' ')}.`,
     keyLevel: flow.atmStrike,
     trigger: flow.atmStrike,
     invalidation:

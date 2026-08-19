@@ -607,6 +607,26 @@ export function parseOptionExpiryMs(raw) {
   return 0;
 }
 
+/** Last Thursday of this IST month, or next month if that Thursday is already behind. */
+export function nseMonthlyExpiryYmd(now = Date.now()) {
+  const today = istCalendarDay(now);
+  const [y0, m0] = today.split('-').map((n) => Number(n));
+  for (const shift of [0, 1]) {
+    const m = m0 + shift;
+    const year = m > 12 ? y0 + 1 : y0;
+    const month = m > 12 ? m - 12 : m;
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    for (let d = lastDay; d >= 1; d -= 1) {
+      const ymd = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const t = Date.parse(`${ymd}T12:00:00+05:30`);
+      const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date(t));
+      if (wd === 'Thu' && ymd >= today) return ymd;
+      if (wd === 'Thu') break;
+    }
+  }
+  return nextNseWeeklyExpiryYmd(now);
+}
+
 /** Next NSE weekly expiry (Thursday IST), including today if it is Thursday. */
 export function nextNseWeeklyExpiryYmd(now = Date.now()) {
   const dayFmt = new Intl.DateTimeFormat('en-CA', {

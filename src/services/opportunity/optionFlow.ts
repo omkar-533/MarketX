@@ -20,7 +20,13 @@ export type OptionFlowSnap = {
   atmBandPeOiChg: number;
 };
 
-export type OptionFlowKind = 'long_buildup' | 'short_buildup' | 'short_cover' | 'long_unwind';
+export type OptionFlowKind =
+  | 'long_buildup'
+  | 'short_buildup'
+  | 'short_cover'
+  | 'long_unwind'
+  | 'call_heavy'
+  | 'put_heavy';
 
 export type OptionFlowSignal = {
   kind: OptionFlowKind;
@@ -47,6 +53,31 @@ export function optionFlowDayPct(
   return null;
 }
 
+function optionFlowPcrBias(flow: OptionFlowSnap, dayPct: number): OptionFlowSignal | null {
+  const pcr = flow.pcr;
+  if (pcr == null || !Number.isFinite(pcr)) return null;
+  if (Math.abs(dayPct) < 0.45) return null;
+  if (pcr <= 0.75 && dayPct >= 0.45) {
+    const active = dayPct >= 0.7;
+    return {
+      kind: 'call_heavy',
+      direction: 'bullish',
+      active,
+      label: active ? '🔥 CALL HEAVY' : 'WATCH CALLS',
+    };
+  }
+  if (pcr >= 1.25 && dayPct <= -0.45) {
+    const active = dayPct <= -0.7;
+    return {
+      kind: 'put_heavy',
+      direction: 'bearish',
+      active,
+      label: active ? '🔥 PUT HEAVY' : 'WATCH PUTS',
+    };
+  }
+  return null;
+}
+
 /** Classify real OI + day price. Null = no tradeable flow. */
 export function optionFlowSignal(flow: OptionFlowSnap, dayPct: number): OptionFlowSignal | null {
   const totalOi = flow.ceOi + flow.peOi;
@@ -57,10 +88,11 @@ export function optionFlowSignal(flow: OptionFlowSnap, dayPct: number): OptionFl
   const minChgPct = index ? 1.5 : 3;
   const minAtm = index ? 40_000 : 6_000;
   if (!(totalOi >= minOi)) return null;
-  const chgPct = totalOi > 0 ? (absChg / totalOi) * 100 : 0;
-  if (chgPct < minChgPct && atmAbs < minAtm) return null;
-  if (!(flow.ceVol + flow.peVol > 0) && atmAbs < minAtm) return null;
   if (!Number.isFinite(dayPct)) return null;
+  const chgPct = totalOi > 0 ? (absChg / totalOi) * 100 : 0;
+  // After the close, previous_oi often equals oi (ΔOI 0). Still use real PCR + day %.
+  if (chgPct < minChgPct && atmAbs < minAtm) return optionFlowPcrBias(flow, dayPct);
+  if (!(flow.ceVol + flow.peVol > 0) && atmAbs < minAtm) return optionFlowPcrBias(flow, dayPct);
 
   const twoWay =
     flow.atmBandCeOiChg > 0 &&

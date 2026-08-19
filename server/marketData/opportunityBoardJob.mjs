@@ -98,7 +98,7 @@ async function huntTimeframe(accessToken, universe, timeframe) {
     optionFlowBySymbol =
       (await awaitOpportunityOptionFlow(accessToken, snap.symbols, {
         budgetMs: open ? 20_000 : 55_000,
-        minReady: 8,
+        minReady: 4,
       })) || {};
   } catch (err) {
     console.warn('[opportunity-board-job] option flow skip', err?.message || err);

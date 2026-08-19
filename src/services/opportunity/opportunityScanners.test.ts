@@ -665,4 +665,20 @@ describe('scanOptionsFlow', () => {
     assert.equal(hit?.stateLabel, '🔥 LONG BUILDUP');
     assert.ok((hit?.score ?? 0) >= 58);
   });
+
+  it('lists last-session call-heavy when ΔOI is flat but PCR is real', () => {
+    const hit = scanOptionsFlow(ctx({ prevClose: 100, sessionChangePct: 1.2 }), {
+      ...live,
+      ceOiChg: 0,
+      peOiChg: 0,
+      atmBandCeOiChg: 0,
+      atmBandPeOiChg: 0,
+      ceVol: 0,
+      peVol: 0,
+      pcr: 0.62,
+    });
+    assert.ok(hit);
+    assert.equal(hit?.stateLabel, '🔥 CALL HEAVY');
+    assert.equal(hit?.direction, 'bullish');
+  });
 });
