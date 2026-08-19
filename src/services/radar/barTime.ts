@@ -145,31 +145,57 @@ function shiftIstYmd(ymd: string, days: number): string {
 }
 
 /**
+ * The time-walk re-asks session bounds for every bar × scanner — Intl timezone
+ * formatters are too expensive for that. Outputs only move at IST day/session
+ * boundaries, so a minute-granularity memo is exact for trading logic.
+ */
+const MINUTE_MS = 60_000;
+const nseDayMemo = new Map<number, string>();
+const sessionStartMemo = new Map<number, number>();
+const sessionEndMemo = new Map<number, number>();
+
+function memoMinute<S>(cache: Map<number, S>, ms: number, compute: () => S): S {
+  const key = Math.floor(ms / MINUTE_MS);
+  const hit = cache.get(key);
+  if (hit !== undefined) return hit;
+  const value = compute();
+  if (cache.size > 4000) cache.clear();
+  cache.set(key, value);
+  return value;
+}
+
+/**
  * NSE cash session day we stamp Created against.
  * Weekend / before 09:15 IST → last completed weekday (Fri on Sat/Sun/Mon morning).
  */
 export function nseTradingDay(now = Date.now()): string {
-  const ymd = istCalendarDay(new Date(now));
-  const p = getIstParts(new Date(now));
-  const open = Date.parse(`${ymd}T09:15:00+05:30`);
-  if (p.day === 0) return shiftIstYmd(ymd, -2);
-  if (p.day === 6) return shiftIstYmd(ymd, -1);
-  if (Number.isFinite(open) && now < open) return shiftIstYmd(ymd, p.day === 1 ? -3 : -1);
-  return ymd;
+  return memoMinute(nseDayMemo, now, () => {
+    const ymd = istCalendarDay(new Date(now));
+    const p = getIstParts(new Date(now));
+    const open = Date.parse(`${ymd}T09:15:00+05:30`);
+    if (p.day === 0) return shiftIstYmd(ymd, -2);
+    if (p.day === 6) return shiftIstYmd(ymd, -1);
+    if (Number.isFinite(open) && now < open) return shiftIstYmd(ymd, p.day === 1 ? -3 : -1);
+    return ymd;
+  });
 }
 
 /** NSE cash/F&O session open for the active trading day (09:15). */
 export function istSessionStartMs(now = Date.now()): number {
-  const day = nseTradingDay(now);
-  const open = Date.parse(`${day}T09:15:00+05:30`);
-  return Number.isFinite(open) ? open : 0;
+  return memoMinute(sessionStartMemo, now, () => {
+    const day = nseTradingDay(now);
+    const open = Date.parse(`${day}T09:15:00+05:30`);
+    return Number.isFinite(open) ? open : 0;
+  });
 }
 
 /** NSE cash/F&O session close (15:30). 1h bars must not stamp 4:15pm. */
 export function istSessionEndMs(now = Date.now()): number {
-  const day = nseTradingDay(now);
-  const close = Date.parse(`${day}T15:30:00+05:30`);
-  return Number.isFinite(close) ? close : 0;
+  return memoMinute(sessionEndMemo, now, () => {
+    const day = nseTradingDay(now);
+    const close = Date.parse(`${day}T15:30:00+05:30`);
+    return Number.isFinite(close) ? close : 0;
+  });
 }
 
 /**
