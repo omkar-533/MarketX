@@ -100,6 +100,26 @@ describe('Opportunity Created clock', () => {
     assert.equal(formatOpportunityCreatedClock(times[1], now), '2:10 pm');
   });
 
+  it('15m after close keeps each episode clock, not 3:30 on every row', () => {
+    const now = Date.parse('2026-08-17T20:26:00+05:30');
+    const start = Date.parse('2026-08-17T09:15:00+05:30');
+    const fifteen = 15 * 60_000;
+    const candles = Array.from({ length: 25 }, (_, i) => ({ timestamp: start + i * fifteen }));
+    const times = opportunityCreatedTimesMs(
+      candles,
+      '15m',
+      (i) => (i >= 2 && i <= 4) || i >= 20,
+      now,
+    );
+    assert.deepEqual(times, [
+      Date.parse('2026-08-17T10:00:00+05:30'),
+      Date.parse('2026-08-17T14:30:00+05:30'),
+    ]);
+    assert.equal(formatOpportunityCreatedClock(times[0], now), '10:00 am');
+    assert.equal(formatOpportunityCreatedClock(times[1], now), '2:30 pm');
+    assert.ok(times.every((t) => formatOpportunityCreatedClock(t, now) !== '3:30 pm'));
+  });
+
   it('after the bell still shows first-create time, not 3:30 for every name', () => {
     const now = Date.parse('2026-08-17T16:22:00+05:30');
     const start = Date.parse('2026-08-17T09:15:00+05:30');
