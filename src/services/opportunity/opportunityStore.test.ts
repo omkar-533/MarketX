@@ -37,25 +37,22 @@ function hit(partial: Partial<OpportunityHit> & Pick<OpportunityHit, 'symbol' | 
 }
 
 describe('opportunityStore ranking', () => {
-  it('keeps the first names of the day instead of swapping in a hotter late print', () => {
+  it('keeps every qualifying name instead of swapping out an earlier print for a hotter late score', () => {
     let cards = emptyOpportunityCards();
     cards = mergeOpportunityHitIntoCards(
       cards,
       hit({ scannerId: 'breakout_radar', symbol: 'AAA', score: 61, detectedAt: 10 }),
-      2,
     );
     cards = mergeOpportunityHitIntoCards(
       cards,
       hit({ scannerId: 'breakout_radar', symbol: 'BBB', score: 62, detectedAt: 20 }),
-      2,
     );
     cards = mergeOpportunityHitIntoCards(
       cards,
       hit({ scannerId: 'breakout_radar', symbol: 'CCC', score: 90, detectedAt: 30 }),
-      2,
     );
     const names = cards.find((c) => c.scannerId === 'breakout_radar')?.hits.map((h) => h.symbol) || [];
-    assert.deepEqual(names, ['AAA', 'BBB']);
+    assert.deepEqual(names, ['AAA', 'BBB', 'CCC']);
   });
 
   it('adds a 2nd listing when the same name prints again later', () => {

@@ -1,7 +1,9 @@
 /**
- * Twelve specialized Wolf Opportunity scanners.
- * Each returns null when conditions fail or required data is missing — never invents hits.
+ * Wolf Opportunity scanners.
+ * Desk lists six keepers. Proxy/watch scanners stay in this file but are not run.
+ * Missing data → null. Never invents hits.
  */
+import type { Candle } from '../radar/radarTypes';
 import type {
   EvidenceItem,
   OpportunityHit,
@@ -51,43 +53,141 @@ function sumBreakdown(b: ScoreBreakdown): number {
   return clampScore(Object.values(b).reduce((a, n) => a + n, 0));
 }
 
+function lastBar(f: FeatureSnapshot): Candle | null {
+  const bars = f.candles;
+  if (!bars?.length) return null;
+  return bars[bars.length - 1] ?? null;
+}
+
+function atrAbs(f: FeatureSnapshot): number | null {
+  const n = f.tech.atr14;
+  return n != null && n > 0 ? n : null;
+}
+
+function priorBoxPct(f: FeatureSnapshot): number | null {
+  if (f.high20 == null || f.low20 == null || !(f.low20 > 0)) return null;
+  return ((f.high20 - f.low20) / f.low20) * 100;
+}
+
+function priorCoil(f: FeatureSnapshot): boolean {
+  const box = priorBoxPct(f);
+  const atrCoil = f.priorAtrCompression != null && f.priorAtrCompression <= 0.8;
+  const boxCoil = box != null && box < 1.1;
+  return atrCoil || boxCoil;
+}
+
+function closeBrokeLevel(bar: Candle, level: number, side: 'up' | 'down'): boolean {
+  if (!(level > 0)) return false;
+  const open = Number.isFinite(bar.open) ? bar.open : bar.close;
+  const body = Math.abs(bar.close - open);
+  const range = Math.max(bar.high - bar.low, 1e-9);
+  if (body / range < 0.35) return false;
+  if (side === 'up') {
+    if (!(bar.close > level)) return false;
+    const bodyLow = Math.min(open, bar.close);
+    const bodyHigh = Math.max(open, bar.close);
+    return bodyHigh - Math.max(level, bodyLow) >= body * 0.5;
+  }
+  if (!(bar.close < level)) return false;
+  const bodyLow = Math.min(open, bar.close);
+  const bodyHigh = Math.max(open, bar.close);
+  return Math.min(level, bodyHigh) - bodyLow >= body * 0.5;
+}
+
+function notChased(last: number, level: number, atr: number, maxAtr = 1.2): boolean {
+  return Math.abs(last - level) <= maxAtr * atr;
+}
+
+function emaPullbackHold(f: FeatureSnapshot, align: 'bullish' | 'bearish'): boolean {
+  const ema21 = f.tech.ema21;
+  const atr = atrAbs(f);
+  const bars = f.candles?.slice(-5) || [];
+  if (ema21 == null || atr == null || !bars.length) return false;
+  if (align === 'bullish') {
+    if (f.tech.last < ema21) return false;
+    if (f.tech.last > ema21 + 1.2 * atr) return false;
+    return bars.some((b) => b.low <= ema21 + 0.15 * atr);
+  }
+  if (f.tech.last > ema21) return false;
+  if (f.tech.last < ema21 - 1.2 * atr) return false;
+  return bars.some((b) => b.high >= ema21 - 0.15 * atr);
+}
+
+function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } | null {
+  const atr = atrAbs(f);
+  const bars = f.candles;
+  if (atr == null || !bars || bars.length < 2) return null;
+  if (f.volume.ratio < 1.2) return null;
+  const last = bars[bars.length - 1];
+  const prev = bars[bars.length - 2];
+  const wick = atr * 0.3;
+
+  const tryLevel = (level: number, buySide: boolean) => {
+    const swept = buySide
+      ? Math.min(prev.low, last.low) <= level - wick
+      : Math.max(prev.high, last.high) >= level + wick;
+    const reclaimed = buySide ? last.close > level : last.close < level;
+    return swept && reclaimed;
+  };
+
+  const liq = f.liquidity;
+  if (liq.type === 'LIQUIDITY_SWEEP' && liq.level > 0) {
+    const buySide = liq.direction === 'bullish';
+    if (tryLevel(liq.level, buySide)) return { buySide, level: liq.level };
+  }
+
+  const low = f.swingLow ?? f.low10;
+  if (low != null && tryLevel(low, true)) return { buySide: true, level: low };
+  const high = f.swingHigh ?? f.high10;
+  if (high != null && tryLevel(high, false)) return { buySide: false, level: high };
+  return null;
+}
+
 /** 01 — MOMENTUM SURGE */
 export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const rvol = f.volume.ratio;
-  const rsi = f.tech.rsi14 ?? 50;
-  const expanding = f.atrCompression != null && f.atrCompression >= 1.15;
-  const nearBreak =
-    f.high20 != null && f.tech.last >= f.high20 * 0.995 && f.tech.last <= f.high20 * 1.02;
-
-  if (rvol < 1.6 && Math.abs(f.changePercent) < 0.8) return null;
-  if (rvol < 1.35) return null;
-
-  const breakdown: ScoreBreakdown = {
-    momentum: clampScore(Math.min(25, Math.abs(f.changePercent) * 8 + (rsi > 55 || rsi < 45 ? 8 : 0)), 25),
-    volume: clampScore(Math.min(25, (rvol - 1) * 12), 25),
-    expansion: expanding ? 18 : f.rangePct > 1.2 ? 12 : 6,
-    breakoutProximity: nearBreak ? 20 : 8,
-    confirmation: f.volume.state === 'UNUSUAL' ? 12 : f.volume.state === 'EXPANDING' ? 8 : 4,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 55)) return null;
+  const rsi = f.tech.rsi14;
+  const atrPct = f.atrPct;
+  const expanding = f.atrCompression != null && f.atrCompression >= 1.1;
+  if (rvol < 1.8) return null;
+  if (!(atrPct > 0)) return null;
+  if (Math.abs(f.changePercent) < 0.8 * atrPct) return null;
+  if (!expanding) return null;
+  if (rsi == null) return null;
 
   const bullish = f.changePercent >= 0;
+  if (bullish ? rsi < 55 : rsi > 45) return null;
+
+  const nearBreak =
+    bullish
+      ? f.high20 != null && f.tech.last >= f.high20 * 0.995 && f.tech.last <= f.high20 * 1.02
+      : f.low20 != null && f.tech.last <= f.low20 * 1.005 && f.tech.last >= f.low20 * 0.98;
+
+  const breakdown: ScoreBreakdown = {
+    momentum: clampScore(Math.min(25, Math.abs(f.changePercent) * 8 + 8), 25),
+    volume: clampScore(Math.min(25, (rvol - 1) * 12), 25),
+    expansion: expanding ? 18 : 6,
+    breakoutProximity: nearBreak ? 20 : 8,
+    confirmation: f.volume.state === 'UNUSUAL' ? 12 : 8,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 62)) return null;
+
   const evidence: EvidenceItem[] = [
-    { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.6 },
-    { label: `Price ${f.changePercent >= 0 ? '+' : ''}${f.changePercent.toFixed(2)}%`, ok: Math.abs(f.changePercent) >= 0.8 },
+    { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.8 },
+    { label: `Move ${f.changePercent >= 0 ? '+' : ''}${f.changePercent.toFixed(2)}% vs ATR ${atrPct.toFixed(2)}%`, ok: true },
     { label: expanding ? 'ATR expanding' : 'ATR steady', ok: expanding },
-    { label: nearBreak ? 'Near recent high/low' : 'Inside recent range', ok: nearBreak },
+    { label: `RSI ${rsi.toFixed(0)} with move`, ok: true },
   ];
 
   return baseHit('momentum_surge', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
-    status: score >= 80 ? 'ACTIVE' : 'WATCH',
+    status: 'ACTIVE',
     score,
     breakdown,
-    stateLabel: score >= 85 ? '🔥 ACTIVE' : 'WATCH',
-    why: `Price expansion with volume ${rvol.toFixed(1)}× vs recent baseline.`,
+    stateLabel: score >= 85 ? '🔥 SURGE' : 'SURGE ACTIVE',
+    why: `ATR-sized move with volume ${rvol.toFixed(1)}× vs recent baseline.`,
     keyLevel: bullish ? f.high20 : f.low20,
     trigger: bullish && f.high20 ? Number((f.high20 * 1.002).toFixed(2)) : f.low20 ? Number((f.low20 * 0.998).toFixed(2)) : null,
     invalidation: bullish
@@ -98,7 +198,240 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 02 — FLOW SHIFT — price×volume positioning (OI feed offline → participation proxy) */
+/** 03 — LIQUIDITY HUNT — sweep + reclaim only */
+export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const event = sweepReclaim(f);
+  if (!event) return null;
+
+  const breakdown: ScoreBreakdown = {
+    liquidity: 28,
+    confirmation: 22,
+    structure: clampScore(f.structure.strength / 5, 20),
+    volume: f.volume.ratio >= 1.3 ? 15 : 12,
+    distance: 10,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 62)) return null;
+
+  return baseHit('liquidity_hunt', ctx, {
+    direction: event.buySide ? 'bullish' : 'bearish',
+    status: 'CONFIRM',
+    score,
+    breakdown,
+    stateLabel: event.buySide ? 'BUY-SIDE SWEEP + RECLAIM' : 'SELL-SIDE SWEEP + RECLAIM',
+    why: `Swept ₹${event.level.toFixed(2)} then closed back — stop-hunt with reclaim.`,
+    keyLevel: event.level,
+    trigger: event.level,
+    invalidation: `Acceptance beyond ₹${event.level.toFixed(2)} without reclaim`,
+    confirmationNeeded: 'Hold reclaim; watch for continuation.',
+    evidence: [
+      { label: 'Sweep + reclaim', ok: true },
+      { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.2 },
+      { label: 'Wick ≥ 0.3 ATR', ok: true },
+    ],
+  });
+}
+
+/** 04 — COMPRESSION BREAK — coil on prior bars, then volume close outside */
+export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const bar = lastBar(f);
+  const atr = atrAbs(f);
+  if (!bar || atr == null) return null;
+  if (!priorCoil(f)) return null;
+  if (f.volume.ratio < 1.5) return null;
+
+  const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
+  const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
+  if (!up && !down) return null;
+  const level = up ? f.high20! : f.low20!;
+  if (!notChased(f.tech.last, level, atr, 1.2)) return null;
+
+  const breakdown: ScoreBreakdown = {
+    compression: 28,
+    volumeContraction: f.volume.ratio <= 0.9 ? 8 : 12,
+    breakout: 25,
+    confirmation: 18,
+    proximity: 10,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 62)) return null;
+
+  return baseHit('compression_break', ctx, {
+    direction: up ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: 'COMPRESSION BREAK',
+    why: 'Left a coiled 20-bar box on a volume close — expansion after squeeze.',
+    keyLevel: level,
+    trigger: level,
+    invalidation: `Return inside prior range through ₹${level.toFixed(2)}`,
+    confirmationNeeded: 'Hold outside range on pullback.',
+    evidence: [
+      { label: 'Prior ATR/range coiled', ok: true },
+      { label: `RVOL ${f.volume.ratio.toFixed(1)}×`, ok: true },
+      { label: 'Close outside 20-bar box', ok: true },
+    ],
+  });
+}
+
+/** 06 — BREAKOUT RADAR — 20-bar close + volume, not a 10-bar wick */
+export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const bar = lastBar(f);
+  const atr = atrAbs(f);
+  if (!bar || atr == null) return null;
+  if (f.volume.ratio < 1.5) return null;
+
+  const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
+  const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
+  if (!up && !down) return null;
+  const level = up ? f.high20! : f.low20!;
+  if (!notChased(f.tech.last, level, atr, 1.2)) return null;
+
+  const breakdown: ScoreBreakdown = {
+    breakout: 30,
+    volume: 25,
+    followThrough: Math.abs(f.changePercent) >= 0.6 ? 18 : 10,
+    structure: clampScore(f.structure.strength / 5, 15),
+    retest: 8,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 62)) return null;
+
+  return baseHit('breakout_radar', ctx, {
+    direction: up ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: 'BREAKOUT + VOLUME',
+    why: `Closed beyond 20-bar ${up ? 'high' : 'low'} with RVOL ${f.volume.ratio.toFixed(1)}×.`,
+    keyLevel: level,
+    trigger: level,
+    invalidation: `Close back inside prior range through ₹${level.toFixed(2)}`,
+    confirmationNeeded: 'Retest hold preferred.',
+    evidence: [
+      { label: up ? '20-bar high broken' : '20-bar low broken', ok: true },
+      { label: `RVOL ${f.volume.ratio.toFixed(1)}×`, ok: true },
+      { label: 'Close, not wick', ok: true },
+    ],
+  });
+}
+
+/** 10 — TREND RIDER — stack + RSI + pullback hold */
+export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const align = emaAlignment(f.tech);
+  if (align === 'mixed') return null;
+  const rsi = f.tech.rsi14;
+  if (rsi == null) return null;
+  const momOk = align === 'bullish' ? rsi >= 55 : rsi <= 45;
+  if (!momOk) return null;
+  if (!emaPullbackHold(f, align)) return null;
+  if (f.volume.ratio < 0.9) return null;
+
+  const breakdown: ScoreBreakdown = {
+    trend: 28,
+    emaAlignment: 22,
+    momentum: 18,
+    pullback: 16,
+    volume: f.volume.ratio >= 1 ? 10 : 8,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 65)) return null;
+
+  return baseHit('trend_rider', ctx, {
+    direction: align,
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: align === 'bullish' ? 'TREND PULLBACK' : 'TREND PULLBACK SHORT',
+    why: `EMA stack ${align}; RSI ${rsi.toFixed(0)}; pullback holding EMA21.`,
+    keyLevel: f.tech.ema21,
+    trigger: f.tech.ema21,
+    invalidation: 'EMA21/50 cross against the trend.',
+    confirmationNeeded: 'Enter on pullback hold, not chase.',
+    evidence: [
+      { label: `Trend ${align}`, ok: true },
+      { label: `RSI ${rsi.toFixed(0)}`, ok: true },
+      { label: 'Pullback hold', ok: true },
+    ],
+    meta: {
+      trend: align.toUpperCase(),
+      htf: align.toUpperCase(),
+      momentum: 'STRONG',
+      pullback: 'HEALTHY',
+    },
+  });
+}
+
+const PRIME_KEYS: OpportunityScannerId[] = [
+  'momentum_surge',
+  'liquidity_hunt',
+  'compression_break',
+  'breakout_radar',
+  'trend_rider',
+];
+const PRIME_VOLUME_KEYS: OpportunityScannerId[] = [
+  'momentum_surge',
+  'breakout_radar',
+  'compression_break',
+];
+
+/** 12 — WOLF PRIME — 2+ keepers, one volume-based */
+export function scanWolfPrime(
+  ctx: Ctx,
+  siblingScores: Partial<Record<OpportunityScannerId, number>>,
+): OpportunityHit | null {
+  const present = PRIME_KEYS.filter((k) => typeof siblingScores[k] === 'number');
+  if (present.length < 2) return null;
+  if (!PRIME_VOLUME_KEYS.some((k) => typeof siblingScores[k] === 'number')) return null;
+
+  const scores = present.map((k) => siblingScores[k] as number);
+  const avg = scores.reduce((a, n) => a + n, 0) / scores.length;
+  const score = clampScore(Math.round(avg) + (present.length >= 3 ? 4 : 0));
+  if (!scoreGate(ctx, score, 80)) return null;
+
+  const breakdown: ScoreBreakdown = {
+    structure: clampScore(((siblingScores.liquidity_hunt ?? siblingScores.compression_break ?? 0) / 100) * 20, 20),
+    momentum: clampScore(((siblingScores.momentum_surge ?? siblingScores.trend_rider ?? 0) / 100) * 20, 20),
+    volume: clampScore((Math.max(siblingScores.momentum_surge ?? 0, siblingScores.breakout_radar ?? 0) / 100) * 20, 20),
+    liquidity: clampScore(((siblingScores.liquidity_hunt ?? 0) / 100) * 15, 15),
+    trend: clampScore(((siblingScores.trend_rider ?? 0) / 100) * 15, 15),
+    flow: clampScore(((siblingScores.breakout_radar ?? 0) / 100) * 10, 10),
+  };
+
+  return baseHit('wolf_prime', ctx, {
+    direction: ctx.f.changePercent >= 0 ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: score >= 90 ? '🔥 HIGH CONVICTION' : 'WOLF PRIME',
+    why: `Composite of ${present.length} keeper scanners — quality ${score}/100.`,
+    keyLevel: ctx.f.tech.ema21 ?? ctx.f.high20,
+    trigger: ctx.f.high20,
+    invalidation: 'Majority of contributing scanners cool or invalidate.',
+    confirmationNeeded: 'Still requires trade plan — score ≠ entry.',
+    evidence: present.map((k) => ({
+      label: `${k.replace(/_/g, ' ')} ${siblingScores[k]}`,
+      ok: (siblingScores[k] ?? 0) >= 70,
+    })),
+  });
+}
+
+export const OHLC_SCANNERS: OpportunityScannerId[] = [
+  'momentum_surge',
+  'liquidity_hunt',
+  'compression_break',
+  'breakout_radar',
+  'trend_rider',
+];
+
+/* ---- Parked until live OI / option chain / a dedicated watch rail ---- */
+
+/** @internal parked — Flow Shift proxy. Not on the Opportunity desk. */
 export function scanFlowShift(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const rvol = f.volume.ratio;
@@ -136,7 +469,7 @@ export function scanFlowShift(ctx: Ctx): OpportunityHit | null {
     breakdown,
     stateLabel,
     why: `${stateLabel}: price ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% with RVOL ${rvol.toFixed(1)}× (OI feed offline — participation proxy).`,
-    keyLevel: direction === 'bullish' ? f.tech.ema21 : f.tech.ema21,
+    keyLevel: f.tech.ema21,
     trigger: direction === 'bullish' ? f.high10 : f.low10,
     invalidation: 'Volume dries up or price reverses through EMA21.',
     confirmationNeeded: 'Prefer real futures OI confirmation when feed is live.',
@@ -148,114 +481,7 @@ export function scanFlowShift(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 03 — LIQUIDITY HUNT */
-export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
-  const { f } = ctx;
-  const liq = f.liquidity;
-  const sweep =
-    liq.type === 'LIQUIDITY_SWEEP' ||
-    liq.type === 'EQUAL_HIGHS' ||
-    liq.type === 'EQUAL_LOWS' ||
-    liq.type === 'RECLAIM';
-  if (!sweep && liq.type === 'NONE') return null;
-
-  const buySide =
-    liq.type === 'EQUAL_LOWS' ||
-    (liq.type === 'LIQUIDITY_SWEEP' && f.changePercent >= 0) ||
-    liq.type === 'RECLAIM';
-  const confirmed = Boolean(liq.confirmed);
-
-  const breakdown: ScoreBreakdown = {
-    liquidity: liq.type === 'LIQUIDITY_SWEEP' ? 28 : 18,
-    confirmation: confirmed ? 22 : 10,
-    structure: clampScore(f.structure.strength / 5, 20),
-    volume: f.volume.ratio >= 1.3 ? 15 : 8,
-    distance: 10,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 50)) return null;
-
-  let stateLabel = 'LIQUIDITY RESTING';
-  if (liq.type === 'LIQUIDITY_SWEEP' && confirmed) stateLabel = buySide ? 'BUY-SIDE SWEEP' : 'SELL-SIDE SWEEP';
-  else if (liq.type === 'RECLAIM') stateLabel = 'SWEEP + RECLAIM';
-  else if (liq.type === 'EQUAL_HIGHS') stateLabel = 'EQUAL HIGHS';
-  else if (liq.type === 'EQUAL_LOWS') stateLabel = 'EQUAL LOWS';
-
-  const level = liq.level ?? (buySide ? f.swingLow : f.swingHigh);
-
-  return baseHit('liquidity_hunt', ctx, {
-    direction: buySide ? 'bullish' : 'bearish',
-    status: confirmed ? 'CONFIRM' : 'WATCH',
-    score,
-    breakdown,
-    stateLabel,
-    why: liq.note || 'Liquidity clustered near a recent swing / session extreme.',
-    keyLevel: level,
-    trigger: level,
-    invalidation: level
-      ? `Acceptance beyond ₹${level.toFixed(2)} without reclaim`
-      : 'Acceptance beyond swept level',
-    confirmationNeeded: confirmed
-      ? 'Hold reclaim; watch for continuation.'
-      : 'Wait for reclaim / rejection confirmation.',
-    evidence: [
-      { label: stateLabel, ok: true },
-      { label: confirmed ? 'Reclaim confirmed' : 'Confirmation pending', ok: confirmed },
-      { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.2 },
-    ],
-  });
-}
-
-/** 04 — COMPRESSION BREAK */
-export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
-  const { f } = ctx;
-  const compressing = (f.atrCompression != null && f.atrCompression <= 0.85) || f.rangePct < 1.1;
-  const volQuiet = f.volume.ratio <= 0.9;
-  const breaking =
-    (f.high20 != null && f.tech.last > f.high20) || (f.low20 != null && f.tech.last < f.low20);
-
-  // Tagline is a break out of the coil — compressing-only flooded Created at 9:20.
-  if (!breaking) return null;
-
-  let stateLabel = f.volume.ratio >= 1.4 ? 'BREAKOUT ACTIVE' : 'BREAKOUT WATCH';
-
-  const breakdown: ScoreBreakdown = {
-    compression: compressing ? 28 : 10,
-    volumeContraction: volQuiet ? 18 : 8,
-    breakout: breaking ? 25 : 10,
-    confirmation: breaking && f.volume.ratio >= 1.4 ? 18 : 8,
-    proximity: 10,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 52)) return null;
-
-  const bullish = breaking ? f.tech.last >= (f.high20 ?? f.tech.last) : f.tech.trend !== 'down';
-
-  return baseHit('compression_break', ctx, {
-    direction: bullish ? 'bullish' : 'bearish',
-    status: stateLabel === 'BREAKOUT ACTIVE' ? 'ACTIVE' : 'WATCH',
-    score,
-    breakdown,
-    stateLabel,
-    why: compressing
-      ? 'Left a compressed range — expansion is on; volume decides quality.'
-      : 'Price left the prior 20-bar range; volume decides quality.',
-    keyLevel: f.high20 ?? f.dayHigh,
-    trigger: f.high20,
-    invalidation: `Return inside prior range below ₹${(f.tech.sma20 ?? f.tech.last).toFixed(2)}`,
-    confirmationNeeded:
-      stateLabel === 'BREAKOUT ACTIVE'
-        ? 'Hold outside range on pullback.'
-        : 'Need volume confirmation on the break.',
-    evidence: [
-      { label: compressing ? 'ATR/range compressed' : 'Not compressed', ok: compressing },
-      { label: volQuiet ? 'Volume quiet' : 'Volume active', ok: volQuiet || breaking },
-      { label: 'Outside range', ok: true },
-    ],
-  });
-}
-
-/** 05 — MOMENTUM FADE (watch, not auto-reversal) */
+/** @internal parked — Momentum Fade watch. Not on the Opportunity desk. */
 export function scanMomentumFade(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const rsi = f.tech.rsi14;
@@ -290,7 +516,7 @@ export function scanMomentumFade(ctx: Ctx): OpportunityHit | null {
       ? 'Price still elevated while RSI momentum cooled — watch, not a reversal call.'
       : 'Price still soft while RSI momentum lifted — watch, not a reversal call.',
     keyLevel: fadeBull ? f.high10 : f.low10,
-    trigger: fadeBull ? f.tech.sma20 : f.tech.sma20,
+    trigger: f.tech.sma20,
     invalidation: fadeBull
       ? 'Fresh momentum thrust with volume expansion cancels fade watch.'
       : 'Fresh downside thrust with volume expansion cancels fade watch.',
@@ -303,51 +529,7 @@ export function scanMomentumFade(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 06 — BREAKOUT RADAR */
-export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
-  const { f } = ctx;
-  const break10 = f.high10 != null && f.tech.last > f.high10;
-  const break20 = f.high20 != null && f.tech.last > f.high20;
-  const breakLow10 = f.low10 != null && f.tech.last < f.low10;
-  const breakLow20 = f.low20 != null && f.tech.last < f.low20;
-  const up = break10 || break20;
-  const down = breakLow10 || breakLow20;
-  if (!up && !down) return null;
-
-  const level = up ? (break20 ? f.high20 : f.high10) : breakLow20 ? f.low20 : f.low10;
-  const volOk = f.volume.ratio >= 1.35;
-  const breakdown: ScoreBreakdown = {
-    breakout: break20 || breakLow20 ? 30 : 22,
-    volume: volOk ? 25 : 10,
-    followThrough: Math.abs(f.changePercent) >= 0.6 ? 18 : 8,
-    structure: clampScore(f.structure.strength / 5, 15),
-    retest: 8,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 55)) return null;
-
-  return baseHit('breakout_radar', ctx, {
-    direction: up ? 'bullish' : 'bearish',
-    status: volOk ? 'ACTIVE' : 'WATCH',
-    score,
-    breakdown,
-    stateLabel: volOk ? 'BREAKOUT + VOLUME' : 'BREAKOUT WATCH',
-    why: `Broke ${up ? 'high' : 'low'} with RVOL ${f.volume.ratio.toFixed(1)}×.`,
-    keyLevel: level,
-    trigger: level,
-    invalidation: level
-      ? `Close back inside prior range through ₹${level.toFixed(2)}`
-      : 'Failed breakout acceptance',
-    confirmationNeeded: volOk ? 'Retest hold preferred.' : 'Need volume confirmation.',
-    evidence: [
-      { label: up ? 'High broken' : 'Low broken', ok: true },
-      { label: volOk ? 'Volume confirms' : 'Volume weak', ok: volOk },
-      { label: break20 || breakLow20 ? '20-bar level' : '10-bar level', ok: true },
-    ],
-  });
-}
-
-/** 07 — REVERSAL HUNTER */
+/** @internal parked — Reversal Hunter. Not on the Opportunity desk. */
 export function scanReversalHunter(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const extended = Math.abs(f.changePercent) >= 1.5 || (f.tech.rsi14 != null && (f.tech.rsi14 >= 70 || f.tech.rsi14 <= 30));
@@ -397,7 +579,7 @@ export function scanReversalHunter(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** 08 — SECTOR LEADERS (built from relative peer bag in engine) */
+/** @internal parked — Sector Leaders. Not on the Opportunity desk. */
 export function scanSectorLeaders(
   ctx: Ctx,
   sectorName: string,
@@ -439,54 +621,7 @@ export function scanSectorLeaders(
   });
 }
 
-/** 10 — TREND RIDER */
-export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
-  const { f } = ctx;
-  const align = emaAlignment(f.tech);
-  if (align === 'mixed') return null;
-  const rsi = f.tech.rsi14 ?? 50;
-  const momOk = align === 'bullish' ? rsi >= 52 : rsi <= 48;
-  const pullback =
-    align === 'bullish'
-      ? f.tech.ema21 != null && f.tech.last >= f.tech.ema21 * 0.985
-      : f.tech.ema21 != null && f.tech.last <= f.tech.ema21 * 1.015;
-
-  const breakdown: ScoreBreakdown = {
-    trend: 28,
-    emaAlignment: 22,
-    momentum: momOk ? 18 : 8,
-    pullback: pullback ? 16 : 6,
-    volume: f.volume.ratio >= 1 ? 10 : 6,
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 58)) return null;
-
-  return baseHit('trend_rider', ctx, {
-    direction: align,
-    status: 'ACTIVE',
-    score,
-    breakdown,
-    stateLabel: align === 'bullish' ? 'TREND BULLISH' : 'TREND BEARISH',
-    why: `EMA alignment ${align}; momentum ${momOk ? 'supportive' : 'soft'}; pullback ${pullback ? 'healthy' : 'extended'}.`,
-    keyLevel: f.tech.ema21,
-    trigger: f.tech.ema21,
-    invalidation: `EMA21/50 cross against the trend.`,
-    confirmationNeeded: 'Prefer entries on pullback holds, not chase.',
-    evidence: [
-      { label: `Trend ${align}`, ok: true },
-      { label: momOk ? 'Momentum ok' : 'Momentum soft', ok: momOk },
-      { label: pullback ? 'Pullback healthy' : 'Stretched', ok: pullback },
-    ],
-    meta: {
-      trend: align.toUpperCase(),
-      htf: align.toUpperCase(),
-      momentum: momOk ? 'STRONG' : 'SOFT',
-      pullback: pullback ? 'HEALTHY' : 'EXTENDED',
-    },
-  });
-}
-
-/** 11 — OPTIONS FLOW — strike feed offline → volatility / expansion proxy */
+/** @internal parked — Options Flow proxy. Not on the Opportunity desk. */
 export function scanOptionsFlow(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const atrExp = f.atrCompression != null && f.atrCompression >= 1.12;
@@ -525,68 +660,3 @@ export function scanOptionsFlow(ctx: Ctx): OpportunityHit | null {
     ],
   });
 }
-
-/** 12 — WOLF PRIME composite from sibling hits on same symbol */
-export function scanWolfPrime(
-  ctx: Ctx,
-  siblingScores: Partial<Record<OpportunityScannerId, number>>,
-): OpportunityHit | null {
-  const keys: OpportunityScannerId[] = [
-    'momentum_surge',
-    'liquidity_hunt',
-    'compression_break',
-    'breakout_radar',
-    'trend_rider',
-    'momentum_fade',
-    'reversal_hunter',
-  ];
-  const present = keys.filter((k) => typeof siblingScores[k] === 'number');
-  if (present.length < 2) return null;
-
-  const structure = siblingScores.liquidity_hunt ?? siblingScores.compression_break ?? 0;
-  const momentum = siblingScores.momentum_surge ?? siblingScores.trend_rider ?? 0;
-  const volume = Math.max(siblingScores.momentum_surge ?? 0, siblingScores.breakout_radar ?? 0);
-  const liquidity = siblingScores.liquidity_hunt ?? 0;
-  const trend = siblingScores.trend_rider ?? 0;
-  const flow = siblingScores.breakout_radar ?? siblingScores.reversal_hunter ?? 0;
-
-  const breakdown: ScoreBreakdown = {
-    structure: clampScore((structure / 100) * 20, 20),
-    momentum: clampScore((momentum / 100) * 20, 20),
-    volume: clampScore((volume / 100) * 20, 20),
-    liquidity: clampScore((liquidity / 100) * 15, 15),
-    trend: clampScore((trend / 100) * 15, 15),
-    flow: clampScore((flow / 100) * 10, 10),
-  };
-  const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 70)) return null;
-
-  return baseHit('wolf_prime', ctx, {
-    direction: ctx.f.changePercent >= 0 ? 'bullish' : 'bearish',
-    status: score >= 85 ? 'ACTIVE' : 'WATCH',
-    score,
-    breakdown,
-    stateLabel: score >= 85 ? '🔥 HIGH CONVICTION' : 'WOLF PRIME',
-    why: `Composite of ${present.length} independent scanners — quality ${score}/100.`,
-    keyLevel: ctx.f.tech.ema21 ?? ctx.f.high20,
-    trigger: ctx.f.high20,
-    invalidation: 'Majority of contributing scanners cool or invalidate.',
-    confirmationNeeded: 'Still requires trade plan — score ≠ entry.',
-    evidence: present.map((k) => ({
-      label: `${k.replace(/_/g, ' ')} ${siblingScores[k]}`,
-      ok: (siblingScores[k] ?? 0) >= 60,
-    })),
-  });
-}
-
-export const OHLC_SCANNERS: OpportunityScannerId[] = [
-  'momentum_surge',
-  'flow_shift',
-  'liquidity_hunt',
-  'compression_break',
-  'momentum_fade',
-  'breakout_radar',
-  'reversal_hunter',
-  'trend_rider',
-  'options_flow',
-];

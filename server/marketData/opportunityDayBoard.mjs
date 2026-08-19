@@ -9,23 +9,18 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['breakout_radar', 'BREAKOUT RADAR', 'Price closed above a recent high or below a recent low, with volume confirming the break.'],
-  ['momentum_surge', 'MOMENTUM SURGE', "Sharp price move plus unusual volume versus the stock's own recent average (RVOL)."],
-  ['compression_break', 'COMPRESSION BREAK', 'ATR/range squeezed tight, then price left that box — expansion after a quiet coil.'],
-  ['trend_rider', 'TREND RIDER', 'EMA 21/50 stacked one way, RSI agreeing, and price holding a pullback to the trend.'],
-  ['liquidity_hunt', 'LIQUIDITY HUNT', 'Equal highs/lows swept (stop-hunt), then reclaim — SMC liquidity, not a random mover.'],
-  ['wolf_prime', 'WOLF PRIME', 'Same name hits 2+ of the scanners above on this bar — conviction overlay, not a new setup.'],
-  ['momentum_fade', 'MOMENTUM FADE', 'Price still stretching while RSI momentum cools — a watch for exhaustion, not a reversal call.'],
-  ['reversal_hunter', 'REVERSAL HUNTER', 'Extended RSI/move plus a liquidity sweep. Needs reclaim confirmation before it is a trade.'],
-  ['sector_leaders', 'SECTOR LEADERS', 'Stocks leading or lagging their sector versus peers on the same scan (relative strength).'],
-  ['flow_shift', 'FLOW SHIFT', 'Price up/down with volume up/down as a futures OI buildup proxy. Live OI feed is not used.'],
-  ['options_flow', 'OPTIONS FLOW', 'ATR and the day range expanding with volume. Not option-chain OI, PCR, or strike data.'],
+  ['wolf_prime', 'WOLF PRIME', 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.'],
+  ['compression_break', 'COMPRESSION BREAK', 'Prior range/ATR coiled, then a volume close left that box.'],
+  ['breakout_radar', 'BREAKOUT RADAR', 'Close beyond the prior 20-bar high or low, with volume, not a late chase.'],
+  ['liquidity_hunt', 'LIQUIDITY HUNT', 'Stop-hunt wick through a swing, then close back — sweep plus reclaim only.'],
+  ['momentum_surge', 'MOMENTUM SURGE', 'Unusual volume plus an ATR-sized move in the same direction as RSI.'],
+  ['trend_rider', 'TREND RIDER', 'EMA 21/50 stacked, RSI with the trend, and a pullback hold — not a chase.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board';
+const SETTINGS_KEY = 'opportunity_day_board_v10';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v10.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

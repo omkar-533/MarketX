@@ -31,6 +31,8 @@ export type FeatureSnapshot = {
   rangePct: number;
   atrPct: number;
   atrCompression: number | null;
+  /** ATR ratio on bars excluding the last candle — coil before the break bar. */
+  priorAtrCompression: number | null;
   roc5: number | null;
   rsiPrev: number | null;
   dayHigh: number;
@@ -78,6 +80,11 @@ export function buildFeatureSnapshot(
   const atrPrev = atr(candles.slice(0, -5), 14);
   const atrCompression =
     atrNow && atrPrev && atrPrev > 0 ? atrNow / atrPrev : null;
+  const priorBars = candles.slice(0, -1);
+  const priorAtrNow = atr(priorBars, 14);
+  const priorAtrPrev = atr(priorBars.slice(0, -5), 14);
+  const priorAtrCompression =
+    priorAtrNow && priorAtrPrev && priorAtrPrev > 0 ? priorAtrNow / priorAtrPrev : null;
 
   const roc5 =
     c.length >= 6 && c[c.length - 6] > 0
@@ -110,6 +117,7 @@ export function buildFeatureSnapshot(
     rangePct,
     atrPct,
     atrCompression,
+    priorAtrCompression,
     roc5,
     rsiPrev,
     dayHigh,

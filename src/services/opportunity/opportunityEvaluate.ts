@@ -10,17 +10,11 @@ import {
 } from '../radar/barTime';
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
-import { sectorOf } from './sectorMap';
 import {
   scanBreakoutRadar,
   scanCompressionBreak,
-  scanFlowShift,
   scanLiquidityHunt,
-  scanMomentumFade,
   scanMomentumSurge,
-  scanOptionsFlow,
-  scanReversalHunter,
-  scanSectorLeaders,
   scanTrendRider,
   scanWolfPrime,
 } from './opportunityScanners';
@@ -158,10 +152,6 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
     opts.onHit?.(hit);
   };
 
-  const sectorBag = new Map<
-    string,
-    { symbol: string; changePercent: number; f: ReturnType<typeof buildFeatureSnapshot> }[]
-  >();
   const total = symbols.length;
   let checked = 0;
   let barsOk = 0;
@@ -246,14 +236,10 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
           ['momentum_surge', scanMomentumSurge],
-          ['flow_shift', scanFlowShift],
           ['liquidity_hunt', scanLiquidityHunt],
           ['compression_break', scanCompressionBreak],
-          ['momentum_fade', scanMomentumFade],
           ['breakout_radar', scanBreakoutRadar],
-          ['reversal_hunter', scanReversalHunter],
           ['trend_rider', scanTrendRider],
-          ['options_flow', scanOptionsFlow],
         ];
 
         const listedTimes: number[] = [];
@@ -292,11 +278,6 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           prime.id = `opp-${prime.scannerId}-${prime.symbol}-${prime.timeframe}-${first}`;
           emitHit(prime);
         }
-
-        const sec = sectorOf(symbol);
-        const bag = sectorBag.get(sec) || [];
-        bag.push({ symbol, changePercent: f.changePercent, f });
-        sectorBag.set(sec, bag);
       } catch {
         /* skip symbol */
       } finally {
@@ -312,44 +293,6 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
       }
     }
     await new Promise((r) => setTimeout(r, 0));
-  }
-
-  for (const [sector, peers] of sectorBag) {
-    if (sector === 'OTHER' || peers.length < 2) continue;
-    const avg = peers.reduce((a, p) => a + p.changePercent, 0) / peers.length;
-    if (Math.abs(avg) < 0.35) continue;
-    const anchor = [...peers].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))[0];
-    if (!anchor.f) continue;
-    const hit = scanSectorLeaders(
-      { f: anchor.f, timeframe: tf, dataMode, quotePrice: anchor.f.tech.last },
-      sector,
-      peers.map((p) => ({ symbol: p.symbol, changePercent: p.changePercent })),
-      avg,
-    );
-    if (hit && hit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
-      const candles = anchor.f.candles || [];
-      const listed = opportunityCreatedWindows(
-        candles,
-        tf,
-        (i) => {
-          const snap = buildFeatureSnapshot(anchor.symbol, filters.market, tf, candles.slice(0, i + 1));
-          if (!snap) return false;
-          const walked = scanSectorLeaders(
-            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, forTimeWalk: true },
-            sector,
-            peers.map((p) => ({ symbol: p.symbol, changePercent: p.changePercent })),
-            avg,
-          );
-          return !!walked;
-        },
-        asOf,
-      );
-      for (const win of listed) {
-        hit.detectedAt = win.createdAt;
-        hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.createdAt}`;
-        emitHit({ ...hit });
-      }
-    }
   }
 
   const ranked = rankTrim(buckets, DEFAULT_OPPORTUNITY_FILTERS.minScore, 'all', topN);
