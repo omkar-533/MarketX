@@ -5,6 +5,7 @@ import {
   scanCompressionBreak,
   scanLiquidityHunt,
   scanMomentumSurge,
+  scanOpeningDrive,
   scanTrendRider,
   scanWolfPrime,
 } from './opportunityScanners';
@@ -68,10 +69,71 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('lists six keepers only', () => {
+  it('lists seven keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+      ['wolf_prime', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+    );
+  });
+});
+
+describe('scanOpeningDrive', () => {
+  const drive = (over: Record<string, unknown> = {}) =>
+    ctx({
+      openingHigh: 101.0,
+      openingLow: 100.2,
+      sessionMinsFromOpen: 20,
+      sessionChangePct: 0.8,
+      sessionVolRatio: 1.4,
+      gapPct: 0.4,
+      prevClose: 100.1,
+      sessionOpen: 100.5,
+      candles: [bar({ open: 100.9, high: 101.5, low: 100.85, close: 101.4 })],
+      tech: { last: 101.4, atr14: 0.5 },
+      ...over,
+    });
+
+  it('lists a morning opening-range break with early volume', () => {
+    const hit = scanOpeningDrive(drive());
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, '🔥 GAP + DRIVE');
+    assert.ok((hit?.score ?? 0) >= 58);
+  });
+
+  it('lists a bearish opening drive too', () => {
+    const hit = scanOpeningDrive(
+      drive({
+        openingLow: 100.5,
+        gapPct: -0.5,
+        candles: [bar({ open: 100.8, high: 100.85, low: 99.9, close: 100.0 })],
+        tech: { last: 100.0, atr14: 0.5 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bearish');
+  });
+
+  it('does not print after the morning window', () => {
+    assert.equal(scanOpeningDrive(drive({ sessionMinsFromOpen: 200 })), null);
+  });
+
+  it('skips a wick-only poke that closes back inside the range', () => {
+    assert.equal(
+      scanOpeningDrive(
+        drive({
+          candles: [bar({ open: 100.9, high: 101.6, low: 100.85, close: 100.9 })],
+          tech: { last: 100.9, atr14: 0.5 },
+        }),
+      ),
+      null,
+    );
+  });
+
+  it('skips a range break on dead volume', () => {
+    assert.equal(
+      scanOpeningDrive(drive({ volume: { ratio: 1.0, state: 'NORMAL' }, sessionVolRatio: 1.0 })),
+      null,
     );
   });
 });

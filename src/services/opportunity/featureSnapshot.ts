@@ -4,6 +4,7 @@
  */
 import type { Candle } from '../radar/radarTypes';
 import {
+  BAR_MS,
   istSessionEndMs,
   istSessionStartMs,
   nseTradingDay,
@@ -41,6 +42,13 @@ export type FeatureSnapshot = {
   sessionVolRatio: number | null;
   sessionHigh: number | null;
   sessionLow: number | null;
+  sessionOpen: number | null;
+  /** First-15-min session range — opening drive levels. Null until those bars closed. */
+  openingHigh: number | null;
+  openingLow: number | null;
+  prevClose: number | null;
+  gapPct: number | null;
+  sessionMinsFromOpen: number | null;
   rangePct: number;
   atrPct: number;
   atrCompression: number | null;
@@ -155,6 +163,28 @@ export function buildFeatureSnapshot(
   const sessionVolRatio =
     sessAvgVol > 0 && recentAvgVol != null && recentAvgVol > 0 ? sessAvgVol / recentAvgVol : null;
 
+  const barMin = BAR_MS[timeframe] ? BAR_MS[timeframe] / 60_000 : 1440;
+  const orBars = Math.max(1, Math.round(15 / barMin));
+  const sessionMinsFromOpen = sess.length ? (sess.length - 1) * barMin : null;
+  const orSlice = sess.length > orBars ? sess.slice(0, orBars) : null;
+  const openingHigh = orSlice ? Math.max(...orSlice.map((b) => b.high)) : null;
+  const openingLow = orSlice ? Math.min(...orSlice.map((b) => b.low)) : null;
+  let prevClose: number | null = null;
+  if (sess.length) {
+    const firstSessT = readCandleTimeMs(sess[0]);
+    for (let i = candles.length - 1; i >= 0; i -= 1) {
+      const t = readCandleTimeMs(candles[i]);
+      if (t > 0 && t < firstSessT) {
+        prevClose = candles[i].close;
+        break;
+      }
+    }
+  }
+  const gapPct =
+    sessionOpen != null && prevClose != null && prevClose > 0
+      ? pctChange(prevClose, sessionOpen)
+      : null;
+
   return {
     symbol,
     exchange,
@@ -170,6 +200,12 @@ export function buildFeatureSnapshot(
     sessionVolRatio,
     sessionHigh,
     sessionLow,
+    sessionOpen,
+    openingHigh,
+    openingLow,
+    prevClose,
+    gapPct,
+    sessionMinsFromOpen,
     rangePct,
     atrPct,
     atrCompression,

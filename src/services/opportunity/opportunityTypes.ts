@@ -5,6 +5,7 @@
 
 export type OpportunityScannerId =
   | 'momentum_surge'
+  | 'opening_drive'
   | 'flow_shift'
   | 'liquidity_hunt'
   | 'compression_break'
@@ -114,6 +115,12 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'wolf_prime',
     title: 'WOLF PRIME',
     tagline: 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'opening_drive',
+    title: 'OPENING DRIVE',
+    tagline: '9:15–9:30 opening range break with early volume — subah ka momentum catch, up ya down.',
     requires: 'ohlc',
   },
   {

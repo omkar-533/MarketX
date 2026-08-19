@@ -143,6 +143,62 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   return null;
 }
 
+/** 02 — OPENING DRIVE — 9:15 opening-range break with early volume. Morning only. */
+export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const bar = lastBar(f);
+  const atr = atrAbs(f);
+  if (!bar || atr == null) return null;
+  if (f.openingHigh == null || f.openingLow == null || !(f.openingHigh > f.openingLow)) return null;
+  const mins = f.sessionMinsFromOpen;
+  if (mins == null || mins > 150) return null;
+
+  const rvol = f.volume.ratio;
+  const sessVol = f.sessionVolRatio ?? 0;
+  const vol = Math.max(rvol, sessVol);
+  if (vol < 1.2) return null;
+
+  const up = closeBrokeLevel(bar, f.openingHigh, 'up');
+  const down = closeBrokeLevel(bar, f.openingLow, 'down');
+  if (!up && !down) return null;
+  const level = up ? f.openingHigh : f.openingLow;
+  if (!notChased(f.tech.last, level, atr, 1.5)) return null;
+
+  const gap = f.gapPct ?? 0;
+  const gapAligned = up ? gap >= 0.3 : gap <= -0.3;
+  const breakdown: ScoreBreakdown = {
+    rangeBreak: 25,
+    earlyVolume: clampScore(10 + (vol - 1) * 18, 20),
+    gap: gapAligned ? 15 : 8,
+    timing: mins <= 45 ? 20 : mins <= 105 ? 14 : 10,
+    followThrough: f.sessionChangePct != null && Math.abs(f.sessionChangePct) >= 0.5 ? 12 : 8,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 58)) return null;
+
+  return baseHit('opening_drive', ctx, {
+    direction: up ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: gapAligned ? '🔥 GAP + DRIVE' : 'OPENING DRIVE',
+    why: `Opening range ₹${f.openingLow.toFixed(2)}–₹${f.openingHigh.toFixed(2)} broken ${up ? 'up' : 'down'} in the first ${Math.round(mins)} min with volume ${vol.toFixed(1)}×.`,
+    keyLevel: level,
+    trigger: level,
+    invalidation: `Close back inside the opening range (₹${level.toFixed(2)})`,
+    confirmationNeeded: 'Morning drive — if it re-enters the opening range, the drive failed.',
+    evidence: [
+      { label: 'Opening range break (close)', ok: true },
+      { label: `Early vol ${vol.toFixed(1)}×`, ok: vol >= 1.2 },
+      {
+        label: gapAligned ? `Gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}% aligned` : 'No gap',
+        ok: gapAligned,
+      },
+      { label: `First ${Math.round(mins)} min`, ok: mins <= 105 },
+    ],
+  });
+}
+
 /** PRICE RUNNERS — aaj session mein jo actually move kiya, volume ke saath. Chase allowed. */
 export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -398,6 +454,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
 }
 
 const PRIME_KEYS: OpportunityScannerId[] = [
+  'opening_drive',
   'momentum_surge',
   'liquidity_hunt',
   'compression_break',
@@ -405,6 +462,7 @@ const PRIME_KEYS: OpportunityScannerId[] = [
   'trend_rider',
 ];
 const PRIME_VOLUME_KEYS: OpportunityScannerId[] = [
+  'opening_drive',
   'momentum_surge',
   'breakout_radar',
   'compression_break',
