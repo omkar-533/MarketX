@@ -158,14 +158,23 @@ async function runTick() {
   }
 }
 
+let tickQueued = false;
+
 function enqueueTick() {
-  if (tickLock) return;
+  if (tickLock) {
+    tickQueued = true;
+    return;
+  }
   tickLock = runTick()
     .catch((err) => {
       console.warn('[opportunity-board-job] tick failed', err?.message || err);
     })
     .finally(() => {
       tickLock = null;
+      if (tickQueued) {
+        tickQueued = false;
+        enqueueTick();
+      }
     });
 }
 

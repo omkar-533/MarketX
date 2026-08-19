@@ -361,7 +361,9 @@ export function loadOpportunityFilters(): OpportunityFilters {
     const next = { ...DEFAULT_OPPORTUNITY_FILTERS, ...parsed };
     next.universe = 'F&O';
     next.direction = 'all';
-    if (!['1m', '3m', '5m', '15m', '30m', '1h'].includes(String(next.timeframe))) {
+    next.autoRefresh = true;
+    if (![5, 10, 30, 60].includes(Number(next.refreshSec))) next.refreshSec = 30;
+    if (!['5m', '15m', '1h', '1D'].includes(String(next.timeframe))) {
       next.timeframe = '5m';
     }
     return next;

@@ -282,7 +282,24 @@ export default function WolfOpportunityPage({
       const activeFilters = { ...filters, ...opts?.filtersOverride };
       if (opts?.reset) closedBoardFrozenRef.current = false;
       if (!opts?.reset && closedBoardFrozenRef.current && !isNseFnoMarketOpen()) return;
-      if (quiet && scanningRef.current) return;
+      if (quiet && scanningRef.current) {
+        try {
+          const f = { ...filtersRef.current, ...opts?.filtersOverride };
+          const shared = await fetchOpportunityDayBoard(f.universe, f.timeframe);
+          if (shared.ready && shared.cards?.some((c) => c.hits.length)) {
+            const incoming = applyLiveScanCards(shared.cards).map((card) => ({
+              ...card,
+              hits: card.hits.filter((h) => h.timeframe === f.timeframe),
+            }));
+            saveOpportunityDayBoard(opportunityBoardKey(f.universe, f.timeframe), incoming);
+            setCards((prev) => applyDaySignalCards(prev, incoming));
+            setLastUpdated(Date.now());
+          }
+        } catch {
+          /* keep the desk on screen */
+        }
+        return;
+      }
       if (!quiet) abortRef.current?.abort();
       else if (scanningRef.current) return;
 
@@ -381,7 +398,7 @@ export default function WolfOpportunityPage({
                   { signal: ac.signal, topN: OPPORTUNITY_SCAN_CAP, freshCandles: false },
                   provider,
                 );
-                if (!out.complete) return;
+                if (!out.hits.length && !out.complete) return;
                 const saved = await postOpportunityDayBoard(
                   activeFilters.universe,
                   activeFilters.timeframe,
@@ -490,12 +507,19 @@ export default function WolfOpportunityPage({
 
   useEffect(() => {
     if (!filters.autoRefresh) return;
-    if (!isNseFnoMarketOpen()) return;
-    const id = window.setInterval(() => {
+    const tick = () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       void runScan({ quiet: true });
-    }, filters.refreshSec * 1000);
-    return () => window.clearInterval(id);
+    };
+    const id = window.setInterval(tick, filters.refreshSec * 1000);
+    const onVis = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [filters.autoRefresh, filters.refreshSec, runScan]);
 
   const openAnalyze = (hit: OpportunityHit) => {
@@ -693,7 +717,7 @@ export default function WolfOpportunityPage({
         <p className="wolf-opp__status-line">
           {scanning ? progress || 'Scanning…' : hitCount ? `${hitCount} setups` : progress || '0 setups'}
           {lastUpdated
-            ? ` · ${new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+            ? ` · ${new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
             : ''}
         </p>
       </motion.nav>
