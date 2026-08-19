@@ -21,9 +21,9 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v19';
+const SETTINGS_KEY = 'opportunity_day_board_v20';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v19.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v20.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

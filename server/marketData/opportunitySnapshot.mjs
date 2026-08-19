@@ -210,6 +210,16 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
   const result = {};
   /** @type {{ symbol: string, scrip: string }[]} */
   const need = [];
+  // Stale-data guard: a series whose last bar is days behind the latest session is
+  // useless for a momentum board (wrong instrument / broken history) — drop it.
+  const staleFloor =
+    lastCompletedNseSessionEndMs(Date.now()) -
+    (timeframe === '1D' ? 12 : 4) * 86_400_000;
+  const isStale = (rows) => {
+    if (!rows.length) return false;
+    const lastT = Number(rows[rows.length - 1]?.timestamp) || 0;
+    return lastT > 0 && lastT < staleFloor;
+  };
   for (const symbol of symbols) {
     const scrip = resolveScripCodeCandidates(symbol)[0];
     if (!scrip) {
@@ -227,6 +237,7 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
     const byScrip = await fetchIndstocksCandlesMany(accessToken, scrips, timeframe, bars);
     for (const { symbol, scrip } of slice) {
       let candles = byScrip.get(scrip) || [];
+      if (isStale(candles)) candles = [];
       if (candles.length < 20) {
         const alts = resolveScripCodeCandidates(symbol)
           .filter((c) => c !== scrip)
@@ -234,13 +245,14 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
         for (const alt of alts) {
           try {
             const chunk = await fetchIndstocksCandles(accessToken, alt, timeframe, bars);
-            if (chunk.length > candles.length) candles = chunk;
+            if (!isStale(chunk) && chunk.length > candles.length) candles = chunk;
             if (candles.length >= 20) break;
           } catch {
             /* next alt */
           }
         }
       }
+      if (isStale(candles)) candles = [];
       result[symbol] = slimCandles(symbol, candles);
     }
     progress.set(key, { loaded: Object.keys(result).length, total: symbols.length });

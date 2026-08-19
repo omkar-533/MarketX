@@ -35,13 +35,19 @@ function baseHit(
   >,
 ): OpportunityHit {
   const price = ctx.quotePrice && ctx.quotePrice > 0 ? ctx.quotePrice : ctx.f.tech.last;
+  // Card % must be the DAY move (prev close → price), not the last-20-bars drift.
+  const prevClose = ctx.f.prevClose;
+  const dayChange =
+    prevClose != null && prevClose > 0 && price > 0
+      ? ((price - prevClose) / prevClose) * 100
+      : ctx.f.changePercent;
   return {
     id: `opp-${scannerId}-${String(ctx.f.symbol || '').toUpperCase()}-${ctx.timeframe}`,
     scannerId,
     symbol: ctx.f.symbol,
     exchange: (ctx.f.exchange as 'NSE' | 'BSE') || 'NSE',
     price,
-    changePercent: ctx.f.changePercent,
+    changePercent: dayChange,
     timeframe: ctx.timeframe,
     detectedAt: ctx.f.setupAt || 0,
     dataMode: ctx.dataMode,
