@@ -564,6 +564,65 @@ function parseExpiryMs(raw) {
   return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
 }
 
+const MONTH_IDX = {
+  JAN: 0,
+  FEB: 1,
+  MAR: 2,
+  APR: 3,
+  MAY: 4,
+  JUN: 5,
+  JUL: 6,
+  AUG: 7,
+  SEP: 8,
+  OCT: 9,
+  NOV: 10,
+  DEC: 11,
+};
+
+/** FNO expiry → ms. Accepts ISO, 20-AUG-2026, 20/08/2026, epoch. */
+export function parseOptionExpiryMs(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return 0;
+  const iso = Date.parse(s);
+  if (Number.isFinite(iso)) return iso;
+  const dmy = s.match(/^(\d{1,2})[-/ ]([A-Za-z]{3}|\d{1,2})[-/ ](\d{4})$/);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const year = Number(dmy[3]);
+    const monRaw = dmy[2].toUpperCase();
+    const month = MONTH_IDX[monRaw] ?? Number(monRaw) - 1;
+    if (day >= 1 && year >= 2020 && month >= 0 && month <= 11) {
+      const t = Date.parse(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00+05:30`);
+      if (Number.isFinite(t)) return t;
+    }
+  }
+  if (/^\d{8}$/.test(s)) {
+    const t = Date.parse(`${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}T00:00:00+05:30`);
+    return Number.isFinite(t) ? t : 0;
+  }
+  if (/^\d{10,13}$/.test(s)) {
+    const n = Number(s);
+    return n > 1e12 ? n : n * 1000;
+  }
+  return 0;
+}
+
+/** Next NSE weekly expiry (Thursday IST), including today if it is Thursday. */
+export function nextNseWeeklyExpiryYmd(now = Date.now()) {
+  const dayFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const wdFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+  for (let i = 0; i <= 10; i += 1) {
+    const t = now + i * 86_400_000;
+    if (wdFmt.format(new Date(t)) === 'Thu') return dayFmt.format(new Date(t));
+  }
+  return null;
+}
+
 /** Refresh equity + index + F&O instrument map and classified universes. */
 function rememberOptionExpiry(row) {
   const opt = String(row.OPTION_TYPE || '').toUpperCase();
@@ -573,8 +632,8 @@ function rememberOptionExpiry(row) {
   if (!isOpt) return;
   const name = normalizeIndSymbolKey(row.SYMBOL_NAME);
   if (!name || name.length > 20) return;
-  const ms = parseExpiryMs(row.EXPIRY_DATE);
-  if (!Number.isFinite(ms) || ms === Number.MAX_SAFE_INTEGER) return;
+  const ms = parseOptionExpiryMs(row.EXPIRY_DATE);
+  if (!(ms > 0)) return;
   const list = optionExpiryMsBySymbol.get(name) || [];
   if (!list.includes(ms)) list.push(ms);
   optionExpiryMsBySymbol.set(name, list);
@@ -809,12 +868,12 @@ export function getNearestOptionExpiryYmd(symbol, now = Date.now()) {
       break;
     }
   }
-  if (!list.length) return null;
+  if (!list.length) return nextNseWeeklyExpiryYmd(now);
   const today = istCalendarDay(now);
   const todayMs = Date.parse(`${today}T00:00:00+05:30`);
   const future = list.filter((ms) => ms >= todayMs).sort((a, b) => a - b);
   const pick = future[0];
-  return pick ? istCalendarDay(pick) : null;
+  return pick ? istCalendarDay(pick) : nextNseWeeklyExpiryYmd(now);
 }
 
 /** Equity/index SECURITY_ID for GET /market/option-chain. Never an NFO contract. */

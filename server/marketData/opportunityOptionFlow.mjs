@@ -3,21 +3,30 @@
  * Uses INDstocks GET /market/option-chain. Does not touch the candle snapshot.
  * Missing / failed chain → skip that symbol. Never invent OI.
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import {
   ensureInstrumentMap,
   fetchIndstocksOptionChain,
   getNearestOptionExpiryYmd,
   optionChainUnderlying,
 } from './indstocksClient.mjs';
+import { NIFTY_50_SYMBOLS } from './universeLists.mjs';
 
 const TTL_OPEN_MS = 75_000;
 const TTL_CLOSED_MS = 15 * 60_000;
-const WAVE = 6;
+const WAVE = 8;
+const PRIORITY = new Set(NIFTY_50_SYMBOLS);
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const filePath = resolve(root, 'data', 'opportunity-option-flow.json');
 
 /** @type {{ at: number, bySymbol: Record<string, object> }} */
 const cache = { at: 0, bySymbol: {} };
 /** @type {Promise<Record<string, object>> | null} */
 let inflight = null;
+let diskHydrated = false;
 
 function num(value) {
   const n = Number(String(value ?? '').replace(/,/g, ''));
@@ -142,8 +151,40 @@ function ttlMs(now = Date.now()) {
   return now >= open && now <= close ? TTL_OPEN_MS : TTL_CLOSED_MS;
 }
 
+function hydrateDisk() {
+  if (diskHydrated) return;
+  diskHydrated = true;
+  try {
+    if (!existsSync(filePath)) return;
+    const raw = JSON.parse(readFileSync(filePath, 'utf8'));
+    if (!raw || typeof raw !== 'object' || !raw.bySymbol || typeof raw.bySymbol !== 'object') return;
+    cache.bySymbol = raw.bySymbol;
+    cache.at = Number(raw.at) || 0;
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistDisk() {
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify({ at: cache.at, bySymbol: cache.bySymbol }), 'utf8');
+  } catch (err) {
+    console.warn('[opportunity-option-flow] disk skip', err?.message || err);
+  }
+}
+
 export function peekOpportunityOptionFlow() {
+  hydrateDisk();
   return cache.bySymbol;
+}
+
+function rankSymbols(symbols) {
+  return [...new Set((symbols || []).map((s) => String(s || '').toUpperCase()).filter(Boolean))].sort((a, b) => {
+    const pa = PRIORITY.has(a) ? 0 : 1;
+    const pb = PRIORITY.has(b) ? 0 : 1;
+    return pa - pb || a.localeCompare(b);
+  });
 }
 
 async function pullSymbol(accessToken, symbol) {
@@ -162,39 +203,67 @@ async function pullSymbol(accessToken, symbol) {
 }
 
 async function refreshOptionFlow(accessToken, symbols) {
+  hydrateDisk();
   await ensureInstrumentMap(accessToken);
-  const unique = [...new Set((symbols || []).map((s) => String(s || '').toUpperCase()).filter(Boolean))];
+  const unique = rankSymbols(symbols);
   const next = { ...cache.bySymbol };
+  let added = 0;
   for (let i = 0; i < unique.length; i += WAVE) {
     const slice = unique.slice(i, i + WAVE);
     await Promise.all(
       slice.map(async (symbol) => {
         try {
           const row = await pullSymbol(accessToken, symbol);
-          if (row) next[symbol] = row;
+          if (row) {
+            next[symbol] = row;
+            added += 1;
+          }
         } catch {
           /* keep previous row — never invent */
         }
       }),
     );
+    cache.bySymbol = next;
+    cache.at = Date.now();
+    if (i === 0 || added % 24 === 0) persistDisk();
   }
   cache.at = Date.now();
   cache.bySymbol = next;
+  persistDisk();
+  console.log(`[opportunity-option-flow] ready n=${Object.keys(next).length} added=${added}`);
   return next;
 }
 
-export async function awaitOpportunityOptionFlow(accessToken, symbols, now = Date.now()) {
-  if (cache.at > 0 && now - cache.at < ttlMs(now) && Object.keys(cache.bySymbol).length) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Return last-session / live chain snaps as soon as a useful batch is in.
+ * Full universe keeps filling in the background. Never blocks the other 9 cards for minutes.
+ */
+export async function awaitOpportunityOptionFlow(accessToken, symbols, opts = {}, now = Date.now()) {
+  hydrateDisk();
+  const budgetMs = Math.max(8_000, Number(opts.budgetMs) || 25_000);
+  const minReady = Math.max(1, Number(opts.minReady) || 8);
+  if (cache.at > 0 && now - cache.at < ttlMs(now) && Object.keys(cache.bySymbol).length >= minReady) {
     return cache.bySymbol;
   }
-  if (inflight) return inflight;
-  inflight = refreshOptionFlow(accessToken, symbols)
-    .catch((err) => {
-      console.warn('[opportunity-option-flow] skip', err?.message || err);
-      return cache.bySymbol;
-    })
-    .finally(() => {
-      inflight = null;
-    });
-  return inflight;
+  if (!inflight) {
+    inflight = refreshOptionFlow(accessToken, symbols)
+      .catch((err) => {
+        console.warn('[opportunity-option-flow] skip', err?.message || err);
+        return cache.bySymbol;
+      })
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  const started = Date.now();
+  while (Date.now() - started < budgetMs) {
+    if (Object.keys(cache.bySymbol).length >= minReady) return cache.bySymbol;
+    if (!inflight) break;
+    await sleep(400);
+  }
+  return cache.bySymbol;
 }
