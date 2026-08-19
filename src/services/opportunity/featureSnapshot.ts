@@ -43,6 +43,10 @@ export type FeatureSnapshot = {
   sessionHigh: number | null;
   sessionLow: number | null;
   sessionOpen: number | null;
+  /** Session VWAP from typical price × volume — institutional control line. */
+  vwap: number | null;
+  prevDayHigh: number | null;
+  prevDayLow: number | null;
   /** First-15-min session range — opening drive levels. Null until those bars closed. */
   openingHigh: number | null;
   openingLow: number | null;
@@ -185,6 +189,33 @@ export function buildFeatureSnapshot(
       ? pctChange(prevClose, sessionOpen)
       : null;
 
+  let pv = 0;
+  let vv = 0;
+  for (const b of sess) {
+    const v = Number(b.volume) || 0;
+    pv += ((b.high + b.low + b.close) / 3) * v;
+    vv += v;
+  }
+  const vwap = vv > 0 ? pv / vv : null;
+
+  let prevDayHigh: number | null = null;
+  let prevDayLow: number | null = null;
+  if (sess.length) {
+    const firstSessT = readCandleTimeMs(sess[0]);
+    const prior = candles.filter((c) => {
+      const t = readCandleTimeMs(c);
+      return t > 0 && t < firstSessT;
+    });
+    if (prior.length) {
+      const lastPriorDay = nseTradingDay(readCandleTimeMs(prior[prior.length - 1]));
+      const pdBars = prior.filter((c) => nseTradingDay(readCandleTimeMs(c)) === lastPriorDay);
+      if (pdBars.length) {
+        prevDayHigh = Math.max(...pdBars.map((b) => b.high));
+        prevDayLow = Math.min(...pdBars.map((b) => b.low));
+      }
+    }
+  }
+
   return {
     symbol,
     exchange,
@@ -201,6 +232,9 @@ export function buildFeatureSnapshot(
     sessionHigh,
     sessionLow,
     sessionOpen,
+    vwap,
+    prevDayHigh,
+    prevDayLow,
     openingHigh,
     openingLow,
     prevClose,

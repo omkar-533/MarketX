@@ -143,6 +143,66 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   return null;
 }
 
+/** 01 — TOP MOVERS — aaj ke strongest movers: session move + day volume + VWAP side. */
+export function scanTopMovers(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  const atr = atrAbs(f);
+  if (atr == null) return null;
+  const sessChg = f.sessionChangePct;
+  if (sessChg == null) return null;
+  if (Math.abs(sessChg) < Math.max(0.7, 0.9 * (f.atrPct || 0))) return null;
+
+  const sessVol = f.sessionVolRatio ?? 0;
+  const vol = Math.max(f.volume.ratio, sessVol);
+  if (vol < 1.15) return null;
+
+  const bullish = sessChg >= 0;
+  if (f.vwap != null) {
+    if (bullish && f.tech.last < f.vwap) return null;
+    if (!bullish && f.tech.last > f.vwap) return null;
+  }
+  const levelBreak =
+    bullish && f.prevDayHigh != null
+      ? f.tech.last > f.prevDayHigh
+      : !bullish && f.prevDayLow != null
+        ? f.tech.last < f.prevDayLow
+        : false;
+  const mins = f.sessionMinsFromOpen ?? 999;
+
+  const breakdown: ScoreBreakdown = {
+    move: clampScore(14 + Math.min(11, Math.abs(sessChg) * 5), 25),
+    volume: clampScore(12 + Math.min(13, (vol - 1.15) * 15), 25),
+    vwap: f.vwap != null ? 18 : 12,
+    levels: levelBreak ? 18 : 10,
+    timing: mins <= 60 ? 14 : mins <= 180 ? 11 : 9,
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 58)) return null;
+
+  return baseHit('top_movers', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: levelBreak ? (bullish ? '🔥 PDH BREAK' : '🔥 PDL BREAK') : 'RUNNING',
+    why: `Aaj ${sessChg >= 0 ? '+' : ''}${sessChg.toFixed(2)}%, day volume ${vol.toFixed(1)}×, VWAP ke ${bullish ? 'upar' : 'neeche'} — momentum is in control.`,
+    keyLevel: f.vwap ?? f.tech.ema21,
+    trigger: bullish ? f.sessionHigh : f.sessionLow,
+    invalidation: bullish
+      ? `VWAP ₹${(f.vwap ?? f.tech.last * 0.99).toFixed(2)} ke neeche close`
+      : `VWAP ₹${(f.vwap ?? f.tech.last * 1.01).toFixed(2)} ke upar close`,
+    confirmationNeeded: bullish
+      ? 'Buy above day high; VWAP cross ke neeche exit.'
+      : 'Sell below day low; VWAP cross ke upar exit.',
+    evidence: [
+      { label: `Aaj ${sessChg >= 0 ? '+' : ''}${sessChg.toFixed(2)}%`, ok: true },
+      { label: `Day vol ${vol.toFixed(1)}×`, ok: vol >= 1.15 },
+      { label: f.vwap != null ? `VWAP ₹${f.vwap.toFixed(2)} ${bullish ? 'upar' : 'neeche'}` : 'VWAP n/a', ok: f.vwap != null },
+      { label: levelBreak ? (bullish ? 'PDH break' : 'PDL break') : 'PDH/PDL intact', ok: levelBreak },
+    ],
+  });
+}
+
 /** 02 — OPENING DRIVE — 9:15 opening-range break with early volume. Morning only. */
 export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -454,6 +514,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
 }
 
 const PRIME_KEYS: OpportunityScannerId[] = [
+  'top_movers',
   'opening_drive',
   'momentum_surge',
   'liquidity_hunt',
@@ -462,6 +523,7 @@ const PRIME_KEYS: OpportunityScannerId[] = [
   'trend_rider',
 ];
 const PRIME_VOLUME_KEYS: OpportunityScannerId[] = [
+  'top_movers',
   'opening_drive',
   'momentum_surge',
   'breakout_radar',

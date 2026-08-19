@@ -4,6 +4,7 @@
  */
 
 export type OpportunityScannerId =
+  | 'top_movers'
   | 'momentum_surge'
   | 'opening_drive'
   | 'flow_shift'
@@ -115,6 +116,12 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'wolf_prime',
     title: 'WOLF PRIME',
     tagline: 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.',
+    requires: 'ohlc',
+  },
+  {
+    id: 'top_movers',
+    title: 'TOP MOVERS',
+    tagline: 'Aaj ke strongest movers — session move + day volume + VWAP control. Buy above day high / sell below day low.',
     requires: 'ohlc',
   },
   {

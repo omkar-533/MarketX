@@ -17,6 +17,7 @@ import {
   scanLiquidityHunt,
   scanMomentumSurge,
   scanOpeningDrive,
+  scanTopMovers,
   scanTrendRider,
   scanWolfPrime,
 } from './opportunityScanners';
@@ -255,6 +256,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
+          ['top_movers', scanTopMovers],
           ['opening_drive', scanOpeningDrive],
           ['momentum_surge', scanMomentumSurge],
           ['liquidity_hunt', scanLiquidityHunt],

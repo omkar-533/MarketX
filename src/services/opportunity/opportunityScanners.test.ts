@@ -6,6 +6,7 @@ import {
   scanLiquidityHunt,
   scanMomentumSurge,
   scanOpeningDrive,
+  scanTopMovers,
   scanTrendRider,
   scanWolfPrime,
 } from './opportunityScanners';
@@ -69,10 +70,66 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('lists seven keepers only', () => {
+  it('lists eight keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['wolf_prime', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+      ['wolf_prime', 'top_movers', 'opening_drive', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
+    );
+  });
+});
+
+describe('scanTopMovers', () => {
+  const mover = (over: Record<string, unknown> = {}) =>
+    ctx({
+      sessionChangePct: 2.1,
+      sessionRangePct: 2.4,
+      sessionVolRatio: 1.6,
+      sessionHigh: 103.4,
+      sessionLow: 100.9,
+      sessionMinsFromOpen: 95,
+      vwap: 100.8,
+      prevDayHigh: 102.5,
+      prevDayLow: 99.5,
+      atrPct: 0.6,
+      tech: { last: 103.2, atr14: 0.6 },
+      ...over,
+    });
+
+  it('lists a bullish mover above VWAP with day volume', () => {
+    const hit = scanTopMovers(mover());
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, '🔥 PDH BREAK');
+    assert.ok((hit?.score ?? 0) >= 58);
+  });
+
+  it('lists a bearish mover below VWAP', () => {
+    const hit = scanTopMovers(
+      mover({
+        sessionChangePct: -1.8,
+        sessionHigh: 101.6,
+        sessionLow: 100.85,
+        vwap: 101.5,
+        tech: { last: 100.9, atr14: 0.6 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bearish');
+    assert.equal(hit?.trigger, 100.85);
+  });
+
+  it('skips a move that lost VWAP', () => {
+    assert.equal(scanTopMovers(mover({ vwap: 104 })), null);
+  });
+
+  it('skips a small session move', () => {
+    assert.equal(scanTopMovers(mover({ sessionChangePct: 0.3 })), null);
+  });
+
+  it('skips a mover on dead volume', () => {
+    assert.equal(
+      scanTopMovers(mover({ volume: { ratio: 1.0, state: 'NORMAL' }, sessionVolRatio: 1.0 })),
+      null,
     );
   });
 });
