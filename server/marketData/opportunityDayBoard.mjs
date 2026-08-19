@@ -10,17 +10,17 @@ import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
   ['wolf_prime', 'WOLF PRIME', 'Same name hits 2+ keepers on this bar — conviction overlay, not a new setup.'],
+  ['momentum_surge', 'PRICE RUNNERS', 'Volume plus a real burst on the last bars — stocks that are actually running, even if already extended.'],
   ['compression_break', 'COMPRESSION BREAK', 'Prior range/ATR coiled, then a volume close left that box.'],
   ['breakout_radar', 'BREAKOUT RADAR', 'Close beyond the prior 20-bar high or low, with volume, not a late chase.'],
   ['liquidity_hunt', 'LIQUIDITY HUNT', 'Stop-hunt wick through a swing, then close back — sweep plus reclaim only.'],
-  ['momentum_surge', 'MOMENTUM SURGE', 'Unusual volume plus an ATR-sized move in the same direction as RSI.'],
   ['trend_rider', 'TREND RIDER', 'EMA 21/50 stacked, RSI with the trend, and a pullback hold — not a chase.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v13';
+const SETTINGS_KEY = 'opportunity_day_board_v14';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v13.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v14.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

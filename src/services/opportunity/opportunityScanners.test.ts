@@ -71,7 +71,7 @@ describe('Opportunity desk scanners', () => {
   it('lists six keepers only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['wolf_prime', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'momentum_surge', 'trend_rider'],
+      ['wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'liquidity_hunt', 'trend_rider'],
     );
   });
 });
@@ -161,13 +161,51 @@ describe('scanBreakoutRadar', () => {
 });
 
 describe('scanMomentumSurge', () => {
-  it('skips average volume or a sub-ATR drift', () => {
-    assert.equal(scanMomentumSurge(ctx({ volume: { ratio: 1.4, state: 'EXPANDING' } })), null);
-    assert.equal(scanMomentumSurge(ctx({ changePercent: 0.2, atrPct: 0.8 })), null);
+  it('skips average volume or a quiet bar with a tiny 20-bar move', () => {
+    assert.equal(scanMomentumSurge(ctx({ volume: { ratio: 1.2, state: 'NORMAL' } })), null);
+    assert.equal(
+      scanMomentumSurge(
+        ctx({
+          changePercent: 0.2,
+          atrPct: 0.8,
+          roc5: 0.1,
+          candles: [bar({ open: 101.18, high: 101.22, low: 101.16, close: 101.2 })],
+          tech: { last: 101.2, atr14: 0.9 },
+        }),
+      ),
+      null,
+    );
   });
 
-  it('skips when RSI disagrees with the move', () => {
-    assert.equal(scanMomentumSurge(ctx({ tech: { last: 101.2, rsi14: 50, atr14: 0.4 } })), null);
+  it('still lists a 5-bar burst when the 20-bar % is small', () => {
+    const hit = scanMomentumSurge(
+      ctx({
+        changePercent: 0.25,
+        atrPct: 0.8,
+        roc5: 0.8,
+        volume: { ratio: 1.7, state: 'EXPANDING' },
+        candles: [bar({ open: 100.7, high: 101.05, low: 100.65, close: 101.0 })],
+        tech: { last: 101.0, rsi14: 48, atr14: 0.9 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+  });
+
+  it('does not skip a stretched runner', () => {
+    const hit = scanMomentumSurge(
+      ctx({
+        changePercent: 3.2,
+        atrPct: 0.5,
+        roc5: 1.4,
+        volume: { ratio: 2.1, state: 'UNUSUAL' },
+        candles: [bar({ open: 128, high: 131, low: 127.5, close: 130 })],
+        tech: { last: 130, ema21: 100, rsi14: 78, atr14: 1.2 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.status, 'ACTIVE');
+    assert.ok((hit?.score ?? 0) >= 68);
   });
 
   it('lists unusual volume plus an ATR-sized move', () => {
@@ -177,7 +215,7 @@ describe('scanMomentumSurge', () => {
         changePercent: 1.2,
         atrPct: 0.5,
         atrCompression: 1.25,
-        tech: { last: 101.2, rsi14: 62, atr14: 0.5 },
+        tech: { last: 101.2, rsi14: 50, atr14: 0.5 },
       }),
     );
     assert.ok(hit);

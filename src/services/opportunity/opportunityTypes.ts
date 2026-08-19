@@ -117,6 +117,12 @@ export const OPPORTUNITY_SCANNERS: {
     requires: 'ohlc',
   },
   {
+    id: 'momentum_surge',
+    title: 'PRICE RUNNERS',
+    tagline: 'Volume plus a real burst on the last bars — stocks that are actually running, even if already extended.',
+    requires: 'ohlc',
+  },
+  {
     id: 'compression_break',
     title: 'COMPRESSION BREAK',
     tagline: 'Prior range/ATR coiled, then a volume close left that box.',
@@ -132,12 +138,6 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'liquidity_hunt',
     title: 'LIQUIDITY HUNT',
     tagline: 'Stop-hunt wick through a swing, then close back — sweep plus reclaim only.',
-    requires: 'ohlc',
-  },
-  {
-    id: 'momentum_surge',
-    title: 'MOMENTUM SURGE',
-    tagline: 'Unusual volume plus an ATR-sized move in the same direction as RSI.',
     requires: 'ohlc',
   },
   {

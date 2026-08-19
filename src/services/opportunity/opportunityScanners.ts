@@ -143,58 +143,62 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   return null;
 }
 
-/** 01 — MOMENTUM SURGE */
+/** PRICE RUNNERS — volume + last-bar / 5-bar burst. Chase is allowed. */
 export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
+  const bar = lastBar(f);
+  const atr = atrAbs(f);
   const rvol = f.volume.ratio;
-  const rsi = f.tech.rsi14;
-  const atrPct = f.atrPct;
-  const expanding = f.atrCompression != null && f.atrCompression >= 1.1;
-  if (rvol < 1.5) return null;
-  if (!(atrPct > 0)) return null;
-  if (Math.abs(f.changePercent) < 0.8 * atrPct) return null;
-  if (!expanding) return null;
-  if (rsi == null) return null;
+  if (!bar || atr == null) return null;
+  if (rvol < 1.35) return null;
 
-  const bullish = f.changePercent >= 0;
-  if (bullish ? rsi < 55 : rsi > 45) return null;
+  const range = Math.max(bar.high - bar.low, 1e-9);
+  const body = Math.abs(bar.close - (Number.isFinite(bar.open) ? bar.open : bar.close));
+  const barAtr = range / atr;
+  const exploded = barAtr >= 0.7;
+  const burst5 = f.roc5 != null && Math.abs(f.roc5) >= 0.5;
+  const burst20 = Math.abs(f.changePercent) >= Math.max(0.7, 0.9 * (f.atrPct || 0));
+  if (!exploded && !burst5 && !burst20) return null;
+  if (body / range < 0.35 && !exploded && !burst5) return null;
 
-  const nearBreak =
-    bullish
-      ? f.high20 != null && f.tech.last >= f.high20 * 0.995 && f.tech.last <= f.high20 * 1.02
-      : f.low20 != null && f.tech.last <= f.low20 * 1.005 && f.tech.last >= f.low20 * 0.98;
+  const signed =
+    burst5 && f.roc5 != null
+      ? f.roc5
+      : bar.close !== bar.open
+        ? bar.close - bar.open
+        : f.changePercent;
+  const bullish = signed >= 0;
+  const movePct = burst5 && f.roc5 != null ? f.roc5 : f.changePercent;
 
   const breakdown: ScoreBreakdown = {
-    momentum: clampScore(Math.min(25, Math.abs(f.changePercent) * 8 + 8), 25),
-    volume: clampScore(Math.min(25, (rvol - 1) * 12), 25),
-    expansion: expanding ? 18 : 6,
-    breakoutProximity: nearBreak ? 20 : 8,
-    confirmation: f.volume.state === 'UNUSUAL' ? 12 : 8,
+    momentum: clampScore(18 + Math.min(7, Math.abs(movePct) * 4), 25),
+    volume: clampScore(14 + Math.min(11, (rvol - 1.35) * 12), 25),
+    expansion: exploded ? 20 : burst5 ? 16 : 14,
+    range: exploded ? 18 : barAtr >= 0.5 ? 14 : 12,
+    confirmation: f.volume.state === 'UNUSUAL' ? 12 : rvol >= 1.8 ? 11 : 10,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 62)) return null;
-
-  const evidence: EvidenceItem[] = [
-    { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.5 },
-    { label: `Move ${f.changePercent >= 0 ? '+' : ''}${f.changePercent.toFixed(2)}% vs ATR ${atrPct.toFixed(2)}%`, ok: true },
-    { label: expanding ? 'ATR expanding' : 'ATR steady', ok: expanding },
-    { label: `RSI ${rsi.toFixed(0)} with move`, ok: true },
-  ];
+  if (!scoreGate(ctx, score, 68)) return null;
 
   return baseHit('momentum_surge', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
     status: 'ACTIVE',
     score,
     breakdown,
-    stateLabel: score >= 85 ? '🔥 SURGE' : 'SURGE ACTIVE',
-    why: `ATR-sized move with volume ${rvol.toFixed(1)}× vs recent baseline.`,
+    stateLabel: exploded || rvol >= 2 ? '🔥 RUNNING' : 'RUNNER',
+    why: `Volume ${rvol.toFixed(1)}× with a ${Math.abs(movePct).toFixed(2)}% burst — runner, not a pullback wait.`,
     keyLevel: bullish ? f.high20 : f.low20,
-    trigger: bullish && f.high20 ? Number((f.high20 * 1.002).toFixed(2)) : f.low20 ? Number((f.low20 * 0.998).toFixed(2)) : null,
+    trigger: bullish ? f.high10 : f.low10,
     invalidation: bullish
       ? `Close back below ₹${(f.tech.sma20 ?? f.tech.last * 0.99).toFixed(2)}`
       : `Close back above ₹${(f.tech.sma20 ?? f.tech.last * 1.01).toFixed(2)}`,
-    confirmationNeeded: 'Sustained follow-through on next bars with volume holding.',
-    evidence,
+    confirmationNeeded: 'This is a running name — trail or skip if volume dies on the next bars.',
+    evidence: [
+      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.35 },
+      { label: exploded ? `Bar ${barAtr.toFixed(1)}× ATR` : 'Bar inside ATR', ok: exploded },
+      { label: burst5 ? `5-bar ${f.roc5! >= 0 ? '+' : ''}${f.roc5!.toFixed(2)}%` : `Move ${movePct >= 0 ? '+' : ''}${movePct.toFixed(2)}%`, ok: burst5 || burst20 },
+      { label: 'Chase allowed', ok: true },
+    ],
   });
 }
 
