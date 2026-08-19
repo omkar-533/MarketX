@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, MessageCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 import AccessUnlockPanel from './AccessUnlockPanel';
 import AppLink from '../AppLink';
+import { DESK_WHATSAPP_E164 } from '../../constants/deskContact';
 import type { AccessPopup, AccessState } from '../../services/appInviteAuth';
 
 type AccessGateProps = {
@@ -30,7 +31,7 @@ export default function AccessGate({
 }: AccessGateProps) {
   const locked = Boolean(access && !access.unlocked);
   const isBlocked = access?.status === 'blocked';
-  const whatsapp = popup?.whatsapp?.trim();
+  const whatsapp = DESK_WHATSAPP_E164;
 
   // Prevent background page from keeping a mid-scroll position under the sheet.
   useEffect(() => {

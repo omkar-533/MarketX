@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { MessageCircle } from 'lucide-react';
 import AccessProofUpload from './AccessProofUpload';
+import { DESK_WHATSAPP_E164 } from '../../constants/deskContact';
 import type { AccessPopup, AccessRequestSummary } from '../../services/appInviteAuth';
 
 export type AccessUnlockPanelProps = {
@@ -73,7 +74,7 @@ export default function AccessUnlockPanel({
   footer,
 }: AccessUnlockPanelProps) {
   const link = popup?.url?.trim();
-  const whatsapp = popup?.whatsapp?.trim();
+  const whatsapp = DESK_WHATSAPP_E164;
   const pending = request?.status === 'pending';
   const title = popup?.title?.trim() || 'Unlock premium access';
   const linkLabel = popup?.buttonLabel?.trim() || 'click here';

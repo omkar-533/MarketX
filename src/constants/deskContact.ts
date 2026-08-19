@@ -1,5 +1,5 @@
 /** Public desk contact — used when payment gateway is not live. */
-export const DESK_CONTACT_PHONE = '9580462435';
+export const DESK_CONTACT_PHONE = '9232972709';
 export const DESK_WHATSAPP_E164 = `91${DESK_CONTACT_PHONE}`;
 
 export function deskTelHref(): string {

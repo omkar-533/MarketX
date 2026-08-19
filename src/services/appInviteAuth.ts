@@ -272,7 +272,7 @@ const DEFAULT_PUBLIC_POPUP: AccessPopup = {
   ].join('\n'),
   url: '',
   buttonLabel: 'click here',
-  whatsapp: '',
+  whatsapp: '919232972709',
 };
 
 /** Public unlock copy for landing / pricing (no auth). */
@@ -288,7 +288,7 @@ export async function fetchPublicAccessPopup(): Promise<AccessPopup> {
       message: String(data.popup.message || DEFAULT_PUBLIC_POPUP.message),
       url: String(data.popup.url || ''),
       buttonLabel: String(data.popup.buttonLabel || DEFAULT_PUBLIC_POPUP.buttonLabel),
-      whatsapp: String(data.popup.whatsapp || ''),
+      whatsapp: String(data.popup.whatsapp || DEFAULT_PUBLIC_POPUP.whatsapp),
     };
   } catch {
     return DEFAULT_PUBLIC_POPUP;

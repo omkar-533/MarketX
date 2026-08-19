@@ -19,7 +19,7 @@ export const DEFAULT_ACCESS_POPUP = {
   ].join('\n'),
   url: '',
   buttonLabel: 'click here',
-  whatsapp: '',
+  whatsapp: '919232972709',
   defaultGrantDays: 30,
 };
 
