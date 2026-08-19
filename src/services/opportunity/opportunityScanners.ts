@@ -120,7 +120,7 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   if (f.volume.ratio < 1.2) return null;
   const last = bars[bars.length - 1];
   const prev = bars[bars.length - 2];
-  const wick = atr * 0.3;
+  const wick = atr * 0.2;
 
   const tryLevel = (level: number, buySide: boolean) => {
     const swept = buySide
@@ -150,7 +150,7 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const rsi = f.tech.rsi14;
   const atrPct = f.atrPct;
   const expanding = f.atrCompression != null && f.atrCompression >= 1.1;
-  if (rvol < 1.8) return null;
+  if (rvol < 1.5) return null;
   if (!(atrPct > 0)) return null;
   if (Math.abs(f.changePercent) < 0.8 * atrPct) return null;
   if (!expanding) return null;
@@ -175,7 +175,7 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   if (!scoreGate(ctx, score, 62)) return null;
 
   const evidence: EvidenceItem[] = [
-    { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.8 },
+    { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.5 },
     { label: `Move ${f.changePercent >= 0 ? '+' : ''}${f.changePercent.toFixed(2)}% vs ATR ${atrPct.toFixed(2)}%`, ok: true },
     { label: expanding ? 'ATR expanding' : 'ATR steady', ok: expanding },
     { label: `RSI ${rsi.toFixed(0)} with move`, ok: true },
@@ -228,7 +228,7 @@ export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
     evidence: [
       { label: 'Sweep + reclaim', ok: true },
       { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.2 },
-      { label: 'Wick ≥ 0.3 ATR', ok: true },
+      { label: 'Wick ≥ 0.2 ATR', ok: true },
     ],
   });
 }
@@ -240,7 +240,7 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
   if (!priorCoil(f)) return null;
-  if (f.volume.ratio < 1.5) return null;
+  if (f.volume.ratio < 1.35) return null;
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
   const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
@@ -283,7 +283,7 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
   const bar = lastBar(f);
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
-  if (f.volume.ratio < 1.5) return null;
+  if (f.volume.ratio < 1.35) return null;
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
   const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');

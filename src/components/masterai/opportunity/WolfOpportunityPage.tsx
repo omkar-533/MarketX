@@ -381,11 +381,7 @@ export default function WolfOpportunityPage({
           /* keep local board; first user of the day still scans once */
         }
 
-        if (hadBoard) {
-          if (!isNseFnoMarketOpen()) {
-            closedBoardFrozenRef.current = true;
-            return;
-          }
+        if (hadBoard && isNseFnoMarketOpen()) {
           const canContribute =
             !contributeRef.current && Date.now() - lastContributeAtRef.current > 45_000;
           if (canContribute) {
@@ -770,7 +766,6 @@ export default function WolfOpportunityPage({
               ),
               deskSort,
             );
-            const stockCount = new Set(tfHits.map((h) => h.symbol)).size;
             const printLabels = scannerPrintLabels(tfHits);
             if (needle && !tfHits.length) return null;
             return (
@@ -800,8 +795,8 @@ export default function WolfOpportunityPage({
                       <ArrowUpDown size={13} strokeWidth={2.2} />
                       {DESK_SORT_LABEL[deskSort]}
                     </button>
-                    <span className="wolf-opp__sheet-count" title={`${stockCount} stocks`}>
-                      {stockCount}
+                    <span className="wolf-opp__sheet-count" title={`${tfHits.length} setups`}>
+                      {tfHits.length}
                     </span>
                   </div>
                 </header>

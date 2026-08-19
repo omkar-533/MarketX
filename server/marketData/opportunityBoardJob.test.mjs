@@ -22,12 +22,12 @@ describe('opportunity board job plan', () => {
     assert.deepEqual(plan.universes, ['F&O']);
   });
 
-  it('freezes after the bell and still asks for a persist heartbeat', () => {
+  it('after the bell still hunts 5m so Created times rebuild from the last session', () => {
     const closed = Date.parse('2026-08-17T18:05:00+05:30');
     const plan = planOpportunityBoardTick(closed, 3);
-    assert.equal(plan.hunt, false);
+    assert.equal(plan.hunt, true);
     assert.equal(plan.persist, true);
-    assert.deepEqual(plan.timeframes, []);
-    assert.deepEqual(plan.universes, []);
+    assert.deepEqual(plan.timeframes, ['5m']);
+    assert.deepEqual(plan.universes, ['F&O']);
   });
 });

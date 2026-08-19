@@ -7,6 +7,7 @@ import {
   closedBarIndex,
   keepDisplaySetupTime,
   readCandleTimeMs,
+  setupCreatedAtMs,
 } from '../radar/barTime';
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
@@ -81,6 +82,22 @@ function pushHit(map: Map<OpportunityScannerId, OpportunityHit[]>, hit: Opportun
   map.set(hit.scannerId, list);
 }
 
+function episodeStamp(
+  series: Candle[],
+  index: number,
+  timeframe: OpportunityTimeframe,
+  now: number,
+): number {
+  const raw = readCandleTimeMs(series[index]) || Number(series[index]?.timestamp) || 0;
+  return keepDisplaySetupTime(setupCreatedAtMs(raw, timeframe, now), now);
+}
+
+function episodeKey(hit: OpportunityHit): string {
+  const bar = Number(hit.meta?.barIndex);
+  if (Number.isFinite(bar) && bar >= 0) return `${hit.symbol}|${bar}`;
+  return `${hit.symbol}|${hit.detectedAt}`;
+}
+
 function rankTrim(
   map: Map<OpportunityScannerId, OpportunityHit[]>,
   minScore: number,
@@ -106,8 +123,8 @@ function rankTrim(
     const flat: OpportunityHit[] = [];
     for (const [, g] of rankedSymbols) {
       const runs = [...g]
-        .sort((a, b) => a.detectedAt - b.detectedAt)
-        .filter((h, i, arr) => i === 0 || h.detectedAt !== arr[i - 1].detectedAt)
+        .sort((a, b) => a.detectedAt - b.detectedAt || Number(a.meta?.barIndex || 0) - Number(b.meta?.barIndex || 0))
+        .filter((h, i, arr) => i === 0 || episodeKey(h) !== episodeKey(arr[i - 1]))
         .slice(0, 4)
         .map((h, i, arr) => ({
           ...h,
@@ -258,9 +275,14 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               quotePrice,
             });
             if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-            hit.detectedAt = win.createdAt;
-            hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.createdAt}`;
-            hit.meta = { ...hit.meta, signalN: n + 1, signalCount: wins.length };
+            hit.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
+            hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.startIndex}`;
+            hit.meta = {
+              ...hit.meta,
+              signalN: n + 1,
+              signalCount: wins.length,
+              barIndex: win.startIndex,
+            };
             sibling[hit.scannerId] = Math.max(sibling[hit.scannerId] || 0, hit.score);
             emitHit(hit);
           }
@@ -287,9 +309,14 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
             sibling,
           );
           if (!prime || prime.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          prime.detectedAt = win.createdAt;
-          prime.id = `opp-${prime.scannerId}-${prime.symbol}-${prime.timeframe}-${win.createdAt}`;
-          prime.meta = { ...prime.meta, signalN: n + 1, signalCount: primeWins.length };
+          prime.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
+          prime.id = `opp-${prime.scannerId}-${prime.symbol}-${prime.timeframe}-${win.startIndex}`;
+          prime.meta = {
+            ...prime.meta,
+            signalN: n + 1,
+            signalCount: primeWins.length,
+            barIndex: win.startIndex,
+          };
           emitHit(prime);
         }
       } catch {

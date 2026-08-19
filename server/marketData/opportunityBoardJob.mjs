@@ -34,7 +34,9 @@ let lastNoTokenLog = 0;
 
 export function planOpportunityBoardTick(now = Date.now(), n = 0) {
   const open = nseCashSessionIsOpen(now);
-  if (!open) return { hunt: false, persist: true, timeframes: [], universes: [] };
+  if (!open) {
+    return { hunt: true, persist: true, timeframes: ['5m'], universes: [...UNIVERSES] };
+  }
   const timeframes = ['5m'];
   if (n % 5 === 0) timeframes.push('15m');
   if (n % 15 === 0) timeframes.push('1h');
