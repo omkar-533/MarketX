@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -11,7 +11,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, type IndicatorItem } from '../services/indicatorLibrary';
+import { listIndicators, getTradingViewAccessStatus, submitTradingViewAccess, type IndicatorItem, type TvAccessStatusPayload } from '../services/indicatorLibrary';
 import { BRAND, BRAND_SHORT } from '../constants/brandLabels';
 import { openExternalUrl } from '../utils/openExternalUrl';
 import ProtectedGuideVideo from './indicators/ProtectedGuideVideo';
@@ -74,11 +74,13 @@ export default function Indicators({
   const [tvMsg, setTvMsg] = useState('');
   const [tvErr, setTvErr] = useState('');
   const [tvDone, setTvDone] = useState(false);
-  const [tvStatus, setTvStatus] = useState<'pending' | 'granted' | 'dismissed' | null>(null);
+  const [tvFormOpen, setTvFormOpen] = useState(true);
+  const [tvRequest, setTvRequest] = useState<TvAccessStatusPayload['request']>(null);
   const [inviteLink, setInviteLink] = useState('');
   const [memberSettings, setMemberSettings] = useState<
     Record<string, string | number | boolean>
   >({});
+  const pinTvFormRef = useRef(false);
 
   const openDetail = useCallback((item: IndicatorItem) => {
     setCopied(false);
@@ -86,21 +88,17 @@ export default function Indicators({
     setTvMsg('');
     setTvErr('');
     setTvDone(false);
-    const unlocked = item.tvAccessStatus === 'granted' && Boolean(item.link);
-    setTvStatus(item.tvAccessStatus || null);
-    // Paid plans already ship the invite on the list payload — keep it for instant unlock.
-    setInviteLink(unlocked ? item.link : '');
-    setActive(unlocked ? item : { ...item, link: '' });
+    setTvFormOpen(true);
+    setTvRequest(null);
+    pinTvFormRef.current = false;
+    setInviteLink(item.link || '');
+    setActive(item);
     if (item.settings?.length) {
       const studyId = wolfStudyIdFor(item);
       rememberStudySettingsSchema(studyId, item.settings);
       setMemberSettings(loadIndicatorSettings(studyId, item.settings));
     } else {
       setMemberSettings(item.settingsDefaults || defaultsFromSettings(item.settings || []));
-    }
-    if (unlocked) {
-      setTvDone(true);
-      setTvMsg('Included with your Wolf AI plan — open the invite below.');
     }
   }, []);
 
@@ -154,7 +152,7 @@ export default function Indicators({
       try {
         const status = await getTradingViewAccessStatus(active.id);
         if (cancelled) return;
-        setTvStatus(status.status);
+        setTvRequest(status.request);
         if (status.inviteLink) {
           setInviteLink(status.inviteLink);
           setActive((prev) => (prev ? { ...prev, link: status.inviteLink } : prev));
@@ -162,19 +160,23 @@ export default function Indicators({
           setInviteLink('');
           setActive((prev) => (prev ? { ...prev, link: '' } : prev));
         }
-        if (status.status === 'pending') {
+        const reqStatus = status.request?.status || null;
+        if (reqStatus === 'pending') {
           setTvDone(true);
+          if (!pinTvFormRef.current) setTvFormOpen(false);
           setTvMsg('Waiting for desk approval — invite unlocks here after Approve.');
           timer = window.setTimeout(() => void pull(), 8000);
-        } else if (status.status === 'granted') {
+        } else if (reqStatus === 'granted') {
           setTvDone(true);
+          if (!pinTvFormRef.current) setTvFormOpen(false);
           setTvMsg(
             status.inviteLink
-              ? status.access?.indicatorsUnlocked
-                ? 'Included with your Wolf AI plan — open the invite below.'
-                : 'Access approved — open the invite link below.'
+              ? 'Access approved — open the invite link below.'
               : 'Approved on TradingView. The invite unlocks once your plan access is active.',
           );
+        } else {
+          setTvDone(false);
+          setTvFormOpen(true);
         }
       } catch {
         // Keep polling so an approval is never missed because of a dropped request.
@@ -214,6 +216,9 @@ export default function Indicators({
   );
 
   const effectiveLink = inviteLink || active?.link || '';
+  const requestStatus = tvRequest?.status || null;
+  const waitingDesk = requestStatus === 'pending' && !tvFormOpen;
+  const inviteReady = Boolean(effectiveLink);
 
   const copyLink = async () => {
     if (!effectiveLink) return;
@@ -238,8 +243,10 @@ export default function Indicators({
       }
       const result = await submitTradingViewAccess(active.id, tvId);
       setTvDone(true);
+      setTvFormOpen(false);
+      pinTvFormRef.current = false;
       setTvMsg(result.message);
-      setTvStatus((result.status as typeof tvStatus) || 'pending');
+      setTvRequest(result.request);
       if (result.inviteLink) {
         setInviteLink(result.inviteLink);
         setActive((prev) => (prev ? { ...prev, link: result.inviteLink } : prev));
@@ -319,11 +326,9 @@ export default function Indicators({
                     window.setTimeout(() => el.classList.remove('is-pulse'), 1400);
                   }}
                 >
-                  {tvStatus === 'granted' && effectiveLink
-                    ? 'Open access'
-                    : tvStatus === 'pending'
-                      ? 'View status'
-                      : 'Get access'}
+                  {waitingDesk
+                    ? 'View status'
+                    : 'Get access'}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -385,9 +390,8 @@ export default function Indicators({
                 <div className="lux-ind__faq-item">
                   <h3>How do I access this indicator?</h3>
                   <p>
-                    With an active Wolf AI subscription, every published indicator unlocks
-                    automatically in this section — open the invite link to add it on TradingView.
-                    New users submit a TradingView username for desk approval first.
+                    Submit your TradingView username in Get access. After the desk adds you on
+                    TradingView, open the invite link and apply the indicator on your chart.
                   </p>
                 </div>
                 <div className="lux-ind__faq-item">
@@ -415,50 +419,39 @@ export default function Indicators({
                 <div className="lux-ind__access-copy">
                   <h2>Get access</h2>
                   <p>
-                    {tvStatus === 'granted' && effectiveLink
-                      ? 'Your invite is unlocked. Open it on TradingView to add the indicator.'
-                      : tvStatus === 'granted'
-                      ? 'Approved on TradingView. The invite appears here once your plan access is active.'
-                      : tvStatus === 'pending'
-                        ? 'Request is with the desk. Invite unlocks here as soon as they Approve.'
-                        : 'Active Wolf AI plans unlock every indicator here automatically. New users submit a TradingView username for desk approval.'}
+                    {waitingDesk
+                      ? 'Request is with the desk. Invite unlocks here as soon as they Approve.'
+                      : inviteReady
+                        ? 'Submit your TradingView username so the desk can add you, then open the invite on TradingView.'
+                        : 'Enter your TradingView username and submit. After the desk adds you on TradingView, the invite unlocks here.'}
                   </p>
                 </div>
 
-                {tvStatus === 'granted' && effectiveLink ? (
+                {waitingDesk ? (
                   <div className="lux-ind__tv-done">
                     <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                     <div>
-                      <p className="lux-ind__tv-done-title">Invite unlocked</p>
-                      <p className="lux-ind__tv-done-body">
-                        {tvMsg || 'Access approved — open the invite below.'}
-                      </p>
-                    </div>
-                  </div>
-                ) : tvDone || tvStatus === 'pending' ? (
-                  <div className="lux-ind__tv-done">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div>
-                      <p className="lux-ind__tv-done-title">
-                        {tvStatus === 'pending' ? 'Pending approval' : 'Request received'}
-                      </p>
+                      <p className="lux-ind__tv-done-title">Pending approval</p>
                       <p className="lux-ind__tv-done-body">
                         {tvMsg ||
                           'Waiting for desk approval — invite unlocks here after Approve.'}
+                        {tvRequest?.tradingViewId
+                          ? ` Submitted as @${tvRequest.tradingViewId.replace(/^@/, '')}.`
+                          : ''}
                       </p>
-                      {tvStatus !== 'pending' ? (
-                        <button
-                          type="button"
-                          className="lux-ind__tv-again"
-                          onClick={() => {
-                            setTvDone(false);
-                            setTvId('');
-                            setTvMsg('');
-                          }}
-                        >
-                          Submit another ID
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        className="lux-ind__tv-again"
+                        onClick={() => {
+                          pinTvFormRef.current = true;
+                          setTvFormOpen(true);
+                          setTvDone(false);
+                          setTvId(tvRequest?.tradingViewId || '');
+                          setTvMsg('');
+                        }}
+                      >
+                        Change TradingView ID
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -485,6 +478,9 @@ export default function Indicators({
                       Open TradingView → profile → copy your username (not email).
                     </p>
                     {tvErr ? <p className="lux-ind__tv-error">{tvErr}</p> : null}
+                    {tvDone && tvMsg && requestStatus !== 'pending' ? (
+                      <p className="lux-ind__tv-hint">{tvMsg}</p>
+                    ) : null}
                     <motion.button
                       type="submit"
                       className="lux-ind__btn lux-ind__btn--primary"
@@ -502,7 +498,7 @@ export default function Indicators({
                   </form>
                 )}
 
-                {tvStatus === 'granted' && effectiveLink ? (
+                {inviteReady ? (
                   <div className="lux-ind__access-actions">
                     <button
                       type="button"
@@ -531,11 +527,9 @@ export default function Indicators({
                   </div>
                 ) : (
                   <div className="lux-ind__locked">
-                    {tvStatus === 'granted'
-                      ? 'Approved — the invite unlocks here once your plan access is active.'
-                      : tvStatus === 'pending'
-                        ? 'Invite locked until the desk Approves your request.'
-                        : 'Submit your TradingView ID above. Invite unlocks after desk approval.'}
+                    {waitingDesk
+                      ? 'Invite locked until the desk Approves your request.'
+                      : 'Submit your TradingView ID above. Invite unlocks after desk approval.'}
                   </div>
                 )}
               </section>

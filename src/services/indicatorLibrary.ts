@@ -214,7 +214,13 @@ export async function adminReorderIndicators(
 export async function submitTradingViewAccess(
   indicatorId: string,
   tradingViewId: string,
-): Promise<{ ok: boolean; message: string; inviteLink: string; status: string | null }> {
+): Promise<{
+  ok: boolean;
+  message: string;
+  inviteLink: string;
+  status: string | null;
+  request: TvAccessStatusPayload['request'];
+}> {
   const res = await apiFetch(
     `/api/app-auth/indicators/${encodeURIComponent(indicatorId)}/tv-access`,
     {
@@ -230,6 +236,7 @@ export async function submitTradingViewAccess(
     message: typeof data.message === 'string' ? data.message : 'Submitted',
     inviteLink: typeof data.inviteLink === 'string' ? data.inviteLink : '',
     status: request?.status || null,
+    request: (data.request as TvAccessStatusPayload['request']) || null,
   };
 }
 

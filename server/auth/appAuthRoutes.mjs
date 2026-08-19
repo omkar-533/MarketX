@@ -858,9 +858,7 @@ router.get('/indicators', requireUser, async (req, res) => {
   try {
     const access = accessStateFor(req.appUser);
     const isAdmin = req.appUser?.role === 'admin';
-    const statusMap = isAdmin
-      ? new Map()
-      : await mapLatestTvAccessStatusByIndicator(req.appUser?.id);
+    const statusMap = await mapLatestTvAccessStatusByIndicator(req.appUser?.id);
     const indicators = await listPublishedIndicators();
     const rows = indicators.map((row) => {
       const pub = publicIndicator(row);
@@ -1172,9 +1170,7 @@ router.get('/indicators/:id', requireUser, async (req, res) => {
     const isAdmin = req.appUser?.role === 'admin';
     const row = await getIndicatorById(req.params.id, { publishedOnly: true });
     if (!row) return res.status(404).json({ error: 'Indicator not found' });
-    const latest = isAdmin
-      ? null
-      : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
+    const latest = await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
     const tvStatus = latest?.status || null;
     const pub = withInviteGate(publicIndicator(row), {
       isAdmin,
@@ -1263,9 +1259,7 @@ router.get('/indicators/:id/tv-access', requireUser, async (req, res) => {
     const row = await getIndicatorById(req.params.id, { publishedOnly: true });
     if (!row) return res.status(404).json({ error: 'Indicator not found' });
 
-    const latest = isAdmin
-      ? null
-      : await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
+    const latest = await getLatestTvAccessForUserIndicator(req.appUser?.id, row.id);
     const tvStatus = latest?.status || null;
     const showLink = inviteUnlockedFor({ isAdmin, access, tvStatus });
     const effectiveStatus =
