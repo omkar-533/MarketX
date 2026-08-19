@@ -18,9 +18,9 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v10';
+const SETTINGS_KEY = 'opportunity_day_board_v11';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v10.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v11.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -324,11 +324,10 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const tf = String(timeframe || '5m');
   const u = String(universe || 'F&O');
   const slot = `${day}|${u}|${tf}`;
-  const prev = hydrate(slot)?.hitsByScanner || emptyHits();
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
-    next[id] = mergeScannerHits(prev[id], inBy.get(id)?.hits || [], day);
+    next[id] = mergeScannerHits([], inBy.get(id)?.hits || [], day);
   }
   const row = {
     day,

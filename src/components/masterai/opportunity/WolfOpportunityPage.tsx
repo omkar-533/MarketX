@@ -27,7 +27,6 @@ import {
   loadOpportunityFilters,
   saveOpportunityFilters,
   applyLiveScanCards,
-  applyDaySignalCards,
   sortHitsForDesk,
   scannerPrintLabels,
   scannerPrintLabelOf,
@@ -191,7 +190,9 @@ const HitTile = memo(function HitTile({
           <span className="wolf-opp__tile-row">
             <span className="wolf-opp__tile-meta">
               <BiasBadge dir={bias} size="sm" />
-              <em className="wolf-opp__tile-created">{formatHitClock(hit.detectedAt)} IST</em>
+              <em className="wolf-opp__tile-created">
+                {formatHitClock(hit.detectedAt) === '—' ? 'Created —' : `${formatHitClock(hit.detectedAt)} IST`}
+              </em>
               {printLabel ? <span className="wolf-opp__tile-nth">{printLabel}</span> : null}
             </span>
             <span className="wolf-opp__tile-score">{hit.score}</span>
@@ -292,7 +293,7 @@ export default function WolfOpportunityPage({
               hits: card.hits.filter((h) => h.timeframe === f.timeframe),
             }));
             saveOpportunityDayBoard(opportunityBoardKey(f.universe, f.timeframe), incoming);
-            setCards((prev) => applyDaySignalCards(prev, incoming));
+            setCards(applyLiveScanCards(incoming));
             setLastUpdated(Date.now());
           }
         } catch {
@@ -350,8 +351,8 @@ export default function WolfOpportunityPage({
           ...card,
           hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
         }));
-      const paintBoard = (incoming: ScannerCardState[], reset: boolean) => {
-        setCards((prev) => (reset ? incoming : applyDaySignalCards(prev, incoming)));
+      const paintBoard = (incoming: ScannerCardState[], _reset: boolean) => {
+        setCards(applyLiveScanCards(incoming));
         setLastUpdated(Date.now());
       };
       const adoptBoard = (cards: ScannerCardState[], reset: boolean) => {

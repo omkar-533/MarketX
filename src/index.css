@@ -30081,10 +30081,8 @@ span.wolf-opp__seg {
   flex-shrink: 0;
 }
 .wolf-opp__tile-created {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
+  overflow: visible;
   white-space: nowrap;
   font-style: normal;
   font-size: 0.54rem;
@@ -30100,10 +30098,14 @@ span.wolf-opp__seg {
 }
 .wolf-opp__tile-nth {
   flex: 0 0 auto;
-  font-size: 0.5rem;
-  font-weight: 700;
-  color: var(--opp-muted);
-  letter-spacing: 0.02em;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f3e2a8;
+  background: rgba(212, 175, 55, 0.14);
+  border: 1px solid rgba(232, 201, 98, 0.35);
+  border-radius: 999px;
+  padding: 0.1rem 0.34rem;
 }
 .wolf-opp__tile-actions {
   display: flex;

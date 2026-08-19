@@ -220,5 +220,21 @@ describe('desk sort cycle', () => {
     const surgeLabels = scannerPrintLabels(surge);
     assert.equal(scannerPrintLabelOf(surge[0], surgeLabels), '1st');
     assert.equal(scannerPrintLabelOf(surge[1], surgeLabels), '2nd');
+    const third = hit({
+      id: 'r-infy-now',
+      scannerId: 'breakout_radar',
+      symbol: 'INFY',
+      score: 88,
+      detectedAt: 50,
+      meta: { signalN: 3, signalCount: 3, active: true },
+    });
+    assert.equal(scannerPrintLabelOf(third, new Map()), '3rd');
+    assert.equal(
+      scannerPrintLabelOf(
+        hit({ id: 'once', scannerId: 'breakout_radar', symbol: 'TCS', score: 70, detectedAt: 1 }),
+        new Map(),
+      ),
+      '',
+    );
   });
 });
