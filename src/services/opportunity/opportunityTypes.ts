@@ -161,7 +161,7 @@ export const DEFAULT_OPPORTUNITY_FILTERS: OpportunityFilters = {
   universe: 'F&O',
   timeframe: '5m',
   direction: 'all',
-  minScore: 68,
+  minScore: 55,
   autoRefresh: true,
   refreshSec: 30,
 };

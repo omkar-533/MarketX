@@ -108,7 +108,7 @@ describe('scanCompressionBreak', () => {
     assert.equal(
       scanCompressionBreak(
         ctx({
-          volume: { ratio: 1.2, state: 'NORMAL' },
+          volume: { ratio: 1.0, state: 'NORMAL' },
         }),
       ),
       null,
@@ -139,7 +139,7 @@ describe('scanBreakoutRadar', () => {
     );
   });
 
-  it('skips a late chase more than 1.2 ATR beyond the level', () => {
+  it('skips a late chase far beyond the level', () => {
     assert.equal(
       scanBreakoutRadar(
         ctx({
@@ -162,7 +162,7 @@ describe('scanBreakoutRadar', () => {
 
 describe('scanMomentumSurge', () => {
   it('skips average volume or a quiet bar with a tiny 20-bar move', () => {
-    assert.equal(scanMomentumSurge(ctx({ volume: { ratio: 1.2, state: 'NORMAL' } })), null);
+    assert.equal(scanMomentumSurge(ctx({ volume: { ratio: 1.0, state: 'NORMAL' } })), null);
     assert.equal(
       scanMomentumSurge(
         ctx({

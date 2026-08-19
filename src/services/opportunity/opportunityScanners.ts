@@ -71,8 +71,8 @@ function priorBoxPct(f: FeatureSnapshot): number | null {
 
 function priorCoil(f: FeatureSnapshot): boolean {
   const box = priorBoxPct(f);
-  const atrCoil = f.priorAtrCompression != null && f.priorAtrCompression <= 0.8;
-  const boxCoil = box != null && box < 1.1;
+  const atrCoil = f.priorAtrCompression != null && f.priorAtrCompression <= 0.9;
+  const boxCoil = box != null && box < 1.5;
   return atrCoil || boxCoil;
 }
 
@@ -105,11 +105,11 @@ function emaPullbackHold(f: FeatureSnapshot, align: 'bullish' | 'bearish'): bool
   if (ema21 == null || atr == null || !bars.length) return false;
   if (align === 'bullish') {
     if (f.tech.last < ema21) return false;
-    if (f.tech.last > ema21 + 1.2 * atr) return false;
+    if (f.tech.last > ema21 + 1.6 * atr) return false;
     return bars.some((b) => b.low <= ema21 + 0.15 * atr);
   }
   if (f.tech.last > ema21) return false;
-  if (f.tech.last < ema21 - 1.2 * atr) return false;
+  if (f.tech.last < ema21 - 1.6 * atr) return false;
   return bars.some((b) => b.high >= ema21 - 0.15 * atr);
 }
 
@@ -117,7 +117,7 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
   const atr = atrAbs(f);
   const bars = f.candles;
   if (atr == null || !bars || bars.length < 2) return null;
-  if (f.volume.ratio < 1.2) return null;
+  if (f.volume.ratio < 1.1) return null;
   const last = bars[bars.length - 1];
   const prev = bars[bars.length - 2];
   const wick = atr * 0.2;
@@ -153,7 +153,7 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const rvol = f.volume.ratio;
   const sessVol = f.sessionVolRatio ?? 0;
   const vol = Math.max(rvol, sessVol);
-  if (vol < 1.3) return null;
+  if (vol < 1.15) return null;
 
   const range = Math.max(bar.high - bar.low, 1e-9);
   const body = Math.abs(bar.close - (Number.isFinite(bar.open) ? bar.open : bar.close));
@@ -165,8 +165,8 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   const atrFloor = f.atrPct || 0;
   const sessionMoved =
     sessChg != null &&
-    (Math.abs(sessChg) >= Math.max(0.9, 1.1 * atrFloor) ||
-      (f.sessionRangePct != null && f.sessionRangePct >= Math.max(1.4, 1.8 * atrFloor)));
+    (Math.abs(sessChg) >= Math.max(0.75, 0.9 * atrFloor) ||
+      (f.sessionRangePct != null && f.sessionRangePct >= Math.max(1.2, 1.5 * atrFloor)));
   if (!exploded && !burst5 && !burst20 && !sessionMoved) return null;
   if (body / range < 0.35 && exploded && !burst5 && !sessionMoved) return null;
 
@@ -189,11 +189,11 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
     momentum: clampScore(16 + Math.min(9, Math.abs(movePct) * 4), 25),
     volume: clampScore(13 + Math.min(12, (vol - 1.3) * 14), 25),
     expansion: exploded ? 20 : burst5 ? 16 : 14,
-    range: exploded ? 18 : f.sessionRangePct != null && f.sessionRangePct >= 1.4 ? 16 : barAtr >= 0.5 ? 14 : 12,
+    range: exploded ? 18 : f.sessionRangePct != null && f.sessionRangePct >= 1.2 ? 16 : barAtr >= 0.5 ? 14 : 12,
     confirmation: vol >= 2.2 ? 12 : vol >= 1.6 ? 11 : 10,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 68)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   const sessTag = sessionMoved && sessChg != null && !exploded && !burst5;
   return baseHit('momentum_surge', ctx, {
@@ -212,8 +212,8 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
       : `Close back above ₹${(f.tech.sma20 ?? f.tech.last * 1.01).toFixed(2)}`,
     confirmationNeeded: 'This is a running name — trail or skip if volume dies on the next bars.',
     evidence: [
-      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.35 },
-      { label: `Day vol ${sessVol.toFixed(1)}×`, ok: sessVol >= 1.3 },
+      { label: `RVOL ${rvol.toFixed(1)}×`, ok: rvol >= 1.15 },
+      { label: `Day vol ${sessVol.toFixed(1)}×`, ok: sessVol >= 1.15 },
       {
         label:
           sessChg != null
@@ -242,7 +242,7 @@ export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
     distance: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 62)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('liquidity_hunt', ctx, {
     direction: event.buySide ? 'bullish' : 'bearish',
@@ -257,7 +257,7 @@ export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
     confirmationNeeded: 'Hold reclaim; watch for continuation.',
     evidence: [
       { label: 'Sweep + reclaim', ok: true },
-      { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.2 },
+      { label: `Vol ×${f.volume.ratio.toFixed(1)}`, ok: f.volume.ratio >= 1.1 },
       { label: 'Wick ≥ 0.2 ATR', ok: true },
     ],
   });
@@ -270,13 +270,13 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
   if (!priorCoil(f)) return null;
-  if (f.volume.ratio < 1.35) return null;
+  if (f.volume.ratio < 1.2) return null;
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
   const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
   if (!up && !down) return null;
   const level = up ? f.high20! : f.low20!;
-  if (!notChased(f.tech.last, level, atr, 1.2)) return null;
+  if (!notChased(f.tech.last, level, atr, 1.8)) return null;
 
   const breakdown: ScoreBreakdown = {
     compression: 28,
@@ -286,7 +286,7 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
     proximity: 10,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 62)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('compression_break', ctx, {
     direction: up ? 'bullish' : 'bearish',
@@ -313,13 +313,13 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
   const bar = lastBar(f);
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
-  if (f.volume.ratio < 1.35) return null;
+  if (f.volume.ratio < 1.2) return null;
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
   const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
   if (!up && !down) return null;
   const level = up ? f.high20! : f.low20!;
-  if (!notChased(f.tech.last, level, atr, 1.2)) return null;
+  if (!notChased(f.tech.last, level, atr, 1.8)) return null;
 
   const breakdown: ScoreBreakdown = {
     breakout: 30,
@@ -329,7 +329,7 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
     retest: 8,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 62)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('breakout_radar', ctx, {
     direction: up ? 'bullish' : 'bearish',
@@ -357,7 +357,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
   if (align === 'mixed') return null;
   const rsi = f.tech.rsi14;
   if (rsi == null) return null;
-  const momOk = align === 'bullish' ? rsi >= 55 : rsi <= 45;
+  const momOk = align === 'bullish' ? rsi >= 52 : rsi <= 48;
   if (!momOk) return null;
   if (!emaPullbackHold(f, align)) return null;
   if (f.volume.ratio < 0.9) return null;
@@ -370,7 +370,7 @@ export function scanTrendRider(ctx: Ctx): OpportunityHit | null {
     volume: f.volume.ratio >= 1 ? 10 : 8,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, 65)) return null;
+  if (!scoreGate(ctx, score, 58)) return null;
 
   return baseHit('trend_rider', ctx, {
     direction: align,
@@ -422,7 +422,7 @@ export function scanWolfPrime(
   const scores = present.map((k) => siblingScores[k] as number);
   const avg = scores.reduce((a, n) => a + n, 0) / scores.length;
   const score = clampScore(Math.round(avg) + (present.length >= 3 ? 4 : 0));
-  if (!scoreGate(ctx, score, 80)) return null;
+  if (!scoreGate(ctx, score, 72)) return null;
 
   const breakdown: ScoreBreakdown = {
     structure: clampScore(((siblingScores.liquidity_hunt ?? siblingScores.compression_break ?? 0) / 100) * 20, 20),
