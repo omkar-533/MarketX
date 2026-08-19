@@ -133,6 +133,12 @@ describe('scanMorningSprint', () => {
     assert.equal(hit?.trigger, 101.0);
   });
 
+  it('thinks on the first completed 9:15–9:20 candle', () => {
+    const hit = scanMorningSprint(sprinter({ sessionMinsFromOpen: 5 }));
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+  });
+
   it('skips once the morning window is over', () => {
     assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 120 })), null);
   });

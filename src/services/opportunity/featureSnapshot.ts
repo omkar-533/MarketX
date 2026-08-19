@@ -169,7 +169,9 @@ export function buildFeatureSnapshot(
 
   const barMin = BAR_MS[timeframe] ? BAR_MS[timeframe] / 60_000 : 1440;
   const orBars = Math.max(1, Math.round(15 / barMin));
-  const sessionMinsFromOpen = sess.length ? (sess.length - 1) * barMin : null;
+  // Completed session minutes (first 5m bar close at 9:20 = 5). Never (n-1),
+  // or the opening candle is treated as "0 min" and morning scanners skip it.
+  const sessionMinsFromOpen = sess.length ? sess.length * barMin : null;
   const orSlice = sess.length > orBars ? sess.slice(0, orBars) : null;
   const openingHigh = orSlice ? Math.max(...orSlice.map((b) => b.high)) : null;
   const openingLow = orSlice ? Math.min(...orSlice.map((b) => b.low)) : null;

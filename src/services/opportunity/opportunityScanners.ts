@@ -150,7 +150,7 @@ function sweepReclaim(f: FeatureSnapshot): { buySide: boolean; level: number } |
 }
 
 /**
- * MORNING SPRINT — 9:20–10:50 ke explosive movers.
+ * MORNING SPRINT — pehli complete 5m candle (9:20) se 10:50 tak.
  * Do patterns: GAP BLAST (SHAILY type — gap + first bars mein blast) aur
  * SPRINT (GREENPANEL type — open se steady drive). VWAP side confirm, entry trigger paas.
  */
@@ -159,7 +159,7 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const atr = atrAbs(f);
   if (atr == null) return null;
   const mins = f.sessionMinsFromOpen;
-  if (mins == null || mins < 5 || mins > 95) return null;
+  if (mins == null || mins < 0 || mins > 100) return null;
   const chg = f.sessionChangePct;
   const sessOpen = f.sessionOpen;
   if (chg == null || sessOpen == null || !(sessOpen > 0)) return null;
