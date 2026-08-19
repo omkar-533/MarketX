@@ -12,7 +12,7 @@ import type {
   OpportunityTimeframe,
   ScoreBreakdown,
 } from './opportunityTypes';
-import { clampScore, emaAlignment, type FeatureSnapshot } from './featureSnapshot';
+import { cardQuote, clampScore, emaAlignment, type FeatureSnapshot } from './featureSnapshot';
 
 type Ctx = {
   f: FeatureSnapshot;
@@ -27,6 +27,16 @@ function scoreGate(ctx: Ctx, score: number, min: number): boolean {
   return Boolean(ctx.forTimeWalk) || score >= min;
 }
 
+/** Latest session last + official-style day % (prev trading-day close). */
+export function stampLiveQuote(hit: OpportunityHit, latest: FeatureSnapshot): OpportunityHit {
+  const q = cardQuote(latest);
+  if (q.price > 0) {
+    hit.price = q.price;
+    hit.changePercent = q.changePercent;
+  }
+  return hit;
+}
+
 function baseHit(
   scannerId: OpportunityScannerId,
   ctx: Ctx,
@@ -35,20 +45,19 @@ function baseHit(
     'id' | 'scannerId' | 'symbol' | 'exchange' | 'price' | 'changePercent' | 'timeframe' | 'detectedAt' | 'dataMode'
   >,
 ): OpportunityHit {
-  const price = ctx.quotePrice && ctx.quotePrice > 0 ? ctx.quotePrice : ctx.f.tech.last;
-  // Card % must be the DAY move (prev close → price), not the last-20-bars drift.
-  const prevClose = ctx.f.prevClose;
-  const dayChange =
-    prevClose != null && prevClose > 0 && price > 0
-      ? ((price - prevClose) / prevClose) * 100
-      : ctx.f.changePercent;
+  const q = cardQuote(ctx.f);
+  const price = ctx.quotePrice && ctx.quotePrice > 0 ? ctx.quotePrice : q.price;
+  const changePercent =
+    ctx.f.prevClose != null && ctx.f.prevClose > 0 && price > 0
+      ? ((price - ctx.f.prevClose) / ctx.f.prevClose) * 100
+      : q.changePercent;
   return {
     id: `opp-${scannerId}-${String(ctx.f.symbol || '').toUpperCase()}-${ctx.timeframe}`,
     scannerId,
     symbol: ctx.f.symbol,
     exchange: (ctx.f.exchange as 'NSE' | 'BSE') || 'NSE',
     price,
-    changePercent: dayChange,
+    changePercent,
     timeframe: ctx.timeframe,
     detectedAt: ctx.f.setupAt || 0,
     dataMode: ctx.dataMode,

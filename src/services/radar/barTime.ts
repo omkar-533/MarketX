@@ -66,7 +66,7 @@ export function closedBarIndex(
   const dur = barDurationMs(timeframe);
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   let i = candles.length - 1;
-  while (i > 0 && sessionEnd && barOpenMs(candles[i]) >= sessionEnd) i -= 1;
+  while (i > 0 && sessionEnd && barOpenMs(candles[i]) > sessionEnd) i -= 1;
   const minKeep = Math.max(0, i - 4);
   while (i > minKeep) {
     const open = barOpenMs(candles[i]);
@@ -265,7 +265,7 @@ function istSessionWalk(
   const sessionEnd = timeframe === '1D' ? 0 : istSessionEndMs(now);
   const inSession = (i: number) => {
     const open = barOpenMs(candles[i]);
-    return !(sessionEnd && open >= sessionEnd);
+    return !(sessionEnd && open > sessionEnd);
   };
   const stamp = (i: number) => {
     const t = setupCreatedAtMs(barOpenMs(candles[i]), timeframe, now);

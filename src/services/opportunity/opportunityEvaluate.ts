@@ -21,6 +21,7 @@ import {
   scanTopMovers,
   scanTrendRider,
   scanWolfPrime,
+  stampLiveQuote,
 } from './opportunityScanners';
 import type {
   OpportunityFilters,
@@ -162,8 +163,9 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
   for (const s of OPPORTUNITY_SCANNERS) buckets.set(s.id, []);
 
-  const emitHit = (hit: OpportunityHit | null) => {
+  const emitHit = (hit: OpportunityHit | null, latest?: FeatureSnapshot) => {
     if (!hit) return;
+    if (latest) stampLiveQuote(hit, latest);
     const listed = keepDisplaySetupTime(hit.detectedAt);
     if (!(listed > 0)) return;
     hit.detectedAt = listed;
@@ -286,7 +288,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               signalCount: wins.length,
               barIndex: win.startIndex,
             };
-            emitHit(hit);
+            emitHit(hit, f);
           }
         }
 
@@ -329,7 +331,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
             signalCount: primeWins.length,
             barIndex: win.startIndex,
           };
-          emitHit(prime);
+          emitHit(prime, f);
         }
       } catch {
         /* skip symbol */

@@ -10,6 +10,7 @@ import {
   scanTopMovers,
   scanTrendRider,
   scanWolfPrime,
+  stampLiveQuote,
 } from './opportunityScanners';
 import { OPPORTUNITY_SCANNERS } from './opportunityTypes';
 
@@ -165,6 +166,32 @@ describe('scanMorningSprint', () => {
     assert.ok(hit);
     assert.equal(hit?.status, 'WATCH');
     assert.equal(hit?.direction, 'bullish');
+  });
+
+  it('prints official day % from prev close, not 20-bar drift', () => {
+    const c = sprinter({
+      prevClose: 100,
+      changePercent: 4.76,
+      sessionChangePct: 2.48,
+    });
+    const hit = scanMorningSprint(c);
+    assert.ok(hit);
+    assert.equal(hit?.price, 101.2);
+    assert.ok(Math.abs((hit?.changePercent ?? 0) - 1.2) < 1e-6);
+  });
+
+  it('refreshes a morning print to the latest last and day %', () => {
+    const hit = scanMorningSprint(sprinter());
+    assert.ok(hit);
+    hit.price = 284.6;
+    hit.changePercent = 4.76;
+    stampLiveQuote(hit, {
+      tech: { last: 372.55 },
+      prevClose: 374.45,
+      sessionChangePct: 2.1,
+    } as never);
+    assert.equal(hit.price, 372.55);
+    assert.ok(Math.abs(hit.changePercent - ((372.55 - 374.45) / 374.45) * 100) < 1e-6);
   });
 });
 

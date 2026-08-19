@@ -93,8 +93,45 @@ function sessionCandles(candles: Candle[], timeframe: string): Candle[] {
   if (!(start > 0) || !(end > 0)) return [];
   return candles.filter((c) => {
     const t = readCandleTimeMs(c);
-    return t >= start && t < end;
+    // Include the 15:30 close bar (timestamp may be open 15:25 or close 15:30).
+    return t >= start && t <= end;
   });
+}
+
+/** Last close of the previous NSE trading day — official-style prev close. */
+export function previousTradingDayClose(candles: Candle[], sessDay: string): number | null {
+  if (!sessDay) return null;
+  let bestDay = '';
+  let close: number | null = null;
+  for (const c of candles) {
+    const t = readCandleTimeMs(c);
+    if (!(t > 0) || !(c.close > 0)) continue;
+    const d = nseTradingDay(t);
+    if (!d || d >= sessDay) continue;
+    if (d > bestDay) {
+      bestDay = d;
+      close = c.close;
+    } else if (d === bestDay) {
+      close = c.close;
+    }
+  }
+  return close;
+}
+
+/** Card LTP + day % from latest snapshot. Never the last-20-bar drift. */
+export function cardQuote(f: Pick<FeatureSnapshot, 'tech' | 'prevClose' | 'sessionChangePct'>): {
+  price: number;
+  changePercent: number;
+} {
+  const price = f.tech.last;
+  const prev = f.prevClose;
+  if (prev != null && prev > 0 && price > 0) {
+    return { price, changePercent: ((price - prev) / prev) * 100 };
+  }
+  if (f.sessionChangePct != null && Number.isFinite(f.sessionChangePct)) {
+    return { price, changePercent: f.sessionChangePct };
+  }
+  return { price, changePercent: 0 };
 }
 
 export function buildFeatureSnapshot(
@@ -175,17 +212,10 @@ export function buildFeatureSnapshot(
   const orSlice = sess.length > orBars ? sess.slice(0, orBars) : null;
   const openingHigh = orSlice ? Math.max(...orSlice.map((b) => b.high)) : null;
   const openingLow = orSlice ? Math.min(...orSlice.map((b) => b.low)) : null;
-  let prevClose: number | null = null;
-  if (sess.length) {
-    const firstSessT = readCandleTimeMs(sess[0]);
-    for (let i = candles.length - 1; i >= 0; i -= 1) {
-      const t = readCandleTimeMs(candles[i]);
-      if (t > 0 && t < firstSessT) {
-        prevClose = candles[i].close;
-        break;
-      }
-    }
-  }
+  const sessDay = sess.length
+    ? nseTradingDay(readCandleTimeMs(sess[0]))
+    : nseTradingDay(readCandleTimeMs(candles[candles.length - 1]));
+  const prevClose = previousTradingDayClose(candles, sessDay);
   const gapPct =
     sessionOpen != null && prevClose != null && prevClose > 0
       ? pctChange(prevClose, sessionOpen)

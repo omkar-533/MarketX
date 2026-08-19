@@ -216,6 +216,14 @@ describe('barTime', () => {
     assert.ok(lastClosedBarCloseMs('5m', now) <= now);
   });
 
+  it('keeps a 15:30 close-stamped bar as the last closed print', () => {
+    const now = Date.parse('2026-08-17T16:22:00+05:30');
+    const lastOpen = Date.parse('2026-08-17T15:25:00+05:30');
+    const closeStamp = Date.parse('2026-08-17T15:30:00+05:30');
+    const candles = [bar(lastOpen), bar(closeStamp)];
+    assert.equal(closedBarIndex(candles, '5m', now), 1);
+  });
+
   it('after 15:30 still stamps the last session bar, not blank', () => {
     const now = Date.parse('2026-08-17T16:22:00+05:30');
     const open = Date.parse('2026-08-17T15:25:00+05:30');
