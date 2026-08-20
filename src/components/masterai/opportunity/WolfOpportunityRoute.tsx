@@ -8,6 +8,7 @@ import {
 } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
+import { getMarketSession } from '../../../utils/marketHours';
 
 type Props = {
   onOpenWolfAi: () => void;
@@ -31,6 +32,13 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
       .catch(() => undefined)
       .finally(() => setSessionKnown(true));
   }, []);
+
+  useEffect(() => {
+    if (!sessionKnown) return;
+    const marketOpen = getMarketSession('NSE:NIFTY').open;
+    if (isIndstocksLive(mdStatus) && marketOpen) return;
+    setConnectOpen(true);
+  }, [sessionKnown, mdStatus]);
 
   return (
     <>

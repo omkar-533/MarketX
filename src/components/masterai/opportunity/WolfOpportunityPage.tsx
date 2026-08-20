@@ -644,7 +644,7 @@ export default function WolfOpportunityPage({
           >
             <RefreshCw size={15} className={scanning ? 'is-spin' : ''} />
           </button>
-          {onConnectData && !brokerOn ? (
+          {onConnectData && !liveStreaming ? (
             <button type="button" className="wolf-opp__cta" onClick={onConnectData}>
               <Link2 size={14} /> Connect live
             </button>
