@@ -137,8 +137,32 @@ describe('scanMorningSprint', () => {
     assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 0 })), null);
   });
 
-  it('skips once the morning window is over', () => {
-    assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 120 })), null);
+  it('keeps re-checking the rule right up to the close', () => {
+    for (const mins of [120, 240, 375]) {
+      const hit = scanMorningSprint(sprinter({ sessionMinsFromOpen: mins }));
+      assert.ok(hit, `expected a print at ${mins} min`);
+      assert.equal(hit?.stateLabel, 'OPEN = LOW');
+    }
+  });
+
+  it('drops an afternoon symbol the moment the day low undercuts the open', () => {
+    assert.equal(
+      scanMorningSprint(sprinter({ sessionMinsFromOpen: 300, sessionLow: 99.6 })),
+      null,
+    );
+  });
+
+  it('keeps a name that pulled back far from the day high but held the open', () => {
+    const hit = scanMorningSprint(
+      sprinter({
+        sessionMinsFromOpen: 300,
+        sessionHigh: 105,
+        sessionChangePct: 0.05,
+        tech: { last: 100.05, atr14: 0.4 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
   });
 
   it('removes bullish setup once day low goes below open', () => {

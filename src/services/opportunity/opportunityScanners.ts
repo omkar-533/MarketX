@@ -274,8 +274,8 @@ function tooExtended(last: number, level: number, atr: number, maxAtr = 2): bool
 }
 
 /**
- * MORNING SPRINT — first closed 5m (9:20) → 10:50.
- * New rule: Open == Day Low (long) or Open == Day High (short).
+ * MORNING SPRINT — from the first closed 5m bar (9:20) until the close.
+ * Rule: Open == Day Low (long) or Open == Day High (short).
  * If that equality breaks later in the day, the symbol must drop.
  */
 export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
@@ -284,7 +284,9 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   if (atr == null) return null;
   const mins = f.sessionMinsFromOpen;
   // First closed 5m bar appears at 9:20 (mins=5). Before that we stay silent.
-  if (mins == null || mins < 5 || mins > 100) return null;
+  // No upper bound: the rule is re-checked till the close, so late breaks still
+  // drop the symbol. A morning-only window froze the list at ~10:55 instead.
+  if (mins == null || mins < 5) return null;
   const chg = f.sessionChangePct;
   const sessOpen = f.sessionOpen;
   const sessLow = f.sessionLow;
@@ -308,10 +310,11 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const bullish = openEqLow;
   // Safety: direction must match current session move.
   if ((bullish && chg < -0.02) || (!bullish && chg > 0.02)) return null;
-  const last = f.tech.last;
   const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
   const trigger = bullish ? sessHigh : sessLow;
-  if (!(trigger > 0) || tooExtended(last, trigger, atr, 2.4)) return null;
+  // Only a broken open/low equality may drop a symbol. Distance from the day
+  // extreme is an ordinary pullback, and gating on it silently hid valid names.
+  if (!(trigger > 0)) return null;
 
   const breakdown: ScoreBreakdown = {
     openRule: 30,
