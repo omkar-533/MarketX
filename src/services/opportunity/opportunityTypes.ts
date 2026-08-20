@@ -116,7 +116,7 @@ export const OPPORTUNITY_SCANNERS: {
   {
     id: 'morning_sprint',
     title: 'MORNING SPRINT',
-    tagline: 'Best first look — 9:20–10:50 gap/drive. WATCH early, ACTIVE on the blast.',
+    tagline: '9:20 se live rule: Open = Low (long) / Open = High (short). Rule tootega to stock hat jayega.',
     requires: 'ohlc',
   },
   {

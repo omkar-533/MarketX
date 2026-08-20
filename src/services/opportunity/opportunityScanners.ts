@@ -271,110 +271,86 @@ function tooExtended(last: number, level: number, atr: number, maxAtr = 2): bool
 
 /**
  * MORNING SPRINT — first closed 5m (9:20) → 10:50.
- * WATCH: gap / early volume before 0.8% is done. ACTIVE: blast or drive on.
+ * New rule: Open == Day Low (long) or Open == Day High (short).
+ * If that equality breaks later in the day, the symbol must drop.
  */
 export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const atr = atrAbs(f);
   if (atr == null) return null;
   const mins = f.sessionMinsFromOpen;
-  if (mins == null || mins < 0 || mins > 100) return null;
+  // First closed 5m bar appears at 9:20 (mins=5). Before that we stay silent.
+  if (mins == null || mins < 5 || mins > 100) return null;
   const chg = f.sessionChangePct;
   const sessOpen = f.sessionOpen;
-  if (chg == null || sessOpen == null || !(sessOpen > 0)) return null;
-  if (!volumeLive(f, 1.3)) return null;
+  const sessLow = f.sessionLow;
+  const sessHigh = f.sessionHigh;
+  if (
+    chg == null ||
+    sessOpen == null ||
+    !(sessOpen > 0) ||
+    sessLow == null ||
+    sessHigh == null
+  ) {
+    return null;
+  }
 
+  // Small tolerance for feed rounding noise (paise-level).
+  const eqBand = Math.max(0.02, atr * 0.08, sessOpen * 0.00035);
+  const openEqLow = Math.abs(sessOpen - sessLow) <= eqBand;
+  const openEqHigh = Math.abs(sessHigh - sessOpen) <= eqBand;
+  if (openEqLow === openEqHigh) return null;
+
+  const bullish = openEqLow;
+  // Safety: direction must match current session move.
+  if ((bullish && chg < -0.02) || (!bullish && chg > 0.02)) return null;
   const last = f.tech.last;
-  const gap = f.gapPct ?? 0;
   const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
-  const gapWatchUp = gap >= 0.6 && last > sessOpen;
-  const gapWatchDown = gap <= -0.6 && last < sessOpen;
-  const earlyUp = chg >= 0.5 || (chg >= 0.35 && gap >= 0.4);
-  const earlyDown = chg <= -0.5 || (chg <= -0.35 && gap <= -0.4);
-  const gapBlastUp = gap >= 0.8 && last > sessOpen;
-  const gapBlastDown = gap <= -0.8 && last < sessOpen;
-  const driveUp = chg >= 0.8;
-  const driveDown = chg <= -0.8;
-  const activeUp = gapBlastUp || driveUp;
-  const activeDown = gapBlastDown || driveDown;
-  const watchUp =
-    !activeUp && mins <= 20 && volumeRising(f) && (gapWatchUp || earlyUp);
-  const watchDown =
-    !activeDown && mins <= 20 && volumeRising(f) && (gapWatchDown || earlyDown);
-  if (!activeUp && !activeDown && !watchUp && !watchDown) return null;
-  const bullish = activeUp || watchUp;
-  if (!vwapHeld(f, bullish)) return null;
+  const trigger = bullish ? sessHigh : sessLow;
+  if (!(trigger > 0) || tooExtended(last, trigger, atr, 2.4)) return null;
 
-  const trigger = bullish ? (f.sessionHigh ?? last) : (f.sessionLow ?? last);
-  if (tooExtended(last, trigger, atr, 2)) return null;
-  const active = activeUp || activeDown;
-  if (active && !notChased(last, trigger, atr, 1.8)) return null;
-
-  const brokeOR = bullish
-    ? f.openingHigh != null && last > f.openingHigh
-    : f.openingLow != null && last < f.openingLow;
-  const brokePD = bullish
-    ? f.prevDayHigh != null && last > f.prevDayHigh
-    : f.prevDayLow != null && last < f.prevDayLow;
-  const isGapBlast = bullish ? gapBlastUp : gapBlastDown;
   const breakdown: ScoreBreakdown = {
-    move: clampScore((active ? 16 : 10) + Math.min(11, Math.abs(chg) * 5), 25),
-    volume: clampScore(12 + Math.min(13, (vol - 1.3) * 16), 25),
-    vwap: f.vwap != null ? 16 : 10,
-    levels: brokePD ? 18 : brokeOR ? 15 : active ? 10 : 8,
-    timing: mins <= 20 ? 20 : mins <= 50 ? 16 : 12,
+    openRule: 30,
+    move: clampScore(10 + Math.min(14, Math.abs(chg) * 8), 24),
+    volume: clampScore(8 + Math.min(12, Math.max(0, vol - 0.9) * 14), 20),
+    vwap: f.vwap != null ? 14 : 10,
+    timing: mins <= 20 ? 16 : mins <= 60 ? 12 : 9,
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, active ? 58 : 55)) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
   return baseHit('morning_sprint', ctx, {
     direction: bullish ? 'bullish' : 'bearish',
-    status: active ? 'ACTIVE' : 'WATCH',
+    status: 'ACTIVE',
     score,
     breakdown,
-    stateLabel: active
-      ? isGapBlast
-        ? '🔥 GAP BLAST'
-        : 'MORNING SPRINT'
-      : isGapBlast || Math.abs(gap) >= 0.6
-        ? 'WATCH GAP'
-        : 'WATCH SPRINT',
-    why: active
-      ? isGapBlast
-        ? `Gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}% + open ke baad ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% in ${Math.round(mins)} min, volume ${vol.toFixed(1)}× — subah ka blast.`
-        : `Open se ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% in ${Math.round(mins)} min, volume ${vol.toFixed(1)}× — morning drive on.`
-      : `Subah setup: ${Math.abs(gap) >= 0.6 ? `gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}%` : `open se ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`} + volume ${vol.toFixed(1)}× — blast se pehle.`,
-    keyLevel: f.vwap ?? f.tech.ema21,
+    stateLabel: bullish ? 'OPEN = LOW' : 'OPEN = HIGH',
+    why: bullish
+      ? `Open ₹${sessOpen.toFixed(2)} abhi tak day low ke barabar hai (${Math.round(mins)} min). Day move ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%, volume ${vol.toFixed(1)}×.`
+      : `Open ₹${sessOpen.toFixed(2)} abhi tak day high ke barabar hai (${Math.round(mins)} min). Day move ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%, volume ${vol.toFixed(1)}×.`,
+    keyLevel: sessOpen,
     trigger,
     invalidation: bullish
-      ? `VWAP ₹${(f.vwap ?? sessOpen).toFixed(2)} ke neeche close — sprint khatam`
-      : `VWAP ₹${(f.vwap ?? sessOpen).toFixed(2)} ke upar close — sprint khatam`,
-    confirmationNeeded: active
-      ? bullish
-        ? `Day high ₹${trigger.toFixed(2)} break pe entry; VWAP ke neeche exit.`
-        : `Day low ₹${trigger.toFixed(2)} break pe entry; VWAP ke upar exit.`
-      : 'WATCH — 0.8% drive ya gap hold ka wait. Abhi chase mat karo.',
+      ? `Aaj ka low open ₹${sessOpen.toFixed(2)} ke neeche gaya to setup remove.`
+      : `Aaj ka high open ₹${sessOpen.toFixed(2)} ke upar gaya to setup remove.`,
+    confirmationNeeded: bullish
+      ? `Open=Low hold rahe aur day high ₹${trigger.toFixed(2)} break ho to continuation.`
+      : `Open=High hold rahe aur day low ₹${trigger.toFixed(2)} break ho to continuation.`,
     evidence: [
+      { label: bullish ? 'Daily Open = Daily Low' : 'Daily Open = Daily High', ok: true },
+      { label: `Open ₹${sessOpen.toFixed(2)}`, ok: true },
+      { label: `Session ${bullish ? 'low' : 'high'} ₹${(bullish ? sessLow : sessHigh).toFixed(2)}`, ok: true },
       { label: `Open se ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% (${Math.round(mins)} min)`, ok: true },
-      { label: `Volume ${vol.toFixed(1)}×`, ok: vol >= 1.3 },
+      { label: `Volume ${vol.toFixed(1)}×`, ok: vol >= 1 },
       {
-        label: f.vwap != null ? `VWAP ${bullish ? 'upar' : 'neeche'} ₹${f.vwap.toFixed(2)}` : 'VWAP n/a',
+        label: f.vwap != null ? `VWAP ₹${f.vwap.toFixed(2)}` : 'VWAP n/a',
         ok: f.vwap != null,
       },
-      {
-        label: active
-          ? brokePD
-            ? bullish
-              ? 'PDH break'
-              : 'PDL break'
-            : brokeOR
-              ? 'Opening range break'
-              : 'Range ke andar'
-          : 'WATCH — move shuru, break nahi',
-        ok: active ? brokePD || brokeOR : true,
-      },
     ],
-    meta: { early: !active },
+    meta: {
+      pattern: bullish ? 'open_equals_low' : 'open_equals_high',
+      eqBand,
+    },
   });
 }
 

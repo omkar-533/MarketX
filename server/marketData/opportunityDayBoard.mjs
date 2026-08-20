@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['morning_sprint', 'MORNING SPRINT', 'Best first look — 9:20–10:50 gap/drive. WATCH early, ACTIVE on the blast.'],
+  ['morning_sprint', 'MORNING SPRINT', '9:20 se live rule: Open = Low (long) / Open = High (short). Rule tootega to stock hat jayega.'],
   ['opening_drive', 'OPENING DRIVE', 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond. Wick does not count.'],
   ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
   ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
@@ -168,10 +168,19 @@ function slimHit(raw, day) {
   };
 }
 
-/** Empty incoming must not wipe a live board (failed 15m/1h/1D scan). */
-export function nextScannerHits(prev, incoming, day, onePerSymbol = false) {
-  if (!(incoming || []).length && (prev || []).length) {
-    return prev.filter((h) => listingOk(Number(h.detectedAt), day));
+/** Empty incoming should usually keep board prints (unless scanner is configured as replace/live-only). */
+export function nextScannerHits(prev, incoming, day, onePerSymbol = false, opts = {}) {
+  const keepOnEmpty = opts.keepOnEmpty !== false;
+  const replace = Boolean(opts.replace);
+  if (!(incoming || []).length) {
+    if (!keepOnEmpty) return [];
+    if ((prev || []).length) {
+      return prev.filter((h) => listingOk(Number(h.detectedAt), day));
+    }
+    return [];
+  }
+  if (replace) {
+    return mergeScannerHits([], incoming, day, onePerSymbol);
   }
   return mergeScannerHits(prev, incoming, day, onePerSymbol);
 }
@@ -349,11 +358,13 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
+    const isLiveReplace = id === 'morning_sprint';
     next[id] = nextScannerHits(
       prevRow?.hitsByScanner?.[id] || [],
       inBy.get(id)?.hits || [],
       day,
-      id === 'options_flow',
+      id === 'options_flow' || isLiveReplace,
+      isLiveReplace ? { keepOnEmpty: false, replace: true } : undefined,
     );
   }
   const row = {

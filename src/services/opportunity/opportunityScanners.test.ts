@@ -84,55 +84,44 @@ describe('Opportunity desk scanners', () => {
 describe('scanMorningSprint', () => {
   const sprinter = (over: Record<string, unknown> = {}) =>
     ctx({
-      sessionChangePct: 1.4,
-      sessionVolRatio: 1.8,
+      sessionChangePct: 0.9,
+      sessionVolRatio: 1.2,
       sessionOpen: 100,
-      sessionHigh: 101.4,
-      sessionLow: 99.8,
-      sessionMinsFromOpen: 30,
+      sessionHigh: 101.2,
+      sessionLow: 100,
+      sessionMinsFromOpen: 5,
       vwap: 100.6,
-      gapPct: 0.1,
+      gapPct: 0.0,
       openingHigh: 101.0,
-      openingLow: 99.9,
+      openingLow: 100.0,
       prevDayHigh: 101.8,
       prevDayLow: 99.2,
       tech: { last: 101.2, atr14: 0.4 },
       ...over,
     });
 
-  it('lists a bullish opening drive (GREENPANEL type)', () => {
+  it('lists a bullish OPEN = LOW print at 9:20', () => {
     const hit = scanMorningSprint(sprinter());
     assert.ok(hit);
     assert.equal(hit?.direction, 'bullish');
-    assert.equal(hit?.stateLabel, 'MORNING SPRINT');
-    assert.ok((hit?.score ?? 0) >= 58);
+    assert.equal(hit?.stateLabel, 'OPEN = LOW');
+    assert.equal(hit?.status, 'ACTIVE');
+    assert.ok((hit?.score ?? 0) >= 55);
   });
 
-  it('lists a gap blast holding above the open (SHAILY type)', () => {
-    const hit = scanMorningSprint(
-      sprinter({ gapPct: 1.3, sessionChangePct: 0.5, sessionMinsFromOpen: 15 }),
-    );
-    assert.ok(hit);
-    assert.equal(hit?.direction, 'bullish');
-    assert.equal(hit?.stateLabel, '🔥 GAP BLAST');
-  });
-
-  it('lists a bearish morning sprint below VWAP', () => {
+  it('lists a bearish OPEN = HIGH print at 9:20', () => {
     const hit = scanMorningSprint(
       sprinter({
-        sessionChangePct: -1.5,
-        gapPct: -0.2,
-        vwap: 101.6,
-        sessionHigh: 101.5,
-        sessionLow: 101.0,
-        openingHigh: 101.3,
-        openingLow: 101.15,
-        tech: { last: 101.2, atr14: 0.4 },
+        sessionChangePct: -0.8,
+        sessionHigh: 100,
+        sessionLow: 98.9,
+        vwap: 99.6,
+        tech: { last: 99.0, atr14: 0.4 },
       }),
     );
     assert.ok(hit);
     assert.equal(hit?.direction, 'bearish');
-    assert.equal(hit?.trigger, 101.0);
+    assert.equal(hit?.stateLabel, 'OPEN = HIGH');
   });
 
   it('thinks on the first completed 9:15–9:20 candle', () => {
@@ -141,32 +130,33 @@ describe('scanMorningSprint', () => {
     assert.equal(hit?.direction, 'bullish');
   });
 
+  it('stays silent before the first completed 9:20 print', () => {
+    assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 0 })), null);
+  });
+
   it('skips once the morning window is over', () => {
     assert.equal(scanMorningSprint(sprinter({ sessionMinsFromOpen: 120 })), null);
   });
 
-  it('skips a move on dead volume', () => {
+  it('removes bullish setup once day low goes below open', () => {
     assert.equal(
-      scanMorningSprint(sprinter({ volume: { ratio: 1.0, state: 'NORMAL' }, sessionVolRatio: 1.0 })),
+      scanMorningSprint(sprinter({ sessionLow: 99.6, sessionMinsFromOpen: 45 })),
       null,
     );
   });
 
-  it('skips a long that lost VWAP', () => {
-    assert.equal(scanMorningSprint(sprinter({ vwap: 102.5 })), null);
-  });
-
-  it('skips a small move with no gap', () => {
-    assert.equal(scanMorningSprint(sprinter({ sessionChangePct: 0.4, gapPct: 0.1 })), null);
-  });
-
-  it('watches a gap before the 0.8% blast', () => {
-    const hit = scanMorningSprint(
-      sprinter({ gapPct: 0.7, sessionChangePct: 0.4, sessionMinsFromOpen: 5 }),
+  it('removes bearish setup once day high goes above open', () => {
+    assert.equal(
+      scanMorningSprint(
+        sprinter({
+          sessionChangePct: -0.6,
+          sessionHigh: 100.4,
+          sessionLow: 99.1,
+          tech: { last: 99.2, atr14: 0.4 },
+        }),
+      ),
+      null,
     );
-    assert.ok(hit);
-    assert.equal(hit?.status, 'WATCH');
-    assert.equal(hit?.direction, 'bullish');
   });
 
   it('prints official day % from prev close, not 20-bar drift', () => {

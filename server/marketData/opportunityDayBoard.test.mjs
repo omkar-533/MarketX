@@ -103,6 +103,29 @@ describe('opportunity day board merge', () => {
     assert.equal(kept[0].symbol, 'INFY');
   });
 
+  it('replaces Morning Sprint with live-only symbols and drops stale names', () => {
+    const day = '2026-08-17';
+    const t1 = Date.parse('2026-08-17T09:20:00+05:30');
+    const t2 = Date.parse('2026-08-17T09:25:00+05:30');
+    const prev = mergeScannerHits(
+      [],
+      [{ scannerId: 'morning_sprint', symbol: 'INFY', score: 72, detectedAt: t1, timeframe: '5m' }],
+      day,
+      true,
+    );
+    const next = nextScannerHits(
+      prev,
+      [{ scannerId: 'morning_sprint', symbol: 'TCS', score: 75, detectedAt: t2, timeframe: '5m' }],
+      day,
+      true,
+      { keepOnEmpty: false, replace: true },
+    );
+    assert.equal(next.some((h) => h.symbol === 'INFY'), false);
+    assert.equal(next.some((h) => h.symbol === 'TCS'), true);
+    const empty = nextScannerHits(next, [], day, true, { keepOnEmpty: false, replace: true });
+    assert.equal(empty.length, 0);
+  });
+
   it('does not wipe in-memory prints when the disk file is missing', () => {
     const day = '2026-08-17';
     const kept = retainBoardsForDay(
