@@ -29173,6 +29173,7 @@ body:has(.app-main--terminal-immersive) #root {
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
+  text-decoration: none;
   transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
   box-shadow: 0 8px 24px rgba(212, 175, 55, 0.08);
 }
@@ -30632,5 +30633,92 @@ html.wolf-tab-hidden *,
 html.wolf-tab-hidden *::before,
 html.wolf-tab-hidden *::after {
   animation-play-state: paused !important;
+}
+
+/* Light mode contrast — these must sit after Opportunity lux rules */
+html[data-theme="light"] .wolf-opp__hero--lux .wolf-opp__eyebrow {
+  animation: none;
+  opacity: 1;
+  text-shadow: none;
+  color: #5c3d0a;
+  font-weight: 800;
+}
+html[data-theme="light"] .wolf-opp__hero--lux .wolf-opp__title span {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: #4a3008;
+  animation: none;
+}
+html[data-theme="light"] .wolf-opp__feed {
+  color: #171717;
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+html[data-theme="light"] .wolf-opp__feed.is-live {
+  color: #065f46;
+  background: #bbf7d0;
+  border-color: #047857;
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__mkt.is-open { color: #065f46; }
+html[data-theme="light"] .wolf-opp__mkt.is-closed { color: #9f1239; }
+html[data-theme="light"] .wolf-opp__trend.is-bullish {
+  color: #065f46;
+  background: #bbf7d0;
+  border-color: #047857;
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__trend.is-bearish {
+  color: #9f1239;
+  background: #fecdd3;
+  border-color: #be123c;
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__seg { color: #171717; }
+html[data-theme="light"] .wolf-opp__search input::placeholder { color: #404040; }
+html[data-theme="light"] .wolf-opp__sheet-head p,
+html[data-theme="light"] .wolf-opp__status-line,
+html[data-theme="light"] .wolf-opp__sheet-empty,
+html[data-theme="light"] .wolf-opp__side-empty {
+  color: #334155;
+}
+html[data-theme="light"] .wolf-opp__sheet-count {
+  color: #1a1406;
+  background: linear-gradient(180deg, #e8c547, #b8922a);
+}
+html[data-theme="light"] .wolf-opp__tile-nth,
+html[data-theme="light"] .wolf-opp__tile-created {
+  color: #5c3d0a;
+  background: #fde68a;
+  border-color: #b45309;
+  box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__tile-actions button,
+html[data-theme="light"] .wolf-opp__tile-actions a {
+  color: #171717;
+  background: #e2e8f0;
+  font-weight: 750;
+}
+html[data-theme="light"] .wolf-opp__tile.is-bullish .wolf-opp__tile-px {
+  color: #065f46;
+  background: #bbf7d0;
+  border-color: #047857;
+}
+html[data-theme="light"] .wolf-opp__tile.is-bearish .wolf-opp__tile-px {
+  color: #9f1239;
+  background: #fecdd3;
+  border-color: #be123c;
+}
+html[data-theme="light"] .wolf-opp__tile-chg.up,
+html[data-theme="light"] .wolf-opp .up { color: #065f46; }
+html[data-theme="light"] .wolf-opp__tile-chg.down,
+html[data-theme="light"] .wolf-opp .down { color: #9f1239; }
+html[data-theme="light"] .app-header .brand-lockup__name {
+  color: #1a1406 !important;
+  text-shadow: none !important;
+}
+html[data-theme="light"] .wolf-side-lux__section {
+  color: #5c4a12 !important;
 }
 
