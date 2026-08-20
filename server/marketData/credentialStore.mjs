@@ -22,8 +22,58 @@ const DB_TIMEOUT_MS = Number(process.env.MARKET_DATA_DB_TIMEOUT_MS || 8_000);
 // Keys with no stored connection must not re-query Supabase on every poll.
 const HYDRATE_MISS_COOLDOWN_MS = 20_000;
 
+// Supabase pauses PostgREST calls when the table is absent, so every cold key
+// burned a full timeout. Trip a breaker instead of re-paying that on each poll.
+const DB_BREAKER_MS = 5 * 60_000;
+
 /** @type {Map<string, number>} */
 const hydrateMissAt = new Map();
+let dbTableMissing = false;
+let dbBreakerUntil = 0;
+let dbTimeoutStrikes = 0;
+
+function dbClient() {
+  if (dbTableMissing) return null;
+  if (Date.now() < dbBreakerUntil) return null;
+  return getAdminClient();
+}
+
+/**
+ * Runs one Supabase call under a hard timeout.
+ * `skipped` means the store stayed memory/file only — never a caller error.
+ */
+async function runDb(label, build) {
+  const db = dbClient();
+  if (!db) return { data: null, error: null, skipped: true };
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ __timeout: true }), DB_TIMEOUT_MS),
+  );
+  const out = await Promise.race([build(db), timeout]);
+
+  if (out?.__timeout) {
+    dbTimeoutStrikes += 1;
+    if (dbTimeoutStrikes >= 3) {
+      dbBreakerUntil = Date.now() + DB_BREAKER_MS;
+      dbTimeoutStrikes = 0;
+      console.warn(`[market-data] ${label} — Supabase unresponsive, pausing DB sync for 5m`);
+    }
+    return { data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` }, skipped: true };
+  }
+
+  dbTimeoutStrikes = 0;
+  const message = String(out?.error?.message || '');
+  if (message.includes('does not exist') || message.includes('schema cache')) {
+    if (!dbTableMissing) {
+      console.warn(
+        `[market-data] ${TABLE} is missing in Supabase — live connections will not survive a restart. Apply supabase/market_data_connections.sql`,
+      );
+    }
+    dbTableMissing = true;
+    return { data: null, error: out.error, skipped: true };
+  }
+  if (out?.error) console.warn(`[market-data] ${label} skipped`, message);
+  return { data: out?.data ?? null, error: out?.error ?? null, skipped: Boolean(out?.error) };
+}
 
 /** @typedef {{
  *  id: string,
@@ -132,38 +182,27 @@ function deleteFileRecord(userKey) {
 async function persistRecord(record) {
   if (!record) return;
   persistFileRecord(record);
-  const db = getAdminClient();
-  if (!db) return;
-  const run = db.from(TABLE).upsert(toRow(record), { onConflict: 'user_id,provider' });
-  const timeout = new Promise((resolve) =>
-    setTimeout(() => resolve({ error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+  await runDb('persist', (db) =>
+    db.from(TABLE).upsert(toRow(record), { onConflict: 'user_id,provider' }),
   );
-  const { error } = await Promise.race([run, timeout]);
-  if (error) console.warn('[market-data] persist skipped', error.message);
 }
 
 async function loadRowsForKey(userKey) {
   const rows = [];
   const fileRow = loadFileRecord(userKey);
   if (fileRow) rows.push(fileRow);
-  const db = getAdminClient();
-  if (!db || !userKey) return rows;
+  if (!userKey) return rows;
   const missAt = hydrateMissAt.get(userKey);
   if (missAt && now() - missAt < HYDRATE_MISS_COOLDOWN_MS) return rows;
-  const run = db
-    .from(TABLE)
-    .select('*')
-    .eq('user_id', userKey)
-    .order('updated_at', { ascending: false })
-    .limit(4);
-  const timeout = new Promise((resolve) =>
-    setTimeout(() => resolve({ data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+  const { data, skipped } = await runDb('hydrate', (db) =>
+    db
+      .from(TABLE)
+      .select('*')
+      .eq('user_id', userKey)
+      .order('updated_at', { ascending: false })
+      .limit(4),
   );
-  const { data, error } = await Promise.race([run, timeout]);
-  if (error) {
-    if (!String(error.message || '').includes('does not exist')) {
-      console.warn('[market-data] hydrate skipped', error.message);
-    }
+  if (skipped) {
     hydrateMissAt.set(userKey, now());
     return rows;
   }
@@ -175,16 +214,8 @@ async function loadRowsForKey(userKey) {
 
 async function deleteRowsForKey(userKey) {
   deleteFileRecord(userKey);
-  const db = getAdminClient();
-  if (!db || !userKey) return;
-  const run = db.from(TABLE).delete().eq('user_id', userKey);
-  const timeout = new Promise((resolve) =>
-    setTimeout(() => resolve({ error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
-  );
-  const { error } = await Promise.race([run, timeout]);
-  if (error && !String(error.message || '').includes('does not exist')) {
-    console.warn('[market-data] delete skipped', error.message);
-  }
+  if (!userKey) return;
+  await runDb('delete', (db) => db.from(TABLE).delete().eq('user_id', userKey));
 }
 
 function cacheRecord(record) {
@@ -290,25 +321,17 @@ export async function listLiveIndstocksAccessTokens() {
   for (const rec of byUser.values()) take(rec);
   for (const row of Object.values(readFileStore())) take(fromRow(row));
 
-  const db = getAdminClient();
-  if (db) {
-    const run = db
+  const { data } = await runDb('live-token list', (db) =>
+    db
       .from(TABLE)
       .select('*')
       .eq('provider', 'indstocks')
       .eq('status', 'CONNECTED')
       .eq('mode', 'LIVE')
       .order('updated_at', { ascending: false })
-      .limit(50);
-    const timeout = new Promise((resolve) =>
-      setTimeout(() => resolve({ data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
-    );
-    const { data, error } = await Promise.race([run, timeout]);
-    if (error && !String(error.message || '').includes('does not exist')) {
-      console.warn('[market-data] live-token list skipped', error.message);
-    }
-    for (const row of data || []) take(fromRow(row));
-  }
+      .limit(50),
+  );
+  for (const row of data || []) take(fromRow(row));
   return out;
 }
 
