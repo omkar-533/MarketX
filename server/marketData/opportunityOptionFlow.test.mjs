@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { summarizeOptionChain } from './opportunityOptionFlow.mjs';
+import { summarizeOptionChain, planOptionFlowExpiries } from './opportunityOptionFlow.mjs';
 
 describe('summarizeOptionChain', () => {
   it('sums CE/PE OI from a strikes object and ATM band', () => {
@@ -34,5 +34,12 @@ describe('summarizeOptionChain', () => {
       summarizeOptionChain('TCS', { data: { underlying_ltp: 100, strikes: { 100: { ce: {}, pe: {} } } } }, '2026-08-21'),
       null,
     );
+  });
+
+  it('does not guess today Thursday when that is not a listed expiry', () => {
+    const now = Date.parse('2026-08-20T09:50:00+05:30');
+    const planned = planOptionFlowExpiries('RELIANCE', now);
+    assert.deepEqual(planned, ['2026-08-25', '2026-08-27']);
+    assert.ok(!planned.includes('2026-08-20'));
   });
 });

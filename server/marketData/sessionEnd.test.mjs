@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   lastCompletedNseSessionEndMs,
   nsePriorCompletedSessionEndMs,
+  nextNseTuesdayExpiryYmd,
   nextNseWeeklyExpiryYmd,
   nseMonthlyExpiryYmd,
   parseOptionExpiryMs,
@@ -59,5 +60,10 @@ describe('option expiry helpers', () => {
     const now = Date.parse('2026-08-20T04:03:00+05:30');
     assert.equal(nextNseWeeklyExpiryYmd(now), '2026-08-20');
     assert.equal(nseMonthlyExpiryYmd(now), '2026-08-27');
+  });
+
+  it('next Tuesday matches the INDstocks RELIANCE / NIFTY chain examples', () => {
+    const now = Date.parse('2026-08-20T09:50:00+05:30');
+    assert.equal(nextNseTuesdayExpiryYmd(now), '2026-08-25');
   });
 });

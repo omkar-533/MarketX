@@ -8,10 +8,9 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import {
   ensureInstrumentMap,
-  FALLBACK_SCRIP_BY_SYMBOL,
   fetchIndstocksOptionChain,
-  getNearestOptionExpiryYmd,
-  nextNseWeeklyExpiryYmd,
+  listUpcomingOptionExpiryYmds,
+  nextNseTuesdayExpiryYmd,
   nseMonthlyExpiryYmd,
   optionChainUnderlying,
 } from './indstocksClient.mjs';
@@ -19,7 +18,7 @@ import { NIFTY_50_SYMBOLS } from './universeLists.mjs';
 
 const TTL_OPEN_MS = 75_000;
 const TTL_CLOSED_MS = 15 * 60_000;
-const WAVE = 8;
+const WAVE = 4;
 const PRIORITY = new Set(NIFTY_50_SYMBOLS);
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -190,23 +189,17 @@ function rankSymbols(symbols) {
   });
 }
 
-function expiryCandidates(symbol, now = Date.now()) {
-  return [
-    ...new Set(
-      [
-        getNearestOptionExpiryYmd(symbol, now),
-        nextNseWeeklyExpiryYmd(now),
-        nextNseWeeklyExpiryYmd(now + 7 * 86_400_000),
-        nseMonthlyExpiryYmd(now),
-      ].filter(Boolean),
-    ),
-  ];
+/** Master dates first. Otherwise Tuesday weekly + monthly Thursday — never today's non-expiry Thursday. */
+export function planOptionFlowExpiries(symbol, now = Date.now()) {
+  const fromMaster = listUpcomingOptionExpiryYmds(symbol, now).slice(0, 2);
+  if (fromMaster.length) return fromMaster;
+  return [...new Set([nextNseTuesdayExpiryYmd(now), nseMonthlyExpiryYmd(now)].filter(Boolean))];
 }
 
 async function pullSymbol(accessToken, symbol) {
   const under = optionChainUnderlying(symbol);
   if (!under) return null;
-  for (const expiry of expiryCandidates(symbol)) {
+  for (const expiry of planOptionFlowExpiries(symbol)) {
     try {
       const json = await fetchIndstocksOptionChain(accessToken, {
         exchange: under.exchange,
@@ -250,13 +243,13 @@ async function pullWave(accessToken, symbols, next) {
 
 async function refreshOptionFlow(accessToken, symbols) {
   hydrateDisk();
-  const unique = rankSymbols(symbols);
-  const first = unique.filter((s) => FALLBACK_SCRIP_BY_SYMBOL[s]).slice(0, 24);
-  const rest = unique.filter((s) => !first.includes(s));
+  await ensureInstrumentMap(accessToken);
+  const unique = rankSymbols(symbols).filter((s) => optionChainUnderlying(s));
+  const first = unique.slice(0, 16);
+  const rest = unique.slice(16);
   const next = { ...cache.bySymbol };
   const firstN = await pullWave(accessToken, first, next);
   persistDisk();
-  await ensureInstrumentMap(accessToken);
   const restN = await pullWave(accessToken, rest, next);
   cache.at = Date.now();
   cache.bySymbol = next;

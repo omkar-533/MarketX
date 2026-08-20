@@ -662,6 +662,22 @@ export function nextNseWeeklyExpiryYmd(now = Date.now()) {
   return null;
 }
 
+/** Next Tuesday IST — INDstocks option-chain examples use Tuesday expiries (NIFTY + RELIANCE). */
+export function nextNseTuesdayExpiryYmd(now = Date.now()) {
+  const dayFmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const wdFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+  for (let i = 0; i <= 10; i += 1) {
+    const t = now + i * 86_400_000;
+    if (wdFmt.format(new Date(t)) === 'Tue') return dayFmt.format(new Date(t));
+  }
+  return null;
+}
+
 /** Refresh equity + index + F&O instrument map and classified universes. */
 function rememberOptionExpiry(row) {
   const opt = String(row.OPTION_TYPE || '').toUpperCase();
@@ -895,8 +911,8 @@ export function listScannableUniverseSymbols(universe) {
   return ok;
 }
 
-/** Nearest option expiry YYYY-MM-DD from the FNO master. Null if unknown. */
-export function getNearestOptionExpiryYmd(symbol, now = Date.now()) {
+/** Upcoming option expiries YYYY-MM-DD from the FNO master. Empty if the map is cold. */
+export function listUpcomingOptionExpiryYmds(symbol, now = Date.now()) {
   const key = normalizeIndSymbolKey(symbol);
   const aliases = key === 'NIFTY50' ? ['NIFTY50', 'NIFTY'] : [key];
   let list = [];
@@ -907,12 +923,16 @@ export function getNearestOptionExpiryYmd(symbol, now = Date.now()) {
       break;
     }
   }
-  if (!list.length) return nextNseWeeklyExpiryYmd(now);
   const today = istCalendarDay(now);
   const todayMs = Date.parse(`${today}T00:00:00+05:30`);
-  const future = list.filter((ms) => ms >= todayMs).sort((a, b) => a - b);
-  const pick = future[0];
-  return pick ? istCalendarDay(pick) : nextNseWeeklyExpiryYmd(now);
+  return [...new Set(list.filter((ms) => ms >= todayMs).sort((a, b) => a - b).map((ms) => istCalendarDay(ms)))];
+}
+
+/** Nearest option expiry YYYY-MM-DD from the FNO master. Tuesday/monthly fallback — not a random Thursday. */
+export function getNearestOptionExpiryYmd(symbol, now = Date.now()) {
+  const fromMaster = listUpcomingOptionExpiryYmds(symbol, now);
+  if (fromMaster.length) return fromMaster[0];
+  return nextNseTuesdayExpiryYmd(now) || nseMonthlyExpiryYmd(now);
 }
 
 /** Equity/index SECURITY_ID for GET /market/option-chain. Never an NFO contract. */
