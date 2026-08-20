@@ -16,6 +16,7 @@ import { getAdminClient } from '../auth/supabaseAdmin.mjs';
 const TABLE = 'market_data_connections';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const filePath = resolve(root, 'data', 'market-data-connections.json');
+const DB_TIMEOUT_MS = 2_500;
 
 /** @typedef {{
  *  id: string,
@@ -126,7 +127,11 @@ async function persistRecord(record) {
   persistFileRecord(record);
   const db = getAdminClient();
   if (!db) return;
-  const { error } = await db.from(TABLE).upsert(toRow(record), { onConflict: 'user_id,provider' });
+  const run = db.from(TABLE).upsert(toRow(record), { onConflict: 'user_id,provider' });
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+  );
+  const { error } = await Promise.race([run, timeout]);
   if (error) console.warn('[market-data] persist skipped', error.message);
 }
 
@@ -136,14 +141,21 @@ async function loadRowsForKey(userKey) {
   if (fileRow) rows.push(fileRow);
   const db = getAdminClient();
   if (!db || !userKey) return rows;
-  const { data, error } = await db
+  const run = db
     .from(TABLE)
     .select('*')
     .eq('user_id', userKey)
     .order('updated_at', { ascending: false })
     .limit(4);
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+  );
+  const { data, error } = await Promise.race([run, timeout]);
   if (error) {
-    if (!String(error.message || '').includes('does not exist')) {
+    if (
+      !String(error.message || '').includes('does not exist') &&
+      !String(error.message || '').includes('timeout after')
+    ) {
       console.warn('[market-data] hydrate skipped', error.message);
     }
     return rows;
@@ -155,7 +167,11 @@ async function deleteRowsForKey(userKey) {
   deleteFileRecord(userKey);
   const db = getAdminClient();
   if (!db || !userKey) return;
-  const { error } = await db.from(TABLE).delete().eq('user_id', userKey);
+  const run = db.from(TABLE).delete().eq('user_id', userKey);
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve({ error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+  );
+  const { error } = await Promise.race([run, timeout]);
   if (error && !String(error.message || '').includes('does not exist')) {
     console.warn('[market-data] delete skipped', error.message);
   }
@@ -265,7 +281,7 @@ export async function listLiveIndstocksAccessTokens() {
 
   const db = getAdminClient();
   if (db) {
-    const { data, error } = await db
+    const run = db
       .from(TABLE)
       .select('*')
       .eq('provider', 'indstocks')
@@ -273,6 +289,10 @@ export async function listLiveIndstocksAccessTokens() {
       .eq('mode', 'LIVE')
       .order('updated_at', { ascending: false })
       .limit(50);
+    const timeout = new Promise((resolve) =>
+      setTimeout(() => resolve({ data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` } }), DB_TIMEOUT_MS),
+    );
+    const { data, error } = await Promise.race([run, timeout]);
     if (error && !String(error.message || '').includes('does not exist')) {
       console.warn('[market-data] live-token list skipped', error.message);
     }
