@@ -17,6 +17,7 @@ import {
   expireCredentialPersist,
   resolveCredential,
   adoptCredential,
+  needsCredentialMirror,
   publicView,
   readDecryptedCredential,
 } from './credentialStore.mjs';
@@ -213,8 +214,13 @@ async function hydrateIdentity(ident) {
   await reviveIndstocksIfBrokerStillLive(found);
   if (found.record.status !== 'CONNECTED') return found;
   if (ident.userKey && ident.sessionKey) {
-    await adoptCredential(found.key, ident.userKey);
-    await adoptCredential(found.key, ident.sessionKey);
+    const targets = [ident.userKey, ident.sessionKey].filter((k) =>
+      needsCredentialMirror(found.key, k),
+    );
+    for (const key of targets) {
+      // Background sync — a status read must not wait on two Supabase writes.
+      void adoptCredential(found.key, key).catch(() => {});
+    }
   }
   return found;
 }

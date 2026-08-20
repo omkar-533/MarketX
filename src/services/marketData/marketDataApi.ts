@@ -49,7 +49,9 @@ export function isIndstocksLive(s: ServerConnectionStatus | null | undefined): b
 
 const STATUS_STICKY_MS = 120_000;
 const STATUS_MEM_CACHE_MS = 7_000;
-const STATUS_TIMEOUT_MS = 2_400;
+// Must stay above the server's worst-case cold hydrate. A 2.4s budget aborted
+// every real response, so the UI kept replaying the stale sticky status.
+const STATUS_TIMEOUT_MS = 12_000;
 let lastStatusOk: { at: number; value: ServerConnectionStatus } | null = null;
 let statusInflight: Promise<ServerConnectionStatus> | null = null;
 

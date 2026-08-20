@@ -9,7 +9,8 @@ import { resolveServerUniverse } from './universeLists.mjs';
 import { rebuildInstrumentUniverses, resolveUniverseSymbols } from './instrumentUniverse.mjs';
 
 const BASE = 'https://api.indstocks.com';
-const IND_HTTP_TIMEOUT_MS = Number(process.env.INDSTOCKS_HTTP_TIMEOUT_MS || 18_000);
+// Instrument-master CSVs and wide candle pulls regularly run past 20s.
+const IND_HTTP_TIMEOUT_MS = Number(process.env.INDSTOCKS_HTTP_TIMEOUT_MS || 45_000);
 
 const TF_MAP = {
   '1m': '1minute',
@@ -181,6 +182,7 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IND_HTTP_TIMEOUT_MS);
   let res;
+  let text;
   try {
     res = await fetch(url, {
       method: 'GET',
@@ -190,6 +192,7 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
         ...(accept ? { Accept: accept } : {}),
       },
     });
+    text = await res.text();
   } catch (err) {
     if (err?.name === 'AbortError') {
       const timeoutErr = new Error(`INDstocks request timed out after ${IND_HTTP_TIMEOUT_MS}ms`);
@@ -200,7 +203,6 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
   } finally {
     clearTimeout(timeout);
   }
-  const text = await res.text();
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;

@@ -16,7 +16,14 @@ import { getAdminClient } from '../auth/supabaseAdmin.mjs';
 const TABLE = 'market_data_connections';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const filePath = resolve(root, 'data', 'market-data-connections.json');
-const DB_TIMEOUT_MS = 2_500;
+// Supabase cold reads on Render routinely need >2.5s. A tighter budget silently
+// dropped every hydrate, so a reconnected user looked DISCONNECTED after restarts.
+const DB_TIMEOUT_MS = Number(process.env.MARKET_DATA_DB_TIMEOUT_MS || 8_000);
+// Keys with no stored connection must not re-query Supabase on every poll.
+const HYDRATE_MISS_COOLDOWN_MS = 20_000;
+
+/** @type {Map<string, number>} */
+const hydrateMissAt = new Map();
 
 /** @typedef {{
  *  id: string,
@@ -141,6 +148,8 @@ async function loadRowsForKey(userKey) {
   if (fileRow) rows.push(fileRow);
   const db = getAdminClient();
   if (!db || !userKey) return rows;
+  const missAt = hydrateMissAt.get(userKey);
+  if (missAt && now() - missAt < HYDRATE_MISS_COOLDOWN_MS) return rows;
   const run = db
     .from(TABLE)
     .select('*')
@@ -152,15 +161,16 @@ async function loadRowsForKey(userKey) {
   );
   const { data, error } = await Promise.race([run, timeout]);
   if (error) {
-    if (
-      !String(error.message || '').includes('does not exist') &&
-      !String(error.message || '').includes('timeout after')
-    ) {
+    if (!String(error.message || '').includes('does not exist')) {
       console.warn('[market-data] hydrate skipped', error.message);
     }
+    hydrateMissAt.set(userKey, now());
     return rows;
   }
-  return [...rows, ...(data || []).map(fromRow).filter(Boolean)];
+  const dbRows = (data || []).map(fromRow).filter(Boolean);
+  if (dbRows.length) hydrateMissAt.delete(userKey);
+  else hydrateMissAt.set(userKey, now());
+  return [...rows, ...dbRows];
 }
 
 async function deleteRowsForKey(userKey) {
@@ -180,6 +190,7 @@ async function deleteRowsForKey(userKey) {
 function cacheRecord(record) {
   if (!record?.userKey) return record;
   byUser.set(record.userKey, record);
+  hydrateMissAt.delete(record.userKey);
   return record;
 }
 
@@ -327,6 +338,29 @@ export async function mirrorCredential(fromKey, toKey) {
 /** Kept name — copies, never moves/deletes the source key. */
 export async function adoptCredential(fromKey, toKey) {
   return mirrorCredential(fromKey, toKey);
+}
+
+/**
+ * True only when toKey is missing the same live connection fromKey holds.
+ * Status polls used to re-upsert both identity keys on every request, which
+ * added two Supabase writes to a read-only endpoint.
+ */
+export function needsCredentialMirror(fromKey, toKey) {
+  if (!fromKey || !toKey || fromKey === toKey) return false;
+  const source = getCredential(fromKey);
+  if (!source) return false;
+  const dest = getCredential(toKey);
+  if (!dest) return true;
+  if (
+    dest.status !== source.status ||
+    dest.provider !== source.provider ||
+    dest.mode !== source.mode
+  ) {
+    return true;
+  }
+  const srcTok = String(readDecryptedCredential(fromKey)?.accessToken || '');
+  const dstTok = String(readDecryptedCredential(toKey)?.accessToken || '');
+  return srcTok !== dstTok;
 }
 
 /** Write the same encrypted credential onto every identity (user + browser session). */
