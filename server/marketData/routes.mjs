@@ -40,7 +40,6 @@ import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
 import { peekOpportunitySnapshot } from './opportunitySnapshot.mjs';
 import { peekOpportunityDayBoard, mergeOpportunityDayBoard } from './opportunityDayBoard.mjs';
-import { peekWolfFnoDesk } from './wolfFnoDesk.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -688,29 +687,6 @@ router.post('/radar/scan', (_req, res) => {
     error: 'Server-side radar job coming later. Use client scanner with connected LIVE provider.',
     orderExecution: false,
   });
-});
-
-/** Isolated index F&O desk — does not touch Opportunity boards. */
-router.get('/wolf-fno', async (req, res) => {
-  const live = await requireLiveToken(req, res);
-  if (!live) return;
-  try {
-    const payload = await peekWolfFnoDesk(live.accessToken);
-    res.json({
-      ...payload,
-      mode: 'LIVE',
-      orderExecution: false,
-    });
-  } catch (e) {
-    const status = e?.status === 401 ? 401 : 502;
-    if (status === 401) await expireBrokerSession(req, res, live.key, live.accessToken);
-    res.status(status).json({
-      error:
-        status === 401
-          ? 'Market data connection expired. Reconnect your broker.'
-          : 'Failed to load Wolf F&O desk',
-    });
-  }
 });
 
 export default router;
