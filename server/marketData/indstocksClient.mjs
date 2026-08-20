@@ -9,6 +9,7 @@ import { resolveServerUniverse } from './universeLists.mjs';
 import { rebuildInstrumentUniverses, resolveUniverseSymbols } from './instrumentUniverse.mjs';
 
 const BASE = 'https://api.indstocks.com';
+const IND_HTTP_TIMEOUT_MS = Number(process.env.INDSTOCKS_HTTP_TIMEOUT_MS || 18_000);
 
 const TF_MAP = {
   '1m': '1minute',
@@ -94,6 +95,17 @@ const instrumentCache = {
   bySymbol: /** @type {Map<string, string>} */ (new Map()),
 };
 
+/** Index-master NIDX/BIDX rows currently in memory. Used by Wolf F&O only. */
+export function listMappedIndexScrips() {
+  const out = [];
+  for (const [name, scrip] of instrumentCache.bySymbol) {
+    if (/^(NIDX|BIDX)_/i.test(String(scrip || ''))) {
+      out.push({ name: String(name), scrip: String(scrip) });
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** SYMBOL → option expiry timestamps (ms) from FNO instrument master. */
 const optionExpiryMsBySymbol = new Map();
 
@@ -166,13 +178,28 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
       if (v != null && v !== '') url.searchParams.set(k, String(v));
     }
   }
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      ...authHeaders(accessToken),
-      ...(accept ? { Accept: accept } : {}),
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IND_HTTP_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        ...authHeaders(accessToken),
+        ...(accept ? { Accept: accept } : {}),
+      },
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const timeoutErr = new Error(`INDstocks request timed out after ${IND_HTTP_TIMEOUT_MS}ms`);
+      timeoutErr.status = 504;
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
   const text = await res.text();
   let json = null;
   try {
@@ -182,7 +209,7 @@ async function indFetch(path, accessToken, { searchParams, accept } = {}) {
   }
   if (!res.ok) {
     const msg =
-      (json && (json.message || json.error || json.msg)) ||
+      (json && (json.debug_info || json.message || json.error || json.msg)) ||
       `INDstocks HTTP ${res.status}`;
     const err = new Error(String(msg));
     err.status = res.status;

@@ -81,6 +81,28 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function jsonWithTimeout<T>(
+  path: string,
+  timeoutMs: number,
+  init?: Omit<RequestInit, 'signal'>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await json<T>(path, {
+      ...(init || {}),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function fetchMarketDataProviders(): Promise<CatalogProvider[]> {
   const data = await json<{ providers: CatalogProvider[] }>('/api/market-data/providers');
   return data.providers;
@@ -128,7 +150,7 @@ export async function fetchMarketDataStatus(opts?: {
 }
 
 export async function connectDemoMarketData(): Promise<ServerConnectionStatus> {
-  const next = await json<ServerConnectionStatus>('/api/market-data/connect', {
+  const next = await jsonWithTimeout<ServerConnectionStatus>('/api/market-data/connect', 20_000, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'mock-demo' }),
@@ -142,7 +164,7 @@ export async function connectDemoMarketData(): Promise<ServerConnectionStatus> {
 export async function connectIndstocksMarketData(
   accessToken: string,
 ): Promise<ServerConnectionStatus> {
-  const next = await json<ServerConnectionStatus>('/api/market-data/connect', {
+  const next = await jsonWithTimeout<ServerConnectionStatus>('/api/market-data/connect', 22_000, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'indstocks', accessToken }),
@@ -153,7 +175,9 @@ export async function connectIndstocksMarketData(
 }
 
 export async function disconnectMarketData(): Promise<ServerConnectionStatus> {
-  const next = await json<ServerConnectionStatus>('/api/market-data/disconnect', { method: 'POST' });
+  const next = await jsonWithTimeout<ServerConnectionStatus>('/api/market-data/disconnect', 12_000, {
+    method: 'POST',
+  });
   statusInflight = null;
   lastStatusOk = { at: Date.now(), value: next };
   return next;
