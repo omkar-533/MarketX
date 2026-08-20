@@ -25,17 +25,20 @@ const HYDRATE_MISS_COOLDOWN_MS = 20_000;
 // Supabase pauses PostgREST calls when the table is absent, so every cold key
 // burned a full timeout. Trip a breaker instead of re-paying that on each poll.
 const DB_BREAKER_SHORT_MS = 60_000;
+// A missing table is fixed by applying the SQL, so retry instead of giving up
+// for the life of the process — otherwise persistence stays dead until a deploy.
 const DB_BREAKER_LONG_MS = 5 * 60_000;
 
 /** @type {Map<string, number>} */
 const hydrateMissAt = new Map();
-let dbTableMissing = false;
+let dbTableMissingUntil = 0;
 let dbBreakerUntil = 0;
 let dbTimeoutStrikes = 0;
 
 function dbClient() {
-  if (dbTableMissing) return null;
-  if (Date.now() < dbBreakerUntil) return null;
+  const at = Date.now();
+  if (at < dbTableMissingUntil) return null;
+  if (at < dbBreakerUntil) return null;
   return getAdminClient();
 }
 
@@ -66,12 +69,12 @@ async function runDb(label, build) {
   dbTimeoutStrikes = 0;
   const message = String(out?.error?.message || '');
   if (message.includes('does not exist') || message.includes('schema cache')) {
-    if (!dbTableMissing) {
+    if (Date.now() >= dbTableMissingUntil) {
       console.warn(
         `[market-data] ${TABLE} is missing in Supabase — live connections will not survive a restart. Apply supabase/market_data_connections.sql`,
       );
     }
-    dbTableMissing = true;
+    dbTableMissingUntil = Date.now() + DB_BREAKER_LONG_MS;
     return { data: null, error: out.error, skipped: true };
   }
   if (out?.error) console.warn(`[market-data] ${label} skipped`, message);
