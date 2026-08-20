@@ -24,7 +24,8 @@ const HYDRATE_MISS_COOLDOWN_MS = 20_000;
 
 // Supabase pauses PostgREST calls when the table is absent, so every cold key
 // burned a full timeout. Trip a breaker instead of re-paying that on each poll.
-const DB_BREAKER_MS = 5 * 60_000;
+const DB_BREAKER_SHORT_MS = 60_000;
+const DB_BREAKER_LONG_MS = 5 * 60_000;
 
 /** @type {Map<string, number>} */
 const hydrateMissAt = new Map();
@@ -51,12 +52,14 @@ async function runDb(label, build) {
   const out = await Promise.race([build(db), timeout]);
 
   if (out?.__timeout) {
+    // One stall already cost a caller the full budget — pause immediately
+    // rather than letting later polls pay it again.
     dbTimeoutStrikes += 1;
-    if (dbTimeoutStrikes >= 3) {
-      dbBreakerUntil = Date.now() + DB_BREAKER_MS;
-      dbTimeoutStrikes = 0;
-      console.warn(`[market-data] ${label} — Supabase unresponsive, pausing DB sync for 5m`);
-    }
+    const window = dbTimeoutStrikes >= 2 ? DB_BREAKER_LONG_MS : DB_BREAKER_SHORT_MS;
+    dbBreakerUntil = Date.now() + window;
+    console.warn(
+      `[market-data] ${label} — Supabase unresponsive, pausing DB sync for ${Math.round(window / 1000)}s`,
+    );
     return { data: null, error: { message: `timeout after ${DB_TIMEOUT_MS}ms` }, skipped: true };
   }
 
