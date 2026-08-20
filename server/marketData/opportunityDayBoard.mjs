@@ -14,7 +14,7 @@ const SCANNER_META = [
   ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
   ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
   ['compression_break', 'COMPRESSION BREAK', 'Tight coil + volume building inside. ACTIVE only on the close out.'],
-  ['breakout_radar', 'BREAKOUT RADAR', 'No coil allowed. WATCH at the 20-bar, ACTIVE on the close.'],
+  ['breakout_radar', 'BREAKOUT RADAR', 'WATCH at the 20-bar, ACTIVE on the close. Coil allowed.'],
   ['top_movers', 'TOP MOVERS', 'Last 3 bars still fast + volume now. Dead day winners out.'],
   ['liquidity_hunt', 'LIQUIDITY HUNT', 'Reclaim only — sweep without close-back does not list.'],
   ['trend_rider', 'TREND RIDER', 'First EMA/VWAP touch, then hold. Stretched names hide.'],

@@ -636,13 +636,12 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** BREAKOUT RADAR — no coil (that's Compression). WATCH at the level, ACTIVE on close. */
+/** BREAKOUT RADAR — WATCH at the 20-bar, ACTIVE on close. Coil does not block. */
 export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const bar = lastBar(f);
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
-  if (priorCoil(f)) return null;
   if (f.volume.ratio < 1.2) return null;
 
   const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
@@ -683,7 +682,7 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
     evidence: [
       { label: active ? (bullish ? '20-bar high broken' : '20-bar low broken') : 'Pressing 20-bar level', ok: active },
       { label: `RVOL ${f.volume.ratio.toFixed(1)}×`, ok: true },
-      { label: 'No prior coil', ok: true },
+      { label: priorCoil(f) ? 'Prior coil present' : 'Wide prior range', ok: true },
     ],
     meta: { early: !active },
   });

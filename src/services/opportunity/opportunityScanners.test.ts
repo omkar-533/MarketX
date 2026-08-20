@@ -402,8 +402,11 @@ describe('scanBreakoutRadar', () => {
     assert.equal(hit?.stateLabel, 'BREAKOUT + VOLUME');
   });
 
-  it('does not steal a coiled box from Compression Break', () => {
-    assert.equal(scanBreakoutRadar(ctx()), null);
+  it('lists a 20-bar close even when the prior box was coiled', () => {
+    const hit = scanBreakoutRadar(ctx());
+    assert.ok(hit);
+    assert.equal(hit?.status, 'ACTIVE');
+    assert.equal(hit?.stateLabel, 'BREAKOUT + VOLUME');
   });
 });
 

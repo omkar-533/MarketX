@@ -146,7 +146,7 @@ export const OPPORTUNITY_SCANNERS: {
   {
     id: 'breakout_radar',
     title: 'BREAKOUT RADAR',
-    tagline: 'No coil allowed. WATCH at the 20-bar, ACTIVE on the close.',
+    tagline: 'WATCH at the 20-bar, ACTIVE on the close. Coil allowed.',
     requires: 'ohlc',
   },
   {
