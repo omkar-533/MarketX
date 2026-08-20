@@ -39,8 +39,16 @@ export type ServerConnectionStatus = {
 
 /** Wolf Opportunity / Radar / LIVE WOLF / Strategy Lab — INDstocks LIVE only, never DEMO. */
 export function isIndstocksLive(s: ServerConnectionStatus | null | undefined): boolean {
-  return Boolean(s && s.status === 'CONNECTED' && s.mode === 'LIVE' && s.liveQuotes);
+  return Boolean(
+    s &&
+      s.status === 'CONNECTED' &&
+      s.mode === 'LIVE' &&
+      (s.providerId === 'indstocks' || s.liveQuotes),
+  );
 }
+
+const STATUS_STICKY_MS = 120_000;
+let lastStatusOk: { at: number; value: ServerConnectionStatus } | null = null;
 
 function base() {
   return getApiBaseUrl().replace(/\/$/, '');
@@ -76,30 +84,45 @@ export async function fetchMarketDataProviders(): Promise<CatalogProvider[]> {
 }
 
 export async function fetchMarketDataStatus(): Promise<ServerConnectionStatus> {
-  return json('/api/market-data/status');
+  try {
+    const next = await json<ServerConnectionStatus>('/api/market-data/status');
+    lastStatusOk = { at: Date.now(), value: next };
+    return next;
+  } catch (err) {
+    if (lastStatusOk && Date.now() - lastStatusOk.at < STATUS_STICKY_MS) {
+      return lastStatusOk.value;
+    }
+    throw err;
+  }
 }
 
 export async function connectDemoMarketData(): Promise<ServerConnectionStatus> {
-  return json('/api/market-data/connect', {
+  const next = await json<ServerConnectionStatus>('/api/market-data/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'mock-demo' }),
   });
+  lastStatusOk = { at: Date.now(), value: next };
+  return next;
 }
 
 /** Token is sent once to server — do not keep in React state after success. */
 export async function connectIndstocksMarketData(
   accessToken: string,
 ): Promise<ServerConnectionStatus> {
-  return json('/api/market-data/connect', {
+  const next = await json<ServerConnectionStatus>('/api/market-data/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'indstocks', accessToken }),
   });
+  lastStatusOk = { at: Date.now(), value: next };
+  return next;
 }
 
 export async function disconnectMarketData(): Promise<ServerConnectionStatus> {
-  return json('/api/market-data/disconnect', { method: 'POST' });
+  const next = await json<ServerConnectionStatus>('/api/market-data/disconnect', { method: 'POST' });
+  lastStatusOk = { at: Date.now(), value: next };
+  return next;
 }
 
 export async function fetchLiveQuote(symbol: string) {
