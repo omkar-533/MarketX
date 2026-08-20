@@ -254,6 +254,9 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
                 return Boolean(h && h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
               },
               asOf,
+              {
+                includeFirstBar: id === 'compression_break' || id === 'breakout_radar',
+              },
             );
           } catch {
             return [];

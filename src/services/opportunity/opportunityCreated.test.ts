@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { formatOpportunityCreatedClock, opportunityCreatedAtMs, opportunityCreatedTimesMs } from './opportunityCreated';
+import { formatOpportunityCreatedClock, opportunityCreatedAtMs, opportunityCreatedTimesMs, opportunityCreatedWindows } from './opportunityCreated';
 import {
   applyDaySignalCards,
   emptyOpportunityCards,
@@ -129,6 +129,17 @@ describe('Opportunity Created clock', () => {
     assert.equal(created, Date.parse('2026-08-17T10:25:00+05:30'));
     assert.equal(formatOpportunityCreatedClock(created, now), '10:25 am');
     assert.notEqual(created, Date.parse('2026-08-17T15:30:00+05:30'));
+  });
+
+  it('Compression / Breakout can stamp the first 9:20 close', () => {
+    const now = Date.parse('2026-08-17T10:05:00+05:30');
+    const start = Date.parse('2026-08-17T09:15:00+05:30');
+    const candles = session(start, 12);
+    const skipped = opportunityCreatedWindows(candles, '5m', () => true, now);
+    assert.equal(skipped[0]?.createdAt, Date.parse('2026-08-17T09:25:00+05:30'));
+    const fromOpen = opportunityCreatedWindows(candles, '5m', () => true, now, { includeFirstBar: true });
+    assert.equal(fromOpen[0]?.createdAt, Date.parse('2026-08-17T09:20:00+05:30'));
+    assert.equal(fromOpen[0]?.startIndex, 0);
   });
 
   it('blank when the setup never printed', () => {

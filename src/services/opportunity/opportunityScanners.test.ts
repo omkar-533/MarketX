@@ -359,6 +359,25 @@ describe('scanCompressionBreak', () => {
     assert.equal(hit?.status, 'ACTIVE');
     assert.equal(hit?.stateLabel, 'COMPRESSION BREAK');
   });
+
+  it('thinks on the first 9:20 close through prev-day high', () => {
+    const hit = scanCompressionBreak(
+      ctx({
+        timeframe: '5m',
+        sessionMinsFromOpen: 5,
+        prevDayHigh: 101.0,
+        high20: 104,
+        low20: 96,
+        sessionVolRatio: 1.4,
+        volume: { ratio: 1.12, state: 'EXPANDING' },
+        candles: [bar({ open: 100.6, high: 101.4, low: 100.5, close: 101.15 })],
+        tech: { last: 101.15, atr14: 0.4 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.status, 'ACTIVE');
+  });
 });
 
 describe('scanBreakoutRadar', () => {
@@ -407,6 +426,26 @@ describe('scanBreakoutRadar', () => {
     assert.ok(hit);
     assert.equal(hit?.status, 'ACTIVE');
     assert.equal(hit?.stateLabel, 'BREAKOUT + VOLUME');
+  });
+
+  it('thinks on the first 9:20 close through prev-day high', () => {
+    const hit = scanBreakoutRadar(
+      ctx({
+        timeframe: '5m',
+        sessionMinsFromOpen: 5,
+        prevDayHigh: 101.0,
+        high20: 104,
+        low20: 96,
+        priorAtrCompression: 1.15,
+        sessionVolRatio: 1.35,
+        volume: { ratio: 1.12, state: 'EXPANDING' },
+        candles: [bar({ open: 100.6, high: 101.4, low: 100.5, close: 101.15 })],
+        tech: { last: 101.15, atr14: 0.4 },
+      }),
+    );
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.status, 'ACTIVE');
   });
 });
 

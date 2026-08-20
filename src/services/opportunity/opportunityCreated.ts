@@ -11,10 +11,11 @@ export function opportunityCreatedWindows(
   timeframe: string,
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
+  opts?: { includeFirstBar?: boolean },
 ): OpportunityCreatedWindow[] {
   const seen = new Set<number>();
   const out: OpportunityCreatedWindow[] = [];
-  for (const w of runWindowsOfIstDay(candles, timeframe, hitsAt, now)) {
+  for (const w of runWindowsOfIstDay(candles, timeframe, hitsAt, now, opts)) {
     const createdAt = keepDisplaySetupTime(w.startMs, now);
     if (!(createdAt > 0) || seen.has(createdAt)) continue;
     seen.add(createdAt);
@@ -28,8 +29,9 @@ export function opportunityCreatedTimesMs(
   timeframe: string,
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
+  opts?: { includeFirstBar?: boolean },
 ): number[] {
-  return opportunityCreatedWindows(candles, timeframe, hitsAt, now).map((w) => w.createdAt);
+  return opportunityCreatedWindows(candles, timeframe, hitsAt, now, opts).map((w) => w.createdAt);
 }
 
 /** Latest still-active run, else 0. */

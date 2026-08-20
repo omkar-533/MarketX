@@ -324,11 +324,14 @@ export function runWindowsOfIstDay(
   timeframe: string,
   hitsAt: (endIndex: number) => boolean,
   now = Date.now(),
+  opts?: { includeFirstBar?: boolean },
 ): IstRunWindow[] {
   const w = istSessionWalk(candles, timeframe, now);
   if (!w) return [];
   const floor =
-    timeframe === '1D' || timeframe === '4h' ? w.start : Math.min(w.end, w.start + 1);
+    timeframe === '1D' || timeframe === '4h' || opts?.includeFirstBar
+      ? w.start
+      : Math.min(w.end, w.start + 1);
   const out: IstRunWindow[] = [];
   let i = floor;
   while (i <= w.end) {

@@ -210,6 +210,51 @@ function nearLevel(last: number, level: number, atr: number, maxAtr = 0.35): boo
   return Math.abs(last - level) <= maxAtr * atr;
 }
 
+/** First closed session bars — 5m 9:20–9:35, 15m first two, 1h first bar. */
+function openDriveWindow(f: FeatureSnapshot): boolean {
+  const m = f.sessionMinsFromOpen;
+  if (m == null || m < 0) return false;
+  if (f.timeframe === '1h' || f.timeframe === '1D') return m <= 60;
+  if (f.timeframe === '15m') return m <= 30;
+  return m <= 20;
+}
+
+function boxHigh(f: FeatureSnapshot): number | null {
+  if (openDriveWindow(f) && f.prevDayHigh != null && f.prevDayHigh > 0) {
+    if (f.high20 != null) {
+      return Math.abs(f.tech.last - f.prevDayHigh) <= Math.abs(f.tech.last - f.high20)
+        ? f.prevDayHigh
+        : f.high20;
+    }
+    return f.prevDayHigh;
+  }
+  return f.high20 ?? f.high10 ?? f.prevDayHigh ?? null;
+}
+
+function boxLow(f: FeatureSnapshot): number | null {
+  if (openDriveWindow(f) && f.prevDayLow != null && f.prevDayLow > 0) {
+    if (f.low20 != null) {
+      return Math.abs(f.tech.last - f.prevDayLow) <= Math.abs(f.tech.last - f.low20)
+        ? f.prevDayLow
+        : f.low20;
+    }
+    return f.prevDayLow;
+  }
+  return f.low20 ?? f.low10 ?? f.prevDayLow ?? null;
+}
+
+function brokeLevel(bar: Candle, level: number, side: 'up' | 'down', early: boolean): boolean {
+  if (early) {
+    if (!(level > 0)) return false;
+    const open = Number.isFinite(bar.open) ? bar.open : bar.close;
+    const body = Math.abs(bar.close - open);
+    const range = Math.max(bar.high - bar.low, 1e-9);
+    if (body / range < 0.25) return false;
+    return side === 'up' ? bar.close > level : bar.close < level;
+  }
+  return closeBrokeLevel(bar, level, side);
+}
+
 function tooExtended(last: number, level: number, atr: number, maxAtr = 2): boolean {
   return Math.abs(last - level) > maxAtr * atr;
 }
@@ -573,32 +618,29 @@ export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** COMPRESSION BREAK — WATCH while coiled + vol presses the box; ACTIVE on close out. */
+/** COMPRESSION BREAK — WATCH while coiled + vol presses the box; ACTIVE on close out. First 9:20 bar counts. */
 export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const bar = lastBar(f);
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
   if (!priorCoil(f)) return null;
-  if (f.volume.ratio < 1.2) return null;
+  const early = openDriveWindow(f);
+  if (!volumeLive(f, early ? 1.1 : 1.2)) return null;
 
-  const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
-  const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
+  const high = boxHigh(f);
+  const low = boxLow(f);
+  const up = high != null && brokeLevel(bar, high, 'up', early);
+  const down = low != null && brokeLevel(bar, low, 'down', early);
+  const watchBand = early ? 0.5 : 0.35;
+  const watchVol = early || volumeRising(f);
   const watchUp =
-    !up &&
-    f.high20 != null &&
-    bar.close <= f.high20 &&
-    nearLevel(f.tech.last, f.high20, atr, 0.35) &&
-    volumeRising(f);
+    !up && high != null && bar.close <= high && nearLevel(f.tech.last, high, atr, watchBand) && watchVol;
   const watchDown =
-    !down &&
-    f.low20 != null &&
-    bar.close >= f.low20 &&
-    nearLevel(f.tech.last, f.low20, atr, 0.35) &&
-    volumeRising(f);
+    !down && low != null && bar.close >= low && nearLevel(f.tech.last, low, atr, watchBand) && watchVol;
   if (!up && !down && !watchUp && !watchDown) return null;
   const bullish = up || watchUp;
-  const level = bullish ? f.high20! : f.low20!;
+  const level = bullish ? high! : low!;
   if ((up || down) && !notChased(f.tech.last, level, atr, 1.8)) return null;
 
   const active = up || down;
@@ -619,7 +661,7 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
     breakdown,
     stateLabel: active ? 'COMPRESSION BREAK' : 'WATCH COIL',
     why: active
-      ? 'Left a coiled 20-bar box on a volume close — expansion after squeeze.'
+      ? 'Left a coiled box on a volume close — expansion after squeeze.'
       : 'Coil tight, volume box ke edge pe — break se pehle.',
     keyLevel: level,
     trigger: level,
@@ -629,28 +671,32 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
       : 'WATCH — box ke bahar close ka wait.',
     evidence: [
       { label: 'Prior ATR/range coiled', ok: true },
-      { label: `RVOL ${f.volume.ratio.toFixed(1)}×`, ok: true },
-      { label: active ? 'Close outside 20-bar box' : 'WATCH — still inside box', ok: active },
+      { label: `RVOL ${Math.max(f.volume.ratio, f.sessionVolRatio ?? 0).toFixed(1)}×`, ok: true },
+      { label: active ? 'Close outside box' : 'WATCH — still inside box', ok: active },
     ],
     meta: { early: !active },
   });
 }
 
-/** BREAKOUT RADAR — WATCH at the 20-bar, ACTIVE on close. Coil does not block. */
+/** BREAKOUT RADAR — WATCH at the box, ACTIVE on close. First 9:20 bar counts. */
 export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   const bar = lastBar(f);
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
-  if (f.volume.ratio < 1.2) return null;
+  const early = openDriveWindow(f);
+  if (!volumeLive(f, early ? 1.1 : 1.2)) return null;
 
-  const up = f.high20 != null && closeBrokeLevel(bar, f.high20, 'up');
-  const down = f.low20 != null && closeBrokeLevel(bar, f.low20, 'down');
-  const watchUp = !up && f.high20 != null && bar.close <= f.high20 && nearLevel(f.tech.last, f.high20, atr, 0.3);
-  const watchDown = !down && f.low20 != null && bar.close >= f.low20 && nearLevel(f.tech.last, f.low20, atr, 0.3);
+  const high = boxHigh(f);
+  const low = boxLow(f);
+  const up = high != null && brokeLevel(bar, high, 'up', early);
+  const down = low != null && brokeLevel(bar, low, 'down', early);
+  const watchBand = early ? 0.5 : 0.3;
+  const watchUp = !up && high != null && bar.close <= high && nearLevel(f.tech.last, high, atr, watchBand);
+  const watchDown = !down && low != null && bar.close >= low && nearLevel(f.tech.last, low, atr, watchBand);
   if (!up && !down && !watchUp && !watchDown) return null;
   const bullish = up || watchUp;
-  const level = bullish ? f.high20! : f.low20!;
+  const level = bullish ? high! : low!;
   if ((up || down) && !notChased(f.tech.last, level, atr, 1.8)) return null;
 
   const active = up || down;
@@ -671,8 +717,8 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
     breakdown,
     stateLabel: active ? 'BREAKOUT + VOLUME' : 'WATCH LEVEL',
     why: active
-      ? `Closed beyond 20-bar ${bullish ? 'high' : 'low'} with RVOL ${f.volume.ratio.toFixed(1)}×.`
-      : `20-bar ${bullish ? 'high' : 'low'} ₹${level.toFixed(2)} ke 0.3 ATR andar, volume ${f.volume.ratio.toFixed(1)}× — break se pehle.`,
+      ? `Closed beyond ${bullish ? 'high' : 'low'} ₹${level.toFixed(2)} with RVOL ${Math.max(f.volume.ratio, f.sessionVolRatio ?? 0).toFixed(1)}×.`
+      : `${bullish ? 'High' : 'Low'} ₹${level.toFixed(2)} ke andar, volume ${Math.max(f.volume.ratio, f.sessionVolRatio ?? 0).toFixed(1)}× — break se pehle.`,
     keyLevel: level,
     trigger: level,
     invalidation: `Close back inside prior range through ₹${level.toFixed(2)}`,
@@ -680,8 +726,8 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
       ? 'Retest hold preferred.'
       : 'WATCH — level ke bahar close ka wait.',
     evidence: [
-      { label: active ? (bullish ? '20-bar high broken' : '20-bar low broken') : 'Pressing 20-bar level', ok: active },
-      { label: `RVOL ${f.volume.ratio.toFixed(1)}×`, ok: true },
+      { label: active ? (bullish ? 'Range high broken' : 'Range low broken') : 'Pressing range level', ok: active },
+      { label: `RVOL ${Math.max(f.volume.ratio, f.sessionVolRatio ?? 0).toFixed(1)}×`, ok: true },
       { label: priorCoil(f) ? 'Prior coil present' : 'Wide prior range', ok: true },
     ],
     meta: { early: !active },

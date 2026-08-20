@@ -140,13 +140,13 @@ export const OPPORTUNITY_SCANNERS: {
   {
     id: 'compression_break',
     title: 'COMPRESSION BREAK',
-    tagline: 'Tight coil + volume building inside. ACTIVE only on the close out.',
+    tagline: 'From the 9:20 close. Tight coil + volume. ACTIVE on the close out.',
     requires: 'ohlc',
   },
   {
     id: 'breakout_radar',
     title: 'BREAKOUT RADAR',
-    tagline: 'WATCH at the 20-bar, ACTIVE on the close. Coil allowed.',
+    tagline: 'From the 9:20 close. WATCH at the box, ACTIVE on the close.',
     requires: 'ohlc',
   },
   {
