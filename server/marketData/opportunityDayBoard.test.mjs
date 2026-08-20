@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { mergeScannerHits, istCalendarDay, nseBoardDay, msUntilNextSessionOpen, retainBoardsForDay } from './opportunityDayBoard.mjs';
+import { mergeScannerHits, nextScannerHits, istCalendarDay, nseBoardDay, msUntilNextSessionOpen, retainBoardsForDay } from './opportunityDayBoard.mjs';
 
 describe('opportunity day board merge', () => {
   it('keeps the morning print when a later scan posts a 2nd signal', () => {
@@ -74,6 +74,31 @@ describe('opportunity day board merge', () => {
       nseBoardDay(nextOpen),
     );
     assert.deepEqual(Object.keys(kept.boards), ['2026-08-18|F&O|5m']);
+  });
+
+  it('keeps a 1D midnight stamp on the board day', () => {
+    const day = '2026-08-17';
+    const midnight = Date.parse('2026-08-17T00:00:00+05:30');
+    const hits = mergeScannerHits(
+      [],
+      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: midnight, timeframe: '1D' }],
+      day,
+    );
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].timeframe, '1D');
+  });
+
+  it('does not wipe a 15m board when the next scan posts zero hits', () => {
+    const day = '2026-08-17';
+    const t = Date.parse('2026-08-17T10:00:00+05:30');
+    const prev = mergeScannerHits(
+      [],
+      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: t, timeframe: '15m' }],
+      day,
+    );
+    const kept = nextScannerHits(prev, [], day);
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0].symbol, 'INFY');
   });
 
   it('does not wipe in-memory prints when the disk file is missing', () => {

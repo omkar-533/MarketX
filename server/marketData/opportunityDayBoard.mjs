@@ -121,9 +121,9 @@ function listingOk(ms, day) {
   if (!Number.isFinite(t) || t <= 0) return false;
   if (t > Date.now() + 2_000) return false;
   if (istCalendarDay(t) !== day) return false;
-  const open = Date.parse(`${day}T09:15:00+05:30`);
+  const dayStart = Date.parse(`${day}T00:00:00+05:30`);
   const close = Date.parse(`${day}T15:30:00+05:30`);
-  return t >= open - 2_000 && t <= close + 2_000;
+  return t >= dayStart && t <= close + 2_000;
 }
 
 function slimHit(raw, day) {
@@ -157,6 +157,14 @@ function slimHit(raw, day) {
     dataMode: 'LIVE',
     meta: raw.meta && typeof raw.meta === 'object' ? raw.meta : {},
   };
+}
+
+/** Empty incoming must not wipe a live board (failed 15m/1h/1D scan). */
+export function nextScannerHits(prev, incoming, day, onePerSymbol = false) {
+  if (!(incoming || []).length && (prev || []).length) {
+    return prev.filter((h) => listingOk(Number(h.detectedAt), day));
+  }
+  return mergeScannerHits(prev, incoming, day, onePerSymbol);
 }
 
 export function mergeScannerHits(prev, incoming, day, onePerSymbol = false) {
@@ -332,9 +340,12 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
-    const incoming = inBy.get(id)?.hits || [];
-    const prev = id === 'options_flow' ? prevRow?.hitsByScanner?.[id] || [] : [];
-    next[id] = mergeScannerHits(prev, incoming, day, id === 'options_flow');
+    next[id] = nextScannerHits(
+      prevRow?.hitsByScanner?.[id] || [],
+      inBy.get(id)?.hits || [],
+      day,
+      id === 'options_flow',
+    );
   }
   const row = {
     day,

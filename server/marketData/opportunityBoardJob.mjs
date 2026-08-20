@@ -33,15 +33,18 @@ let tokenCursor = 0;
 let started = false;
 let lastNoTokenLog = 0;
 
+const ALL_TFS = ['5m', '15m', '1h', '1D'];
+
 export function planOpportunityBoardTick(now = Date.now(), n = 0) {
   const open = nseCashSessionIsOpen(now);
   if (!open) {
-    return { hunt: true, persist: true, timeframes: ['5m'], universes: [...UNIVERSES] };
+    const slow = ALL_TFS[1 + (n % 3)];
+    return { hunt: true, persist: true, timeframes: ['5m', slow], universes: [...UNIVERSES] };
   }
   const timeframes = ['5m'];
-  if (n % 5 === 0) timeframes.push('15m');
-  if (n % 15 === 0) timeframes.push('1h');
-  if (n % 30 === 0) timeframes.push('1D');
+  if (n % 2 === 0) timeframes.push('15m');
+  if (n % 5 === 0) timeframes.push('1h');
+  if (n % 10 === 0) timeframes.push('1D');
   return { hunt: true, persist: true, timeframes, universes: [...UNIVERSES] };
 }
 

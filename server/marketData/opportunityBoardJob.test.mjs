@@ -22,12 +22,16 @@ describe('opportunity board job plan', () => {
     assert.deepEqual(plan.universes, ['F&O']);
   });
 
-  it('after the bell still hunts 5m so Created times rebuild from the last session', () => {
+  it('after the bell still hunts 5m plus a slower TF so 15m/1h/1D do not go empty', () => {
     const closed = Date.parse('2026-08-17T18:05:00+05:30');
-    const plan = planOpportunityBoardTick(closed, 3);
-    assert.equal(plan.hunt, true);
-    assert.equal(plan.persist, true);
-    assert.deepEqual(plan.timeframes, ['5m']);
-    assert.deepEqual(plan.universes, ['F&O']);
+    const a = planOpportunityBoardTick(closed, 0);
+    const b = planOpportunityBoardTick(closed, 1);
+    const c = planOpportunityBoardTick(closed, 2);
+    assert.equal(a.hunt, true);
+    assert.equal(a.persist, true);
+    assert.ok(a.timeframes.includes('5m') && a.timeframes.includes('15m'));
+    assert.ok(b.timeframes.includes('5m') && b.timeframes.includes('1h'));
+    assert.ok(c.timeframes.includes('5m') && c.timeframes.includes('1D'));
+    assert.deepEqual(a.universes, ['F&O']);
   });
 });

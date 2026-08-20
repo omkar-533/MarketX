@@ -368,10 +368,11 @@ export default function WolfOpportunityPage({
       try {
         if (!quiet) setProgress('Loading shared day board…');
         const cached = localBoard();
-        if (replaceDesk) setCards(emptyOpportunityCards());
-        if (!quiet && cached.some((c) => c.hits.length)) paintBoard(cached, replaceDesk);
+        const cachedHasHits = cached.some((c) => c.hits.length);
+        if (replaceDesk && !cachedHasHits) setCards(emptyOpportunityCards());
+        if (!quiet && cachedHasHits) paintBoard(cached, replaceDesk);
 
-        let hadBoard = cached.some((c) => c.hits.length);
+        let hadBoard = cachedHasHits;
         try {
           const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
           if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
@@ -383,34 +384,39 @@ export default function WolfOpportunityPage({
           /* keep local board; first user of the day still scans once */
         }
 
-        if (hadBoard && isNseFnoMarketOpen()) {
-          const canContribute =
-            !contributeRef.current && Date.now() - lastContributeAtRef.current > 45_000;
-          if (canContribute) {
-            contributeRef.current = true;
-            lastContributeAtRef.current = Date.now();
-            void (async () => {
-              setBgBusy(true);
-              try {
-                const out = await runOpportunityScan(
-                  activeFilters,
-                  { signal: ac.signal, topN: OPPORTUNITY_SCAN_CAP, freshCandles: false },
-                  provider,
-                );
-                if (!out.hits.length && !out.complete) return;
-                const saved = await postOpportunityDayBoard(
-                  activeFilters.universe,
-                  activeFilters.timeframe,
-                  tfHits(out.cards),
-                );
-                if (saved.cards?.length) adoptBoard(saved.cards, false);
-              } catch {
-                /* keep the saved board on screen */
-              } finally {
-                contributeRef.current = false;
-                setBgBusy(false);
-              }
-            })();
+        if (hadBoard) {
+          if (isNseFnoMarketOpen()) {
+            const canContribute =
+              !contributeRef.current && Date.now() - lastContributeAtRef.current > 45_000;
+            if (canContribute) {
+              contributeRef.current = true;
+              lastContributeAtRef.current = Date.now();
+              void (async () => {
+                setBgBusy(true);
+                try {
+                  const out = await runOpportunityScan(
+                    activeFilters,
+                    { signal: ac.signal, topN: OPPORTUNITY_SCAN_CAP, freshCandles: false },
+                    provider,
+                  );
+                  if (!out.hits.length) return;
+                  const saved = await postOpportunityDayBoard(
+                    activeFilters.universe,
+                    activeFilters.timeframe,
+                    tfHits(out.cards),
+                  );
+                  if (saved.cards?.some((c) => c.hits.length)) adoptBoard(saved.cards, false);
+                } catch {
+                  /* keep the saved board on screen */
+                } finally {
+                  contributeRef.current = false;
+                  setBgBusy(false);
+                }
+              })();
+            }
+          } else {
+            closedBoardFrozenRef.current = true;
+            if (!quiet) setProgress('Last session board');
           }
           return;
         }
@@ -450,21 +456,25 @@ export default function WolfOpportunityPage({
         }
         if (!isStale() && out.complete) {
           let incoming = tfHits(out.cards);
-          try {
-            const saved = await postOpportunityDayBoard(
-              activeFilters.universe,
-              activeFilters.timeframe,
-              incoming,
-            );
-            if (saved.cards?.length) incoming = tfHits(saved.cards);
-          } catch {
-            /* keep local incoming */
+          const hasHits = incoming.some((c) => c.hits.length);
+          if (hasHits) {
+            try {
+              const saved = await postOpportunityDayBoard(
+                activeFilters.universe,
+                activeFilters.timeframe,
+                incoming,
+              );
+              if (saved.cards?.some((c) => c.hits.length)) incoming = tfHits(saved.cards);
+            } catch {
+              /* keep local incoming */
+            }
+            saveOpportunityDayBoard(boardKey, incoming);
+            paintBoard(incoming, false);
           }
-          saveOpportunityDayBoard(boardKey, incoming);
-          paintBoard(incoming, false);
           setDataMode(out.dataMode);
           if (!isNseFnoMarketOpen()) closedBoardFrozenRef.current = true;
-          if (!quiet) setProgress(`${incoming.reduce((n, c) => n + c.hits.length, 0)} setups ready`);
+          const n = incoming.reduce((sum, c) => sum + c.hits.length, 0);
+          if (!quiet) setProgress(n ? `${n} setups ready` : 'No setups on this timeframe yet');
         } else if (!isStale() && !out.complete) {
           if (out.hits.length) {
             const incoming = tfHits(out.cards);
