@@ -276,7 +276,8 @@ function tooExtended(last: number, level: number, atr: number, maxAtr = 2): bool
 /**
  * MORNING SPRINT — from the first closed 5m bar (9:20) until the close.
  * Rule: Open == Day Low (long) or Open == Day High (short).
- * If that equality breaks later in the day, the symbol must drop.
+ * Once the equality breaks the symbol stops printing; the board keeps the
+ * day's earlier prints, same as the other scanners.
  */
 export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -338,8 +339,8 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
     keyLevel: sessOpen,
     trigger,
     invalidation: bullish
-      ? `Aaj ka low open ₹${sessOpen.toFixed(2)} ke neeche gaya to setup remove.`
-      : `Aaj ka high open ₹${sessOpen.toFixed(2)} ke upar gaya to setup remove.`,
+      ? `Aaj ka low open ₹${sessOpen.toFixed(2)} ke neeche gaya to setup invalid.`
+      : `Aaj ka high open ₹${sessOpen.toFixed(2)} ke upar gaya to setup invalid.`,
     confirmationNeeded: bullish
       ? `Open=Low hold rahe aur day high ₹${trigger.toFixed(2)} break ho to continuation.`
       : `Open=High hold rahe aur day low ₹${trigger.toFixed(2)} break ho to continuation.`,

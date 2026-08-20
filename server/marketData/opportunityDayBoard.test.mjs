@@ -103,27 +103,35 @@ describe('opportunity day board merge', () => {
     assert.equal(kept[0].symbol, 'INFY');
   });
 
-  it('replaces Morning Sprint with live-only symbols and drops stale names', () => {
+  it('keeps every Morning Sprint print of the day, including repeat bars', () => {
     const day = '2026-08-17';
     const t1 = Date.parse('2026-08-17T09:20:00+05:30');
     const t2 = Date.parse('2026-08-17T09:25:00+05:30');
+    const t3 = Date.parse('2026-08-17T14:30:00+05:30');
     const prev = mergeScannerHits(
       [],
       [{ scannerId: 'morning_sprint', symbol: 'INFY', score: 72, detectedAt: t1, timeframe: '5m' }],
       day,
-      true,
     );
     const next = nextScannerHits(
       prev,
       [{ scannerId: 'morning_sprint', symbol: 'TCS', score: 75, detectedAt: t2, timeframe: '5m' }],
       day,
-      true,
-      { keepOnEmpty: false, replace: true },
     );
-    assert.equal(next.some((h) => h.symbol === 'INFY'), false);
+    assert.equal(next.some((h) => h.symbol === 'INFY'), true);
     assert.equal(next.some((h) => h.symbol === 'TCS'), true);
-    const empty = nextScannerHits(next, [], day, true, { keepOnEmpty: false, replace: true });
-    assert.equal(empty.length, 0);
+
+    // INFY breaking the rule at midday must not erase its morning print.
+    const quiet = nextScannerHits(next, [], day);
+    assert.equal(quiet.length, 2);
+
+    // A second INFY trigger later in the day is its own row, not an overwrite.
+    const again = nextScannerHits(
+      quiet,
+      [{ scannerId: 'morning_sprint', symbol: 'INFY', score: 80, detectedAt: t3, timeframe: '5m' }],
+      day,
+    );
+    assert.equal(again.filter((h) => h.symbol === 'INFY').length, 2);
   });
 
   it('does not wipe in-memory prints when the disk file is missing', () => {
