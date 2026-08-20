@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   lastCompletedNseSessionEndMs,
+  nsePriorCompletedSessionEndMs,
   nextNseWeeklyExpiryYmd,
   nseMonthlyExpiryYmd,
   parseOptionExpiryMs,
@@ -23,6 +24,18 @@ describe('lastCompletedNseSessionEndMs', () => {
     const now = Date.parse('2026-08-16T10:00:00+05:30');
     const end = lastCompletedNseSessionEndMs(now);
     assert.equal(end, Date.parse('2026-08-14T15:30:00+05:30'));
+  });
+});
+
+describe('nsePriorCompletedSessionEndMs', () => {
+  it('stays on yesterday\'s 15:30 while today\'s first bar is still open', () => {
+    const now = Date.parse('2026-08-18T09:18:00+05:30');
+    assert.equal(nsePriorCompletedSessionEndMs(now), Date.parse('2026-08-17T15:30:00+05:30'));
+  });
+
+  it('uses today\'s 15:30 after the bell', () => {
+    const now = Date.parse('2026-08-18T16:05:00+05:30');
+    assert.equal(nsePriorCompletedSessionEndMs(now), Date.parse('2026-08-18T15:30:00+05:30'));
   });
 });
 

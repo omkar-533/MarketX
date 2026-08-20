@@ -10,6 +10,7 @@ import {
   fetchIndstocksCandles,
   fetchIndstocksCandlesMany,
   lastCompletedNseSessionEndMs,
+  nsePriorCompletedSessionEndMs,
   resolveScripCodeCandidates,
 } from './indstocksClient.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
@@ -136,18 +137,30 @@ function nseSessionOpenMs(now) {
   return Number.isFinite(open) ? open : 0;
 }
 
+function nseTodaySessionOpenMs(now) {
+  const open = Date.parse(`${istCalendarDay(now)}T09:15:00+05:30`);
+  return Number.isFinite(open) ? open : 0;
+}
+
+function snapshotJobId(universe, timeframe) {
+  return `${String(universe || 'F&O')}|${normTf(timeframe)}`;
+}
+
 /** Close time of the last finished NSE bar — same board for every login in that bar. */
 export function nseLastClosedBarCloseMs(timeframe, now = Date.now()) {
   const tf = normTf(timeframe);
   const dur = BAR_MS[tf] || BAR_MS['5m'];
+  const priorClose = nsePriorCompletedSessionEndMs(now);
+  if (tf === '1D') {
+    return nseCashSessionIsOpen(now) ? priorClose : lastCompletedNseSessionEndMs(now) || priorClose || 0;
+  }
   const sessionEnd = lastCompletedNseSessionEndMs(now);
-  if (tf === '1D') return sessionEnd || 0;
   const start = nseSessionOpenMs(now);
-  if (!(start > 0)) return 0;
+  if (!(start > 0)) return priorClose || 0;
   const cap = Math.min(now, sessionEnd || now);
-  if (cap < start) return 0;
+  if (cap < start) return priorClose || 0;
   const closed = Math.floor((cap - start) / dur);
-  if (closed <= 0) return 0;
+  if (closed <= 0) return priorClose || 0;
   const close = start + closed * dur;
   return close > now + 2_000 ? close - dur : close;
 }
@@ -164,11 +177,13 @@ export function msUntilNextNseBar(timeframe, now = Date.now()) {
     const wait = (Number.isFinite(nx) ? nx : now + dur) - now + 4_000;
     return Math.max(60_000, wait);
   }
+  const todayOpen = nseTodaySessionOpenMs(now);
+  const todayClose = Date.parse(`${istCalendarDay(now)}T15:30:00+05:30`);
   const last = nseLastClosedBarCloseMs(tf, now);
-  const sessionEnd = lastCompletedNseSessionEndMs(now);
-  let next = last > 0 ? last + dur : nseSessionOpenMs(now) + dur;
-  if (sessionEnd && next > sessionEnd + 2_000) {
-    const ymd = istCalendarDay(sessionEnd);
+  let next = todayOpen > 0 ? todayOpen + dur : now + dur;
+  if (last >= todayOpen) next = last + dur;
+  if (Number.isFinite(todayClose) && next > todayClose + 2_000) {
+    const ymd = istCalendarDay(now);
     const p = new Date(`${ymd}T12:00:00+05:30`);
     const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(p);
     const skip = wd === 'Fri' ? 3 : 1;
@@ -181,8 +196,7 @@ export function msUntilNextNseBar(timeframe, now = Date.now()) {
 export function snapshotCacheKey(universe, timeframe, now = Date.now()) {
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
-  const bucket =
-    nseLastClosedBarCloseMs(tf, now) || lastCompletedNseSessionEndMs(now) || Math.floor(now / (BAR_MS[tf] || 300_000));
+  const bucket = nseLastClosedBarCloseMs(tf, now) || nsePriorCompletedSessionEndMs(now);
   return `${u}|${tf}|${bucket}`;
 }
 
@@ -204,7 +218,7 @@ function slimCandles(symbol, candles) {
   }));
 }
 
-async function fillCandles(accessToken, symbols, timeframe, bars, key) {
+async function fillCandles(accessToken, symbols, timeframe, bars, progressId) {
   await ensureInstrumentMap(accessToken);
   /** @type {Record<string, object[]>} */
   const result = {};
@@ -228,7 +242,7 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
     }
     need.push({ symbol, scrip });
   }
-  progress.set(key, { loaded: Object.keys(result).length, total: symbols.length });
+  progress.set(progressId, { loaded: Object.keys(result).length, total: symbols.length });
 
   const CHUNK = 45;
   for (let i = 0; i < need.length; i += CHUNK) {
@@ -255,7 +269,7 @@ async function fillCandles(accessToken, symbols, timeframe, bars, key) {
       if (isStale(candles)) candles = [];
       result[symbol] = slimCandles(symbol, candles);
     }
-    progress.set(key, { loaded: Object.keys(result).length, total: symbols.length });
+    progress.set(progressId, { loaded: Object.keys(result).length, total: symbols.length });
   }
 
   for (const symbol of symbols) {
@@ -277,19 +291,16 @@ function armAutoFetch(universe, timeframe, accessToken) {
     const token = lastAccessToken;
     if (!token) return;
     dropExpiredOpportunityBoards();
-    for (const k of [...cache.keys()]) {
-      if (k.startsWith(`${id}|`)) cache.delete(k);
-    }
     peekOpportunitySnapshot(token, u, tf);
   }, wait);
   refreshTimers.set(id, timer);
 }
 
-async function buildSnapshot(accessToken, universe, timeframe, key) {
+async function buildSnapshot(accessToken, universe, timeframe, key, jobId) {
   const symbols = uniqueSorted(resolveServerUniverse(universe));
   const bars = SNAP_BARS[timeframe] || 120;
-  progress.set(key, { loaded: 0, total: symbols.length });
-  const candlesBySymbol = await fillCandles(accessToken, symbols, timeframe, bars, key);
+  progress.set(jobId, { loaded: 0, total: symbols.length });
+  const candlesBySymbol = await fillCandles(accessToken, symbols, timeframe, bars, jobId);
   const barClose = nseLastClosedBarCloseMs(timeframe);
   const asOf = barClose || Date.now();
   return {
@@ -311,6 +322,7 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe, opts =
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
+  const jobId = snapshotJobId(u, tf);
   if (accessToken) lastAccessToken = accessToken;
   const hit = pickStaleSnapshot(u, tf, key);
   const sessionOpen = nseCashSessionIsOpen();
@@ -321,13 +333,13 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe, opts =
     hit?.ready &&
     hit.candlesBySymbol &&
     (!sessionOpen || hit.cacheKey === key) &&
-    !(force && staleMs > 50_000 && !inflight.has(key));
+    !(force && staleMs > 50_000 && !inflight.has(jobId));
   if (serveHot) {
     if (sessionOpen) armAutoFetch(u, tf, accessToken || lastAccessToken);
     return { ready: true, ...hit, frozen: !sessionOpen };
   }
-  const fail = lastFail.get(key);
-  if (fail && !hit && Date.now() - fail.at < 20_000 && !inflight.has(key)) {
+  const fail = lastFail.get(jobId);
+  if (fail && !hit && Date.now() - fail.at < 20_000 && !inflight.has(jobId)) {
     return {
       ready: false,
       building: false,
@@ -338,9 +350,9 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe, opts =
       source: 'shared-indstocks',
     };
   }
-  if (!inflight.has(key) && accessToken) {
-    lastFail.delete(key);
-    const job = buildSnapshot(accessToken, u, tf, key)
+  if (!inflight.has(jobId) && accessToken) {
+    lastFail.delete(jobId);
+    const job = buildSnapshot(accessToken, u, tf, key, jobId)
       .then((payload) => {
         cache.set(key, payload);
         writeDisk(key, payload);
@@ -351,24 +363,24 @@ export function peekOpportunitySnapshot(accessToken, universe, timeframe, opts =
         return payload;
       })
       .finally(() => {
-        inflight.delete(key);
-        progress.delete(key);
+        inflight.delete(jobId);
+        progress.delete(jobId);
       });
-    inflight.set(key, job);
+    inflight.set(jobId, job);
     job.catch((err) => {
       const message = err instanceof Error ? err.message : 'Shared board failed';
       console.warn('[opportunity-snapshot] build failed', message);
-      lastFail.set(key, { at: Date.now(), error: message });
+      lastFail.set(jobId, { at: Date.now(), error: message });
     });
   }
   if (hit?.ready && hit.candlesBySymbol) {
     armAutoFetch(u, tf, accessToken || lastAccessToken);
-    return { ready: true, ...hit, building: inflight.has(key), serving: 'previous-bar' };
+    return { ready: true, ...hit, building: inflight.has(jobId), serving: 'previous-bar' };
   }
-  const prog = progress.get(key) || { loaded: 0, total: 0 };
+  const prog = progress.get(jobId) || { loaded: 0, total: 0 };
   return {
     ready: false,
-    building: inflight.has(key),
+    building: inflight.has(jobId),
     universe: u,
     timeframe: tf,
     symbolsLoaded: prog.loaded,
@@ -388,8 +400,9 @@ export async function awaitOpportunitySnapshot(
   const tf = normTf(timeframe);
   const u = String(universe || 'F&O');
   const key = snapshotCacheKey(u, tf);
+  const jobId = snapshotJobId(u, tf);
   peekOpportunitySnapshot(accessToken, u, tf, { force });
-  const job = inflight.get(key);
+  const job = inflight.get(jobId);
   if (job) {
     const timeout = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Opportunity snapshot timed out')), timeoutMs);

@@ -2,7 +2,7 @@
  * Shared Opportunity day log — one IST-day board for every login.
  * Morning prints stay. Later reprints append. Market close does not wipe.
  */
-import { lastCompletedNseSessionEndMs } from './indstocksClient.mjs';
+import { nsePriorCompletedSessionEndMs } from './indstocksClient.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -36,8 +36,17 @@ export function istCalendarDay(ms = Date.now()) {
 }
 
 export function nseBoardDay(now = Date.now()) {
-  const end = lastCompletedNseSessionEndMs(now);
-  return istCalendarDay(end > 0 ? end : now);
+  const ymd = istCalendarDay(now);
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date(now));
+  if (wd === 'Sat' || wd === 'Sun') {
+    return istCalendarDay(nsePriorCompletedSessionEndMs(now));
+  }
+  // First closed 5m bar is 09:20. Flipping at 09:15 wipes yesterday and starts an empty hunt.
+  const firstClosed5m = Date.parse(`${ymd}T09:20:00+05:30`);
+  if (Number.isFinite(firstClosed5m) && now < firstClosed5m) {
+    return istCalendarDay(nsePriorCompletedSessionEndMs(now));
+  }
+  return ymd;
 }
 
 export function boardSlot(universe, timeframe, now = Date.now()) {

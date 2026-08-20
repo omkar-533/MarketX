@@ -64,14 +64,16 @@ describe('opportunity day board merge', () => {
     assert.equal(merged.length, 81);
   });
 
-  it('keeps Monday after the bell and drops it when Tuesday session opens', () => {
+  it('keeps Monday after the bell and drops it when Tuesday\'s first 5m bar closes', () => {
     const afterClose = Date.parse('2026-08-17T18:05:00+05:30');
-    const nextOpen = Date.parse('2026-08-18T09:16:00+05:30');
+    const beforeFirstBar = Date.parse('2026-08-18T09:16:00+05:30');
+    const afterFirstBar = Date.parse('2026-08-18T09:20:00+05:30');
     assert.equal(nseBoardDay(afterClose), '2026-08-17');
-    assert.equal(nseBoardDay(nextOpen), '2026-08-18');
+    assert.equal(nseBoardDay(beforeFirstBar), '2026-08-17');
+    assert.equal(nseBoardDay(afterFirstBar), '2026-08-18');
     const kept = retainBoardsForDay(
       { boards: { '2026-08-17|F&O|5m': { day: '2026-08-17' }, '2026-08-18|F&O|5m': { day: '2026-08-18' } } },
-      nseBoardDay(nextOpen),
+      nseBoardDay(afterFirstBar),
     );
     assert.deepEqual(Object.keys(kept.boards), ['2026-08-18|F&O|5m']);
   });

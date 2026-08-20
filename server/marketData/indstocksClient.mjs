@@ -237,6 +237,7 @@ function shiftIstYmd(ymd, days) {
 /**
  * Last completed NSE cash session close (15:30 IST).
  * After hours / weekend INDstocks historical often returns empty when end_time is "now".
+ * During an open session this returns `now` so live candle fetches can include the forming bar.
  */
 export function lastCompletedNseSessionEndMs(now = Date.now()) {
   let ymd = istCalendarDay(now);
@@ -248,6 +249,24 @@ export function lastCompletedNseSessionEndMs(now = Date.now()) {
   else if (wd === 6) ymd = shiftIstYmd(ymd, -1);
   else if (now >= closeToday) return closeToday;
   else if (now >= openToday) return now;
+  else ymd = shiftIstYmd(ymd, wd === 1 ? -3 : -1);
+
+  const close = istSessionCloseMs(ymd);
+  return Number.isFinite(close) ? close : now;
+}
+
+/**
+ * End of the last FULLY finished cash session (always a 15:30 IST close).
+ * Never returns `now` while today's first bars are still forming.
+ */
+export function nsePriorCompletedSessionEndMs(now = Date.now()) {
+  let ymd = istCalendarDay(now);
+  const wd = istWeekday(now);
+  const closeToday = istSessionCloseMs(ymd);
+
+  if (wd === 0) ymd = shiftIstYmd(ymd, -2);
+  else if (wd === 6) ymd = shiftIstYmd(ymd, -1);
+  else if (now >= closeToday) return closeToday;
   else ymd = shiftIstYmd(ymd, wd === 1 ? -3 : -1);
 
   const close = istSessionCloseMs(ymd);
