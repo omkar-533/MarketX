@@ -540,6 +540,7 @@ export default function WolfOpportunityPage({
 
   const brokerOn = dataMode === 'LIVE' && (feedStatus === 'LIVE' || feedStatus === 'DELAYED');
   const liveStreaming = brokerOn && marketOpen && feedStatus === 'LIVE';
+  const showConnectCta = Boolean(onConnectData) && (!brokerOn || (marketOpen && !liveStreaming));
   const needle = symbolNeedle(symbolQuery);
   const hitCount = cards.reduce(
     (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
@@ -644,7 +645,7 @@ export default function WolfOpportunityPage({
           >
             <RefreshCw size={15} className={scanning ? 'is-spin' : ''} />
           </button>
-          {onConnectData && !liveStreaming ? (
+          {showConnectCta ? (
             <button type="button" className="wolf-opp__cta" onClick={onConnectData}>
               <Link2 size={14} /> Connect live
             </button>
