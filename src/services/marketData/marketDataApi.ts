@@ -48,7 +48,10 @@ export function isIndstocksLive(s: ServerConnectionStatus | null | undefined): b
 }
 
 const STATUS_STICKY_MS = 120_000;
+const STATUS_MEM_CACHE_MS = 7_000;
+const STATUS_TIMEOUT_MS = 2_400;
 let lastStatusOk: { at: number; value: ServerConnectionStatus } | null = null;
+let statusInflight: Promise<ServerConnectionStatus> | null = null;
 
 function base() {
   return getApiBaseUrl().replace(/\/$/, '');
@@ -83,16 +86,44 @@ export async function fetchMarketDataProviders(): Promise<CatalogProvider[]> {
   return data.providers;
 }
 
-export async function fetchMarketDataStatus(): Promise<ServerConnectionStatus> {
-  try {
-    const next = await json<ServerConnectionStatus>('/api/market-data/status');
-    lastStatusOk = { at: Date.now(), value: next };
-    return next;
-  } catch (err) {
-    if (lastStatusOk && Date.now() - lastStatusOk.at < STATUS_STICKY_MS) {
-      return lastStatusOk.value;
+export async function fetchMarketDataStatus(opts?: {
+  /** Force network read (skip warm cache + inflight reuse). */
+  force?: boolean;
+}): Promise<ServerConnectionStatus> {
+  const force = Boolean(opts?.force);
+  const now = Date.now();
+  if (!force && lastStatusOk && now - lastStatusOk.at < STATUS_MEM_CACHE_MS) {
+    return lastStatusOk.value;
+  }
+  if (!force && statusInflight) return statusInflight;
+
+  const run = (async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
+      try {
+        const next = await json<ServerConnectionStatus>('/api/market-data/status', {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        lastStatusOk = { at: Date.now(), value: next };
+        return next;
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      if (lastStatusOk && Date.now() - lastStatusOk.at < STATUS_STICKY_MS) {
+        return lastStatusOk.value;
+      }
+      throw err;
     }
-    throw err;
+  })();
+
+  statusInflight = run;
+  try {
+    return await run;
+  } finally {
+    if (statusInflight === run) statusInflight = null;
   }
 }
 
@@ -102,6 +133,7 @@ export async function connectDemoMarketData(): Promise<ServerConnectionStatus> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'mock-demo' }),
   });
+  statusInflight = null;
   lastStatusOk = { at: Date.now(), value: next };
   return next;
 }
@@ -115,12 +147,14 @@ export async function connectIndstocksMarketData(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId: 'indstocks', accessToken }),
   });
+  statusInflight = null;
   lastStatusOk = { at: Date.now(), value: next };
   return next;
 }
 
 export async function disconnectMarketData(): Promise<ServerConnectionStatus> {
   const next = await json<ServerConnectionStatus>('/api/market-data/disconnect', { method: 'POST' });
+  statusInflight = null;
   lastStatusOk = { at: Date.now(), value: next };
   return next;
 }
