@@ -210,6 +210,16 @@ function nearLevel(last: number, level: number, atr: number, maxAtr = 0.35): boo
   return Math.abs(last - level) <= maxAtr * atr;
 }
 
+function earlyNear(last: number, level: number, atr: number): boolean {
+  const band = Math.max(atr * 1.25, Math.abs(last) * 0.004);
+  return Math.abs(last - level) <= band;
+}
+
+function tagsLevel(bar: Candle, level: number, side: 'up' | 'down'): boolean {
+  if (!(level > 0)) return false;
+  return side === 'up' ? bar.high >= level : bar.low <= level;
+}
+
 /** First closed session bars — 5m 9:20–9:35, 15m first two, 1h first bar. */
 function openDriveWindow(f: FeatureSnapshot): boolean {
   const m = f.sessionMinsFromOpen;
@@ -626,18 +636,25 @@ export function scanCompressionBreak(ctx: Ctx): OpportunityHit | null {
   if (!bar || atr == null) return null;
   if (!priorCoil(f)) return null;
   const early = openDriveWindow(f);
-  if (!volumeLive(f, early ? 1.1 : 1.2)) return null;
+  if (!volumeLive(f, early ? 0.9 : 1.2)) return null;
 
   const high = boxHigh(f);
   const low = boxLow(f);
   const up = high != null && brokeLevel(bar, high, 'up', early);
   const down = low != null && brokeLevel(bar, low, 'down', early);
-  const watchBand = early ? 0.5 : 0.35;
   const watchVol = early || volumeRising(f);
   const watchUp =
-    !up && high != null && bar.close <= high && nearLevel(f.tech.last, high, atr, watchBand) && watchVol;
+    !up &&
+    high != null &&
+    bar.close <= high &&
+    watchVol &&
+    (early ? earlyNear(f.tech.last, high, atr) || tagsLevel(bar, high, 'up') : nearLevel(f.tech.last, high, atr, 0.35));
   const watchDown =
-    !down && low != null && bar.close >= low && nearLevel(f.tech.last, low, atr, watchBand) && watchVol;
+    !down &&
+    low != null &&
+    bar.close >= low &&
+    watchVol &&
+    (early ? earlyNear(f.tech.last, low, atr) || tagsLevel(bar, low, 'down') : nearLevel(f.tech.last, low, atr, 0.35));
   if (!up && !down && !watchUp && !watchDown) return null;
   const bullish = up || watchUp;
   const level = bullish ? high! : low!;
@@ -685,15 +702,22 @@ export function scanBreakoutRadar(ctx: Ctx): OpportunityHit | null {
   const atr = atrAbs(f);
   if (!bar || atr == null) return null;
   const early = openDriveWindow(f);
-  if (!volumeLive(f, early ? 1.1 : 1.2)) return null;
+  if (!volumeLive(f, early ? 0.9 : 1.2)) return null;
 
   const high = boxHigh(f);
   const low = boxLow(f);
   const up = high != null && brokeLevel(bar, high, 'up', early);
   const down = low != null && brokeLevel(bar, low, 'down', early);
-  const watchBand = early ? 0.5 : 0.3;
-  const watchUp = !up && high != null && bar.close <= high && nearLevel(f.tech.last, high, atr, watchBand);
-  const watchDown = !down && low != null && bar.close >= low && nearLevel(f.tech.last, low, atr, watchBand);
+  const watchUp =
+    !up &&
+    high != null &&
+    bar.close <= high &&
+    (early ? earlyNear(f.tech.last, high, atr) || tagsLevel(bar, high, 'up') : nearLevel(f.tech.last, high, atr, 0.3));
+  const watchDown =
+    !down &&
+    low != null &&
+    bar.close >= low &&
+    (early ? earlyNear(f.tech.last, low, atr) || tagsLevel(bar, low, 'down') : nearLevel(f.tech.last, low, atr, 0.3));
   if (!up && !down && !watchUp && !watchDown) return null;
   const bullish = up || watchUp;
   const level = bullish ? high! : low!;

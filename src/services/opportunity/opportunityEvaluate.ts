@@ -5,6 +5,7 @@
 import type { Candle } from '../radar/radarTypes';
 import {
   closedBarIndex,
+  inferNseBarOpenMs,
   keepDisplaySetupTime,
   readCandleTimeMs,
   setupCreatedAtMs,
@@ -95,8 +96,11 @@ function episodeStamp(
   index: number,
   timeframe: OpportunityTimeframe,
   now: number,
+  inferCloseStamp = false,
 ): number {
-  const raw = readCandleTimeMs(series[index]) || Number(series[index]?.timestamp) || 0;
+  const raw = inferCloseStamp
+    ? inferNseBarOpenMs(series, index, timeframe, now)
+    : readCandleTimeMs(series[index]) || Number(series[index]?.timestamp) || 0;
   return keepDisplaySetupTime(setupCreatedAtMs(raw, timeframe, now), now);
 }
 
@@ -288,7 +292,13 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               quotePrice: snap.tech.last,
             });
             if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-            hit.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
+            hit.detectedAt = episodeStamp(
+              series,
+              win.startIndex,
+              tf,
+              asOf,
+              id === 'compression_break' || id === 'breakout_radar',
+            );
             hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.startIndex}`;
             hit.meta = {
               ...hit.meta,

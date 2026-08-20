@@ -81,6 +81,28 @@ export function closedBarIndex(
 }
 
 /**
+ * INDstocks sometimes stamps the first 5m at 09:20 (close), not 09:15 (open).
+ * After hours, treating that as open makes Created 09:25.
+ */
+export function inferNseBarOpenMs(
+  candles: { timestamp?: number; time?: number; ts?: number }[],
+  index: number,
+  timeframe: string,
+  now = Date.now(),
+): number {
+  const t = readCandleTimeMs(candles[index]);
+  const dur = barDurationMs(timeframe);
+  const session = istSessionStartMs(now);
+  if (!(t > 0) || !dur || !session || t < session) return t;
+  let i = 0;
+  while (i < candles.length && readCandleTimeMs(candles[i]) < session) i += 1;
+  if (i >= candles.length) return t;
+  const first = readCandleTimeMs(candles[i]);
+  const closeStamped = Math.abs(first - (session + dur)) <= 2000;
+  return closeStamped ? t - dur : t;
+}
+
+/**
  * When that bar closed — never Date.now().
  * If `timestamp` is already a close (adding duration lands in the future), keep it.
  */

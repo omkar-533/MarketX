@@ -5,6 +5,7 @@ import {
   firstConsecutiveHitTime,
   currentRunStartOfIstDay,
   firstHitTimeOfIstDay,
+  inferNseBarOpenMs,
   keepDisplaySetupTime,
   keepFirstSetupTime,
   lastClosedBarCloseMs,
@@ -31,6 +32,15 @@ describe('barTime', () => {
     const candles = [bar(openClosed - FIVE), bar(openClosed), bar(openForming)];
     assert.equal(closedBarIndex(candles, '5m', now), 1);
     assert.equal(setupCreatedAtFromCandles(candles, '5m', now), openClosed + FIVE);
+  });
+
+  it('close-stamped first 5m stays 9:20 after hours, not 9:25', () => {
+    const now = Date.parse('2026-08-20T06:43:00+05:30');
+    const firstClose = Date.parse('2026-08-19T09:20:00+05:30');
+    const candles = Array.from({ length: 8 }, (_, i) => bar(firstClose + i * FIVE));
+    const open = inferNseBarOpenMs(candles, 0, '5m', now);
+    assert.equal(open, Date.parse('2026-08-19T09:15:00+05:30'));
+    assert.equal(setupCreatedAtMs(open, '5m', now), firstClose);
   });
 
   it('does not return a future close when ts is already the close', () => {
