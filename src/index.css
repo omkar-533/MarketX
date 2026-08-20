@@ -30129,6 +30129,7 @@ span.wolf-opp__seg {
   padding: 0.28rem 0.45rem;
   border-radius: 999px;
   white-space: nowrap;
+  text-decoration: none;
   transition: color 0.18s ease, background 0.18s ease;
 }
 .wolf-opp__tile-actions button:hover,

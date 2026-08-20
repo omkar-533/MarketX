@@ -3162,15 +3162,18 @@ html[data-theme="light"] .wolf-opp__stack-well::before {
 html[data-theme="light"] .wolf-opp__stack-well::after {
   background: linear-gradient(0deg, rgba(248, 250, 252, 0.92), transparent);
 }
-html[data-theme="light"] .wolf-opp__tile-actions button {
+html[data-theme="light"] .wolf-opp__tile-actions button,
+html[data-theme="light"] .wolf-opp__tile-actions a {
   background: #f1f5f9;
   color: #525252;
 }
-html[data-theme="light"] .wolf-opp__side--long .wolf-opp__tile-actions button:hover {
+html[data-theme="light"] .wolf-opp__side--long .wolf-opp__tile-actions button:hover,
+html[data-theme="light"] .wolf-opp__side--long .wolf-opp__tile-actions a:hover {
   color: #047857;
   background: rgba(16, 185, 129, 0.12);
 }
-html[data-theme="light"] .wolf-opp__side--short .wolf-opp__tile-actions button:hover {
+html[data-theme="light"] .wolf-opp__side--short .wolf-opp__tile-actions button:hover,
+html[data-theme="light"] .wolf-opp__side--short .wolf-opp__tile-actions a:hover {
   color: #be123c;
   background: rgba(244, 63, 94, 0.1);
 }

@@ -149,6 +149,28 @@ export function toTradingViewSymbol(symbol: string, type?: FnoInstrumentType): s
   return `NSE:${sym}`;
 }
 
+/** Full TradingView chart URL for the same symbol + Opportunity/desk timeframe. */
+export function tradingViewChartUrl(
+  symbol: string,
+  timeframe?: string,
+  exchange?: 'NSE' | 'BSE',
+): string {
+  const raw = String(symbol || '').trim().toUpperCase();
+  let tvSymbol: string;
+  if (!raw) {
+    tvSymbol = 'NSE:NIFTY';
+  } else if (raw.includes(':')) {
+    tvSymbol = raw;
+  } else if (exchange === 'BSE' && !INDEX_TV[raw]) {
+    tvSymbol = `BSE:${raw}`;
+  } else {
+    tvSymbol = toTradingViewSymbol(raw);
+  }
+  const interval = normalizeTvInterval(timeframe) ?? '15';
+  const params = new URLSearchParams({ symbol: tvSymbol, interval });
+  return `https://in.tradingview.com/chart/?${params.toString()}`;
+}
+
 /** Parse user input: NIFTY, NSE:NIFTY, RELIANCE, BTC, EURUSD */
 export function parseTradingViewInput(input: string): string {
   const raw = input.trim().toUpperCase();

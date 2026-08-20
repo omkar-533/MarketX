@@ -57,6 +57,7 @@ import {
 import { openLiveWolfFromRadarResult } from '../../../services/live/liveBridge';
 import AppLink from '../../AppLink';
 import { liveWolfQuery } from '../../../utils/appNav';
+import { tradingViewChartUrl } from '../../../utils/tradingViewSymbols';
 import WolfHuntLoader from './WolfHuntLoader';
 import StockLogoMark from './StockLogoMark';
 import WaterStack from './WaterStack';
@@ -162,16 +163,15 @@ const HitTile = memo(function HitTile({
   printLabel,
   onOpen,
   onWhy,
-  onChart,
 }: {
   hit: OpportunityHit;
   printLabel: string;
   onOpen: (hit: OpportunityHit) => void;
   onWhy: (hit: OpportunityHit) => void;
-  onChart: (hit: OpportunityHit) => void;
 }) {
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
+  const tvHref = tradingViewChartUrl(hit.symbol, hit.timeframe, hit.exchange);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={() => onOpen(hit)}>
@@ -211,14 +211,15 @@ const HitTile = memo(function HitTile({
         >
           Why
         </button>
-        <AppLink
-          to="live-wolf"
-          query={q}
-          onActivate={() => onChart(hit)}
+        <a
+          href={tvHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Open ${hit.symbol} ${hit.timeframe} on TradingView`}
           onClick={(e) => e.stopPropagation()}
         >
           <Crosshair size={12} /> Chart
-        </AppLink>
+        </a>
       </div>
     </article>
   );
@@ -526,10 +527,6 @@ export default function WolfOpportunityPage({
     onOpenWolfAi();
   };
 
-  const openChart = useCallback((hit: OpportunityHit) => {
-    openLiveWolfFromRadarResult(opportunityToRadarResult(hit));
-    onOpenLive?.();
-  }, [onOpenLive]);
 
   const brokerOn = dataMode === 'LIVE' && (feedStatus === 'LIVE' || feedStatus === 'DELAYED');
   const liveStreaming = brokerOn && marketOpen && feedStatus === 'LIVE';
@@ -827,7 +824,6 @@ export default function WolfOpportunityPage({
                           printLabel={scannerPrintLabelOf(hit, printLabels)}
                           onOpen={setSelected}
                           onWhy={setWhyHit}
-                          onChart={openChart}
                         />
                       ))
                     )}
@@ -977,14 +973,15 @@ export default function WolfOpportunityPage({
                 <b>Invalidation</b> {selected.invalidation}
               </p>
               <div className="wolf-opp__drawer-cta">
-                <AppLink
-                  to="live-wolf"
-                  query={liveWolfQuery(selected)}
+                <a
+                  href={tradingViewChartUrl(selected.symbol, selected.timeframe, selected.exchange)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="wolf-opp__cta"
-                  onActivate={() => openChart(selected)}
+                  title={`Open ${selected.symbol} ${selected.timeframe} on TradingView`}
                 >
                   <Crosshair size={14} /> Open chart
-                </AppLink>
+                </a>
                 <AppLink
                   to="live-wolf"
                   query={liveWolfQuery(selected)}
