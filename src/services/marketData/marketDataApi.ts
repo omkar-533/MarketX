@@ -373,6 +373,7 @@ export async function fetchOpportunitySnapshot(
   ready: true;
   symbols: string[];
   candlesBySymbol: Record<string, import('../radar/radarTypes').Candle[]>;
+  rsiBySymbol?: Record<string, import('../opportunity/opportunityTypes').SymbolRsiSeries>;
   timeframe: string;
   universe: string;
   bars: number;
@@ -392,6 +393,7 @@ export async function fetchOpportunitySnapshot(
       symbolsTotal?: number;
       symbols?: string[];
       candlesBySymbol?: Record<string, import('../radar/radarTypes').Candle[]>;
+      rsiBySymbol?: Record<string, import('../opportunity/opportunityTypes').SymbolRsiSeries>;
       timeframe?: string;
       universe?: string;
       bars?: number;
@@ -405,6 +407,7 @@ export async function fetchOpportunitySnapshot(
         ready: true,
         symbols: data.symbols,
         candlesBySymbol: data.candlesBySymbol,
+        rsiBySymbol: data.rsiBySymbol,
         timeframe: data.timeframe || timeframe,
         universe: data.universe || universe,
         bars: data.bars || 80,

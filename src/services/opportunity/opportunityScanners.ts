@@ -10,7 +10,9 @@ import type {
   OpportunityScannerId,
   OpportunityStatus,
   OpportunityTimeframe,
+  RsiPoint,
   ScoreBreakdown,
+  SymbolRsiSeries,
 } from './opportunityTypes';
 import { cardQuote, clampScore, emaAlignment, type FeatureSnapshot } from './featureSnapshot';
 import { optionFlowDayPct, optionFlowSignal, type OptionFlowSnap } from './optionFlow';
@@ -20,6 +22,8 @@ type Ctx = {
   timeframe: OpportunityTimeframe;
   dataMode: 'LIVE' | 'DEMO';
   quotePrice?: number;
+  /** Server-built Wilder RSI per timeframe. Absent → BOOSTERS returns no signal. */
+  rsi?: SymbolRsiSeries | null;
   /** Skip score cutoff so Created time is the first print, not when quality crossed the gate. */
   forTimeWalk?: boolean;
 };
@@ -435,66 +439,93 @@ export function scanTopMovers(ctx: Ctx): OpportunityHit | null {
   });
 }
 
-/** OPENING DRIVE — WATCH at the range edge, ACTIVE on close beyond. Morning only. */
+/** Wilder RSI printed at or before `atMs` — never a future bar's value. */
+function rsiAsOf(series: RsiPoint[] | undefined, atMs: number): number | null {
+  if (!series?.length || !(atMs > 0)) return null;
+  let lo = 0;
+  let hi = series.length - 1;
+  let found: number | null = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (series[mid][0] <= atMs) {
+      found = series[mid][1];
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return Number.isFinite(found as number) ? found : null;
+}
+
+/**
+ * BOOSTERS — 5-minute momentum breakout, both sides.
+ * LONG:  2h RSI > 50, 30m RSI > 60, 5m RSI > 60, 5m close > previous 5m close.
+ * SHORT: 2h RSI < 50, 30m RSI < 40, 5m RSI < 40, 5m close < previous 5m close.
+ * Higher-timeframe RSI is server-built; without it this scanner stays silent.
+ */
 export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
-  const bar = lastBar(f);
-  const atr = atrAbs(f);
-  if (!bar || atr == null) return null;
-  if (f.openingHigh == null || f.openingLow == null || !(f.openingHigh > f.openingLow)) return null;
-  const mins = f.sessionMinsFromOpen;
-  if (mins == null || mins > 105) return null;
-  if (!volumeLive(f, 1.2)) return null;
+  if (ctx.timeframe !== '5m') return null;
+  const bars = f.candles;
+  if (!bars || bars.length < 2) return null;
+  const bar = bars[bars.length - 1];
+  const prev = bars[bars.length - 2];
+  if (!bar || !prev || !(bar.close > 0) || !(prev.close > 0)) return null;
 
+  const at = f.setupAt || 0;
+  const r5 = rsiAsOf(ctx.rsi?.m5, at);
+  const r30 = rsiAsOf(ctx.rsi?.m30, at);
+  const r2h = rsiAsOf(ctx.rsi?.h2, at);
+  if (r5 == null || r30 == null || r2h == null) return null;
+
+  const bullish = r2h > 50 && r30 > 60 && r5 > 60 && bar.close > prev.close;
+  const bearish = r2h < 50 && r30 < 40 && r5 < 40 && bar.close < prev.close;
+  if (bullish === bearish) return null;
+
+  const stretch = bullish ? Math.min(r5 - 60, r30 - 60) : Math.min(40 - r5, 40 - r30);
+  const anchor = bullish ? r2h - 50 : 50 - r2h;
+  const closeStepPct = Math.abs((bar.close - prev.close) / prev.close) * 100;
   const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
-  const up = closeBrokeLevel(bar, f.openingHigh, 'up');
-  const down = closeBrokeLevel(bar, f.openingLow, 'down');
-  const watchUp = !up && bar.close <= f.openingHigh && nearLevel(f.tech.last, f.openingHigh, atr, 0.4) && volumeRising(f);
-  const watchDown = !down && bar.close >= f.openingLow && nearLevel(f.tech.last, f.openingLow, atr, 0.4) && volumeRising(f);
-  if (!up && !down && !watchUp && !watchDown) return null;
-  const bullish = up || watchUp;
-  const level = bullish ? f.openingHigh : f.openingLow;
-  if ((up || down) && !notChased(f.tech.last, level, atr, 1.5)) return null;
-  if ((watchUp || watchDown) && tooExtended(f.tech.last, level, atr, 1.2)) return null;
-
-  const active = up || down;
-  const gap = f.gapPct ?? 0;
-  const gapAligned = bullish ? gap >= 0.3 : gap <= -0.3;
   const breakdown: ScoreBreakdown = {
-    rangeBreak: active ? 25 : 12,
-    earlyVolume: clampScore(10 + (vol - 1) * 18, 20),
-    gap: gapAligned ? 15 : 8,
-    timing: mins <= 45 ? 20 : mins <= 105 ? 14 : 10,
-    followThrough: f.sessionChangePct != null && Math.abs(f.sessionChangePct) >= 0.5 ? 12 : 8,
+    rsiStack: 34,
+    rsiStrength: clampScore(6 + Math.min(14, stretch), 20),
+    higherTf: clampScore(6 + Math.min(10, anchor), 16),
+    closeStep: clampScore(6 + Math.min(10, closeStepPct * 12), 16),
+    volume: clampScore(4 + Math.min(10, Math.max(0, vol - 0.9) * 12), 14),
   };
   const score = sumBreakdown(breakdown);
-  if (!scoreGate(ctx, score, active ? 58 : 55)) return null;
+  if (!scoreGate(ctx, score, 55)) return null;
 
+  const side = bullish ? 'bullish' : 'bearish';
+  const r = (n: number) => n.toFixed(1);
   return baseHit('opening_drive', ctx, {
-    direction: bullish ? 'bullish' : 'bearish',
-    status: active ? 'ACTIVE' : 'WATCH',
+    direction: side,
+    status: 'ACTIVE',
     score,
     breakdown,
-    stateLabel: active ? (gapAligned ? '🔥 GAP + DRIVE' : 'OPENING DRIVE') : 'WATCH OR',
-    why: active
-      ? `Opening range ₹${f.openingLow.toFixed(2)}–₹${f.openingHigh.toFixed(2)} broken ${bullish ? 'up' : 'down'} in the first ${Math.round(mins)} min with volume ${vol.toFixed(1)}×.`
-      : `Opening range ${bullish ? 'high' : 'low'} ₹${level.toFixed(2)} ke paas, volume ${vol.toFixed(1)}× — break se pehle.`,
-    keyLevel: level,
-    trigger: level,
-    invalidation: `Close back inside the opening range (₹${level.toFixed(2)})`,
-    confirmationNeeded: active
-      ? 'Morning drive — if it re-enters the opening range, the drive failed.'
-      : 'WATCH — range ke bahar close ka wait.',
+    stateLabel: bullish ? 'BOOSTER LONG' : 'BOOSTER SHORT',
+    why: bullish
+      ? `2h RSI ${r(r2h)} > 50, 30m RSI ${r(r30)} > 60, 5m RSI ${r(r5)} > 60 aur 5m close ₹${bar.close.toFixed(2)} pichhle close ₹${prev.close.toFixed(2)} se upar.`
+      : `2h RSI ${r(r2h)} < 50, 30m RSI ${r(r30)} < 40, 5m RSI ${r(r5)} < 40 aur 5m close ₹${bar.close.toFixed(2)} pichhle close ₹${prev.close.toFixed(2)} se neeche.`,
+    keyLevel: prev.close,
+    trigger: bar.close,
+    invalidation: bullish
+      ? `Koi bhi RSI condition toote ya 5m close ₹${prev.close.toFixed(2)} se neeche aaye to setup khatam.`
+      : `Koi bhi RSI condition toote ya 5m close ₹${prev.close.toFixed(2)} se upar aaye to setup khatam.`,
+    confirmationNeeded: bullish
+      ? 'Agla 5m bar bhi higher close de to momentum continue.'
+      : 'Agla 5m bar bhi lower close de to momentum continue.',
     evidence: [
-      { label: active ? 'Opening range break (close)' : 'At opening range', ok: true },
-      { label: `Early vol ${vol.toFixed(1)}×`, ok: vol >= 1.2 },
+      { label: `2h RSI ${r(r2h)} ${bullish ? '> 50' : '< 50'}`, ok: true },
+      { label: `30m RSI ${r(r30)} ${bullish ? '> 60' : '< 40'}`, ok: true },
+      { label: `5m RSI ${r(r5)} ${bullish ? '> 60' : '< 40'}`, ok: true },
       {
-        label: gapAligned ? `Gap ${gap >= 0 ? '+' : ''}${gap.toFixed(2)}% aligned` : 'No gap',
-        ok: gapAligned,
+        label: `5m close ₹${bar.close.toFixed(2)} ${bullish ? '>' : '<'} ₹${prev.close.toFixed(2)}`,
+        ok: true,
       },
-      { label: `First ${Math.round(mins)} min`, ok: mins <= 105 },
+      { label: `Volume ${vol.toFixed(1)}×`, ok: vol >= 1 },
     ],
-    meta: { early: !active },
+    meta: { rsi5m: r5, rsi30m: r30, rsi2h: r2h, pattern: bullish ? 'booster_long' : 'booster_short' },
   });
 }
 

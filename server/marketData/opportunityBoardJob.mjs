@@ -109,6 +109,7 @@ async function huntTimeframe(accessToken, universe, timeframe) {
   const out = await evalFn({
     symbols: snap.symbols,
     candlesBySymbol: snap.candlesBySymbol,
+    rsiBySymbol: snap.rsiBySymbol,
     optionFlowBySymbol,
     timeframe,
     universe,

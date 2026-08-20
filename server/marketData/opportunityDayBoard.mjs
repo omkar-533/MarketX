@@ -10,7 +10,7 @@ import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
   ['morning_sprint', 'MORNING SPRINT', '9:20 se live rule: Open = Low (long) / Open = High (short). Rule tootega to stock hat jayega.'],
-  ['opening_drive', 'OPENING DRIVE', 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond. Wick does not count.'],
+  ['opening_drive', 'BOOSTERS', 'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.'],
   ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
   ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
   ['compression_break', 'COMPRESSION BREAK', 'From the 9:20 close. Tight coil + volume. ACTIVE on the close out.'],

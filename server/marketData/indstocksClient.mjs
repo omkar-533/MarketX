@@ -524,8 +524,11 @@ function rowsFromIndCandles(raw, scripCode, wolfTf, wantBars) {
   return deduped.length > wantBars ? deduped.slice(-wantBars) : deduped;
 }
 
-/** One INDstocks historical call per scrip group — Opportunity / Radar scan path. */
-export async function fetchIndstocksCandlesMany(accessToken, scripCodes, wolfTf, bars = 80) {
+/**
+ * One INDstocks historical call per scrip group — Opportunity / Radar scan path.
+ * `opts.endMs` walks an older window so callers can stitch deeper history.
+ */
+export async function fetchIndstocksCandlesMany(accessToken, scripCodes, wolfTf, bars = 80, opts = {}) {
   const interval = wolfTfToIndInterval(wolfTf);
   if (!interval) throw new Error(`Unsupported timeframe: ${wolfTf}`);
   const unique = [...new Set((scripCodes || []).map((c) => String(c || '').trim()).filter(Boolean))];
@@ -535,7 +538,8 @@ export async function fetchIndstocksCandlesMany(accessToken, scripCodes, wolfTf,
 
   const wantBars = Math.max(20, Math.min(500, Number(bars) || 80));
   const maxSpan = MAX_SPAN_MS[interval] || 7 * 86_400_000;
-  const end = historicalEndMs(interval, Date.now());
+  const endHint = Number(opts.endMs);
+  const end = historicalEndMs(interval, Number.isFinite(endHint) && endHint > 0 ? endHint : Date.now());
   const useStart = end - maxSpan + 60_000;
   const GROUP = 15;
   const groups = [];

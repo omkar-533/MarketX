@@ -33,10 +33,13 @@ function ctx(over: Record<string, unknown> = {}) {
   const rest = { ...over };
   delete rest.tech;
   delete rest.volume;
+  delete rest.rsi;
+  delete rest.timeframe;
   return {
-    timeframe: '5m' as const,
+    timeframe: (over.timeframe as '5m') || ('5m' as const),
     dataMode: 'LIVE' as const,
     quotePrice: 101.2,
+    rsi: (over.rsi as never) ?? null,
     f: {
       symbol: 'TCS',
       exchange: 'NSE',
@@ -242,64 +245,83 @@ describe('scanTopMovers', () => {
   });
 });
 
-describe('scanOpeningDrive', () => {
-  const drive = (over: Record<string, unknown> = {}) =>
+describe('scanOpeningDrive (BOOSTERS)', () => {
+  const AT = Date.parse('2026-08-21T10:00:00+05:30');
+  const series = (v: number) => [
+    [AT - 7_200_000, v],
+    [AT - 300_000, v],
+  ];
+  const rsiSet = (m5: number, m30: number, h2: number) => ({
+    m5: series(m5),
+    m30: series(m30),
+    h2: series(h2),
+  });
+  /** Rising 5m close by default: 100.9 → 101.2. */
+  const boost = (over: Record<string, unknown> = {}) =>
     ctx({
-      openingHigh: 101.0,
-      openingLow: 100.2,
-      sessionMinsFromOpen: 20,
-      sessionChangePct: 0.8,
-      sessionVolRatio: 1.4,
-      gapPct: 0.4,
-      prevClose: 100.1,
-      sessionOpen: 100.5,
-      candles: [bar({ open: 100.9, high: 101.5, low: 100.85, close: 101.4 })],
-      tech: { last: 101.4, atr14: 0.5 },
+      setupAt: AT,
+      rsi: rsiSet(65, 66, 55),
       ...over,
     });
 
-  it('lists a morning opening-range break with early volume', () => {
-    const hit = scanOpeningDrive(drive());
+  it('lists a long when 2h/30m/5m RSI and the 5m close all agree', () => {
+    const hit = scanOpeningDrive(boost());
     assert.ok(hit);
     assert.equal(hit?.direction, 'bullish');
-    assert.equal(hit?.stateLabel, '🔥 GAP + DRIVE');
-    assert.ok((hit?.score ?? 0) >= 58);
+    assert.equal(hit?.status, 'ACTIVE');
+    assert.equal(hit?.stateLabel, 'BOOSTER LONG');
+    assert.equal(hit?.meta?.rsi2h, 55);
   });
 
-  it('lists a bearish opening drive too', () => {
+  it('lists the mirrored short', () => {
     const hit = scanOpeningDrive(
-      drive({
-        openingLow: 100.5,
-        gapPct: -0.5,
-        candles: [bar({ open: 100.8, high: 100.85, low: 99.9, close: 100.0 })],
-        tech: { last: 100.0, atr14: 0.5 },
+      boost({
+        rsi: rsiSet(35, 34, 45),
+        candles: [bar({ close: 101.4 }), bar({ close: 100.6 })],
       }),
     );
     assert.ok(hit);
     assert.equal(hit?.direction, 'bearish');
+    assert.equal(hit?.stateLabel, 'BOOSTER SHORT');
   });
 
-  it('does not print after the morning window', () => {
-    assert.equal(scanOpeningDrive(drive({ sessionMinsFromOpen: 200 })), null);
+  it('stays silent when the higher timeframe RSI is missing', () => {
+    assert.equal(scanOpeningDrive(boost({ rsi: null })), null);
   });
 
-  it('watches a poke that is still inside the opening range', () => {
-    const hit = scanOpeningDrive(
-      drive({
-        candles: [bar({ open: 100.9, high: 101.6, low: 100.85, close: 100.9 })],
-        tech: { last: 100.9, atr14: 0.5 },
-      }),
-    );
-    assert.ok(hit);
-    assert.equal(hit?.status, 'WATCH');
-    assert.equal(hit?.direction, 'bullish');
+  it('rejects a long whose 2h RSI is below 50', () => {
+    assert.equal(scanOpeningDrive(boost({ rsi: rsiSet(65, 66, 48) })), null);
   });
 
-  it('skips a range break on dead volume', () => {
+  it('rejects a long whose 30m RSI has not cleared 60', () => {
+    assert.equal(scanOpeningDrive(boost({ rsi: rsiSet(65, 58, 55) })), null);
+  });
+
+  it('rejects a long when the 5m close did not rise', () => {
     assert.equal(
-      scanOpeningDrive(drive({ volume: { ratio: 1.0, state: 'NORMAL' }, sessionVolRatio: 1.0 })),
+      scanOpeningDrive(boost({ candles: [bar({ close: 101.4 }), bar({ close: 101.2 })] })),
       null,
     );
+  });
+
+  it('rejects a short that only meets the bullish RSI band', () => {
+    assert.equal(
+      scanOpeningDrive(boost({ candles: [bar({ close: 101.4 }), bar({ close: 100.6 })] })),
+      null,
+    );
+  });
+
+  it('never reads an RSI printed after the bar being scanned', () => {
+    const future = {
+      m5: [[AT + 600_000, 65]],
+      m30: [[AT + 600_000, 66]],
+      h2: [[AT + 600_000, 55]],
+    };
+    assert.equal(scanOpeningDrive(boost({ rsi: future })), null);
+  });
+
+  it('only runs on the 5-minute board', () => {
+    assert.equal(scanOpeningDrive(boost({ timeframe: '15m' })), null);
   });
 });
 

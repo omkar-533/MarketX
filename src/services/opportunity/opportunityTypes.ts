@@ -99,6 +99,18 @@ export type OpportunityScanProgress = {
   error?: string;
 };
 
+/**
+ * Wilder RSI printed at each bar close: [barCloseMs, rsi].
+ * Built server-side because 30m/2h history is not in the 5m board snapshot.
+ */
+export type RsiPoint = [number, number];
+
+export type SymbolRsiSeries = {
+  m5: RsiPoint[];
+  m30: RsiPoint[];
+  h2: RsiPoint[];
+};
+
 export type IndexPulse = {
   symbol: string;
   price: number | null;
@@ -121,8 +133,9 @@ export const OPPORTUNITY_SCANNERS: {
   },
   {
     id: 'opening_drive',
-    title: 'OPENING DRIVE',
-    tagline: 'WATCH at the 9:15–9:30 range edge, ACTIVE on the close beyond. Wick does not count.',
+    title: 'BOOSTERS',
+    tagline:
+      'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.',
     requires: 'ohlc',
   },
   {

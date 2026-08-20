@@ -19,6 +19,7 @@ import type {
   OpportunityScanProgress,
   OpportunityTimeframe,
   ScannerCardState,
+  SymbolRsiSeries,
 } from './opportunityTypes';
 
 export type RunOpportunityOptions = {
@@ -178,6 +179,7 @@ export async function runOpportunityScan(
   const batchProvider = provider as CandleBatchProvider;
   const shared = Boolean(!provider.isDemo && typeof batchProvider.getOpportunitySnapshot === 'function');
   let candleMapAll: Record<string, Candle[]> | null = null;
+  let rsiBySymbol: Record<string, SymbolRsiSeries> | null = null;
   try {
     if (shared) {
       opts.onProgress?.({
@@ -201,6 +203,7 @@ export async function runOpportunityScan(
       );
       symbols = uniqueSortedSymbols(snap.symbols);
       candleMapAll = snap.candlesBySymbol || {};
+      rsiBySymbol = snap.rsiBySymbol || null;
       const barClose = lastClosedBarCloseMs(tf);
       asOf = barClose || Math.min(Number(snap.asOf || snap.builtAt) || Date.now(), Date.now());
     } else {
@@ -246,6 +249,7 @@ export async function runOpportunityScan(
     opts,
     fetchBatch: FETCH_BATCH,
     candleMapAll,
+    rsiBySymbol,
     loadBatch: candleMapAll
       ? undefined
       : (batch) => loadCandleMap(batchProvider, batch, tf, bars, opts.signal, fresh),

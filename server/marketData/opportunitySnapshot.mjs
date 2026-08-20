@@ -15,6 +15,11 @@ import {
 } from './indstocksClient.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
 import { dropExpiredOpportunityBoards } from './opportunityDayBoard.mjs';
+import {
+  keepFromMs,
+  peekOpportunityRsiFeed,
+  rsiSeriesFromCandles,
+} from './opportunityRsiFeed.mjs';
 
 const BAR_MS = {
   '5m': 300_000,
@@ -296,6 +301,32 @@ function armAutoFetch(universe, timeframe, accessToken) {
   refreshTimers.set(id, timer);
 }
 
+/**
+ * BOOSTERS is a 5-minute rule, so the extra 30m/2h pull only runs on that board.
+ * 5m RSI is folded from candles already in hand.
+ */
+async function buildRsiBySymbol(accessToken, universe, timeframe, candlesBySymbol) {
+  if (timeframe !== '5m') return {};
+  try {
+    const htf = await peekOpportunityRsiFeed(accessToken, universe);
+    const cut = keepFromMs();
+    /** @type {Record<string, object>} */
+    const out = {};
+    for (const [symbol, candles] of Object.entries(candlesBySymbol || {})) {
+      const higher = htf[symbol];
+      if (!higher) continue;
+      const m5 = rsiSeriesFromCandles(candles, cut);
+      if (!m5.length) continue;
+      out[symbol] = { m5, m30: higher.m30, h2: higher.h2 };
+    }
+    return out;
+  } catch (err) {
+    // BOOSTERS goes quiet; the rest of the board still ships.
+    console.warn('[opportunity-rsi] attach skipped', err?.message || err);
+    return {};
+  }
+}
+
 async function buildSnapshot(accessToken, universe, timeframe, key, jobId) {
   const symbols = uniqueSorted(resolveServerUniverse(universe));
   const bars = SNAP_BARS[timeframe] || 120;
@@ -303,6 +334,7 @@ async function buildSnapshot(accessToken, universe, timeframe, key, jobId) {
   const candlesBySymbol = await fillCandles(accessToken, symbols, timeframe, bars, jobId);
   const barClose = nseLastClosedBarCloseMs(timeframe);
   const asOf = barClose || Date.now();
+  const rsiBySymbol = await buildRsiBySymbol(accessToken, universe, timeframe, candlesBySymbol);
   return {
     ready: true,
     universe,
@@ -310,6 +342,7 @@ async function buildSnapshot(accessToken, universe, timeframe, key, jobId) {
     bars,
     symbols,
     candlesBySymbol,
+    rsiBySymbol,
     builtAt: asOf,
     asOf,
     source: 'shared-indstocks',

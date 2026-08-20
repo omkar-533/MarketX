@@ -33,6 +33,7 @@ import type {
   OpportunityScanProgress,
   OpportunityTimeframe,
   ScannerCardState,
+  SymbolRsiSeries,
 } from './opportunityTypes';
 import { OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS, DEFAULT_OPPORTUNITY_FILTERS } from './opportunityTypes';
 
@@ -57,6 +58,8 @@ export type EvaluateOpportunityInput = {
   fetchBatch?: number;
   candleMapAll?: Record<string, Candle[]> | null;
   loadBatch?: (symbols: string[]) => Promise<Record<string, Candle[]>>;
+  /** Server-built 5m/30m/2h Wilder RSI. Missing symbol → BOOSTERS stays silent. */
+  rsiBySymbol?: Record<string, SymbolRsiSeries> | null;
   /** Slim live option-chain features. Missing symbol → Options Flow skips. */
   optionFlowBySymbol?: Record<string, OptionFlowSnap> | null;
 };
@@ -166,6 +169,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
     loadBatch,
   } = input;
   let candleMapAll = input.candleMapAll || null;
+  const rsiBySymbol = input.rsiBySymbol || {};
   const optionFlowBySymbol = input.optionFlowBySymbol || {};
   const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const tf = filters.timeframe as OpportunityTimeframe;
@@ -228,7 +232,8 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         const f = buildFeatureSnapshot(symbol, filters.market, tf, series);
         if (!f) continue;
 
-        const ctx = { f, timeframe: tf, dataMode, quotePrice: f.tech.last };
+        const rsi = rsiBySymbol[symbol] || rsiBySymbol[String(symbol).toUpperCase()] || null;
+        const ctx = { f, timeframe: tf, dataMode, quotePrice: f.tech.last, rsi };
         const featAt = new Map<number, FeatureSnapshot | null>();
         const snapshotAt = (i: number): FeatureSnapshot | null => {
           if (featAt.has(i)) return featAt.get(i) ?? null;
@@ -253,6 +258,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
                   timeframe: tf,
                   dataMode,
                   quotePrice: snap.tech.last,
+                  rsi,
                 });
                 (hitAt[id] ||= {})[i] = h;
                 return Boolean(h && h.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
@@ -290,6 +296,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               timeframe: tf,
               dataMode,
               quotePrice: snap.tech.last,
+              rsi,
             });
             if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
             hit.detectedAt = episodeStamp(
@@ -326,7 +333,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
             const snap = snapshotAt(i);
             if (!snap) return false;
             const prime = scanWolfPrime(
-              { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last },
+              { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, rsi },
               marksAt(i),
             );
             return Boolean(prime && prime.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
@@ -337,7 +344,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           const win = primeWins[n];
           const snap = snapshotAt(win.startIndex) || f;
           const prime = scanWolfPrime(
-            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last },
+            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, rsi },
             marksAt(win.startIndex),
           );
           if (!prime || prime.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
@@ -356,7 +363,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           optionFlowBySymbol[symbol] || optionFlowBySymbol[String(symbol).toUpperCase()] || null;
         if (flow) {
           const flowHit = scanOptionsFlow(
-            { f, timeframe: tf, dataMode, quotePrice: f.tech.last },
+            { f, timeframe: tf, dataMode, quotePrice: f.tech.last, rsi },
             flow,
           );
           if (flowHit && flowHit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
