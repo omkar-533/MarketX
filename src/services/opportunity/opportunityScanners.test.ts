@@ -875,10 +875,30 @@ describe('scanWolfHunters', () => {
     const hit = scanWolfHunters(
       ctx({
         timeframe: '1h',
-        candles: [BEFORE, inside, bar({ high: 99.6, low: 98, close: 98.9 })],
+        candles: [BEFORE, inside, bar({ open: 99, high: 99.6, low: 98, close: 98.9 })],
       }) as never,
     );
     assert.equal(hit, null);
+  });
+
+  it('reads an inside bar off the body — wicks may poke out of the candle before', () => {
+    // Open 99.2 and close 99.6 both sit inside BEFORE's 98–100, so this is an
+    // inside bar and cannot be a mother, even though both its wicks clear it.
+    const wicky = bar({ open: 99.2, high: 102, low: 97, close: 99.6 });
+    const hit = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [BEFORE, wicky, bar({ open: 99, high: 100.2, low: 96.5, close: 98.5 })],
+      }) as never,
+    );
+    assert.equal(hit, null);
+  });
+
+  it('keeps a mother whose close breaks out of the candle before it', () => {
+    // MOTHER closes at 101, past BEFORE's 100 high — it built its own liquidity.
+    const hit = hunters(lowHunt);
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
   });
 
   it('lets the previous session\'s last candle be the mother', () => {

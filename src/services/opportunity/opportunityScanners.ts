@@ -634,8 +634,9 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
  * That also rules out any gap open beyond the range.
  *
  * The hunted candle (the mother) can be any candle at all, including the previous
- * session's last one, but it must not itself be an inside bar — a candle swallowed
- * by the one before it has no liquidity of its own.
+ * session's last one, but it must not itself be an inside bar — one that opened and
+ * closed inside the candle before it never built liquidity of its own. Only the body
+ * has to be swallowed for that; a mother whose wicks poked out still counts as inside.
  */
 export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -648,8 +649,11 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const before = bars[bars.length - 3];
   if (!hunt || !mother || !before) return null;
 
-  // The mother cannot be an inside bar of the candle before it.
-  if (mother.high <= before.high && mother.low >= before.low) return null;
+  // The mother cannot be an inside bar of the candle before it. An inside bar is
+  // one whose open and close both sit inside that candle's range — the wicks may
+  // poke out, the body is what has to be swallowed.
+  const insideBefore = (price: number) => price >= before.low && price <= before.high;
+  if (insideBefore(mother.open) && insideBefore(mother.close)) return null;
 
   const range = mother.high - mother.low;
   if (!(range > 0)) return null;
