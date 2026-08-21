@@ -11,15 +11,15 @@ import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 const SCANNER_META = [
   ['morning_sprint', 'MORNING SPRINT', '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.'],
   ['opening_drive', 'BOOSTERS', 'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.'],
-  ['wolf_hunters', 'WOLF HUNTERS', '1h: candle pichhli candle ka high/low hunt kare aur uske 50% ke andar hi band ho. Mother candle khud inside bar nahi honi chahiye.'],
+  ['wolf_hunters', 'WOLF HUNTERS', '1h: candle mother ke andar khule, wick se uska high/low hunt kare aur mother ke 50% ke andar hi band ho. Mother khud inside bar nahi honi chahiye.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-// v25 — desk trimmed to Morning Sprint + Boosters. A fresh key drops the rows
-// saved by the retired scanners instead of carrying them as dead weight.
-const SETTINGS_KEY = 'opportunity_day_board_v25';
+// v26 — Wolf Hunters now needs the sweep to be a wick, so the candle has to open
+// inside the mother. A fresh key drops the rows the older, looser rule saved.
+const SETTINGS_KEY = 'opportunity_day_board_v26';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v25.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v26.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

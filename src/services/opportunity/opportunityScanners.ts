@@ -626,14 +626,16 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
 /**
  * WOLF HUNTERS — 1h liquidity hunt that stays shallow.
  *
- * A candle takes the previous candle's high or low, then closes back inside that
- * candle but no further than its 50% mark, so the range's other side is still
- * open as room to run. The hunted candle (the mother) can be any candle at all,
- * including the previous session's last one, but it must not itself be an inside
- * bar — a candle swallowed by the one before it has no liquidity of its own.
+ * A candle opens inside the previous candle, reaches out with a wick to take its
+ * high or low, then closes back inside but no further than the 50% mark, so the
+ * range's other side is still open as room to run. Because the open has to sit
+ * inside the mother, only a genuine wick sweep counts — a candle that opens past
+ * the level is already trading there and closing back in is a return, not a hunt.
+ * That also rules out any gap open beyond the range.
  *
- * A gap open cannot fake a hit: price has to trade back into the mother's range
- * and close there, so a gap that never returns simply fails the close test.
+ * The hunted candle (the mother) can be any candle at all, including the previous
+ * session's last one, but it must not itself be an inside bar — a candle swallowed
+ * by the one before it has no liquidity of its own.
  */
 export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -652,6 +654,11 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const range = mother.high - mother.low;
   if (!(range > 0)) return null;
   const mid = (mother.high + mother.low) / 2;
+
+  // A hunt reaches out with a wick, so the candle has to open inside the mother's
+  // range. One that opens beyond the level is already trading out there — closing
+  // back in is a return, not a sweep.
+  if (hunt.open < mother.low || hunt.open > mother.high) return null;
 
   const tookLow = hunt.low < mother.low;
   const tookHigh = hunt.high > mother.high;
@@ -699,7 +706,8 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
       : `1h close ₹${r(level)} ke upar gaya to hunt fail.`,
     confirmationNeeded: `Agli 1h candle ko ₹${r(level)} bachana hai.`,
     evidence: [
-      { label: bullish ? 'Low swept + closed back in' : 'High swept + closed back in', ok: true },
+      { label: bullish ? 'Low swept by wick + closed back in' : 'High swept by wick + closed back in', ok: true },
+      { label: `Opened inside mother ₹${r(mother.low)}–₹${r(mother.high)}`, ok: true },
       { label: `Close ${bullish ? 'below' : 'above'} 50% ₹${r(mid)}`, ok: true },
       { label: 'Mother not an inside bar', ok: true },
       { label: `Sweep ${sweepDepthPct.toFixed(0)}% of range`, ok: sweepDepthPct >= 5 },

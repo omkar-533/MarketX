@@ -855,6 +855,21 @@ describe('scanWolfHunters', () => {
     assert.equal(hunters(bar({ high: 101, low: 98.5, close: 99.5 })), null);
   });
 
+  it('drops a low sweep that already opened below the mother low', () => {
+    // Closes back inside the lower half, but it opened out there — a return, not a wick.
+    assert.equal(hunters(bar({ open: 97.8, high: 100.2, low: 97.5, close: 99.5 })), null);
+  });
+
+  it('drops a high sweep that already opened above the mother high', () => {
+    assert.equal(hunters(bar({ open: 102.3, high: 102.5, low: 100.5, close: 101 })), null);
+  });
+
+  it('takes the same sweep once the candle opens back inside the mother', () => {
+    const hit = hunters(bar({ open: 99.2, high: 100.2, low: 97.5, close: 99.5 }));
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+  });
+
   it('refuses a mother candle that is itself an inside bar', () => {
     const inside = bar({ open: 99, high: 99.8, low: 98.2, close: 99.4 });
     const hit = scanWolfHunters(

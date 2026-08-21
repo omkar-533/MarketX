@@ -156,7 +156,7 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'wolf_hunters',
     title: 'WOLF HUNTERS',
     tagline:
-      '1h: candle pichhli candle ka high/low hunt kare aur uske 50% ke andar hi band ho. Mother candle khud inside bar nahi honi chahiye.',
+      '1h: candle mother ke andar khule, wick se uska high/low hunt kare aur mother ke 50% ke andar hi band ho. Mother khud inside bar nahi honi chahiye.',
     requires: 'ohlc',
     // The rule is written on hourly candles and reads null anywhere else.
     timeframes: ['1h'],
