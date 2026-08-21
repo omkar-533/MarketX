@@ -37,15 +37,28 @@ function session(bars: number, breakAt?: number): Bar[] {
   });
 }
 
-function evaluate(candleMapAll: Record<string, Bar[]>) {
+function evaluate(
+  candleMapAll: Record<string, Bar[]>,
+  extra?: { asOf?: number; rsiBySymbol?: Record<string, unknown> },
+) {
   return evaluateOpportunityFromCandleMap({
     filters: { ...DEFAULT_OPPORTUNITY_FILTERS, timeframe: '5m' },
     symbols: Object.keys(candleMapAll),
-    asOf: AS_OF,
+    asOf: extra?.asOf ?? AS_OF,
     dataMode: 'LIVE',
     shared: true,
     candleMapAll: candleMapAll as never,
+    rsiBySymbol: extra?.rsiBySymbol as never,
   });
+}
+
+/** Flat RSI stamped before the session, so every bar reads the same value. */
+function rsiFeed(m5: number, m30: number, h2: number) {
+  return {
+    m5: [[PREV_OPEN, m5]],
+    m30: [[PREV_OPEN, m30]],
+    h2: [[PREV_OPEN, h2]],
+  };
 }
 
 function sprintHits(cards: { scannerId: string; hits: { symbol: string; detectedAt: number }[] }[]) {
@@ -88,5 +101,38 @@ describe('Morning Sprint listing', () => {
   it('lists one row per symbol, not a print for every bar it held', async () => {
     const { cards } = await evaluate({ HOLDER: [...priorDay(), ...session(20)] });
     assert.equal(sprintHits(cards).filter((h) => h.symbol === 'HOLDER').length, 1);
+  });
+});
+
+describe('Boosters listing', () => {
+  const EARLY = Date.parse('2026-08-21T09:26:00+05:30');
+  const boosterHits = (
+    cards: { scannerId: string; hits: { symbol: string; detectedAt: number }[] }[],
+  ) => cards.find((c) => c.scannerId === 'opening_drive')?.hits ?? [];
+
+  it('can print on the first closed bar of the day, at 9:20', async () => {
+    const { cards } = await evaluate(
+      { RUNNER: [...priorDay(), ...session(2)] },
+      { asOf: EARLY, rsiBySymbol: { RUNNER: rsiFeed(70, 70, 60) } },
+    );
+    const stamps = boosterHits(cards).map((h) => istClock(h.detectedAt));
+    assert.ok(stamps.length > 0, 'Boosters produced no hit');
+    assert.equal(stamps.sort()[0], '09:20');
+  });
+
+  it('stays silent without the higher-timeframe RSI instead of guessing', async () => {
+    const { cards } = await evaluate(
+      { RUNNER: [...priorDay(), ...session(2)] },
+      { asOf: EARLY },
+    );
+    assert.deepEqual(boosterHits(cards), []);
+  });
+
+  it('does not print the long side when the 2h RSI is against it', async () => {
+    const { cards } = await evaluate(
+      { RUNNER: [...priorDay(), ...session(2)] },
+      { asOf: EARLY, rsiBySymbol: { RUNNER: rsiFeed(70, 70, 40) } },
+    );
+    assert.deepEqual(boosterHits(cards), []);
   });
 });

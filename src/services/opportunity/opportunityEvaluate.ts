@@ -268,11 +268,15 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               asOf,
               {
                 // Morning Sprint reads only session open/high/low, so the 9:15–9:20
-                // bar is valid on its own. Skipping it pushed the first listing to 9:25.
+                // bar is valid on its own. Boosters compares that bar's close against
+                // the one before it, which on a continuous series is the previous
+                // session's last bar — also valid. Skipping the bar pushed both cards'
+                // first listing to 9:25.
                 includeFirstBar:
                   id === 'compression_break' ||
                   id === 'breakout_radar' ||
-                  id === 'morning_sprint',
+                  id === 'morning_sprint' ||
+                  id === 'opening_drive',
               },
             );
           } catch {

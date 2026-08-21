@@ -6,7 +6,10 @@ import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v24';
+// v25 matches the server board key. Bumping only the server left browsers
+// replaying their own cached v24 rows, which is why retired cards and pre-X-Factor
+// Boosters prints kept coming back.
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v25';
 /** Pre-quality-pack boards mixed WATCH/proxy hits — do not hydrate. */
 const LEGACY_BOARD_KEYS: string[] = [];
 const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
