@@ -85,6 +85,14 @@ function atrAbs(f: FeatureSnapshot): number | null {
   return n != null && n > 0 ? n : null;
 }
 
+/**
+ * X Factor — relative volume carried on the hit so the card can show it.
+ * Left off entirely when it cannot be measured, so the tile falls back to the score.
+ */
+function xFactorMeta(ratio: number): { xFactor?: number } {
+  return Number.isFinite(ratio) && ratio > 0 ? { xFactor: Math.round(ratio * 100) / 100 } : {};
+}
+
 function priorBoxPct(f: FeatureSnapshot): number | null {
   if (f.high20 == null || f.low20 == null || !(f.low20 > 0)) return null;
   return ((f.high20 - f.low20) / f.low20) * 100;
@@ -358,6 +366,7 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
     meta: {
       pattern: bullish ? 'open_equals_low' : 'open_equals_high',
       eqBand,
+      ...xFactorMeta(vol),
     },
   });
 }
@@ -529,7 +538,13 @@ export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
       },
       { label: `Volume ${vol.toFixed(1)}×`, ok: vol >= 1 },
     ],
-    meta: { rsi5m: r5, rsi30m: r30, rsi2h: r2h, pattern: bullish ? 'booster_long' : 'booster_short' },
+    meta: {
+      rsi5m: r5,
+      rsi30m: r30,
+      rsi2h: r2h,
+      pattern: bullish ? 'booster_long' : 'booster_short',
+      ...xFactorMeta(vol),
+    },
   });
 }
 

@@ -379,9 +379,9 @@ export function loadOpportunityFilters(): OpportunityFilters {
     next.direction = 'all';
     next.autoRefresh = true;
     if (![5, 10, 30, 60].includes(Number(next.refreshSec))) next.refreshSec = 30;
-    if (!['5m', '15m', '1h', '1D'].includes(String(next.timeframe))) {
-      next.timeframe = '5m';
-    }
+    // Timeframe is a per-card choice now. The shared board the desk scans and
+    // contributes to stays on 5m, so a stale saved value cannot redirect it.
+    next.timeframe = '5m';
     return next;
   } catch {
     return { ...DEFAULT_OPPORTUNITY_FILTERS };

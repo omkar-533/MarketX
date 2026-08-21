@@ -124,6 +124,8 @@ export const OPPORTUNITY_SCANNERS: {
   title: string;
   tagline: string;
   requires: 'ohlc' | 'oi' | 'options' | 'sector';
+  /** Timeframes this scanner is actually built for. First entry is the card default. */
+  timeframes: OpportunityTimeframe[];
 }[] = [
   {
     id: 'morning_sprint',
@@ -131,6 +133,9 @@ export const OPPORTUNITY_SCANNERS: {
     tagline:
       '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.',
     requires: 'ohlc',
+    // Intraday rule that must drop a name the moment it breaks — a daily bar
+    // resolves once, so it cannot track the break.
+    timeframes: ['5m', '15m'],
   },
   {
     id: 'opening_drive',
@@ -138,54 +143,67 @@ export const OPPORTUNITY_SCANNERS: {
     tagline:
       'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.',
     requires: 'ohlc',
+    // The rule reads the 5m close against the previous 5m close — scanOpeningDrive
+    // returns null on every other timeframe.
+    timeframes: ['5m'],
   },
   {
     id: 'wolf_prime',
     title: 'WOLF PRIME',
     tagline: 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h'],
   },
   {
     id: 'momentum_surge',
     title: 'PRICE RUNNERS',
     tagline: 'Last 2 candles volume up, price still inside — then the burst.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h'],
   },
   {
     id: 'compression_break',
     title: 'COMPRESSION BREAK',
     tagline: 'From the 9:20 close. Tight coil + volume. ACTIVE on the close out.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h', '1D'],
   },
   {
     id: 'breakout_radar',
     title: 'BREAKOUT RADAR',
     tagline: 'From the 9:20 close. WATCH at the box, ACTIVE on the close.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h', '1D'],
   },
   {
     id: 'top_movers',
     title: 'TOP MOVERS',
     tagline: 'Last 3 bars still fast + volume now. Dead day winners out.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h'],
   },
   {
     id: 'liquidity_hunt',
     title: 'LIQUIDITY HUNT',
     tagline: 'Reclaim only — sweep without close-back does not list.',
     requires: 'ohlc',
+    timeframes: ['5m', '15m', '1h'],
   },
   {
     id: 'trend_rider',
     title: 'TREND RIDER',
     tagline: 'First EMA/VWAP touch, then hold. Stretched names hide.',
     requires: 'ohlc',
+    // A trend hold needs room to breathe — 5m churns the EMA/VWAP touch.
+    timeframes: ['15m', '1h', '1D'],
   },
   {
     id: 'options_flow',
     title: 'OPTIONS FLOW',
     tagline: 'Live chain OI + day price. Long/short buildup only — no fake ATR proxy.',
     requires: 'options',
+    // Reads the live chain snapshot, not candles.
+    timeframes: ['5m'],
   },
 ];
 

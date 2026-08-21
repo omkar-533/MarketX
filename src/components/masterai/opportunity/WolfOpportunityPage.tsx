@@ -16,6 +16,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { feedState } from './feedState';
+import { formatXFactor, xFactorOf } from '../../../services/opportunity/xFactor';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard, fetchOpportunityStats, type ScannerTrackRecord } from '../../../services/marketData/marketDataApi';
@@ -44,8 +45,16 @@ import type {
   OpportunityDirection,
   OpportunityFilters,
   OpportunityHit,
+  OpportunityTimeframe,
   ScannerCardState,
 } from '../../../services/opportunity/opportunityTypes';
+import {
+  coerceScannerTimeframe,
+  defaultCardTimeframes,
+  scannerTimeframes,
+  timeframesInUse,
+  type CardTimeframes,
+} from '../../../services/opportunity/scannerTimeframes';
 import {
   emptyMarketTrend,
   loadMarketTrend,
@@ -142,6 +151,8 @@ type Props = {
 const MIN_RECORD_SAMPLES = 20;
 const RECORD_DAYS = 20;
 const RECORD_REFRESH_MS = 5 * 60_000;
+/** The board job rebuilds 15m every 2 min and 1h/1D far slower — polling faster only burns calls. */
+const SIDE_BOARD_REFRESH_MS = 60_000;
 
 function resolveLiveProvider(): typeof serverMarketDataProvider | null {
   return serverMarketDataProvider;
@@ -177,6 +188,7 @@ const HitTile = memo(function HitTile({
 }) {
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
+  const xFactor = xFactorOf(hit);
   const tvHref = tradingViewChartUrl(hit.symbol, hit.timeframe, hit.exchange);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
@@ -202,7 +214,18 @@ const HitTile = memo(function HitTile({
               {hit.status === 'WATCH' ? <span className="wolf-opp__tile-nth">Watch</span> : null}
               {printLabel ? <span className="wolf-opp__tile-nth">{printLabel}</span> : null}
             </span>
-            <span className="wolf-opp__tile-score">{hit.score}</span>
+            {xFactor != null ? (
+              <span
+                className="wolf-opp__tile-score wolf-opp__tile-score--x"
+                title={`X Factor — relative volume ${xFactor.toFixed(2)}× of this symbol's recent average`}
+              >
+                {formatXFactor(xFactor)}
+              </span>
+            ) : (
+              <span className="wolf-opp__tile-score" title={`Wolf score ${hit.score}/100`}>
+                {hit.score}
+              </span>
+            )}
           </span>
         </span>
       </AppLink>
@@ -277,6 +300,12 @@ export default function WolfOpportunityPage({
   const [symbolQuery, setSymbolQuery] = useState('');
   const [searchUnlocked, setSearchUnlocked] = useState(false);
   const [deskSortByScanner, setDeskSortByScanner] = useState<Partial<Record<string, OpportunityDeskSort>>>({});
+  // Each card picks its own timeframe; it resets to the scanner default on reload.
+  const [cardTf, setCardTf] = useState<CardTimeframes>(() => defaultCardTimeframes());
+  // Read-only shared boards for the timeframes the primary scan does not cover.
+  const [sideBoards, setSideBoards] = useState<
+    Partial<Record<OpportunityTimeframe, ScannerCardState[]>>
+  >({});
   const [trackRecord, setTrackRecord] = useState<Record<string, ScannerTrackRecord>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
@@ -318,6 +347,42 @@ export default function WolfOpportunityPage({
       clearInterval(timer);
     };
   }, [dataMode, filters.universe, filters.timeframe]);
+
+  // Cards parked off the primary timeframe read the shared board for their own
+  // timeframe. This path only reads — the desk still scans and posts on 5m.
+  const sideTfs = useMemo(
+    () => timeframesInUse(cardTf).filter((tf) => tf !== filters.timeframe),
+    [cardTf, filters.timeframe],
+  );
+  const sideTfKey = sideTfs.join(',');
+  useEffect(() => {
+    if (!sideTfs.length) return;
+    let alive = true;
+    const load = async () => {
+      for (const tf of sideTfs) {
+        try {
+          const shared = await fetchOpportunityDayBoard(filters.universe, tf);
+          if (!alive) return;
+          const cards =
+            shared.ready && shared.cards?.length ? applyLiveScanCards(shared.cards) : [];
+          setSideBoards((prev) => ({ ...prev, [tf]: cards }));
+        } catch {
+          // No board yet for this timeframe — show it as empty, never as another
+          // timeframe's setups.
+          if (!alive) return;
+          setSideBoards((prev) => (prev[tf] ? prev : { ...prev, [tf]: [] }));
+        }
+      }
+    };
+    void load();
+    const timer = setInterval(load, SIDE_BOARD_REFRESH_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+    // sideTfKey stands in for the timeframe list identity.
+     
+  }, [sideTfKey, filters.universe]);
 
   const refreshMarketTrend = useCallback(async (provider: MarketDataProvider) => {
     try {
@@ -591,22 +656,37 @@ export default function WolfOpportunityPage({
   };
 
 
-  const { brokerOn, liveStreaming, cta: feedCta, label: feedLabel } = feedState({
+  const { liveStreaming, cta: feedCta, label: feedLabel } = feedState({
     dataMode,
     feedStatus,
     marketOpen,
   });
+  const selectedXFactor = selected ? xFactorOf(selected) : null;
   const needle = symbolNeedle(symbolQuery);
-  const hitCount = cards.reduce(
-    (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
-    0,
+
+  /** Resolves a card against its own timeframe's board. */
+  const cardView = useCallback(
+    (scannerId: string) => {
+      const timeframe = coerceScannerTimeframe(scannerId, cardTf[scannerId as never]);
+      const primary = timeframe === filters.timeframe;
+      const board = primary ? cards : sideBoards[timeframe];
+      const hits = (board?.find((c) => c.scannerId === scannerId)?.hits || []).filter(
+        (h) => h.timeframe === timeframe,
+      );
+      return { timeframe, hits, pending: !primary && board === undefined };
+    },
+    [cardTf, cards, filters.timeframe, sideBoards],
+  );
+
+  const hitCount = useMemo(
+    () => cards.reduce((n, c) => n + cardView(c.scannerId).hits.length, 0),
+    [cards, cardView],
   );
   const finder = useMemo(() => {
     if (!needle) return [] as Array<{ scannerId: string; title: string; side: OpportunityDirection; count: number }>;
     const byKey = new Map<string, { scannerId: string; title: string; side: OpportunityDirection; count: number }>();
     for (const card of cards) {
-      for (const hit of card.hits) {
-        if (hit.timeframe !== filters.timeframe) continue;
+      for (const hit of cardView(card.scannerId).hits) {
         if (!hitMatchesQuery(hit, needle)) continue;
         const side = biasOf(hit);
         const key = `${card.scannerId}|${side}`;
@@ -623,7 +703,7 @@ export default function WolfOpportunityPage({
       }
     }
     return [...byKey.values()];
-  }, [cards, filters.timeframe, needle]);
+  }, [cards, cardView, needle]);
   const finderScannerCount = useMemo(
     () => new Set(finder.map((row) => row.scannerId)).size,
     [finder],
@@ -735,23 +815,6 @@ export default function WolfOpportunityPage({
           ))}
         </div>
         ) : null}
-        <div className="wolf-opp__seg-row" role="group" aria-label="Timeframe">
-          {(['5m', '15m', '1h', '1D'] as const).map((t) => (
-            <Seg
-              key={t}
-              on={filters.timeframe === t}
-              onClick={() => {
-                if (filters.timeframe === t) return;
-                patchFilters({ timeframe: t });
-                setSelected(null);
-                setWhyHit(null);
-                void runScan({ reset: true, filtersOverride: { timeframe: t } });
-              }}
-            >
-              {t}
-            </Seg>
-          ))}
-        </div>
         <form
           className="wolf-opp__search"
           autoComplete="off"
@@ -834,10 +897,10 @@ export default function WolfOpportunityPage({
         <div className="wolf-opp__sheets">
           {cards.map((card) => {
             const deskSort = deskSortByScanner[card.scannerId] || DEFAULT_OPPORTUNITY_DESK_SORT;
+            const view = cardView(card.scannerId);
+            const tfChoices = scannerTimeframes(card.scannerId);
             const tfHits = sortHitsForDesk(
-              card.hits.filter(
-                (h) => h.timeframe === filters.timeframe && hitMatchesQuery(h, needle),
-              ),
+              view.hits.filter((h) => hitMatchesQuery(h, needle)),
               deskSort,
             );
             const printLabels = scannerPrintLabels(tfHits);
@@ -854,6 +917,34 @@ export default function WolfOpportunityPage({
                     <TrackRecordStrip record={trackRecord[card.scannerId]} />
                   </div>
                   <div className="wolf-opp__sheet-tools">
+                    {tfChoices.length > 1 ? (
+                      <div
+                        className="wolf-opp__sheet-tf"
+                        role="group"
+                        aria-label={`${prettyTitle(card.title)} timeframe`}
+                      >
+                        {tfChoices.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            className={`wolf-opp__sheet-tf-btn${t === view.timeframe ? ' is-on' : ''}`}
+                            aria-pressed={t === view.timeframe}
+                            onClick={() =>
+                              setCardTf((prev) => ({ ...prev, [card.scannerId]: t }))
+                            }
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <span
+                        className="wolf-opp__sheet-tf-fixed"
+                        title={`This scanner only runs on ${view.timeframe}`}
+                      >
+                        {view.timeframe}
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="wolf-opp__sort wolf-opp__sort--sheet"
@@ -882,7 +973,11 @@ export default function WolfOpportunityPage({
                   <WaterStack>
                     {!tfHits.length ? (
                       <p className="wolf-opp__side-empty">
-                        {scanning || bgBusy ? 'Hunting…' : 'No setups'}
+                        {view.pending
+                          ? `Loading ${view.timeframe} board…`
+                          : scanning || bgBusy
+                            ? 'Hunting…'
+                            : 'No setups'}
                       </p>
                     ) : (
                       tfHits.map((hit) => (
@@ -998,7 +1093,10 @@ export default function WolfOpportunityPage({
                   <div>
                   <h3>{selected.symbol}</h3>
                   <p>
-                    {prettyTitle(selected.scannerId)} · {selected.score}/100
+                    {prettyTitle(selected.scannerId)} ·{' '}
+                    {selectedXFactor != null
+                      ? `X Factor ${formatXFactor(selectedXFactor)}`
+                      : `${selected.score}/100`}
                   </p>
                   <p className="wolf-opp__setup-at">
                     Created at {formatHitClock(selected.detectedAt)} IST
@@ -1023,6 +1121,14 @@ export default function WolfOpportunityPage({
                     {selected.changePercent.toFixed(2)}%
                   </dd>
                 </div>
+                {selectedXFactor != null ? (
+                  <div>
+                    <dt>X Factor</dt>
+                    <dd title="Relative volume against this symbol's recent average">
+                      {formatXFactor(selectedXFactor)}
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>Created at</dt>
                   <dd>{formatHitClock(selected.detectedAt)} IST</dd>
