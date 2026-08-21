@@ -15,6 +15,7 @@ import {
   Minus,
   ArrowUpDown,
 } from 'lucide-react';
+import { feedState } from './feedState';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard, fetchOpportunityStats, type ScannerTrackRecord } from '../../../services/marketData/marketDataApi';
@@ -590,9 +591,11 @@ export default function WolfOpportunityPage({
   };
 
 
-  const brokerOn = dataMode === 'LIVE' && (feedStatus === 'LIVE' || feedStatus === 'DELAYED');
-  const liveStreaming = brokerOn && marketOpen && feedStatus === 'LIVE';
-  const showConnectCta = Boolean(onConnectData) && (!brokerOn || (marketOpen && !liveStreaming));
+  const { brokerOn, liveStreaming, cta: feedCta, label: feedLabel } = feedState({
+    dataMode,
+    feedStatus,
+    marketOpen,
+  });
   const needle = symbolNeedle(symbolQuery);
   const hitCount = cards.reduce(
     (n, c) => n + c.hits.filter((h) => h.timeframe === filters.timeframe).length,
@@ -677,15 +680,7 @@ export default function WolfOpportunityPage({
 
         <div className="wolf-opp__hero-actions">
           <div className={`wolf-opp__feed ${liveStreaming ? 'is-live' : ''}`}>
-            {liveStreaming
-              ? 'Live feed'
-              : brokerOn && marketOpen
-                ? 'Delayed'
-                : brokerOn
-                  ? 'Last session'
-                  : dataMode === 'DEMO'
-                    ? 'Demo mode'
-                    : 'Connect for live'}
+            {feedLabel}
             {bgBusy ? ' · syncing' : ''}
           </div>
           <button
@@ -697,9 +692,18 @@ export default function WolfOpportunityPage({
           >
             <RefreshCw size={15} className={scanning ? 'is-spin' : ''} />
           </button>
-          {showConnectCta ? (
-            <button type="button" className="wolf-opp__cta" onClick={onConnectData}>
-              <Link2 size={14} /> Connect live
+          {onConnectData ? (
+            <button
+              type="button"
+              className={`wolf-opp__cta${feedCta === 'manage' ? ' wolf-opp__cta--quiet' : ''}`}
+              onClick={onConnectData}
+              title={
+                feedCta === 'connect'
+                  ? 'Connect your broker for live data'
+                  : 'Market data connection — reconnect or switch broker'
+              }
+            >
+              <Link2 size={14} /> {feedCta === 'connect' ? 'Connect live' : 'Live data'}
             </button>
           ) : null}
         </div>

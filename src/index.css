@@ -29181,6 +29181,19 @@ body:has(.app-main--terminal-immersive) #root {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(212, 175, 55, 0.18);
 }
+/* Connection is healthy — the control stays reachable without shouting. */
+.wolf-opp__cta--quiet {
+  background: transparent;
+  box-shadow: none;
+  color: var(--opp-text-soft);
+  border-color: var(--opp-hairline);
+  font-weight: 700;
+}
+.wolf-opp__cta--quiet:hover {
+  border-color: var(--opp-line);
+  color: var(--opp-gold-soft);
+  box-shadow: none;
+}
 .wolf-opp__cta--ghost {
   background: transparent;
   box-shadow: none;
@@ -30702,6 +30715,10 @@ html[data-theme="light"] .wolf-opp__side-empty {
 html[data-theme="light"] .wolf-opp__sheet-count {
   color: #1a1406;
   background: linear-gradient(180deg, #e8c547, #b8922a);
+}
+html[data-theme="light"] .wolf-opp__cta--quiet {
+  color: #334155;
+  border-color: #cbd5e1;
 }
 html[data-theme="light"] .wolf-opp__record {
   color: #475569;
