@@ -368,21 +368,41 @@ export default function WolfOpportunityPage({
   useEffect(() => {
     if (!sideTfs.length) return;
     let alive = true;
-    const load = async () => {
+
+    // Yesterday's rows for these timeframes are already on disk, so paint them at once
+    // rather than leaving the card on "Loading…" until its own board GET lands.
+    setSideBoards((prev) => {
+      const next = { ...prev };
       for (const tf of sideTfs) {
-        try {
-          const shared = await fetchOpportunityDayBoard(filters.universe, tf);
-          if (!alive) return;
-          const cards =
-            shared.ready && shared.cards?.length ? applyLiveScanCards(shared.cards) : [];
-          setSideBoards((prev) => ({ ...prev, [tf]: cards }));
-        } catch {
-          // No board yet for this timeframe — show it as empty, never as another
-          // timeframe's setups.
-          if (!alive) return;
-          setSideBoards((prev) => (prev[tf] ? prev : { ...prev, [tf]: [] }));
-        }
+        if (next[tf]) continue;
+        const local = loadOpportunityDayBoard(opportunityBoardKey(filters.universe, tf));
+        if (local.some((c) => c.hits.length)) next[tf] = applyLiveScanCards(local);
       }
+      return next;
+    });
+
+    const load = async () => {
+      // One board per timeframe, all in flight together — a serial loop made the last
+      // card wait out every board before it.
+      await Promise.all(
+        sideTfs.map(async (tf) => {
+          try {
+            const shared = await fetchOpportunityDayBoard(filters.universe, tf);
+            if (!alive) return;
+            const cards =
+              shared.ready && shared.cards?.length ? applyLiveScanCards(shared.cards) : [];
+            if (cards.some((c) => c.hits.length)) {
+              saveOpportunityDayBoard(opportunityBoardKey(filters.universe, tf), cards);
+            }
+            setSideBoards((prev) => ({ ...prev, [tf]: cards }));
+          } catch {
+            // No board yet for this timeframe — show it as empty, never as another
+            // timeframe's setups.
+            if (!alive) return;
+            setSideBoards((prev) => (prev[tf] ? prev : { ...prev, [tf]: [] }));
+          }
+        }),
+      );
     };
     void load();
     const timer = setInterval(load, SIDE_BOARD_REFRESH_MS);
@@ -440,7 +460,39 @@ export default function WolfOpportunityPage({
       const isStale = () => scanGenRef.current !== gen || ac.signal.aborted;
       scanningRef.current = true;
       if (quiet) setBgBusy(true);
-      else setProgress('Loading shared day board…');
+
+      const replaceDesk = Boolean(opts?.reset);
+      const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
+      const tfHits = (cards: ScannerCardState[]) =>
+        applyLiveScanCards(cards).map((card) => ({
+          ...card,
+          hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
+        }));
+      const paintBoard = (incoming: ScannerCardState[], _reset: boolean) => {
+        setCards(applyLiveScanCards(incoming));
+        setLastUpdated(Date.now());
+      };
+      const adoptBoard = (cards: ScannerCardState[], reset: boolean) => {
+        const incoming = tfHits(cards);
+        saveOpportunityDayBoard(boardKey, incoming);
+        paintBoard(incoming, reset);
+        return incoming;
+      };
+
+      // The day's rows are already on disk. Painting them before the status check and
+      // broker connect means the desk is readable immediately instead of showing a
+      // spinner through two round trips that cannot change what is on screen.
+      const cached = loadOpportunityDayBoard(boardKey);
+      const cachedHasHits = cached.some((c) => c.hits.length);
+      if (!quiet) {
+        if (replaceDesk && !cachedHasHits) setCards(emptyOpportunityCards());
+        if (cachedHasHits) {
+          paintBoard(cached, replaceDesk);
+          setProgress(`${cached.reduce((n, c) => n + c.hits.length, 0)} setups · refreshing…`);
+        } else {
+          setProgress('Loading shared day board…');
+        }
+      }
 
       let live = liveHint;
       try {
@@ -474,32 +526,8 @@ export default function WolfOpportunityPage({
       const provider = resolveLiveProvider();
       setDataMode('LIVE');
       void refreshMarketTrend(provider);
-      const replaceDesk = Boolean(opts?.reset);
-      const boardKey = opportunityBoardKey(activeFilters.universe, activeFilters.timeframe);
-      const tfHits = (cards: ScannerCardState[]) =>
-        applyLiveScanCards(cards).map((card) => ({
-          ...card,
-          hits: card.hits.filter((h) => h.timeframe === activeFilters.timeframe),
-        }));
-      const paintBoard = (incoming: ScannerCardState[], _reset: boolean) => {
-        setCards(applyLiveScanCards(incoming));
-        setLastUpdated(Date.now());
-      };
-      const adoptBoard = (cards: ScannerCardState[], reset: boolean) => {
-        const incoming = tfHits(cards);
-        saveOpportunityDayBoard(boardKey, incoming);
-        paintBoard(incoming, reset);
-        return incoming;
-      };
-      const localBoard = () => loadOpportunityDayBoard(boardKey);
 
       try {
-        if (!quiet) setProgress('Loading shared day board…');
-        const cached = localBoard();
-        const cachedHasHits = cached.some((c) => c.hits.length);
-        if (replaceDesk && !cachedHasHits) setCards(emptyOpportunityCards());
-        if (!quiet && cachedHasHits) paintBoard(cached, replaceDesk);
-
         let hadBoard = cachedHasHits;
         try {
           const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
