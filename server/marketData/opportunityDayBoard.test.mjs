@@ -9,12 +9,12 @@ describe('opportunity day board merge', () => {
     const later = Date.parse('2026-08-17T14:10:00+05:30');
     const first = mergeScannerHits(
       [],
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: morning, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 70, detectedAt: morning, timeframe: '5m' }],
       day,
     );
     const merged = mergeScannerHits(
       first,
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 81, detectedAt: later, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 81, detectedAt: later, timeframe: '5m' }],
       day,
     );
     assert.deepEqual(
@@ -29,12 +29,12 @@ describe('opportunity day board merge', () => {
     const t = Date.parse('2026-08-17T10:25:00+05:30');
     const first = mergeScannerHits(
       [],
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: t, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 70, detectedAt: t, timeframe: '5m' }],
       day,
     );
     const merged = mergeScannerHits(
       first,
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 90, detectedAt: t, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 90, detectedAt: t, timeframe: '5m' }],
       day,
     );
     assert.equal(merged.length, 1);
@@ -47,7 +47,7 @@ describe('opportunity day board merge', () => {
     const morning = Date.parse('2026-08-17T10:25:00+05:30');
     const late = Date.parse('2026-08-17T14:55:00+05:30');
     const prev = Array.from({ length: 80 }, (_, i) => ({
-      scannerId: 'breakout_radar',
+      scannerId: 'wolf_hunters',
       symbol: `M${i}`,
       score: 90,
       detectedAt: morning,
@@ -56,7 +56,7 @@ describe('opportunity day board merge', () => {
     const first = mergeScannerHits([], prev, day);
     const merged = mergeScannerHits(
       first,
-      [{ scannerId: 'breakout_radar', symbol: 'PREMIERENE', score: 62, detectedAt: late, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'PREMIERENE', score: 62, detectedAt: late, timeframe: '5m' }],
       day,
     );
     assert.equal(first.length, 80);
@@ -83,7 +83,7 @@ describe('opportunity day board merge', () => {
     const midnight = Date.parse('2026-08-17T00:00:00+05:30');
     const hits = mergeScannerHits(
       [],
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: midnight, timeframe: '1D' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 70, detectedAt: midnight, timeframe: '1D' }],
       day,
     );
     assert.equal(hits.length, 1);
@@ -95,7 +95,7 @@ describe('opportunity day board merge', () => {
     const t = Date.parse('2026-08-17T10:00:00+05:30');
     const prev = mergeScannerHits(
       [],
-      [{ scannerId: 'breakout_radar', symbol: 'INFY', score: 70, detectedAt: t, timeframe: '15m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 70, detectedAt: t, timeframe: '15m' }],
       day,
     );
     const kept = nextScannerHits(prev, [], day);
@@ -103,20 +103,20 @@ describe('opportunity day board merge', () => {
     assert.equal(kept[0].symbol, 'INFY');
   });
 
-  it('lists only the names Morning Sprint still holds and clears on an empty scan', () => {
+  it('a replace/live-only card lists only what the latest scan holds', () => {
     const day = '2026-08-17';
     const t1 = Date.parse('2026-08-17T09:20:00+05:30');
     const t2 = Date.parse('2026-08-17T09:25:00+05:30');
     const prev = mergeScannerHits(
       [],
-      [{ scannerId: 'morning_sprint', symbol: 'INFY', score: 72, detectedAt: t1, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'INFY', score: 72, detectedAt: t1, timeframe: '1h' }],
       day,
       true,
     );
     // INFY broke the rule, so the next scan only carries TCS.
     const next = nextScannerHits(
       prev,
-      [{ scannerId: 'morning_sprint', symbol: 'TCS', score: 75, detectedAt: t2, timeframe: '5m' }],
+      [{ scannerId: 'wolf_hunters', symbol: 'TCS', score: 75, detectedAt: t2, timeframe: '1h' }],
       day,
       true,
       { keepOnEmpty: false, replace: true },
@@ -132,7 +132,7 @@ describe('opportunity day board merge', () => {
   it('does not wipe in-memory prints when the disk file is missing', () => {
     const day = '2026-08-17';
     const kept = retainBoardsForDay(
-      { boards: { [`${day}|F&O|5m`]: { day, hitsByScanner: { breakout_radar: [{ symbol: 'INFY' }] } } } },
+      { boards: { [`${day}|F&O|5m`]: { day, hitsByScanner: { wolf_hunters: [{ symbol: 'INFY' }] } } } },
       day,
     );
     assert.equal(Object.keys(kept.boards).length, 1);

@@ -288,10 +288,9 @@ function tooExtended(last: number, level: number, atr: number, maxAtr = 2): bool
 }
 
 /**
- * MORNING SPRINT — from the first closed 5m bar (9:20) until the close.
- * Rule: Open == Day Low (long) or Open == Day High (short).
- * Live list: the symbol is listed only while the equality still holds, and the
- * card drops it on the first bar that breaks it.
+ * @internal parked — Morning Sprint. Not on the Opportunity desk.
+ * Rule: Open == Day Low (long) or Open == Day High (short), from the first closed
+ * 5m bar (9:20) until the close, listed only while the equality still holds.
  */
 export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -476,7 +475,7 @@ function rsiAsOf(series: RsiPoint[] | undefined, atMs: number): number | null {
 }
 
 /**
- * BOOSTERS — 5-minute momentum breakout, both sides.
+ * @internal parked — Boosters. Not on the Opportunity desk.
  * LONG:  2h RSI > 50, 30m RSI > 60, 5m RSI > 60, 5m close > previous 5m close.
  * SHORT: 2h RSI < 50, 30m RSI < 40, 5m RSI < 40, 5m close < previous 5m close.
  * Higher-timeframe RSI is server-built; without it this scanner stays silent.
@@ -742,6 +741,99 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
       mid,
       // The hunt candle's own extreme is the stop: price closing back through the
       // wick that did the sweeping means the sweep failed.
+      stopLevel,
+    },
+  });
+}
+
+/**
+ * RALLY RIDER — two sweeps in a row on the same side. Candle 2 takes candle 1's
+ * level and closes back inside its swept half; candle 3 does the same to candle 2.
+ * The stop is candle 3's own extreme.
+ */
+export function scanRallyRider(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  if (ctx.timeframe !== '1h') return null;
+  const bars = f.candles;
+  if (!bars || bars.length < 3) return null;
+
+  const c1 = bars[bars.length - 3];
+  const c2 = bars[bars.length - 2];
+  const c3 = bars[bars.length - 1];
+  if (!c1 || !c2 || !c3) return null;
+
+  const range1 = c1.high - c1.low;
+  const range2 = c2.high - c2.low;
+  if (!(range1 > 0) || !(range2 > 0)) return null;
+
+  const mid1 = (c1.high + c1.low) / 2;
+  const mid2 = (c2.high + c2.low) / 2;
+
+  // An outside bar takes both levels at once, so it picks no side. Without a side
+  // there is no chain to follow.
+  const twoWay = (sweeper: typeof c2, swept: typeof c1) =>
+    sweeper.low < swept.low && sweeper.high > swept.high;
+  if (twoWay(c2, c1) || twoWay(c3, c2)) return null;
+
+  const bullish = c2.low < c1.low && c3.low < c2.low;
+  const bearish = c2.high > c1.high && c3.high > c2.high;
+  // Both legs have to point the same way, and only one way.
+  if (bullish === bearish) return null;
+
+  const closedInHalf = (sweeper: typeof c2, swept: typeof c1, mid: number) =>
+    bullish
+      ? sweeper.close >= swept.low && sweeper.close <= mid
+      : sweeper.close <= swept.high && sweeper.close >= mid;
+  if (!closedInHalf(c2, c1, mid1) || !closedInHalf(c3, c2, mid2)) return null;
+
+  const level1 = bullish ? c1.low : c1.high;
+  const level2 = bullish ? c2.low : c2.high;
+  const target = bullish ? c2.high : c2.low;
+  const stopLevel = bullish ? c3.low : c3.high;
+  const swept1 = bullish ? level1 - c2.low : c2.high - level1;
+  const swept2 = bullish ? level2 - c3.low : c3.high - level2;
+  const roomPct = (Math.abs(target - c3.close) / range2) * 100;
+  const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
+
+  const breakdown: ScoreBreakdown = {
+    chain: 32,
+    shallowClose: clampScore(8 + Math.min(14, (roomPct - 50) * 0.6), 22),
+    sweepDepth: clampScore(6 + Math.min(12, ((swept2 / range2) * 100) * 1.2), 18),
+    motherSize: clampScore(6 + Math.min(10, (range2 / Math.max(1e-6, f.tech.last)) * 100 * 8), 16),
+    volume: clampScore(4 + Math.min(10, Math.max(0, vol - 0.9) * 12), 14),
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 55)) return null;
+
+  const r = (n: number) => n.toFixed(2);
+  return baseHit('rally_rider', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: bullish ? 'DOUBLE SELL-SIDE SWEEP' : 'DOUBLE BUY-SIDE SWEEP',
+    why: bullish
+      ? `Do 1h candle ne lagataar low hunt kiya — pehle ₹${r(level1)}, phir ₹${r(level2)} — aur dono apni swept half me band hui. Aakhri close ₹${r(c3.close)}, upar ₹${r(target)} tak jagah hai.`
+      : `Do 1h candle ne lagataar high hunt kiya — pehle ₹${r(level1)}, phir ₹${r(level2)} — aur dono apni swept half me band hui. Aakhri close ₹${r(c3.close)}, neeche ₹${r(target)} tak jagah hai.`,
+    keyLevel: level2,
+    trigger: c3.close,
+    invalidation: bullish
+      ? `SL: koi 1h candle teesri candle ke low ₹${r(stopLevel)} ke neeche band hui to setup invalid.`
+      : `SL: koi 1h candle teesri candle ke high ₹${r(stopLevel)} ke upar band hui to setup invalid.`,
+    confirmationNeeded: `Har 1h close ko ₹${r(stopLevel)} ke ${bullish ? 'upar' : 'neeche'} rehna hai.`,
+    evidence: [
+      { label: `Candle 2 swept candle 1 ${bullish ? 'low' : 'high'} ₹${r(level1)}`, ok: true },
+      { label: `Candle 3 swept candle 2 ${bullish ? 'low' : 'high'} ₹${r(level2)}`, ok: true },
+      { label: `Candle 2 closed ${bullish ? 'below' : 'above'} 50% ₹${r(mid1)}`, ok: true },
+      { label: `Candle 3 closed ${bullish ? 'below' : 'above'} 50% ₹${r(mid2)}`, ok: true },
+      { label: `Sweeps ₹${r(swept1)} then ₹${r(swept2)}`, ok: true },
+      { label: `Vol ${vol.toFixed(1)}×`, ok: vol >= 1 },
+    ],
+    meta: {
+      pattern: bullish ? 'chain_low_sweep' : 'chain_high_sweep',
+      firstLevel: level1,
+      secondLevel: level2,
+      mid: mid2,
       stopLevel,
     },
   });

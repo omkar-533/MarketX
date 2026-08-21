@@ -154,7 +154,7 @@ describe('Opportunity Created clock', () => {
     const first = Date.parse('2026-08-17T10:25:00+05:30');
     const later = Date.parse('2026-08-17T15:30:00+05:30');
     const prev = emptyOpportunityCards().map((c) =>
-      c.scannerId === 'opening_drive'
+      c.scannerId === 'wolf_hunters'
         ? {
             ...c,
             hits: [hit({ symbol: 'INFY', score: 70, detectedAt: first })],
@@ -163,7 +163,7 @@ describe('Opportunity Created clock', () => {
         : c,
     );
     const incoming = emptyOpportunityCards().map((c) =>
-      c.scannerId === 'opening_drive'
+      c.scannerId === 'wolf_hunters'
         ? {
             ...c,
             hits: [hit({ symbol: 'INFY', score: 81, detectedAt: later })],
@@ -172,7 +172,7 @@ describe('Opportunity Created clock', () => {
         : c,
     );
     const next = applyDaySignalCards(prev, incoming);
-    const hits = next.find((c) => c.scannerId === 'opening_drive')?.hits || [];
+    const hits = next.find((c) => c.scannerId === 'wolf_hunters')?.hits || [];
     assert.deepEqual(
       hits.map((h) => h.detectedAt).sort((a, b) => a - b),
       [first, later],

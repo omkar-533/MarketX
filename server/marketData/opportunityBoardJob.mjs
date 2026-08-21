@@ -9,10 +9,7 @@ import { dirname, resolve } from 'path';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { listLiveIndstocksAccessTokens } from './credentialStore.mjs';
-import {
-  nseCashSessionIsOpen,
-  awaitOpportunitySnapshot,
-} from './opportunitySnapshot.mjs';
+import { awaitOpportunitySnapshot } from './opportunitySnapshot.mjs';
 import {
   mergeOpportunityDayBoard,
   persistOpportunityDayBoard,
@@ -28,30 +25,22 @@ const UNIVERSES = ['F&O'];
 let evaluateSnapshot = null;
 /** @type {Promise<void> | null} */
 let tickLock = null;
-let tickN = 0;
 let tokenCursor = 0;
 let started = false;
 let lastNoTokenLog = 0;
 
 /**
  * Only what a card can actually show. Every extra timeframe costs a full 208-symbol
- * candle pull inside the tick, and the tick is serial — building a 1D board no card
- * reads was pushing back the 5m and 1h boards users are waiting on.
+ * candle pull inside the tick, and the tick is serial — building boards no card reads
+ * was pushing back the one users are waiting on.
  */
-const ALL_TFS = ['5m', '15m', '1h'];
+const ALL_TFS = ['1h'];
 
-export function planOpportunityBoardTick(now = Date.now(), n = 0) {
-  const open = nseCashSessionIsOpen(now);
-  if (!open) {
-    const slow = ALL_TFS[1 + (n % 2)];
-    return { hunt: true, persist: true, timeframes: ['5m', slow], universes: [...UNIVERSES] };
-  }
-  const timeframes = ['5m'];
-  // Wolf Hunters is the only 1h card and an hourly bar only closes once an hour, but
-  // the board still has to exist early in the session, so keep it on a short rotation.
-  if (n % 3 === 0) timeframes.push('1h');
-  if (n % 4 === 0) timeframes.push('15m');
-  return { hunt: true, persist: true, timeframes, universes: [...UNIVERSES] };
+export function planOpportunityBoardTick() {
+  // Both desk cards are hourly, so there is exactly one board to keep warm. It still
+  // rebuilds every tick: an hourly bar closes once an hour, but the stop levels on
+  // live rows are re-checked against the latest candles on every pass.
+  return { hunt: true, persist: true, timeframes: [...ALL_TFS], universes: [...UNIVERSES] };
 }
 
 function runBundleScript() {
@@ -133,8 +122,7 @@ async function huntTimeframe(accessToken, universe, timeframe) {
 }
 
 async function runTick() {
-  const plan = planOpportunityBoardTick(Date.now(), tickN);
-  tickN += 1;
+  const plan = planOpportunityBoardTick();
   if (!plan.hunt) {
     if (plan.persist) await persistOpportunityDayBoard();
     return;

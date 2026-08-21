@@ -2,13 +2,14 @@ import { istCalendarDay } from '../../utils/marketHours';
 import { nseTradingDay } from '../radar/barTime';
 import type { OpportunityFilters, OpportunityHit, ScannerCardState } from './opportunityTypes';
 import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS } from './opportunityTypes';
+import { PRIMARY_TIMEFRAME } from './scannerTimeframes';
 
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-// v29 matches the server board key. Bumping only the server left browsers
+// v30 matches the server board key. Bumping only the server left browsers
 // replaying their own cached rows, which is why stale prints kept coming back.
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v29';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v30';
 /** Pre-quality-pack boards mixed WATCH/proxy hits — do not hydrate. */
 const LEGACY_BOARD_KEYS: string[] = [];
 const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
@@ -100,6 +101,7 @@ export function saveOpportunityDayBoard(key: string, cards: ScannerCardState[]) 
 export function clearOpportunityDayBoard() {
   try {
     localStorage.removeItem(DAY_BOARD_KEY);
+    localStorage.removeItem('wolf_opportunity_day_board_v29');
     localStorage.removeItem('wolf_opportunity_day_board_v28');
     localStorage.removeItem('wolf_opportunity_day_board_v27');
     localStorage.removeItem('wolf_opportunity_day_board_v26');
@@ -386,8 +388,8 @@ export function loadOpportunityFilters(): OpportunityFilters {
     next.autoRefresh = true;
     if (![5, 10, 30, 60].includes(Number(next.refreshSec))) next.refreshSec = 30;
     // Timeframe is a per-card choice now. The shared board the desk scans and
-    // contributes to stays on 5m, so a stale saved value cannot redirect it.
-    next.timeframe = '5m';
+    // contributes to is pinned, so a stale saved value cannot redirect it.
+    next.timeframe = PRIMARY_TIMEFRAME;
     return next;
   } catch {
     return { ...DEFAULT_OPPORTUNITY_FILTERS };

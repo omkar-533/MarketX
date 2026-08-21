@@ -11,8 +11,12 @@ import {
   type OpportunityTimeframe,
 } from './opportunityTypes';
 
-/** The timeframe the shared board is always built on — the client's scan target. */
-export const PRIMARY_TIMEFRAME: OpportunityTimeframe = '5m';
+/**
+ * The timeframe the shared board is always built on — the client's scan target.
+ * Every card on the desk is an hourly rule, so a 5m board would be fetched, scanned
+ * and posted for nothing while both cards waited on a second round trip.
+ */
+export const PRIMARY_TIMEFRAME: OpportunityTimeframe = '1h';
 
 const BY_ID = new Map<string, OpportunityTimeframe[]>(
   OPPORTUNITY_SCANNERS.map((s) => [s.id, s.timeframes]),

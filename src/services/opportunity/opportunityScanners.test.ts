@@ -7,6 +7,7 @@ import {
   scanMomentumSurge,
   scanMorningSprint,
   scanOpeningDrive,
+  scanRallyRider,
   scanTopMovers,
   scanTrendRider,
   scanOptionsFlow,
@@ -77,10 +78,10 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('runs Morning Sprint, Boosters and Wolf Hunters only', () => {
+  it('runs Wolf Hunters and Rally Rider only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['morning_sprint', 'opening_drive', 'wolf_hunters'],
+      ['wolf_hunters', 'rally_rider'],
     );
   });
 });
@@ -967,6 +968,87 @@ describe('scanWolfHunters', () => {
     assert.equal(hit?.meta?.motherLow, 98);
     assert.equal(hit?.meta?.mid, 100);
     assert.equal(hit?.meta?.xFactor, 1.6);
+  });
+});
+
+describe('scanRallyRider', () => {
+  // c1 range 98–102 (mid 100), c2 range 96–100.5 (mid 98.25).
+  const C1 = bar({ open: 99, high: 102, low: 98, close: 101 });
+  const C2_LOW = bar({ open: 99, high: 100.5, low: 96, close: 99 });
+  const C3_LOW = bar({ open: 98, high: 99, low: 95, close: 97 });
+
+  // Mirror: c1 range 98–102 (mid 100), c2 range 99.5–104 (mid 101.75).
+  const H1 = bar({ open: 99, high: 102, low: 98, close: 99 });
+  const H2 = bar({ open: 100.5, high: 104, low: 99.5, close: 101 });
+  const H3 = bar({ open: 102, high: 105, low: 101.5, close: 103 });
+
+  function rally(candles: ReturnType<typeof bar>[], over: Record<string, unknown> = {}) {
+    return scanRallyRider(ctx({ timeframe: '1h', candles, ...over }) as never);
+  }
+
+  it('lists two low sweeps in a row that both close in their swept half', () => {
+    const hit = rally([C1, C2_LOW, C3_LOW]);
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, 'DOUBLE SELL-SIDE SWEEP');
+    assert.equal(hit?.keyLevel, 96);
+    assert.equal(hit?.meta?.firstLevel, 98);
+  });
+
+  it('lists two high sweeps in a row on the short side', () => {
+    const hit = rally([H1, H2, H3]);
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bearish');
+    assert.equal(hit?.stateLabel, 'DOUBLE BUY-SIDE SWEEP');
+    assert.equal(hit?.keyLevel, 104);
+  });
+
+  it('needs both legs — one sweep on its own does not list', () => {
+    // c2 sits inside c1, so only c3 sweeps.
+    const inside = bar({ open: 99, high: 101, low: 98.5, close: 99 });
+    assert.equal(rally([C1, inside, bar({ open: 99, high: 99.5, low: 98, close: 98.7 })]), null);
+  });
+
+  it('refuses a chain that changes side halfway', () => {
+    // c2 takes c1's low, then c3 takes c2's high instead of carrying on down.
+    assert.equal(rally([C1, C2_LOW, bar({ open: 99, high: 101, low: 97, close: 100 })]), null);
+  });
+
+  it('drops the chain when the second candle closes past its half', () => {
+    // Sweeps c1's low but closes at 100.5, above c1's 100 midpoint.
+    const shallow = bar({ open: 99, high: 101, low: 96, close: 100.5 });
+    assert.equal(rally([C1, shallow, bar({ open: 99, high: 99.5, low: 95, close: 97 })]), null);
+  });
+
+  it('drops the chain when the third candle closes past its half', () => {
+    // Sweeps c2's low but closes at 99.5, above c2's 98.25 midpoint.
+    assert.equal(rally([C1, C2_LOW, bar({ open: 98, high: 100, low: 95, close: 99.5 })]), null);
+  });
+
+  it('skips an outside bar — it takes both sides and picks no direction', () => {
+    const outside = bar({ open: 99, high: 102.5, low: 97.5, close: 99 });
+    assert.equal(rally([C1, outside, C3_LOW]), null);
+  });
+
+  it('stops a long at the third candle low', () => {
+    const hit = rally([C1, C2_LOW, C3_LOW]);
+    assert.equal(hit?.meta?.stopLevel, 95);
+    assert.match(String(hit?.invalidation), /95\.00/);
+  });
+
+  it('stops a short at the third candle high', () => {
+    const hit = rally([H1, H2, H3]);
+    assert.equal(hit?.meta?.stopLevel, 105);
+    assert.match(String(hit?.invalidation), /105\.00/);
+  });
+
+  it('runs on 1h only', () => {
+    assert.equal(rally([C1, C2_LOW, C3_LOW], { timeframe: '5m' }), null);
+    assert.equal(rally([C1, C2_LOW, C3_LOW], { timeframe: '15m' }), null);
+  });
+
+  it('stamps X Factor like every other card', () => {
+    assert.equal(rally([C1, C2_LOW, C3_LOW])?.meta?.xFactor, 1.6);
   });
 });
 

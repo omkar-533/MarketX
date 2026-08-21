@@ -14,9 +14,8 @@ import {
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
 import {
-  scanMorningSprint,
-  scanOpeningDrive,
   scanWolfHunters,
+  scanRallyRider,
   stampLiveQuote,
 } from './opportunityScanners';
 import type { OptionFlowSnap } from './optionFlow';
@@ -35,12 +34,6 @@ export const MIN_SCAN_BARS = 25;
 
 /** How many episodes of one symbol a card keeps — the most recent ones. */
 const EPISODES_PER_SYMBOL = 4;
-
-/**
- * Scanners that describe a state rather than an event: the symbol is listed only
- * while the rule still holds on the latest closed bar, and drops the moment it breaks.
- */
-const LIVE_ONLY_SCANNERS = new Set<OpportunityScannerId>(['morning_sprint']);
 
 export type EvaluateOpportunityOpts = {
   signal?: AbortSignal;
@@ -307,20 +300,14 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               },
               asOf,
               {
-                // Morning Sprint reads only session open/high/low, so the 9:15–9:20
-                // bar is valid on its own. Boosters compares that bar's close against
-                // the one before it, which on a continuous series is the previous
-                // session's last bar — also valid. Skipping the bar pushed both cards'
-                // first listing to 9:25.
-                // Wolf Hunters compares a bar against the one before it, which on a
-                // continuous series is the previous session's last bar. Skipping the
-                // 9:15 bar pushed the card's earliest possible print to 11:15.
+                // Both sweep cards compare a bar against the ones before it, which on a
+                // continuous series are the previous session's last bars. Skipping the
+                // 9:15 bar pushed their earliest possible print to 11:15.
                 includeFirstBar:
                   id === 'compression_break' ||
                   id === 'breakout_radar' ||
-                  id === 'morning_sprint' ||
-                  id === 'opening_drive' ||
-                  id === 'wolf_hunters',
+                  id === 'wolf_hunters' ||
+                  id === 'rally_rider',
               },
             );
           } catch {
@@ -329,9 +316,8 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         };
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
-          ['morning_sprint', scanMorningSprint],
-          ['opening_drive', scanOpeningDrive],
           ['wolf_hunters', scanWolfHunters],
+          ['rally_rider', scanRallyRider],
         ];
 
         const lastBar = series.length - 1;
@@ -357,20 +343,6 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
 
           const all = windowsFor(id, scan);
           if (!all.length) continue;
-
-          if (LIVE_ONLY_SCANNERS.has(id)) {
-            // Listed only while the rule still holds on the latest closed bar,
-            // stamped from when the run began so the card reads "since 9:20".
-            const run = all[all.length - 1];
-            if (run.endIndex < lastBar) continue;
-            const hit = scan(ctx);
-            if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-            hit.detectedAt = episodeStamp(series, run.startIndex, tf, asOf);
-            hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${run.startIndex}`;
-            hit.meta = { ...hit.meta, signalN: 1, signalCount: 1, barIndex: run.startIndex };
-            emitHit(hit, f);
-            continue;
-          }
 
           // Newest episodes win — keeping the first four hid every afternoon
           // reprint behind stale morning prints.

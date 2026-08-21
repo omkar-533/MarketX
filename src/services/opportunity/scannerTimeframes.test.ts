@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { OPPORTUNITY_SCANNERS } from './opportunityTypes';
 import {
+  PRIMARY_TIMEFRAME,
   coerceScannerTimeframe,
   defaultCardTimeframes,
   defaultScannerTimeframe,
@@ -16,36 +17,37 @@ describe('per-card timeframes', () => {
     }
   });
 
-  it('keeps Boosters on 5m only — the scanner returns null anywhere else', () => {
-    assert.deepEqual(scannerTimeframes('opening_drive'), ['5m']);
-  });
-
-  it('keeps Morning Sprint intraday so a broken rule can still drop the name', () => {
-    assert.deepEqual(scannerTimeframes('morning_sprint'), ['5m', '15m']);
-  });
-
-  it('defaults a card to its first listed timeframe', () => {
-    assert.equal(defaultScannerTimeframe('morning_sprint'), '5m');
-    assert.equal(defaultScannerTimeframe('opening_drive'), '5m');
-  });
-
-  it('refuses a timeframe the scanner does not run on', () => {
-    assert.equal(coerceScannerTimeframe('opening_drive', '1h'), '5m');
-    assert.equal(coerceScannerTimeframe('morning_sprint', '1D'), '5m');
-    assert.equal(coerceScannerTimeframe('morning_sprint', '15m'), '15m');
+  it('keeps the desk on the two sweep cards', () => {
+    const ids = OPPORTUNITY_SCANNERS.map((s) => s.id);
+    assert.deepEqual(ids, ['wolf_hunters', 'rally_rider']);
   });
 
   it('drops a retired card off the desk entirely', () => {
     const ids = OPPORTUNITY_SCANNERS.map((s) => s.id);
-    assert.deepEqual(ids, ['morning_sprint', 'opening_drive', 'wolf_hunters']);
-    for (const gone of ['breakout_radar', 'trend_rider', 'options_flow', 'wolf_prime']) {
-      assert.equal(ids.includes(gone as never), false);
+    for (const gone of ['morning_sprint', 'opening_drive', 'options_flow', 'wolf_prime']) {
+      assert.equal(ids.includes(gone as never), false, `${gone} still on the desk`);
     }
   });
 
-  it('falls back to 5m for an unknown scanner', () => {
-    assert.equal(defaultScannerTimeframe('nope'), '5m');
-    assert.deepEqual(scannerTimeframes('nope'), ['5m']);
+  it('keeps both sweep cards on the hourly candles their rules are written for', () => {
+    assert.deepEqual(scannerTimeframes('wolf_hunters'), ['1h']);
+    assert.deepEqual(scannerTimeframes('rally_rider'), ['1h']);
+  });
+
+  it('refuses a timeframe the scanner does not run on', () => {
+    assert.equal(coerceScannerTimeframe('wolf_hunters', '5m'), '1h');
+    assert.equal(coerceScannerTimeframe('rally_rider', '15m'), '1h');
+    assert.equal(coerceScannerTimeframe('rally_rider', '1h'), '1h');
+  });
+
+  it('defaults a card to its first listed timeframe', () => {
+    assert.equal(defaultScannerTimeframe('wolf_hunters'), '1h');
+    assert.equal(defaultScannerTimeframe('rally_rider'), '1h');
+  });
+
+  it('falls back to the primary board for an unknown scanner', () => {
+    assert.equal(defaultScannerTimeframe('nope'), PRIMARY_TIMEFRAME);
+    assert.deepEqual(scannerTimeframes('nope'), [PRIMARY_TIMEFRAME]);
   });
 
   it('starts every card on a timeframe its own scanner supports', () => {
@@ -58,18 +60,8 @@ describe('per-card timeframes', () => {
     }
   });
 
-  it('asks for only the boards the current selection needs', () => {
-    // Morning Sprint and Boosters sit on 5m, Wolf Hunters on 1h.
-    assert.deepEqual(timeframesInUse(defaultCardTimeframes()), ['5m', '1h']);
-  });
-
-  it('counts a switched card as a new board to load', () => {
-    const tfs = timeframesInUse({ ...defaultCardTimeframes(), morning_sprint: '15m' });
-    assert.deepEqual(tfs.sort(), ['15m', '1h', '5m']);
-  });
-
-  it('keeps Wolf Hunters on the hourly candles its rule is written for', () => {
-    assert.deepEqual(scannerTimeframes('wolf_hunters'), ['1h']);
-    assert.equal(coerceScannerTimeframe('wolf_hunters', '5m'), '1h');
+  it('asks for one board only — every card is hourly, so there is no side fetch', () => {
+    assert.deepEqual(timeframesInUse(defaultCardTimeframes()), ['1h']);
+    assert.equal(PRIMARY_TIMEFRAME, '1h');
   });
 });

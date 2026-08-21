@@ -9,17 +9,16 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['morning_sprint', 'MORNING SPRINT', '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.'],
-  ['opening_drive', 'BOOSTERS', 'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.'],
   ['wolf_hunters', 'WOLF HUNTERS', '1h: candle mother ke andar khule, wick se uska high/low hunt kare aur mother ke 50% ke andar hi band ho. Sweep price ka 0.1% aur mother range ka 10% hona chahiye. Mother khud inside bar (open+close pichhli candle ke andar) nahi honi chahiye.'],
+  ['rally_rider', 'RALLY RIDER', '1h: lagataar do sweep ek hi taraf — candle 2 ne candle 1 ka low liya, candle 3 ne candle 2 ka low liya, aur dono apni-apni swept half me band hui (short me ulta). SL candle 3 ke low/high par.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-// v29 — Wolf Hunters rows now carry a stop level and can print from the open. Rows
-// saved before that have no stop to show, so a fresh key retires them.
-const SETTINGS_KEY = 'opportunity_day_board_v29';
+// v30 — Rally Rider joins the desk. A fresh key gives the new card a clean day
+// instead of inheriting a board that never had a slot for it.
+const SETTINGS_KEY = 'opportunity_day_board_v30';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v29.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v30.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -353,15 +352,11 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
-    // Morning Sprint is a live list. An empty scan means every name broke the
-    // rule, so the card must clear instead of replaying stale survivors.
-    const liveOnly = id === 'morning_sprint';
     next[id] = nextScannerHits(
       prevRow?.hitsByScanner?.[id] || [],
       inBy.get(id)?.hits || [],
       day,
-      id === 'options_flow' || liveOnly,
-      liveOnly ? { keepOnEmpty: false, replace: true } : undefined,
+      id === 'options_flow',
     );
   }
   const row = {
