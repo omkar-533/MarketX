@@ -12,7 +12,12 @@ import {
 } from '../radar/barTime';
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
-import { scanMorningSprint, scanOpeningDrive, stampLiveQuote } from './opportunityScanners';
+import {
+  scanMorningSprint,
+  scanOpeningDrive,
+  scanWolfHunters,
+  stampLiveQuote,
+} from './opportunityScanners';
 import type { OptionFlowSnap } from './optionFlow';
 import type {
   OpportunityFilters,
@@ -287,6 +292,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
           ['morning_sprint', scanMorningSprint],
           ['opening_drive', scanOpeningDrive],
+          ['wolf_hunters', scanWolfHunters],
         ];
 
         const lastBar = series.length - 1;

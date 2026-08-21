@@ -619,6 +619,103 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   });
 }
 
+/**
+ * WOLF HUNTERS — 1h liquidity hunt that stays shallow.
+ *
+ * A candle takes the previous candle's high or low, then closes back inside that
+ * candle but no further than its 50% mark, so the range's other side is still
+ * open as room to run. The hunted candle (the mother) can sit anywhere in the
+ * session, but it must not itself be an inside bar — a candle swallowed by the
+ * one before it has no liquidity of its own to take.
+ *
+ * Both candles must belong to the same session: an overnight gap clears the
+ * previous candle's extreme without anyone hunting anything.
+ */
+export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
+  const { f } = ctx;
+  if (ctx.timeframe !== '1h') return null;
+  const bars = f.candles;
+  if (!bars || bars.length < 3) return null;
+
+  // sessionMinsFromOpen counts today's closed bars × 60 on this timeframe, so
+  // two of them means the hunt and the mother are both from today.
+  const sessionMins = f.sessionMinsFromOpen;
+  if (sessionMins == null || sessionMins < 120) return null;
+
+  const hunt = bars[bars.length - 1];
+  const mother = bars[bars.length - 2];
+  const before = bars[bars.length - 3];
+  if (!hunt || !mother || !before) return null;
+
+  // The mother cannot be an inside bar of the candle before it.
+  if (mother.high <= before.high && mother.low >= before.low) return null;
+
+  const range = mother.high - mother.low;
+  if (!(range > 0)) return null;
+  const mid = (mother.high + mother.low) / 2;
+
+  const tookLow = hunt.low < mother.low;
+  const tookHigh = hunt.high > mother.high;
+  // Neither side taken, or both taken — an outside bar picks no direction.
+  if (tookLow === tookHigh) return null;
+
+  const bullish = tookLow;
+  const backInside = bullish
+    ? hunt.close >= mother.low && hunt.close <= mid
+    : hunt.close <= mother.high && hunt.close >= mid;
+  if (!backInside) return null;
+
+  const level = bullish ? mother.low : mother.high;
+  const target = bullish ? mother.high : mother.low;
+  const sweepDepthPct = (Math.abs(level - (bullish ? hunt.low : hunt.high)) / range) * 100;
+  // How much of the half is still unused — the closer the close sits to the swept
+  // extreme, the more of the mother range is left to travel.
+  const roomPct = (Math.abs(target - hunt.close) / range) * 100;
+  const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
+
+  const breakdown: ScoreBreakdown = {
+    hunt: 30,
+    shallowClose: clampScore(8 + Math.min(14, (roomPct - 50) * 0.6), 22),
+    sweepDepth: clampScore(6 + Math.min(12, sweepDepthPct * 1.2), 18),
+    motherSize: clampScore(6 + Math.min(10, (range / Math.max(1e-6, f.tech.last)) * 100 * 8), 16),
+    volume: clampScore(4 + Math.min(10, Math.max(0, vol - 0.9) * 12), 14),
+  };
+  const score = sumBreakdown(breakdown);
+  if (!scoreGate(ctx, score, 55)) return null;
+
+  const r = (n: number) => n.toFixed(2);
+  return baseHit('wolf_hunters', ctx, {
+    direction: bullish ? 'bullish' : 'bearish',
+    status: 'ACTIVE',
+    score,
+    breakdown,
+    stateLabel: bullish ? 'SELL-SIDE HUNT' : 'BUY-SIDE HUNT',
+    why: bullish
+      ? `1h candle ne pichhli candle ka low ₹${r(level)} hunt kiya aur ₹${r(hunt.close)} par band hui — mother ke 50% (₹${r(mid)}) ke neeche, to ₹${r(target)} tak jagah bachi hai.`
+      : `1h candle ne pichhli candle ka high ₹${r(level)} hunt kiya aur ₹${r(hunt.close)} par band hui — mother ke 50% (₹${r(mid)}) ke upar, to ₹${r(target)} tak jagah bachi hai.`,
+    keyLevel: level,
+    trigger: hunt.close,
+    invalidation: bullish
+      ? `1h close ₹${r(level)} ke neeche gaya to hunt fail.`
+      : `1h close ₹${r(level)} ke upar gaya to hunt fail.`,
+    confirmationNeeded: `Agli 1h candle ko ₹${r(level)} bachana hai.`,
+    evidence: [
+      { label: bullish ? 'Low swept + closed back in' : 'High swept + closed back in', ok: true },
+      { label: `Close ${bullish ? 'below' : 'above'} 50% ₹${r(mid)}`, ok: true },
+      { label: 'Mother not an inside bar', ok: true },
+      { label: `Sweep ${sweepDepthPct.toFixed(0)}% of range`, ok: sweepDepthPct >= 5 },
+      { label: `Vol ${vol.toFixed(1)}×`, ok: vol >= 1 },
+    ],
+    meta: {
+      pattern: bullish ? 'hunt_low_shallow' : 'hunt_high_shallow',
+      motherHigh: mother.high,
+      motherLow: mother.low,
+      mid,
+      ...xFactorMeta(vol),
+    },
+  });
+}
+
 /** LIQUIDITY HUNT — reclaim only. Sweep without close-back does not list. */
 export function scanLiquidityHunt(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;

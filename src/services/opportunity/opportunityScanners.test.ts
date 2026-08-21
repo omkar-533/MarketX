@@ -10,6 +10,7 @@ import {
   scanTopMovers,
   scanTrendRider,
   scanOptionsFlow,
+  scanWolfHunters,
   scanWolfPrime,
   stampLiveQuote,
 } from './opportunityScanners';
@@ -76,10 +77,10 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('runs Morning Sprint and Boosters only', () => {
+  it('runs Morning Sprint, Boosters and Wolf Hunters only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['morning_sprint', 'opening_drive'],
+      ['morning_sprint', 'opening_drive', 'wolf_hunters'],
     );
   });
 });
@@ -797,5 +798,90 @@ describe('scanOptionsFlow', () => {
     assert.ok(hit);
     assert.equal(hit?.stateLabel, '🔥 CALL HEAVY');
     assert.equal(hit?.direction, 'bullish');
+  });
+});
+
+describe('scanWolfHunters', () => {
+  // before → mother → hunt. Mother range 98–102, so its 50% mark is 100.
+  const BEFORE = bar({ open: 99, high: 100, low: 98, close: 99.5 });
+  const MOTHER = bar({ open: 98.5, high: 102, low: 98, close: 101 });
+
+  function hunters(hunt: ReturnType<typeof bar>, over: Record<string, unknown> = {}) {
+    return scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [BEFORE, MOTHER, hunt],
+        sessionMinsFromOpen: 180,
+        ...over,
+      }) as never,
+    );
+  }
+
+  const lowHunt = bar({ open: 98.5, high: 100.2, low: 97.5, close: 99.5 });
+  const highHunt = bar({ open: 101.5, high: 102.5, low: 100.5, close: 101 });
+
+  it('lists a low hunt that closes back inside, below the 50% mark', () => {
+    const hit = hunters(lowHunt);
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+    assert.equal(hit?.stateLabel, 'SELL-SIDE HUNT');
+    assert.equal(hit?.keyLevel, 98);
+  });
+
+  it('lists a high hunt that closes back inside, above the 50% mark', () => {
+    const hit = hunters(highHunt);
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bearish');
+    assert.equal(hit?.stateLabel, 'BUY-SIDE HUNT');
+    assert.equal(hit?.keyLevel, 102);
+  });
+
+  it('drops a low hunt that closes past the 50% mark', () => {
+    assert.equal(hunters(bar({ high: 100.6, low: 97.5, close: 100.4 })), null);
+  });
+
+  it('drops a high hunt that closes past the 50% mark', () => {
+    assert.equal(hunters(bar({ high: 102.5, low: 99.4, close: 99.6 })), null);
+  });
+
+  it('drops a sweep that never closes back inside the mother candle', () => {
+    assert.equal(hunters(bar({ high: 98.2, low: 97, close: 97.4 })), null);
+  });
+
+  it('skips an outside bar that takes both sides', () => {
+    assert.equal(hunters(bar({ high: 102.4, low: 97.6, close: 99.5 })), null);
+  });
+
+  it('needs a hunt — a candle inside the mother does not list', () => {
+    assert.equal(hunters(bar({ high: 101, low: 98.5, close: 99.5 })), null);
+  });
+
+  it('refuses a mother candle that is itself an inside bar', () => {
+    const inside = bar({ open: 99, high: 99.8, low: 98.2, close: 99.4 });
+    const hit = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [BEFORE, inside, bar({ high: 99.6, low: 98, close: 98.9 })],
+        sessionMinsFromOpen: 180,
+      }) as never,
+    );
+    assert.equal(hit, null);
+  });
+
+  it('runs on 1h only', () => {
+    assert.equal(hunters(lowHunt, { timeframe: '5m' }), null);
+    assert.equal(hunters(lowHunt, { timeframe: '15m' }), null);
+  });
+
+  it('waits for a second session candle so the pair is not split by the gap', () => {
+    assert.equal(hunters(lowHunt, { sessionMinsFromOpen: 60 }), null);
+  });
+
+  it('carries the mother levels and X Factor on the hit', () => {
+    const hit = hunters(lowHunt);
+    assert.equal(hit?.meta?.motherHigh, 102);
+    assert.equal(hit?.meta?.motherLow, 98);
+    assert.equal(hit?.meta?.mid, 100);
+    assert.equal(hit?.meta?.xFactor, 1.6);
   });
 });

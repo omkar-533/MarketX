@@ -17,6 +17,7 @@ export type OpportunityScannerId =
   | 'sector_leaders'
   | 'trend_rider'
   | 'options_flow'
+  | 'wolf_hunters'
   | 'wolf_prime';
 
 export type OpportunityStatus =
@@ -150,6 +151,15 @@ export const OPPORTUNITY_SCANNERS: {
     // The rule reads the 5m close against the previous 5m close — scanOpeningDrive
     // returns null on every other timeframe.
     timeframes: ['5m'],
+  },
+  {
+    id: 'wolf_hunters',
+    title: 'WOLF HUNTERS',
+    tagline:
+      '1h: candle pichhli candle ka high/low hunt kare aur uske 50% ke andar hi band ho. Mother candle khud inside bar nahi honi chahiye.',
+    requires: 'ohlc',
+    // The rule is written on hourly candles and reads null anywhere else.
+    timeframes: ['1h'],
   },
 ];
 
