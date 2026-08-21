@@ -19,8 +19,8 @@ function session(start: number, count: number) {
 
 function hit(partial: Partial<OpportunityHit> & Pick<OpportunityHit, 'symbol' | 'detectedAt'>): OpportunityHit {
   return {
-    id: `opp-breakout_radar-${partial.symbol}`,
-    scannerId: 'breakout_radar',
+    id: `opp-opening_drive-${partial.symbol}`,
+    scannerId: 'opening_drive',
     exchange: 'NSE',
     price: 100,
     changePercent: 1,
@@ -154,7 +154,7 @@ describe('Opportunity Created clock', () => {
     const first = Date.parse('2026-08-17T10:25:00+05:30');
     const later = Date.parse('2026-08-17T15:30:00+05:30');
     const prev = emptyOpportunityCards().map((c) =>
-      c.scannerId === 'breakout_radar'
+      c.scannerId === 'opening_drive'
         ? {
             ...c,
             hits: [hit({ symbol: 'INFY', score: 70, detectedAt: first })],
@@ -163,7 +163,7 @@ describe('Opportunity Created clock', () => {
         : c,
     );
     const incoming = emptyOpportunityCards().map((c) =>
-      c.scannerId === 'breakout_radar'
+      c.scannerId === 'opening_drive'
         ? {
             ...c,
             hits: [hit({ symbol: 'INFY', score: 81, detectedAt: later })],
@@ -172,7 +172,7 @@ describe('Opportunity Created clock', () => {
         : c,
     );
     const next = applyDaySignalCards(prev, incoming);
-    const hits = next.find((c) => c.scannerId === 'breakout_radar')?.hits || [];
+    const hits = next.find((c) => c.scannerId === 'opening_drive')?.hits || [];
     assert.deepEqual(
       hits.map((h) => h.detectedAt).sort((a, b) => a - b),
       [first, later],

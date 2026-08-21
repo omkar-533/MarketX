@@ -11,20 +11,14 @@ import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 const SCANNER_META = [
   ['morning_sprint', 'MORNING SPRINT', '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.'],
   ['opening_drive', 'BOOSTERS', 'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.'],
-  ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
-  ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
-  ['compression_break', 'COMPRESSION BREAK', 'From the 9:20 close. Tight coil + volume. ACTIVE on the close out.'],
-  ['breakout_radar', 'BREAKOUT RADAR', 'From the 9:20 close. WATCH at the box, ACTIVE on the close.'],
-  ['top_movers', 'TOP MOVERS', 'Last 3 bars still fast + volume now. Dead day winners out.'],
-  ['liquidity_hunt', 'LIQUIDITY HUNT', 'Reclaim only — sweep without close-back does not list.'],
-  ['trend_rider', 'TREND RIDER', 'First EMA/VWAP touch, then hold. Stretched names hide.'],
-  ['options_flow', 'OPTIONS FLOW', 'Live chain OI + day price. Long/short buildup only — no fake ATR proxy.'],
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-const SETTINGS_KEY = 'opportunity_day_board_v24';
+// v25 — desk trimmed to Morning Sprint + Boosters. A fresh key drops the rows
+// saved by the retired scanners instead of carrying them as dead weight.
+const SETTINGS_KEY = 'opportunity_day_board_v25';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v24.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v25.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

@@ -76,10 +76,10 @@ function ctx(over: Record<string, unknown> = {}) {
 }
 
 describe('Opportunity desk scanners', () => {
-  it('lists ten keepers only', () => {
+  it('runs Morning Sprint and Boosters only', () => {
     assert.deepEqual(
       OPPORTUNITY_SCANNERS.map((s) => s.id),
-      ['morning_sprint', 'opening_drive', 'wolf_prime', 'momentum_surge', 'compression_break', 'breakout_radar', 'top_movers', 'liquidity_hunt', 'trend_rider', 'options_flow'],
+      ['morning_sprint', 'opening_drive'],
     );
   });
 });

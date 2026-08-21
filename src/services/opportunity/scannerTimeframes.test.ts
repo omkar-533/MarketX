@@ -25,14 +25,22 @@ describe('per-card timeframes', () => {
   });
 
   it('defaults a card to its first listed timeframe', () => {
-    assert.equal(defaultScannerTimeframe('trend_rider'), '15m');
     assert.equal(defaultScannerTimeframe('morning_sprint'), '5m');
+    assert.equal(defaultScannerTimeframe('opening_drive'), '5m');
   });
 
   it('refuses a timeframe the scanner does not run on', () => {
     assert.equal(coerceScannerTimeframe('opening_drive', '1h'), '5m');
     assert.equal(coerceScannerTimeframe('morning_sprint', '1D'), '5m');
-    assert.equal(coerceScannerTimeframe('breakout_radar', '1D'), '1D');
+    assert.equal(coerceScannerTimeframe('morning_sprint', '15m'), '15m');
+  });
+
+  it('drops a retired card off the desk entirely', () => {
+    const ids = OPPORTUNITY_SCANNERS.map((s) => s.id);
+    assert.deepEqual(ids, ['morning_sprint', 'opening_drive']);
+    for (const gone of ['breakout_radar', 'trend_rider', 'options_flow', 'wolf_prime']) {
+      assert.equal(ids.includes(gone as never), false);
+    }
   });
 
   it('falls back to 5m for an unknown scanner', () => {
@@ -51,15 +59,11 @@ describe('per-card timeframes', () => {
   });
 
   it('asks for only the boards the current selection needs', () => {
-    assert.deepEqual(timeframesInUse(defaultCardTimeframes()).sort(), ['15m', '5m']);
-    assert.deepEqual(
-      timeframesInUse({ ...defaultCardTimeframes(), trend_rider: '15m' }),
-      ['5m', '15m'],
-    );
+    assert.deepEqual(timeframesInUse(defaultCardTimeframes()), ['5m']);
   });
 
   it('counts a switched card as a new board to load', () => {
-    const tfs = timeframesInUse({ ...defaultCardTimeframes(), breakout_radar: '1D' });
-    assert.ok(tfs.includes('1D'));
+    const tfs = timeframesInUse({ ...defaultCardTimeframes(), morning_sprint: '15m' });
+    assert.deepEqual(tfs.sort(), ['15m', '5m']);
   });
 });

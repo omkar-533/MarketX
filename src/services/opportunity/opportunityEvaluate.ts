@@ -12,19 +12,7 @@ import {
 } from '../radar/barTime';
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
-import {
-  scanBreakoutRadar,
-  scanCompressionBreak,
-  scanLiquidityHunt,
-  scanMomentumSurge,
-  scanMorningSprint,
-  scanOpeningDrive,
-  scanTopMovers,
-  scanTrendRider,
-  scanOptionsFlow,
-  scanWolfPrime,
-  stampLiveQuote,
-} from './opportunityScanners';
+import { scanMorningSprint, scanOpeningDrive, stampLiveQuote } from './opportunityScanners';
 import type { OptionFlowSnap } from './optionFlow';
 import type {
   OpportunityFilters,
@@ -183,7 +171,8 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
   } = input;
   let candleMapAll = input.candleMapAll || null;
   const rsiBySymbol = input.rsiBySymbol || {};
-  const optionFlowBySymbol = input.optionFlowBySymbol || {};
+  // input.optionFlowBySymbol is still accepted so existing callers keep working,
+  // but Options Flow is off the desk — nothing reads the chain any more.
   const topN = opts.topN ?? OPPORTUNITY_SCAN_CAP;
   const tf = filters.timeframe as OpportunityTimeframe;
   const buckets = new Map<OpportunityScannerId, OpportunityHit[]>();
@@ -293,13 +282,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
 
         const runners: Array<[OpportunityScannerId, (c: typeof ctx) => OpportunityHit | null]> = [
           ['morning_sprint', scanMorningSprint],
-          ['top_movers', scanTopMovers],
           ['opening_drive', scanOpeningDrive],
-          ['momentum_surge', scanMomentumSurge],
-          ['liquidity_hunt', scanLiquidityHunt],
-          ['compression_break', scanCompressionBreak],
-          ['breakout_radar', scanBreakoutRadar],
-          ['trend_rider', scanTrendRider],
         ];
 
         const lastBar = series.length - 1;
@@ -349,61 +332,6 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           }
         }
 
-        const marksAt = (i: number) => {
-          const sibling: Parameters<typeof scanWolfPrime>[1] = {};
-          for (const [id] of runners) {
-            const h = hitAt[id]?.[i];
-            if (!h || h.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-            sibling[id] = { score: h.score, status: h.status, direction: h.direction };
-          }
-          return sibling;
-        };
-        const primeWins = opportunityCreatedWindows(
-          series,
-          tf,
-          (i) => {
-            const snap = snapshotAt(i);
-            if (!snap) return false;
-            const prime = scanWolfPrime(
-              { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, rsi },
-              marksAt(i),
-            );
-            return Boolean(prime && prime.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore);
-          },
-          asOf,
-        ).slice(0, 4);
-        for (let n = 0; n < primeWins.length; n += 1) {
-          const win = primeWins[n];
-          const snap = snapshotAt(win.startIndex) || f;
-          const prime = scanWolfPrime(
-            { f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, rsi },
-            marksAt(win.startIndex),
-          );
-          if (!prime || prime.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-          prime.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
-          prime.id = `opp-${prime.scannerId}-${prime.symbol}-${prime.timeframe}-${win.startIndex}`;
-          prime.meta = {
-            ...prime.meta,
-            signalN: n + 1,
-            signalCount: primeWins.length,
-            barIndex: win.startIndex,
-          };
-          emitHit(prime, f);
-        }
-
-        const flow =
-          optionFlowBySymbol[symbol] || optionFlowBySymbol[String(symbol).toUpperCase()] || null;
-        if (flow) {
-          const flowHit = scanOptionsFlow(
-            { f, timeframe: tf, dataMode, quotePrice: f.tech.last, rsi },
-            flow,
-          );
-          if (flowHit && flowHit.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
-            flowHit.detectedAt = keepDisplaySetupTime(f.setupAt);
-            flowHit.id = `opp-options_flow-${flowHit.symbol}-${tf}`;
-            emitHit(flowHit, f);
-          }
-        }
       } catch {
         /* skip symbol */
       } finally {

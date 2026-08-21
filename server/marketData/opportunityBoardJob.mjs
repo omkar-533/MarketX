@@ -13,7 +13,6 @@ import {
   nseCashSessionIsOpen,
   awaitOpportunitySnapshot,
 } from './opportunitySnapshot.mjs';
-import { awaitOpportunityOptionFlow } from './opportunityOptionFlow.mjs';
 import {
   mergeOpportunityDayBoard,
   persistOpportunityDayBoard,
@@ -96,22 +95,12 @@ async function huntTimeframe(accessToken, universe, timeframe) {
   }
   const evalFn = await loadEvaluator();
   if (!evalFn) throw new Error('Opportunity eval bundle missing');
-  let optionFlowBySymbol = {};
-  try {
-    const open = nseCashSessionIsOpen();
-    optionFlowBySymbol =
-      (await awaitOpportunityOptionFlow(accessToken, snap.symbols, {
-        budgetMs: open ? 20_000 : 55_000,
-        minReady: 4,
-      })) || {};
-  } catch (err) {
-    console.warn('[opportunity-board-job] option flow skip', err?.message || err);
-  }
+  // Options Flow is off the desk, so the chain is no longer pulled — that was the
+  // job's heaviest set of INDstocks calls.
   const out = await evalFn({
     symbols: snap.symbols,
     candlesBySymbol: snap.candlesBySymbol,
     rsiBySymbol: snap.rsiBySymbol,
-    optionFlowBySymbol,
     timeframe,
     universe,
     asOf: snap.asOf,
