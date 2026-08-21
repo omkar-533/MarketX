@@ -623,6 +623,10 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
   });
 }
 
+/** A sweep has to be visible on the chart: this much of the price and of the mother. */
+const MIN_SWEEP_PRICE_PCT = 0.1;
+const MIN_SWEEP_RANGE_PCT = 10;
+
 /**
  * WOLF HUNTERS — 1h liquidity hunt that stays shallow.
  *
@@ -637,6 +641,9 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
  * session's last one, but it must not itself be an inside bar — one that opened and
  * closed inside the candle before it never built liquidity of its own. Only the body
  * has to be swallowed for that; a mother whose wicks poked out still counts as inside.
+ *
+ * The sweep also has to be worth looking at, so it must clear both a share of the
+ * price and a share of the mother's range — see the two floors above.
  */
 export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
@@ -677,7 +684,14 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
 
   const level = bullish ? mother.low : mother.high;
   const target = bullish ? mother.high : mother.low;
-  const sweepDepthPct = (Math.abs(level - (bullish ? hunt.low : hunt.high)) / range) * 100;
+  const swept = bullish ? level - hunt.low : hunt.high - level;
+  const sweepDepthPct = (swept / range) * 100;
+  const sweepPricePct = (swept / hunt.close) * 100;
+  // Both floors have to clear. On real hourly candles half the hits were pokes of a
+  // rupee or two — 0.02% of price, two highs that sit on the same pixel — and read
+  // as no sweep at all. The range floor alone still passes those when the mother is
+  // narrow; the price floor alone ignores how much of the mother was actually taken.
+  if (sweepPricePct < MIN_SWEEP_PRICE_PCT || sweepDepthPct < MIN_SWEEP_RANGE_PCT) return null;
   // How much of the half is still unused — the closer the close sits to the swept
   // extreme, the more of the mother range is left to travel.
   const roomPct = (Math.abs(target - hunt.close) / range) * 100;
@@ -714,7 +728,10 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
       { label: `Opened inside mother ₹${r(mother.low)}–₹${r(mother.high)}`, ok: true },
       { label: `Close ${bullish ? 'below' : 'above'} 50% ₹${r(mid)}`, ok: true },
       { label: 'Mother not an inside bar', ok: true },
-      { label: `Sweep ${sweepDepthPct.toFixed(0)}% of range`, ok: sweepDepthPct >= 5 },
+      {
+        label: `Sweep ₹${r(swept)} — ${sweepPricePct.toFixed(2)}% of price, ${sweepDepthPct.toFixed(0)}% of range`,
+        ok: true,
+      },
       { label: `Vol ${vol.toFixed(1)}×`, ok: vol >= 1 },
     ],
     meta: {

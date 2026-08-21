@@ -914,6 +914,36 @@ describe('scanWolfHunters', () => {
     assert.equal(hunters(gap, { sessionMinsFromOpen: 60 }), null);
   });
 
+  it('drops a poke too small to see against the price', () => {
+    // Real ABB shape: swept 15% of a narrow mother, but only 0.019% of a 7,700 stock.
+    const hit = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [
+          bar({ open: 7712, high: 7720, low: 7611.5, close: 7611.5 }),
+          bar({ open: 7742, high: 7766.5, low: 7756.5, close: 7740 }),
+          bar({ open: 7760, high: 7768, low: 7758, close: 7763 }),
+        ],
+      }) as never,
+    );
+    assert.equal(hit, null);
+  });
+
+  it('drops a poke too small against the mother range', () => {
+    // 0.5 on a 10-wide mother is 5% of the range, though it clears the price floor.
+    const hit = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [
+          BEFORE,
+          bar({ open: 93, high: 102, low: 92, close: 101 }),
+          bar({ open: 95, high: 96, low: 91.5, close: 95 }),
+        ],
+      }) as never,
+    );
+    assert.equal(hit, null);
+  });
+
   it('runs on 1h only', () => {
     assert.equal(hunters(lowHunt, { timeframe: '5m' }), null);
     assert.equal(hunters(lowHunt, { timeframe: '15m' }), null);

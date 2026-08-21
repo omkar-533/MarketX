@@ -6,9 +6,9 @@ import { DEFAULT_OPPORTUNITY_FILTERS, OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS
 const FILTERS_KEY = 'wolf_opportunity_filters_v3';
 const WATCH_KEY = 'wolf_opportunity_watchlist_v1';
 const ALERTS_KEY = 'wolf_opportunity_alerts_v1';
-// v27 matches the server board key. Bumping only the server left browsers
+// v28 matches the server board key. Bumping only the server left browsers
 // replaying their own cached rows, which is why stale prints kept coming back.
-const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v27';
+const DAY_BOARD_KEY = 'wolf_opportunity_day_board_v28';
 /** Pre-quality-pack boards mixed WATCH/proxy hits — do not hydrate. */
 const LEGACY_BOARD_KEYS: string[] = [];
 const DAY_HIT_CAP = OPPORTUNITY_SCAN_CAP;
@@ -100,6 +100,7 @@ export function saveOpportunityDayBoard(key: string, cards: ScannerCardState[]) 
 export function clearOpportunityDayBoard() {
   try {
     localStorage.removeItem(DAY_BOARD_KEY);
+    localStorage.removeItem('wolf_opportunity_day_board_v27');
     localStorage.removeItem('wolf_opportunity_day_board_v26');
     localStorage.removeItem('wolf_opportunity_day_board_v25');
     localStorage.removeItem('wolf_opportunity_day_board_v24');
