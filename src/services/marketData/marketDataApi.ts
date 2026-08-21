@@ -35,6 +35,8 @@ export type ServerConnectionStatus = {
   orderAccess: 'NOT ENABLED';
   permissionNote?: string | null;
   message: string;
+  /** Server answered from memory before its lookup finished — not a confirmed disconnect. */
+  pending?: boolean;
 };
 
 /** Wolf Opportunity / Radar / LIVE WOLF / Strategy Lab — INDstocks LIVE only, never DEMO. */
@@ -130,6 +132,13 @@ export async function fetchMarketDataStatus(opts?: {
           signal: controller.signal,
           cache: 'no-store',
         });
+        if (next.pending) {
+          // Memory-only reply. Never let it overwrite a confirmed status or sit
+          // in the warm cache, or the real answer arrives a poll too late.
+          return lastStatusOk && Date.now() - lastStatusOk.at < STATUS_STICKY_MS
+            ? lastStatusOk.value
+            : next;
+        }
         lastStatusOk = { at: Date.now(), value: next };
         return next;
       } finally {

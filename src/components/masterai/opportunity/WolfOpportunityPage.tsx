@@ -159,6 +159,22 @@ function resolveLiveProvider(): typeof serverMarketDataProvider | null {
   return serverMarketDataProvider;
 }
 
+/**
+ * The day's rows are already on disk, so render them on the very first frame.
+ * Waiting for the status round trip only bought the user an empty desk.
+ */
+function initialCards(filters: OpportunityFilters): ScannerCardState[] {
+  try {
+    const cached = loadOpportunityDayBoard(
+      opportunityBoardKey(filters.universe, filters.timeframe),
+    );
+    if (cached.some((c) => c.hits.length)) return applyLiveScanCards(cached);
+  } catch {
+    /* unreadable cache — start from an empty desk */
+  }
+  return emptyOpportunityCards();
+}
+
 function Seg({
   on,
   children,
@@ -297,7 +313,7 @@ export default function WolfOpportunityPage({
   sessionKnown = true,
 }: Props) {
   const [filters, setFilters] = useState<OpportunityFilters>(() => loadOpportunityFilters());
-  const [cards, setCards] = useState<ScannerCardState[]>(() => emptyOpportunityCards());
+  const [cards, setCards] = useState<ScannerCardState[]>(() => initialCards(filters));
   const [feedStatus, setFeedStatus] = useState<DataFeedStatus>('OFFLINE');
   const [dataMode, setDataMode] = useState<'LIVE' | 'DEMO'>('DEMO');
   const [scanning, setScanning] = useState(false);
@@ -494,6 +510,13 @@ export default function WolfOpportunityPage({
         }
       }
 
+      // The shared board only needs the app session, not the broker handshake, so
+      // ask for it now rather than queueing it behind status and connect.
+      const boardP = fetchOpportunityDayBoard(
+        activeFilters.universe,
+        activeFilters.timeframe,
+      ).catch(() => null);
+
       let live = liveHint;
       try {
         const s = await fetchMarketDataStatus();
@@ -529,15 +552,12 @@ export default function WolfOpportunityPage({
 
       try {
         let hadBoard = cachedHasHits;
-        try {
-          const shared = await fetchOpportunityDayBoard(activeFilters.universe, activeFilters.timeframe);
-          if (!isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
-            adoptBoard(shared.cards, replaceDesk);
-            hadBoard = true;
-            if (!quiet) setProgress(`${shared.hits} setups`);
-          }
-        } catch {
-          /* keep local board; first user of the day still scans once */
+        // Failures keep the local board; the first user of the day still scans once.
+        const shared = await boardP;
+        if (shared && !isStale() && shared.ready && shared.cards?.some((c) => c.hits.length)) {
+          adoptBoard(shared.cards, replaceDesk);
+          hadBoard = true;
+          if (!quiet) setProgress(`${shared.hits} setups`);
         }
 
         if (hadBoard) {

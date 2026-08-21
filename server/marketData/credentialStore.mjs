@@ -287,13 +287,29 @@ export async function resolveCredential(keys) {
     const mem = getCredential(key);
     if (mem && mem.status === 'CONNECTED') return { key, record: mem };
   }
+  // One round trip covering every key. Walking them in series made a sluggish
+  // Supabase cost the caller N timeouts instead of one.
+  const perKey = await Promise.all(list.map((key) => loadRowsForKey(key).catch(() => [])));
+  for (const rows of perKey) for (const row of rows) cacheRecord(row);
   for (const key of list) {
-    const rows = await loadRowsForKey(key);
-    for (const row of rows) cacheRecord(row);
     const mem = getCredential(key);
     if (mem && (mem.status === 'CONNECTED' || mem.status === 'EXPIRED')) {
       return { key, record: mem };
     }
+  }
+  for (const key of list) {
+    const mem = getCredential(key);
+    if (mem) return { key, record: mem };
+  }
+  return { key: list[0] || '', record: null };
+}
+
+/** Memory-only view of the same keys, so a caller on a deadline can answer now. */
+export function peekCredential(keys) {
+  const list = [...new Set((keys || []).map((k) => String(k || '').trim()).filter(Boolean))];
+  for (const key of list) {
+    const mem = getCredential(key);
+    if (mem && mem.status === 'CONNECTED') return { key, record: mem };
   }
   for (const key of list) {
     const mem = getCredential(key);

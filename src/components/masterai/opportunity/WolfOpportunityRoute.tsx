@@ -22,19 +22,39 @@ export default function WolfOpportunityRoute({ onOpenWolfAi, onOpenLive }: Props
 
   useEffect(() => {
     void fetchMarketDataStatus()
-      .then(async (s) => {
+      .then((s) => {
         setMdStatus(s);
+        // The desk is gated on this, so let the broker handshake settle in the
+        // background rather than holding up the first scan.
         if (isIndstocksLive(s)) {
-          await initMarketDataService(serverMarketDataProvider).connect();
+          void initMarketDataService(serverMarketDataProvider).connect().catch(() => undefined);
         }
       })
       .catch(() => undefined)
       .finally(() => setSessionKnown(true));
   }, []);
 
+  // A pending status is the server saying "still looking", so re-ask once it has
+  // had time to finish rather than treating the user as disconnected.
+  useEffect(() => {
+    if (!mdStatus?.pending) return;
+    const id = window.setTimeout(() => {
+      void fetchMarketDataStatus({ force: true })
+        .then(async (s) => {
+          setMdStatus(s);
+          if (isIndstocksLive(s)) {
+            await initMarketDataService(serverMarketDataProvider).connect();
+          }
+        })
+        .catch(() => undefined);
+    }, 2_000);
+    return () => window.clearTimeout(id);
+  }, [mdStatus]);
+
   useEffect(() => {
     if (!sessionKnown) return;
     if (!mdStatus) return;
+    if (mdStatus.pending) return;
     if (isIndstocksLive(mdStatus)) return;
     setConnectOpen(true);
   }, [sessionKnown, mdStatus]);

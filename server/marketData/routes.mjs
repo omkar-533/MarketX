@@ -16,6 +16,7 @@ import {
   deleteCredentialPersist,
   expireCredentialPersist,
   resolveCredential,
+  peekCredential,
   adoptCredential,
   needsCredentialMirror,
   publicView,
@@ -208,6 +209,8 @@ function identityFrom(req, res) {
   return { primary: keys[0], userKey, sessionKey, keys };
 }
 
+const STATUS_BUDGET_MS = Number(process.env.MARKET_DATA_STATUS_BUDGET_MS || 2_500);
+
 /** Keep user:{id} and session cookie copies in sync. Never drop one on login. */
 async function hydrateIdentity(ident) {
   const found = await resolveCredential(ident.keys);
@@ -320,8 +323,21 @@ router.get('/providers/:providerId/capabilities', (req, res) => {
 
 router.get('/status', async (req, res) => {
   const ident = identityFrom(req, res);
-  const found = await hydrateIdentity(ident);
-  res.json(publicView(found.record));
+  // Every page gates its first paint on this call, so it gets a deadline. A slow
+  // Supabase or broker probe must never hold the desk hostage.
+  const hydrate = hydrateIdentity(ident).catch(() => null);
+  const found = await Promise.race([
+    hydrate,
+    new Promise((resolve) => setTimeout(() => resolve(undefined), STATUS_BUDGET_MS)),
+  ]);
+  if (found !== undefined) {
+    return res.json(publicView(found?.record || null));
+  }
+  // Out of budget: answer from memory and let the hydrate land in cache so the
+  // next poll is both fast and correct. `pending` tells the client not to read
+  // this as a confirmed disconnect.
+  const warm = peekCredential(ident.keys);
+  res.json({ ...publicView(warm.record), pending: true });
 });
 
 router.post('/connect', async (req, res) => {
