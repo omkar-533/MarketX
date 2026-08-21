@@ -56,6 +56,10 @@ function baseHit(
     ctx.f.prevClose != null && ctx.f.prevClose > 0 && price > 0
       ? ((price - ctx.f.prevClose) / ctx.f.prevClose) * 100
       : q.changePercent;
+  // X Factor is stamped here, from the snapshot the signal was judged on, so every
+  // card — including any added later — carries it without repeating the maths.
+  // A scanner that sets its own meta.xFactor still wins.
+  const rvol = Math.max(ctx.f.volume?.ratio ?? 0, ctx.f.sessionVolRatio ?? 0);
   return {
     id: `opp-${scannerId}-${String(ctx.f.symbol || '').toUpperCase()}-${ctx.timeframe}`,
     scannerId,
@@ -67,6 +71,7 @@ function baseHit(
     detectedAt: ctx.f.setupAt || 0,
     dataMode: ctx.dataMode,
     ...partial,
+    meta: { ...xFactorMeta(rvol), ...partial.meta },
   };
 }
 
@@ -86,8 +91,9 @@ function atrAbs(f: FeatureSnapshot): number | null {
 }
 
 /**
- * X Factor — relative volume carried on the hit so the card can show it.
- * Left off entirely when it cannot be measured, so the tile falls back to the score.
+ * X Factor — relative volume of the signal bar against its recent average.
+ * Left off entirely when it cannot be measured, so the tile falls back to the
+ * score rather than printing a made-up multiple. Applied centrally in baseHit.
  */
 function xFactorMeta(ratio: number): { xFactor?: number } {
   return Number.isFinite(ratio) && ratio > 0 ? { xFactor: Math.round(ratio * 100) / 100 } : {};
@@ -366,7 +372,6 @@ export function scanMorningSprint(ctx: Ctx): OpportunityHit | null {
     meta: {
       pattern: bullish ? 'open_equals_low' : 'open_equals_high',
       eqBand,
-      ...xFactorMeta(vol),
     },
   });
 }
@@ -543,7 +548,6 @@ export function scanOpeningDrive(ctx: Ctx): OpportunityHit | null {
       rsi30m: r30,
       rsi2h: r2h,
       pattern: bullish ? 'booster_long' : 'booster_short',
-      ...xFactorMeta(vol),
     },
   });
 }
@@ -624,23 +628,18 @@ export function scanMomentumSurge(ctx: Ctx): OpportunityHit | null {
  *
  * A candle takes the previous candle's high or low, then closes back inside that
  * candle but no further than its 50% mark, so the range's other side is still
- * open as room to run. The hunted candle (the mother) can sit anywhere in the
- * session, but it must not itself be an inside bar — a candle swallowed by the
- * one before it has no liquidity of its own to take.
+ * open as room to run. The hunted candle (the mother) can be any candle at all,
+ * including the previous session's last one, but it must not itself be an inside
+ * bar — a candle swallowed by the one before it has no liquidity of its own.
  *
- * Both candles must belong to the same session: an overnight gap clears the
- * previous candle's extreme without anyone hunting anything.
+ * A gap open cannot fake a hit: price has to trade back into the mother's range
+ * and close there, so a gap that never returns simply fails the close test.
  */
 export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   const { f } = ctx;
   if (ctx.timeframe !== '1h') return null;
   const bars = f.candles;
   if (!bars || bars.length < 3) return null;
-
-  // sessionMinsFromOpen counts today's closed bars × 60 on this timeframe, so
-  // two of them means the hunt and the mother are both from today.
-  const sessionMins = f.sessionMinsFromOpen;
-  if (sessionMins == null || sessionMins < 120) return null;
 
   const hunt = bars[bars.length - 1];
   const mother = bars[bars.length - 2];
@@ -711,7 +710,6 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
       motherHigh: mother.high,
       motherLow: mother.low,
       mid,
-      ...xFactorMeta(vol),
     },
   });
 }

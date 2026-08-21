@@ -1,31 +1,26 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { formatXFactor, showsXFactor, xFactorOf } from './xFactor';
+import { formatXFactor, xFactorOf } from './xFactor';
 
-const hit = (scannerId: string, meta?: Record<string, number>) =>
-  ({ scannerId, meta }) as never;
+const hit = (meta?: Record<string, number>) => ({ meta }) as never;
 
 describe('X Factor', () => {
-  it('is shown only on the volume-driven cards', () => {
-    assert.equal(showsXFactor('morning_sprint'), true);
-    assert.equal(showsXFactor('opening_drive'), true);
-    assert.equal(showsXFactor('wolf_prime'), false);
-    assert.equal(showsXFactor('options_flow'), false);
-  });
-
   it('reads the relative volume carried on the hit', () => {
-    assert.equal(xFactorOf(hit('morning_sprint', { xFactor: 2.35 })), 2.35);
-    assert.equal(xFactorOf(hit('opening_drive', { xFactor: 1.1 })), 1.1);
+    assert.equal(xFactorOf(hit({ xFactor: 2.35 })), 2.35);
+    assert.equal(xFactorOf(hit({ xFactor: 1.1 })), 1.1);
   });
 
-  it('falls back to no value on an older row instead of inventing one', () => {
-    assert.equal(xFactorOf(hit('morning_sprint')), null);
-    assert.equal(xFactorOf(hit('morning_sprint', { xFactor: 0 })), null);
-    assert.equal(xFactorOf(hit('morning_sprint', { xFactor: Number.NaN })), null);
+  it('does not care which card the hit came from', () => {
+    // baseHit stamps every scanner, so the display rule needs no allowlist and a
+    // card added later shows X Factor without touching this file.
+    assert.equal(xFactorOf({ scannerId: 'wolf_hunters', meta: { xFactor: 3 } } as never), 3);
+    assert.equal(xFactorOf({ scannerId: 'anything_new', meta: { xFactor: 3 } } as never), 3);
   });
 
-  it('never reports a value for a card that does not carry it', () => {
-    assert.equal(xFactorOf(hit('trend_rider', { xFactor: 3 })), null);
+  it('falls back to no value instead of inventing one', () => {
+    assert.equal(xFactorOf(hit()), null);
+    assert.equal(xFactorOf(hit({ xFactor: 0 })), null);
+    assert.equal(xFactorOf(hit({ xFactor: Number.NaN })), null);
   });
 
   it('prints one decimal with the multiple sign', () => {

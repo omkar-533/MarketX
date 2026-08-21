@@ -1,22 +1,17 @@
 /**
  * X Factor — relative volume of the signal against its own recent average.
  *
- * Only the volume-driven cards swap it in for the Wolf score. A board row saved
- * before the field existed simply has no X Factor: those fall back to the score
- * instead of showing a made-up multiple.
+ * Every desk card shows it in place of the Wolf score, and any card added later
+ * gets it for free: baseHit() in opportunityScanners.ts stamps the value on each
+ * hit, so nothing has to be registered here.
+ *
+ * A hit without the field — a board row saved before X Factor existed, or a bar
+ * whose volume could not be measured — falls back to the score instead of
+ * showing a made-up multiple.
  */
-import type { OpportunityHit, OpportunityScannerId } from './opportunityTypes';
+import type { OpportunityHit } from './opportunityTypes';
 
-export const X_FACTOR_SCANNERS: OpportunityScannerId[] = ['morning_sprint', 'opening_drive'];
-
-const SCANNERS = new Set<string>(X_FACTOR_SCANNERS);
-
-export function showsXFactor(scannerId: string): boolean {
-  return SCANNERS.has(scannerId);
-}
-
-export function xFactorOf(hit: Pick<OpportunityHit, 'scannerId' | 'meta'>): number | null {
-  if (!SCANNERS.has(hit.scannerId)) return null;
+export function xFactorOf(hit: Pick<OpportunityHit, 'meta'>): number | null {
   const raw = Number(hit.meta?.xFactor);
   return Number.isFinite(raw) && raw > 0 ? raw : null;
 }

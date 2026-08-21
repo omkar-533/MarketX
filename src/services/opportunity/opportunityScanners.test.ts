@@ -811,7 +811,6 @@ describe('scanWolfHunters', () => {
       ctx({
         timeframe: '1h',
         candles: [BEFORE, MOTHER, hunt],
-        sessionMinsFromOpen: 180,
         ...over,
       }) as never,
     );
@@ -862,19 +861,27 @@ describe('scanWolfHunters', () => {
       ctx({
         timeframe: '1h',
         candles: [BEFORE, inside, bar({ high: 99.6, low: 98, close: 98.9 })],
-        sessionMinsFromOpen: 180,
       }) as never,
     );
     assert.equal(hit, null);
   });
 
+  it('lets the previous session\'s last candle be the mother', () => {
+    // Day's first hourly candle — only one session bar so far.
+    const hit = hunters(lowHunt, { sessionMinsFromOpen: 60 });
+    assert.ok(hit);
+    assert.equal(hit?.direction, 'bullish');
+  });
+
+  it('a gap that never trades back into the mother range does not list', () => {
+    // Gap-down open: clears the mother low but closes far below it.
+    const gap = bar({ open: 95, high: 96, low: 94.5, close: 95.5 });
+    assert.equal(hunters(gap, { sessionMinsFromOpen: 60 }), null);
+  });
+
   it('runs on 1h only', () => {
     assert.equal(hunters(lowHunt, { timeframe: '5m' }), null);
     assert.equal(hunters(lowHunt, { timeframe: '15m' }), null);
-  });
-
-  it('waits for a second session candle so the pair is not split by the gap', () => {
-    assert.equal(hunters(lowHunt, { sessionMinsFromOpen: 60 }), null);
   });
 
   it('carries the mother levels and X Factor on the hit', () => {
@@ -883,5 +890,56 @@ describe('scanWolfHunters', () => {
     assert.equal(hit?.meta?.motherLow, 98);
     assert.equal(hit?.meta?.mid, 100);
     assert.equal(hit?.meta?.xFactor, 1.6);
+  });
+});
+
+describe('X Factor is stamped for every card', () => {
+  it('rides on the hit whichever scanner produced it', () => {
+    const sprint = scanMorningSprint(
+      ctx({
+        sessionChangePct: 0.9,
+        sessionVolRatio: 1.2,
+        sessionOpen: 100,
+        sessionHigh: 101.2,
+        sessionLow: 100,
+        sessionMinsFromOpen: 5,
+        vwap: 100.6,
+        gapPct: 0.0,
+        openingHigh: 101.0,
+        openingLow: 100.0,
+        prevDayHigh: 101.8,
+        prevDayLow: 99.2,
+        tech: { last: 101.2, atr14: 0.4 },
+      }) as never,
+    );
+    assert.equal(sprint?.meta?.xFactor, 1.6);
+
+    const hunter = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [
+          bar({ open: 99, high: 100, low: 98, close: 99.5 }),
+          bar({ open: 98.5, high: 102, low: 98, close: 101 }),
+          bar({ open: 98.5, high: 100.2, low: 97.5, close: 99.5 }),
+        ],
+      }) as never,
+    );
+    assert.equal(hunter?.meta?.xFactor, 1.6);
+  });
+
+  it('uses the session ratio when it runs hotter than the bar ratio', () => {
+    const hit = scanWolfHunters(
+      ctx({
+        timeframe: '1h',
+        candles: [
+          bar({ open: 99, high: 100, low: 98, close: 99.5 }),
+          bar({ open: 98.5, high: 102, low: 98, close: 101 }),
+          bar({ open: 98.5, high: 100.2, low: 97.5, close: 99.5 }),
+        ],
+        volume: { ratio: 1.1, state: 'EXPANDING' },
+        sessionVolRatio: 2.4,
+      }) as never,
+    );
+    assert.equal(hit?.meta?.xFactor, 2.4);
   });
 });
