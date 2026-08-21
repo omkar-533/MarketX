@@ -468,6 +468,31 @@ export async function postOpportunityDayBoard(
   });
 }
 
+export type ScannerHorizonStat = {
+  samples: number;
+  winRate: number | null;
+  avgMove: number | null;
+};
+
+export type ScannerTrackRecord = {
+  signals: number;
+  h15: ScannerHorizonStat;
+  h30: ScannerHorizonStat;
+  eod: ScannerHorizonStat;
+};
+
+/** Measured forward moves of past signals. Empty until a scanner has resolved hits. */
+export async function fetchOpportunityStats(universe: string, timeframe: string) {
+  return json<{
+    universe: string;
+    timeframe: string;
+    days: number;
+    scanners: Record<string, ScannerTrackRecord>;
+  }>(
+    `/api/market-data/opportunity-stats?universe=${encodeURIComponent(universe)}&timeframe=${encodeURIComponent(timeframe)}`,
+  );
+}
+
 export async function fetchUniversesMeta() {
   return json<{
     source: string;

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
-import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard } from '../../../services/marketData/marketDataApi';
+import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard, fetchOpportunityStats, type ScannerTrackRecord } from '../../../services/marketData/marketDataApi';
 import { initMarketDataService } from '../../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import type { MarketDataProvider } from '../../../services/radar/MarketDataProvider';
@@ -137,6 +137,11 @@ type Props = {
   sessionKnown?: boolean;
 };
 
+/** Below this a win rate is noise, so the card stays silent about its record. */
+const MIN_RECORD_SAMPLES = 20;
+const RECORD_DAYS = 20;
+const RECORD_REFRESH_MS = 5 * 60_000;
+
 function resolveLiveProvider(): typeof serverMarketDataProvider | null {
   return serverMarketDataProvider;
 }
@@ -225,6 +230,30 @@ const HitTile = memo(function HitTile({
   );
 });
 
+/**
+ * Measured record of the card's past signals. Nothing is shown until enough of
+ * them have resolved, so an empty strip never reads as a bad scanner.
+ */
+function TrackRecordStrip({ record }: { record?: ScannerTrackRecord }) {
+  const useHalfHour = (record?.h30.samples ?? 0) >= MIN_RECORD_SAMPLES;
+  const stat = useHalfHour ? record?.h30 : record?.h15;
+  if (!stat || stat.samples < MIN_RECORD_SAMPLES || stat.winRate == null || stat.avgMove == null) {
+    return null;
+  }
+  const avg = `${stat.avgMove >= 0 ? '+' : ''}${stat.avgMove.toFixed(2)}%`;
+  return (
+    <p
+      className="wolf-opp__record"
+      title={`${stat.samples} resolved signals from the last ${RECORD_DAYS} trading days`}
+    >
+      <span className={stat.winRate >= 50 ? 'is-up' : 'is-down'}>{Math.round(stat.winRate)}%</span>
+      {` moved its way in ${useHalfHour ? '30m' : '15m'} · avg `}
+      <span className={stat.avgMove >= 0 ? 'is-up' : 'is-down'}>{avg}</span>
+      {` · ${stat.samples} signals`}
+    </p>
+  );
+}
+
 export default function WolfOpportunityPage({
   onOpenWolfAi,
   onOpenLive,
@@ -247,6 +276,7 @@ export default function WolfOpportunityPage({
   const [symbolQuery, setSymbolQuery] = useState('');
   const [searchUnlocked, setSearchUnlocked] = useState(false);
   const [deskSortByScanner, setDeskSortByScanner] = useState<Partial<Record<string, OpportunityDeskSort>>>({});
+  const [trackRecord, setTrackRecord] = useState<Record<string, ScannerTrackRecord>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scanningRef = useRef(false);
   const scanGenRef = useRef(0);
@@ -265,6 +295,28 @@ export default function WolfOpportunityPage({
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    if (dataMode !== 'LIVE') {
+      setTrackRecord({});
+      return;
+    }
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetchOpportunityStats(filters.universe, filters.timeframe);
+        if (alive) setTrackRecord(res.scanners || {});
+      } catch {
+        // Optional strip — the desk must keep working without a track record.
+      }
+    };
+    void load();
+    const timer = setInterval(load, RECORD_REFRESH_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [dataMode, filters.universe, filters.timeframe]);
 
   const refreshMarketTrend = useCallback(async (provider: MarketDataProvider) => {
     try {
@@ -795,6 +847,7 @@ export default function WolfOpportunityPage({
                 <header className="wolf-opp__sheet-head">
                   <div>
                     <h3>{prettyTitle(card.title)}</h3>
+                    <TrackRecordStrip record={trackRecord[card.scannerId]} />
                   </div>
                   <div className="wolf-opp__sheet-tools">
                     <button

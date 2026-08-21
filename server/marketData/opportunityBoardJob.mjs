@@ -18,6 +18,7 @@ import {
   mergeOpportunityDayBoard,
   persistOpportunityDayBoard,
 } from './opportunityDayBoard.mjs';
+import { recordOpportunityOutcomes } from './opportunityOutcomes.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const EVAL_PATH = resolve(root, 'server/marketData/generated/opportunityEval.mjs');
@@ -122,6 +123,17 @@ async function huntTimeframe(accessToken, universe, timeframe) {
     out.cards || [],
     snap.cacheKey,
   );
+  try {
+    // Track record is a read-only side log — it must never fail the board.
+    await recordOpportunityOutcomes({
+      universe,
+      timeframe,
+      cards: board.cards || [],
+      candlesBySymbol: snap.candlesBySymbol,
+    });
+  } catch (err) {
+    console.warn('[opportunity-board-job] outcome skip', err?.message || err);
+  }
   return { hits: board.hits || 0, complete: Boolean(out.complete) };
 }
 

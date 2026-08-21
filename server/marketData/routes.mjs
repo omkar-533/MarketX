@@ -41,6 +41,7 @@ import { getInstrumentUniverseStats } from './instrumentUniverse.mjs';
 import { resolveServerUniverse } from './universeLists.mjs';
 import { peekOpportunitySnapshot } from './opportunitySnapshot.mjs';
 import { peekOpportunityDayBoard, mergeOpportunityDayBoard } from './opportunityDayBoard.mjs';
+import { KEEP_DAYS, peekOpportunityStats } from './opportunityOutcomes.mjs';
 
 const router = Router();
 const SESSION_COOKIE = 'wolf_md_session';
@@ -686,6 +687,28 @@ router.post('/opportunity-board', async (req, res) => {
     mode: 'LIVE',
     orderExecution: false,
   });
+});
+
+/** Measured track record per scanner — forward moves of the signals already listed. */
+router.get('/opportunity-stats', async (req, res) => {
+  const live = await requireLiveToken(req, res);
+  if (!live) return;
+  const universe = String(req.query.universe || 'F&O');
+  const timeframe = String(req.query.timeframe || '5m');
+  const asked = Number(req.query.days);
+  const days = Number.isFinite(asked) && asked > 0 ? Math.min(KEEP_DAYS, Math.round(asked)) : KEEP_DAYS;
+  try {
+    res.json({
+      ...(await peekOpportunityStats(universe, timeframe, days)),
+      mode: 'LIVE',
+      orderExecution: false,
+    });
+  } catch (err) {
+    res.status(503).json({
+      error: err instanceof Error ? err.message : 'Opportunity stats unavailable',
+      orderExecution: false,
+    });
+  }
 });
 
 router.post('/radar/scan', (_req, res) => {

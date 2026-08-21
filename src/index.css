@@ -29724,6 +29724,22 @@ span.wolf-opp__seg {
   line-height: 1.45;
   max-width: 36rem;
 }
+.wolf-opp__record {
+  margin: 0.3rem 0 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--opp-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.wolf-opp__record .is-up {
+  color: #34d399;
+  font-weight: 750;
+}
+.wolf-opp__record .is-down {
+  color: #f87171;
+  font-weight: 750;
+}
 .wolf-opp__sheet-count {
   flex-shrink: 0;
   min-width: 1.85rem;
@@ -30686,6 +30702,15 @@ html[data-theme="light"] .wolf-opp__side-empty {
 html[data-theme="light"] .wolf-opp__sheet-count {
   color: #1a1406;
   background: linear-gradient(180deg, #e8c547, #b8922a);
+}
+html[data-theme="light"] .wolf-opp__record {
+  color: #475569;
+}
+html[data-theme="light"] .wolf-opp__record .is-up {
+  color: #047857;
+}
+html[data-theme="light"] .wolf-opp__record .is-down {
+  color: #b91c1c;
 }
 html[data-theme="light"] .wolf-opp__tile-nth,
 html[data-theme="light"] .wolf-opp__tile-created {
