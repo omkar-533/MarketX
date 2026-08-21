@@ -6,6 +6,7 @@ import type { Candle } from '../radar/radarTypes';
 import {
   closedBarIndex,
   inferNseBarOpenMs,
+  istSessionStartMs,
   keepDisplaySetupTime,
   readCandleTimeMs,
   setupCreatedAtMs,
@@ -106,6 +107,40 @@ function episodeStamp(
   // the series INDstocks stamps with the bar close.
   const raw = inferNseBarOpenMs(series, index, timeframe, now);
   return keepDisplaySetupTime(setupCreatedAtMs(raw, timeframe, now), now);
+}
+
+/**
+ * A setup carrying `meta.stopLevel` dies as soon as a later bar closes through it.
+ * The row is marked rather than dropped so the day's record stays readable.
+ */
+function markStopped(
+  hit: OpportunityHit,
+  series: Candle[],
+  fromIndex: number,
+  timeframe: OpportunityTimeframe,
+  now: number,
+): void {
+  const stop = Number(hit.meta?.stopLevel);
+  if (!Number.isFinite(stop) || stop <= 0) return;
+  for (let i = fromIndex + 1; i < series.length; i += 1) {
+    const close = Number(series[i]?.close);
+    if (!Number.isFinite(close) || close <= 0) continue;
+    if (hit.direction === 'bullish' ? close < stop : close > stop) {
+      hit.status = 'INVALID';
+      hit.meta = { ...hit.meta, stoppedAt: episodeStamp(series, i, timeframe, now) };
+      return;
+    }
+  }
+}
+
+/** Last bar that closed before today's bell, else -1. */
+function priorSessionLastBar(series: Candle[], now: number): number {
+  const open = istSessionStartMs(now);
+  if (!(open > 0)) return -1;
+  for (let i = series.length - 1; i >= 0; i -= 1) {
+    if (readCandleTimeMs(series[i]) < open) return i;
+  }
+  return -1;
 }
 
 function episodeKey(hit: OpportunityHit): string {
@@ -277,11 +312,15 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
                 // the one before it, which on a continuous series is the previous
                 // session's last bar — also valid. Skipping the bar pushed both cards'
                 // first listing to 9:25.
+                // Wolf Hunters compares a bar against the one before it, which on a
+                // continuous series is the previous session's last bar. Skipping the
+                // 9:15 bar pushed the card's earliest possible print to 11:15.
                 includeFirstBar:
                   id === 'compression_break' ||
                   id === 'breakout_radar' ||
                   id === 'morning_sprint' ||
-                  id === 'opening_drive',
+                  id === 'opening_drive' ||
+                  id === 'wolf_hunters',
               },
             );
           } catch {
@@ -296,7 +335,26 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         ];
 
         const lastBar = series.length - 1;
+        const sessionOpen = istSessionStartMs(asOf);
         for (const [id, scan] of runners) {
+          if (id === 'wolf_hunters' && sessionOpen > 0 && sessionOpen <= asOf) {
+            // Yesterday's last candle can hunt the one before it, and that setup is
+            // already live when the bell rings — so it prints at the open rather than
+            // waiting for a bar of today to close.
+            const prior = priorSessionLastBar(series, asOf);
+            const snap = prior > 0 ? snapshotAt(prior) : null;
+            const carry = snap
+              ? scan({ f: snap, timeframe: tf, dataMode, quotePrice: snap.tech.last, rsi })
+              : null;
+            if (carry && carry.score >= DEFAULT_OPPORTUNITY_FILTERS.minScore) {
+              carry.detectedAt = keepDisplaySetupTime(sessionOpen, asOf);
+              carry.id = `opp-${carry.scannerId}-${carry.symbol}-${carry.timeframe}-p${prior}`;
+              carry.meta = { ...carry.meta, barIndex: prior, carriedOver: true };
+              markStopped(carry, series, prior, tf, asOf);
+              if (carry.detectedAt > 0) emitHit(carry, f);
+            }
+          }
+
           const all = windowsFor(id, scan);
           if (!all.length) continue;
 
@@ -338,6 +396,7 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               signalCount: all.length,
               barIndex: win.startIndex,
             };
+            markStopped(hit, series, win.startIndex, tf, asOf);
             emitHit(hit, f);
           }
         }

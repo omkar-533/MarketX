@@ -39,10 +39,10 @@ function session(bars: number, breakAt?: number): Bar[] {
 
 function evaluate(
   candleMapAll: Record<string, Bar[]>,
-  extra?: { asOf?: number; rsiBySymbol?: Record<string, unknown> },
+  extra?: { asOf?: number; rsiBySymbol?: Record<string, unknown>; timeframe?: '5m' | '1h' },
 ) {
   return evaluateOpportunityFromCandleMap({
-    filters: { ...DEFAULT_OPPORTUNITY_FILTERS, timeframe: '5m' },
+    filters: { ...DEFAULT_OPPORTUNITY_FILTERS, timeframe: extra?.timeframe ?? '5m' },
     symbols: Object.keys(candleMapAll),
     asOf: extra?.asOf ?? AS_OF,
     dataMode: 'LIVE',
@@ -134,5 +134,111 @@ describe('Boosters listing', () => {
       { asOf: EARLY, rsiBySymbol: { RUNNER: rsiFeed(70, 70, 40) } },
     );
     assert.deepEqual(boosterHits(cards), []);
+  });
+});
+
+describe('Wolf Hunters listing', () => {
+  const H1 = 3_600_000;
+  /** NSE hourly slots: 09:15 through 15:15. */
+  const SLOTS = [0, 1, 2, 3, 4, 5, 6];
+  const DAYS = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20'];
+
+  const hourBar = (timestamp: number, o: number, h: number, l: number, c: number): Bar => ({
+    timestamp,
+    open: o,
+    high: h,
+    low: l,
+    close: c,
+    volume: 1_000,
+  });
+
+  /** Four quiet prior sessions, so the snapshot has enough bars to read. */
+  function quietDays(skipLastTwoOf?: string): Bar[] {
+    const out: Bar[] = [];
+    for (const day of DAYS) {
+      const open = Date.parse(`${day}T09:15:00+05:30`);
+      for (const n of SLOTS) {
+        if (skipLastTwoOf === day && n >= 5) continue;
+        out.push(hourBar(open + n * H1, 100, 100.5, 99.5, 100));
+      }
+    }
+    return out;
+  }
+
+  const LAST_DAY_OPEN = Date.parse('2026-08-20T09:15:00+05:30');
+  // 14:15 mother, 15:15 close — the pair a carried-over hunt is read from.
+  const yesterday1415 = hourBar(LAST_DAY_OPEN + 5 * H1, 100.5, 103, 98, 102.5);
+  const todayHunt = hourBar(OPEN, 100, 100.8, 97, 99.5);
+
+  const hunterHits = (
+    cards: { scannerId: string; hits: { symbol: string; detectedAt: number; status: string }[] }[],
+  ) => cards.find((c) => c.scannerId === 'wolf_hunters')?.hits ?? [];
+
+  it('prints on the first bar of the day, at 10:15', async () => {
+    // Mother is yesterday's 15:15 close; today's 09:15 bar sweeps it and closes back in.
+    const series = [
+      ...quietDays('2026-08-20'),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 100, 101, 99, 100.5),
+      yesterday1415,
+      todayHunt,
+    ];
+    const { cards } = await evaluate(
+      { HUNTER: series },
+      { asOf: Date.parse('2026-08-21T10:20:00+05:30'), timeframe: '1h' },
+    );
+    const stamps = hunterHits(cards).map((h) => istClock(h.detectedAt));
+    assert.ok(stamps.includes('10:15'), `expected a 10:15 print, got ${stamps.join(', ')}`);
+  });
+
+  it('carries yesterday\'s last candle over and stamps it at the 9:15 open', async () => {
+    // The 15:15 bar hunts the 14:15 bar, so the setup is already live at the bell.
+    const series = [
+      ...quietDays('2026-08-20'),
+      hourBar(LAST_DAY_OPEN + 4 * H1, 100, 101, 99, 100.5),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 100.5, 103, 98, 102.5),
+      hourBar(LAST_DAY_OPEN + 6 * H1, 100, 100.8, 97, 99.5),
+    ];
+    const { cards } = await evaluate(
+      { CARRY: series },
+      { asOf: Date.parse('2026-08-21T09:16:00+05:30'), timeframe: '1h' },
+    );
+    const stamps = hunterHits(cards).map((h) => istClock(h.detectedAt));
+    assert.ok(stamps.includes('09:15'), `expected a 09:15 print, got ${stamps.join(', ')}`);
+  });
+
+  it('marks the row invalidated once an hourly close takes the stop out', async () => {
+    // Hunt low is 97; the 11:15 bar closes at 96, through it.
+    const series = [
+      ...quietDays('2026-08-20'),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 100, 101, 99, 100.5),
+      yesterday1415,
+      todayHunt,
+      hourBar(OPEN + H1, 99.5, 100, 98, 98.5),
+      hourBar(OPEN + 2 * H1, 98.5, 99, 95.5, 96),
+    ];
+    const { cards } = await evaluate(
+      { STOPPED: series },
+      { asOf: Date.parse('2026-08-21T12:20:00+05:30'), timeframe: '1h' },
+    );
+    const hit = hunterHits(cards).find((h) => istClock(h.detectedAt) === '10:15');
+    assert.ok(hit, 'the 10:15 hunt should still be listed');
+    assert.equal(hit?.status, 'INVALID');
+  });
+
+  it('leaves a setup alone while price holds the stop', async () => {
+    const series = [
+      ...quietDays('2026-08-20'),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 100, 101, 99, 100.5),
+      yesterday1415,
+      todayHunt,
+      hourBar(OPEN + H1, 99.5, 100.5, 97.5, 100),
+    ];
+    const { cards } = await evaluate(
+      { ALIVE: series },
+      { asOf: Date.parse('2026-08-21T11:20:00+05:30'), timeframe: '1h' },
+    );
+    const hit = hunterHits(cards).find((h) => istClock(h.detectedAt) === '10:15');
+    assert.ok(hit, 'the 10:15 hunt should be listed');
+    assert.notEqual(hit?.status, 'INVALID');
   });
 });

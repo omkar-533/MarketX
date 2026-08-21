@@ -15,11 +15,11 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-// v28 — Wolf Hunters drops sweeps too shallow to see (0.1% of price, 10% of the
-// mother range). A fresh key clears the micro-pokes the old rule had saved.
-const SETTINGS_KEY = 'opportunity_day_board_v28';
+// v29 — Wolf Hunters rows now carry a stop level and can print from the open. Rows
+// saved before that have no stop to show, so a fresh key retires them.
+const SETTINGS_KEY = 'opportunity_day_board_v29';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v28.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v29.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

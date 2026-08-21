@@ -949,6 +949,18 @@ describe('scanWolfHunters', () => {
     assert.equal(hunters(lowHunt, { timeframe: '15m' }), null);
   });
 
+  it('stops a long at the hunt candle low, not the mother low', () => {
+    const hit = hunters(lowHunt);
+    assert.equal(hit?.meta?.stopLevel, 97.5);
+    assert.match(String(hit?.invalidation), /97\.50/);
+  });
+
+  it('stops a short at the hunt candle high, not the mother high', () => {
+    const hit = hunters(highHunt);
+    assert.equal(hit?.meta?.stopLevel, 102.5);
+    assert.match(String(hit?.invalidation), /102\.50/);
+  });
+
   it('carries the mother levels and X Factor on the hit', () => {
     const hit = hunters(lowHunt);
     assert.equal(hit?.meta?.motherHigh, 102);

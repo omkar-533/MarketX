@@ -696,6 +696,7 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
   // extreme, the more of the mother range is left to travel.
   const roomPct = (Math.abs(target - hunt.close) / range) * 100;
   const vol = Math.max(f.volume.ratio, f.sessionVolRatio ?? 0);
+  const stopLevel = bullish ? hunt.low : hunt.high;
 
   const breakdown: ScoreBreakdown = {
     hunt: 30,
@@ -720,9 +721,9 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
     keyLevel: level,
     trigger: hunt.close,
     invalidation: bullish
-      ? `1h close ₹${r(level)} ke neeche gaya to hunt fail.`
-      : `1h close ₹${r(level)} ke upar gaya to hunt fail.`,
-    confirmationNeeded: `Agli 1h candle ko ₹${r(level)} bachana hai.`,
+      ? `SL: koi 1h candle hunt candle ke low ₹${r(stopLevel)} ke neeche band hui to setup invalid.`
+      : `SL: koi 1h candle hunt candle ke high ₹${r(stopLevel)} ke upar band hui to setup invalid.`,
+    confirmationNeeded: `Har 1h close ko ₹${r(stopLevel)} ke ${bullish ? 'upar' : 'neeche'} rehna hai.`,
     evidence: [
       { label: bullish ? 'Low swept by wick + closed back in' : 'High swept by wick + closed back in', ok: true },
       { label: `Opened inside mother ₹${r(mother.low)}–₹${r(mother.high)}`, ok: true },
@@ -739,6 +740,9 @@ export function scanWolfHunters(ctx: Ctx): OpportunityHit | null {
       motherHigh: mother.high,
       motherLow: mother.low,
       mid,
+      // The hunt candle's own extreme is the stop: price closing back through the
+      // wick that did the sweeping means the sweep failed.
+      stopLevel,
     },
   });
 }

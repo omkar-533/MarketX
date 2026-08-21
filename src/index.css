@@ -30202,6 +30202,20 @@ html[data-theme="light"] .wolf-opp__sheet-tf-fixed {
   border-radius: 999px;
   padding: 0.1rem 0.34rem;
 }
+.wolf-opp__tile-nth.is-dead {
+  color: #fecaca;
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(248, 113, 113, 0.42);
+}
+.wolf-opp__tile-stop {
+  display: block;
+  margin-top: 0.16rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(248, 180, 180, 0.82);
+  font-variant-numeric: tabular-nums;
+}
 .wolf-opp__tile-actions {
   display: flex;
   flex-direction: column;
@@ -30800,6 +30814,14 @@ html[data-theme="light"] .wolf-opp__tile-created {
   background: #fde68a;
   border-color: #b45309;
   box-shadow: none;
+}
+html[data-theme="light"] .wolf-opp__tile-nth.is-dead {
+  color: #7f1d1d;
+  background: #fecaca;
+  border-color: #b91c1c;
+}
+html[data-theme="light"] .wolf-opp__tile-stop {
+  color: #9f1239;
 }
 html[data-theme="light"] .wolf-opp__tile-actions button,
 html[data-theme="light"] .wolf-opp__tile-actions a {

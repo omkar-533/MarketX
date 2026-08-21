@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { feedState } from './feedState';
 import { formatXFactor, xFactorOf } from '../../../services/opportunity/xFactor';
+import { stopLevelOf } from '../../../services/opportunity/stopLevel';
 import { formatOpportunityCreatedClock } from '../../../services/opportunity/opportunityCreated';
 import { getMarketSession, isNseFnoMarketOpen } from '../../../utils/marketHours';
 import { fetchMarketDataStatus, isIndstocksLive, clearLiveCandleCache, fetchOpportunityDayBoard, postOpportunityDayBoard, fetchOpportunityStats, type ScannerTrackRecord } from '../../../services/marketData/marketDataApi';
@@ -189,6 +190,7 @@ const HitTile = memo(function HitTile({
   const bias = biasOf(hit);
   const q = liveWolfQuery(hit);
   const xFactor = xFactorOf(hit);
+  const stopLevel = stopLevelOf(hit);
   const tvHref = tradingViewChartUrl(hit.symbol, hit.timeframe, hit.exchange);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
@@ -212,6 +214,9 @@ const HitTile = memo(function HitTile({
                 {formatHitClock(hit.detectedAt) === '—' ? 'Created —' : `${formatHitClock(hit.detectedAt)} IST`}
               </em>
               {hit.status === 'WATCH' ? <span className="wolf-opp__tile-nth">Watch</span> : null}
+              {hit.status === 'INVALID' ? (
+                <span className="wolf-opp__tile-nth is-dead">Invalidated</span>
+              ) : null}
               {printLabel ? <span className="wolf-opp__tile-nth">{printLabel}</span> : null}
             </span>
             {xFactor != null ? (
@@ -227,6 +232,11 @@ const HitTile = memo(function HitTile({
               </span>
             )}
           </span>
+          {stopLevel != null ? (
+            <span className="wolf-opp__tile-stop">
+              Invalid {bias === 'bullish' ? 'below' : 'above'} ₹{formatHitPrice(stopLevel)}
+            </span>
+          ) : null}
         </span>
       </AppLink>
       <div className="wolf-opp__tile-actions">
