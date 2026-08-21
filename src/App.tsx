@@ -26,6 +26,7 @@ const Header = lazyWithRetry(() => import('./components/Header'));
 const AuthModal = lazyWithRetry(() => import('./components/AuthModal'));
 const TvAccessGrantedPopup = lazyWithRetry(() => import('./components/access/TvAccessGrantedPopup'));
 const AccessGate = lazyWithRetry(() => import('./components/access/AccessGate'));
+const ConnectLiveNudgePopup = lazyWithRetry(() => import('./components/access/ConnectLiveNudgePopup'));
 const ProfileModal = lazyWithRetry(() => import('./components/ProfileModal'));
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'));
 const TradingJournal = lazyWithRetry(() => import('./components/TradingJournal'));
@@ -48,6 +49,7 @@ const OIIntelligence = lazyWithRetry(() => import('./components/OIIntelligence')
 const FootprintChart = lazyWithRetry(() => import('./components/FootprintChart'));
 const WolfRadarPage = lazyWithRetry(() => import('./components/masterai/radar/WolfRadarPage'));
 const WolfOpportunityRoute = lazyWithRetry(() => import('./components/masterai/opportunity/WolfOpportunityRoute'));
+const WolfFnoRoute = lazyWithRetry(() => import('./components/masterai/fno/WolfFnoRoute'));
 const LiveWolfRoute = lazyWithRetry(() => import('./components/masterai/live/LiveWolfRoute'));
 const WatchlistPanel = lazyWithRetry(() => import('./components/masterai/radar/WatchlistPanel'));
 const MentorAI = lazyWithRetry(() => import('./components/MentorAI'));
@@ -90,6 +92,7 @@ const VALID_TABS = new Set([
   'wolf-ai',
   'wolf-radar',
   'wolf-opportunity',
+  'wolf-fno',
   'live-wolf',
   'strategy-lab',
   'mentor-ai',
@@ -420,6 +423,8 @@ function AppWorkspace() {
         );
       case 'wolf-opportunity':
         return opportunity;
+      case 'wolf-fno':
+        return <WolfFnoRoute onOpenLive={liveWolf} />;
       case 'live-wolf':
         return <LiveWolfRoute />;
       case 'mentor-ai':
@@ -625,6 +630,10 @@ function AppWorkspace() {
               auth.user?.role === 'admin' || auth.user?.role === 'subadmin' ? null : auth.user?.id
             }
             onOpenIndicator={openGrantedIndicator}
+          />
+          <ConnectLiveNudgePopup
+            enabled={auth.isLoggedIn && Boolean(auth.user?.id) && !locked}
+            userId={auth.user?.id}
           />
           <AccessGate
             access={planPeek ? null : auth.access}

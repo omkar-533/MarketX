@@ -9,8 +9,16 @@ import {
 import { initMarketDataService } from '../../services/marketData/MarketDataService';
 import { serverMarketDataProvider } from '../../services/marketData/ServerMarketDataProvider';
 
-const SESSION_KEY_PREFIX = 'wolf_live_connect_nudge_';
 const SHOW_DELAY_MS = 900;
+const AUTO_HIDE_MS = 5_000;
+const PENDING_RETRY_MS = 1_200;
+const PENDING_TRIES = 3;
+
+/**
+ * Kept in memory, not sessionStorage: a hard refresh has to ask again, but moving
+ * between desks in the same page load must not re-open the nudge.
+ */
+const askedFor = new Set<string>();
 
 type Props = {
   userId?: string | null;
@@ -22,63 +30,80 @@ function isLiveConnected(status: ServerConnectionStatus | null | undefined) {
 }
 
 /**
- * After login: nudge members to connect live market data.
- * Shown once per browser session (cleared on logout). Skipped if already LIVE
- * (token survives logout until the broker rejects it — do not ask for the key again).
+ * After login or a hard refresh: nudge members to connect live market data, then
+ * step out of the way after {@link AUTO_HIDE_MS}. The connect sheet only opens on
+ * a click — this popup never takes the screen on its own.
  */
 export default function ConnectLiveNudgePopup({ userId, enabled }: Props) {
   const [nudgeOpen, setNudgeOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [hold, setHold] = useState(false);
   const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
 
   useEffect(() => {
     if (!enabled || !userId) {
       setNudgeOpen(false);
+      // Signed out, so the next sign-in is a fresh ask. A locked account keeps its
+      // id, so plan changes cannot bounce the nudge back onto the screen.
+      if (!userId) askedFor.clear();
       return;
     }
-
-    const sessionKey = `${SESSION_KEY_PREFIX}${userId}`;
-    try {
-      if (sessionStorage.getItem(sessionKey) === '1') return;
-    } catch {
-      /* ignore */
-    }
+    if (askedFor.has(userId)) return;
 
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void fetchMarketDataStatus()
-        .then(async (s) => {
-          if (cancelled) return;
-          setMdStatus(s);
-          if (isLiveConnected(s)) {
-            if (s.mode === 'LIVE') {
-              await initMarketDataService(serverMarketDataProvider).connect();
-            }
-            return;
-          }
-          setNudgeOpen(true);
-          try {
-            sessionStorage.setItem(sessionKey, '1');
-          } catch {
-            /* ignore */
-          }
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setNudgeOpen(true);
-          try {
-            sessionStorage.setItem(sessionKey, '1');
-          } catch {
-            /* ignore */
-          }
-        });
-    }, SHOW_DELAY_MS);
+    const timers: number[] = [];
+    const wait = (ms: number) =>
+      new Promise<void>((done) => {
+        timers.push(window.setTimeout(done, ms));
+      });
+
+    const ask = () => {
+      askedFor.add(userId);
+      setNudgeOpen(true);
+    };
+
+    const run = async () => {
+      await wait(SHOW_DELAY_MS);
+      if (cancelled) return;
+
+      let status: ServerConnectionStatus | null = null;
+      for (let attempt = 0; attempt < PENDING_TRIES; attempt += 1) {
+        try {
+          status = await fetchMarketDataStatus({ force: attempt > 0 });
+        } catch {
+          status = null;
+        }
+        if (cancelled) return;
+        // A cold server answers /status from memory and flags it pending. Reading
+        // that as "not connected" is what used to re-ask an already-live member
+        // for their token, so wait for the confirmed answer before deciding.
+        if (!status?.pending) break;
+        await wait(PENDING_RETRY_MS);
+        if (cancelled) return;
+      }
+
+      setMdStatus(status);
+      if (isLiveConnected(status)) {
+        askedFor.add(userId);
+        await initMarketDataService(serverMarketDataProvider).connect();
+        return;
+      }
+      ask();
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      timers.forEach((t) => window.clearTimeout(t));
     };
   }, [enabled, userId]);
+
+  useEffect(() => {
+    if (!nudgeOpen || hold) return;
+    const timer = window.setTimeout(() => setNudgeOpen(false), AUTO_HIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [nudgeOpen, hold]);
 
   const dismiss = () => setNudgeOpen(false);
 
@@ -113,6 +138,10 @@ export default function ConnectLiveNudgePopup({ userId, enabled }: Props) {
               role="dialog"
               aria-modal="true"
               aria-label="Connect live data"
+              onMouseEnter={() => setHold(true)}
+              onMouseLeave={() => setHold(false)}
+              onFocusCapture={() => setHold(true)}
+              onBlurCapture={() => setHold(false)}
             >
               <button
                 type="button"
@@ -163,14 +192,4 @@ export default function ConnectLiveNudgePopup({ userId, enabled }: Props) {
       />
     </>
   );
-}
-
-/** Clear so the nudge can show again on the next login in this tab. */
-export function clearConnectLiveNudgeSession(userId?: string | null) {
-  if (!userId) return;
-  try {
-    sessionStorage.removeItem(`${SESSION_KEY_PREFIX}${userId}`);
-  } catch {
-    /* ignore */
-  }
 }
