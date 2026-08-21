@@ -129,7 +129,7 @@ export const OPPORTUNITY_SCANNERS: {
     id: 'morning_sprint',
     title: 'MORNING SPRINT',
     tagline:
-      '9:20 se close tak: Open = Low (long) / Open = High (short). Din bhar ke saare triggers list mein rehte hain.',
+      '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.',
     requires: 'ohlc',
   },
   {

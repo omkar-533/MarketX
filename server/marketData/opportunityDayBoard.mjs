@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { readSetting, writeSetting } from '../auth/appSettingsStore.mjs';
 
 const SCANNER_META = [
-  ['morning_sprint', 'MORNING SPRINT', '9:20 se close tak: Open = Low (long) / Open = High (short). Din bhar ke saare triggers list mein rehte hain.'],
+  ['morning_sprint', 'MORNING SPRINT', '9:20 se 3:30 tak live: Open = Low (long) / Open = High (short). Rule tootte hi stock list se hat jayega.'],
   ['opening_drive', 'BOOSTERS', 'LONG: 2h RSI>50, 30m RSI>60, 5m RSI>60, 5m close pichhle close se upar. SHORT: 2h RSI<50, 30m RSI<40, 5m RSI<40, close neeche.'],
   ['wolf_prime', 'WOLF PRIME', 'Highest conviction — 1 early + 1 confirmed, or 3 keepers, same side.'],
   ['momentum_surge', 'PRICE RUNNERS', 'Last 2 candles volume up, price still inside — then the burst.'],
@@ -358,11 +358,15 @@ export async function mergeOpportunityDayBoard(universe, timeframe, incomingCard
   const next = emptyHits();
   const inBy = new Map((incomingCards || []).map((c) => [c.scannerId, c]));
   for (const [id] of SCANNER_META) {
+    // Morning Sprint is a live list. An empty scan means every name broke the
+    // rule, so the card must clear instead of replaying stale survivors.
+    const liveOnly = id === 'morning_sprint';
     next[id] = nextScannerHits(
       prevRow?.hitsByScanner?.[id] || [],
       inBy.get(id)?.hits || [],
       day,
-      id === 'options_flow',
+      id === 'options_flow' || liveOnly,
+      liveOnly ? { keepOnEmpty: false, replace: true } : undefined,
     );
   }
   const row = {

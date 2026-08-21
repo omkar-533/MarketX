@@ -39,6 +39,15 @@ import { OPPORTUNITY_SCAN_CAP, OPPORTUNITY_SCANNERS, DEFAULT_OPPORTUNITY_FILTERS
 
 export const MIN_SCAN_BARS = 25;
 
+/** How many episodes of one symbol a card keeps — the most recent ones. */
+const EPISODES_PER_SYMBOL = 4;
+
+/**
+ * Scanners that describe a state rather than an event: the symbol is listed only
+ * while the rule still holds on the latest closed bar, and drops the moment it breaks.
+ */
+const LIVE_ONLY_SCANNERS = new Set<OpportunityScannerId>(['morning_sprint']);
+
 export type EvaluateOpportunityOpts = {
   signal?: AbortSignal;
   onProgress?: (p: OpportunityScanProgress) => void;
@@ -99,11 +108,10 @@ function episodeStamp(
   index: number,
   timeframe: OpportunityTimeframe,
   now: number,
-  inferCloseStamp = false,
 ): number {
-  const raw = inferCloseStamp
-    ? inferNseBarOpenMs(series, index, timeframe, now)
-    : readCandleTimeMs(series[index]) || Number(series[index]?.timestamp) || 0;
+  // Detection based, so it is a no-op on an open-stamped feed and only corrects
+  // the series INDstocks stamps with the bar close.
+  const raw = inferNseBarOpenMs(series, index, timeframe, now);
   return keepDisplaySetupTime(setupCreatedAtMs(raw, timeframe, now), now);
 }
 
@@ -140,10 +148,15 @@ function rankTrim(
       const runs = [...g]
         .sort((a, b) => a.detectedAt - b.detectedAt || Number(a.meta?.barIndex || 0) - Number(b.meta?.barIndex || 0))
         .filter((h, i, arr) => i === 0 || episodeKey(h) !== episodeKey(arr[i - 1]))
-        .slice(0, 4)
+        .slice(-EPISODES_PER_SYMBOL)
         .map((h, i, arr) => ({
           ...h,
-          meta: { ...h.meta, signalN: i + 1, signalCount: arr.length },
+          meta: {
+            ...h.meta,
+            // Keep the true episode number set during the walk, or number what is left.
+            signalN: Number(h.meta?.signalN) || i + 1,
+            signalCount: Number(h.meta?.signalCount) || arr.length,
+          },
         }));
       flat.push(...runs);
     }
@@ -265,7 +278,12 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               },
               asOf,
               {
-                includeFirstBar: id === 'compression_break' || id === 'breakout_radar',
+                // Morning Sprint reads only session open/high/low, so the 9:15–9:20
+                // bar is valid on its own. Skipping it pushed the first listing to 9:25.
+                includeFirstBar:
+                  id === 'compression_break' ||
+                  id === 'breakout_radar' ||
+                  id === 'morning_sprint',
               },
             );
           } catch {
@@ -284,9 +302,29 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
           ['trend_rider', scanTrendRider],
         ];
 
+        const lastBar = series.length - 1;
         for (const [id, scan] of runners) {
-          const wins = windowsFor(id, scan).slice(0, 4);
-          if (!wins.length) continue;
+          const all = windowsFor(id, scan);
+          if (!all.length) continue;
+
+          if (LIVE_ONLY_SCANNERS.has(id)) {
+            // Listed only while the rule still holds on the latest closed bar,
+            // stamped from when the run began so the card reads "since 9:20".
+            const run = all[all.length - 1];
+            if (run.endIndex < lastBar) continue;
+            const hit = scan(ctx);
+            if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
+            hit.detectedAt = episodeStamp(series, run.startIndex, tf, asOf);
+            hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${run.startIndex}`;
+            hit.meta = { ...hit.meta, signalN: 1, signalCount: 1, barIndex: run.startIndex };
+            emitHit(hit, f);
+            continue;
+          }
+
+          // Newest episodes win — keeping the first four hid every afternoon
+          // reprint behind stale morning prints.
+          const wins = all.slice(-EPISODES_PER_SYMBOL);
+          const base = all.length - wins.length;
           for (let n = 0; n < wins.length; n += 1) {
             const win = wins[n];
             const snap = snapshotAt(win.startIndex);
@@ -299,18 +337,12 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
               rsi,
             });
             if (!hit || hit.score < DEFAULT_OPPORTUNITY_FILTERS.minScore) continue;
-            hit.detectedAt = episodeStamp(
-              series,
-              win.startIndex,
-              tf,
-              asOf,
-              id === 'compression_break' || id === 'breakout_radar',
-            );
+            hit.detectedAt = episodeStamp(series, win.startIndex, tf, asOf);
             hit.id = `opp-${hit.scannerId}-${hit.symbol}-${hit.timeframe}-${win.startIndex}`;
             hit.meta = {
               ...hit.meta,
-              signalN: n + 1,
-              signalCount: wins.length,
+              signalN: base + n + 1,
+              signalCount: all.length,
               barIndex: win.startIndex,
             };
             emitHit(hit, f);
