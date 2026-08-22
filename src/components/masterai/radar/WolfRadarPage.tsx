@@ -43,6 +43,7 @@ import { initMarketDataService } from '../../../services/marketData/MarketDataSe
 import { serverMarketDataProvider } from '../../../services/marketData/ServerMarketDataProvider';
 import ConnectMarketDataModal from './ConnectMarketDataModal';
 import MySetupsPanel from './MySetupsPanel';
+import WatchlistLimitPopup from './WatchlistLimitPopup';
 import LuxSelect from '../../ui/LuxSelect';
 import {
   STRATEGY_SCAN_EVENT,
@@ -167,6 +168,7 @@ export default function WolfRadarPage({
   const [watchSymbols, setWatchSymbols] = useState(() =>
     new Set(loadWatchlist().map((w) => w.symbol)),
   );
+  const [watchLimitHit, setWatchLimitHit] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [mdStatus, setMdStatus] = useState<ServerConnectionStatus | null>(null);
   const [activeStrategy, setActiveStrategy] = useState<StrategyDefinition | null>(
@@ -450,8 +452,12 @@ export default function WolfRadarPage({
   }, [activeStrategy, dataConnected, scan]);
 
   const onAddWatch = (r: RadarResult) => {
-    const list = addToWatchlist(r);
-    setWatchSymbols(new Set(list.map((w) => w.symbol)));
+    const res = addToWatchlist(r);
+    if (res.limitReached) {
+      setWatchLimitHit(true);
+      return;
+    }
+    setWatchSymbols(new Set(res.items.map((w) => w.symbol)));
   };
 
   const onAnalyzeClick = (r: RadarResult) => {
@@ -1138,6 +1144,8 @@ export default function WolfRadarPage({
           }
         }}
       />
+
+      {watchLimitHit ? <WatchlistLimitPopup onClose={() => setWatchLimitHit(false)} /> : null}
     </div>
   );
 }

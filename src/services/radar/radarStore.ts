@@ -108,9 +108,30 @@ export function saveWatchlist(items: WatchlistItem[]) {
   writeJson(WATCH_KEY, items);
 }
 
-export function addToWatchlist(result: RadarResult): WatchlistItem[] {
-  const list = loadWatchlist().filter((x) => x.symbol !== result.symbol);
-  list.unshift({
+/** Hard cap on the watchlist — past this the desk stops being scannable. */
+export const WATCHLIST_LIMIT = 100;
+
+export type WatchlistAdd = {
+  items: WatchlistItem[];
+  added: boolean;
+  /** The cap turned this add away; nothing was written. */
+  limitReached: boolean;
+};
+
+function putWatchlist(entry: WatchlistItem): WatchlistAdd {
+  const current = loadWatchlist();
+  const rest = current.filter((x) => x.symbol !== entry.symbol);
+  // Re-adding a name already on the list refreshes it and cannot breach the cap.
+  if (rest.length === current.length && rest.length >= WATCHLIST_LIMIT) {
+    return { items: current, added: false, limitReached: true };
+  }
+  const items = [entry, ...rest];
+  saveWatchlist(items);
+  return { items, added: true, limitReached: false };
+}
+
+export function addToWatchlist(result: RadarResult): WatchlistAdd {
+  return putWatchlist({
     symbol: result.symbol,
     resultId: result.id,
     score: result.score,
@@ -119,8 +140,13 @@ export function addToWatchlist(result: RadarResult): WatchlistItem[] {
     addedAt: Date.now(),
     lastDetectedAt: result.detectedAt,
   });
-  saveWatchlist(list);
-  return list;
+}
+
+/** Manual add from the Watchlist page — a plain symbol with no scan behind it. */
+export function addSymbolToWatchlist(symbol: string): WatchlistAdd {
+  const clean = String(symbol || '').trim().toUpperCase();
+  if (!clean) return { items: loadWatchlist(), added: false, limitReached: false };
+  return putWatchlist({ symbol: clean, addedAt: Date.now() });
 }
 
 export function removeFromWatchlist(symbol: string): WatchlistItem[] {
