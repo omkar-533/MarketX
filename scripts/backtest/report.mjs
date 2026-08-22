@@ -6,7 +6,7 @@
  *
  *   node scripts/backtest/report.mjs --symbols=NIFTY,BANKNIFTY --tf=3m,5m
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { DEFAULT_CONFIG, istClock, istParts, runDay } from './orFvgEngine.mjs';
@@ -21,6 +21,16 @@ const SESSION_MINUTES = 375;
 function arg(name, fallback) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
+}
+
+/** Every symbol that actually has a parked file for this timeframe. */
+function discoverSymbols(tf) {
+  if (!existsSync(dataDir)) return [];
+  const suffix = `_${tf}.json`;
+  return readdirSync(dataDir)
+    .filter((f) => f.endsWith(suffix))
+    .map((f) => f.slice(0, -suffix.length))
+    .sort();
 }
 
 function loadSeries(symbol, tf) {
@@ -228,7 +238,10 @@ function section(title) {
 }
 
 function main() {
-  const symbols = arg('symbols', 'NIFTY,BANKNIFTY').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+  const symbolArg = arg('symbols', '').trim().toUpperCase();
+  const symbols = ['', 'ALL', 'FNO'].includes(symbolArg)
+    ? []
+    : symbolArg.split(',').map((s) => s.trim()).filter(Boolean);
   const timeframes = arg('tf', '3m,5m').split(',').map((s) => s.trim()).filter(Boolean);
   const headline = Number(arg('headline', '2'));
   const zoneEdge = arg('zoneEdge', 'outer');
@@ -248,52 +261,47 @@ function main() {
   out.push('# 1H Opening Range + FVG retest — baseline backtest');
   out.push('');
   out.push(`Generated ${new Date().toISOString()}`);
+  out.push('');
+  out.push('Rules as executed (nothing here was optimised):');
+  out.push('');
+  out.push(
+    table(
+      ['Rule', 'Setting'],
+      [
+        ['Session', '09:15–15:30 IST, opening range = 09:15–10:15'],
+        ['Opening-range wick', 'wick < half the body → ZONE, otherwise LINE (doji → LINE)'],
+        ['Breakout level for a zone', zoneEdge === 'inner' ? 'inner edge (body)' : 'outer edge (1H high/low)'],
+        ['Breakout', `a green/red close strictly beyond the level, buffer ${DEFAULT_CONFIG.breakoutBufferTicks} tick(s)`],
+        ['FVG window', `third candle within ${DEFAULT_CONFIG.fvgMaxBarsAfterBreakout} bars of the breakout; first qualifying gap only`],
+        ['FVG placement', DEFAULT_CONFIG.requireFvgBeyondRange ? 'must sit beyond the opening-range level' : 'anywhere'],
+        ['FVG death', 'a candle CLOSES back through the far edge'],
+        ['Confirmation', `${DEFAULT_CONFIG.confirmationRule} — directional close with the far wick under half the body`],
+        ['Entry', 'at the close of that candle, no second confirmation'],
+        ['Setups per day', 'one long and one short at most, first qualifying gap per side'],
+        ['Risk floor', `${(DEFAULT_CONFIG.minRiskPct * 100).toFixed(2)}% of entry price`],
+        ['Same-bar SL and TP', 'scored as a loss'],
+        ['Cut-off', `no new entry after ${Math.floor(DEFAULT_CONFIG.lastEntryMin / 60)}:${String(DEFAULT_CONFIG.lastEntryMin % 60).padStart(2, '0')}, open trades marked out at 15:15`],
+        ['Costs', 'none — gross R only'],
+      ],
+    ),
+  );
 
   const missing = [];
   const allRuns = [];
 
   for (const tf of timeframes) {
     const tfMinutes = Number(tf.replace('m', ''));
-    for (const symbol of symbols) {
+    const names = symbols.length ? symbols : discoverSymbols(tf);
+    const audits = [];
+
+    for (const symbol of names) {
       const series = loadSeries(symbol, tf);
       if (!series || !series.candles.length) {
         missing.push(`${symbol} ${tf}`);
         continue;
       }
       const audit = auditSeries(series, tfMinutes);
-
-      out.push(section(`Data quality — ${symbol} ${tf}`));
-      const first = series.candles[0];
-      const last = series.candles[series.candles.length - 1];
-      out.push(
-        table(
-          ['Check', 'Result'],
-          [
-            ['Bars', String(series.candles.length)],
-            ['Scrip', String(series.scrip)],
-            ['First bar (IST)', `${istParts(first.t).ymd} ${istClock(first.t)}`],
-            ['Last bar (IST)', `${istParts(last.t).ymd} ${istClock(last.t)}`],
-            ['Sessions', String(audit.byDay.size)],
-            ['Duplicate timestamps', String(audit.issues.duplicates)],
-            ['Out-of-order bars', String(audit.issues.unsorted)],
-            ['Abnormal OHLC (h<l, h<body, l>body)', String(audit.issues.badOhlc)],
-            ['Non-positive prices', String(audit.issues.nonPositive)],
-            ['Off the IST bar grid', String(audit.issues.offGrid)],
-            ['Outside 09:15–15:30 IST', String(audit.issues.outOfSession)],
-            ['Sessions with missing bars', `${audit.shortDays.length} of ${audit.byDay.size}`],
-          ],
-        ),
-      );
-      if (audit.shortDays.length) {
-        const worst = audit.shortDays.slice(0, 10).map((d) => `${d.ymd} (${d.bars}/${d.expected})`);
-        out.push('');
-        out.push(`Incomplete sessions (first 10): ${worst.join(', ')}`);
-        out.push('');
-        out.push(
-          'These are reported, not patched. A day is dropped only when the opening hour itself is short, ' +
-            'because the range would otherwise be built from a partial candle.',
-        );
-      }
+      audits.push({ symbol, series, audit });
 
       for (const stopModel of ['A', 'B']) {
         const cfg = { ...DEFAULT_CONFIG, tfMinutes, stopModel, zoneEdge };
@@ -314,6 +322,67 @@ function main() {
             r2 ? fmt((r2.exitAt - t.entryAt) / 60_000, 0) : '',
           ]);
         }
+      }
+    }
+
+    if (audits.length) {
+      const totals = audits.reduce(
+        (a, x) => ({
+          bars: a.bars + x.series.candles.length,
+          duplicates: a.duplicates + x.audit.issues.duplicates,
+          unsorted: a.unsorted + x.audit.issues.unsorted,
+          badOhlc: a.badOhlc + x.audit.issues.badOhlc,
+          nonPositive: a.nonPositive + x.audit.issues.nonPositive,
+          offGrid: a.offGrid + x.audit.issues.offGrid,
+          outOfSession: a.outOfSession + x.audit.issues.outOfSession,
+          sessions: a.sessions + x.audit.byDay.size,
+          shortDays: a.shortDays + x.audit.shortDays.length,
+        }),
+        { bars: 0, duplicates: 0, unsorted: 0, badOhlc: 0, nonPositive: 0, offGrid: 0, outOfSession: 0, sessions: 0, shortDays: 0 },
+      );
+      const spans = audits.flatMap((x) => x.series.candles.length ? [x.series.candles[0].t, x.series.candles[x.series.candles.length - 1].t] : []);
+      out.push(section(`Data quality — ${tf} (${audits.length} symbols)`));
+      out.push(
+        table(
+          ['Check', 'Result'],
+          [
+            ['Symbols loaded', String(audits.length)],
+            ['Total bars', String(totals.bars)],
+            ['Earliest bar (IST)', spans.length ? istParts(Math.min(...spans)).ymd : '—'],
+            ['Latest bar (IST)', spans.length ? istParts(Math.max(...spans)).ymd : '—'],
+            ['Symbol-sessions', String(totals.sessions)],
+            ['Duplicate timestamps', String(totals.duplicates)],
+            ['Out-of-order bars', String(totals.unsorted)],
+            ['Abnormal OHLC (h<l, h<body, l>body)', String(totals.badOhlc)],
+            ['Non-positive prices', String(totals.nonPositive)],
+            ['Off the IST bar grid', String(totals.offGrid)],
+            ['Outside 09:15–15:30 IST', String(totals.outOfSession)],
+            ['Symbol-sessions with missing bars', String(totals.shortDays)],
+          ],
+        ),
+      );
+      out.push('');
+      out.push(
+        'Nothing above was patched. A session is dropped from the replay only when the opening hour itself ' +
+          'is short, because the 1H range would otherwise be built from a partial candle. Note that the ' +
+          'transport layer keys candles by timestamp, so duplicates are collapsed before this audit sees them — ' +
+          'the meaningful signal here is missing bars, not duplicates.',
+      );
+      const worst = audits
+        .map((x) => ({ symbol: x.symbol, bad: x.audit.issues.badOhlc + x.audit.issues.offGrid, short: x.audit.shortDays.length, sessions: x.audit.byDay.size }))
+        .filter((x) => x.bad > 0 || x.short > 0)
+        .sort((a, b) => b.bad + b.short - (a.bad + a.short))
+        .slice(0, 15);
+      if (worst.length) {
+        out.push('');
+        out.push('Symbols worth a look before trusting their rows:');
+        out.push('');
+        out.push(
+          table(
+            ['Symbol', 'Bad/off-grid bars', 'Short sessions', 'Sessions'],
+            worst.map((w) => [w.symbol, String(w.bad), String(w.short), String(w.sessions)]),
+          ),
+        );
       }
     }
   }
