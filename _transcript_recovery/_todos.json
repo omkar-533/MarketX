@@ -1,0 +1,156 @@
+[
+  {
+    "line": 9628,
+    "merge": true,
+    "todos": [
+      {
+        "id": "tab",
+        "content": "Terminal tab wire karo: VALID_TABS in App.tsx, PAGE_NAMES in brandLabels.ts, Sidebar navItems, aur render case",
+        "status": "in_progress"
+      }
+    ]
+  },
+  {
+    "line": 9636,
+    "merge": true,
+    "todos": [
+      {
+        "id": "tab",
+        "content": "Terminal tab wire karo: VALID_TABS, PAGE_NAMES, Sidebar, render case",
+        "status": "in_progress"
+      },
+      {
+        "id": "shell",
+        "content": "TerminalPage.tsx full-viewport grid + localStorage state",
+        "status": "pending"
+      },
+      {
+        "id": "toolbar",
+        "content": "TerminalTopBar from ChatChartPanel toolbar",
+        "status": "pending"
+      },
+      {
+        "id": "search",
+        "content": "Symbol search dropdown with keyboard nav",
+        "status": "pending"
+      },
+      {
+        "id": "chart-props",
+        "content": "NativeChatChart fillHeight + history + props",
+        "status": "pending"
+      },
+      {
+        "id": "css",
+        "content": "Terminal CSS in index.css",
+        "status": "pending"
+      },
+      {
+        "id": "history",
+        "content": "Infinite history: bars param + pan-left prepend",
+        "status": "pending"
+      },
+      {
+        "id": "timeframes",
+        "content": "Native 3m + monthly mapping",
+        "status": "pending"
+      },
+      {
+        "id": "watchlist",
+        "content": "TerminalWatchlist live LTP panel",
+        "status": "pending"
+      },
+      {
+        "id": "verify",
+        "content": "Build + verify (no push/deploy)",
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "line": 9658,
+    "merge": true,
+    "todos": [
+      {
+        "id": "tab",
+        "content": "Terminal tab wire: VALID_TABS, PAGE_NAMES, Sidebar, render",
+        "status": "completed"
+      },
+      {
+        "id": "shell",
+        "content": "TerminalPage full-viewport grid + localStorage",
+        "status": "completed"
+      },
+      {
+        "id": "toolbar",
+        "content": "TerminalTopBar from ChatChartPanel",
+        "status": "completed"
+      },
+      {
+        "id": "search",
+        "content": "Symbol search dropdown + keyboard nav",
+        "status": "completed"
+      },
+      {
+        "id": "chart-props",
+        "content": "NativeChatChart fillHeight + history props",
+        "status": "completed"
+      },
+      {
+        "id": "css",
+        "content": "Terminal CSS in index.css",
+        "status": "completed"
+      },
+      {
+        "id": "history",
+        "content": "Infinite history bars param + pan-left",
+        "status": "completed"
+      },
+      {
+        "id": "timeframes",
+        "content": "Native 3m + monthly mapping",
+        "status": "completed"
+      },
+      {
+        "id": "watchlist",
+        "content": "TerminalWatchlist live LTP panel",
+        "status": "completed"
+      },
+      {
+        "id": "verify",
+        "content": "Build + verify (local only, no push)",
+        "status": "in_progress"
+      }
+    ]
+  },
+  {
+    "line": 9698,
+    "merge": false,
+    "todos": [
+      {
+        "id": "chrome-layout",
+        "content": "Rebuild TerminalPage desk grid (top/left/chart/right/bottom)",
+        "status": "in_progress"
+      },
+      {
+        "id": "topbar",
+        "content": "TV-style TerminalTopBar + Indicators modal",
+        "status": "pending"
+      },
+      {
+        "id": "rails",
+        "content": "Left rail flyouts + right icon dock + watchlist",
+        "status": "pending"
+      },
+      {
+        "id": "overlays",
+        "content": "Buy/Sell strip + bottom status bar",
+        "status": "pending"
+      },
+      {
+        "id": "css-app",
+        "content": "Desk CSS + immersive terminal (hide header/sidebar)",
+        "status": "pending"
+      }
+    ]
+  }
+]

@@ -422,6 +422,37 @@ html[data-theme="light"] .oc-g-rho {
   flex-direction: column;
 }
 
+/* Live Wolf: one screen — chart + analysis, no page scroll */
+.app-main--live-wolf {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content--live-wolf {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
+  padding: 0.35rem 0.5rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content--live-wolf > .app-error-boundary,
+.page-content--live-wolf > .app-error-boundary > *,
+.page-content--live-wolf > .app-error-boundary > * > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+}
+
 @media (min-width: 1024px) {
   .app-main--sidebar {
     margin-left: 232px;
@@ -28409,6 +28440,140 @@ body:has(.app-main--terminal-immersive) #root {
   min-height: 0;
   padding: 0.75rem 1rem 1rem;
   overflow: auto;
+}
+
+/* Terminal-style Live Wolf desk: lock to the viewport and shrink chrome. */
+.live-wolf-desk--terminal {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem 0.45rem;
+  overflow: hidden;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__top {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'id metrics tfs'
+    'id toggles toggles';
+  gap: 0.3rem 0.45rem;
+  align-items: center;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__id {
+  grid-area: id;
+  align-self: start;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__id h1 {
+  font-size: 1.05rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__metrics {
+  grid-area: metrics;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__metrics div {
+  padding: 0.28rem 0.4rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__metrics small {
+  font-size: 0.58rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__metrics b {
+  font-size: 0.78rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__tfs {
+  grid-area: tfs;
+  justify-content: flex-end;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__toggles {
+  grid-area: toggles;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__banner {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__chart-col {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__chart-wrap,
+.live-wolf-desk--terminal .live-wolf-desk__chart-wrap--term {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__chart-wrap--term .mai-tv__frame--fill,
+.live-wolf-desk--terminal .live-wolf-desk__chart-wrap--term .wolf-term__tv-fallback,
+.live-wolf-desk--terminal .live-wolf-chart-shell {
+  min-height: 0;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__timeline {
+  display: none;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__panel {
+  min-height: 0;
+  overflow: auto;
+  padding: 0.55rem 0.65rem;
+  gap: 0.45rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__grid {
+  gap: 0.3rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__grid div {
+  padding-bottom: 0.22rem;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__why p,
+.live-wolf-desk--terminal .live-wolf-desk__why .inv {
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.live-wolf-desk--terminal .live-wolf-desk__narration ul {
+  max-height: 4.5rem;
+}
+
+@media (max-width: 960px) {
+  .live-wolf-desk--terminal .live-wolf-desk__top {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'id'
+      'metrics'
+      'tfs'
+      'toggles';
+  }
+
+  .live-wolf-desk--terminal .live-wolf-desk__main {
+    grid-template-columns: 1fr;
+  }
+
+  .live-wolf-desk--terminal .live-wolf-desk__panel {
+    max-height: 38vh;
+  }
 }
 .live-wolf-desk--empty {
   align-items: center;

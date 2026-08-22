@@ -478,7 +478,7 @@ function AppWorkspace() {
       ? 'app-main app-main--terminal-immersive'
       : `app-main ${sidebarCollapsed ? 'app-main--sidebar-collapsed' : 'app-main--sidebar'}${
           activeTab === 'wolf-ai' ? ' app-main--chat' : ''
-        }`
+        }${activeTab === 'live-wolf' ? ' app-main--live-wolf' : ''}`
     : 'app-main';
 
   const headerClass = auth.isLoggedIn
@@ -536,7 +536,9 @@ function AppWorkspace() {
                         ? 'page-content page-content--optionchain'
                         : activeTab === 'wolf-opportunity'
                           ? 'page-content page-content--opportunity'
-                          : 'page-content page-content--full'
+                          : activeTab === 'live-wolf'
+                            ? 'page-content page-content--live-wolf'
+                            : 'page-content page-content--full'
                 : ''
             }
           >
