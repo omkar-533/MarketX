@@ -97,7 +97,7 @@ export default function Subscription({
           Subscription Plans
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Every plan covers Wolf AI, Wolf Mentor
+          Every plan covers Wolf AI
           {SHOW_INDICATORS ? ', Indicators' : ''}
           {SHOW_PAPER_TRADING ? ', Paper Trading' : ''}
           , and Trading Journal. Buy via Call or WhatsApp — payment gateway coming soon.

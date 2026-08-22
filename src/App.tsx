@@ -52,8 +52,6 @@ const WolfOpportunityRoute = lazyWithRetry(() => import('./components/masterai/o
 const WolfFnoRoute = lazyWithRetry(() => import('./components/masterai/fno/WolfFnoRoute'));
 const LiveWolfRoute = lazyWithRetry(() => import('./components/masterai/live/LiveWolfRoute'));
 const WatchlistPanel = lazyWithRetry(() => import('./components/masterai/radar/WatchlistPanel'));
-const MentorAI = lazyWithRetry(() => import('./components/MentorAI'));
-const WolfArenaPage = lazyWithRetry(() => import('./components/WolfArenaPage'));
 const TerminalPage = lazyWithRetry(() => import('./components/terminal/TerminalPage'));
 const Indicators = lazyWithRetry(() => import('./components/Indicators'));
 const LtpCalculator = lazyWithRetry(() => import('./components/LtpCalculator'));
@@ -95,8 +93,6 @@ const VALID_TABS = new Set([
   'wolf-fno',
   'live-wolf',
   'strategy-lab',
-  'mentor-ai',
-  'arena',
   ...(SHOW_TERMINAL ? (['terminal'] as const) : []),
   'trafi', // legacy alias → normalized to wolf-ai
   ...(SHOW_INDICATORS ? (['indicators'] as const) : []),
@@ -427,10 +423,6 @@ function AppWorkspace() {
         return <WolfFnoRoute onOpenLive={liveWolf} />;
       case 'live-wolf':
         return <LiveWolfRoute />;
-      case 'mentor-ai':
-        return <MentorAI onNavigate={handleTabChange} />;
-      case 'arena':
-        return <WolfArenaPage onNavigate={handleTabChange} />;
       case 'terminal':
         return SHOW_TERMINAL ? <TerminalPage onNavigate={handleTabChange} /> : opportunity;
       case 'indicators':
@@ -542,17 +534,13 @@ function AppWorkspace() {
                   ? 'page-content page-content--screener'
                   : activeTab === 'wolf-ai'
                     ? 'page-content page-content--chat'
-                    : activeTab === 'mentor-ai'
-                      ? 'page-content page-content--full page-content--mentor'
-                      : activeTab === 'arena'
-                        ? 'page-content page-content--full page-content--arena'
-                        : activeTab === 'terminal'
-                          ? 'page-content page-content--terminal'
-                          : activeTab === 'optionchain'
-                            ? 'page-content page-content--optionchain'
-                            : activeTab === 'wolf-opportunity'
-                              ? 'page-content page-content--opportunity'
-                              : 'page-content page-content--full'
+                    : activeTab === 'terminal'
+                      ? 'page-content page-content--terminal'
+                      : activeTab === 'optionchain'
+                        ? 'page-content page-content--optionchain'
+                        : activeTab === 'wolf-opportunity'
+                          ? 'page-content page-content--opportunity'
+                          : 'page-content page-content--full'
                 : ''
             }
           >

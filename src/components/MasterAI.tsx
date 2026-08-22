@@ -260,7 +260,7 @@ const CHART_PROMPT_ICONS: Record<string, LucideIcon> = {
   'custom-follow': Sparkles,
 };
 
-/** Wolf AI (Hunter) analysis chat — training desk lives in MentorAI / Wolf Mentor. */
+/** Wolf AI (Hunter) analysis chat. */
 export default function MasterAI(_props?: { desk?: MasterAiDesk }) {
   const isMentor = false;
   const chatScope: ChatDeskScope = 'hunter';

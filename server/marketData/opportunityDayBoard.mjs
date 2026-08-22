@@ -14,11 +14,11 @@ const SCANNER_META = [
 ];
 
 const SCANNER_IDS = new Set(SCANNER_META.map((s) => s[0]));
-// v30 — Rally Rider joins the desk. A fresh key gives the new card a clean day
-// instead of inheriting a board that never had a slot for it.
-const SETTINGS_KEY = 'opportunity_day_board_v30';
+// v31 — the session's trailing 15-minute stub is now folded into the 14:15 bar, so
+// every hourly detection shifts. Rows scanned on the old grid must not survive.
+const SETTINGS_KEY = 'opportunity_day_board_v31';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const filePath = resolve(root, 'data', 'opportunity-day-board-v30.json');
+const filePath = resolve(root, 'data', 'opportunity-day-board-v31.json');
 
 export function istCalendarDay(ms = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', {

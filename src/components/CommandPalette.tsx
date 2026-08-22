@@ -24,7 +24,6 @@ const commands = [
   { id: 'live-wolf', label: 'Open Live Wolf', shortcut: 'W' },
   { id: 'strategy-lab', label: 'Open Strategy Lab', shortcut: 'U' },
   { id: 'watchlist', label: 'Open Watchlist', shortcut: 'K' },
-  { id: 'mentor-ai', label: 'Open Wolf Mentor', shortcut: 'T' },
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: 'Open Terminal', shortcut: 'C' }] : []),
   { id: 'ltpcalc', label: 'LPT Master', shortcut: 'L' },
   { id: 'tradingjournal', label: 'Open Trading Journal', shortcut: 'J' },

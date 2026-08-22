@@ -150,9 +150,10 @@ export function toTradingViewSymbol(symbol: string, type?: FnoInstrumentType): s
 }
 
 /** Full TradingView chart URL for the same symbol + Opportunity/desk timeframe. */
+/** Pass `null` for the timeframe to leave the interval out and open on the viewer's own. */
 export function tradingViewChartUrl(
   symbol: string,
-  timeframe?: string,
+  timeframe?: string | null,
   exchange?: 'NSE' | 'BSE',
 ): string {
   const raw = String(symbol || '').trim().toUpperCase();
@@ -166,8 +167,8 @@ export function tradingViewChartUrl(
   } else {
     tvSymbol = toTradingViewSymbol(raw);
   }
-  const interval = normalizeTvInterval(timeframe) ?? '15';
-  const params = new URLSearchParams({ symbol: tvSymbol, interval });
+  const params = new URLSearchParams({ symbol: tvSymbol });
+  if (timeframe !== null) params.set('interval', normalizeTvInterval(timeframe) ?? '15');
   return `https://in.tradingview.com/chart/?${params.toString()}`;
 }
 

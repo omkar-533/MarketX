@@ -5,11 +5,13 @@ import {
   firstConsecutiveHitTime,
   currentRunStartOfIstDay,
   firstHitTimeOfIstDay,
+  foldNseSessionTail,
   inferNseBarOpenMs,
   keepDisplaySetupTime,
   keepFirstSetupTime,
   lastClosedBarCloseMs,
   lastBarStamp,
+  nseFoldedBarCloseMs,
   nseTradingDay,
   readCandleTimeMs,
   sessionBarsNeeded,
@@ -240,5 +242,87 @@ describe('barTime', () => {
     const candles = [bar(open - FIVE), bar(open)];
     assert.equal(lastBarStamp(candles, '5m', now), Date.parse('2026-08-17T15:30:00+05:30'));
     assert.equal(keepDisplaySetupTime(lastBarStamp(candles, '5m', now), now), Date.parse('2026-08-17T15:30:00+05:30'));
+  });
+});
+
+const HOUR = 60 * MIN;
+
+function ohlc(iso: string, o: number, h: number, l: number, c: number, v = 100) {
+  return { timestamp: Date.parse(iso), open: o, high: h, low: l, close: c, volume: v };
+}
+
+/** One NSE session on the hourly grid: 09:15…14:15 full bars plus the 15:15 stub. */
+function hourSession(day: string) {
+  return [
+    ohlc(`${day}T09:15:00+05:30`, 100, 104, 99, 103),
+    ohlc(`${day}T10:15:00+05:30`, 103, 106, 102, 105),
+    ohlc(`${day}T11:15:00+05:30`, 105, 108, 104, 107),
+    ohlc(`${day}T12:15:00+05:30`, 107, 109, 105, 106),
+    ohlc(`${day}T13:15:00+05:30`, 106, 110, 105, 109),
+    ohlc(`${day}T14:15:00+05:30`, 109, 112, 108, 111),
+    ohlc(`${day}T15:15:00+05:30`, 111, 115, 107, 113, 40),
+  ];
+}
+
+describe('NSE hourly session tail', () => {
+  it('folds the 15:15 stub into the 14:15 bar', () => {
+    const out = foldNseSessionTail(hourSession('2026-08-20'), '1h');
+    assert.equal(out.length, 6);
+    const last = out[out.length - 1];
+    assert.equal(last.timestamp, Date.parse('2026-08-20T14:15:00+05:30'));
+    assert.equal(last.open, 109, 'keeps the 14:15 open');
+    assert.equal(last.close, 113, 'takes the stub close');
+    assert.equal(last.high, 115, 'takes the wider high');
+    assert.equal(last.low, 107, 'takes the deeper low');
+    assert.equal(last.volume, 140, 'adds both volumes');
+  });
+
+  it('folds each session independently across days', () => {
+    const two = [...hourSession('2026-08-20'), ...hourSession('2026-08-21')];
+    const out = foldNseSessionTail(two, '1h');
+    assert.equal(out.length, 12);
+    assert.equal(out[5].timestamp, Date.parse('2026-08-20T14:15:00+05:30'));
+    assert.equal(out[6].timestamp, Date.parse('2026-08-21T09:15:00+05:30'));
+  });
+
+  it('leaves a session with no stub alone', () => {
+    const noStub = hourSession('2026-08-20').slice(0, 6);
+    assert.deepEqual(foldNseSessionTail(noStub, '1h'), noStub);
+  });
+
+  it('leaves 5m and 15m grids alone — they divide the session evenly', () => {
+    const bars = [
+      ohlc('2026-08-20T15:15:00+05:30', 1, 2, 0.5, 1.5),
+      ohlc('2026-08-20T15:20:00+05:30', 1.5, 2.5, 1, 2),
+      ohlc('2026-08-20T15:25:00+05:30', 2, 3, 1.5, 2.5),
+    ];
+    assert.equal(foldNseSessionTail(bars, '5m').length, 3);
+    assert.equal(foldNseSessionTail(bars, '15m').length, 3);
+  });
+
+  it('will not fold a stub onto a bar from the session before it', () => {
+    const orphan = [
+      ohlc('2026-08-19T14:15:00+05:30', 1, 2, 0.5, 1.5),
+      ohlc('2026-08-20T15:15:00+05:30', 2, 3, 1.5, 2.5),
+    ];
+    assert.equal(foldNseSessionTail(orphan, '1h').length, 2);
+  });
+
+  it('the folded last bar closes at the bell, not 15:15', () => {
+    const now = Date.parse('2026-08-21T16:00:00+05:30');
+    const open = Date.parse('2026-08-20T14:15:00+05:30');
+    assert.equal(nseFoldedBarCloseMs(open, '1h', now), Date.parse('2026-08-20T15:30:00+05:30'));
+  });
+
+  it('an ordinary hourly bar still closes one hour later', () => {
+    const now = Date.parse('2026-08-21T16:00:00+05:30');
+    const open = Date.parse('2026-08-20T13:15:00+05:30');
+    assert.equal(nseFoldedBarCloseMs(open, '1h', now), open + HOUR);
+  });
+
+  it('a bar whose bell has not rung yet reports its open, never a future close', () => {
+    const now = Date.parse('2026-08-21T14:40:00+05:30');
+    const open = Date.parse('2026-08-21T14:15:00+05:30');
+    assert.equal(nseFoldedBarCloseMs(open, '1h', now), open);
   });
 });

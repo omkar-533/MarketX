@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, ChevronLeft, ChevronRight, Crown, LogOut,
-  GraduationCap, NotebookPen, Code2, Wallet, CandlestickChart,
-  Layers, Brain, LayoutDashboard, Radar, Activity, Bookmark, Crosshair,
+  NotebookPen, Code2, Wallet, CandlestickChart,
+  Layers, Brain, LayoutDashboard, Radar, Activity, Bookmark, Crosshair, ChartLine,
 } from 'lucide-react';
 import type { User } from '../hooks/useAuth';
 import { BRAND, PAGE_NAMES } from '../constants/brandLabels';
@@ -35,9 +35,9 @@ const productNavItems = [
     ? [{ id: 'dashboard', label: PAGE_NAMES.dashboard, icon: LayoutDashboard }]
     : []),
   { id: 'wolf-opportunity', label: PAGE_NAMES['wolf-opportunity'], icon: Crosshair },
+  { id: 'wolf-fno', label: PAGE_NAMES['wolf-fno'], icon: ChartLine },
   { id: 'wolf-radar', label: PAGE_NAMES['wolf-radar'], icon: Radar },
   { id: 'live-wolf', label: PAGE_NAMES['live-wolf'], icon: Activity },
-  { id: 'mentor-ai', label: PAGE_NAMES['mentor-ai'], icon: GraduationCap },
   ...(SHOW_TERMINAL ? [{ id: 'terminal', label: PAGE_NAMES.terminal, icon: CandlestickChart }] : []),
   ...(SHOW_OPTION_CHAIN
     ? [{ id: 'optionchain', label: PAGE_NAMES.optionchain, icon: Layers }]

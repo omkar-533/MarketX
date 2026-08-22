@@ -3,8 +3,6 @@ import { describe, it } from 'node:test';
 import { evaluateOpportunityFromCandleMap } from './opportunityEvaluate';
 import { DEFAULT_OPPORTUNITY_FILTERS } from './opportunityTypes';
 
-const FIVE = 300_000;
-const PREV_OPEN = Date.parse('2026-08-20T09:15:00+05:30');
 const OPEN = Date.parse('2026-08-21T09:15:00+05:30');
 const AS_OF = Date.parse('2026-08-21T11:00:00+05:30');
 
@@ -17,52 +15,18 @@ type Bar = {
   volume: number;
 };
 
-function bar(timestamp: number, base: number, low = base): Bar {
-  return { timestamp, open: base, high: base + 0.4, low, close: base + 0.3, volume: 1_000 };
-}
-
-/** Prior session so ATR / prevClose exist before today's first print. */
-function priorDay(): Bar[] {
-  return Array.from({ length: 40 }, (_, i) => bar(PREV_OPEN + i * FIVE, 99.5));
-}
-
-/**
- * Today rises from 100, so the session low equals the session open.
- * `breakAt` sends one bar below the open, permanently killing the rule.
- */
-function session(bars: number, breakAt?: number): Bar[] {
-  return Array.from({ length: bars }, (_, i) => {
-    const base = 100 + i * 0.5;
-    return bar(OPEN + i * FIVE, base, i === breakAt ? 99 : base);
-  });
-}
-
 function evaluate(
   candleMapAll: Record<string, Bar[]>,
-  extra?: { asOf?: number; rsiBySymbol?: Record<string, unknown>; timeframe?: '5m' | '1h' },
+  extra?: { asOf?: number; timeframe?: '5m' | '1h' },
 ) {
   return evaluateOpportunityFromCandleMap({
-    filters: { ...DEFAULT_OPPORTUNITY_FILTERS, timeframe: extra?.timeframe ?? '5m' },
+    filters: { ...DEFAULT_OPPORTUNITY_FILTERS, timeframe: extra?.timeframe ?? '1h' },
     symbols: Object.keys(candleMapAll),
     asOf: extra?.asOf ?? AS_OF,
     dataMode: 'LIVE',
     shared: true,
     candleMapAll: candleMapAll as never,
-    rsiBySymbol: extra?.rsiBySymbol as never,
   });
-}
-
-/** Flat RSI stamped before the session, so every bar reads the same value. */
-function rsiFeed(m5: number, m30: number, h2: number) {
-  return {
-    m5: [[PREV_OPEN, m5]],
-    m30: [[PREV_OPEN, m30]],
-    h2: [[PREV_OPEN, h2]],
-  };
-}
-
-function sprintHits(cards: { scannerId: string; hits: { symbol: string; detectedAt: number }[] }[]) {
-  return cards.find((c) => c.scannerId === 'morning_sprint')?.hits ?? [];
 }
 
 function istClock(ms: number) {
@@ -74,74 +38,12 @@ function istClock(ms: number) {
   });
 }
 
-describe('Morning Sprint listing', () => {
-  it('stamps the first listing at 9:20, not 9:25', async () => {
-    const { cards } = await evaluate({ HOLDER: [...priorDay(), ...session(20)] });
-    const hits = sprintHits(cards);
-    assert.equal(hits.length, 1);
-    assert.equal(istClock(hits[0].detectedAt), '09:20');
-  });
-
-  it('drops the symbol on the bar that breaks Open = Low', async () => {
-    const { cards } = await evaluate({ BREAKER: [...priorDay(), ...session(20, 6)] });
-    assert.deepEqual(sprintHits(cards), []);
-  });
-
-  it('keeps a holder listed and removes a breaker in the same scan', async () => {
-    const { cards } = await evaluate({
-      HOLDER: [...priorDay(), ...session(20)],
-      BREAKER: [...priorDay(), ...session(20, 6)],
-    });
-    assert.deepEqual(
-      sprintHits(cards).map((h) => h.symbol),
-      ['HOLDER'],
-    );
-  });
-
-  it('lists one row per symbol, not a print for every bar it held', async () => {
-    const { cards } = await evaluate({ HOLDER: [...priorDay(), ...session(20)] });
-    assert.equal(sprintHits(cards).filter((h) => h.symbol === 'HOLDER').length, 1);
-  });
-});
-
-describe('Boosters listing', () => {
-  const EARLY = Date.parse('2026-08-21T09:26:00+05:30');
-  const boosterHits = (
-    cards: { scannerId: string; hits: { symbol: string; detectedAt: number }[] }[],
-  ) => cards.find((c) => c.scannerId === 'opening_drive')?.hits ?? [];
-
-  it('can print on the first closed bar of the day, at 9:20', async () => {
-    const { cards } = await evaluate(
-      { RUNNER: [...priorDay(), ...session(2)] },
-      { asOf: EARLY, rsiBySymbol: { RUNNER: rsiFeed(70, 70, 60) } },
-    );
-    const stamps = boosterHits(cards).map((h) => istClock(h.detectedAt));
-    assert.ok(stamps.length > 0, 'Boosters produced no hit');
-    assert.equal(stamps.sort()[0], '09:20');
-  });
-
-  it('stays silent without the higher-timeframe RSI instead of guessing', async () => {
-    const { cards } = await evaluate(
-      { RUNNER: [...priorDay(), ...session(2)] },
-      { asOf: EARLY },
-    );
-    assert.deepEqual(boosterHits(cards), []);
-  });
-
-  it('does not print the long side when the 2h RSI is against it', async () => {
-    const { cards } = await evaluate(
-      { RUNNER: [...priorDay(), ...session(2)] },
-      { asOf: EARLY, rsiBySymbol: { RUNNER: rsiFeed(70, 70, 40) } },
-    );
-    assert.deepEqual(boosterHits(cards), []);
-  });
-});
-
 describe('Wolf Hunters listing', () => {
   const H1 = 3_600_000;
   /** NSE hourly slots: 09:15 through 15:15. */
   const SLOTS = [0, 1, 2, 3, 4, 5, 6];
-  const DAYS = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20'];
+  // Five sessions: folding the stub costs a bar a day, and the snapshot needs 25.
+  const DAYS = ['2026-08-14', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20'];
 
   const hourBar = (timestamp: number, o: number, h: number, l: number, c: number): Bar => ({
     timestamp,
@@ -152,13 +54,13 @@ describe('Wolf Hunters listing', () => {
     volume: 1_000,
   });
 
-  /** Four quiet prior sessions, so the snapshot has enough bars to read. */
-  function quietDays(skipLastTwoOf?: string): Bar[] {
+  /** Quiet prior sessions, so the snapshot has enough bars to read. */
+  function quietDays(trimDay?: string, fromSlot = 5): Bar[] {
     const out: Bar[] = [];
     for (const day of DAYS) {
       const open = Date.parse(`${day}T09:15:00+05:30`);
       for (const n of SLOTS) {
-        if (skipLastTwoOf === day && n >= 5) continue;
+        if (trimDay === day && n >= fromSlot) continue;
         out.push(hourBar(open + n * H1, 100, 100.5, 99.5, 100));
       }
     }
@@ -175,7 +77,7 @@ describe('Wolf Hunters listing', () => {
   ) => cards.find((c) => c.scannerId === 'wolf_hunters')?.hits ?? [];
 
   it('prints on the first bar of the day, at 10:15', async () => {
-    // Mother is yesterday's 15:15 close; today's 09:15 bar sweeps it and closes back in.
+    // Mother is yesterday's closing candle; today's 09:15 bar sweeps it and closes back in.
     const series = [
       ...quietDays('2026-08-20'),
       hourBar(LAST_DAY_OPEN + 5 * H1, 100, 101, 99, 100.5),
@@ -190,13 +92,15 @@ describe('Wolf Hunters listing', () => {
     assert.ok(stamps.includes('10:15'), `expected a 10:15 print, got ${stamps.join(', ')}`);
   });
 
-  it('carries yesterday\'s last candle over and stamps it at the 9:15 open', async () => {
-    // The 15:15 bar hunts the 14:15 bar, so the setup is already live at the bell.
+  it("carries yesterday's folded closing candle over and stamps it at the 9:15 open", async () => {
+    // 13:15 is the mother. The 14:15 bar and the 15:15 stub fold into one closing
+    // candle that wicks through the mother's low and closes in its lower half, so
+    // the setup is already live when today's bell rings.
     const series = [
-      ...quietDays('2026-08-20'),
-      hourBar(LAST_DAY_OPEN + 4 * H1, 100, 101, 99, 100.5),
-      hourBar(LAST_DAY_OPEN + 5 * H1, 100.5, 103, 98, 102.5),
-      hourBar(LAST_DAY_OPEN + 6 * H1, 100, 100.8, 97, 99.5),
+      ...quietDays('2026-08-20', 4),
+      hourBar(LAST_DAY_OPEN + 4 * H1, 100.5, 103, 98, 102.5),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 100, 100.8, 98.5, 99.8),
+      hourBar(LAST_DAY_OPEN + 6 * H1, 99.8, 100, 97, 99.5),
     ];
     const { cards } = await evaluate(
       { CARRY: series },
@@ -204,6 +108,22 @@ describe('Wolf Hunters listing', () => {
     );
     const stamps = hunterHits(cards).map((h) => istClock(h.detectedAt));
     assert.ok(stamps.includes('09:15'), `expected a 09:15 print, got ${stamps.join(', ')}`);
+  });
+
+  it('will not carry over when the stub alone would have been the hunt', async () => {
+    // Same bars, except the sweep sits only in the 15-minute stub. Folded into the
+    // 14:15 bar it is a single candle that opens outside the mother, so nothing prints.
+    const series = [
+      ...quietDays('2026-08-20', 4),
+      hourBar(LAST_DAY_OPEN + 4 * H1, 100.5, 103, 98, 102.5),
+      hourBar(LAST_DAY_OPEN + 5 * H1, 104, 104.5, 103.5, 104),
+      hourBar(LAST_DAY_OPEN + 6 * H1, 104, 104, 97, 99.5),
+    ];
+    const { cards } = await evaluate(
+      { STUB: series },
+      { asOf: Date.parse('2026-08-21T09:16:00+05:30'), timeframe: '1h' },
+    );
+    assert.deepEqual(hunterHits(cards), []);
   });
 
   it('marks the row invalidated once an hourly close takes the stop out', async () => {

@@ -80,6 +80,97 @@ export function closedBarIndex(
   return i;
 }
 
+type OhlcBar = {
+  timestamp?: number;
+  time?: number;
+  ts?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  volume?: number;
+};
+
+function istSessionBoundsOf(ms: number): { start: number; end: number } | null {
+  const day = istCalendarDay(new Date(ms));
+  const start = Date.parse(`${day}T09:15:00+05:30`);
+  const end = Date.parse(`${day}T15:30:00+05:30`);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  return { start, end };
+}
+
+/** A grid bar with less than a full duration left before the bell, e.g. 1h at 15:15. */
+function isSessionTailStub(bar: OhlcBar, prev: OhlcBar, dur: number): boolean {
+  const t = readCandleTimeMs(bar);
+  const p = readCandleTimeMs(prev);
+  if (!(t > 0) || !(p > 0)) return false;
+  const b = istSessionBoundsOf(t);
+  if (!b || t <= b.start || t >= b.end) return false;
+  const offset = t - b.start;
+  if (offset % dur !== 0 || b.end - t >= dur) return false;
+  // Only fold into the bar immediately before it in the same session.
+  return p >= b.start && p === t - dur;
+}
+
+function foldBarInto<T extends OhlcBar>(prev: T, stub: T): T {
+  const high = Math.max(Number(prev.high), Number(stub.high));
+  const low = Math.min(Number(prev.low), Number(stub.low));
+  const close = Number(stub.close);
+  return {
+    ...prev,
+    high: Number.isFinite(high) ? high : prev.high,
+    low: Number.isFinite(low) ? low : prev.low,
+    close: Number.isFinite(close) ? close : prev.close,
+    volume: (Number(prev.volume) || 0) + (Number(stub.volume) || 0),
+  };
+}
+
+/**
+ * NSE trades 375 minutes, so an hourly grid cannot divide the session and leaves a
+ * 15-minute stub at 15:15. That stub is too small to behave like a candle: as a
+ * mother its body always sits inside the 14:15 bar so it reads as an inside bar,
+ * and as a hunt candle it never sweeps far enough to clear the depth floors. Every
+ * cross-session setup died on it, which is why nothing printed at 09:15 or 10:15.
+ * Folding it into the 14:15 bar gives each session a real closing candle.
+ *
+ * Bars must be open-stamped and ascending; a close-stamped feed misses the grid
+ * test and is returned untouched rather than folded at the wrong place.
+ */
+export function foldNseSessionTail<T extends OhlcBar>(candles: T[], timeframe: string): T[] {
+  const dur = barDurationMs(timeframe);
+  if (!dur || !candles?.length) return candles;
+  const out: T[] = [];
+  for (const c of candles) {
+    const prev = out[out.length - 1];
+    if (prev && isSessionTailStub(c, prev, dur)) {
+      out[out.length - 1] = foldBarInto(prev, c);
+      continue;
+    }
+    out.push(c);
+  }
+  return out;
+}
+
+/**
+ * Close of a bar on the folded grid. The session's last bar swallowed the stub, so
+ * it runs to the bell — a 1h bar opening 14:15 closes 15:30, not 15:15.
+ */
+export function nseFoldedBarCloseMs(
+  openMs: number,
+  timeframe: string,
+  now = Date.now(),
+): number {
+  const dur = barDurationMs(timeframe);
+  const t = candleTimeMs(openMs);
+  if (!dur || !(t > 0)) return setupCreatedAtMs(openMs, timeframe, now);
+  const b = istSessionBoundsOf(t);
+  if (!b || t < b.start || t >= b.end) return setupCreatedAtMs(openMs, timeframe, now);
+  const leftAfter = b.end - (t + dur);
+  if (!(leftAfter > 0 && leftAfter < dur)) return setupCreatedAtMs(openMs, timeframe, now);
+  if (b.end > now + 2_000) return t <= now ? t : 0;
+  return b.end;
+}
+
 /**
  * INDstocks sometimes stamps the first 5m at 09:20 (close), not 09:15 (open).
  * After hours, treating that as open makes Created 09:25.

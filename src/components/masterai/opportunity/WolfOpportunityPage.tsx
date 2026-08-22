@@ -52,7 +52,6 @@ import type {
 import {
   coerceScannerTimeframe,
   defaultCardTimeframes,
-  scannerTimeframes,
   timeframesInUse,
   type CardTimeframes,
 } from '../../../services/opportunity/scannerTimeframes';
@@ -207,7 +206,8 @@ const HitTile = memo(function HitTile({
   const q = liveWolfQuery(hit);
   const xFactor = xFactorOf(hit);
   const stopLevel = stopLevelOf(hit);
-  const tvHref = tradingViewChartUrl(hit.symbol, hit.timeframe, hit.exchange);
+  // No interval: the desk does not tell the viewer which timeframe it read.
+  const tvHref = tradingViewChartUrl(hit.symbol, null, hit.exchange);
   return (
     <article className={`wolf-opp__tile is-${bias}`}>
       <AppLink to="live-wolf" query={q} className="wolf-opp__tile-main" onActivate={() => onOpen(hit)}>
@@ -270,7 +270,7 @@ const HitTile = memo(function HitTile({
           href={tvHref}
           target="_blank"
           rel="noopener noreferrer"
-          title={`Open ${hit.symbol} ${hit.timeframe} on TradingView`}
+          title={`Open ${hit.symbol} on TradingView`}
           onClick={(e) => e.stopPropagation()}
         >
           <Crosshair size={12} /> Chart
@@ -326,8 +326,8 @@ export default function WolfOpportunityPage({
   const [symbolQuery, setSymbolQuery] = useState('');
   const [searchUnlocked, setSearchUnlocked] = useState(false);
   const [deskSortByScanner, setDeskSortByScanner] = useState<Partial<Record<string, OpportunityDeskSort>>>({});
-  // Each card picks its own timeframe; it resets to the scanner default on reload.
-  const [cardTf, setCardTf] = useState<CardTimeframes>(() => defaultCardTimeframes());
+  // Each card still reads its own timeframe's board; the desk just never shows which.
+  const [cardTf] = useState<CardTimeframes>(() => defaultCardTimeframes());
   // Read-only shared boards for the timeframes the primary scan does not cover.
   const [sideBoards, setSideBoards] = useState<
     Partial<Record<OpportunityTimeframe, ScannerCardState[]>>
@@ -956,7 +956,6 @@ export default function WolfOpportunityPage({
           {cards.map((card) => {
             const deskSort = deskSortByScanner[card.scannerId] || DEFAULT_OPPORTUNITY_DESK_SORT;
             const view = cardView(card.scannerId);
-            const tfChoices = scannerTimeframes(card.scannerId);
             const tfHits = sortHitsForDesk(
               view.hits.filter((h) => hitMatchesQuery(h, needle)),
               deskSort,
@@ -975,34 +974,6 @@ export default function WolfOpportunityPage({
                     <TrackRecordStrip record={trackRecord[card.scannerId]} />
                   </div>
                   <div className="wolf-opp__sheet-tools">
-                    {tfChoices.length > 1 ? (
-                      <div
-                        className="wolf-opp__sheet-tf"
-                        role="group"
-                        aria-label={`${prettyTitle(card.title)} timeframe`}
-                      >
-                        {tfChoices.map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            className={`wolf-opp__sheet-tf-btn${t === view.timeframe ? ' is-on' : ''}`}
-                            aria-pressed={t === view.timeframe}
-                            onClick={() =>
-                              setCardTf((prev) => ({ ...prev, [card.scannerId]: t }))
-                            }
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <span
-                        className="wolf-opp__sheet-tf-fixed"
-                        title={`This scanner only runs on ${view.timeframe}`}
-                      >
-                        {view.timeframe}
-                      </span>
-                    )}
                     <button
                       type="button"
                       className="wolf-opp__sort wolf-opp__sort--sheet"
@@ -1032,7 +1003,7 @@ export default function WolfOpportunityPage({
                     {!tfHits.length ? (
                       <p className="wolf-opp__side-empty">
                         {view.pending
-                          ? `Loading ${view.timeframe} board…`
+                          ? 'Loading board…'
                           : scanning || bgBusy
                             ? 'Hunting…'
                             : 'No setups'}
@@ -1192,10 +1163,6 @@ export default function WolfOpportunityPage({
                   <dd>{formatHitClock(selected.detectedAt)} IST</dd>
                 </div>
                 <div>
-                  <dt>Timeframe</dt>
-                  <dd>{selected.timeframe}</dd>
-                </div>
-                <div>
                   <dt>Level</dt>
                   <dd>{selected.keyLevel ?? '—'}</dd>
                 </div>
@@ -1206,11 +1173,11 @@ export default function WolfOpportunityPage({
               </p>
               <div className="wolf-opp__drawer-cta">
                 <a
-                  href={tradingViewChartUrl(selected.symbol, selected.timeframe, selected.exchange)}
+                  href={tradingViewChartUrl(selected.symbol, null, selected.exchange)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="wolf-opp__cta"
-                  title={`Open ${selected.symbol} ${selected.timeframe} on TradingView`}
+                  title={`Open ${selected.symbol} on TradingView`}
                 >
                   <Crosshair size={14} /> Open chart
                 </a>

@@ -5,11 +5,12 @@
 import type { Candle } from '../radar/radarTypes';
 import {
   closedBarIndex,
+  foldNseSessionTail,
   inferNseBarOpenMs,
   istSessionStartMs,
   keepDisplaySetupTime,
+  nseFoldedBarCloseMs,
   readCandleTimeMs,
-  setupCreatedAtMs,
 } from '../radar/barTime';
 import { opportunityCreatedWindows } from './opportunityCreated';
 import { buildFeatureSnapshot, type FeatureSnapshot } from './featureSnapshot';
@@ -99,7 +100,7 @@ function episodeStamp(
   // Detection based, so it is a no-op on an open-stamped feed and only corrects
   // the series INDstocks stamps with the bar close.
   const raw = inferNseBarOpenMs(series, index, timeframe, now);
-  return keepDisplaySetupTime(setupCreatedAtMs(raw, timeframe, now), now);
+  return keepDisplaySetupTime(nseFoldedBarCloseMs(raw, timeframe, now), now);
 }
 
 /**
@@ -257,10 +258,13 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
       if (opts.signal?.aborted) break;
       try {
         const rawBars = candleMap[symbol] || candleMap[String(symbol).toUpperCase()] || [];
-        const candles = rawBars.map((c) => ({
-          ...c,
-          timestamp: readCandleTimeMs(c) || Number(c.timestamp) || 0,
-        }));
+        const candles = foldNseSessionTail(
+          rawBars.map((c) => ({
+            ...c,
+            timestamp: readCandleTimeMs(c) || Number(c.timestamp) || 0,
+          })),
+          tf,
+        );
         const closedEnd = closedBarIndex(candles, tf, asOf);
         const series = closedEnd >= 0 ? candles.slice(0, closedEnd + 1) : [];
         if (series.length >= MIN_SCAN_BARS) barsOk += 1;
@@ -323,10 +327,10 @@ export async function evaluateOpportunityFromCandleMap(input: EvaluateOpportunit
         const lastBar = series.length - 1;
         const sessionOpen = istSessionStartMs(asOf);
         for (const [id, scan] of runners) {
-          if (id === 'wolf_hunters' && sessionOpen > 0 && sessionOpen <= asOf) {
-            // Yesterday's last candle can hunt the one before it, and that setup is
-            // already live when the bell rings — so it prints at the open rather than
-            // waiting for a bar of today to close.
+          if (sessionOpen > 0 && sessionOpen <= asOf) {
+            // A setup completed by yesterday's closing candle is already live when the
+            // bell rings, so it prints at the open rather than waiting for a bar of
+            // today to close. Both cards read the tail of the series, so both qualify.
             const prior = priorSessionLastBar(series, asOf);
             const snap = prior > 0 ? snapshotAt(prior) : null;
             const carry = snap
