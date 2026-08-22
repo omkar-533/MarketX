@@ -227,7 +227,10 @@ function deskBias(hit: OpportunityHit): 'bullish' | 'bearish' | 'neutral' {
   return 'neutral';
 }
 
-/** Combined list. Default = original Created ranking. Other cycle steps keep Wolf score on top. */
+/**
+ * Combined list. Default = original Created ranking. Long / Short / Created keep Wolf
+ * score on top; % change ranks purely by how far the stock has travelled.
+ */
 export function sortHitsForDesk(hits: OpportunityHit[], mode: OpportunityDeskSort): OpportunityHit[] {
   if (mode === 'default') return rankHitsByCreated(hits);
   const list = [...hits];
@@ -238,10 +241,13 @@ export function sortHitsForDesk(hits: OpportunityHit[], mode: OpportunityDeskSor
 
   if (mode === 'created') return list.sort(byScore);
   if (mode === 'percent') {
+    // Biggest mover on top, smallest at the bottom. Sign is ignored: the desk lists
+    // longs and shorts together, and picking a side is what Long / Short are for.
+    const move = (h: OpportunityHit) => Math.abs(h.changePercent || 0);
     return list.sort(
       (a, b) =>
+        move(b) - move(a) ||
         b.score - a.score ||
-        (b.changePercent || 0) - (a.changePercent || 0) ||
         b.detectedAt - a.detectedAt ||
         a.symbol.localeCompare(b.symbol),
     );

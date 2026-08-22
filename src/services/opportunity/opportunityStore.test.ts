@@ -194,7 +194,19 @@ describe('desk sort cycle', () => {
     );
     assert.equal(sortHitsForDesk(rows, 'short')[0].symbol, 'SHORT');
     assert.equal(sortHitsForDesk(rows, 'created')[0].symbol, 'HIGH');
-    assert.equal(sortHitsForDesk(rows, 'percent')[0].symbol, 'HIGH');
+  });
+
+  it('ranks % change by distance travelled, biggest first, whichever way it moved', () => {
+    const rows = [
+      hit({ scannerId: 'wolf_hunters', symbol: 'SMALL', score: 99, direction: 'bullish', changePercent: 0.4, detectedAt: 10 }),
+      hit({ scannerId: 'wolf_hunters', symbol: 'BIGDOWN', score: 55, direction: 'bearish', changePercent: -7.2, detectedAt: 20 }),
+      hit({ scannerId: 'wolf_hunters', symbol: 'MID', score: 70, direction: 'bullish', changePercent: 3.1, detectedAt: 30 }),
+    ];
+    // The best Wolf score sits on the smallest move, so score must not lead here.
+    assert.deepEqual(
+      sortHitsForDesk(rows, 'percent').map((h) => h.symbol),
+      ['BIGDOWN', 'MID', 'SMALL'],
+    );
   });
 
   it('numbers 1st–4th per scanner only when the same stock reprints there', () => {
