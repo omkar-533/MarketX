@@ -49,7 +49,6 @@ const OIIntelligence = lazyWithRetry(() => import('./components/OIIntelligence')
 const FootprintChart = lazyWithRetry(() => import('./components/FootprintChart'));
 const WolfRadarPage = lazyWithRetry(() => import('./components/masterai/radar/WolfRadarPage'));
 const WolfOpportunityRoute = lazyWithRetry(() => import('./components/masterai/opportunity/WolfOpportunityRoute'));
-const WolfFnoRoute = lazyWithRetry(() => import('./components/masterai/fno/WolfFnoRoute'));
 const LiveWolfRoute = lazyWithRetry(() => import('./components/masterai/live/LiveWolfRoute'));
 const WatchlistPanel = lazyWithRetry(() => import('./components/masterai/radar/WatchlistPanel'));
 const TerminalPage = lazyWithRetry(() => import('./components/terminal/TerminalPage'));
@@ -90,7 +89,6 @@ const VALID_TABS = new Set([
   'wolf-ai',
   'wolf-radar',
   'wolf-opportunity',
-  'wolf-fno',
   'live-wolf',
   'strategy-lab',
   ...(SHOW_TERMINAL ? (['terminal'] as const) : []),
@@ -419,8 +417,6 @@ function AppWorkspace() {
         );
       case 'wolf-opportunity':
         return opportunity;
-      case 'wolf-fno':
-        return <WolfFnoRoute onOpenLive={liveWolf} />;
       case 'live-wolf':
         return <LiveWolfRoute />;
       case 'terminal':

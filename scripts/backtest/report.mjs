@@ -279,7 +279,18 @@ function main() {
         ['Entry', 'at the close of that candle, no second confirmation'],
         ['Setups per day', 'one long and one short at most, first qualifying gap per side'],
         ['Risk floor', `${(DEFAULT_CONFIG.minRiskPct * 100).toFixed(2)}% of entry price`],
-        ['Same-bar SL and TP', 'scored as a loss'],
+        [
+          'Stop trigger',
+          DEFAULT_CONFIG.stopTrigger === 'close'
+            ? 'only a candle CLOSING beyond the level; the exit is that close, so a loss can exceed 1R'
+            : 'a resting order — any wick through the level fills at the level',
+        ],
+        [
+          'Same-bar SL and TP',
+          DEFAULT_CONFIG.stopTrigger === 'close'
+            ? 'target wins — the close is the last print, so the touch came first'
+            : 'scored as a loss',
+        ],
         ['Cut-off', `no new entry after ${Math.floor(DEFAULT_CONFIG.lastEntryMin / 60)}:${String(DEFAULT_CONFIG.lastEntryMin % 60).padStart(2, '0')}, open trades marked out at 15:15`],
         ['Costs', 'none — gross R only'],
       ],

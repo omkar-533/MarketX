@@ -43,10 +43,24 @@ export const DEFAULT_CONFIG = {
   squareOffMin: 15 * 60 + 15,
   /** Stop model: 'A' = far edge of the FVG, 'B' = beyond the confirmation bar's wick. */
   stopModel: 'A',
+  /**
+   * What actually stops the trade out.
+   * 'close' — only a bar that CLOSES beyond the level; a wick through it is ignored,
+   *           and the exit is that bar's close, so a loss can run past 1R.
+   * 'touch' — the level is a resting order and any wick through it fills at the level.
+   */
+  stopTrigger: 'close',
   /** Model B pads the stop past the wick by this many ticks. */
   stopBufferTicks: 1,
   /** Skip a signal whose risk is below this share of entry price — R would be noise. */
   minRiskPct: 0.001,
+  /**
+   * Push a stop that sits closer than this share of entry price out to the floor
+   * instead of skipping the trade. Costs are a percentage of price, so a stop
+   * this tight hands most of R to the broker; widening it keeps the setup and
+   * makes each R worth more than the round trip. 0 leaves the stop untouched.
+   */
+  stopMinPct: 0,
   /** Both a long and a short setup may run on one day (one trade per side). */
   allowBothSides: true,
   /** R multiples simulated independently from the same entry. */
@@ -241,7 +255,7 @@ function simulate(bars, setup, cfg) {
   const long = setup.side === 'long';
   const pad = cfg.stopBufferTicks * cfg.tick;
 
-  const stop =
+  const rawStop =
     cfg.stopModel === 'A'
       ? long
         ? setup.fvgLower
@@ -250,9 +264,12 @@ function simulate(bars, setup, cfg) {
         ? entryBar.l - pad
         : entryBar.h + pad;
 
-  const risk = long ? entry - stop : stop - entry;
-  if (!(risk > 0)) return { ...setup, stage: 'SKIP_RISK', reason: 'stop on the wrong side of entry' };
-  if (risk < cfg.minRiskPct * entry) return { ...setup, stage: 'SKIP_RISK', reason: 'risk below floor' };
+  const rawRisk = long ? entry - rawStop : rawStop - entry;
+  if (!(rawRisk > 0)) return { ...setup, stage: 'SKIP_RISK', reason: 'stop on the wrong side of entry' };
+  if (rawRisk < cfg.minRiskPct * entry) return { ...setup, stage: 'SKIP_RISK', reason: 'risk below floor' };
+
+  const risk = Math.max(rawRisk, cfg.stopMinPct * entry);
+  const stop = long ? entry - risk : entry + risk;
 
   const results = {};
   for (const target of cfg.targets) {
@@ -262,21 +279,38 @@ function simulate(bars, setup, cfg) {
     for (let i = setup.entryIdx + 1; i < bars.length; i++) {
       const bar = bars[i];
       const min = istParts(bar.t).minutes;
-      const hitStop = long ? bar.l <= stop : bar.h >= stop;
       const hitTp = long ? bar.h >= tp : bar.l <= tp;
+      const stopped = cfg.stopTrigger === 'close'
+        ? (long ? bar.c <= stop : bar.c >= stop)
+        : (long ? bar.l <= stop : bar.h >= stop);
 
-      if (hitStop && hitTp) {
-        // Same bar touched both and this timeframe cannot order them.
-        outcome = { result: 'LOSS', r: -1, exit: stop, exitAt: bar.t, ambiguous: true };
-        break;
-      }
-      if (hitStop) {
-        outcome = { result: 'LOSS', r: -1, exit: stop, exitAt: bar.t, ambiguous: false };
-        break;
-      }
-      if (hitTp) {
-        outcome = { result: 'WIN', r: target, exit: tp, exitAt: bar.t, ambiguous: false };
-        break;
+      if (cfg.stopTrigger === 'close') {
+        // A close is the last print of the bar, so any target touch inside the same
+        // bar necessarily happened first. No assumption needed to order them.
+        if (hitTp) {
+          outcome = { result: 'WIN', r: target, exit: tp, exitAt: bar.t, ambiguous: false };
+          break;
+        }
+        if (stopped) {
+          // The exit is the close, not the level — that is what a close-based stop costs.
+          const r = (long ? bar.c - entry : entry - bar.c) / risk;
+          outcome = { result: 'LOSS', r, exit: bar.c, exitAt: bar.t, ambiguous: false };
+          break;
+        }
+      } else {
+        if (stopped && hitTp) {
+          // Same bar touched both and this timeframe cannot order them.
+          outcome = { result: 'LOSS', r: -1, exit: stop, exitAt: bar.t, ambiguous: true };
+          break;
+        }
+        if (stopped) {
+          outcome = { result: 'LOSS', r: -1, exit: stop, exitAt: bar.t, ambiguous: false };
+          break;
+        }
+        if (hitTp) {
+          outcome = { result: 'WIN', r: target, exit: tp, exitAt: bar.t, ambiguous: false };
+          break;
+        }
       }
       if (min >= cfg.squareOffMin) {
         const r = (long ? bar.c - entry : entry - bar.c) / risk;

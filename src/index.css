@@ -29181,6 +29181,28 @@ body:has(.app-main--terminal-immersive) #root {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(212, 175, 55, 0.18);
 }
+.wolf-opp__cta--on {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.22), rgba(52, 211, 153, 0.06));
+  color: #6ee7b7;
+  box-shadow: 0 8px 24px rgba(52, 211, 153, 0.12);
+}
+.wolf-opp__cta--on:hover {
+  border-color: rgba(52, 211, 153, 0.75);
+  color: #a7f3d0;
+  box-shadow: 0 12px 28px rgba(52, 211, 153, 0.2);
+}
+.wolf-opp__cta--off {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(248, 113, 113, 0.06));
+  color: #fca5a5;
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.12);
+}
+.wolf-opp__cta--off:hover {
+  border-color: rgba(248, 113, 113, 0.75);
+  color: #fecaca;
+  box-shadow: 0 12px 28px rgba(248, 113, 113, 0.2);
+}
 /* X Factor replaces the Wolf score on the volume-driven cards. */
 .wolf-opp__tile-score--x {
   color: var(--opp-gold-soft);
@@ -30795,9 +30817,15 @@ html[data-theme="light"] .wolf-opp__sheet-count {
   color: #1a1406;
   background: linear-gradient(180deg, #e8c547, #b8922a);
 }
-html[data-theme="light"] .wolf-opp__cta--quiet {
-  color: #334155;
-  border-color: #cbd5e1;
+html[data-theme="light"] .wolf-opp__cta--on {
+  color: #047857;
+  border-color: rgba(5, 150, 105, 0.45);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.05));
+}
+html[data-theme="light"] .wolf-opp__cta--off {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.4);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(239, 68, 68, 0.05));
 }
 html[data-theme="light"] .wolf-opp__record {
   color: #475569;

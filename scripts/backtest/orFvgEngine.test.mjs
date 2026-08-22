@@ -126,7 +126,7 @@ describe('stops and targets', () => {
   it('books the near targets and stops out of the far ones', () => {
     const setup = longSetup([
       bar(17, 108.0, 112.5, 107.9, 112.0), // reaches 1R (109.8) and 2R (111.6)
-      bar(18, 112.0, 112.0, 105.0, 106.0), // sweeps the 106.2 stop
+      bar(18, 112.0, 112.0, 105.0, 106.0), // closes under the 106.2 stop
     ]);
     assert.equal(setup.risk.toFixed(2), '1.80');
     assert.equal(setup.results[1].result, 'WIN');
@@ -135,10 +135,35 @@ describe('stops and targets', () => {
     assert.equal(setup.results[10].result, 'LOSS');
   });
 
-  it('calls a bar that spans both the stop and the target a loss', () => {
-    const setup = longSetup([bar(17, 108.0, 112.0, 105.0, 111.0)]);
-    assert.equal(setup.results[1].result, 'LOSS');
-    assert.equal(setup.results[1].ambiguous, true);
+  it('ignores a wick through the stop and only exits on a close beyond it', () => {
+    const setup = longSetup([
+      bar(17, 108.0, 108.2, 105.0, 107.5), // dips well under 106.2 but closes above it
+      bar(18, 107.5, 112.0, 107.4, 111.8), // then runs to 2R
+    ]);
+    assert.equal(setup.results[2].result, 'WIN');
+  });
+
+  it('books the loss at the closing price, so a gap past the stop costs more than 1R', () => {
+    const setup = longSetup([bar(17, 108.0, 108.1, 104.0, 104.4)]);
+    const loss = setup.results[1];
+    assert.equal(loss.result, 'LOSS');
+    assert.equal(loss.exit, 104.4);
+    // (104.4 - 108.0) / 1.8 = -2R, not the -1R a resting order would have paid.
+    assert.equal(loss.r.toFixed(2), '-2.00');
+  });
+
+  it('gives a bar that reaches the target and then closes under the stop to the target', () => {
+    // The close is the last print, so the touch came first — no coin flip needed.
+    const setup = longSetup([bar(17, 108.0, 112.0, 105.0, 105.5)]);
+    assert.equal(setup.results[1].result, 'WIN');
+    assert.equal(setup.results[2].result, 'WIN');
+    assert.equal(setup.results[3].result, 'LOSS');
+  });
+
+  it('still fills at the level when the stop is configured as a resting order', () => {
+    const setup = longSetup([bar(17, 108.0, 108.1, 104.0, 104.4)], { stopTrigger: 'touch' });
+    assert.equal(setup.results[1].r, -1);
+    assert.equal(setup.results[1].exit, 106.2);
   });
 
   it('marks an unresolved trade out at the close instead of scoring it a win', () => {

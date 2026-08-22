@@ -714,7 +714,7 @@ export default function WolfOpportunityPage({
   };
 
 
-  const { liveStreaming, cta: feedCta, label: feedLabel } = feedState({
+  const { brokerOn, liveStreaming, cta: feedCta, label: feedLabel } = feedState({
     dataMode,
     feedStatus,
     marketOpen,
@@ -833,7 +833,7 @@ export default function WolfOpportunityPage({
           {onConnectData ? (
             <button
               type="button"
-              className={`wolf-opp__cta${feedCta === 'manage' ? ' wolf-opp__cta--quiet' : ''}`}
+              className={`wolf-opp__cta ${brokerOn ? 'wolf-opp__cta--on' : 'wolf-opp__cta--off'}`}
               onClick={onConnectData}
               title={
                 feedCta === 'connect'

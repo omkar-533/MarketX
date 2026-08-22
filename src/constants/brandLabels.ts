@@ -44,7 +44,6 @@ export const PAGE_NAMES: Record<string, string> = {
   trafi: AI_PRODUCT_NAME,
   'wolf-radar': 'Wolf Radar',
   'wolf-opportunity': 'Wolf Opportunity',
-  'wolf-fno': 'Wolf F&O',
   'live-wolf': 'Live Wolf',
   'strategy-lab': 'Strategy Lab',
   terminal: 'Wolf Terminal',
