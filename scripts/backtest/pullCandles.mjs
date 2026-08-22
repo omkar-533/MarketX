@@ -7,7 +7,7 @@
  *   $env:INDSTOCKS_ACCESS_TOKEN="..."
  *   node scripts/backtest/pullCandles.mjs --symbols=NIFTY,BANKNIFTY --tf=5m --bars=2500
  */
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -27,6 +27,17 @@ function arg(name, fallback) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Prefer a gitignored file over an inline env assignment: a token pasted on a
+ * command line ends up in shell history and terminal logs.
+ */
+function readToken() {
+  if (process.env.INDSTOCKS_ACCESS_TOKEN) return process.env.INDSTOCKS_ACCESS_TOKEN.trim();
+  const file = resolve(root, '.backtest-token');
+  if (existsSync(file)) return readFileSync(file, 'utf8').trim();
+  return '';
+}
 
 /** `--symbols=FNO` expands to whatever the instrument master can actually resolve. */
 function expandSymbols(raw) {
@@ -58,9 +69,9 @@ async function pullOne(token, symbol, tf, bars) {
 }
 
 async function main() {
-  const token = process.env.INDSTOCKS_ACCESS_TOKEN;
+  const token = readToken();
   if (!token) {
-    console.error('INDSTOCKS_ACCESS_TOKEN is not set. Nothing was fetched.');
+    console.error('No token. Set INDSTOCKS_ACCESS_TOKEN or drop one into .backtest-token. Nothing was fetched.');
     process.exit(1);
   }
   const timeframes = arg('tf', '3m,5m').split(',').map((s) => s.trim()).filter(Boolean);

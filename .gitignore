@@ -3,6 +3,8 @@ dist
 .env
 .env.local
 .env.*.local
+.backtest-token
+data/backtest/
 data/fyers-token.json
 data/fyers-logs/
 data/app-users.json
